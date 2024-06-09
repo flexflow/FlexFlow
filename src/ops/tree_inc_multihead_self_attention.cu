@@ -25,7 +25,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#define DISPATCH_GROUP_SIZE(group_size, GROUP_SIZE, ...) \
+#define DISPATCH_GROUPSIZE(group_size, GROUP_SIZE, ...)      \
   if (group_size == 1) {                                     \
     constexpr size_t GROUP_SIZE = 1;                         \
     __VA_ARGS__                                              \
@@ -41,7 +41,7 @@
     throw std::invalid_argument(err_msg.str());              \
   }
 
-#define DISPATCH_HEAD_DIM(head_dim, HEAD_DIM, ...)     \
+#define DISPATCH_HEADDIM(head_dim, HEAD_DIM, ...)      \
   switch (head_dim) {                                  \
     case 64: {                                         \
       constexpr size_t HEAD_DIM = 64;                  \
@@ -65,6 +65,18 @@
     }                                                  \
   }
 
+// kPagesize also defined in tree_inc_multihead_self_attention_impl.cu
+// for template instantiation
+constexpr uint32_t kPagesize = 512 + 64;
+#define DISPATCH_PAGESIZE(page_size, PAGE_SIZE, ...)  \
+  if (page_size == kPagesize) {                        \
+    constexpr size_t PAGE_SIZE = kPagesize;            \
+    __VA_ARGS__                                        \
+  } else {                                             \
+    std::ostringstream err_msg;                        \
+    err_msg << "Unsupported page_size: " << page_size; \
+    throw std::invalid_argument(err_msg.str());        \
+  }
 
 namespace FlexFlow {
 
@@ -79,10 +91,13 @@ using namespace Kernels::IncMultiHeadAttention;
 namespace Kernels {
 namespace TreeIncMultiHeadAttention {
 
-using flashinfer::QKVLayout;
-using flashinfer::PosEncodingMode;
 using flashinfer::MaskMode;
-using flashinfer::SinglePrefillWithKVCacheDispatched;
+using flashinfer::PageStorage;
+using flashinfer::PosEncodingMode;
+using flashinfer::QKVLayout;
+using flashinfer::paged_kv_t;
+using flashinfer::BatchPrefillHandler;
+using flashinfer::BatchPrefillWithPagedKVCacheWrapperDispatched;
 
 __global__ void commit_tokens_kernel(
     half *kCache_ptr,
@@ -213,12 +228,8 @@ __global__ void update_qkv_cache_kernel(
     DT *devQKVProjArray,
     half *qTmp_ptr,
     half *kCache_ptr,
-    half *vCache_ptr,
     BatchConfig::PerTokenInfo const *tokenInfos,
     BatchConfig::PerRequestInfo *request_infos,
-    int qProjSize,
-    int kProjSize,
-    int vProjSize,
     int max_seq_len,
     int hidden_size,
     int num_new_tokens) {
@@ -234,12 +245,12 @@ __global__ void update_qkv_cache_kernel(
 
   size_t from_idx =
         token_idx * QKV_WEIGHT_NUM * hidden_size;
-  size_t to_idx = req_idx * (hidden_size * max_seq_len) +
-                  token_abs_idx * hidden_size;
+  size_t to_idx = (req_idx * max_seq_len + token_abs_idx) * hidden_size * 2;
 
+  // key and value cache should be stored interleaved
   kCache_ptr[to_idx + offset] = 
       static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
-  vCache_ptr[to_idx + offset] = 
+  kCache_ptr[to_idx + hidden_size + offset] = 
       static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
   qTmp_ptr[token_idx * hidden_size + offset] = 
       static_cast<half>(devQKVProjArray[from_idx + offset]);
@@ -259,12 +270,65 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
       static_cast<DT *>(m->devQKVProjArray),
       static_cast<half *>(m->queryTmp),
       static_cast<half *>(m->keyCache),
+      m->token_infos,
+      m->request_infos,
+      BatchConfig::max_sequence_length() +
+          BatchConfig::max_spec_tree_token_num(),
+      m->hidden_size,
+      num_new_tokens);
+}
+
+template <typename DT>
+__global__ void orig_update_qkv_cache_kernel(
+    DT *devQKVProjArray,
+    half *qTmp_ptr,
+    half *kCache_ptr,
+    half *vCache_ptr,
+    BatchConfig::PerTokenInfo const *tokenInfos,
+    BatchConfig::PerRequestInfo *request_infos,
+    int max_seq_len,
+    int hidden_size,
+    int num_new_tokens) {
+  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int const token_idx = thread_idx / hidden_size;
+  int const offset = thread_idx % hidden_size;
+  if (token_idx >= num_new_tokens) {
+    return;
+  }
+
+  int const req_idx = tokenInfos[token_idx].request_index;
+  int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
+
+  size_t from_idx =
+        token_idx * QKV_WEIGHT_NUM * hidden_size;
+  size_t to_idx = (req_idx * max_seq_len + token_abs_idx) * hidden_size;
+
+  // key and value cache should be stored interleaved
+  kCache_ptr[to_idx + offset] = 
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
+  vCache_ptr[to_idx + offset] = 
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
+  qTmp_ptr[token_idx * hidden_size + offset] = 
+      static_cast<half>(devQKVProjArray[from_idx + offset]);
+}
+
+template <typename DT>
+void orig_update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
+                                 BatchConfig const *bc,
+                                 cudaStream_t stream) {
+  // update the kv cache, compact the q array
+  int num_new_tokens = bc->num_active_tokens();
+  int parallelism = m->hidden_size * num_new_tokens;
+  orig_update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
+                            min(CUDA_NUM_THREADS, parallelism),
+                            0,
+                            stream>>>(
+      static_cast<DT *>(m->devQKVProjArray),
+      static_cast<half *>(m->queryTmp),
+      static_cast<half *>(m->keyCache),
       static_cast<half *>(m->valueCache),
       m->token_infos,
       m->request_infos,
-      m->qProjSize,
-      m->kProjSize,
-      m->vProjSize,
       BatchConfig::max_sequence_length() +
           BatchConfig::max_spec_tree_token_num(),
       m->hidden_size,
@@ -304,8 +368,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
   uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
                             BatchConfig::max_sequence_length();
-  
-  // flashinfer parameters
+
 
   for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
     if (!bc->request_available[req_idx]) {
@@ -323,9 +386,9 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     float* tmp = static_cast<float *>(m->workspace);
     float* custom_mask = m->custom_mask + req_idx * max_q_length * max_kv_length;
 
-    DISPATCH_GROUP_SIZE(
+    DISPATCH_GROUPSIZE(
       group_size, GROUP_SIZE,
-        {DISPATCH_HEAD_DIM(
+        {DISPATCH_HEADDIM(
           head_dim, HEAD_DIM, {
     if (bc->prompt_phase) {
       flashinfer::SinglePrefillWithKVCacheDispatched<
@@ -345,12 +408,14 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     })});
   }
 
-  int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
-  produce_output_kernel<<<GET_BLOCKS(parallelism),
-                          min(CUDA_NUM_THREADS, parallelism),
-                          0,
-                          stream>>>(
-      m->outputTmp, output_ptr, parallelism);
+  {
+    int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
+    produce_output_kernel<<<GET_BLOCKS(parallelism),
+                            min(CUDA_NUM_THREADS, parallelism),
+                            0,
+                            stream>>>(
+        m->outputTmp, output_ptr, parallelism);
+  }
 
   // cudaEventRecord(t_end, stream);
   // checkCUDA(cudaEventSynchronize(t_end));
@@ -422,7 +487,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   }
 
   // Update key-val cache, compact q array
-  update_qkv_cache<DT>(m, bc, stream);
+  orig_update_qkv_cache<DT>(m, bc, stream);
 
   // Compute attention
   tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
