@@ -172,11 +172,338 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
     float sm_scale, float rope_scale,
     float rope_theta, cudaStream_t stream);
 
-  // template cudaError_t SinglePrefillWithKVCacheDispatched<
-  //     1, 256, QKVLayout::kNHD, PosEncodingMode::kNone,
-  //     false, MaskMode::kCustom, float, float>(
-  //       float* q, float* k, float* v, float* custom_mask, float* o,
-  //       float* tmp, float* lse, uint32_t num_kv_heads, uint32_t qo_len, uint32_t kv_len,
-  //       float sm_scale, float rope_scale,
-  //       float rope_theta, cudaStream_t stream);
+
+constexpr uint32_t kPagesize = 512 + 64;
+// num_frags_x[] = {1, 2};
+// group_size[] = {1, 4, 8};
+// head_dim[] = {64, 128, 256};
+
+/********** batch append instantiations for half precision **********/
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  1, 64, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  1, 128, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  1, 256, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  4, 64, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  4, 128, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  4, 256, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  8, 64, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  8, 128, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  8, 256, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  1, 64, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  1, 128, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  1, 256, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  4, 64, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  4, 128, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  4, 256, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  8, 64, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  8, 128, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  8, 256, PosEncodingMode::kNone, false, MaskMode::kCustom,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+
+/********** batch prefill instantiations for half precision **********/
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  1, 64, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  1, 128, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  1, 256, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  4, 64, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  4, 128, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  4, 256, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  8, 64, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  8, 128, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 1, kPagesize,
+  8, 256, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  1, 64, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  1, 128, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  1, 256, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  4, 64, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  4, 128, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  4, 256, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  8, 64, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  8, 128, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
+
+template cudaError_t BatchPrefillWithPagedKVCacheDispatched<
+  PageStorage::kIndices, QKVLayout::kNHD, 2, kPagesize,
+  8, 256, PosEncodingMode::kNone, false, MaskMode::kCausal,
+  half, half, int32_t>(
+    half* q, int32_t* request_indices, int32_t* tile_indices, int32_t* qo_indptr, int32_t* q_offset,
+    paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv, float* custom_mask,
+    int32_t* qk_indptr, half* o, float* tmp, float* lse, uint32_t num_qo_tiles, float sm_scale,
+    float rope_scale, float rope_theta, cudaStream_t stream);
 } // namespace flashinfer
