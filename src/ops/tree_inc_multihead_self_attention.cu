@@ -172,13 +172,18 @@ __global__ void update_custom_mask_kernel(
   
   // request id in batch config
   int requext_idx_in_batch = -1;
-  int cnt_1 = 0;
+  int cnt_1 = 0, mask_offset = 0, mask_lens = 0;
   while (cnt_1 < request_idx + 1) {
     requext_idx_in_batch++;
     if (request_available[requext_idx_in_batch]) {
       cnt_1++;
+      mask_offset = mask_lens;
+      int q_len = request_infos[requext_idx_in_batch].num_tokens_in_batch,
+          k_len = q_len + request_infos[requext_idx_in_batch].first_token_index_in_request;
+      mask_lens += q_len * k_len;
     }
   }
+  __syncthreads();
 
   int const q_length = request_infos[requext_idx_in_batch].num_tokens_in_batch;
   int const q_start =
@@ -188,8 +193,7 @@ __global__ void update_custom_mask_kernel(
   }
   assert(q_start + q_length <= max_kv_length);
 
-  float *mask = custom_mask + request_idx * max_q_length * max_kv_length +
-                q_idx * (q_start + q_length);
+  float *mask = custom_mask + mask_offset + q_idx * (q_start + q_length);
   // update custom mask
   for (int i = 0; i < q_start; i++) {
     mask[i] = 0.0f;
@@ -335,6 +339,41 @@ void orig_update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
       num_new_tokens);
 }
 
+__global__ void prepare_inference_params_kernel(int const num_requests,
+                          BatchConfig::PerRequestInfo *request_infos,
+                          bool *request_available,
+                          int32_t *q_indptr,
+                          int32_t *kv_indptr,
+                          int32_t *kv_indices,
+                          int32_t *kv_last_page_len) {
+  int const request_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  if (request_idx >= num_requests) {
+    return;
+  }
+
+  // request id in batch config
+  int requext_idx_in_batch = -1;
+  int cnt_1 = 0, q_lens = 0;
+  while (cnt_1 < request_idx + 1) {
+    requext_idx_in_batch++;
+    if (request_available[requext_idx_in_batch]) {
+      cnt_1++;
+      q_lens += request_infos[requext_idx_in_batch].num_tokens_in_batch;
+    }
+  }
+
+  if (request_idx == 0) {
+    q_indptr[0] = 0;
+    kv_indptr[0] = 0;
+  }
+  __syncthreads();
+  q_indptr[request_idx + 1] = q_lens;
+  kv_indptr[request_idx + 1] = request_idx + 1;
+  kv_indices[request_idx] = requext_idx_in_batch;
+  kv_last_page_len[request_idx] = request_infos[requext_idx_in_batch].num_tokens_in_batch +
+                                  request_infos[requext_idx_in_batch].first_token_index_in_request;
+}
+
 template <typename DT>
 __global__ void produce_output_kernel(half const *input_ptr,
                            DT *output_ptr,
@@ -359,6 +398,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const num_kv_heads = m->num_kv_heads;
   uint32_t const group_size = num_q_heads / num_kv_heads;
   uint32_t const head_dim = m->qProjSize;
+  uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
 
   // for finding q, k, v, custom_mask pointers
@@ -369,7 +409,22 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
                             BatchConfig::max_sequence_length();
 
+  {
+    int parallelism = batch_size;
+    prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
+                                      min(CUDA_NUM_THREADS, parallelism),
+                                      0,
+                                      stream>>>(
+        batch_size,
+        m->request_infos,
+        m->request_available,
+        m->q_indptr,
+        m->kv_indptr,
+        m->kv_indices,
+        m->kv_last_page_len);
+  }
 
+  int mask_lens = 0, mask_offset = 0;
   for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
     if (!bc->request_available[req_idx]) {
       continue;
@@ -379,12 +434,15 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
              q_start = req->first_token_index_in_request,
              kv_len = q_len + q_start;
 
+    mask_offset = mask_lens;
+    mask_lens += q_len * kv_len;
+
     half* q = static_cast<half *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
         * k = static_cast<half *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
         * v = static_cast<half *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
         * o = m->outputTmp + req->first_token_offset_in_batch * hidden_size;
     float* tmp = static_cast<float *>(m->workspace);
-    float* custom_mask = m->custom_mask + req_idx * max_q_length * max_kv_length;
+    float* custom_mask = m->custom_mask + mask_offset;
 
     DISPATCH_GROUPSIZE(
       group_size, GROUP_SIZE,
