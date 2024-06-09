@@ -282,62 +282,62 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
       num_new_tokens);
 }
 
-// template <typename DT>
-// __global__ void orig_update_qkv_cache_kernel(
-//     DT *devQKVProjArray,
-//     half *qTmp_ptr,
-//     half *kCache_ptr,
-//     half *vCache_ptr,
-//     BatchConfig::PerTokenInfo const *tokenInfos,
-//     BatchConfig::PerRequestInfo *request_infos,
-//     int max_seq_len,
-//     int hidden_size,
-//     int num_new_tokens) {
-//   int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
-//   int const token_idx = thread_idx / hidden_size;
-//   int const offset = thread_idx % hidden_size;
-//   if (token_idx >= num_new_tokens) {
-//     return;
-//   }
+template <typename DT>
+__global__ void orig_update_qkv_cache_kernel(
+    DT *devQKVProjArray,
+    half *qTmp_ptr,
+    half *kCache_ptr,
+    half *vCache_ptr,
+    BatchConfig::PerTokenInfo const *tokenInfos,
+    BatchConfig::PerRequestInfo *request_infos,
+    int max_seq_len,
+    int hidden_size,
+    int num_new_tokens) {
+  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int const token_idx = thread_idx / hidden_size;
+  int const offset = thread_idx % hidden_size;
+  if (token_idx >= num_new_tokens) {
+    return;
+  }
 
-//   int const req_idx = tokenInfos[token_idx].request_index;
-//   int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
+  int const req_idx = tokenInfos[token_idx].request_index;
+  int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
 
-//   size_t from_idx =
-//         token_idx * QKV_WEIGHT_NUM * hidden_size;
-//   size_t to_idx = (req_idx * max_seq_len + token_abs_idx) * hidden_size;
+  size_t from_idx =
+        token_idx * QKV_WEIGHT_NUM * hidden_size;
+  size_t to_idx = (req_idx * max_seq_len + token_abs_idx) * hidden_size;
 
-//   // key and value cache should be stored interleaved
-//   kCache_ptr[to_idx + offset] = 
-//       static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
-//   vCache_ptr[to_idx + offset] = 
-//       static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
-//   qTmp_ptr[token_idx * hidden_size + offset] = 
-//       static_cast<half>(devQKVProjArray[from_idx + offset]);
-// }
+  // key and value cache should be stored interleaved
+  kCache_ptr[to_idx + offset] = 
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
+  vCache_ptr[to_idx + offset] = 
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
+  qTmp_ptr[token_idx * hidden_size + offset] = 
+      static_cast<half>(devQKVProjArray[from_idx + offset]);
+}
 
-// template <typename DT>
-// void orig_update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
-//                                  BatchConfig const *bc,
-//                                  cudaStream_t stream) {
-//   // update the kv cache, compact the q array
-//   int num_new_tokens = bc->num_active_tokens();
-//   int parallelism = m->hidden_size * num_new_tokens;
-//   orig_update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
-//                             min(CUDA_NUM_THREADS, parallelism),
-//                             0,
-//                             stream>>>(
-//       static_cast<DT *>(m->devQKVProjArray),
-//       static_cast<half *>(m->queryTmp),
-//       static_cast<half *>(m->keyCache),
-//       static_cast<half *>(m->valueCache),
-//       m->token_infos,
-//       m->request_infos,
-//       BatchConfig::max_sequence_length() +
-//           BatchConfig::max_spec_tree_token_num(),
-//       m->hidden_size,
-//       num_new_tokens);
-// }
+template <typename DT>
+void orig_update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
+                                 BatchConfig const *bc,
+                                 cudaStream_t stream) {
+  // update the kv cache, compact the q array
+  int num_new_tokens = bc->num_active_tokens();
+  int parallelism = m->hidden_size * num_new_tokens;
+  orig_update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
+                            min(CUDA_NUM_THREADS, parallelism),
+                            0,
+                            stream>>>(
+      static_cast<DT *>(m->devQKVProjArray),
+      static_cast<half *>(m->queryTmp),
+      static_cast<half *>(m->keyCache),
+      static_cast<half *>(m->valueCache),
+      m->token_infos,
+      m->request_infos,
+      BatchConfig::max_sequence_length() +
+          BatchConfig::max_spec_tree_token_num(),
+      m->hidden_size,
+      num_new_tokens);
+}
 
 __global__ void prepare_inference_params_kernel(int const num_requests,
                           BatchConfig::PerRequestInfo *request_infos,
@@ -380,6 +380,79 @@ __global__ void produce_output_kernel(half const *input_ptr,
                            int parallelism) {
   CUDA_KERNEL_LOOP(idx, parallelism) {
     output_ptr[idx] = static_cast<DT>(input_ptr[idx]);
+  }
+}
+
+template <typename DT>
+void orig_tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
+                          BatchConfig const *bc,
+                          DT *output_ptr,
+                          cudaStream_t stream) {
+  // global constant parameters
+  uint32_t const num_q_heads = m->num_q_heads;
+  uint32_t const num_kv_heads = m->num_kv_heads;
+  uint32_t const group_size = num_q_heads / num_kv_heads;
+  uint32_t const head_dim = m->qProjSize;
+  uint32_t const batch_size = bc->num_active_requests();
+  float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+
+  // for finding q, k, v, custom_mask pointers
+  uint32_t const hidden_size = m->hidden_size;
+  uint32_t const max_seq_len = BatchConfig::max_sequence_length() +
+                          BatchConfig::max_spec_tree_token_num();
+  uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
+  uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
+                            BatchConfig::max_sequence_length();
+
+  int mask_lens = 0, mask_offset = 0;
+  for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
+    if (!bc->request_available[req_idx]) {
+      continue;
+    }
+    BatchConfig::PerRequestInfo const *req = bc->requestsInfo + req_idx;
+    uint32_t q_len = req->num_tokens_in_batch,
+             q_start = req->first_token_index_in_request,
+             kv_len = q_len + q_start;
+
+    mask_offset = mask_lens;
+    mask_lens += q_len * kv_len;
+
+    half* q = static_cast<half *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
+        * k = static_cast<half *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
+        * v = static_cast<half *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
+        * o = m->outputTmp + req->first_token_offset_in_batch * hidden_size;
+    float* tmp = static_cast<float *>(m->workspace);
+    float* custom_mask = m->custom_mask + mask_offset;
+
+    DISPATCH_GROUPSIZE(
+      group_size, GROUP_SIZE,
+        {DISPATCH_HEADDIM(
+          head_dim, HEAD_DIM, {
+    if (bc->prompt_phase) {
+      flashinfer::SinglePrefillWithKVCacheDispatched<
+        GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
+        false, MaskMode::kCausal, half, half>(
+          q, k, v, /*custom_mask=*/static_cast<float *>(nullptr), o, tmp,
+          /*lse=*/static_cast<float *>(nullptr), num_kv_heads, q_len, kv_len, sm_scale,
+          /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+    } else {
+      flashinfer::SinglePrefillWithKVCacheDispatched<
+          GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
+          false, MaskMode::kCustom, half, half>(
+            q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
+            num_kv_heads, q_len, kv_len, sm_scale,
+            /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+    }
+    })});
+  }
+
+  {
+    int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
+    produce_output_kernel<<<GET_BLOCKS(parallelism),
+                            min(CUDA_NUM_THREADS, parallelism),
+                            0,
+                            stream>>>(
+        m->outputTmp, output_ptr, parallelism);
   }
 }
 
@@ -457,56 +530,6 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         + std::string(cudaGetErrorString(result)));
     }
   })})});
-
-  // for finding q, k, v, custom_mask pointers
-  // uint32_t const hidden_size = m->hidden_size;
-  // uint32_t const max_seq_len = BatchConfig::max_sequence_length() +
-  //                         BatchConfig::max_spec_tree_token_num();
-  // uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
-  // uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
-  //                           BatchConfig::max_sequence_length();
-
-  // int mask_lens = 0, mask_offset = 0;
-  // for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
-  //   if (!bc->request_available[req_idx]) {
-  //     continue;
-  //   }
-  //   BatchConfig::PerRequestInfo const *req = bc->requestsInfo + req_idx;
-  //   uint32_t q_len = req->num_tokens_in_batch,
-  //            q_start = req->first_token_index_in_request,
-  //            kv_len = q_len + q_start;
-
-  //   mask_offset = mask_lens;
-  //   mask_lens += q_len * kv_len;
-
-  //   half* q = static_cast<half *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
-  //       * k = static_cast<half *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
-  //       * v = static_cast<half *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
-  //       * o = m->outputTmp + req->first_token_offset_in_batch * hidden_size;
-  //   float* tmp = static_cast<float *>(m->workspace);
-  //   float* custom_mask = m->custom_mask + mask_offset;
-
-  //   DISPATCH_GROUPSIZE(
-  //     group_size, GROUP_SIZE,
-  //       {DISPATCH_HEADDIM(
-  //         head_dim, HEAD_DIM, {
-  //   if (bc->prompt_phase) {
-  //     flashinfer::SinglePrefillWithKVCacheDispatched<
-  //       GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-  //       false, MaskMode::kCausal, half, half>(
-  //         q, k, v, /*custom_mask=*/static_cast<float *>(nullptr), o, tmp,
-  //         /*lse=*/static_cast<float *>(nullptr), num_kv_heads, q_len, kv_len, sm_scale,
-  //         /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
-  //   } else {
-  //     flashinfer::SinglePrefillWithKVCacheDispatched<
-  //         GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-  //         false, MaskMode::kCustom, half, half>(
-  //           q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
-  //           num_kv_heads, q_len, kv_len, sm_scale,
-  //           /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
-  //   }
-  //   })});
-  // }
 
   {
     int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
@@ -612,6 +635,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   //   delete[] temp_output;
   // }
+
+  // orig_update_qkv_cache<DT>(m, bc, stream);
+  // orig_tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
