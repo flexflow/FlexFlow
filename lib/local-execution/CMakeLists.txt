@@ -8,6 +8,7 @@ ff_add_library(
   PRIVATE_INCLUDE
     src/
   DEPS
+    compiler
     op-attrs
     utils
     kernels
