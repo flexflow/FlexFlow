@@ -402,12 +402,12 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
 
   // for finding q, k, v, custom_mask pointers
-  uint32_t const hidden_size = m->hidden_size;
-  uint32_t const max_seq_len = BatchConfig::max_sequence_length() +
-                          BatchConfig::max_spec_tree_token_num();
-  uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
-  uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
-                            BatchConfig::max_sequence_length();
+  // uint32_t const hidden_size = m->hidden_size;
+  // uint32_t const max_seq_len = BatchConfig::max_sequence_length() +
+  //                         BatchConfig::max_spec_tree_token_num();
+  // uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
+  // uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() + 
+  //                           BatchConfig::max_sequence_length();
 
   {
     int parallelism = batch_size;
@@ -424,47 +424,89 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->kv_last_page_len);
   }
 
-  int mask_lens = 0, mask_offset = 0;
-  for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
-    if (!bc->request_available[req_idx]) {
-      continue;
-    }
-    BatchConfig::PerRequestInfo const *req = bc->requestsInfo + req_idx;
-    uint32_t q_len = req->num_tokens_in_batch,
-             q_start = req->first_token_index_in_request,
-             kv_len = q_len + q_start;
+  half* q = static_cast<half *>(m->queryTmp),
+      * kv = static_cast<half *>(m->keyCache),
+      * o = static_cast<half *>(m->outputTmp);
+  paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
+    num_kv_heads, kPagesize, head_dim, batch_size, kv,
+    m->kv_indices, m->kv_indptr, m->kv_last_page_len);
+  BatchPrefillHandler handler;
+  size_t workspace_size = 32 * 1024 * 1024;
+  handler.BeginForward(
+      m->workspace, workspace_size, m->q_indptr, batch_size,
+      num_q_heads, num_kv_heads, head_dim);
 
-    mask_offset = mask_lens;
-    mask_lens += q_len * kv_len;
-
-    half* q = static_cast<half *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
-        * k = static_cast<half *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
-        * v = static_cast<half *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
-        * o = m->outputTmp + req->first_token_offset_in_batch * hidden_size;
-    float* tmp = static_cast<float *>(m->workspace);
-    float* custom_mask = m->custom_mask + mask_offset;
-
-    DISPATCH_GROUPSIZE(
-      group_size, GROUP_SIZE,
-        {DISPATCH_HEADDIM(
-          head_dim, HEAD_DIM, {
+  DISPATCH_GROUPSIZE(
+    group_size, GROUP_SIZE, {
+      DISPATCH_HEADDIM(
+        head_dim, HEAD_DIM, {
+          DISPATCH_PAGESIZE(
+            kPagesize, PAGE_SIZE, {
+    cudaError_t result;
     if (bc->prompt_phase) {
-      flashinfer::SinglePrefillWithKVCacheDispatched<
-        GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-        false, MaskMode::kCausal, half, half>(
-          q, k, v, /*custom_mask=*/static_cast<float *>(nullptr), o, tmp,
-          /*lse=*/static_cast<float *>(nullptr), num_kv_heads, q_len, kv_len, sm_scale,
-          /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+      result = BatchPrefillWithPagedKVCacheWrapperDispatched<
+        PageStorage::kIndices, QKVLayout::kNHD, PAGE_SIZE, GROUP_SIZE,
+        HEAD_DIM, PosEncodingMode::kNone, false, MaskMode::kCausal,
+        half, half, int32_t>(
+          &handler, q, m->q_indptr, /*q_offset=*/nullptr, paged_kv,
+          /*custom_mask=*/nullptr, /*qk_indptr=*/nullptr, o, /*lse=*/nullptr,
+          sm_scale, /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
     } else {
-      flashinfer::SinglePrefillWithKVCacheDispatched<
-          GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
-          false, MaskMode::kCustom, half, half>(
-            q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
-            num_kv_heads, q_len, kv_len, sm_scale,
-            /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+      result = BatchPrefillWithPagedKVCacheWrapperDispatched<
+        PageStorage::kIndices, QKVLayout::kNHD, PAGE_SIZE, GROUP_SIZE,
+        HEAD_DIM, PosEncodingMode::kNone, false, MaskMode::kCustom,
+        half, half, int32_t>(
+          &handler, q, m->q_indptr, /*q_offset=*/nullptr, paged_kv,
+          m->custom_mask, /*qk_indptr=*/nullptr, o, /*lse=*/nullptr,
+          sm_scale, /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
     }
-    })});
-  }
+    if (result != cudaSuccess) {
+      throw std::runtime_error("Failed to run BatchPrefillWithPagedKVCacheWrapperDispatched"
+        + std::string(cudaGetErrorString(result)));
+    }
+  })})});
+
+  // int mask_lens = 0, mask_offset = 0;
+  // for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
+  //   if (!bc->request_available[req_idx]) {
+  //     continue;
+  //   }
+  //   BatchConfig::PerRequestInfo const *req = bc->requestsInfo + req_idx;
+  //   uint32_t q_len = req->num_tokens_in_batch,
+  //            q_start = req->first_token_index_in_request,
+  //            kv_len = q_len + q_start;
+
+  //   mask_offset = mask_lens;
+  //   mask_lens += q_len * kv_len;
+
+  //   half* q = static_cast<half *>(m->queryTmp) + req->first_token_offset_in_batch * hidden_size,
+  //       * k = static_cast<half *>(m->keyCache) + req_idx * max_seq_len * hidden_size,
+  //       * v = static_cast<half *>(m->valueCache) + req_idx * max_seq_len * hidden_size,
+  //       * o = m->outputTmp + req->first_token_offset_in_batch * hidden_size;
+  //   float* tmp = static_cast<float *>(m->workspace);
+  //   float* custom_mask = m->custom_mask + mask_offset;
+
+  //   DISPATCH_GROUPSIZE(
+  //     group_size, GROUP_SIZE,
+  //       {DISPATCH_HEADDIM(
+  //         head_dim, HEAD_DIM, {
+  //   if (bc->prompt_phase) {
+  //     flashinfer::SinglePrefillWithKVCacheDispatched<
+  //       GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
+  //       false, MaskMode::kCausal, half, half>(
+  //         q, k, v, /*custom_mask=*/static_cast<float *>(nullptr), o, tmp,
+  //         /*lse=*/static_cast<float *>(nullptr), num_kv_heads, q_len, kv_len, sm_scale,
+  //         /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+  //   } else {
+  //     flashinfer::SinglePrefillWithKVCacheDispatched<
+  //         GROUP_SIZE, HEAD_DIM, QKVLayout::kNHD, PosEncodingMode::kNone,
+  //         false, MaskMode::kCustom, half, half>(
+  //           q, k, v, custom_mask, o, tmp, /*lse=*/static_cast<float *>(nullptr),
+  //           num_kv_heads, q_len, kv_len, sm_scale,
+  //           /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
+  //   }
+  //   })});
+  // }
 
   {
     int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
