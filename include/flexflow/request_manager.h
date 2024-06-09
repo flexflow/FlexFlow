@@ -22,6 +22,7 @@
 #include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
+#include <limits>
 
 namespace FlexFlow {
 
@@ -75,6 +76,10 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
+  // Required average time-per-output-token service-level objective of this request, in milliseconds
+  double target_slo_ms = std::numeric_limits<double>::max();
+  // Time-per-output-token service-level objective of this request at current generation iteration, in milliseconds
+  double curr_slo_ms = std::numeric_limits<double>::max();
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
@@ -259,8 +264,8 @@ public:
   void serve_spec_infer_sync(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt);
+  RequestGuid register_new_request(std::string const &prompt, double slo);
+  RequestGuid register_new_request(std::vector<TokenId> const &prompt, double slo);
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();
@@ -373,12 +378,13 @@ private:
     int ssm_prefilling_steps = 0;
     int llm_decoding_steps = 0;
     int ssm_decoding_steps = 0;
+    int nb_tokens_decoded = 0;
     long long start_time = 0, start_decoding_time = 0, finish_time = 0;
   };
   struct ProfileInfo {
     // For SpecInfer: One step is comprised of one ssm speculation phase + a
-    // single llm verification phase (forward pass + verification) For Incr
-    // Decoding: One step is one LLM decoding phase
+    // single llm verification phase (forward pass + verification)
+    // For Incremental Decoding: One step is one LLM decoding phase
     long long llm_step_start = 0, ssm_step_start = 0;
     // Times for each LLM verification phase (in ms)
     std::vector<double> llm_step_times;

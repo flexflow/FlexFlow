@@ -274,13 +274,15 @@ size_t RequestManager::get_num_ssms() {
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt) {
+    RequestManager::register_new_request(std::vector<TokenId> const &prompt, double slo) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
+  request.target_slo_ms = slo;
+  request.curr_slo_ms = slo;
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -329,12 +331,15 @@ RequestManager::RequestGuid
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::string const &prompt) {
+    RequestManager::register_new_request(std::string const &prompt, double slo) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
+  request.target_slo_ms = slo;
+  request.curr_slo_ms = slo;
+
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
@@ -581,7 +586,13 @@ void RequestManager::request_complete_clean_up(int batch_index) {
       std::to_string(profile_info.llm_decoding_steps) + ")";
   if (decoding_mode == SPECULATIVE_DECODING) {
     str = str + " SSM_decoding_steps(" +
-          std::to_string(profile_info.ssm_decoding_steps) + ")";
+          std::to_string(profile_info.ssm_decoding_steps) + ")" +
+          " tpot(" + std::to_string(
+          (profile_info.finish_time-
+            profile_info.start_time)
+            * 1e-3 / profile_info.nb_tokens_decoded)
+          + ")";
+
   }
   write_to_output_file("", str);
 
@@ -2000,6 +2011,7 @@ void RequestManager::get_verify_results_greedy(
     request.ssm_committed = false;
 
     total_nb_generated_tokens += request.committed_tokens.size() - 1;
+    profiling_requests[guid].nb_tokens_decoded += request.committed_tokens.size() - 1;
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
@@ -2016,11 +2028,11 @@ void RequestManager::get_verify_results_greedy(
 
 // TODO: the max_seq_length is not used in the current implementation
 std::vector<GenerationResult>
-    FFModel::generate(std::vector<std::string> &prompts, int max_seq_length) {
+    FFModel::generate(std::vector<std::pair<std::string, double>> &prompts, int max_seq_length) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i));
+    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i).first, prompts.at(i).second);
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
