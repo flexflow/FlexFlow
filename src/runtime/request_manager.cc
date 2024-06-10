@@ -1043,11 +1043,14 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
       // The case where the prefilling is just finished. Although the last
       // token's kv cache is already there, the we need to decode the last token
       // because it's the root of the token tree.
-      new_bc.tokensInfo[0].request_index = request_index;
-      new_bc.tokensInfo[0].abs_index_in_request = committed_tokens[0].to_index;
-      new_bc.tokensInfo[0].abs_depth_in_request = committed_tokens[0].to_index;
-      new_bc.tokensInfo[0].token_id = committed_tokens[0].token_id;
-      new_bc.num_tokens = 1;
+      new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
+      new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
+          committed_tokens[0].to_index;
+      new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+          committed_tokens[0].to_index;
+      new_bc.tokensInfo[new_bc.num_tokens].token_id =
+          committed_tokens[0].token_id;
+      new_bc.num_tokens++;
     } else {
       for (int committed_token_index = 1;
            committed_token_index < committed_tokens.size();
