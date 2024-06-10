@@ -39,7 +39,7 @@ static bool use_cudnn(OperatorType op_type) {
 }
 
 template <typename T>
-T get_scalar(ElementUnaryUnifiedAttrs const &attrs) {
+T get_scalar(ElementUnaryAttrs const &attrs) {
   if (std::holds_alternative<ElementScalarUnaryAttrs>(attrs)) {
     return (T)std::get<ElementScalarUnaryAttrs>(attrs).scalar;
   } else {
@@ -50,7 +50,7 @@ T get_scalar(ElementUnaryUnifiedAttrs const &attrs) {
 
 ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
-                                       ElementUnaryUnifiedAttrs const &attrs) {
+                                       ElementUnaryAttrs const &attrs) {
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffActivationDescriptor_t actiDesc;
@@ -211,7 +211,7 @@ template <DataType T>
 struct ForwardKernel {
   void operator()(ffStream_t stream,
                   ElementUnaryPerDeviceState const &m,
-                  ElementUnaryUnifiedAttrs const &attrs,
+                  ElementUnaryAttrs const &attrs,
                   PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) const {
@@ -247,7 +247,7 @@ template <DataType T>
 struct BackwardKernel {
   void operator()(ffStream_t stream,
                   ElementUnaryPerDeviceState const &m,
-                  ElementUnaryUnifiedAttrs const &attrs,
+                  ElementUnaryAttrs const &attrs,
                   PerDeviceFFHandle const &handle,
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &input_grad,
@@ -289,7 +289,7 @@ struct BackwardKernel {
 };
 void forward_kernel(ffStream_t stream,
                     ElementUnaryPerDeviceState const &device_state,
-                    ElementUnaryUnifiedAttrs const &attrs,
+                    ElementUnaryAttrs const &attrs,
                     PerDeviceFFHandle const &handle,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output) {
@@ -299,7 +299,7 @@ void forward_kernel(ffStream_t stream,
 
 void backward_kernel(ffStream_t stream,
                      ElementUnaryPerDeviceState const &device_state,
-                     ElementUnaryUnifiedAttrs const &attrs,
+                     ElementUnaryAttrs const &attrs,
                      PerDeviceFFHandle const &handle,
                      GenericTensorAccessorR const &input,
                      GenericTensorAccessorW const &input_grad,

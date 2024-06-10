@@ -7,24 +7,20 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<ATTENTION_INIT_TASK_ID>();
-template <>
-void register_task<ATTENTION_FWD_TASK_ID>();
-template <>
-void register_task<ATTENTION_BWD_TASK_ID>();
+std::vector<task_id_t> get_task_ids(MultiHeadAttentionAttrs const &);
+
+TaskImplFunction get_attention_init_task_impl();
+TaskImplFunction get_attention_fwd_task_impl();
+TaskImplFunction get_attention_bwd_task_impl();
+
+OpTaskSignature get_attention_init_signature();
+OpTaskSignature get_attention_fwd_signature();
+OpTaskSignature get_attention_bwd_signature();
 
 OpTaskInvocation init(MultiHeadAttentionAttrs const &);
 OpTaskInvocation forward(MultiHeadAttentionAttrs const &);
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &);
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  MultiHeadAttentionAttrs const &attrs,
-                                  InputParallelTensorDesc const &query_shape,
-                                  InputParallelTensorDesc const &key_shape,
-                                  InputParallelTensorDesc const &value_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv);
 } // namespace FlexFlow
 
 #endif

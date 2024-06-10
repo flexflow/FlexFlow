@@ -7,22 +7,19 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<CONV2D_INIT_TASK_ID>();
-template <>
-void register_task<CONV2D_FWD_TASK_ID>();
-template <>
-void register_task<CONV2D_BWD_TASK_ID>();
+std::vector<task_id_t> get_task_ids(Conv2DAttrs const &);
+
+TaskImplFunction get_conv_2d_init_task_impl();
+TaskImplFunction get_conv_2d_fwd_task_impl();
+TaskImplFunction get_conv_2d_bwd_task_impl();
+
+OpTaskSignature get_conv_2d_init_signature();
+OpTaskSignature get_conv_2d_fwd_signature();
+OpTaskSignature get_conv_2d_bwd_signature();
 
 OpTaskInvocation init(Conv2DAttrs const &);
 OpTaskInvocation forward(Conv2DAttrs const &);
 OpTaskInvocation backward(Conv2DAttrs const &);
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  Conv2DAttrs const &attrs,
-                                  ParallelTensorShape const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
 
 } // namespace FlexFlow
 

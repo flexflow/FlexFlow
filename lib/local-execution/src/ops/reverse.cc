@@ -52,9 +52,9 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto axis = attrs.axis;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < output.shape.get_dim(); i++) {
-    if (i < axis) {
+    if (i < axis.value) {
       in_blk_size *= output.shape.at(ff_dim_t(i));
-    } else if (i == axis) {
+    } else if (i == axis.value) {
       reverse_dim_size = output.shape.at(ff_dim_t(i));
     } else {
       num_out_blks *= output.shape.at(ff_dim_t(i));
@@ -79,7 +79,7 @@ static std::optional<float>
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
   auto attrs = acc.get_argument<ReverseAttrs>(ATTRS);
 
-  int axis = input_grad.shape.get_dim() - attrs.axis.value() - 1;
+  int axis = input_grad.shape.get_dim() - attrs.axis.value - 1;
   coord_t in_blk_size = 1, reverse_dim_size = 1, num_out_blks = 1;
   for (int i = 0; i < input_grad.shape.get_dim(); i++) {
     if (i < axis) {
@@ -102,53 +102,29 @@ static std::optional<float>
                  input_grad.shape.get_volume());
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ReverseAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-
-  SimTaskBinding fwd_binding;
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  auto fwd_accessor = env.get_fwd_accessor(REVERSE_FWD_TASK_ID, fwd_binding);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(REVERSE_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_reverse_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reverse_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<REVERSE_FWD_TASK_ID>() {
+OpTaskSignature get_reverse_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-
-  register_task(REVERSE_FWD_TASK_ID, "Reverse forward", fwd, forward_task_impl);
+  return fwd;
 }
 
-// TODO: OpTaskSignature
-// template <>
-// void register_task<REVERSE_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(REVERSE_BWD_TASK_ID));
-//   register_task(REVERSE_BWD_TASK_ID, "Reverse backward", bwd,
-//   backward_task_impl);
-// }
+OpTaskSignature get_reverse_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reverse_fwd_signature());
+  return bwd;
+}
+
+std::vector<task_id_t> get_task_ids(ReverseAttrs const &) {
+  return {REVERSE_FWD_TASK_ID, REVERSE_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

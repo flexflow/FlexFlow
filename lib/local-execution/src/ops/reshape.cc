@@ -18,7 +18,6 @@
 #include "op-attrs/get_output_shapes.h"
 
 namespace FlexFlow {
-// declare Legion names
 
 using namespace FlexFlow::Kernels::Reshape;
 
@@ -50,13 +49,12 @@ OpTaskInvocation backward(ReshapeAttrs const &attrs) {
   return {RESHAPE_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<ReshapePerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
-  DeviceSpecific<ReshapePerDeviceState> per_device_state =
-      init_kernel(attrs.shape.data_type);
-  return per_device_state;
+  ReshapePerDeviceState per_device_state = init_kernel(attrs.shape.data_type);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -92,51 +90,25 @@ static std::optional<float>
                  output_grad);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ReshapeAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-
-  auto env = sim_factory.new_environment();
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(ATTRS, attrs);
-  auto init_accessor =
-      env.get_init_accessor(RESHAPE_INIT_TASK_ID, init_binding);
-  auto per_device_state = init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(RESHAPE_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(RESHAPE_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_reshape_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_reshape_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reshape_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<RESHAPE_INIT_TASK_ID>() {
+OpTaskSignature get_reshape_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<ReshapeAttrs>(ATTRS);
 
   init.add_return_value<ReshapePerDeviceState>();
-
-  register_task(RESHAPE_INIT_TASK_ID, "Reshape Init", init, init_task_impl);
+  return init;
 }
-
-template <>
-void register_task<RESHAPE_FWD_TASK_ID>() {
+OpTaskSignature get_reshape_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -144,18 +116,15 @@ void register_task<RESHAPE_FWD_TASK_ID>() {
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-
-  register_task(RESHAPE_FWD_TASK_ID, "Reshape Fwd", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_reshape_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reshape_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<RESHAPE_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_binding(get_op_signature(RESHAPE_FWD_TASK_ID));
-
-//   register_task(RESHAPE_BWD_TASK_ID, "Reshape Bwd", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(ReshapeAttrs const &) {
+  return {RESHAPE_INIT_TASK_ID, RESHAPE_FWD_TASK_ID, RESHAPE_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

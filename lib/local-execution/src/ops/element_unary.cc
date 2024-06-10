@@ -20,7 +20,7 @@ enum Slots {
 };
 
 /* ElementUnary */
-OpTaskInvocation init(ElementUnaryUnifiedAttrs const &attrs) {
+OpTaskInvocation init(ElementUnaryAttrs const &attrs) {
   OpTaskBinding b;
 
   b.bind_arg(ATTRS, attrs);
@@ -29,7 +29,7 @@ OpTaskInvocation init(ElementUnaryUnifiedAttrs const &attrs) {
   return {ELEMENTUNARY_INIT_TASK_ID, b};
 }
 
-OpTaskInvocation forward(ElementUnaryUnifiedAttrs const &attrs) {
+OpTaskInvocation forward(ElementUnaryAttrs const &attrs) {
   OpTaskBinding b;
 
   b.bind(INPUT, input_tensor(0));
@@ -42,30 +42,32 @@ OpTaskInvocation forward(ElementUnaryUnifiedAttrs const &attrs) {
   return {ELEMENTUNARY_FWD_TASK_ID, b};
 }
 
-OpTaskInvocation backward(ElementUnaryUnifiedAttrs const &attrs) {
+OpTaskInvocation backward(ElementUnaryAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
   return {ELEMENTUNARY_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<ElementUnaryPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
-  auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
   ParallelTensorShape input_shape =
       acc.get_argument<ParallelTensorShape>(INPUT_SHAPE);
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
 
-  DeviceSpecific<ElementUnaryPerDeviceState> per_device_state = init_kernel(
+  ParallelTensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, input_shape));
+  ElementUnaryPerDeviceState per_device_state = init_kernel(
       get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
-  return per_device_state;
+
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
-  auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
 
   auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -90,7 +92,7 @@ static std::optional<float>
   auto output = acc.get_tensor<Permissions::RO>(OUTPUT);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  auto const &attrs = acc.get_argument<ElementUnaryUnifiedAttrs>(ATTRS);
+  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
   auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto per_device_state =
@@ -109,51 +111,21 @@ static std::optional<float>
                  output_grad);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  ElementUnaryUnifiedAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(HANDLE, ff_handle());
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(INPUT_SHAPE, input_parallel_tensor_shape(0));
-
-  auto init_accessor =
-      env.get_init_accessor(ELEMENTUNARY_INIT_TASK_ID, init_binding);
-  DeviceSpecific<ElementUnaryPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor =
-      env.get_fwd_accessor(ELEMENTUNARY_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor =
-      env.get_bwd_accessor(ELEMENTUNARY_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_element_unary_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_element_unary_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_element_unary_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-OpTaskSignature init_signature<ELEMENTUNARY_INIT_TASK_ID>() {
+OpTaskSignature get_element_unary_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_arg_slot<ParallelTensorShape>(INPUT_SHAPE);
-  init.add_arg_slot<ElementUnaryUnifiedAttrs>(ATTRS);
+  init.add_arg_slot<ElementUnaryAttrs>(ATTRS);
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
 
   init.add_return_value<ElementUnaryPerDeviceState>();
@@ -161,16 +133,7 @@ OpTaskSignature init_signature<ELEMENTUNARY_INIT_TASK_ID>() {
   return init;
 }
 
-template <>
-void register_task<ELEMENTUNARY_INIT_TASK_ID>() {
-  register_task(ELEMENTUNARY_INIT_TASK_ID,
-                "ElementUnary Init",
-                init_signature<ELEMENTUNARY_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-OpTaskSignature fwd_signature<ELEMENTUNARY_FWD_TASK_ID>() {
+OpTaskSignature get_element_unary_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -182,28 +145,16 @@ OpTaskSignature fwd_signature<ELEMENTUNARY_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-void register_task<ELEMENTUNARY_FWD_TASK_ID>() {
-  register_task(ELEMENTUNARY_FWD_TASK_ID,
-                "ElementUnary Fwd",
-                fwd_signature<ELEMENTUNARY_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-OpTaskSignature bwd_signature<ELEMENTUNARY_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<ELEMENTUNARY_FWD_TASK_ID>());
+OpTaskSignature get_element_unary_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_element_unary_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<ELEMENTUNARY_BWD_TASK_ID>() {
-  register_task(ELEMENTUNARY_BWD_TASK_ID,
-                "ElementUnary Bwd",
-                bwd_signature<ELEMENTUNARY_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(ElementUnaryAttrs const &) {
+  return {ELEMENTUNARY_INIT_TASK_ID,
+          ELEMENTUNARY_FWD_TASK_ID,
+          ELEMENTUNARY_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

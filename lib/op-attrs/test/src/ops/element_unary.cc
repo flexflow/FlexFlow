@@ -8,7 +8,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t d2 = 32;
     size_t d3 = 24;
 
-    ElementUnaryAttrs attrs = ElementUnaryAttrs{OperatorType::RELU};
+    ElementUnaryAttrs attrs =
+        ElementUnaryAttrs{OperatorType::RELU, std::nullopt};
 
     TensorShape input = TensorShape{
         TensorDims{

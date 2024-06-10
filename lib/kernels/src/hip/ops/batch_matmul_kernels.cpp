@@ -14,7 +14,7 @@
  */
 
 #include "kernels/batch_matmul_kernels.h"
-#include "kernels/hip_helper.h"
+#include "device.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
@@ -38,13 +38,9 @@ void forward_kernel(hipStream_t stream,
                     int batch,
                     int a_seq_length_dim,
                     int b_seq_length_dim,
-                    int seq_length = -1) {
+                    int seq_length) {
   checkCUDA(hipblasSetStream(handle.blas, stream));
   checkCUDNN(miopenSetStream(handle.dnn, stream));
-
-  // int a_stride = n * k;
-  // int b_stride = m * k;
-  // int o_stride = n * m;
   int lda = k;
   int ldb = m;
   int ldo = m;

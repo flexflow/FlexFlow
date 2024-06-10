@@ -3,6 +3,11 @@ codecov:
   notify:
     require_ci_to_pass: false
 
+ignore:
+  - "**/*.dtg.h" 
+  - "**/*.dtg.cc"
+
+
 coverage:
   status:
     project:

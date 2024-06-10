@@ -66,7 +66,7 @@ OpTaskInvocation backward(BatchNormAttrs const &attrs) {
   return {BATCHNORM_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<BatchNormPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   Allocator allocator = acc.get_allocator();
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -81,17 +81,16 @@ static DeviceSpecific<BatchNormPerDeviceState>
 
   float *runningMean;
 
-  DeviceSpecific<BatchNormPerDeviceState> per_device_state =
-      init_kernel(handle,
-                  allocator,
-                  runningMean,
-                  output_n,
-                  output_c,
-                  output_h,
-                  output_w,
-                  attrs.relu);
+  BatchNormPerDeviceState per_device_state = init_kernel(handle,
+                                                         allocator,
+                                                         runningMean,
+                                                         output_n,
+                                                         output_c,
+                                                         output_h,
+                                                         output_w,
+                                                         attrs.relu);
 
-  return per_device_state;
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -142,53 +141,17 @@ static std::optional<float>
                  output.shape.get_volume());
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  BatchNormAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  InputParallelTensorDesc const &scale_shape,
-                                  InputParallelTensorDesc const &bias_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs);
-
-  SimTaskBinding init_binding;
-  init_binding.bind(INPUT, input_shape);
-  init_binding.bind(BIAS, bias_shape);
-  init_binding.bind(OUTPUT, output_shape);
-
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(PROFILING, settings);
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor =
-      env.get_init_accessor(ATTENTION_INIT_TASK_ID, init_binding);
-  DeviceSpecific<BatchNormPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(SCALE, scale_shape);
-  fwd_binding.bind(BIAS, bias_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(ATTENTION_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(ATTENTION_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_batch_norm_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_batch_norm_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_batch_norm_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
+OpTaskSignature get_batch_norm_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -201,16 +164,7 @@ OpTaskSignature init_signature<BATCHNORM_INIT_TASK_ID>() {
   return init;
 }
 
-template <>
-void register_task<BATCHNORM_INIT_TASK_ID>() {
-  register_task(BATCHNORM_INIT_TASK_ID,
-                "BatchNorm Init",
-                init_signature<BATCHNORM_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
+OpTaskSignature get_batch_norm_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
@@ -222,29 +176,18 @@ OpTaskSignature fwd_signature<BATCHNORM_FWD_TASK_ID>() {
 
   return fwd;
 }
-
-template <>
-void register_task<BATCHNORM_FWD_TASK_ID>() {
-  register_task(BATCHNORM_FWD_TASK_ID,
-                "BatchNorm Fwd",
-                fwd_signature<BATCHNORM_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-OpTaskSignature bwd_signature<BATCHNORM_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<BATCHNORM_FWD_TASK_ID>());
+OpTaskSignature get_batch_norm_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_batch_norm_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<BATCHNORM_BWD_TASK_ID>() {
-  register_task(BATCHNORM_BWD_TASK_ID,
-                "BatchNorm Bwd",
-                bwd_signature<BATCHNORM_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(BatchNormAttrs const &) {
+  return {
+      BATCHNORM_INIT_TASK_ID,
+      BATCHNORM_FWD_TASK_ID,
+      BATCHNORM_BWD_TASK_ID,
+  };
 }
 
 }; // namespace FlexFlow

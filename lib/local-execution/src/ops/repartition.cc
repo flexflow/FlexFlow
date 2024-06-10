@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "repartition.h"
 #include "kernels/partition_kernels.h"
 #include "op-attrs/get_output_shapes.h"
-#include "repartition.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 
@@ -53,15 +53,16 @@ OpTaskInvocation backward(RepartitionAttrs const &attrs) {
   return {REPARTITION_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<RepartitionPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   // Note: use the input data type
-  DeviceSpecific<RepartitionPerDeviceState> per_device_state =
+
+  RepartitionPerDeviceState per_device_state =
       init_kernel(handle, input.data_type);
-  return per_device_state;
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -95,80 +96,42 @@ static std::optional<float>
                  input_grad);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  RepartitionAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind_arg(HANDLE, ff_handle());
-  init_binding.bind(INPUT, input.shape); // use the input data type
-  auto init_accessor =
-      env.get_init_accessor(REPARTITION_INIT_TASK_ID, init_binding);
-
-  DeviceSpecific<RepartitionPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor =
-      env.get_fwd_accessor(REPARTITION_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor =
-      env.get_bwd_accessor(REPARTITION_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_repartition_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_repartition_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_repartition_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<REPARTITION_INIT_TASK_ID>() {
+OpTaskSignature get_repartition_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
-
   init.add_input_slot(INPUT);
-
   init.add_return_value<RepartitionPerDeviceState>();
-
-  register_task(
-      REPARTITION_INIT_TASK_ID, "Repartition Init", init, init_task_impl);
+  return init;
 }
-
-template <>
-void register_task<REPARTITION_FWD_TASK_ID>() {
+OpTaskSignature get_repartition_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
   fwd.add_unchecked_arg_slot<RepartitionPerDeviceState>(PER_DEVICE_STATE);
-
-  register_task(
-      REPARTITION_FWD_TASK_ID, "Repartition Fwd", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_repartition_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_repartition_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<REPARTITION_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(REPARTITION_FWD_TASK_ID));
-
-//   register_task(REPARTITION_BWD_TASK_ID, "Repartition Bwd", bwd,
-//   backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(RepartitionAttrs const &) {
+  return {REPARTITION_INIT_TASK_ID,
+          REPARTITION_FWD_TASK_ID,
+          REPARTITION_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

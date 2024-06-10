@@ -52,7 +52,7 @@ OpTaskInvocation backward(Conv2DAttrs const &attrs) {
   return {CONV2D_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<Conv2DPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -62,7 +62,7 @@ static DeviceSpecific<Conv2DPerDeviceState>
   auto filter = acc.get_tensor<Permissions::RO>(FILTER);
   auto filter_grad = acc.get_tensor_grad<Permissions::RW>(FILTER);
 
-  DeviceSpecific<Conv2DPerDeviceState> per_device_state =
+  Conv2DPerDeviceState per_device_state =
       init_kernel(handle,
                   attrs.activation,
                   attrs.kernel_h,
@@ -76,7 +76,7 @@ static DeviceSpecific<Conv2DPerDeviceState>
                   output,
                   filter.get_float_ptr(),
                   filter_grad.get_float_ptr());
-  return per_device_state;
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -131,53 +131,17 @@ static std::optional<float>
                  attrs.activation);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  Conv2DAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  InputParallelTensorDesc const &filter_shape,
-                                  InputParallelTensorDesc const &bias_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-
-  auto env = sim.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input_shape.shape);
-
-  SimTaskBinding init_binding;
-  init_binding.bind(INPUT, input_shape);
-  init_binding.bind(OUTPUT, output_shape);
-  init_binding.bind(FILTER, filter_shape);
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor = env.get_init_accessor(CONV2D_INIT_TASK_ID, init_binding);
-  DeviceSpecific<Conv2DPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind(FILTER, filter_shape);
-  fwd_binding.bind(BIAS, bias_shape);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(CONV2D_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(CONV2D_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_conv_2d_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_conv_2d_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_conv_2d_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
+OpTaskSignature get_conv_2d_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -191,16 +155,7 @@ OpTaskSignature init_signature<CONV2D_INIT_TASK_ID>() {
   return init;
 }
 
-template <>
-void register_task<CONV2D_INIT_TASK_ID>() {
-  register_task(CONV2D_INIT_TASK_ID,
-                "Conv2d Init",
-                init_signature<CONV2D_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
+OpTaskSignature get_conv_2d_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -215,28 +170,14 @@ OpTaskSignature fwd_signature<CONV2D_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-void register_task<CONV2D_FWD_TASK_ID>() {
-  register_task(CONV2D_FWD_TASK_ID,
-                "Conv2d Fwd",
-                fwd_signature<CONV2D_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-OpTaskSignature bwd_signature<CONV2D_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<CONV2D_FWD_TASK_ID>());
+OpTaskSignature get_conv_2d_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_conv_2d_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<CONV2D_BWD_TASK_ID>() {
-  register_task(CONV2D_BWD_TASK_ID,
-                "Conv2d Bwd",
-                bwd_signature<CONV2D_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(Conv2DAttrs const &) {
+  return {CONV2D_INIT_TASK_ID, CONV2D_FWD_TASK_ID, CONV2D_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

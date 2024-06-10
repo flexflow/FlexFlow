@@ -112,16 +112,6 @@ std::optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
   }
 }
 
-std::optional<OperatorAttributeValue>
-    get_attribute(ElementScalarUnaryAttrs const &p, OperatorAttributeKey key) {
-  switch (key) {
-    case OperatorAttributeKey::OP_TYPE:
-      return get_op_type(p);
-    default:
-      return std::nullopt;
-  }
-}
-
 std::optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p,
                                                     OperatorAttributeKey key) {
   switch (key) {
