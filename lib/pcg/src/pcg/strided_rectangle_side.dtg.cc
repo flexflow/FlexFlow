@@ -44,7 +44,7 @@ bool StridedRectangleSide::operator>=(StridedRectangleSide const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::StridedRectangleSide>::operator()(
-    FlexFlow::StridedRectangleSide const &x) const {
+    ::FlexFlow::StridedRectangleSide const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::num_points_t>{}(x.num_points) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -55,13 +55,14 @@ size_t hash<FlexFlow::StridedRectangleSide>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::StridedRectangleSide
-    adl_serializer<FlexFlow::StridedRectangleSide>::from_json(json const &j) {
-  return {j.at("num_points").template get<::FlexFlow::num_points_t>(),
-          j.at("stride").template get<int>()};
+::FlexFlow::StridedRectangleSide
+    adl_serializer<::FlexFlow::StridedRectangleSide>::from_json(json const &j) {
+  return ::FlexFlow::StridedRectangleSide{
+      j.at("num_points").template get<::FlexFlow::num_points_t>(),
+      j.at("stride").template get<int>()};
 }
-void adl_serializer<FlexFlow::StridedRectangleSide>::to_json(
-    json &j, FlexFlow::StridedRectangleSide const &v) {
+void adl_serializer<::FlexFlow::StridedRectangleSide>::to_json(
+    json &j, ::FlexFlow::StridedRectangleSide const &v) {
   j["__type"] = "StridedRectangleSide";
   j["num_points"] = v.num_points;
   j["stride"] = v.stride;
@@ -69,9 +70,9 @@ void adl_serializer<FlexFlow::StridedRectangleSide>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::StridedRectangleSide>
-    Arbitrary<FlexFlow::StridedRectangleSide>::arbitrary() {
-  return gen::construct<FlexFlow::StridedRectangleSide>(
+Gen<::FlexFlow::StridedRectangleSide>
+    Arbitrary<::FlexFlow::StridedRectangleSide>::arbitrary() {
+  return gen::construct<::FlexFlow::StridedRectangleSide>(
       gen::arbitrary<::FlexFlow::num_points_t>(), gen::arbitrary<int>());
 }
 } // namespace rc

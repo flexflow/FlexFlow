@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct BroadcastAttrs {
   BroadcastAttrs() = delete;
-  BroadcastAttrs(
+  explicit BroadcastAttrs(
       ::FlexFlow::stack_vector<int, MAX_TENSOR_DIM> const &target_dims);
 
   bool operator==(BroadcastAttrs const &) const;
@@ -36,23 +36,23 @@ struct BroadcastAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::BroadcastAttrs> {
-  size_t operator()(FlexFlow::BroadcastAttrs const &) const;
+struct hash<::FlexFlow::BroadcastAttrs> {
+  size_t operator()(::FlexFlow::BroadcastAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::BroadcastAttrs> {
-  static FlexFlow::BroadcastAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::BroadcastAttrs const &);
+struct adl_serializer<::FlexFlow::BroadcastAttrs> {
+  static ::FlexFlow::BroadcastAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::BroadcastAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::BroadcastAttrs> {
-  static Gen<FlexFlow::BroadcastAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::BroadcastAttrs> {
+  static Gen<::FlexFlow::BroadcastAttrs> arbitrary();
 };
 } // namespace rc
 

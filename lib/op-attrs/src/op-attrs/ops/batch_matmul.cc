@@ -163,8 +163,8 @@ tl::expected<ParallelTensorShape, std::string>
               output_p,
           },
           ReplicaParallelDimSet{
-              output_sum_degree,
-              output_discard_copy_degree,
+              SumDegree{output_sum_degree},
+              DiscardCopyDegree{output_discard_copy_degree},
           },
       },
       input_lhs.data_type,

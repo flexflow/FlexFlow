@@ -57,111 +57,75 @@ TensorShape get_output_shape(Conv2DAttrs const &attrs,
                      input.datatype};
 }
 
-ParallelTensorShape
-    get_kernel_shape(Conv2DAttrs const &attrs,
-                     ParallelTensorShape const &raw_input_shape) {
+ParallelTensorShape get_kernel_shape(Conv2DAttrs const &attrs,
+                                     ParallelTensorShape const &input) {
   assert(attrs.groups == 1); // TODO(@lockshaw): currently not supported
-  Conv2DParallelInputShape input = parse_parallel_input_shape(raw_input_shape);
 
-  ShardParallelDim output_channels_dim = {size_t_from_int(attrs.out_channels),
-                                          input.discard_copy_reduction_degree};
-  ShardParallelDim input_channels_dim = {
-      size_t_from_int(input.channel_dim.size), input.channel_dim.degree};
-  ShardParallelDim kernel_height_dim = {size_t_from_int(attrs.kernel_h), 1};
-  ShardParallelDim kernel_width_dim = {size_t_from_int(attrs.kernel_w), 1};
+  Conv2DParallelInputShape parsed = parse_parallel_input_shape(input);
 
-  int sum_degree = 1;
-  int discard_copy_degree = input.height_dim.degree * input.width_dim.degree *
-                            input.sum_reduction_degree;
+  TensorShape unpar = get_kernel_shape(attrs, get_reduced_shape(input));
 
-  ParallelTensorShape result = ParallelTensorShape{
-      ParallelTensorDims{
-          FFOrdered<ShardParallelDim>{
-              output_channels_dim,
-              input_channels_dim,
-              kernel_height_dim,
-              kernel_width_dim,
-          },
-          ReplicaParallelDimSet{
-              sum_degree,
-              discard_copy_degree,
-          },
-      },
-      input.datatype,
+  assert(parsed.height_dim.degree == 1);
+  assert(parsed.width_dim.degree == 1);
+
+  SumDegree sum_degree = SumDegree{1};
+  DiscardCopyDegree discard_copy_degree =
+      DiscardCopyDegree{parsed.sample_dim.degree * parsed.sum_reduction_degree};
+  FFOrdered<int> shard_degrees = {
+      parsed.discard_copy_reduction_degree,
+      parsed.channel_dim.degree,
+      1,
+      1,
   };
 
-  return result;
+  return lift_to_parallel_with_degrees(
+      unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
 ParallelTensorShape get_bias_shape(Conv2DAttrs const &attrs,
-                                   ParallelTensorShape const &raw_input_shape) {
+                                   ParallelTensorShape const &input) {
   assert(attrs.groups == 1); // TODO(@lockshaw): currently not supported
-  Conv2DParallelInputShape input = parse_parallel_input_shape(raw_input_shape);
 
-  ShardParallelDim output_channels_dim = {size_t_from_int(attrs.out_channels),
-                                          input.discard_copy_reduction_degree};
+  Conv2DParallelInputShape parsed = parse_parallel_input_shape(input);
 
-  int sum_degree = 1;
-  int discard_copy_degree = input.height_dim.degree * input.width_dim.degree *
-                            input.sum_reduction_degree *
-                            input.channel_dim.degree;
+  TensorShape unpar = get_bias_shape(attrs, get_reduced_shape(input));
 
-  ParallelTensorShape result = ParallelTensorShape{
-      ParallelTensorDims{
-          FFOrdered<ShardParallelDim>{
-              output_channels_dim,
-          },
-          ReplicaParallelDimSet{
-              sum_degree,
-              discard_copy_degree,
-          },
-      },
-      input.datatype,
+  SumDegree sum_degree =
+      SumDegree{parsed.sum_reduction_degree * parsed.channel_dim.degree};
+  DiscardCopyDegree discard_copy_degree =
+      DiscardCopyDegree{parsed.height_dim.degree * parsed.width_dim.degree *
+                        parsed.sample_dim.degree};
+  FFOrdered<int> shard_degrees = {
+      parsed.discard_copy_reduction_degree,
   };
 
-  return result;
+  return lift_to_parallel_with_degrees(
+      unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
-ParallelTensorShape
-    get_output_shape(Conv2DAttrs const &attrs,
-                     ParallelTensorShape const &raw_input_shape) {
+ParallelTensorShape get_output_shape(Conv2DAttrs const &attrs,
+                                     ParallelTensorShape const &input) {
   assert(attrs.groups == 1); // TODO(@lockshaw): currently not supported
-  Conv2DParallelInputShape input = parse_parallel_input_shape(raw_input_shape);
 
-  TensorShape unpar_output_shape =
-      get_output_shape(attrs, get_reduced_shape(raw_input_shape));
+  Conv2DParallelInputShape parsed = parse_parallel_input_shape(input);
 
-  size_t num_samples = dim_at_idx(unpar_output_shape, ff_dim_t{0});
-  size_t num_channels = dim_at_idx(unpar_output_shape, ff_dim_t{1});
-  size_t height = dim_at_idx(unpar_output_shape, ff_dim_t{2});
-  size_t width = dim_at_idx(unpar_output_shape, ff_dim_t{3});
+  TensorShape unpar = get_output_shape(attrs, get_reduced_shape(input));
 
-  ShardParallelDim sample_dim = {num_samples, input.sample_dim.degree};
-  ShardParallelDim channel_dim = {num_channels,
-                                  input.discard_copy_reduction_degree};
-  ShardParallelDim height_dim = {height, input.height_dim.degree};
-  ShardParallelDim width_dim = {width, input.width_dim.degree};
+  assert(parsed.height_dim.degree == 1);
+  assert(parsed.width_dim.degree == 1);
 
-  int sum_degree = input.channel_dim.degree * input.sum_reduction_degree;
-  int discard_copy_degree = 1;
-
-  ParallelTensorShape result = ParallelTensorShape{
-      ParallelTensorDims{
-          FFOrdered<ShardParallelDim>{
-              sample_dim,
-              channel_dim,
-              height_dim,
-              width_dim,
-          },
-          ReplicaParallelDimSet{
-              sum_degree,
-              discard_copy_degree,
-          },
-      },
-      input.datatype,
+  SumDegree sum_degree =
+      SumDegree{parsed.sum_reduction_degree * parsed.channel_dim.degree};
+  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{1};
+  FFOrdered<int> shard_degrees = {
+      parsed.sample_dim.degree,
+      parsed.discard_copy_reduction_degree,
+      1,
+      1,
   };
 
-  return result;
+  return lift_to_parallel_with_degrees(
+      unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
 } // namespace FlexFlow

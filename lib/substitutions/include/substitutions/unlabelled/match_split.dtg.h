@@ -16,8 +16,8 @@
 namespace FlexFlow {
 struct MatchSplit {
   MatchSplit() = delete;
-  MatchSplit(MultiDiGraphPatternMatch const &prefix_submatch,
-             MultiDiGraphPatternMatch const &postfix_submatch);
+  explicit MatchSplit(MultiDiGraphPatternMatch const &prefix_submatch,
+                      MultiDiGraphPatternMatch const &postfix_submatch);
 
   bool operator==(MatchSplit const &) const;
   bool operator!=(MatchSplit const &) const;

@@ -115,7 +115,7 @@ bool AdamOptimizerAttrs::operator>=(AdamOptimizerAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::AdamOptimizerAttrs>::operator()(
-    FlexFlow::AdamOptimizerAttrs const &x) const {
+    ::FlexFlow::AdamOptimizerAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<double>{}(x.alpha) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -136,18 +136,19 @@ size_t hash<FlexFlow::AdamOptimizerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::AdamOptimizerAttrs
-    adl_serializer<FlexFlow::AdamOptimizerAttrs>::from_json(json const &j) {
-  return {j.at("alpha").template get<double>(),
-          j.at("beta1").template get<double>(),
-          j.at("beta2").template get<double>(),
-          j.at("weight_decay").template get<double>(),
-          j.at("alpha_t").template get<double>(),
-          j.at("beta_t").template get<double>(),
-          j.at("beta2_t").template get<double>()};
+::FlexFlow::AdamOptimizerAttrs
+    adl_serializer<::FlexFlow::AdamOptimizerAttrs>::from_json(json const &j) {
+  return ::FlexFlow::AdamOptimizerAttrs{
+      j.at("alpha").template get<double>(),
+      j.at("beta1").template get<double>(),
+      j.at("beta2").template get<double>(),
+      j.at("weight_decay").template get<double>(),
+      j.at("alpha_t").template get<double>(),
+      j.at("beta_t").template get<double>(),
+      j.at("beta2_t").template get<double>()};
 }
-void adl_serializer<FlexFlow::AdamOptimizerAttrs>::to_json(
-    json &j, FlexFlow::AdamOptimizerAttrs const &v) {
+void adl_serializer<::FlexFlow::AdamOptimizerAttrs>::to_json(
+    json &j, ::FlexFlow::AdamOptimizerAttrs const &v) {
   j["__type"] = "AdamOptimizerAttrs";
   j["alpha"] = v.alpha;
   j["beta1"] = v.beta1;
@@ -160,15 +161,16 @@ void adl_serializer<FlexFlow::AdamOptimizerAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::AdamOptimizerAttrs>
-    Arbitrary<FlexFlow::AdamOptimizerAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::AdamOptimizerAttrs>(gen::arbitrary<double>(),
-                                                      gen::arbitrary<double>(),
-                                                      gen::arbitrary<double>(),
-                                                      gen::arbitrary<double>(),
-                                                      gen::arbitrary<double>(),
-                                                      gen::arbitrary<double>(),
-                                                      gen::arbitrary<double>());
+Gen<::FlexFlow::AdamOptimizerAttrs>
+    Arbitrary<::FlexFlow::AdamOptimizerAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::AdamOptimizerAttrs>(
+      gen::arbitrary<double>(),
+      gen::arbitrary<double>(),
+      gen::arbitrary<double>(),
+      gen::arbitrary<double>(),
+      gen::arbitrary<double>(),
+      gen::arbitrary<double>(),
+      gen::arbitrary<double>());
 }
 } // namespace rc
 

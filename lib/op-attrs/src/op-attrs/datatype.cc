@@ -22,7 +22,7 @@ size_t size_of_datatype(DataType data_type) {
 }
 
 bool can_strictly_promote_datatype_from_to(DataType src, DataType dst) {
-  return src < dst; 
+  return src < dst;
 }
 
 } // namespace FlexFlow

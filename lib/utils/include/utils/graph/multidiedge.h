@@ -6,6 +6,7 @@
 #include "node_port.h"
 #include "utils/strong_typedef.h"
 #include "utils/visitable.h"
+#include "utils/fmt/pair.h"
 
 namespace FlexFlow {
 

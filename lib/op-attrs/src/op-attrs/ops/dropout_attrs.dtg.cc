@@ -36,7 +36,7 @@ bool DropoutAttrs::operator>=(DropoutAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::DropoutAttrs>::operator()(
-    FlexFlow::DropoutAttrs const &x) const {
+    ::FlexFlow::DropoutAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<float>{}(x.rate) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -47,13 +47,14 @@ size_t hash<FlexFlow::DropoutAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::DropoutAttrs
-    adl_serializer<FlexFlow::DropoutAttrs>::from_json(json const &j) {
-  return {j.at("rate").template get<float>(),
-          j.at("seed").template get<unsigned long long>()};
+::FlexFlow::DropoutAttrs
+    adl_serializer<::FlexFlow::DropoutAttrs>::from_json(json const &j) {
+  return ::FlexFlow::DropoutAttrs{
+      j.at("rate").template get<float>(),
+      j.at("seed").template get<unsigned long long>()};
 }
-void adl_serializer<FlexFlow::DropoutAttrs>::to_json(
-    json &j, FlexFlow::DropoutAttrs const &v) {
+void adl_serializer<::FlexFlow::DropoutAttrs>::to_json(
+    json &j, ::FlexFlow::DropoutAttrs const &v) {
   j["__type"] = "DropoutAttrs";
   j["rate"] = v.rate;
   j["seed"] = v.seed;
@@ -61,8 +62,8 @@ void adl_serializer<FlexFlow::DropoutAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::DropoutAttrs> Arbitrary<FlexFlow::DropoutAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::DropoutAttrs>(
+Gen<::FlexFlow::DropoutAttrs> Arbitrary<::FlexFlow::DropoutAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::DropoutAttrs>(
       gen::arbitrary<float>(), gen::arbitrary<unsigned long long>());
 }
 } // namespace rc

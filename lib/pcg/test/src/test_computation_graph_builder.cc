@@ -8,7 +8,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     size_t batch_size = 2;
 
-    TensorShape input_shape = {
+    TensorShape input_shape = TensorShape{
         TensorDims{FFOrdered<size_t>{batch_size, 3, 10, 10}},
         DataType::FLOAT,
     };

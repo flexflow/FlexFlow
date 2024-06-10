@@ -23,10 +23,10 @@
 namespace FlexFlow {
 struct LayerNormAttrs {
   LayerNormAttrs() = delete;
-  LayerNormAttrs(::FlexFlow::stack_vector<::FlexFlow::ff_dim_t,
-                                          MAX_TENSOR_DIM> const &axes,
-                 bool const &elementwise_affine,
-                 float const &eps);
+  explicit LayerNormAttrs(::FlexFlow::stack_vector<::FlexFlow::ff_dim_t,
+                                                   MAX_TENSOR_DIM> const &axes,
+                          bool const &elementwise_affine,
+                          float const &eps);
 
   bool operator==(LayerNormAttrs const &) const;
   bool operator!=(LayerNormAttrs const &) const;
@@ -42,23 +42,23 @@ struct LayerNormAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::LayerNormAttrs> {
-  size_t operator()(FlexFlow::LayerNormAttrs const &) const;
+struct hash<::FlexFlow::LayerNormAttrs> {
+  size_t operator()(::FlexFlow::LayerNormAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::LayerNormAttrs> {
-  static FlexFlow::LayerNormAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::LayerNormAttrs const &);
+struct adl_serializer<::FlexFlow::LayerNormAttrs> {
+  static ::FlexFlow::LayerNormAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::LayerNormAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::LayerNormAttrs> {
-  static Gen<FlexFlow::LayerNormAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::LayerNormAttrs> {
+  static Gen<::FlexFlow::LayerNormAttrs> arbitrary();
 };
 } // namespace rc
 

@@ -21,8 +21,8 @@
 namespace FlexFlow {
 struct ElementScalarUnaryAttrs {
   ElementScalarUnaryAttrs() = delete;
-  ElementScalarUnaryAttrs(::FlexFlow::OperatorType const &op_type,
-                          float const &scalar);
+  explicit ElementScalarUnaryAttrs(::FlexFlow::OperatorType const &op_type,
+                                   float const &scalar);
 
   bool operator==(ElementScalarUnaryAttrs const &) const;
   bool operator!=(ElementScalarUnaryAttrs const &) const;
@@ -37,23 +37,23 @@ struct ElementScalarUnaryAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ElementScalarUnaryAttrs> {
-  size_t operator()(FlexFlow::ElementScalarUnaryAttrs const &) const;
+struct hash<::FlexFlow::ElementScalarUnaryAttrs> {
+  size_t operator()(::FlexFlow::ElementScalarUnaryAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ElementScalarUnaryAttrs> {
-  static FlexFlow::ElementScalarUnaryAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ElementScalarUnaryAttrs const &);
+struct adl_serializer<::FlexFlow::ElementScalarUnaryAttrs> {
+  static ::FlexFlow::ElementScalarUnaryAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ElementScalarUnaryAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ElementScalarUnaryAttrs> {
-  static Gen<FlexFlow::ElementScalarUnaryAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::ElementScalarUnaryAttrs> {
+  static Gen<::FlexFlow::ElementScalarUnaryAttrs> arbitrary();
 };
 } // namespace rc
 

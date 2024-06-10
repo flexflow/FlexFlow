@@ -160,7 +160,7 @@ bool Conv2DAttrs::operator>=(Conv2DAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::Conv2DAttrs>::operator()(
-    FlexFlow::Conv2DAttrs const &x) const {
+    ::FlexFlow::Conv2DAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.out_channels) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -187,9 +187,9 @@ size_t hash<FlexFlow::Conv2DAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::Conv2DAttrs
-    adl_serializer<FlexFlow::Conv2DAttrs>::from_json(json const &j) {
-  return {
+::FlexFlow::Conv2DAttrs
+    adl_serializer<::FlexFlow::Conv2DAttrs>::from_json(json const &j) {
+  return ::FlexFlow::Conv2DAttrs{
       j.at("out_channels").template get<int>(),
       j.at("kernel_h").template get<int>(),
       j.at("kernel_w").template get<int>(),
@@ -201,8 +201,8 @@ FlexFlow::Conv2DAttrs
       j.at("activation").template get<std::optional<::FlexFlow::Activation>>(),
       j.at("use_bias").template get<bool>()};
 }
-void adl_serializer<FlexFlow::Conv2DAttrs>::to_json(
-    json &j, FlexFlow::Conv2DAttrs const &v) {
+void adl_serializer<::FlexFlow::Conv2DAttrs>::to_json(
+    json &j, ::FlexFlow::Conv2DAttrs const &v) {
   j["__type"] = "Conv2DAttrs";
   j["out_channels"] = v.out_channels;
   j["kernel_h"] = v.kernel_h;
@@ -218,8 +218,8 @@ void adl_serializer<FlexFlow::Conv2DAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::Conv2DAttrs> Arbitrary<FlexFlow::Conv2DAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::Conv2DAttrs>(
+Gen<::FlexFlow::Conv2DAttrs> Arbitrary<::FlexFlow::Conv2DAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::Conv2DAttrs>(
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),

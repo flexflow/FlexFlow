@@ -22,8 +22,8 @@
 namespace FlexFlow {
 struct RepartitionAttrs {
   RepartitionAttrs() = delete;
-  RepartitionAttrs(::FlexFlow::ff_dim_t const &repartition_dim,
-                   int const &repartition_degree);
+  explicit RepartitionAttrs(::FlexFlow::ff_dim_t const &repartition_dim,
+                            int const &repartition_degree);
 
   bool operator==(RepartitionAttrs const &) const;
   bool operator!=(RepartitionAttrs const &) const;
@@ -38,23 +38,23 @@ struct RepartitionAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::RepartitionAttrs> {
-  size_t operator()(FlexFlow::RepartitionAttrs const &) const;
+struct hash<::FlexFlow::RepartitionAttrs> {
+  size_t operator()(::FlexFlow::RepartitionAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::RepartitionAttrs> {
-  static FlexFlow::RepartitionAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::RepartitionAttrs const &);
+struct adl_serializer<::FlexFlow::RepartitionAttrs> {
+  static ::FlexFlow::RepartitionAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::RepartitionAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::RepartitionAttrs> {
-  static Gen<FlexFlow::RepartitionAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::RepartitionAttrs> {
+  static Gen<::FlexFlow::RepartitionAttrs> arbitrary();
 };
 } // namespace rc
 

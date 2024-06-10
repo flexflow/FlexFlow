@@ -12,6 +12,7 @@
 #include <cassert>
 #include <optional>
 #include <type_traits>
+#include "utils/fmt/vector.h"
 
 namespace FlexFlow {
 
@@ -294,7 +295,7 @@ public:
   }
 
   friend std::vector<T> format_as(stack_vector<T, MAXSIZE> const &v) {
-    // CHECK_FMTABLE(std::vector<T>);
+    CHECK_FMTABLE(std::vector<T>);
 
     return static_cast<std::vector<T>>(v);
   }
@@ -314,9 +315,9 @@ private:
 };
 
 template <typename T, std::size_t MAXSIZE>
-struct delegate_ostream_operator<stack_vector<T, MAXSIZE>> : std::true_type {};
-
-// CHECK_FMTABLE(stack_vector<test_types::fmtable, 5>);
+std::ostream &operator<<(std::ostream &s, stack_vector<T, MAXSIZE> const &v) {
+  return s << fmt::to_string(v); 
+}
 
 template <typename T, std::size_t MAXSIZE>
 void to_json(json &j, stack_vector<T, MAXSIZE> const &v) {

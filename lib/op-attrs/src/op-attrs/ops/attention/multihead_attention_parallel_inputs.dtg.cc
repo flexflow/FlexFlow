@@ -128,7 +128,7 @@ bool MultiHeadAttentionParallelInputs::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::MultiHeadAttentionParallelInputs>::operator()(
-    FlexFlow::MultiHeadAttentionParallelInputs const &x) const {
+    ::FlexFlow::MultiHeadAttentionParallelInputs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ShardParallelDim>{}(x.batch_dim) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -149,10 +149,10 @@ size_t hash<FlexFlow::MultiHeadAttentionParallelInputs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::MultiHeadAttentionParallelInputs
-    adl_serializer<FlexFlow::MultiHeadAttentionParallelInputs>::from_json(
+::FlexFlow::MultiHeadAttentionParallelInputs
+    adl_serializer<::FlexFlow::MultiHeadAttentionParallelInputs>::from_json(
         json const &j) {
-  return {
+  return ::FlexFlow::MultiHeadAttentionParallelInputs{
       j.at("batch_dim").template get<::FlexFlow::ShardParallelDim>(),
       j.at("sequence_dim").template get<::FlexFlow::ShardParallelDim>(),
       j.at("query_dim").template get<::FlexFlow::ShardParallelDim>(),
@@ -161,8 +161,8 @@ FlexFlow::MultiHeadAttentionParallelInputs
       j.at("discard_copy_degree").template get<::FlexFlow::DiscardCopyDegree>(),
       j.at("datatype").template get<::FlexFlow::DataType>()};
 }
-void adl_serializer<FlexFlow::MultiHeadAttentionParallelInputs>::to_json(
-    json &j, FlexFlow::MultiHeadAttentionParallelInputs const &v) {
+void adl_serializer<::FlexFlow::MultiHeadAttentionParallelInputs>::to_json(
+    json &j, ::FlexFlow::MultiHeadAttentionParallelInputs const &v) {
   j["__type"] = "MultiHeadAttentionParallelInputs";
   j["batch_dim"] = v.batch_dim;
   j["sequence_dim"] = v.sequence_dim;
@@ -175,9 +175,9 @@ void adl_serializer<FlexFlow::MultiHeadAttentionParallelInputs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::MultiHeadAttentionParallelInputs>
-    Arbitrary<FlexFlow::MultiHeadAttentionParallelInputs>::arbitrary() {
-  return gen::construct<FlexFlow::MultiHeadAttentionParallelInputs>(
+Gen<::FlexFlow::MultiHeadAttentionParallelInputs>
+    Arbitrary<::FlexFlow::MultiHeadAttentionParallelInputs>::arbitrary() {
+  return gen::construct<::FlexFlow::MultiHeadAttentionParallelInputs>(
       gen::arbitrary<::FlexFlow::ShardParallelDim>(),
       gen::arbitrary<::FlexFlow::ShardParallelDim>(),
       gen::arbitrary<::FlexFlow::ShardParallelDim>(),

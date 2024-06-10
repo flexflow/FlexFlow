@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct ConstantInitializerAttrs {
   ConstantInitializerAttrs() = delete;
-  ConstantInitializerAttrs(::FlexFlow::DataTypeValue const &value);
+  explicit ConstantInitializerAttrs(::FlexFlow::DataTypeValue const &value);
 
   bool operator==(ConstantInitializerAttrs const &) const;
   bool operator!=(ConstantInitializerAttrs const &) const;
@@ -35,16 +35,16 @@ struct ConstantInitializerAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ConstantInitializerAttrs> {
-  size_t operator()(FlexFlow::ConstantInitializerAttrs const &) const;
+struct hash<::FlexFlow::ConstantInitializerAttrs> {
+  size_t operator()(::FlexFlow::ConstantInitializerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ConstantInitializerAttrs> {
-  static FlexFlow::ConstantInitializerAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ConstantInitializerAttrs const &);
+struct adl_serializer<::FlexFlow::ConstantInitializerAttrs> {
+  static ::FlexFlow::ConstantInitializerAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ConstantInitializerAttrs const &);
 };
 } // namespace nlohmann
 

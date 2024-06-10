@@ -8,6 +8,7 @@ features = [
 includes = [
   "pcg/layer_guid_t.dtg.h",
   "pcg/tensor_guid_t.dtg.h",
+  "utils/fmt/vector.h"
 ]
 
 [[fields]]

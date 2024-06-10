@@ -11,7 +11,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     /* Parameter meanings match those at
      * https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html
      */
-    MultiHeadAttentionAttrs attrs = {
+    MultiHeadAttentionAttrs attrs = MultiHeadAttentionAttrs{
         /*embed_dim=*/embed_dim,
         /*num_heads=*/10,
         /*kdim=*/embed_dim,
@@ -25,7 +25,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t batch_size = 40;
     size_t seq_len = 48;
 
-    TensorShape input_q = {
+    TensorShape input_q = TensorShape{
         TensorDims{FFOrdered<size_t>{
             batch_size,
             seq_len,
@@ -34,7 +34,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    TensorShape input_k = {
+    TensorShape input_k = TensorShape{
         TensorDims{
             FFOrdered<size_t>{
                 batch_size,
@@ -45,7 +45,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    TensorShape input_v = {
+    TensorShape input_v = TensorShape{
         TensorDims{
             FFOrdered<size_t>{
                 batch_size,
@@ -104,7 +104,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     /* Parameter meanings can be found at
      * https://pytorch.org/docs/stable/generated/torch.nn.MultiheadAttention.html
      */
-    MultiHeadAttentionAttrs attrs = {
+    MultiHeadAttentionAttrs attrs = MultiHeadAttentionAttrs{
         /*embed_dim=*/embed_dim,
         /*num_heads=*/10,
         /*kdim=*/embed_dim,
@@ -173,8 +173,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           unpar_q_shape, o_sum, o_eq, FFOrdered<int>{o_batch, o_seq_len, o_q});
     };
 
-    auto make_k = [&](int o_sum,
-                      int o_eq,
+    auto make_k = [&](SumDegree o_sum,
+                      DiscardCopyDegree o_eq,
                       int o_batch,
                       int o_seq_len,
                       int o_k) {
@@ -182,8 +182,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           unpar_k_shape, o_sum, o_eq, FFOrdered<int>{o_batch, o_seq_len, o_k});
     };
 
-    auto make_v = [&](int o_sum,
-                      int o_eq,
+    auto make_v = [&](SumDegree o_sum,
+                      DiscardCopyDegree o_eq,
                       int o_batch,
                       int o_seq_len,
                       int o_v) {
@@ -191,8 +191,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           unpar_v_shape, o_sum, o_eq, FFOrdered<int>{o_batch, o_seq_len, o_v});
     };
 
-    auto make_o = [&](int o_sum,
-                      int o_eq,
+    auto make_o = [&](SumDegree o_sum,
+                      DiscardCopyDegree o_eq,
                       int o_batch,
                       int o_seq_len,
                       int o_o) {
@@ -200,49 +200,56 @@ TEST_SUITE(FF_TEST_SUITE) {
           unpar_o_shape, o_sum, o_eq, FFOrdered<int>{o_batch, o_seq_len, o_o});
     };
 
-    auto make_w = [&](int o_sum, int o_eq, int o_e, int o_h) {
-      return lift_to_parallel_with_degrees(
-          unpar_w_shape, o_sum, o_eq, FFOrdered<int>{o_e, o_h});
-    };
+    auto make_w =
+        [&](SumDegree o_sum, DiscardCopyDegree o_eq, int o_e, int o_h) {
+          return lift_to_parallel_with_degrees(
+              unpar_w_shape, o_sum, o_eq, FFOrdered<int>{o_e, o_h});
+        };
 
     SUBCASE("data parallelism") {
       int o_b = 4;
-      ParallelTensorShape q = make_q(1, 1, o_b, 1, 1);
-      ParallelTensorShape k = make_k(1, 1, o_b, 1, 1);
-      ParallelTensorShape v = make_v(1, 1, o_b, 1, 1);
+      ParallelTensorShape q =
+          make_q(SumDegree{1}, DiscardCopyDegree{1}, o_b, 1, 1);
+      ParallelTensorShape k =
+          make_k(SumDegree{1}, DiscardCopyDegree{1}, o_b, 1, 1);
+      ParallelTensorShape v =
+          make_v(SumDegree{1}, DiscardCopyDegree{1}, o_b, 1, 1);
 
       tl::expected<ParallelTensorShape, std::string> result_o =
           get_output_shape(attrs, q, k, v);
       tl::expected<ParallelTensorShape, std::string> correct_o =
-          make_o(1, 1, o_b, 1, 1);
+          make_o(SumDegree{1}, DiscardCopyDegree{1}, o_b, 1, 1);
 
       CHECK(result_o == correct_o);
 
       tl::expected<ParallelTensorShape, std::string> result_w =
           get_weights_shape(attrs, q, k, v);
       tl::expected<ParallelTensorShape, std::string> correct_w =
-          make_w(1, o_b, 1, 1);
+          make_w(SumDegree{1}, DiscardCopyDegree{o_b}, 1, 1);
 
       CHECK(result_w == correct_w);
     }
 
     SUBCASE("attention head parallelism") {
       int o_h = 2;
-      ParallelTensorShape q = make_q(1, o_h, 1, 1, 1);
-      ParallelTensorShape k = make_k(1, o_h, 1, 1, 1);
-      ParallelTensorShape v = make_v(1, o_h, 1, 1, 1);
+      ParallelTensorShape q =
+          make_q(SumDegree{1}, DiscardCopyDegree{o_h}, 1, 1, 1);
+      ParallelTensorShape k =
+          make_k(SumDegree{1}, DiscardCopyDegree{o_h}, 1, 1, 1);
+      ParallelTensorShape v =
+          make_v(SumDegree{1}, DiscardCopyDegree{o_h}, 1, 1, 1);
 
       tl::expected<ParallelTensorShape, std::string> result_o =
           get_output_shape(attrs, q, k, v);
       tl::expected<ParallelTensorShape, std::string> correct_o =
-          make_o(o_h, 1, 1, 1, 1);
+          make_o(SumDegree{o_h}, DiscardCopyDegree{1}, 1, 1, 1);
 
       CHECK(result_o == correct_o);
 
       tl::expected<ParallelTensorShape, std::string> result_w =
           get_weights_shape(attrs, q, k, v);
       tl::expected<ParallelTensorShape, std::string> correct_w =
-          make_w(1, 1, 1, o_h);
+          make_w(SumDegree{1}, DiscardCopyDegree{1}, 1, o_h);
 
       CHECK(result_w == correct_w);
     }
@@ -250,21 +257,24 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("combined data & attention head parallelism") {
       int o_b = 4;
       int o_h = 2;
-      ParallelTensorShape q = make_q(1, o_h, o_b, 1, 1);
-      ParallelTensorShape k = make_k(1, o_h, o_b, 1, 1);
-      ParallelTensorShape v = make_v(1, o_h, o_b, 1, 1);
+      ParallelTensorShape q =
+          make_q(SumDegree{1}, DiscardCopyDegree{o_h}, o_b, 1, 1);
+      ParallelTensorShape k =
+          make_k(SumDegree{1}, DiscardCopyDegree{o_h}, o_b, 1, 1);
+      ParallelTensorShape v =
+          make_v(SumDegree{1}, DiscardCopyDegree{o_h}, o_b, 1, 1);
 
       tl::expected<ParallelTensorShape, std::string> result_o =
           get_output_shape(attrs, q, k, v);
       tl::expected<ParallelTensorShape, std::string> correct_o =
-          make_o(o_h, 1, o_b, 1, 1);
+          make_o(SumDegree{o_h}, DiscardCopyDegree{1}, o_b, 1, 1);
 
       CHECK(result_o == correct_o);
 
       tl::expected<ParallelTensorShape, std::string> result_w =
           get_weights_shape(attrs, q, k, v);
       tl::expected<ParallelTensorShape, std::string> correct_w =
-          make_w(1, o_b, 1, o_h);
+          make_w(SumDegree{1}, DiscardCopyDegree{o_b}, 1, o_h);
 
       CHECK(result_w == correct_w);
     }

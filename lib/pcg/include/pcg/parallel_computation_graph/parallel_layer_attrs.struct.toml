@@ -16,7 +16,7 @@ includes = [
 ]
 
 [[fields]]
-name = "attrs"
+name = "op_attrs"
 type = "::FlexFlow::PCGOperatorAttrs"
 
 [[fields]]

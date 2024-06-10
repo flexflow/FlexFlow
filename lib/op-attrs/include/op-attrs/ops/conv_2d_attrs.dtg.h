@@ -23,16 +23,16 @@
 namespace FlexFlow {
 struct Conv2DAttrs {
   Conv2DAttrs() = delete;
-  Conv2DAttrs(int const &out_channels,
-              int const &kernel_h,
-              int const &kernel_w,
-              int const &stride_h,
-              int const &stride_w,
-              int const &padding_h,
-              int const &padding_w,
-              int const &groups,
-              std::optional<::FlexFlow::Activation> const &activation,
-              bool const &use_bias);
+  explicit Conv2DAttrs(int const &out_channels,
+                       int const &kernel_h,
+                       int const &kernel_w,
+                       int const &stride_h,
+                       int const &stride_w,
+                       int const &padding_h,
+                       int const &padding_w,
+                       int const &groups,
+                       std::optional<::FlexFlow::Activation> const &activation,
+                       bool const &use_bias);
 
   bool operator==(Conv2DAttrs const &) const;
   bool operator!=(Conv2DAttrs const &) const;
@@ -55,23 +55,23 @@ struct Conv2DAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::Conv2DAttrs> {
-  size_t operator()(FlexFlow::Conv2DAttrs const &) const;
+struct hash<::FlexFlow::Conv2DAttrs> {
+  size_t operator()(::FlexFlow::Conv2DAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::Conv2DAttrs> {
-  static FlexFlow::Conv2DAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::Conv2DAttrs const &);
+struct adl_serializer<::FlexFlow::Conv2DAttrs> {
+  static ::FlexFlow::Conv2DAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::Conv2DAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::Conv2DAttrs> {
-  static Gen<FlexFlow::Conv2DAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::Conv2DAttrs> {
+  static Gen<::FlexFlow::Conv2DAttrs> arbitrary();
 };
 } // namespace rc
 

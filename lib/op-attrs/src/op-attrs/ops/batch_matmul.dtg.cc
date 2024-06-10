@@ -43,7 +43,7 @@ bool BatchMatmulAttrs::operator>=(BatchMatmulAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::BatchMatmulAttrs>::operator()(
-    FlexFlow::BatchMatmulAttrs const &x) const {
+    ::FlexFlow::BatchMatmulAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.a_seq_length_dim) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -54,13 +54,14 @@ size_t hash<FlexFlow::BatchMatmulAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::BatchMatmulAttrs
-    adl_serializer<FlexFlow::BatchMatmulAttrs>::from_json(json const &j) {
-  return {j.at("a_seq_length_dim").template get<int>(),
-          j.at("b_seq_length_dim").template get<int>()};
+::FlexFlow::BatchMatmulAttrs
+    adl_serializer<::FlexFlow::BatchMatmulAttrs>::from_json(json const &j) {
+  return ::FlexFlow::BatchMatmulAttrs{
+      j.at("a_seq_length_dim").template get<int>(),
+      j.at("b_seq_length_dim").template get<int>()};
 }
-void adl_serializer<FlexFlow::BatchMatmulAttrs>::to_json(
-    json &j, FlexFlow::BatchMatmulAttrs const &v) {
+void adl_serializer<::FlexFlow::BatchMatmulAttrs>::to_json(
+    json &j, ::FlexFlow::BatchMatmulAttrs const &v) {
   j["__type"] = "BatchMatmulAttrs";
   j["a_seq_length_dim"] = v.a_seq_length_dim;
   j["b_seq_length_dim"] = v.b_seq_length_dim;
@@ -68,10 +69,10 @@ void adl_serializer<FlexFlow::BatchMatmulAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::BatchMatmulAttrs>
-    Arbitrary<FlexFlow::BatchMatmulAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::BatchMatmulAttrs>(gen::arbitrary<int>(),
-                                                    gen::arbitrary<int>());
+Gen<::FlexFlow::BatchMatmulAttrs>
+    Arbitrary<::FlexFlow::BatchMatmulAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::BatchMatmulAttrs>(gen::arbitrary<int>(),
+                                                      gen::arbitrary<int>());
 }
 } // namespace rc
 

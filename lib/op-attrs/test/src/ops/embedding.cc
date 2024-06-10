@@ -17,7 +17,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t batch_size = 48;
     size_t features_dim = 56;
 
-    TensorShape input = {
+    TensorShape input = TensorShape{
         TensorDims{FFOrdered<size_t>{
             batch_size,
             features_dim,

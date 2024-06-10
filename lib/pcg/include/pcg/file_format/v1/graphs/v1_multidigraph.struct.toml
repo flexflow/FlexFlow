@@ -13,7 +13,8 @@ includes = [
   "<vector>",
   "<unordered_set>",
   "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h",
-  "utils/fmt.h",
+  "utils/fmt/vector.h",
+  "utils/fmt/unordered_set.h",
 ]
 
 [[fields]]

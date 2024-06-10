@@ -35,7 +35,7 @@ bool GlorotUniformAttrs::operator>=(GlorotUniformAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::GlorotUniformAttrs>::operator()(
-    FlexFlow::GlorotUniformAttrs const &x) const {
+    ::FlexFlow::GlorotUniformAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.seed) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -44,21 +44,21 @@ size_t hash<FlexFlow::GlorotUniformAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::GlorotUniformAttrs
-    adl_serializer<FlexFlow::GlorotUniformAttrs>::from_json(json const &j) {
-  return {j.at("seed").template get<int>()};
+::FlexFlow::GlorotUniformAttrs
+    adl_serializer<::FlexFlow::GlorotUniformAttrs>::from_json(json const &j) {
+  return ::FlexFlow::GlorotUniformAttrs{j.at("seed").template get<int>()};
 }
-void adl_serializer<FlexFlow::GlorotUniformAttrs>::to_json(
-    json &j, FlexFlow::GlorotUniformAttrs const &v) {
+void adl_serializer<::FlexFlow::GlorotUniformAttrs>::to_json(
+    json &j, ::FlexFlow::GlorotUniformAttrs const &v) {
   j["__type"] = "GlorotUniformAttrs";
   j["seed"] = v.seed;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::GlorotUniformAttrs>
-    Arbitrary<FlexFlow::GlorotUniformAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::GlorotUniformAttrs>(gen::arbitrary<int>());
+Gen<::FlexFlow::GlorotUniformAttrs>
+    Arbitrary<::FlexFlow::GlorotUniformAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::GlorotUniformAttrs>(gen::arbitrary<int>());
 }
 } // namespace rc
 

@@ -108,12 +108,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("data parallelism") {
       int degree = 4;
 
-      ParallelTensorShape input_lhs = make_lhs(1, 1, degree, 1, 1);
-      ParallelTensorShape input_rhs = make_rhs(1, 1, degree, 1, 1);
+      ParallelTensorShape input_lhs =
+          make_lhs(SumDegree{1}, DiscardCopyDegree{1}, degree, 1, 1);
+      ParallelTensorShape input_rhs =
+          make_rhs(SumDegree{1}, DiscardCopyDegree{1}, degree, 1, 1);
       tl::expected<ParallelTensorShape, std::string> result =
           get_output_shape(attrs, input_lhs, input_rhs);
       tl::expected<ParallelTensorShape, std::string> correct =
-          make_output(1, 1, degree, 1, 1);
+          make_output(SumDegree{1}, DiscardCopyDegree{1}, degree, 1, 1);
 
       CHECK(result == correct);
     }
@@ -121,12 +123,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("reduction parallelism") {
       int degree = 4;
 
-      ParallelTensorShape input_lhs = make_lhs(SumDegree{degree}, 1, 1, 1, 1);
-      ParallelTensorShape input_rhs = make_rhs(SumDegree{degree}, 1, 1, 1, 1);
+      ParallelTensorShape input_lhs =
+          make_lhs(SumDegree{degree}, DiscardCopyDegree{1}, 1, 1, 1);
+      ParallelTensorShape input_rhs =
+          make_rhs(SumDegree{degree}, DiscardCopyDegree{1}, 1, 1, 1);
       tl::expected<ParallelTensorShape, std::string> result =
           get_output_shape(attrs, input_lhs, input_rhs);
       tl::expected<ParallelTensorShape, std::string> correct =
-          make_output(SumDegree{degree}, 1, 1, 1, 1);
+          make_output(SumDegree{degree}, DiscardCopyDegree{1}, 1, 1, 1);
 
       CHECK(result == correct);
     }
@@ -135,9 +139,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       int degree = 4;
 
       ParallelTensorShape input_lhs =
-          make_lhs(1, DiscardCopyDegree{degree}, 1, 1, 1);
+          make_lhs(SumDegree{1}, DiscardCopyDegree{degree}, 1, 1, 1);
       ParallelTensorShape input_rhs =
-          make_rhs(1, DiscardCopyDegree{degree}, 1, 1, 1);
+          make_rhs(SumDegree{1}, DiscardCopyDegree{degree}, 1, 1, 1);
       tl::expected<ParallelTensorShape, std::string> result =
           get_output_shape(attrs, input_lhs, input_rhs);
 
@@ -149,8 +153,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("invalid mismatched parallelism degrees") {
       int degree = 4;
 
-      ParallelTensorShape input_lhs = make_lhs(1, 1, 1, degree, 1);
-      ParallelTensorShape input_rhs = make_rhs(1, 1, 1, 1, degree);
+      ParallelTensorShape input_lhs =
+          make_lhs(SumDegree{1}, DiscardCopyDegree{1}, 1, degree, 1);
+      ParallelTensorShape input_rhs =
+          make_rhs(SumDegree{1}, DiscardCopyDegree{1}, 1, 1, degree);
       tl::expected<ParallelTensorShape, std::string> result =
           get_output_shape(attrs, input_lhs, input_rhs);
 

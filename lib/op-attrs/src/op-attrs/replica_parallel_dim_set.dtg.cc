@@ -52,7 +52,7 @@ bool ReplicaParallelDimSet::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::ReplicaParallelDimSet>::operator()(
-    FlexFlow::ReplicaParallelDimSet const &x) const {
+    ::FlexFlow::ReplicaParallelDimSet const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::SumDegree>{}(x.sum_degree) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -63,14 +63,16 @@ size_t hash<FlexFlow::ReplicaParallelDimSet>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ReplicaParallelDimSet
-    adl_serializer<FlexFlow::ReplicaParallelDimSet>::from_json(json const &j) {
-  return {j.at("sum_degree").template get<::FlexFlow::SumDegree>(),
-          j.at("discard_copy_degree")
-              .template get<::FlexFlow::DiscardCopyDegree>()};
+::FlexFlow::ReplicaParallelDimSet
+    adl_serializer<::FlexFlow::ReplicaParallelDimSet>::from_json(
+        json const &j) {
+  return ::FlexFlow::ReplicaParallelDimSet{
+      j.at("sum_degree").template get<::FlexFlow::SumDegree>(),
+      j.at("discard_copy_degree")
+          .template get<::FlexFlow::DiscardCopyDegree>()};
 }
-void adl_serializer<FlexFlow::ReplicaParallelDimSet>::to_json(
-    json &j, FlexFlow::ReplicaParallelDimSet const &v) {
+void adl_serializer<::FlexFlow::ReplicaParallelDimSet>::to_json(
+    json &j, ::FlexFlow::ReplicaParallelDimSet const &v) {
   j["__type"] = "ReplicaParallelDimSet";
   j["sum_degree"] = v.sum_degree;
   j["discard_copy_degree"] = v.discard_copy_degree;
@@ -78,9 +80,9 @@ void adl_serializer<FlexFlow::ReplicaParallelDimSet>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ReplicaParallelDimSet>
-    Arbitrary<FlexFlow::ReplicaParallelDimSet>::arbitrary() {
-  return gen::construct<FlexFlow::ReplicaParallelDimSet>(
+Gen<::FlexFlow::ReplicaParallelDimSet>
+    Arbitrary<::FlexFlow::ReplicaParallelDimSet>::arbitrary() {
+  return gen::construct<::FlexFlow::ReplicaParallelDimSet>(
       gen::arbitrary<::FlexFlow::SumDegree>(),
       gen::arbitrary<::FlexFlow::DiscardCopyDegree>());
 }

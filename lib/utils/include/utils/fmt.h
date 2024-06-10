@@ -12,38 +12,6 @@
 
 namespace fmt {
 
-template <typename T, typename Char>
-template <typename FormatContext>
-auto formatter<
-    ::std::unordered_set<T>,
-    Char,
-    std::enable_if_t<!detail::has_format_as<std::unordered_set<T>>::value>>::
-    format(::std::unordered_set<T> const &m, FormatContext &ctx)
-        -> decltype(ctx.out()) {
-  /* CHECK_FMTABLE(T); */
-
-  /* std::string result = ::FlexFlow::join_strings( */
-  /*     m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t);
-   * }); */
-  std::string result = "";
-  return formatter<std::string>::format(result, ctx);
-}
-
-template <typename T, typename Char>
-template <typename FormatContext>
-auto formatter<
-    ::std::vector<T>,
-    Char,
-    std::enable_if_t<!detail::has_format_as<std::vector<T>>::value>>::
-    format(::std::vector<T> const &m, FormatContext &ctx)
-        -> decltype(ctx.out()) {
-  CHECK_FMTABLE(T);
-
-  std::string result = ::FlexFlow::join_strings(
-      m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
-  return formatter<std::string>::format("[" + result + "]", ctx);
-}
-
 template <typename... Ts>
 template <typename FormatContext>
 auto formatter<::std::variant<Ts...>>::format(::std::variant<Ts...> const &m,
@@ -57,15 +25,6 @@ auto formatter<::std::variant<Ts...>>::format(::std::variant<Ts...> const &m,
 } // namespace fmt
 
 namespace FlexFlow {
-
-template <typename T>
-struct delegate_ostream_operator<std::vector<T>> : std::true_type {};
-
-template <typename T>
-struct delegate_ostream_operator<std::unordered_set<T>> : std::true_type {};
-
-template <typename T1, typename T2>
-struct delegate_ostream_operator<std::pair<T1, T2>> : std::true_type {};
 
 template <typename T>
 struct delegate_ostream_operator<std::optional<T>> : std::true_type {};

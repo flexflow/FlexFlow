@@ -73,7 +73,7 @@ bool TensorAttributeConstraint::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::TensorAttributeConstraint>::operator()(
-    FlexFlow::TensorAttributeConstraint const &x) const {
+    ::FlexFlow::TensorAttributeConstraint const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ConstraintType>{}(x.constraint_type) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -86,16 +86,16 @@ size_t hash<FlexFlow::TensorAttributeConstraint>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::TensorAttributeConstraint
-    adl_serializer<FlexFlow::TensorAttributeConstraint>::from_json(
+::FlexFlow::TensorAttributeConstraint
+    adl_serializer<::FlexFlow::TensorAttributeConstraint>::from_json(
         json const &j) {
-  return {
+  return ::FlexFlow::TensorAttributeConstraint{
       j.at("constraint_type").template get<::FlexFlow::ConstraintType>(),
       j.at("attribute_expr").template get<::FlexFlow::TensorAttributeExpr>(),
       j.at("attribute_value").template get<::FlexFlow::TensorAttributeValue>()};
 }
-void adl_serializer<FlexFlow::TensorAttributeConstraint>::to_json(
-    json &j, FlexFlow::TensorAttributeConstraint const &v) {
+void adl_serializer<::FlexFlow::TensorAttributeConstraint>::to_json(
+    json &j, ::FlexFlow::TensorAttributeConstraint const &v) {
   j["__type"] = "TensorAttributeConstraint";
   j["constraint_type"] = v.constraint_type;
   j["attribute_expr"] = v.attribute_expr;

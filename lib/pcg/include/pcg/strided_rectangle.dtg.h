@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct StridedRectangle {
   StridedRectangle() = delete;
-  StridedRectangle(
+  explicit StridedRectangle(
       ::FlexFlow::FFOrdered<::FlexFlow::StridedRectangleSide> const &sides);
 
   bool operator==(StridedRectangle const &) const;
@@ -37,23 +37,23 @@ struct StridedRectangle {
 
 namespace std {
 template <>
-struct hash<FlexFlow::StridedRectangle> {
-  size_t operator()(FlexFlow::StridedRectangle const &) const;
+struct hash<::FlexFlow::StridedRectangle> {
+  size_t operator()(::FlexFlow::StridedRectangle const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::StridedRectangle> {
-  static FlexFlow::StridedRectangle from_json(json const &);
-  static void to_json(json &, FlexFlow::StridedRectangle const &);
+struct adl_serializer<::FlexFlow::StridedRectangle> {
+  static ::FlexFlow::StridedRectangle from_json(json const &);
+  static void to_json(json &, ::FlexFlow::StridedRectangle const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::StridedRectangle> {
-  static Gen<FlexFlow::StridedRectangle> arbitrary();
+struct Arbitrary<::FlexFlow::StridedRectangle> {
+  static Gen<::FlexFlow::StridedRectangle> arbitrary();
 };
 } // namespace rc
 

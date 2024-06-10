@@ -39,7 +39,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("partition i.e., sharding parallelism") {
       int degree1 = 4;
       int degree2 = 8;
-      ParallelTensorShape par_input = make_i(1, 1, degree1, 1, degree2);
+      ParallelTensorShape par_input =
+          make_i(SumDegree{1}, DiscardCopyDegree{1}, degree1, 1, degree2);
 
       tl::expected<ParallelTensorShape, std::string> result =
           get_output_shape(attrs, par_input);
@@ -51,8 +52,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("sum degree > 1") {
       int degree = 2;
 
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_output_shape(attrs, make_i(SumDegree{degree}, 1, 1, 1, 1));
+      tl::expected<ParallelTensorShape, std::string> result = get_output_shape(
+          attrs, make_i(SumDegree{degree}, DiscardCopyDegree{1}, 1, 1, 1));
 
       CHECK_MESSAGE(!result.has_value(),
                     "Unexpected successful result: ",
@@ -63,7 +64,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       int degree = 2;
 
       tl::expected<ParallelTensorShape, std::string> result = get_output_shape(
-          attrs, make_i(1, DiscardCopyDegree{degree}, 1, 1, 1));
+          attrs, make_i(SumDegree{1}, DiscardCopyDegree{degree}, 1, 1, 1));
 
       CHECK_MESSAGE(!result.has_value(),
                     "Unexpected successful result: ",
