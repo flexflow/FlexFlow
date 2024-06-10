@@ -767,7 +767,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   {
     size_t batch_size = BatchConfig::max_requests_per_batch();
-    size_t indices_size = ((batch_size + 1) * 2 + batch_size * 2);
+    size_t indices_size = std::max((batch_size + 1) * 4, 1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
                               BatchConfig::max_spec_tree_token_num() *
                               (BatchConfig::max_spec_tree_token_num() +
@@ -778,13 +778,12 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                 sizeof(int32_t) * indices_size +
                 sizeof(float) * custom_mask_size + workspace_size);
 
+    q_indptr = gpu_mem_allocator.allocate_instance<int32_t>(indices_size);
+    kv_indptr = q_indptr + indices_size / 4;
+    kv_indices = kv_indptr + indices_size / 4;
+    kv_last_page_len = kv_indices + indices_size / 4;
     custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
     workspace = static_cast<void *>(gpu_mem_allocator.allocate_instance<char>(workspace_size));
-    // Why we should allocate these after workspace?? (else we will get index out of bound)
-    q_indptr = gpu_mem_allocator.allocate_instance<int32_t>(indices_size);
-    kv_indptr = q_indptr + batch_size + 1;
-    kv_indices = kv_indptr + batch_size + 1;
-    kv_last_page_len = kv_indices + batch_size;
   }
 
   // allocate memory for the seqArray and reserve space
