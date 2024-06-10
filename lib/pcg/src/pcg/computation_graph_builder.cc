@@ -138,9 +138,13 @@ static std::string get_default_name(ComputationGraphOpAttrs const &attrs) {
 }
 
 tensor_guid_t ComputationGraphBuilder::element_unary(
-    ElementUnaryAttrs const &attrs,
+    OperatorType op_type,
     tensor_guid_t const &x,
+    std::optional<float> scalar,
     std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{op_type, scalar};
+
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
 
@@ -153,15 +157,6 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, output_shape);
-}
-
-tensor_guid_t ComputationGraphBuilder::element_unary(
-    OperatorType op_type,
-    tensor_guid_t const &input,
-    std::optional<float> scalar,
-    std::optional<std::string> const &name) {
-  ElementUnaryAttrs attrs = {op_type, scalar};
-  return this->element_unary(attrs, input, name);
 }
 
 tensor_guid_t ComputationGraphBuilder::element_binary(

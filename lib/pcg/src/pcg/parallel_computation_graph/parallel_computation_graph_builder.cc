@@ -307,7 +307,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::relu(
     parallel_tensor_guid_t const &input,
     std::optional<std::string> const &maybe_name) {
 
-  ElementUnaryAttrs attrs = ElementUnaryAttrs{OperatorType::RELU};
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{OperatorType::RELU, std::nullopt};
 
   std::string name =
       maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));

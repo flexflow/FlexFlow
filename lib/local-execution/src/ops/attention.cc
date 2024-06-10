@@ -16,6 +16,7 @@
 #include "attention.h"
 #include "kernels/attention_kernels.h"
 #include "local-execution/op_task_signature.h"
+#include "op-attrs/ops/attention/multihead_attention_parallel_inputs.h"
 
 namespace FlexFlow {
 
@@ -95,31 +96,25 @@ static DeviceSpecific<DeviceStates>
   ParallelTensorShape value_parallel_tensor_shape =
       acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
 
-  MultiHeadAttentionInputs inputs = {
-      shard_dim_at_idx(query_parallel_tensor_shape, ff_dim_t{0}).size,
-      shard_dim_at_idx(query_parallel_tensor_shape, ff_dim_t{1}).size,
-      qProjSize,
-      kProjSize,
-      vProjSize,
-      query_parallel_tensor_shape.data_type};
-  ;
+  MultiHeadAttentionParallelInputs parsed = throw_if_unexpected(
+    parse_attention_parallel_input_shape(query_parallel_tensor_shape,
+                                         key_parallel_tensor_shape,
+                                         value_parallel_tensor_shape)
+  );
   ParallelTensorShape weight_parallel_tensor_shape =
       throw_if_unexpected(get_weights_shape(attrs,
                                             query_parallel_tensor_shape,
                                             key_parallel_tensor_shape,
                                             value_parallel_tensor_shape));
 
-  int kvSeqLength = get_kvSeqLength(inputs);
-  int qSize = get_qSize(inputs);
-  int kSize = get_kSize(inputs);
-  int vSize = get_vSize(inputs);
+  int kvSeqLength = get_kvSeqLength(parsed);
+  int qSize = get_qSize(parsed);
+  int kSize = get_kSize(parsed);
+  int vSize = get_vSize(parsed);
 
-  int qoSeqLength =
-      dim_at_idx(get_piece_shape(query_parallel_tensor_shape), ff_dim_t(1));
-  int num_samples =
-      dim_at_idx(get_piece_shape(query_parallel_tensor_shape), ff_dim_t(2));
-  int num_heads =
-      dim_at_idx(get_piece_shape(weight_parallel_tensor_shape), ff_dim_t(1));
+  int qoSeqLength = get_qoSeqLength(parsed);
+  int num_samples = get_num_samples(parsed);
+  int num_heads = attrs.num_heads;
 
   MHAPerDeviceState per_device_state = init_kernel(handle,
                                                    allocator,
