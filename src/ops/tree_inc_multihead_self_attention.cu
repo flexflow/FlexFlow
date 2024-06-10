@@ -101,6 +101,54 @@ using flashinfer::BatchPrefillWithPagedKVCacheWrapperDispatched;
 
 __global__ void commit_tokens_kernel(
     half *kCache_ptr,
+    BatchConfig::CommittedTokensInfo const *committedTokenInfos,
+    int token_pos,
+    int num_active_tokens_in_last_batch,
+    int max_seq_len,
+    int hidden_size) {
+  int const index_in_kv_cache = committedTokenInfos[token_pos].index_in_kv_cache;
+  if (index_in_kv_cache == -1) {
+    return;
+  }
+
+  int const req_id = committedTokenInfos[token_pos].request_index;
+  int const tok_id = committedTokenInfos[token_pos].token_depth;
+
+  size_t from_idx = (req_idx * max_seq_len + index_in_kv_cache)
+                    * hidden_size * 2;
+  size_t to_idx = (req_idx * max_seq_len + tok_id)
+                    * hidden_size * 2;
+  assert(to_idx <= from_idx);
+
+  CUDA_KERNEL_LOOP(offset, hidden_size) {
+    kCache_ptr[to_idx + offset] = kCache_ptr[from_idx + offset];
+    kCache_ptr[to_idx + hidden_size + offset] = kCache_ptr[from_idx + hidden_size + offset];
+  }
+}
+
+void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
+                   BatchConfig const *bc,
+                   cudaStream_t stream) {
+  int num_tokens_to_commit = bc->num_tokens_to_commit;
+  // TODO: parallel across queries
+  for (int i = 0; i < num_tokens_to_commit; i++) {
+    int parallelism = m->hidden_size;
+    commit_tokens_kernel<<<GET_BLOCKS(parallelism),
+                           min(CUDA_NUM_THREADS, parallelism),
+                           0,
+                           stream>>>(
+        static_cast<half *>(m->keyCache),
+        m->committed_token_infos,
+        i,
+        m->num_active_tokens, // number of active tokens in previous batch
+        BatchConfig::max_sequence_length() +
+            BatchConfig::max_spec_tree_token_num(),
+        m->hidden_size);
+  }
+}
+
+__global__ void orig_commit_tokens_kernel(
+    half *kCache_ptr,
     half *vCache_ptr,
     BatchConfig::CommittedTokensInfo const *committedTokenInfos,
     int qProjSize,
@@ -130,14 +178,14 @@ __global__ void commit_tokens_kernel(
   }
 }
 
-void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
+void orig_commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    BatchConfig const *bc,
                    cudaStream_t stream) {
   int num_tokens_to_commit = bc->num_tokens_to_commit;
   // TODO: parallel across queries
   for (int i = 0; i < num_tokens_to_commit; i++) {
     int parallelism = m->hidden_size;
-    commit_tokens_kernel<<<GET_BLOCKS(parallelism),
+    orig_commit_tokens_kernel<<<GET_BLOCKS(parallelism),
                            min(CUDA_NUM_THREADS, parallelism),
                            0,
                            stream>>>(
@@ -583,6 +631,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // "\n";
 
   commit_tokens(m, bc, stream);
+
+  // orig_commit_tokens(m, bc, stream);
 
   // After commit we update m->num_active_tokens to be the number of active
   // tokens for the current batch
