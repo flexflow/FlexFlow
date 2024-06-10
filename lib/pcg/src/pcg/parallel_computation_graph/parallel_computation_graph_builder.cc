@@ -50,24 +50,68 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::create_input_tensor(
 parallel_tensor_guid_t ParallelComputationGraphBuilder::add(
     parallel_tensor_guid_t const &lhs,
     parallel_tensor_guid_t const &rhs,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  ParallelTensorShape lhs_shape = this->get_shape(lhs);
+  ParallelTensorShape rhs_shape = this->get_shape(rhs);
+
+  DataType datatype = [&] {
+    if (lhs_shape.data_type != rhs_shape.data_type) {
+      throw mk_runtime_error(fmt::format("Datatypes do not match: {} (lhs) != {} (rhs)", lhs_shape.data_type, rhs_shape.data_type));
+    } else {
+      return lhs_shape.data_type;
+    }
+  }();
+
+  ElementBinaryAttrs attrs = ElementBinaryAttrs{
+    OperatorType::EW_ADD,
+    datatype,
+    false,
+    false,
+  };
+
+  std::string name = 
+    maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+  
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, lhs_shape, rhs_shape));
+
+  return this->add_layer(layer, {lhs, rhs}, {}, output_shape);
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_matmul(
     parallel_tensor_guid_t const &a,
     parallel_tensor_guid_t const &b,
-    /* int a_seq_length_dim = -1, */
-    /* int b_seq_length_dim = -1, */
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  BatchMatmulAttrs attrs = BatchMatmulAttrs{
+    /*a_seq_length_dim=*/-1, 
+    /*b_seq_length_dim=*/-1,
+  };
+
+  std::string name = 
+    maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(a), this->get_shape(b)));
+
+  return this->add_layer(layer, {a, b}, {}, {output_shape});
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::cast(
     parallel_tensor_guid_t const &input,
     DataType result_type,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  CastAttrs attrs = CastAttrs{result_type};
+
+  std::string name = 
+    maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+
+  return this->add_layer(layer, {input}, {}, {output_shape});
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::conv2d(
@@ -129,8 +173,38 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::dense(
     DataType data_type,
     std::optional<InitializerAttrs> const &kernel_initializer,
     std::optional<InitializerAttrs> const &bias_initializer,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+  LinearAttrs attrs = LinearAttrs{
+    outDim,
+    use_bias,
+    data_type,
+    activation,
+    std::nullopt,
+  };
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+  
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape input_shape = this->get_shape(input);
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shape));
+
+  std::vector<ParallelTensorAttrs> weights;
+
+  {
+    ParallelTensorShape kernel_shape = throw_if_unexpected(get_kernel_shape(attrs, input_shape));
+    weights.push_back(make_weight_attrs(kernel_shape, kernel_initializer));
+  }
+
+  if (use_bias) {
+    ParallelTensorShape bias_shape = throw_if_unexpected(get_bias_shape(attrs, input_shape));
+    weights.push_back(make_weight_attrs(bias_shape, bias_initializer));
+  } else if (bias_initializer.has_value()) {
+    throw mk_runtime_error("Dense received unexpected bias initializer even though use_bias is set to false");
+  }
+
+  return this->add_layer(layer, {input}, weights, output_shape);
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::embedding(
@@ -140,8 +214,27 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::embedding(
     AggregateOp aggr,
     DataType dtype,
     std::optional<InitializerAttrs> const &kernel_initializer,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  EmbeddingAttrs attrs = EmbeddingAttrs{
+    num_entries,
+    outDim,
+    aggr,
+    dtype,
+  };
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape input_shape = this->get_shape(input);
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shape));
+  ParallelTensorShape weights_shape = throw_if_unexpected(get_weights_shape(attrs, input_shape));
+
+  ParallelTensorAttrs weights_attrs = make_weight_attrs(weights_shape, kernel_initializer);
+
+  return this->add_layer(layer, {input}, {weights_attrs}, output_shape);
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
@@ -150,51 +243,150 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
     parallel_tensor_guid_t const &value,
     int embed_dim,
     int num_heads,
-    int kdim,
-    int vdim,
+    std::optional<int> maybe_kdim,
+    std::optional<int> maybe_vdim,
     float dropout,
     bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
     std::optional<InitializerAttrs> initializer,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<InitializerAttrs> input_bias_initializer,
+    std::optional<InitializerAttrs> output_bias_initializer,
+    std::optional<std::string> const &maybe_name) {
+
+  int kdim = maybe_kdim.value_or(embed_dim);
+  int vdim = maybe_vdim.value_or(embed_dim);
+
+  MultiHeadAttentionAttrs attrs = MultiHeadAttentionAttrs{
+    /*embed_dim=*/embed_dim,
+    /*num_heads=*/num_heads,
+    /*kdim=*/kdim,
+    /*vdim=*/vdim,
+    /*dropout=*/dropout,
+    /*bias=*/bias,
+    /*add_bias_kv=*/add_bias_kv,
+    /*add_zero_attn=*/add_zero_attn,
+  };
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape query_shape = this->get_shape(query);
+  ParallelTensorShape key_shape = this->get_shape(key);
+  ParallelTensorShape value_shape = this->get_shape(value);
+
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, query_shape, key_shape, value_shape));
+
+  std::vector<ParallelTensorAttrs> weights;
+  
+  ParallelTensorAttrs weight_attrs = [&] {
+    ParallelTensorShape weight_shape = throw_if_unexpected(get_weights_shape(attrs, query_shape, key_shape, value_shape));
+    return make_weight_attrs(weight_shape, initializer);
+  }();
+
+  weights.push_back(weight_attrs);
+
+  if (bias) {
+    ParallelTensorShape input_bias_shape = throw_if_unexpected(get_input_bias_shape(attrs, query_shape, key_shape, value_shape));
+    weights.push_back(make_weight_attrs(input_bias_shape, input_bias_initializer));
+    ParallelTensorShape output_bias_shape = throw_if_unexpected(get_output_bias_shape(attrs, query_shape, key_shape, value_shape));
+    weights.push_back(make_weight_attrs(output_bias_shape, output_bias_initializer));
+
+  } else if (input_bias_initializer.has_value()) {
+    throw mk_runtime_error("MultiheadAttention received unexpected input bias initializer even though bias is set to false");
+  } else if (output_bias_initializer.has_value()) {
+    throw mk_runtime_error("MultiheadAttention received unexpected output bias initializer even though bias is set to false");
+  }
+
+  return this->add_layer(layer, {query, key, value}, weights, output_shape);
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::relu(
     parallel_tensor_guid_t const &input,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{OperatorType::RELU};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+
+  return this->add_layer(layer, {input}, {}, {output_shape});
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_partition(
-    parallel_tensor_guid_t const &x,
+    parallel_tensor_guid_t const &input,
     ff_dim_t dim,
     int degree,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+  
+  RepartitionAttrs attrs = RepartitionAttrs{dim, degree};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+
+  return this->add_layer(layer, {input}, {}, {output_shape});
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_combine(
-    parallel_tensor_guid_t const &x,
+    parallel_tensor_guid_t const &input,
     ff_dim_t dim,
     int degree,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  CombineAttrs attrs = CombineAttrs{dim, degree};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+
+  return this->add_layer(layer, {input}, {}, {output_shape});
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_replicate(
-    parallel_tensor_guid_t const &x,
+    parallel_tensor_guid_t const &input,
     int degree,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  ReplicateAttrs attrs = ReplicateAttrs{degree};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+
+  return this->add_layer(layer, {input}, {}, {output_shape});
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_reduce(
-    parallel_tensor_guid_t const &x,
+    parallel_tensor_guid_t const &input,
     int degree,
-    std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED();
+    std::optional<std::string> const &maybe_name) {
+
+  ReductionAttrs attrs = ReductionAttrs{degree};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+
+  return this->add_layer(layer, {input}, {}, {output_shape});
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::as_type(

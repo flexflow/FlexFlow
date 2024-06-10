@@ -112,12 +112,8 @@ std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
 
 ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &,
                                      std::vector<ParallelTensorShape> const &);
-ParallelTensorShape get_output_shape(CastAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ConcatAttrs const &,
                                      std::vector<ParallelTensorShape> const &);
-ParallelTensorShape get_output_shape(Conv2DAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(DropoutAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &,
@@ -130,8 +126,6 @@ ParallelTensorShape get_output_shape(LayerNormAttrs const &,
 ParallelTensorShape get_output_shape(Pool2DAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReduceAttrs const &,
-                                     ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(ReplicateAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReverseAttrs const &,
                                      ParallelTensorShape const &);

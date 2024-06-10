@@ -73,13 +73,15 @@ public:
       parallel_tensor_guid_t const &value,
       int embed_dim,
       int num_heads,
-      int kdim = 0,
-      int vdim = 0,
+      std::optional<int> kdim = std::nullopt,
+      std::optional<int> vdim = std::nullopt,
       float dropout = 0.0f,
       bool bias = true,
       bool add_bias_kv = false,
       bool add_zero_attn = false,
       std::optional<InitializerAttrs> initializer = std::nullopt,
+      std::optional<InitializerAttrs> input_bias_initializer = std::nullopt,
+      std::optional<InitializerAttrs> output_bias_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
