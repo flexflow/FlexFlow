@@ -120,8 +120,6 @@ struct Request {
         : from_index(from_index), to_index(to_index), token_id(token_id) {}
   };
   std::vector<CommittedToken> committed_tokens;
-  bool llm_committed = true;
-  bool ssm_committed = true;
 };
 
 class TokenTreeNode {
@@ -354,8 +352,9 @@ private:
     long long start_time = 0, start_decoding_time = 0, finish_time = 0;
   };
   struct ProfileInfo {
-    // For SpecInfer: One step is comprised of one ssm speculation phase + a single llm verification phase (forward pass + verification)
-    // For Incr Decoding: One step is one LLM decoding phase
+    // For SpecInfer: One step is comprised of one ssm speculation phase + a
+    // single llm verification phase (forward pass + verification) For Incr
+    // Decoding: One step is one LLM decoding phase
     long long llm_step_start = 0, ssm_step_start = 0;
     // Times for each LLM verification phase (in ms)
     std::vector<double> llm_step_times;
