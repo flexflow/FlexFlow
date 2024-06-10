@@ -66,14 +66,17 @@ public:
     return this->g.at(o);
   }
 
-  std::unordered_map<Node, std::vector<MultiDiOutput>> const &get_output_map() const {
+  std::unordered_map<Node, std::vector<MultiDiOutput>> const &
+      get_output_map() const {
     return this->output_map;
   }
+
 private:
   OutputLabelledMultiDiGraph<NodeLabel, OutputLabel> g;
   bidict<int, NodePort> port_mapping;
-  std::unordered_map<Node, std::vector<MultiDiOutput>> output_map; // NOTE(@lockshaw): temporary workaround until not tracking outputs 
-                                                                   // independent of edges in multidigraph is resolved
+  std::unordered_map<Node, std::vector<MultiDiOutput>>
+      output_map; // NOTE(@lockshaw): temporary workaround until not tracking
+                  // outputs independent of edges in multidigraph is resolved
 };
 
 template <typename NodeLabel, typename OutputLabel>

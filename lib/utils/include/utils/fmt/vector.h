@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_VECTOR_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_VECTOR_H
 
-#include <vector>
+#include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
 #include <fmt/format.h>
-#include "utils/check_fmtable.h"
+#include <vector>
 
 namespace fmt {
 
@@ -19,8 +19,10 @@ struct formatter<
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(T);
 
-    std::string result = ::FlexFlow::join_strings(
-        m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
+    std::string result =
+        ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
+          return fmt::to_string(t);
+        });
     return formatter<std::string>::format("[" + result + "]", ctx);
   }
 };
@@ -37,6 +39,5 @@ std::ostream &operator<<(std::ostream &s, std::vector<T> const &v) {
 }
 
 } // namespace FlexFlow
-
 
 #endif

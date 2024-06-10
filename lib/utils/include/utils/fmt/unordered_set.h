@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_UNORDERED_SET_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_UNORDERED_SET_H
 
-#include <unordered_set>
+#include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
 #include <fmt/format.h>
-#include "utils/check_fmtable.h"
+#include <unordered_set>
 
 namespace fmt {
 
@@ -12,20 +12,22 @@ template <typename T, typename Char>
 struct formatter<
     ::std::unordered_set<T>,
     Char,
-    std::enable_if_t<!detail::has_format_as<std::unordered_set<T>>::value>> 
+    std::enable_if_t<!detail::has_format_as<std::unordered_set<T>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>
   auto format(::std::unordered_set<T> const &m, FormatContext &ctx)
-        -> decltype(ctx.out()) {
+      -> decltype(ctx.out()) {
     CHECK_FMTABLE(T);
 
-    std::string result = ::FlexFlow::join_strings(
-        m.cbegin(), m.cend(), ", ", [](T const &t) { return fmt::to_string(t); });
+    std::string result =
+        ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
+          return fmt::to_string(t);
+        });
     return formatter<std::string>::format("{" + result + "}", ctx);
   }
 };
 
-}
+} // namespace fmt
 
 namespace FlexFlow {
 

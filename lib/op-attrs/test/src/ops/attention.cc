@@ -28,75 +28,75 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t feature_size = 36;
 
     TensorShape input_q = TensorShape{
-      TensorDims{
-        FFOrdered<size_t>{
-          batch_size,
-          seq_len,
-          feature_size,
+        TensorDims{
+            FFOrdered<size_t>{
+                batch_size,
+                seq_len,
+                feature_size,
+            },
         },
-      },
         DataType::FLOAT,
     };
 
     TensorShape input_k = TensorShape{
-      TensorDims{
-        FFOrdered<size_t>{
-          batch_size,
-          seq_len,
-          feature_size,
+        TensorDims{
+            FFOrdered<size_t>{
+                batch_size,
+                seq_len,
+                feature_size,
+            },
         },
-      },
         DataType::FLOAT,
     };
 
     TensorShape input_v = TensorShape{
-      TensorDims{
-        FFOrdered<size_t>{
-          batch_size,
-          seq_len,
-          feature_size,
+        TensorDims{
+            FFOrdered<size_t>{
+                batch_size,
+                seq_len,
+                feature_size,
+            },
         },
-      },
         DataType::FLOAT,
     };
 
     TensorShape output = TensorShape{
-      TensorDims{
-        FFOrdered<size_t>{
-          batch_size,
-          seq_len,
-          size_t_from_int(attrs.embed_dim),
+        TensorDims{
+            FFOrdered<size_t>{
+                batch_size,
+                seq_len,
+                size_t_from_int(attrs.embed_dim),
+            },
         },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     TensorShape weights = TensorShape{
-      TensorDims{
-        FFOrdered<size_t>{
-          (feature_size * embed_dim) * 3 + (embed_dim * embed_dim),
-          size_t_from_int(num_heads),
+        TensorDims{
+            FFOrdered<size_t>{
+                (feature_size * embed_dim) * 3 + (embed_dim * embed_dim),
+                size_t_from_int(num_heads),
+            },
         },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     TensorShape input_bias = TensorShape{
-      TensorDims{
-        FFOrdered<size_t>{
-          size_t_from_int(embed_dim * 3),
+        TensorDims{
+            FFOrdered<size_t>{
+                size_t_from_int(embed_dim * 3),
+            },
         },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     TensorShape output_bias = TensorShape{
-      TensorDims{
-        FFOrdered<size_t>{
-          size_t_from_int(embed_dim),
+        TensorDims{
+            FFOrdered<size_t>{
+                size_t_from_int(embed_dim),
+            },
         },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     SUBCASE("get_output_shape") {
@@ -116,14 +116,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("get_input_bias_shape") {
-      tl::expected<TensorShape, std::string> result = 
+      tl::expected<TensorShape, std::string> result =
           get_input_bias_shape(attrs, input_q, input_k, input_v);
       tl::expected<TensorShape, std::string> correct = input_bias;
       CHECK(result == correct);
     }
 
     SUBCASE("get_output_bias_shape") {
-      tl::expected<TensorShape, std::string> result = 
+      tl::expected<TensorShape, std::string> result =
           get_output_bias_shape(attrs, input_q, input_k, input_v);
       tl::expected<TensorShape, std::string> correct = output_bias;
       CHECK(result == correct);
@@ -169,19 +169,19 @@ TEST_SUITE(FF_TEST_SUITE) {
       auto make_w =
           [&](SumDegree o_sum, DiscardCopyDegree o_eq, int o_e, int o_h) {
             return lift_to_parallel_with_degrees(
-              weights, o_sum, o_eq, FFOrdered<int>{o_e, o_h});
+                weights, o_sum, o_eq, FFOrdered<int>{o_e, o_h});
           };
 
-      auto make_input_bias = 
+      auto make_input_bias =
           [&](SumDegree o_sum, DiscardCopyDegree o_eq, int o_in_proj_channel) {
             return lift_to_parallel_with_degrees(
-              input_bias, o_sum, o_eq, FFOrdered<int>{o_in_proj_channel});
+                input_bias, o_sum, o_eq, FFOrdered<int>{o_in_proj_channel});
           };
 
       auto make_output_bias =
           [&](SumDegree o_sum, DiscardCopyDegree o_eq, int o_out_proj_channel) {
             return lift_to_parallel_with_degrees(
-              output_bias, o_sum, o_eq, FFOrdered<int>{o_out_proj_channel});
+                output_bias, o_sum, o_eq, FFOrdered<int>{o_out_proj_channel});
           };
 
       SUBCASE("data parallelism") {

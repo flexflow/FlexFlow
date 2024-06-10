@@ -11,17 +11,18 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t d1 = 12;
     size_t d2 = 16;
     TensorShape input = TensorShape{
-      TensorDims{FFOrdered<size_t>{d1, d2}},
-      input_datatype,
+        TensorDims{FFOrdered<size_t>{d1, d2}},
+        input_datatype,
     };
 
     TensorShape output = TensorShape{
-      TensorDims{FFOrdered<size_t>{d1, d2}},
-      output_datatype,
+        TensorDims{FFOrdered<size_t>{d1, d2}},
+        output_datatype,
     };
 
     SUBCASE("get_output_shape(CastAttrs, TensorShape)") {
-      tl::expected<TensorShape, std::string> result = get_output_shape(attrs, input);
+      tl::expected<TensorShape, std::string> result =
+          get_output_shape(attrs, input);
       tl::expected<TensorShape, std::string> correct = output;
       CHECK(result == correct);
     }
@@ -47,10 +48,13 @@ TEST_SUITE(FF_TEST_SUITE) {
       DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{3};
       int batch_degree = 4;
       int feature_degree = 8;
-      ParallelTensorShape par_input = make_input(sum_degree, discard_copy_degree, batch_degree, feature_degree);
+      ParallelTensorShape par_input = make_input(
+          sum_degree, discard_copy_degree, batch_degree, feature_degree);
 
-      tl::expected<ParallelTensorShape, std::string> result = get_output_shape(attrs, par_input);
-      tl::expected<ParallelTensorShape, std::string> correct = make_output(sum_degree, discard_copy_degree, batch_degree, feature_degree);
+      tl::expected<ParallelTensorShape, std::string> result =
+          get_output_shape(attrs, par_input);
+      tl::expected<ParallelTensorShape, std::string> correct = make_output(
+          sum_degree, discard_copy_degree, batch_degree, feature_degree);
 
       CHECK(result == correct);
     }

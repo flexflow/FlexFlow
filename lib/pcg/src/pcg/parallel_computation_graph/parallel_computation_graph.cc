@@ -30,7 +30,7 @@ std::vector<parallel_tensor_guid_t>
       [](MultiDiOutput const &o) { return parallel_tensor_guid_t{o}; });
 }
 
-parallel_layer_guid_t get_source_layer(ParallelComputationGraph const &g, 
+parallel_layer_guid_t get_source_layer(ParallelComputationGraph const &g,
                                        parallel_tensor_guid_t const &t) {
   return parallel_layer_guid_t{t.raw_graph_output.src};
 }

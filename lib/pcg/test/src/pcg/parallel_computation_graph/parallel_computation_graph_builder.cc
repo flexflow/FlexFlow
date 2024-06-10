@@ -14,17 +14,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     ShardParallelDim d2 = ShardParallelDim{15, 3};
 
     ParallelTensorShape lhs_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          ShardParallelDim{10, 2},
-          ShardParallelDim{15, 3},
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                ShardParallelDim{10, 2},
+                ShardParallelDim{15, 3},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{2},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{2},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     ParallelTensorShape rhs_shape = lhs_shape;
@@ -36,57 +36,60 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_layer_guid_t layer = get_source_layer(b.pcg, out);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { lhs, rhs };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {lhs, rhs};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { out };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {out};
       CHECK(result == correct);
     }
 
     SUBCASE("op attrs") {
       PCGOperatorAttrs result = get_parallel_layer_attrs(b.pcg, layer).op_attrs;
-      PCGOperatorAttrs correct = PCGOperatorAttrs{ElementBinaryAttrs{OperatorType::EW_ADD, DataType::FLOAT, false, false}};
+      PCGOperatorAttrs correct = PCGOperatorAttrs{ElementBinaryAttrs{
+          OperatorType::EW_ADD, DataType::FLOAT, false, false}};
       CHECK(result == correct);
     }
   }
 
   TEST_CASE("ParallelComputationGraphBuilder::batch_matmul") {
-    ParallelComputationGraphBuilder b;    
+    ParallelComputationGraphBuilder b;
 
     ShardParallelDim batch_dim = ShardParallelDim{4, 2};
 
     ParallelTensorShape a_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          ShardParallelDim{10, 1},
-          ShardParallelDim{15, 3},
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                ShardParallelDim{10, 1},
+                ShardParallelDim{15, 3},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     ParallelTensorShape b_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          ShardParallelDim{15, 3},
-          ShardParallelDim{12, 1},
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                ShardParallelDim{15, 3},
+                ShardParallelDim{12, 1},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     parallel_tensor_guid_t a_tensor = b.create_input_tensor(a_shape);
@@ -96,14 +99,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_layer_guid_t layer = get_source_layer(b.pcg, out);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { a_tensor, b_tensor };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {a_tensor, b_tensor};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { out };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {out};
       CHECK(result == correct);
     }
 
@@ -118,17 +123,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     ParallelComputationGraphBuilder b;
 
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          ShardParallelDim{10, 2},
-          ShardParallelDim{12, 1},
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                ShardParallelDim{10, 2},
+                ShardParallelDim{12, 1},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{3},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{3},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     DataType output_datatype = DataType::DOUBLE;
@@ -137,17 +142,20 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { input };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
 
-      ParallelTensorShape output_shape = get_parallel_tensor_attrs(b.pcg, output).shape;
+      ParallelTensorShape output_shape =
+          get_parallel_tensor_attrs(b.pcg, output).shape;
       CHECK(output_shape.data_type == output_datatype);
     }
   }
@@ -269,63 +277,65 @@ TEST_SUITE(FF_TEST_SUITE) {
   };
 
   TEST_CASE("ParallelComputationGraphBuilder::dense") {
-    ParallelComputationGraphBuilder b;   
+    ParallelComputationGraphBuilder b;
 
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          ShardParallelDim{10, 2},
-          ShardParallelDim{16, 1},
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                ShardParallelDim{10, 2},
+                ShardParallelDim{16, 1},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     int outDim = 14;
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
-    parallel_tensor_guid_t output = b.dense(input, 
+    parallel_tensor_guid_t output = b.dense(input,
                                             outDim,
                                             Activation::RELU,
                                             /*use_bias=*/true,
                                             DataType::FLOAT);
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
-                                            
+
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
       CHECK(result.at(0) == input);
 
       CHECK(result.size() == 3);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }
 
   TEST_CASE("ParallelComputationGraphBuilder::embedding") {
-    ParallelComputationGraphBuilder b; 
+    ParallelComputationGraphBuilder b;
 
     ShardParallelDim batch_dim = ShardParallelDim{12, 2};
     ShardParallelDim feature_dim = ShardParallelDim{10, 1};
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          feature_dim,
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                feature_dim,
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::INT32,
+        DataType::INT32,
     };
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
@@ -337,15 +347,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
       CHECK(result.at(0) == input);
 
       CHECK(result.size() == 2);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }
@@ -357,18 +369,18 @@ TEST_SUITE(FF_TEST_SUITE) {
     ShardParallelDim sequence_dim = ShardParallelDim{16, 1};
     ShardParallelDim feature_dim = ShardParallelDim{10, 1};
     ParallelTensorShape query_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          sequence_dim,
-          feature_dim,
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                sequence_dim,
+                feature_dim,
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     ParallelTensorShape key_shape = query_shape;
@@ -380,15 +392,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t query = b.create_input_tensor(query_shape);
     parallel_tensor_guid_t key = b.create_input_tensor(key_shape);
     parallel_tensor_guid_t value = b.create_input_tensor(value_shape);
-    parallel_tensor_guid_t output = b.multihead_attention(query,
-                                                          key,
-                                                          value,
-                                                          embed_dim,
-                                                          num_heads);
+    parallel_tensor_guid_t output =
+        b.multihead_attention(query, key, value, embed_dim, num_heads);
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
       CHECK(result.at(0) == query);
       CHECK(result.at(1) == key);
       CHECK(result.at(2) == value);
@@ -396,8 +406,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }
@@ -409,17 +420,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     ShardParallelDim feature_dim = ShardParallelDim{32, 1};
 
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          feature_dim,
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                feature_dim,
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
@@ -427,14 +438,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { input };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }
@@ -446,34 +459,34 @@ TEST_SUITE(FF_TEST_SUITE) {
     ShardParallelDim feature_dim = ShardParallelDim{10, 1};
 
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          feature_dim,
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                feature_dim,
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
-    parallel_tensor_guid_t output = b.parallel_partition(input,
-                                                         ff_dim_t{0},
-                                                         2);
+    parallel_tensor_guid_t output = b.parallel_partition(input, ff_dim_t{0}, 2);
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { input };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }
@@ -485,34 +498,34 @@ TEST_SUITE(FF_TEST_SUITE) {
     ShardParallelDim feature_dim = ShardParallelDim{10, 1};
 
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          feature_dim,
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                feature_dim,
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
-    parallel_tensor_guid_t output = b.parallel_combine(input,
-                                                       ff_dim_t{0},
-                                                       2);
+    parallel_tensor_guid_t output = b.parallel_combine(input, ff_dim_t{0}, 2);
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { input };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }
@@ -524,17 +537,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     ShardParallelDim feature_dim = ShardParallelDim{10, 1};
 
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          feature_dim,
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                feature_dim,
+            },
+            ReplicaParallelDimSet{
+                SumDegree{1},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{1},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
@@ -542,14 +555,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { input };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }
@@ -561,17 +576,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     ShardParallelDim feature_dim = ShardParallelDim{10, 1};
 
     ParallelTensorShape input_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          batch_dim,
-          feature_dim,
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                batch_dim,
+                feature_dim,
+            },
+            ReplicaParallelDimSet{
+                SumDegree{4},
+                DiscardCopyDegree{1},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{4},
-          DiscardCopyDegree{1},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
@@ -579,14 +594,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
 
     SUBCASE("inputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_inputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { input };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_inputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
 
     SUBCASE("outputs") {
-      std::vector<parallel_tensor_guid_t> result = get_layer_outputs(b.pcg, layer);
-      std::vector<parallel_tensor_guid_t> correct = { output };
+      std::vector<parallel_tensor_guid_t> result =
+          get_layer_outputs(b.pcg, layer);
+      std::vector<parallel_tensor_guid_t> correct = {output};
       CHECK(result == correct);
     }
   }

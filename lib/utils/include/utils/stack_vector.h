@@ -5,6 +5,7 @@
 #include "hash-utils.h"
 #include "rapidcheck.h"
 #include "utils/fmt.h"
+#include "utils/fmt/vector.h"
 #include "utils/json.h"
 #include "utils/test_types.h"
 #include "utils/type_traits.h"
@@ -12,7 +13,6 @@
 #include <cassert>
 #include <optional>
 #include <type_traits>
-#include "utils/fmt/vector.h"
 
 namespace FlexFlow {
 
@@ -316,7 +316,7 @@ private:
 
 template <typename T, std::size_t MAXSIZE>
 std::ostream &operator<<(std::ostream &s, stack_vector<T, MAXSIZE> const &v) {
-  return s << fmt::to_string(v); 
+  return s << fmt::to_string(v);
 }
 
 template <typename T, std::size_t MAXSIZE>

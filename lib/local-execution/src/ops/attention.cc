@@ -97,10 +97,9 @@ static DeviceSpecific<DeviceStates>
       acc.get_argument<ParallelTensorShape>(VALUE_PARALLEL_TENSOR_SHAPE);
 
   MultiHeadAttentionParallelInputs parsed = throw_if_unexpected(
-    parse_attention_parallel_input_shape(query_parallel_tensor_shape,
-                                         key_parallel_tensor_shape,
-                                         value_parallel_tensor_shape)
-  );
+      parse_attention_parallel_input_shape(query_parallel_tensor_shape,
+                                           key_parallel_tensor_shape,
+                                           value_parallel_tensor_shape));
   ParallelTensorShape weight_parallel_tensor_shape =
       throw_if_unexpected(get_weights_shape(attrs,
                                             query_parallel_tensor_shape,

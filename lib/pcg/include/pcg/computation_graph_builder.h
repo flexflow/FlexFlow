@@ -281,6 +281,7 @@ private:
       tensor_guid_t const &input,
       float scalar,
       std::optional<std::string> const &name = std::nullopt);
+
 public:
   ComputationGraph computation_graph;
 };
