@@ -114,9 +114,9 @@ __global__ void commit_tokens_kernel(
   int const req_id = committedTokenInfos[token_pos].request_index;
   int const tok_id = committedTokenInfos[token_pos].token_depth;
 
-  size_t from_idx = (req_idx * max_seq_len + index_in_kv_cache)
+  size_t from_idx = (req_id * max_seq_len + index_in_kv_cache)
                     * hidden_size * 2;
-  size_t to_idx = (req_idx * max_seq_len + tok_id)
+  size_t to_idx = (req_id * max_seq_len + tok_id)
                     * hidden_size * 2;
   assert(to_idx <= from_idx);
 
