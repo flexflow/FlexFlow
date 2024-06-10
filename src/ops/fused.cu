@@ -937,8 +937,10 @@ __host__ void
                 (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
             // TreeVerifyBatchConfig const *verify_bc =
             //     (TreeVerifyBatchConfig *)task->args;
-            BatchConfig const &verify_bc =
-                Future(task->futures[0]).get_result<BatchConfig>();
+            // BatchConfig const &verify_bc =
+            //     Future(task->futures[0]).get_result<BatchConfig>();
+            BatchConfig const *verify_bc =
+                BatchConfig::from_future(task->futures[0]);
             assert(fused->op_num_weights[op] ==
                   (1 + (int)(*m->qkv_bias || *m->final_bias)));
             GenericTensorAccessorR biases;
@@ -948,7 +950,7 @@ __host__ void
             }
             TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
                 m,
-                &verify_bc,
+                verify_bc,
                 task->index_point.point_data[0],
                 my_input_accessor[0],
                 my_weight_accessor[0],
@@ -963,8 +965,10 @@ __host__ void
                 (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
             // TreeSearchBatchConfig const *search_bc =
             //     (TreeSearchBatchConfig *)task->args;
-            BatchConfig const &search_bc =
-                Future(task->futures[0]).get_result<BatchConfig>();
+            // BatchConfig const &search_bc =
+            //     Future(task->futures[0]).get_result<BatchConfig>();
+            BatchConfig const *search_bc =
+                BatchConfig::from_future(task->futures[0]);
             assert(fused->op_num_weights[op] ==
                   (1 + (int)(*m->qkv_bias || *m->final_bias)));
             GenericTensorAccessorR biases;
@@ -974,7 +978,7 @@ __host__ void
             }
             SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
                 m,
-                &search_bc,
+                search_bc,
                 task->index_point.point_data[0],
                 my_input_accessor[0],
                 my_weight_accessor[0],

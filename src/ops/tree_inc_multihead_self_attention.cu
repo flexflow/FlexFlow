@@ -630,9 +630,11 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // std::cout << "tokens to be committed: " << bc->num_tokens_to_commit <<
   // "\n";
 
-  commit_tokens(m, bc, stream);
+  if (!bc->prompt_phase) {
+    // commit_tokens(m, bc, stream);
 
-  // orig_commit_tokens(m, bc, stream);
+    orig_commit_tokens(m, bc, stream);
+  }
 
   // After commit we update m->num_active_tokens to be the number of active
   // tokens for the current batch
@@ -660,10 +662,10 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   }
 
   // Update key-val cache, compact q array
-  update_qkv_cache<DT>(m, bc, stream);
+  // update_qkv_cache<DT>(m, bc, stream);
 
   // Compute attention
-  tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  // tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
   // {
@@ -686,8 +688,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   delete[] temp_output;
   // }
 
-  // orig_update_qkv_cache<DT>(m, bc, stream);
-  // orig_tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  orig_update_qkv_cache<DT>(m, bc, stream);
+  orig_tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
