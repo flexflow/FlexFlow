@@ -2,7 +2,7 @@
 #define _OPERATOR_PARAMS_H
 
 #include "op-attrs/ops/core.h"
-#include "op-attrs/pcg_operator_attrs.dtg.h"
+#include "op-attrs/pcg_operator_attrs.h"
 #include "ops/attention.h"
 #include "ops/batch_matmul.h"
 #include "ops/batch_norm.h"

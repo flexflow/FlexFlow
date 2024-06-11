@@ -235,17 +235,17 @@ public:
   std::vector<tensor_guid_t> get_outputs(LayerAttrs const &) const;
   tensor_guid_t get_output(LayerAttrs const &, int idx) const;
 
+  std::vector<tensor_guid_t> add_layer(LayerAttrs const &layer,
+                                       std::vector<tensor_guid_t> const &inputs,
+                                       std::vector<TensorAttrs> const &weights,
+                                       std::vector<TensorAttrs> const &outputs);
+
 private:
   TensorShape get_shape(tensor_guid_t const &) const;
 
   tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &);
 
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
-
-  std::vector<tensor_guid_t> add_layer(LayerAttrs const &layer,
-                                       std::vector<tensor_guid_t> const &inputs,
-                                       std::vector<TensorAttrs> const &weights,
-                                       std::vector<TensorAttrs> const &outputs);
 
   tensor_guid_t add_layer(LayerAttrs const &layer,
                           std::vector<tensor_guid_t> const &inputs,

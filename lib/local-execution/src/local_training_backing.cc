@@ -50,14 +50,15 @@ DeviceSpecific<DeviceStates>
   return fn(acc);
 }
 
-void LocalTrainingBacking::call_task_impl(task_id_t task_id,
-                                          TaskArgumentAccessor acc) {
+std::optional<float>
+    LocalTrainingBacking::call_task_impl(task_id_t task_id,
+                                         TaskArgumentAccessor acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
   auto fn = std::get<
       std::function<std::optional<float>(TaskArgumentAccessor const &)>>(
       task_sig_impl.impl_function);
-  fn(acc);
+  return fn(acc);
 }
 
 void LocalTrainingBacking::execute_init() {
@@ -75,26 +76,36 @@ void LocalTrainingBacking::execute_init() {
   }
 }
 
-void LocalTrainingBacking::execute_forward() {
-  for (layer_guid_t operator_node :
-       topological_ordering(this->computation_graph)) {
-    auto attrs = get_layer_attrs(this->computation_graph, operator_node).attrs;
-    OpTaskInvocation invocation = forward(attrs);
-    TaskArgumentAccessor accessor =
-        this->get_task_arg_accessor(invocation, operator_node);
-    this->call_task_impl(invocation.task_id, accessor);
+std::optional<float>
+    LocalTrainingBacking::execute_kernel(KernelType const &kernel_type) {
+  std::optional<float> total_elapsed_time;
+  std::vector<layer_guid_t> operators;
+  if (kernel_type == KernelType::FWD) {
+    operators = topological_ordering(this->computation_graph);
+  } else if (kernel_type == KernelType::BWD) {
+    operators = reverse_topological_ordering(this->computation_graph);
+  } else {
+    throw mk_runtime_error("Invalid KernelType, must be FWD or BWD");
   }
-}
 
-void LocalTrainingBacking::execute_backward() {
-  for (layer_guid_t operator_node :
-       reverse_topological_ordering(computation_graph)) {
+  for (layer_guid_t operator_node : operators) {
     auto attrs = get_layer_attrs(this->computation_graph, operator_node).attrs;
-    OpTaskInvocation invocation = backward(attrs);
+    OpTaskInvocation invocation =
+        (kernel_type == KernelType::FWD) ? forward(attrs) : backward(attrs);
     TaskArgumentAccessor accessor =
         this->get_task_arg_accessor(invocation, operator_node);
-    this->call_task_impl(invocation.task_id, accessor);
+    std::optional<float> elapsed_time =
+        this->call_task_impl(invocation.task_id, accessor);
+
+    if (elapsed_time.has_value()) {
+      if (total_elapsed_time.has_value()) {
+        total_elapsed_time = total_elapsed_time.value() + elapsed_time.value();
+      } else {
+        total_elapsed_time = elapsed_time.value();
+      }
+    }
   }
+  return total_elapsed_time;
 }
 
 void LocalTrainingBacking::execute_update() {

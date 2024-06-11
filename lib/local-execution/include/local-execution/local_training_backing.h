@@ -6,6 +6,8 @@
 
 namespace FlexFlow {
 
+enum class KernelType { FWD, BWD };
+
 struct LocalTrainingBacking {
   LocalTrainingBacking(Allocator const &,
                        ComputationGraph const &,
@@ -14,21 +16,19 @@ struct LocalTrainingBacking {
   ~LocalTrainingBacking() = default;
 
   void execute_init();
-  void execute_forward();
-  void execute_backward();
+  std::optional<float> execute_kernel(KernelType const &);
   void execute_update();
 
+private:
   DeviceSpecific<DeviceStates>
       call_init_task_impl(task_id_t, TaskArgumentAccessor const &);
-  void call_task_impl(task_id_t, TaskArgumentAccessor);
+  std::optional<float> call_task_impl(task_id_t, TaskArgumentAccessor);
 
   TaskArgumentAccessor get_task_arg_accessor(OpTaskInvocation const &,
                                              layer_guid_t const &) const;
 
-private:
   Allocator allocator;
   ComputationGraph computation_graph;
-
   TaskRegistry task_registry;
   LocalSlotsBacking local_slots_backing;
 };

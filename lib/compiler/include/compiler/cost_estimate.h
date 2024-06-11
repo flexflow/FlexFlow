@@ -5,12 +5,15 @@
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/machine_view.h"
+#include "pcg/parallel_tensor_attrs.dtg.h"
 
 namespace FlexFlow {
 
 struct ICostEstimator {
   virtual float estimate_cost(PCGOperatorAttrs const &op,
                               std::vector<ParallelTensorShape> const &inputs,
+                              std::vector<ParallelTensorAttrs> const &weights,
+                              std::vector<ParallelTensorAttrs> const &outputs,
                               MachineView const &mv) const = 0;
   virtual float estimate_cost(ParallelTensorShape const &tensor_shape,
                               MachineView const &src,
@@ -27,8 +30,11 @@ CHECK_RC_COPY_VIRTUAL_COMPLIANT(ICostEstimator);
 struct CostEstimator {
   float estimate_cost(PCGOperatorAttrs const &op,
                       std::vector<ParallelTensorShape> const &inputs,
+                      std::vector<ParallelTensorAttrs> const &weights,
+                      std::vector<ParallelTensorAttrs> const &outputs,
                       MachineView const &mv) const {
-    return this->implementation_ptr->estimate_cost(op, inputs, mv);
+    return this->implementation_ptr->estimate_cost(
+        op, inputs, weights, outputs, mv);
   }
 
   float estimate_cost(ParallelTensorShape const &tensor_shape,

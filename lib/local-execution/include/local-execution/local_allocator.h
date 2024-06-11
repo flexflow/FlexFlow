@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_ALLOCATOR_H
 
 #include "kernels/allocation.h"
-#include <unordered_set>
 
 namespace FlexFlow {
 

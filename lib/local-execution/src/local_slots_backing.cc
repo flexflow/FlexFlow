@@ -23,6 +23,7 @@ GenericTensorAccessorW const &LocalSlotsBacking::get_tensor_backing(
   return this->tensor_mapping.at(tensor_id);
 }
 
+// FIXME: handle gradient tensor allocation/backing
 TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
   TensorSlotsBacking mapping;
