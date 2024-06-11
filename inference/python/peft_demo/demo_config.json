@@ -25,5 +25,5 @@
     "cache_path": "",
     "refresh_cache": false,
     "full_precision": true,
-    "output_file": "../output/peft.txt"
+    "output_file": "../../output/peft_demo.txt"
 }
