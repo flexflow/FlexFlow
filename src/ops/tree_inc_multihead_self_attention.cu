@@ -114,15 +114,15 @@ __global__ void commit_tokens_kernel(
   int const req_id = committedTokenInfos[token_pos].request_index;
   int const tok_id = committedTokenInfos[token_pos].token_depth;
 
-  size_t from_idx = (req_id * max_seq_len + index_in_kv_cache)
-                    * hidden_size * 2;
-  size_t to_idx = (req_id * max_seq_len + tok_id)
-                    * hidden_size * 2;
-  assert(to_idx <= from_idx);
+  size_t from_k_idx = (req_id * max_seq_len * 2 + index_in_kv_cache) * hidden_size,
+         from_v_idx = (req_id * max_seq_len * 2 + max_seq_len + index_in_kv_cache) * hidden_size;
+  size_t to_k_idx = (req_id * max_seq_len * 2 + tok_id) * hidden_size,
+          to_v_idx = (req_id * max_seq_len * 2 + max_seq_len + tok_id) * hidden_size;
+  assert(to_k_idx <= from_k_idx);
 
   CUDA_KERNEL_LOOP(offset, hidden_size) {
-    kCache_ptr[to_idx + offset] = kCache_ptr[from_idx + offset];
-    kCache_ptr[to_idx + hidden_size + offset] = kCache_ptr[from_idx + hidden_size + offset];
+    kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
+    kCache_ptr[to_v_idx + offset] = kCache_ptr[from_v_idx + offset];
   }
 }
 
@@ -297,12 +297,13 @@ __global__ void update_qkv_cache_kernel(
 
   size_t from_idx =
         token_idx * QKV_WEIGHT_NUM * hidden_size;
-  size_t to_idx = (req_idx * max_seq_len + token_abs_idx) * hidden_size * 2;
+  size_t to_k_idx = (req_idx * max_seq_len * 2 + token_abs_idx) * hidden_size,
+         to_v_idx = (req_idx * max_seq_len * 2 + max_seq_len + token_abs_idx) * hidden_size;
 
   // key and value cache should be stored interleaved
-  kCache_ptr[to_idx + offset] = 
+  kCache_ptr[to_k_idx + offset] = 
       static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
-  kCache_ptr[to_idx + hidden_size + offset] = 
+  kCache_ptr[to_v_idx + offset] = 
       static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
   qTmp_ptr[token_idx * hidden_size + offset] = 
       static_cast<half>(devQKVProjArray[from_idx + offset]);
