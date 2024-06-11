@@ -21,7 +21,10 @@
 namespace FlexFlow {
 
 LoraLinearMeta::LoraLinearMeta(FFHandler handler, LoraLinear const *li)
-    : OpMeta(handler, li) {}
+    : OpMeta(handler, li) {
+  allocated_peft_buffer_size1 = 0;
+  allocated_peft_buffer_size2 = 0;
+}
 
 LoraLinearMeta::~LoraLinearMeta(void) {}
 
@@ -180,6 +183,7 @@ void inference_kernel(LoraLinearMeta *m,
       continue;
     }
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
     int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
     assert(m->model_state.find(bc->requestsInfo[i].peft_model_id) !=
            m->model_state.end());
@@ -188,11 +192,21 @@ void inference_kernel(LoraLinearMeta *m,
     int rank = weight.rank;
     void *intermediate_result_ptr = nullptr;
     if (bc->requestsInfo[i].peft_bwd) {
+      size_t activation_size_needed1 =
+          data_type_size(m->input_type[0]) * max_peft_tokens * in_dim;
+      size_t activation_size_needed2 =
+          data_type_size(m->input_type[1]) * max_peft_tokens * rank;
       MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-      m->input_activation = allocator->allocate_instance_untyped(
-          data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
-      m->low_rank_activation = allocator->allocate_instance_untyped(
-          data_type_size(m->input_type[1]) * num_peft_tokens * rank);
+      if (activation_size_needed1 > m->allocated_peft_buffer_size1) {
+        m->input_activation =
+            allocator->allocate_instance_untyped(activation_size_needed1);
+        m->allocated_peft_buffer_size1 = activation_size_needed1;
+      }
+      if (activation_size_needed2 > m->allocated_peft_buffer_size2) {
+        m->low_rank_activation =
+            allocator->allocate_instance_untyped(activation_size_needed2);
+        m->allocated_peft_buffer_size2 = activation_size_needed2;
+      }
       // copy input activation
       checkCUDA(cudaMemcpyAsync(m->input_activation,
                                 input_ptr + first_token_offset * in_dim,

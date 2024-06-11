@@ -958,8 +958,12 @@ bool GraphXfer::create_new_operator(OpX const *opx, Node &op) {
     }
     case OP_SOFTMAX: {
       int softmax_dim;
+      assert(opx->matchOpX != NULL);
+      assert(opx->matchOpX->mapOp.ptr != NULL);
+      Softmax *softmax = (Softmax *)opx->matchOpX->mapOp.ptr;
       assert(opx->get_pm_constraint(PM_SOFTMAX_DIM, softmax_dim));
-      op = model->get_or_create_node<Softmax>(inputs[0], {softmax_dim});
+      SoftmaxParams params = softmax->get_params();
+      op = model->get_or_create_node<Softmax>(inputs[0], params);
       break;
     }
     case OP_REPARTITION: {
@@ -3749,7 +3753,8 @@ bool FFModel::convert_graph_to_operators(
       case OP_SOFTMAX: {
         assert(inList.size() == 1);
         Softmax *softmax = (Softmax *)node.ptr;
-        new_op = new Softmax(*this, inputs[0], softmax->dim, NULL);
+        new_op = new Softmax(
+            *this, softmax->layer_guid, inputs[0], softmax->dim, NULL);
         break;
       }
       case OP_COMBINE: {
@@ -3814,6 +3819,7 @@ bool FFModel::convert_graph_to_operators(
                                               abr_ln->elementwise_affine,
                                               abr_ln->use_bias,
                                               abr_ln->eps,
+                                              abr_ln->inplace_residual,
                                               true,
                                               NULL);
         break;

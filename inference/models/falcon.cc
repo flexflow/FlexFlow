@@ -39,7 +39,11 @@ void FALCON::create_falcon_model(FFModel &ff,
   Tensor input;
   {
     // assert(falcon_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
@@ -72,7 +76,7 @@ void FALCON::create_falcon_model(FFModel &ff,
           falcon_config.layer_norm_epsilon,
           true,
           DT_NONE,
-          std::string("layers_" + std::to_string(i) + "_input_layernorm")
+          std::string("layers." + std::to_string(i) + ".input_layernorm")
               .c_str());
     } else {
       ff.residual_layer_norm(
@@ -85,8 +89,9 @@ void FALCON::create_falcon_model(FFModel &ff,
           true,
           falcon_config.layer_norm_epsilon,
           true,
+          false,
           DT_NONE,
-          std::string("layers_" + std::to_string(i) + "_input_layernorm")
+          std::string("layers." + std::to_string(i) + ".input_layernorm")
               .c_str());
       token = res_ln_outputs[0];
       att_norm = res_ln_outputs[1];
@@ -112,7 +117,7 @@ void FALCON::create_falcon_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".self_attention")
                 .c_str() /*name*/
         );
         break;
@@ -137,7 +142,7 @@ void FALCON::create_falcon_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".self_attention")
                 .c_str() /*name*/
         );
         break;
@@ -162,7 +167,7 @@ void FALCON::create_falcon_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".self_attention")
                 .c_str() /*name*/
         );
         break;
@@ -183,7 +188,7 @@ void FALCON::create_falcon_model(FFModel &ff,
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers_" + std::to_string(i) + "_mlp_dense_h_to_4h")
+        std::string("layers." + std::to_string(i) + ".mlp.dense_h_to_4h")
             .c_str());
 
     dense_h_to_4h = ff.gelu(dense_h_to_4h);
@@ -199,7 +204,7 @@ void FALCON::create_falcon_model(FFModel &ff,
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers_" + std::to_string(i) + "_mlp_dense_4h_to_h")
+        std::string("layers." + std::to_string(i) + ".mlp.dense_4h_to_h")
             .c_str());
   }
   // final normalization and linear
@@ -212,6 +217,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                          true,
                          falcon_config.layer_norm_epsilon,
                          true,
+                         false,
                          DT_NONE,
                          "ln_f");
   Tensor ln_f = res_ln_outputs[1];
@@ -236,23 +242,18 @@ void FALCON::create_falcon_model(FFModel &ff,
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
 
-  // Compile the model
-  std::cout << "------start compile ----------" << std::endl;
-  InferenceManager *im = InferenceManager::get_inference_manager();
-  im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            falcon_config.n_head,
-                            falcon_config.n_head_kv,
-                            falcon_config.hidden_size,
-                            falcon_config.hidden_size / falcon_config.n_head,
-                            ff.config.tensor_parallelism_degree);
-  std::cout << "------load weights ----------" << std::endl;
-  fileloader.load_weights(&ff, use_full_precision);
-  std::cout << "------load weight finished----------" << std::endl;
+  FileDataLoader *fileloader =
+      new FileDataLoader("",
+                         weight_file_path,
+                         falcon_config.n_head,
+                         falcon_config.n_head_kv,
+                         falcon_config.hidden_size,
+                         falcon_config.hidden_size / falcon_config.n_head,
+                         ff.config.tensor_parallelism_degree,
+                         use_full_precision);
 
-  // init operators
-  im->init_operators_inference(&ff);
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->register_model_weights_loader(&ff, fileloader);
 }
 
 }; // namespace FlexFlow

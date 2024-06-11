@@ -40,7 +40,11 @@ void MPT::create_mpt_model(FFModel &ff,
   //------------------------------ build the model --------------------------
   Tensor input;
   {
-    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
 
@@ -54,7 +58,7 @@ void MPT::create_mpt_model(FFModel &ff,
                                       use_full_precision ? DT_FLOAT : DT_HALF,
                                       NULL,
                                       embed_init,
-                                      "transformer_wte");
+                                      "wte");
 
   Tensor intermediate_output = nullptr, layernorm_output = nullptr;
   Tensor res_ln_outputs[2] = {nullptr, nullptr};
@@ -70,7 +74,7 @@ void MPT::create_mpt_model(FFModel &ff,
           1e-05,
           false,
           DT_NONE,
-          std::string("layers_" + std::to_string(i) + "_norm_1").c_str());
+          std::string("layers." + std::to_string(i) + ".norm_1").c_str());
     } else {
       ff.residual_layer_norm(
           intermediate_output,
@@ -82,8 +86,9 @@ void MPT::create_mpt_model(FFModel &ff,
           true,
           1e-05,
           false,
+          false,
           DT_NONE,
-          std::string("layers_" + std::to_string(i) + "_norm_1").c_str());
+          std::string("layers." + std::to_string(i) + ".norm_1").c_str());
       hidden_states = res_ln_outputs[0];
       layernorm_output = res_ln_outputs[1];
     }
@@ -109,7 +114,7 @@ void MPT::create_mpt_model(FFModel &ff,
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
             /*qk_prod_scaling*/ false,
             /*position_bias*/ true,
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".attn")
                 .c_str() /*name*/
         );
         break;
@@ -133,7 +138,7 @@ void MPT::create_mpt_model(FFModel &ff,
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
             /*qk_prod_scaling*/ false,
             /*position_bias*/ true,
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".attn")
                 .c_str() /*name*/
         );
         break;
@@ -157,7 +162,7 @@ void MPT::create_mpt_model(FFModel &ff,
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
             /*qk_prod_scaling*/ false,
             /*position_bias*/ true,
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".attn")
                 .c_str() /*name*/
         );
         break;
@@ -177,8 +182,9 @@ void MPT::create_mpt_model(FFModel &ff,
         true,
         1e-05,
         false,
+        false,
         DT_NONE,
-        std::string("layers_" + std::to_string(i) + "_norm_2").c_str());
+        std::string("layers." + std::to_string(i) + ".norm_2").c_str());
     hidden_states = res_ln_outputs[0];
     layernorm_output = res_ln_outputs[1];
 
@@ -194,7 +200,7 @@ void MPT::create_mpt_model(FFModel &ff,
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers_" + std::to_string(i) + "_ffn_up_proj").c_str());
+        std::string("layers." + std::to_string(i) + ".ffn.up_proj").c_str());
     layernorm_output = ff.gelu(layernorm_output);
     intermediate_output = ff.dense(
         layernorm_output,
@@ -207,7 +213,7 @@ void MPT::create_mpt_model(FFModel &ff,
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers_" + std::to_string(i) + "_ffn_down_proj").c_str());
+        std::string("layers." + std::to_string(i) + ".ffn.down_proj").c_str());
   }
 
   // final
@@ -220,8 +226,9 @@ void MPT::create_mpt_model(FFModel &ff,
                          true,
                          1e-05,
                          false,
+                         false,
                          DT_NONE,
-                         "transformer_norm_f");
+                         "norm_f");
   Tensor all_final_norm = res_ln_outputs[1];
 
   Tensor lm_head = ff.dense(all_final_norm,
@@ -243,19 +250,18 @@ void MPT::create_mpt_model(FFModel &ff,
   } else {
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
+  FileDataLoader *fileloader =
+      new FileDataLoader("",
+                         weight_file_path,
+                         mpt_config.n_heads,
+                         mpt_config.n_heads,
+                         mpt_config.hidden_size,
+                         mpt_config.hidden_size / mpt_config.n_heads,
+                         ff.config.tensor_parallelism_degree,
+                         use_full_precision);
 
-  //------------------- compile the model --------------------------------
   InferenceManager *im = InferenceManager::get_inference_manager();
-  im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            mpt_config.n_heads,
-                            mpt_config.n_heads,
-                            mpt_config.hidden_size,
-                            mpt_config.hidden_size / mpt_config.n_heads,
-                            ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, use_full_precision);
-  im->init_operators_inference(&ff);
+  im->register_model_weights_loader(&ff, fileloader);
 }
 
 }; // namespace FlexFlow

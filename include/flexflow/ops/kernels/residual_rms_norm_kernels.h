@@ -32,12 +32,14 @@ public:
   void *rms_ptr;
   void *norm_ptr;
 
+  bool inplace_residual;
   int in_dim;
   int batch_size;
   int num_elements;
   Realm::RegionInstance reserveInst;
   // PEFT related fields
   void *input_activation;
+  size_t allocated_peft_buffer_size = 0;
 };
 
 namespace Kernels {
@@ -65,9 +67,10 @@ void backward_kernel_wrapper(
     GenericTensorAccessorW const &weight_grad);
 void peft_bwd_kernel_wrapper(ResidualRMSNormMeta const *m,
                              BatchConfig const *bc,
-                             GenericTensorAccessorR const &output_grad,
-                             GenericTensorAccessorW const &residual_input0_grad,
-                             GenericTensorAccessorW const &residual_input1_grad,
+                             GenericTensorAccessorR const &output_grad_0,
+                             GenericTensorAccessorR const &output_grad_1,
+                             GenericTensorAccessorW const &input_grad_0,
+                             GenericTensorAccessorW const &input_grad_1,
                              GenericTensorAccessorR const &weight);
 } // namespace ResidualRMSNorm
 } // namespace Kernels

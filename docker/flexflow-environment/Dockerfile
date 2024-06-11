@@ -17,7 +17,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binut
 
 # Install Python3 with Miniconda
 ARG python_version "latest"
-RUN MINICONDA_SCRIPT_NAME=Miniconda3-latest-Linux-x86_64.sh; \
+#RUN MINICONDA_SCRIPT_NAME=Miniconda3-latest-Linux-x86_64.sh; \
+RUN MINICONDA_SCRIPT_NAME=Miniconda3-py311_23.5.2-0-Linux-x86_64.sh; \
     if [ "$python_version" != "3.8" ] && [ "$python_version" != "3.9" ] && [ "$python_version" != "3.10" ] && [ "$python_version" != "3.11" ] && [ "$python_version" != "latest" ]; then \
         echo "python_version '${python_version}' is not supported, please choose among {3.8, 3.9, 3.10, 3.11 or latest (default)}"; \
         exit 1; \
@@ -74,11 +75,8 @@ RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]
         rm ./${AMD_GPU_SCRIPT_NAME}; \
         amdgpu-install -y --usecase=hip,rocm --no-dkms; \
         apt-get install -y hip-dev hipblas miopen-hip rocm-hip-sdk rocm-device-libs; \
-        # Install protobuf v3.20.x manually
+        # Install protobuf dependencies
         apt-get update -y && sudo apt-get install -y pkg-config zip g++ zlib1g-dev autoconf automake libtool make; \
-        git clone -b 3.20.x https://github.com/protocolbuffers/protobuf.git; cd protobuf/ ; git submodule update --init --recursive; \
-        ./autogen.sh; ./configure; cores_available=$(nproc --all); n_build_cores=$(( cores_available -1 )); \
-        if (( n_build_cores < 1 )) ; then n_build_cores=1 ; fi; make -j $n_build_cores; make install; ldconfig; cd .. ; \
     else \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"; \
     fi
@@ -96,7 +94,7 @@ RUN conda install pytorch torchvision torchaudio -c pytorch
 RUN conda install -c conda-forge onnx transformers>=4.31.0 sentencepiece einops
 RUN pip3 install tensorflow notebook
 # PEFT-related
-RUN pip3 install scipy bitsandbytes datasets accelerate loralib peft
+RUN pip3 install scipy bitsandbytes datasets accelerate loralib triton peft
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y

@@ -37,6 +37,7 @@ public:
   Realm::RegionInstance reserveInst;
   // PEFT related fields
   void *output_activation_buffer;
+  size_t allocated_peft_buffer_size = 0;
 };
 
 namespace Kernels {

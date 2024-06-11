@@ -14,7 +14,7 @@
  */
 #pragma once
 
-#include "file_loader.h"
+// #include "file_loader.h"
 #include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
 #include "flexflow/request_manager.h"

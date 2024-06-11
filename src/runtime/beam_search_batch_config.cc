@@ -85,6 +85,10 @@ int BeamSearchBatchConfig::max_beam_depth_all_requests() const {
   return max_depth_all_requests;
 }
 
+int BeamSearchBatchConfig::get_speculative_request_num() const {
+  return speculative_request_num;
+}
+
 int BeamSearchBatchConfig::current_depth_all_requests() const {
   int current_depth = 0;
   for (int i = 0; i < BeamSearchBatchConfig::max_requests_per_batch(); i++) {

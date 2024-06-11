@@ -50,6 +50,7 @@ LayerNormMeta::LayerNormMeta(FFHandler handle,
       data_type_size(data_type) * effective_batch_size);
   bias_ptr = gpu_mem_allocator.allocate_instance_untyped(
       data_type_size(data_type) * effective_batch_size);
+  allocated_peft_buffer_size = 0;
 }
 
 LayerNormMeta::~LayerNormMeta(void) {
@@ -254,12 +255,18 @@ void LayerNorm::inference_kernel_wrapper(LayerNormMeta *m,
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+      int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
       int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
       int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
       if (bc->requestsInfo[i].peft_bwd) {
-        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
-        m->input_activation = allocator->allocate_instance_untyped(
-            data_type_size(m->input_type[0]) * num_peft_tokens * in_dim);
+        size_t activation_size_needed =
+            data_type_size(m->input_type[0]) * max_peft_tokens * in_dim;
+        if (activation_size_needed > m->allocated_peft_buffer_size) {
+          MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+          m->input_activation =
+              allocator->allocate_instance_untyped(activation_size_needed);
+          m->allocated_peft_buffer_size = activation_size_needed;
+        }
         // copy input activation
         if (m->input_type[0] == DT_FLOAT) {
           checkCUDA(cudaMemcpyAsync(

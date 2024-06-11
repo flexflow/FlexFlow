@@ -1,18 +1,21 @@
 #!/usr/bin/env python
 import flexflow.serve as ff
-import argparse
+import argparse, os
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "peft_model_ids", type=str, nargs="+", help="Name of the model(s) to download"
+        "--base_model_name", type=str, help="Name of the model to download"
+    )
+    parser.add_argument(
+        "peft_model_ids", type=str, nargs="+", help="Name of the PEFT model(s) to download"
     )
     parser.add_argument(
         "--cache-folder",
         type=str,
         help="Folder to use to store the model(s) assets in FlexFlow format",
-        default="",
+        default=os.environ.get("FF_CACHE_PATH", ""),
     )
     parser.add_argument(
         "--refresh-cache",
@@ -42,16 +45,19 @@ def main(args):
     else:
         data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF)
 
-    for peft_model_id in args.peft_model_ids:
-        for data_type in data_types:
-            peft = ff.PEFT(
-                peft_model_id,
-                data_type=data_type,
-                cache_path=args.cache_folder,
-                refresh_cache=args.refresh_cache,
-            )
-            peft.download_hf_weights_if_needed()
-            peft.download_hf_config()
+    
+    for data_type in data_types:
+        llm = ff.LLM(
+            args.base_model_name,
+            data_type=data_type,
+            cache_path=args.cache_folder,
+            refresh_cache=args.refresh_cache,
+        )
+        for peft_model_id in args.peft_model_ids:
+            llm.add_peft(peft_model_id)
+        llm.download_hf_weights_if_needed()
+        llm.download_hf_config()
+        llm.download_hf_tokenizer_if_needed()
 
 
 if __name__ == "__main__":

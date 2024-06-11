@@ -85,6 +85,9 @@ AggregateParams Aggregate::get_params() const {
   AggregateParams params;
   params.n = this->n;
   params.lambda_bal = this->lambda_bal;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -164,7 +167,8 @@ Aggregate::Aggregate(FFModel &model,
                      AggregateParams const &params,
                      std::vector<ParallelTensor> const &inputs,
                      char const *name)
-    : Aggregate(model, inputs.data(), params.n, params.lambda_bal, name) {}
+    : Aggregate(
+          model, inputs.data(), params.n, params.lambda_bal, params.name) {}
 
 using PCG::Node;
 Node Aggregate::deserialize(FFModel &ff,
@@ -175,10 +179,15 @@ Node Aggregate::deserialize(FFModel &ff,
   float lambda_bal;
   dez.deserialize(n);
   dez.deserialize(lambda_bal);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   assert(num_inputs == n + 4);
   AggregateParams params;
   params.n = n;
   params.lambda_bal = lambda_bal;
+  strcpy(params.name, name);
   return ff.get_or_create_node<Aggregate>(inputs, params);
 }
 
@@ -567,6 +576,8 @@ void Aggregate::backward_task(Task const *task,
 void Aggregate::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->n);
   sez.serialize(this->lambda_bal);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 bool Aggregate::measure_operator_cost(Simulator *sim,

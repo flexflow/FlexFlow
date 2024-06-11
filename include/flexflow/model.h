@@ -73,6 +73,7 @@ enum TaskIDs {
   DROPOUT_BWD_TASK_ID,
   EMBED_INIT_TASK_ID,
   EMBED_FWD_TASK_ID,
+  EMBED_INF_TASK_ID,
   EMBED_BWD_TASK_ID,
   GATHER_INIT_TASK_ID,
   GATHER_FWD_TASK_ID,
@@ -159,6 +160,7 @@ enum TaskIDs {
   TOPK_BWD_TASK_ID,
   ARG_TOPK_INIT_TASK_ID,
   ARG_TOPK_INF_TASK_ID,
+  ARG_TOPK_INF_SPECULATIVE_TASK_ID,
   SAMPLING_INIT_TASK_ID,
   SAMPLING_INF_TASK_ID,
   ARGMAX_INIT_TASK_ID,
@@ -219,6 +221,7 @@ enum TaskIDs {
   // NCCL tasks
   NCCL_GETUNIQUEID_TASK_ID,
   NCCL_INIT_COMMS_TASK_ID,
+  NCCL_FINISH_COMMS_TASK_ID,
   // Search
   STRATEGY_SEARCH_TASK_ID,
   // Graph
@@ -262,10 +265,12 @@ enum TaskIDs {
   // InferenceManager & RequestManager
   RM_LOAD_TOKENS_TASK_ID,
   RM_LOAD_POSITION_TASK_ID,
+  RM_LOAD_BATCH_CONFIG_TASK_ID,
   RM_PREPARE_NEXT_BATCH_TASK_ID,
   RM_PREPARE_NEXT_BATCH_INIT_TASK_ID,
   RM_PREPARE_NEXT_BATCH_BEAM_TASK_ID,
   RM_PREPARE_NEXT_BATCH_VERIFY_TASK_ID,
+  RM_BACKGROUND_SERVING_TASK_ID,
   // Custom tasks
   CUSTOM_GPU_TASK_ID_FIRST,
   CUSTOM_GPU_TASK_ID_1,
@@ -418,6 +423,7 @@ std::vector<ParallelTensorShape>
 class FFModel {
 public:
   FFModel(FFConfig &config, bool cpu_offload = false);
+  ~FFModel();
 
   static constexpr float PROPAGATION_CHANCE = 0.25;
   static constexpr float CONTINUE_PROPAGATION_CHANCE = 0.75;
@@ -579,6 +585,7 @@ public:
                            bool elementwise_affine,
                            float eps,
                            bool use_bias = true,
+                           bool inplace_residual = false,
                            DataType data_type = DT_NONE,
                            char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
@@ -589,6 +596,7 @@ public:
                                     bool elementwise_affine,
                                     float eps,
                                     bool use_bias = true,
+                                    bool inplace_residual = false,
                                     DataType data_type = DT_NONE,
                                     char const *name = NULL);
   // Add a sigmoid_silu_multi layer
@@ -617,6 +625,7 @@ public:
                          Tensor *outputs,
                          float eps,
                          int dim,
+                         bool inplace_residual = false,
                          DataType data_type = DT_NONE,
                          char const *name = NULL);
   // Add a beam search top k layer
@@ -698,6 +707,7 @@ public:
                    // Tensor *outputs,
                    int k,
                    bool sorted,
+                   bool speculative_decoding,
                    char const *name = NULL);
   Tensor argmax(const Tensor input, bool beam_search, char const *name = NULL);
   Tensor sampling(const Tensor input, float top_p, char const *name = NULL);
@@ -827,20 +837,11 @@ public:
   // ========================================
   // PEFT Layers
   // ========================================
-  void lora_linear(Tensor const input,
-                   Tensor const output,
-                   OperatorType _type,
-                   char const *name = nullptr);
+  PEFTModelID *add_lora_layer(LoraLinearConfig const peft_config);
   // ========================================
   // Inference APIs
   // ========================================
-  GenerationResult generate(Request const &request);
-
-  GenerationResult generate(std::vector<Request> const &request);
-
-  PEFTModelID register_peft_model(
-      LoraLinearConfig const mlp_first = LoraLinearConfig::DefaultConfig,
-      LoraLinearConfig const mlp_second = LoraLinearConfig::DefaultConfig);
+  std::vector<GenerationResult> generate(std::vector<Request> const &requests);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1070,8 +1071,15 @@ public:
   void get_metrics();
   void backward(int seq_length = -1);
   void update();
-  bool apply_fusion(std::vector<Op *> const &operators,
-                    std::vector<Op *> &new_operators);
+  bool apply_fusion(
+      std::vector<Op *> const &operators,
+      std::vector<Op *> &new_operators,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *parallel_tensor_mapping = nullptr);
+  bool check_operators_integrity(
+      std::vector<Op *> const &old_operators,
+      std::unordered_map<ParallelTensor, std::vector<ParallelTensor>>
+          *pt_mapping = nullptr);
   Op *get_final_operator() const;
   void compile(LossType loss_type,
                std::vector<MetricsType> const &metrics,
@@ -1159,6 +1167,12 @@ public:
   std::vector<Layer *> layers;
   std::vector<Op *> operators;
   std::vector<ParallelTensor> parameters;
+  // PEFT related
+  std::unordered_map<Layer *, Layer *> base_layer_to_peft_layer;
+  std::unordered_map<Layer *, std::vector<PEFTModelID>> peft_layer_to_peft_id;
+  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
+  //   std::vector<Op *> peft_operators;
+
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer

@@ -30,4 +30,5 @@ dependencies:
     - datasets
     - accelerate
     - loralib
+    - triton
     - peft

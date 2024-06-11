@@ -24,6 +24,7 @@ public:
                            bool _elementwise_affine,
                            bool _use_bias,
                            float _eps,
+                           bool _inplace_residual,
                            bool allocate_weights,
                            char const *name);
   void map_output_tensors(FFModel &ff) override;
@@ -138,6 +139,7 @@ public:
   bool elementwise_affine, use_bias;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
+  bool inplace_residual;
   std::vector<int> axes;
 };
 
@@ -152,10 +154,12 @@ public:
   bool elementwise_affine, use_bias;
   int64_t effective_batch_size, effective_num_elements;
   float eps;
+  bool inplace_residual;
   void *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
   Realm::RegionInstance reserveInst;
   // PEFT related fields
   void *input_activation;
+  size_t allocated_peft_buffer_size = 0;
 };
 
 }; // namespace FlexFlow

@@ -15,7 +15,8 @@
 
 #ifndef _FLEXFLOW_CONFIG_H_
 #define _FLEXFLOW_CONFIG_H_
-#include "flexflow/ffconst.h"
+#include "ffconst.h"
+#include "flexflow/batch_config.h"
 #include "legion.h"
 #include <cstring>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -77,6 +78,16 @@ struct FFHandler {
 #endif
   void *workSpace;
   size_t workSpaceSize;
+  void *batch_config_metadata;
+
+  // request info + token info + topolopgy mask info
+  size_t batch_config_metadata_size =
+      sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
+      sizeof(BeamSearchBatchConfig::beamTokenInfo) +
+      sizeof(BeamSearchBatchConfig::beamRequestsInfo) +
+      sizeof(BatchConfig::causalMask) +
+      sizeof(TreeVerifyBatchConfig::committed_tokens) +
+      sizeof(BatchConfig::request_completed);
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   // PEFT related fields
@@ -142,8 +153,9 @@ public:
   size_t workSpaceSize;
   Legion::Context lg_ctx;
   Legion::Runtime *lg_hlr;
+  Legion::IndexSpaceT<1> all_gpu_task_is;
   // Legion::FieldSpace field_space;
-  bool syntheticInput, profiling, perform_fusion;
+  bool benchmarking, profiling, perform_fusion;
   bool inference_debugging;
   size_t simulator_work_space_size;
   size_t search_budget;
@@ -154,6 +166,7 @@ public:
   size_t offload_reserve_space_size;
   DataType quantization_type;
   // PEFT related fields
+  bool enable_peft;
   size_t peft_activation_reserve_space_size;
   size_t peft_weight_reserve_space_size;
   // Control parallelizable dimensions

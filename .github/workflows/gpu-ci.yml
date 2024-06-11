@@ -1,25 +1,8 @@
 name: "gpu-ci"
 on:
-  pull_request:
-    paths:
-      - "cmake/**"
-      - "config/**"
-      - "deps/**"
-      - "python/**"
-      - "setup.py"
-      - "include/**"
-      - "inference/**"
-      - "src/**"
-      - "tests/inference/**"
-      - "conda/flexflow.yml"
-      - ".github/workflows/gpu-ci.yml"
-      - "tests/cpp_gpu_tests.sh"
-      - "tests/inference_tests.sh"
-      - "tests/training_tests.sh"
-      - "tests/python_interface_test.sh"
   push:
     branches:
-      - "master"
+      - "inference"
     paths:
       - "cmake/**"
       - "config/**"
@@ -191,10 +174,14 @@ jobs:
           # Inference tests
           source ./build/set_python_envs.sh
           ./tests/inference_tests.sh
+
+          # PEFT tests
+          ./tests/peft_tests.sh
+          python ./tests/peft/peft_alignment_test.py
       
       - name: Save inference output as an artifact
         if: always()
-        run: | 
+        run: |
           cd inference
           tar -zcvf output.tar.gz ./output
 
@@ -222,7 +209,7 @@ jobs:
       CONDA: "3"
     needs: inference-tests
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
@@ -243,7 +230,7 @@ jobs:
 
       - name: Build and Install FlexFlow
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
           export FF_BUILD_ALL_EXAMPLES=ON
           export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
@@ -252,18 +239,18 @@ jobs:
 
       - name: Check FlexFlow Python interface (pip)
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           ./tests/python_interface_test.sh after-installation
 
       - name: Run multi-gpu tests
         run: |
-          export PATH=/opt/conda/bin:$PATH
+          export PATH=$CONDA_PREFIX/bin:$PATH
           export CUDNN_DIR=/usr/local/cuda
           export CUDA_DIR=/usr/local/cuda
           export FF_HOME=$(pwd)
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/conda/lib
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
           # C++ tests
           ./tests/cpp_gpu_tests.sh 4
           # Python tests

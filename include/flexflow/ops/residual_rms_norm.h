@@ -20,6 +20,7 @@ public:
                   const ParallelTensor _input2,
                   float _eps,
                   int dim,
+                  bool inplace_residual,
                   bool allocate_weights,
                   char const *name);
   ResidualRMSNorm(FFModel &model,
@@ -96,6 +97,7 @@ public:
   float eps;
   int effective_batch_size;
   int dim, data_dim;
+  bool inplace_residual;
 };
 } // namespace FlexFlow
 #endif // _FLEXFLOW_RESIDUAL_RMS_NORM_H

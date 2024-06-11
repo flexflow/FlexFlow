@@ -67,7 +67,7 @@ public:
 
 class LoraLinearConfig {
 public:
-  static const LoraLinearConfig DefaultConfig;
+  static const LoraLinearConfig EmptyConfig;
   LoraLinearConfig();
   LoraLinearConfig(int _rank,
                    bool _trainable = false,
@@ -92,6 +92,7 @@ public:
   std::string peft_model_id;
   int lora_alpha;
   float lora_dropout;
+  std::vector<std::string> target_modules;
   // whether to load weights from file, instead of initializing them randomly
   bool load_weights_from_file;
 };
@@ -100,6 +101,7 @@ class LoraLinearParams {
 public:
   LayerID layer_guid;
   OperatorType type;
+  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
   char name[MAX_OPNAME];
 
   bool is_valid(std::pair<ParallelTensorShape, ParallelTensorShape> const

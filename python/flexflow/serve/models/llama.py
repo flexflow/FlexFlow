@@ -23,6 +23,7 @@ class LLAMAConfig:
         # self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
+        self.max_spec_tree_token_num = 20
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
         self.hidden_size = hf_config.hidden_size
@@ -62,6 +63,9 @@ class FlexFlowLLAMA(FlexFlowModel):
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
+        max_verify_tokens_per_batch = (
+            max_tokens_per_batch + self.llama_config.max_spec_tree_token_num
+        )
 
         # Sanity checks
         if self.llama_config.hidden_size % self.llama_config.num_attention_heads != 0:
@@ -81,7 +85,11 @@ class FlexFlowLLAMA(FlexFlowModel):
                 f"Number of attention heads ({self.llama_config.num_attention_heads}) is smaller, or not divisible by tensor parallelism degree ({self.ffconfig.tensor_parallelism_degree})"
             )
 
-        self.build_model(max_tokens_per_batch)
+        self.build_model(
+            max_tokens_per_batch
+            if self.mode == InferenceMode.INC_DECODING_MODE
+            else max_verify_tokens_per_batch
+        )
 
     def build_model(self, max_tokens_per_batch):
         ffmodel = FFModel(self.ffconfig)
@@ -98,7 +106,7 @@ class FlexFlowLLAMA(FlexFlowModel):
             self.data_type,
             None,
             embed_init,
-            name="tok_embeddings",
+            name="embed_tokens",
         )
 
         for i in range(self.llama_config.num_hidden_layers):
@@ -109,7 +117,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     token,
                     self.llama_config.rms_norm_eps,
                     self.llama_config.hidden_size,
-                    name=f"layers_{i}_attention_norm",
+                    name=f"layers.{i}.input_layernorm",
                 )
             else:
                 token, attn_norm = ffmodel.residual_rms_norm(
@@ -117,7 +125,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     w2,
                     self.llama_config.rms_norm_eps,
                     self.llama_config.hidden_size,
-                    name=f"layers_{i}_attention_norm",
+                    name=f"layers.{i}.input_layernorm",
                 )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -137,7 +145,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attn",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multiquery_self_attention_verify(
@@ -156,7 +164,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attn",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multiquery_self_attention(
@@ -175,7 +183,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
                     True,  # apply_rotary_embedding
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attn",
                 )
             else:
                 assert False
@@ -185,21 +193,21 @@ class FlexFlowLLAMA(FlexFlowModel):
                 mha,
                 self.llama_config.rms_norm_eps,
                 self.llama_config.hidden_size,
-                name=f"layers_{i}_ffn_norm",
+                name=f"layers.{i}.post_attention_layernorm",
             )
             w1 = ffmodel.dense(
                 ff_norm,
                 self.llama_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_feed_forward_w1",
+                name=f"layers.{i}.mlp.gate_proj",
             )
             w3 = ffmodel.dense(
                 ff_norm,
                 self.llama_config.intermediate_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_feed_forward_w3",
+                name=f"layers.{i}.mlp.up_proj",
             )
             multi = ffmodel.sigmoid_silu_multi(w1, w3)
             w2 = ffmodel.dense(
@@ -207,7 +215,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 self.llama_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers_{i}_feed_forward_w2",
+                name=f"layers.{i}.mlp.down_proj",
             )
 
         _, token = ffmodel.residual_rms_norm(
@@ -222,7 +230,7 @@ class FlexFlowLLAMA(FlexFlowModel):
             self.llama_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
-            name="output",
+            name="lm_head",
         )
 
         if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -238,28 +246,13 @@ class FlexFlowLLAMA(FlexFlowModel):
                 output = ffmodel.sampling(softmax, self.generation_config.topp)
             else:
                 # output = ffmodel.arg_top_k(dense, 1, False)
-                output = ffmodel.argmax(dense, False)
+                softmax = ffmodel.softmax(dense, -1)
+                output = ffmodel.argmax(softmax, False)
 
         self.ffmodel = ffmodel
 
     def convert_hf_weight_name(name):
-        return (
-            name.replace(".", "_")
-            .replace("self_attn", "attention")
-            .replace("q_proj", "wq")
-            .replace("k_proj", "wk")
-            .replace("v_proj", "wv")
-            .replace("o_proj", "wo")
-            .replace("mlp", "feed_forward")
-            .replace("gate_proj", "w1")
-            .replace("down_proj", "w2")
-            .replace("up_proj", "w3")
-            .replace("input_layernorm", "attention_norm")
-            .replace("post_attention_layernorm", "ffn_norm")
-            .replace("embed_tokens", "tok_embeddings")
-            .replace("lm_head", "output")
-            .replace("model_", "")
-        )
+        return name.replace("model.", "")
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)

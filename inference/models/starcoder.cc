@@ -48,7 +48,11 @@ void STARCODER::create_starcoder_model(
   ff.set_position_offset(0);
   {
     // assert(startcoder_config.max_num_tokens <= BatchConfig::MAX_NUM_TOKENS);
-    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
@@ -62,7 +66,7 @@ void STARCODER::create_starcoder_model(
                               use_full_precision ? DT_FLOAT : DT_HALF,
                               NULL,
                               embed_init,
-                              "transformer_wte");
+                              "wte");
 
   Tensor positional_embedding =
       ff.embedding(position_input,
@@ -72,7 +76,7 @@ void STARCODER::create_starcoder_model(
                    use_full_precision ? DT_FLOAT : DT_HALF,
                    NULL,
                    embed_init,
-                   "transformer_wpe");
+                   "wpe");
 
   Tensor residual = nullptr, c_proj = nullptr;
   Tensor res_ln_outputs[2] = {nullptr, nullptr};
@@ -92,8 +96,9 @@ void STARCODER::create_starcoder_model(
         true,
         startcoder_config.layer_norm_epsilon,
         true,
+        false,
         DT_NONE,
-        std::string("layers_" + std::to_string(i) + "_ln_1").c_str());
+        std::string("layers." + std::to_string(i) + ".ln_1").c_str());
     Tensor hidden_states = res_ln_outputs[0];
     Tensor ln_1 = res_ln_outputs[1];
 
@@ -120,7 +125,7 @@ void STARCODER::create_starcoder_model(
             1.0f,                        /*scaling factor*/
             true,                        /*qk_prod_scaling*/
             false,                       /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".attn.c_attn")
                 .c_str() /*name*/
         );
         break;
@@ -140,8 +145,9 @@ void STARCODER::create_starcoder_model(
         true,
         startcoder_config.layer_norm_epsilon,
         true,
+        false,
         DT_NONE,
-        std::string("layers_" + std::to_string(i) + "_ln_2").c_str());
+        std::string("layers." + std::to_string(i) + ".ln_2").c_str());
     residual = res_ln_outputs[0];
     Tensor l2_norm = res_ln_outputs[1];
 
@@ -157,7 +163,7 @@ void STARCODER::create_starcoder_model(
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers_" + std::to_string(i) + "_mlp_c_fc").c_str());
+        std::string("layers." + std::to_string(i) + ".mlp.c_fc").c_str());
 
     c_fc = ff.gelu(c_fc);
 
@@ -172,7 +178,7 @@ void STARCODER::create_starcoder_model(
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers_" + std::to_string(i) + "_mlp_c_proj").c_str());
+        std::string("layers." + std::to_string(i) + ".mlp.c_proj").c_str());
   }
   // final normalization and linear
   ff.residual_layer_norm(residual,
@@ -184,8 +190,9 @@ void STARCODER::create_starcoder_model(
                          true,
                          startcoder_config.layer_norm_epsilon,
                          true,
+                         false,
                          DT_NONE,
-                         "transformer_ln_f");
+                         "ln_f");
   Tensor ln_f = res_ln_outputs[1];
 
   Tensor lm_head = ff.dense(ln_f,
@@ -218,22 +225,16 @@ void STARCODER::create_starcoder_model(
   }
 
   InferenceManager *im = InferenceManager::get_inference_manager();
-  // Compile the model
-  std::cout << "------start compile ----------" << std::endl;
-  im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            startcoder_config.num_attention_heads,
-                            1,
-                            startcoder_config.hidden_size,
-                            startcoder_config.hidden_size /
-                                startcoder_config.num_attention_heads,
-                            ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, use_full_precision);
-  std::cout << "------load weight finished----------" << std::endl;
-
-  // init operators
-  im->init_operators_inference(&ff);
+  FileDataLoader *fileloader = new FileDataLoader(
+      "",
+      weight_file_path,
+      startcoder_config.num_attention_heads,
+      1,
+      startcoder_config.hidden_size,
+      startcoder_config.hidden_size / startcoder_config.num_attention_heads,
+      ff.config.tensor_parallelism_degree,
+      use_full_precision);
+  im->register_model_weights_loader(&ff, fileloader);
 }
 
 }; // namespace FlexFlow

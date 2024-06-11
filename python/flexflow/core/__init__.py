@@ -41,6 +41,7 @@ ff_arg_to_sysarg = {
     "num_cpus": "-ll:cpu",
     "legion_utility_processors": "-ll:util",
     "profiling": "--profiling",
+    "benchmarking": "--benchmarking",
     "inference_debugging": "--inference-debugging",
     "fusion": "--fusion",
     "disable_control_replication": "--disable-control-replication",
@@ -87,7 +88,10 @@ ff_arg_to_sysarg = {
     "offload": "-offload",
     "offload_reserve_space_size": "-offload-reserve-space-size",
     "use_4bit_quantization": "--4bit-quantization",
-    "use_8bit_quantization": "--8bit-quantization"
+    "use_8bit_quantization": "--8bit-quantization",
+    "enable_peft": "-enable-peft",
+    "peft_activation_reserve_space_size": "-peft-activation-reserve-space-size",
+    "peft_weight_reserve_space_size": "-peft-weight-reserve-space-size",
 }
 
 

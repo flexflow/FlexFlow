@@ -18,6 +18,8 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
+#include "flexflow/utils/file_loader.h"
+#include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
 
@@ -30,7 +32,7 @@ using tokenizers::Tokenizer;
 
 class InferenceManager {
 public:
-  InferenceManager(FFConfig const &config);
+  InferenceManager();
   static InferenceManager *get_inference_manager();
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
@@ -38,16 +40,22 @@ public:
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
   void peft_bwd(FFModel *model, int index, BatchConfigFuture const &bc);
-  void load_input_tokens_from_batch_config(BatchConfigFuture const &bc,
-                                           ParallelTensor const input);
-  void load_positions(BatchConfigFuture const &bc,
+  void load_input_tokens_from_batch_config(FFModel *model,
+                                           BatchConfigFuture const &bc,
+                                           ParallelTensor const input,
+                                           FFHandler *handlers);
+  void load_positions(FFModel *model,
+                      BatchConfigFuture const &bc,
                       ParallelTensor position_input,
                       int offset);
+  void register_model_weights_loader(FFModel *, FileDataLoader *);
+  void load_inference_metadata_batch_config(FFModel *model,
+                                            BatchConfigFuture const &bc,
+                                            FFHandler *handlers);
 
 public:
-  FFConfig ff_config;
   std::unordered_map<ParallelTensor, std::vector<ParallelTensor>> tensor_buffer;
-  int num_devices;
+  std::unordered_map<FFModel *, FileDataLoader *> model_weights_loaders;
 };
 
 struct Request {
@@ -57,7 +65,6 @@ struct Request {
     COMPLETED = 103, // finished and verified
     FINISHING = 104, // finishing request, but not yet verified
   };
-  enum RequestType { REQ_INFERENCE = 201, REQ_FINETUNING = 202 };
   BatchConfig::RequestGuid guid;
   PEFTModelID peft_model_id = PEFTModelID::NO_ID;
   int max_sequence_length = 128;
@@ -71,21 +78,28 @@ struct Request {
   std::vector<struct BeamTree> beam_trees;
   // PEFT field
   RequestType req_type = REQ_INFERENCE;
+  size_t processed_finetuning_tokens = 0;
   int completed_training_steps = 0;
+  int dataset_entry_processed_tokens = 0;
   int max_training_steps = 1;
-  std::vector<std::pair<std::string, std::string>> dataset_text;
+  int benchmarking_tokens = -1;
+  std::vector<int> finetuning_tokens_per_batch;
+  bool warmup = false;
+  std::string dataset_filepath;
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,
                         std::vector<BatchConfig::TokenId>>>
       dataset;
+  friend std::ostream &operator<<(std::ostream &os, Request const &req);
 };
 
 // store the result of beam search
 struct BeamTree {
   struct treeLayer {
     BeamSearchBatchConfig::TokenId
-        tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    int parent_ids[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+        tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int parent_ids[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int nodes_num_this_layer = 0;
   };
   treeLayer treeLayers[BeamSearchBatchConfig::MAX_BEAM_DEPTH + 1];
 };
@@ -98,9 +112,15 @@ struct BeamTree {
 
 class RequestManager {
 public:
+  enum Status {
+    INITIALIZED = 1001,
+    SERVING = 1002,
+    TERMINATED = 1003,
+  };
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
 
+  static const RequestGuid INVALID_GUID = 0;
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
@@ -110,35 +130,65 @@ public:
   int get_max_requests_per_batch();
   void set_max_tokens_per_batch(int max_num_tokens);
   int get_max_tokens_per_batch();
+  void set_max_spec_tree_token_num(int max_num_tokens);
+  int get_max_spec_tree_token_num();
+  int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
+  void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
+  void set_enable_peft_finetuning(bool enable_peft_finetuning_);
+  static void set_inference_finished(bool finished = true);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
+  void initBitMask(BatchConfig::BitMask &bitmask, int initLength);
+  void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
+  void appendBitMask(BatchConfig::BitMask &bitmask,
+                     int newNodes,
+                     int preBeamSize,
+                     int old_sub_num,
+                     BeamTree const tree,
+                     int currentDepth);
+  void updateBitMask(BatchConfig::BitMask &bitmask,
+                     int initLength,
+                     int non_tree_size);
 
-  FFModel *get_model(int model_id);
+  FFModel *get_ssm_model(int model_id);
 
-  GenerationResult generate_incr_decoding(FFModel *llm,
-                                          std::vector<Request> const &requests);
-  GenerationResult generate_spec_infer(FFModel *llm,
-                                       std::vector<Request> const &requests);
+  void serve_incr_decoding(FFModel *model);
+  void serve_spec_infer(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(Request const &request_);
   RequestGuid register_new_peft_request(Request const &request_);
+
+  // Methods to start and terminate request manager's background task
+  void start_background_server(FFModel *model);
+  bool is_background_server_terminated();
+  void terminate_background_server();
+  static void terminate_background_server_at_exit();
+  // Methods to check and mark request completion
   bool is_request_completed(RequestGuid const &guid);
+  void trigger_request_completion_future(RequestGuid const &guid);
+  // Methods for preparing next batches
+  bool check_inf_req_completion(BatchConfig const &old_bc, int i);
+  void check_batch(BatchConfig const &old_bc, BatchConfig const &new_bc);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
-                                       InferenceResultFuture const &result);
+                                       InferenceResultFuture const &result,
+                                       Legion::Context ctx,
+                                       Legion::Runtime *runtime);
   BeamSearchBatchConfig
       prepare_next_batch_beam(BeamSearchBatchConfig const &old_bc,
                               BeamInferenceResult const &result);
   BeamSearchBatchConfigFuture
       prepare_next_batch_beam(BeamSearchBatchConfigFuture const &old_bc,
-                              BeamInferenceResultFuture const &result);
+                              BeamInferenceResultFuture const &result,
+                              Legion::Context ctx,
+                              Legion::Runtime *runtime);
   BeamSearchBatchConfig
       prepare_next_batch_init(TreeVerifyBatchConfig const &old_bc,
                               InferenceResult const &result,
@@ -146,15 +196,20 @@ public:
   BeamSearchBatchConfigFuture
       prepare_next_batch_init(TreeVerifyBatchConfigFuture const &old_bc,
                               InferenceResultFuture const &result,
-                              int model_id);
+                              int model_id,
+                              Legion::Context ctx,
+                              Legion::Runtime *runtime);
   TreeVerifyBatchConfig prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfig> const &old_batches);
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
-      std::vector<BeamSearchBatchConfigFuture> const &old_batches);
+      std::vector<BeamSearchBatchConfigFuture> const &old_batches,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
 
   void store_beam_metadata(BeamSearchBatchConfig const &old_bc,
                            BeamInferenceResult const &result);
   void update_beam_metadata(BeamSearchBatchConfig &new_bc,
+                            BeamSearchBatchConfig const &old_bc,
                             BeamTree &tree,
                             int request_index);
 
@@ -176,7 +231,11 @@ public:
           &inputSerializedTree,
       std::vector<std::pair<BatchConfig::TokenId, int>> const
           &outputSerializedTree);
-
+  static void background_serving_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
   static void
       load_tokens_task(Legion::Task const *task,
                        std::vector<Legion::PhysicalRegion> const &regions,
@@ -188,6 +247,11 @@ public:
                           Legion::Context ctx,
                           Legion::Runtime *runtime);
 
+  static void
+      load_batch_config_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static BatchConfig prepare_next_batch_task(
       Legion::Task const *task,
       std::vector<Legion::PhysicalRegion> const &regions,
@@ -216,7 +280,17 @@ private:
   // configuration parameters
   int max_requests_per_batch;
   int max_tokens_per_batch;
+  int max_spec_tree_token_num;
   int max_sequence_length;
+  Status request_manager_status;
+
+  // peft benchmarking
+  bool enable_peft_finetuning = false;
+  static bool inference_finished;
+
+  // tree width in each speculative step, if not specified 1
+  std::vector<int> spec_infer_tree_width;
+
   // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -229,12 +303,9 @@ private:
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
+  std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
+  std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
-  // Legion futures for inc_decoding and spec_infer
-  BatchConfigFuture last_bcf;
-  InferenceResultFuture last_irf;
-  TreeVerifyBatchConfigFuture last_tree_bcf;
-  InferenceResultFuture last_tree_irf;
 
   // TODO: Move this two vector to request struct
   std::unordered_map<RequestGuid,
@@ -244,15 +315,21 @@ private:
       committed_tokens;
 
   // Multi-model support
-  std::vector<FFModel *> models;
+  std::vector<FFModel *> ssm_models;
 
   // Performance profiling
   size_t num_processed_requests;
 
+  // Background server handler
+  Legion::Future background_server_handler;
+
 private:
   struct ProfileInfo {
-    int decoding_steps;
+    int llm_decoding_steps;
+    int ssm_decoding_steps;
     double start_time, finish_time;
+    double registration_time, first_token_time;
+    bool first_token_time_set = false;
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;

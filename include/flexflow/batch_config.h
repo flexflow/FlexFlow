@@ -48,6 +48,8 @@ public:
   int num_active_peft_tokens() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
+  static int max_verify_tokens_per_batch();
+  static int max_spec_tree_token_num();
   static int max_sequence_length();
   friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;
@@ -57,8 +59,9 @@ public:
   // Maximum possible values for different parameters
   // These maximum values are used for copying BatchConfig
   // across workers
-  static int const MAX_NUM_REQUESTS = 64;
+  static int const MAX_NUM_REQUESTS = 65;
   static int const MAX_NUM_TOKENS = 1024;
+  static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
 
   //  Set by update
 
@@ -74,6 +77,8 @@ public:
       num_tokens_in_batch = 0;
       max_sequence_length = 0;
       request_guid = 0;
+      prompt_phase = false;
+      batch_config_request_id = -1;
       peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
       peft_optimizer_update = false;
@@ -82,6 +87,10 @@ public:
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
     int max_sequence_length;
+
+    // request id in batch config:
+    int batch_config_request_id = -1;
+    bool prompt_phase = false;
     RequestGuid request_guid;
     // PEFT fields
     PEFTModelID peft_model_id;
@@ -95,6 +104,24 @@ public:
     int request_index;
     TokenId token_id;
   };
+
+  struct BitMask {
+    unsigned long long mask[MAX_SPEC_TREE_TOKEN_NUM] = {0};
+
+    // how many tokens before the tree, every sub requests need this part of
+    // cache
+    int non_tree_cache_size = 0;
+
+    // current tree size
+    int tree_size = 0;
+
+    int this_layer_size = 0;
+
+    // input length-> prompt/root
+    int prompt_size = 0;
+  };
+
+  BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
   PerTokenInfo labelsInfo[MAX_NUM_TOKENS];
@@ -144,11 +171,18 @@ public:
   bool done() const;
   int max_beam_depth_all_requests() const;
   int current_depth_all_requests() const;
+  int get_speculative_request_num() const;
 
   size_t beam_width;
   size_t target_iterations;
-  inline static int const MAX_BEAM_WIDTH = 1;
+
+  // how many requests is in speculative phase
+  int speculative_request_num = 0;
+  inline static int const MAX_BEAM_WIDTH = 3;
   inline static int const MAX_BEAM_DEPTH = 8;
+
+  // maximum tree branches for a request
+  inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 3;
 
   int model_id;
 
@@ -157,9 +191,11 @@ public:
     int current_depth = -1;
     int max_depth = MAX_BEAM_DEPTH;
 
-    BatchConfig::TokenId tokens[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    float probs[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-    int parent_id[BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+    BatchConfig::TokenId
+        tokens[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    float probs[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int parent_id[BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+    int sub_request_num;
   };
 
   struct BeamSearchPerTokenInfo {
@@ -167,9 +203,11 @@ public:
   };
 
   BeamSearchPerRequestInfo beamRequestsInfo[MAX_NUM_REQUESTS];
-  BeamSearchPerTokenInfo beamTokenInfo[MAX_NUM_TOKENS * MAX_BEAM_WIDTH];
-  // why is this == MAX_NUM_REQUESTS * MAX_BEAM_WIDTH?
-  int sub_requests[MAX_NUM_REQUESTS * MAX_BEAM_WIDTH];
+  BeamSearchPerTokenInfo
+      beamTokenInfo[MAX_NUM_TOKENS +
+                    MAX_SPEC_TREE_TOKEN_NUM * MAX_NUM_REQUESTS];
+
+  int sub_requests[MAX_NUM_REQUESTS];
 
 private:
   size_t current_iteration;
@@ -178,9 +216,12 @@ private:
 struct BeamInferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId
-      token_ids[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-  float probs[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
-  int parent_id[MAX_NUM_TOKENS * BeamSearchBatchConfig::MAX_BEAM_WIDTH];
+      token_ids[MAX_NUM_TOKENS *
+                BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+  float probs[MAX_NUM_TOKENS *
+              BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
+  int parent_id[MAX_NUM_TOKENS *
+                BeamSearchBatchConfig::MAX_SPECULATIVE_TREE_BRANCHES];
 };
 
 }; // namespace FlexFlow

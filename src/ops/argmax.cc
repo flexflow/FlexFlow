@@ -91,6 +91,9 @@ Op *ArgMax::create_operator_from_layer(
 ArgMaxParams ArgMax::get_params() const {
   ArgMaxParams params;
   params.beam_search = this->beam_search;
+  if (this->name != nullptr) {
+    strcpy(params.name, this->name);
+  }
   return params;
 }
 
@@ -140,7 +143,7 @@ ArgMax::ArgMax(FFModel &model,
                ArgMaxParams const &params,
                const ParallelTensor input,
                char const *name)
-    : ArgMax(model, input, params.beam_search, name) {}
+    : ArgMax(model, input, params.beam_search, params.name) {}
 
 void ArgMax::init_inference(FFModel const &ff,
                             std::vector<ParallelTensor> const &batch_inputs,
@@ -352,7 +355,6 @@ BeamInferenceResult
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
   ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
-
   BeamInferenceResult ir;
   copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
@@ -411,6 +413,8 @@ void ArgMax::backward(FFModel const &ff) {
 
 void ArgMax::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->beam_search);
+  sez.serialize(strlen(this->name));
+  sez.serialize(this->name, strlen(this->name));
 }
 
 Node ArgMax::deserialize(FFModel &ff,
@@ -420,8 +424,13 @@ Node ArgMax::deserialize(FFModel &ff,
   assert(num_inputs == 1);
   bool beam_search;
   dez.deserialize(beam_search);
+  size_t name_len;
+  char name[MAX_OPNAME] = {0};
+  dez.deserialize(name_len);
+  dez.deserialize(name, name_len);
   ArgMaxParams params;
   params.beam_search = beam_search;
+  strcpy(params.name, name);
   return ff.get_or_create_node<ArgMax>(inputs[0], params);
 }
 

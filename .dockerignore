@@ -17,3 +17,5 @@ python/flexflow/core/legion_cffi_header.py
 /inference/tokenizer/*
 /inference/prompt/*
 /inference/output/*
+
+/tests/inference/python_test_configs/*.json

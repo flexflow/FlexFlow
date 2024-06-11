@@ -17,7 +17,7 @@
 #include "flexflow/dataloader.h"
 #include "flexflow/mapper.h"
 #include "flexflow/request_manager.h"
-#include "inference/file_loader.h"
+#include "flexflow/utils/file_loader.h"
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -67,6 +67,8 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_generation_result_t, GenerationResult *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_lora_linear_config_t, LoraLinearConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_peft_model_id_t, PEFTModelID *);
 };
 
 Logger ffc_log("flexflow_c");
@@ -649,6 +651,7 @@ flexflow_tensor_t *
                                            bool elementwise_affine,
                                            float eps,
                                            bool use_bias,
+                                           bool inplace_residual,
                                            char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -672,6 +675,7 @@ flexflow_tensor_t *
                               elementwise_affine,
                               eps,
                               use_bias,
+                              inplace_residual,
                               input->data_type,
                               name);
   assert(tensor_outputs[0] != nullptr);
@@ -679,7 +683,7 @@ flexflow_tensor_t *
   DEBUG_PRINT("[ResidualLayerNorm] input %p, residual1 %p, residual2 "
               "%p, output0: %p, "
               "output1: %p, use_two_residuals: %d, elementwise_affine %d, eps "
-              "%f, use_bias: %d, name %s",
+              "%f, use_bias: %d, inplace_residual: %d, name %s",
               input,
               residual1,
               residual2,
@@ -689,6 +693,7 @@ flexflow_tensor_t *
               elementwise_affine,
               eps,
               use_bias,
+              inplace_residual,
               name);
   flexflow_tensor_t *tensor_outputs_wrapped =
       (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
@@ -706,6 +711,7 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
     bool elementwise_affine,
     float eps,
     bool use_bias,
+    bool inplace_residual,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   const Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -722,13 +728,14 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
                                        elementwise_affine,
                                        eps,
                                        use_bias,
+                                       inplace_residual,
                                        input->data_type,
                                        name);
   assert(tensor_outputs[0] != nullptr);
   assert(tensor_outputs[1] != nullptr);
   DEBUG_PRINT("[AddBiasResidualLayerNorm] input %p, residual %p, output0: %p, "
               "output1: %p, elementwise_affine %d, eps "
-              "%f, use_bias %d, name %s",
+              "%f, use_bias %d, inplace_residual: %d, name %s",
               input,
               residual,
               tensor_outputs[0],
@@ -736,6 +743,7 @@ flexflow_tensor_t *flexflow_model_add_add_bias_residual_layer_norm(
               elementwise_affine,
               eps,
               use_bias,
+              inplace_residual,
               name);
   flexflow_tensor_t *tensor_outputs_wrapped =
       (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
@@ -1469,13 +1477,20 @@ flexflow_tensor_t *
                                          const flexflow_tensor_t input2_,
                                          float eps,
                                          int dim,
+                                         bool inplace_residual,
                                          char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input1 = FFCObjectWrapper::unwrap(input1_);
   Tensor input2 = FFCObjectWrapper::unwrap(input2_);
   Tensor tensor_outputs[2];
-  handle->residual_rms_norm(
-      input1, input2, tensor_outputs, eps, dim, input1->data_type, name);
+  handle->residual_rms_norm(input1,
+                            input2,
+                            tensor_outputs,
+                            eps,
+                            dim,
+                            inplace_residual,
+                            input1->data_type,
+                            name);
   assert(tensor_outputs[0] != nullptr);
   assert(tensor_outputs[1] != nullptr);
   flexflow_tensor_t *tensor_outputs_wrapped =
@@ -1489,10 +1504,12 @@ flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,
                                                bool sorted,
+                                               bool speculative_decoding,
                                                char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
-  Tensor tensor = handle->arg_top_k(input, k, sorted, name);
+  Tensor tensor =
+      handle->arg_top_k(input, k, sorted, speculative_decoding, name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -1525,6 +1542,21 @@ flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Tensor tensor = handle->argmax(input, beam_search, name);
   return FFCObjectWrapper::wrap(tensor);
+}
+
+flexflow_peft_model_id_t flexflow_model_add_lora_layer(
+    flexflow_model_t handle_,
+    const flexflow_lora_linear_config_t peft_config_) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  LoraLinearConfig const *peft_config = FFCObjectWrapper::unwrap(peft_config_);
+  PEFTModelID *peft_model_id = handle->add_lora_layer(*peft_config);
+
+  DEBUG_PRINT("[Add Lora Layer] model handle: %p, peft_config handle %p, "
+              "peft_model_id: %p",
+              handle,
+              peft_config,
+              peft_model_id);
+  return FFCObjectWrapper::wrap(peft_model_id);
 }
 
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle_,
@@ -1580,34 +1612,76 @@ void flexflow_model_set_transformer_layer_id(flexflow_model_t handle_, int id) {
   handle->set_transformer_layer_id(id);
 }
 
-flexflow_generation_result_t
-    flexflow_model_generate(flexflow_model_t handle_,
-                            char const *input_text,
-                            int max_num_chars,
-                            char *output_text,
-                            int max_seq_length,
-                            int *output_length_and_tokens) {
+void flexflow_model_generate(flexflow_model_t handle_,
+                             int num_requests,
+                             enum RequestType *request_types,
+                             char const **input_texts,
+                             char **output_texts,
+                             int *max_seq_lengths,
+                             flexflow_peft_model_id_t *peft_model_ids,
+                             char const **dataset_filepaths,
+                             int *training_steps,
+                             int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-
-  std::string const text_str(input_text);
-
   std::vector<Request> requests;
-  Request inference_req;
-  inference_req.prompt = text_str;
-  inference_req.max_sequence_length = max_seq_length;
-  requests.push_back(inference_req);
 
-  GenerationResult result = handle->generate(requests);
-  DEBUG_PRINT(
-      "[Model] generate %p %s %i", handle, text_str.c_str(), max_seq_length);
-  assert(result.output_tokens.size() <= max_seq_length);
-  output_length_and_tokens[0] = result.output_tokens.size();
-  std::copy(result.output_tokens.begin(),
-            result.output_tokens.end(),
-            output_length_and_tokens + 1);
-  std::memcpy(
-      output_text, result.output_text.c_str(), result.output_text.length());
-  return FFCObjectWrapper::wrap(&result);
+  int finetuning_req_idx = 0;
+  for (int i = 0; i < num_requests; i++) {
+    if (request_types[i] == RequestType::REQ_INFERENCE) {
+      std::string const text_str(input_texts[i]);
+      Request inference_req;
+      inference_req.prompt = text_str;
+      inference_req.max_sequence_length = max_seq_lengths[i];
+      PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
+      if (peft_model_id != nullptr) {
+        inference_req.peft_model_id = *peft_model_id;
+      }
+      requests.push_back(inference_req);
+      DEBUG_PRINT("[Model] generate[%d] %p %s %i",
+                  i,
+                  handle,
+                  text_str.c_str(),
+                  max_seq_lengths[i]);
+    } else {
+      Request fine_tuning_req;
+      fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
+      fine_tuning_req.max_sequence_length = max_seq_lengths[i];
+      PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
+      if (peft_model_id != nullptr) {
+        fine_tuning_req.peft_model_id = *peft_model_id;
+      }
+      std::string const dataset_fp(dataset_filepaths[finetuning_req_idx]);
+      fine_tuning_req.dataset_filepath = dataset_fp;
+      fine_tuning_req.max_training_steps = training_steps[finetuning_req_idx];
+      requests.push_back(fine_tuning_req);
+      DEBUG_PRINT("[Model] generate[%d] %p %s %i %i",
+                  i,
+                  handle,
+                  dataset_fp.c_str(),
+                  max_seq_lengths[i],
+                  training_steps[finetuning_req_idx]);
+      finetuning_req_idx++;
+    }
+  }
+
+  std::vector<GenerationResult> results = handle->generate(requests);
+
+  for (int i = 0; i < num_requests; i++) {
+    if (request_types[i] == RequestType::REQ_INFERENCE) {
+      // If the prompt exceeds max seq len, check that we return the prompt with
+      // no additional token. Otherwise, check that the output does not exceed
+      // the max sequence length.
+      assert(results[i].output_tokens.size() <= max_seq_lengths[i] ||
+             results[i].output_tokens.size() == results[i].input_tokens.size());
+      output_length_and_tokens[i][0] = results[i].output_tokens.size();
+      std::copy(results[i].output_tokens.begin(),
+                results[i].output_tokens.end(),
+                output_length_and_tokens[i] + 1);
+      std::memcpy(output_texts[i],
+                  results[i].output_text.c_str(),
+                  results[i].output_text.length());
+    }
+  }
 }
 
 void flexflow_model_set_position_offset(flexflow_model_t handle_,
@@ -2573,11 +2647,27 @@ void flexflow_request_manager_set_max_tokens_per_batch(
   DEBUG_PRINT("[RequestManager] set max_tokens_per_batch %d", max_num_tokens);
 }
 
+void flexflow_request_manager_set_max_spec_tree_token_num(
+    flexflow_request_manager_t handle_, int max_num_tokens) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_spec_tree_token_num(max_num_tokens);
+  DEBUG_PRINT("[RequestManager] set max_spec_tree_token_num %d",
+              max_num_tokens);
+}
+
 void flexflow_request_manager_set_max_sequence_length(
     flexflow_request_manager_t handle_, int max_seq_length) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
   handle->set_max_sequence_length(max_seq_length);
   DEBUG_PRINT("[RequestManager] set max_sequence_length %d", max_seq_length);
+}
+
+void flexflow_request_manager_set_enable_peft_finetuning(
+    flexflow_request_manager_t handle_, bool enable_peft_finetuning_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_enable_peft_finetuning(enable_peft_finetuning_);
+  DEBUG_PRINT("[RequestManager] set_enable_peft_finetuning %d",
+              enable_peft_finetuning_);
 }
 
 void flexflow_request_manager_register_tokenizer(
@@ -2616,6 +2706,22 @@ int flexflow_request_manager_register_ssm_model(
   return handle->register_ssm_model(model_handle);
 }
 
+void flexflow_request_manager_start_background_server(
+    flexflow_request_manager_t handle_, flexflow_model_t model_handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  DEBUG_PRINT(
+      "[RequestManager] start background server %p %p", handle, model_handle);
+  handle->start_background_server(model_handle);
+}
+
+void flexflow_request_manager_terminate_background_server(
+    flexflow_request_manager_t handle_) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[RequestManager] terminate background server %p", handle);
+  handle->terminate_background_server();
+}
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
@@ -2644,6 +2750,20 @@ void flexflow_inference_manager_init_operators_inference(
   handle->init_operators_inference(model);
 }
 
+void flexflow_inference_manager_register_model_weights_loader(
+    flexflow_inference_manager_t handle_,
+    flexflow_model_t model_handle,
+    flexflow_file_data_loader_t loader_handle) {
+  InferenceManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model = FFCObjectWrapper::unwrap(model_handle);
+  FileDataLoader *loader = FFCObjectWrapper::unwrap(loader_handle);
+  DEBUG_PRINT("[InferenceManager] register_model_weights_loader %p %p %p",
+              handle,
+              model,
+              loader);
+  handle->register_model_weights_loader(model, loader);
+}
+
 // -----------------------------------------------------------------------
 // FileDataLoader
 // -----------------------------------------------------------------------
@@ -2654,7 +2774,8 @@ flexflow_file_data_loader_t
                                      int num_kv_heads,
                                      int hidden_dim,
                                      int qkv_inner_dim,
-                                     int tensor_parallelism_degree) {
+                                     int tensor_parallelism_degree,
+                                     bool use_full_precision) {
   assert(weight_file_path != nullptr &&
          "Cannot convert nullptr char * to std::string");
   std::string const weight_file_path_str(weight_file_path);
@@ -2664,7 +2785,8 @@ flexflow_file_data_loader_t
                                               num_kv_heads,
                                               hidden_dim,
                                               qkv_inner_dim,
-                                              tensor_parallelism_degree);
+                                              tensor_parallelism_degree,
+                                              use_full_precision);
   DEBUG_PRINT("[FileDataLoader] new %p", handle);
   return FFCObjectWrapper::wrap(handle);
 }
@@ -2676,9 +2798,61 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_) {
 }
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
-                                            flexflow_model_t model_handle_,
-                                            bool use_full_precision) {
+                                            flexflow_model_t model_handle_) {
   FileDataLoader *handle = FFCObjectWrapper::unwrap(handle_);
   FFModel *model = FFCObjectWrapper::unwrap(model_handle_);
-  handle->load_weights(model, use_full_precision);
+  handle->load_weights(model);
+}
+
+// -----------------------------------------------------------------------
+// LoraLinearConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_linear_config_t
+    flexflow_lora_linear_config_create(char const *cache_folder_,
+                                       char const *peft_model_id_) {
+  assert(cache_folder_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  assert(peft_model_id_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  std::string const cache_folder(cache_folder_);
+  std::string const peft_model_id(peft_model_id_);
+  LoraLinearConfig *handle = new LoraLinearConfig(cache_folder, peft_model_id);
+  DEBUG_PRINT("[LoraLinearConfig] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_lora_linear_config_destroy(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *peft_config = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[LoraLinearConfig] delete %p", peft_config);
+  delete peft_config;
+}
+
+// -----------------------------------------------------------------------
+// PEFTModelID
+// -----------------------------------------------------------------------
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create() {
+  PEFTModelID *handle = new PEFTModelID();
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+flexflow_peft_model_id_t flexflow_peft_model_id_create_id(size_t id) {
+  PEFTModelID *handle = new PEFTModelID(id);
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+flexflow_peft_model_id_t flexflow_peft_model_id_no_id() {
+  PEFTModelID *handle = const_cast<PEFTModelID*>(&PEFTModelID::NO_ID);
+  DEBUG_PRINT("[PEFTModelID] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_peft_model_id_destroy(flexflow_peft_model_id_t handle_) {
+  PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[PEFTModelID] delete %p", peft_model_id);
+  delete peft_model_id;
 }

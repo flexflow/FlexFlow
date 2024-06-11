@@ -41,7 +41,7 @@ def get_configs():
         # Define sample configs
         ff_init_configs = {
             # required parameters
-            "num_gpus": 4,
+            "num_gpus": 2,
             "memory_per_gpu": 14000,
             "zero_copy_memory_per_node": 40000,
             # optional parameters
@@ -49,12 +49,16 @@ def get_configs():
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
             "tensor_parallelism_degree": 1,
-            "pipeline_parallelism_degree": 4,
+            "pipeline_parallelism_degree": 2,
             "offload": False,
-            "offload_reserve_space_size": 1024**2,
+            "offload_reserve_space_size": 8 * 1024, # 8GB
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
+            "enable_peft": False,
+            "peft_activation_reserve_space_size": 1024, # 1GB
+            "peft_weight_reserve_space_size": 1024, # 1GB
             "profiling": False,
+            "benchmarking": False,
             "inference_debugging": False,
             "fusion": True,
         }
@@ -62,9 +66,9 @@ def get_configs():
             # required parameters
             "llm_model": "tiiuae/falcon-7b",
             # optional parameters
-            "cache_path": "",
+            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
-            "full_precision": True,
+            "full_precision": False,
             "prompt": "",
             "output_file": "",
         }
@@ -102,13 +106,16 @@ def main():
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
-
-    # Generation begins!
+    
+    llm.start_server()
+    
     if len(configs.prompt) > 0:
         prompts = [s for s in json.load(open(configs.prompt))]
         results = llm.generate(prompts)
     else:
         result = llm.generate("Three tips for staying healthy are: ")
+        
+    llm.stop_server()
 
 
 if __name__ == "__main__":

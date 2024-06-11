@@ -42,7 +42,11 @@ void OPT::create_opt_model(FFModel &ff,
   Tensor position_input;
   ff.set_position_offset(2);
   {
-    int const token_dims[] = {BatchConfig::max_tokens_per_batch(), 1};
+    int const token_dims[] = {
+        (mode == TREE_VERIFY_MODE || mode == BEAM_SEARCH_MODE)
+            ? BatchConfig::max_verify_tokens_per_batch()
+            : BatchConfig::max_tokens_per_batch(),
+        1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);
     position_input = ff.create_tensor<2>(token_dims, DT_INT32);
   }
@@ -90,8 +94,9 @@ void OPT::create_opt_model(FFModel &ff,
         opt_config.layer_norm_elementwise_affine,
         1e-05,
         true,
+        false,
         DT_NONE,
-        std::string("layers_" + std::to_string(i) + "_attention_layer_norm")
+        std::string("layers." + std::to_string(i) + ".self_attn_layer_norm")
             .c_str());
     Tensor residual = res_ln_outputs[0];
     Tensor hidden_states = res_ln_outputs[1];
@@ -117,7 +122,7 @@ void OPT::create_opt_model(FFModel &ff,
                 -0.5), /*scaling factor*/
             false,     /*qk_prod_scaling*/
             false,     /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".self_attn")
                 .c_str() /*name*/
         );
         break;
@@ -141,7 +146,7 @@ void OPT::create_opt_model(FFModel &ff,
                 -0.5), /*scaling factor*/
             false,     /*qk_prod_scaling*/
             false,     /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".self_attn")
                 .c_str() /*name*/
         );
         break;
@@ -165,7 +170,7 @@ void OPT::create_opt_model(FFModel &ff,
                 -0.5), /*scaling factor*/
             false,     /*qk_prod_scaling*/
             false,     /*position_bias*/
-            std::string("layers_" + std::to_string(i) + "_attention")
+            std::string("layers." + std::to_string(i) + ".self_attn")
                 .c_str() /*name*/
         );
         break;
@@ -182,9 +187,10 @@ void OPT::create_opt_model(FFModel &ff,
                                     opt_config.layer_norm_elementwise_affine,
                                     1e-05,
                                     true,
+                                    false,
                                     DT_NONE,
-                                    std::string("layers_" + std::to_string(i) +
-                                                "_add_bias_residual_layer_norm")
+                                    std::string("layers." + std::to_string(i) +
+                                                ".add_bias_residual_layer_norm")
                                         .c_str());
     added = res_ln_outputs[0];
     Tensor final_norm = res_ln_outputs[1];
@@ -201,7 +207,7 @@ void OPT::create_opt_model(FFModel &ff,
                  nullptr,
                  REG_MODE_NONE,
                  0.0f,
-                 std::string("layers_" + std::to_string(i) + "_fc1").c_str());
+                 std::string("layers." + std::to_string(i) + ".fc1").c_str());
     fc2 = ff.dense(fc1,
                    opt_config.hidden_size,
                    AC_MODE_NONE,
@@ -212,13 +218,10 @@ void OPT::create_opt_model(FFModel &ff,
                    nullptr,
                    REG_MODE_NONE,
                    0.0f,
-                   std::string("layers_" + std::to_string(i) + "_fc2").c_str());
+                   std::string("layers." + std::to_string(i) + ".fc2").c_str());
     // Low-Rank Adapter (LoRA) for the second linear layer
-    ff.lora_linear(
-        fc1,
-        fc2,
-        OP_LORA_MLP_SECOND,
-        std::string("layers_" + std::to_string(i) + "_fc2_lora").c_str());
+    // ff.lora_linear(std::string("fc2"), std::string("layers." +
+    // std::to_string(i) + ".fc2.lora").c_str());
   }
 
   // final
@@ -231,6 +234,7 @@ void OPT::create_opt_model(FFModel &ff,
                          opt_config.layer_norm_elementwise_affine,
                          1e-05,
                          true,
+                         false,
                          DT_NONE,
                          "final_layer_norm");
   Tensor all_final_norm = res_ln_outputs[1];
@@ -245,7 +249,7 @@ void OPT::create_opt_model(FFModel &ff,
                             nullptr,
                             REG_MODE_NONE,
                             0.0f,
-                            "embed_tokens_weight_lm_head");
+                            "lm_head");
 
   Tensor output;
   if (mode == BEAM_SEARCH_MODE) {
@@ -258,21 +262,17 @@ void OPT::create_opt_model(FFModel &ff,
     output = ff.argmax(softmax, /*beam_Search*/ false);
   }
 
-  //------------------- compile the model --------------------------------
-  std::cout << "------start compile ----------" << std::endl;
+  FileDataLoader *fileloader = new FileDataLoader(
+      "",
+      weight_file_path,
+      opt_config.num_attention_heads,
+      opt_config.num_attention_heads,
+      opt_config.hidden_size,
+      opt_config.hidden_size / opt_config.num_attention_heads,
+      ff.config.tensor_parallelism_degree,
+      use_full_precision);
   InferenceManager *im = InferenceManager::get_inference_manager();
-  im->compile_model_and_allocate_buffer(&ff);
-  FileDataLoader fileloader("",
-                            weight_file_path,
-                            opt_config.num_attention_heads,
-                            opt_config.num_attention_heads,
-                            opt_config.hidden_size,
-                            opt_config.hidden_size /
-                                opt_config.num_attention_heads,
-                            ff.config.tensor_parallelism_degree);
-  fileloader.load_weights(&ff, use_full_precision);
-  std::cout << "------finished loading weights----------" << std::endl;
-  im->init_operators_inference(&ff);
+  im->register_model_weights_loader(&ff, fileloader);
 }
 
 }; // namespace FlexFlow

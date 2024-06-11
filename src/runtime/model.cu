@@ -153,6 +153,30 @@ FFHandler
   } else {
     handle.offload_reserve_space = nullptr;
   }
+  if (handle.batch_config_metadata_size > 0) {
+    // allocate memory for offload reserve space
+    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                         .only_kind(Memory::GPU_FB_MEM)
+                         .best_affinity_to(task->target_proc)
+                         .first();
+    Realm::Rect<1, coord_t> bounds(
+        Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(handle.batch_config_metadata_size - 1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance workspaceInst;
+    Realm::RegionInstance::create_instance(workspaceInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
+                                           Realm::ProfilingRequestSet())
+        .wait();
+    handle.batch_config_metadata =
+        workspaceInst.pointer_untyped(0, sizeof(char));
+  } else {
+    handle.batch_config_metadata = nullptr;
+  }
 
   if (info->peft_activation_reserve_space_size > 0) {
     // allocate memory for peft activation reserve space
@@ -164,6 +188,8 @@ FFHandler
     handle.peft_activation_allocator = new MemoryAllocator(gpu_mem);
     handle.peft_activation_allocator->create_legion_instance(
         workspaceInst, info->peft_activation_reserve_space_size);
+  } else {
+    handle.peft_activation_allocator = nullptr;
   }
 
   if (info->peft_weight_reserve_space_size > 0) {
@@ -188,6 +214,8 @@ FFHandler
     void *ptr = workspaceInst.pointer_untyped(0, sizeof(char));
     handle.peft_weight_allocator =
         new PEFTWeightAllocator(ptr, info->peft_weight_reserve_space_size);
+  } else {
+    handle.peft_weight_allocator = nullptr;
   }
   // checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL
