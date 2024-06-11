@@ -239,15 +239,16 @@ void FlexFlow::top_level_task(Task const *task,
       peft_model_name.empty()
           ? LoraLinearConfig::EmptyConfig
           : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
-  
+
   LoraSGDOptimizerConfig *optim_config = nullptr;
   if (enable_peft_finetuning) {
     optim_config = new LoraSGDOptimizerConfig();
   }
   LoraLinearConfig peft_config_finetuning =
-      peft_model_name.empty()
-          ? LoraLinearConfig::EmptyConfig
-          : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name, true /*trainable*/,
+      peft_model_name.empty() ? LoraLinearConfig::EmptyConfig
+                              : LoraLinearConfig(file_paths.cache_folder_path,
+                                                 peft_model_name,
+                                                 true /*trainable*/,
                                                  optim_config);
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
@@ -347,8 +348,9 @@ void FlexFlow::top_level_task(Task const *task,
              file_paths.dataset_file_path.c_str());
       Request fine_tuning_req;
       fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-      fine_tuning_req.peft_model_id =
-          (peft_model_id_finetuning != nullptr) ? *peft_model_id_finetuning : PEFTModelID::NO_ID;
+      fine_tuning_req.peft_model_id = (peft_model_id_finetuning != nullptr)
+                                          ? *peft_model_id_finetuning
+                                          : PEFTModelID::NO_ID;
       fine_tuning_req.dataset_filepath = file_paths.dataset_file_path;
       fine_tuning_req.max_training_steps = 1;
       requests.push_back(fine_tuning_req);
