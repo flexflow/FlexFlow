@@ -12,14 +12,14 @@ struct LocalCostEstimator : public ICostEstimator {
   ~LocalCostEstimator() = default;
 
   float estimate_cost(PCGOperatorAttrs const &op,
-                              std::vector<ParallelTensorShape> const &inputs,
-                              std::vector<ParallelTensorAttrs> const &weights,
-                              std::vector<ParallelTensorAttrs> const &outputs,
-                              MachineView const &mv) const override;
-  
+                      std::vector<ParallelTensorShape> const &inputs,
+                      std::vector<ParallelTensorAttrs> const &weights,
+                      std::vector<ParallelTensorAttrs> const &outputs,
+                      MachineView const &mv) const override;
+
   float estimate_cost(ParallelTensorShape const &tensor_shape,
-                              MachineView const &src,
-                              MachineView const &dst) const override;
+                      MachineView const &src,
+                      MachineView const &dst) const override;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalCostEstimator);
 
