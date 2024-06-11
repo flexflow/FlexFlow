@@ -446,7 +446,7 @@ __global__ void prepare_inference_params_kernel(int const num_requests,
   for (int i = indices_offset; i < indices_lens; i++) {
     kv_indices[i] = max_num_pages * requext_idx_in_batch + (i - indices_offset);
   }
-  kv_last_page_len[request_idx] = kv_len % kPagesize;
+  kv_last_page_len[request_idx] = (kv_len - 1) % kPagesize + 1;
   qk_indptr[request_idx + 1] = qk_len;
 }
 
