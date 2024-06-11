@@ -153,6 +153,7 @@ public:
   int32_t *kv_indptr;
   int32_t *kv_indices;
   int32_t *kv_last_page_len;
+  int32_t *qk_indptr;
   float *custom_mask;
   size_t workspace_size;
   void *workspace;

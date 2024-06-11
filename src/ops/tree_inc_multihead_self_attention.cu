@@ -410,7 +410,8 @@ __global__ void prepare_inference_params_kernel(int const num_requests,
                           int32_t *q_indptr,
                           int32_t *kv_indptr,
                           int32_t *kv_indices,
-                          int32_t *kv_last_page_len) {
+                          int32_t *kv_last_page_len,
+                          int32_t *qk_indptr) {
   int const request_idx = blockIdx.x * blockDim.x + threadIdx.x;
   if (request_idx >= num_requests) {
     return;
@@ -418,15 +419,17 @@ __global__ void prepare_inference_params_kernel(int const num_requests,
 
   // request id in batch config
   int requext_idx_in_batch = -1;
-  int cnt_1 = 0, q_lens = 0;
+  int cnt_1 = 0, q_lens = 0, qk_len = 0;
   int indices_offset = 0, indices_lens = 0, kv_len = 0;
   while (cnt_1 < request_idx + 1) {
     requext_idx_in_batch++;
     if (request_available[requext_idx_in_batch]) {
       cnt_1++;
-      q_lens += request_infos[requext_idx_in_batch].num_tokens_in_batch;
+      int q_len = request_infos[requext_idx_in_batch].num_tokens_in_batch;
+      q_lens += q_len;
       kv_len = request_infos[requext_idx_in_batch].num_tokens_in_batch +
                   request_infos[requext_idx_in_batch].first_token_index_in_request;
+      qk_len += q_len * kv_len;
       indices_offset = indices_lens;
       indices_lens += (kv_len + kPagesize - 1) / kPagesize;
     }
@@ -435,6 +438,7 @@ __global__ void prepare_inference_params_kernel(int const num_requests,
   if (request_idx == 0) {
     q_indptr[0] = 0;
     kv_indptr[0] = 0;
+    qk_indptr[0] = 0;
   }
   __syncthreads();
   q_indptr[request_idx + 1] = q_lens;
@@ -443,6 +447,7 @@ __global__ void prepare_inference_params_kernel(int const num_requests,
     kv_indices[i] = max_num_pages * requext_idx_in_batch + (i - indices_offset);
   }
   kv_last_page_len[request_idx] = kv_len % kPagesize;
+  qk_indptr[request_idx + 1] = qk_len;
 }
 
 template <typename DT>
@@ -560,7 +565,8 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->q_indptr,
         m->kv_indptr,
         m->kv_indices,
-        m->kv_last_page_len);
+        m->kv_last_page_len,
+        m->qk_indptr);
   }
 
   half* q = static_cast<half *>(m->queryTmp),
@@ -597,7 +603,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         HEAD_DIM, PosEncodingMode::kNone, false, MaskMode::kCustom,
         half, half, int32_t>(
           &handler, q, m->q_indptr, /*q_offset=*/nullptr, paged_kv,
-          m->custom_mask, /*qk_indptr=*/nullptr, o, /*lse=*/nullptr,
+          m->custom_mask, m->qk_indptr, o, /*lse=*/nullptr,
           sm_scale, /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
     }
     if (result != cudaSuccess) {
@@ -864,7 +870,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     size_t batch_size = BatchConfig::max_requests_per_batch();
     size_t max_num_pages = (BatchConfig::max_spec_tree_token_num() + 
                   BatchConfig::max_sequence_length() + kPagesize - 1) / kPagesize;
-    size_t indices_size = std::max((batch_size + 1) * 3 + max_num_pages * batch_size,
+    size_t indices_size = std::max((batch_size + 1) * 4 + max_num_pages * batch_size,
                             1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
                               BatchConfig::max_spec_tree_token_num() *
@@ -880,6 +886,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     kv_indptr = q_indptr + batch_size + 1;
     kv_indices = kv_indptr + batch_size + 1;
     kv_last_page_len = kv_indices + max_num_pages * batch_size;
+    qk_indptr = kv_last_page_len + batch_size + 1;
     custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
     workspace = static_cast<void *>(gpu_mem_allocator.allocate_instance<char>(workspace_size));
   }
