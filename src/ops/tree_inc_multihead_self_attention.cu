@@ -519,6 +519,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const num_kv_heads = m->num_kv_heads;
   uint32_t const group_size = num_q_heads / num_kv_heads;
   uint32_t const head_dim = m->qProjSize;
+  uint32_t const page_size = BatchConfig::max_sequence_length() + BatchConfig::max_spec_tree_token_num();
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
 
@@ -541,12 +542,13 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       * kv = static_cast<half *>(m->keyCache),
       * o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
-    num_kv_heads, kPagesize, head_dim, batch_size, kv,
+    num_kv_heads, page_size, head_dim, batch_size, kv,
     m->kv_indices, m->kv_indptr, m->kv_last_page_len);
-  size_t workspace_size = 32 * 1024 * 1024;
-  BatchPrefillHandler handler(workspace_size);
+
+  BatchPrefillHandler handler;
+  handler.SetCUDAStream(stream);
   handler.BeginForward(
-      m->workspace, workspace_size, m->q_indptr, batch_size,
+      m->workspace, m->workspace_size, m->q_indptr, batch_size,
       num_q_heads, num_kv_heads, head_dim);
 
   DISPATCH_GROUPSIZE(
@@ -554,7 +556,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       DISPATCH_HEADDIM(
         head_dim, HEAD_DIM, {
           DISPATCH_PAGESIZE(
-            kPagesize, PAGE_SIZE, {
+            page_size, PAGE_SIZE, {
     cudaError_t result;
     if (bc->prompt_phase) {
       result = BatchPrefillWithPagedKVCacheWrapperDispatched<
@@ -631,9 +633,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // "\n";
 
   if (!bc->prompt_phase) {
-    // commit_tokens(m, bc, stream);
+    commit_tokens(m, bc, stream);
 
-    orig_commit_tokens(m, bc, stream);
+    // orig_commit_tokens(m, bc, stream);
   }
 
   // After commit we update m->num_active_tokens to be the number of active
@@ -662,10 +664,10 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   }
 
   // Update key-val cache, compact q array
-  // update_qkv_cache<DT>(m, bc, stream);
+  update_qkv_cache<DT>(m, bc, stream);
 
   // Compute attention
-  // tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
   // {
@@ -688,8 +690,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   delete[] temp_output;
   // }
 
-  orig_update_qkv_cache<DT>(m, bc, stream);
-  orig_tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+  // orig_update_qkv_cache<DT>(m, bc, stream);
+  // orig_tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
@@ -701,6 +703,22 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       bias_ptr,
                       processed_tokens_in_batch,
                       stream);
+  
+  // {
+  //   int size = m->oProjSize;
+  //   DT *temp_output = new DT[size];
+  //   cudaDeviceSynchronize();
+  //   cudaMemcpy(
+  //       temp_output, output_ptr + m->oProjSize * (bc->num_active_tokens() - 1), size * sizeof(DT),
+  //       cudaMemcpyDeviceToHost);
+  //   printf("Output :");
+  //   for (int i = 0; i < size; ++i) {
+  //     printf("%.6f ", static_cast<float>(temp_output[i]));
+  //   }
+  //   printf("\n");
+
+  //   delete[] temp_output;
+  // }
 }
 
 } // namespace TreeIncMultiHeadAttention
@@ -824,7 +842,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                               BatchConfig::max_spec_tree_token_num() *
                               (BatchConfig::max_spec_tree_token_num() +
                                 BatchConfig::max_sequence_length());
-    size_t workspace_size = 32 * 1024 * 1024; // 32MB
+    workspace_size = 32 * 1024 * 1024; // 32MB
     
     gpu_mem_allocator.create_legion_instance(flashinfer_reserve_inst, 
                 sizeof(int32_t) * indices_size +
