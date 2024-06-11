@@ -173,7 +173,7 @@ template cudaError_t SinglePrefillWithKVCacheDispatched<
     float rope_theta, cudaStream_t stream);
 
 
-constexpr uint32_t kPagesize = 512 + 64;
+constexpr uint32_t kPagesize = 64;
 // num_frags_x[] = {1, 2};
 // group_size[] = {1, 4, 8};
 // head_dim[] = {64, 128, 256};

@@ -1374,6 +1374,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                        kProjSize * num_q_heads +
                                                        vProjSize * num_q_heads);
     size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0, qk_prod_size = 0;
+    assert((BatchConfig::max_sequence_length() + BatchConfig::max_spec_tree_token_num()) % kPagesize == 0);
+    size_t max_num_pages = (BatchConfig::max_sequence_length() +
+                BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;
     switch (infer_mode) {
       case INC_DECODING_MODE: {
         key_cache_size = num_q_heads * kProjSize *
@@ -1407,15 +1410,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
                          BatchConfig::max_requests_per_batch() *
-                         (BatchConfig::max_sequence_length() +
-                          BatchConfig::max_spec_tree_token_num());
+                         max_num_pages * kPagesize;
         value_cache_size = num_q_heads * vProjSize *
                            BatchConfig::max_requests_per_batch() *
-                           (BatchConfig::max_sequence_length() +
-                            BatchConfig::max_spec_tree_token_num());
+                           max_num_pages * kPagesize;
         qk_prod_size = BatchConfig::max_sequence_length() *
-                       (BatchConfig::max_sequence_length() +
-                        BatchConfig::max_spec_tree_token_num()) *
+                       max_num_pages * kPagesize *
                        num_q_heads;
         break;
       }

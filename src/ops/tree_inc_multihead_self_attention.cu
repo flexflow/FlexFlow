@@ -65,9 +65,6 @@
     }                                                  \
   }
 
-// kPagesize also defined in tree_inc_multihead_self_attention_impl.cu
-// for template instantiation
-constexpr uint32_t kPagesize = 512 + 64;
 #define DISPATCH_PAGESIZE(page_size, PAGE_SIZE, ...)  \
   if (page_size == kPagesize) {                        \
     constexpr size_t PAGE_SIZE = kPagesize;            \
@@ -99,12 +96,28 @@ using flashinfer::paged_kv_t;
 using flashinfer::BatchPrefillHandler;
 using flashinfer::BatchPrefillWithPagedKVCacheWrapperDispatched;
 
+__device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
+                                                    int const token_idx,
+                                                    int const max_num_pages,
+                                                    int const hidden_size) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize *2 +
+          token_idx % kPagesize) * hidden_size;
+}
+
+__device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
+                                                    int const token_idx,
+                                                    int const max_num_pages,
+                                                    int const hidden_size) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize *2 +
+          kPagesize + token_idx % kPagesize) * hidden_size;
+}
+
 __global__ void commit_tokens_kernel(
     half *kCache_ptr,
     BatchConfig::CommittedTokensInfo const *committedTokenInfos,
     int token_pos,
     int num_active_tokens_in_last_batch,
-    int max_seq_len,
+    int const max_num_pages,
     int hidden_size) {
   int const index_in_kv_cache = committedTokenInfos[token_pos].index_in_kv_cache;
   if (index_in_kv_cache == -1) {
@@ -114,10 +127,10 @@ __global__ void commit_tokens_kernel(
   int const req_id = committedTokenInfos[token_pos].request_index;
   int const tok_id = committedTokenInfos[token_pos].token_depth;
 
-  size_t from_k_idx = (req_id * max_seq_len * 2 + index_in_kv_cache) * hidden_size,
-         from_v_idx = (req_id * max_seq_len * 2 + max_seq_len + index_in_kv_cache) * hidden_size;
-  size_t to_k_idx = (req_id * max_seq_len * 2 + tok_id) * hidden_size,
-          to_v_idx = (req_id * max_seq_len * 2 + max_seq_len + tok_id) * hidden_size;
+  size_t from_k_idx = get_k_entry_offset(req_id, index_in_kv_cache, max_num_pages, hidden_size),
+         from_v_idx = get_v_entry_offset(req_id, index_in_kv_cache, max_num_pages, hidden_size);
+  size_t to_k_idx = get_k_entry_offset(req_id, tok_id, max_num_pages, hidden_size),
+         to_v_idx = get_v_entry_offset(req_id, tok_id, max_num_pages, hidden_size);
   assert(to_k_idx <= from_k_idx);
 
   CUDA_KERNEL_LOOP(offset, hidden_size) {
@@ -130,6 +143,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    BatchConfig const *bc,
                    cudaStream_t stream) {
   int num_tokens_to_commit = bc->num_tokens_to_commit;
+  int const max_num_pages = (BatchConfig::max_sequence_length() + 
+          BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;
   // TODO: parallel across queries
   for (int i = 0; i < num_tokens_to_commit; i++) {
     int parallelism = m->hidden_size;
@@ -141,8 +156,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->committed_token_infos,
         i,
         m->num_active_tokens, // number of active tokens in previous batch
-        BatchConfig::max_sequence_length() +
-            BatchConfig::max_spec_tree_token_num(),
+        max_num_pages,
         m->hidden_size);
   }
 }
@@ -282,7 +296,7 @@ __global__ void update_qkv_cache_kernel(
     half *kCache_ptr,
     BatchConfig::PerTokenInfo const *tokenInfos,
     BatchConfig::PerRequestInfo *request_infos,
-    int max_seq_len,
+    int const max_num_pages,
     int hidden_size,
     int num_new_tokens) {
   int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -297,8 +311,8 @@ __global__ void update_qkv_cache_kernel(
 
   size_t from_idx =
         token_idx * QKV_WEIGHT_NUM * hidden_size;
-  size_t to_k_idx = (req_idx * max_seq_len * 2 + token_abs_idx) * hidden_size,
-         to_v_idx = (req_idx * max_seq_len * 2 + max_seq_len + token_abs_idx) * hidden_size;
+  size_t to_k_idx = get_k_entry_offset(req_idx, token_abs_idx, max_num_pages, hidden_size),
+         to_v_idx = get_v_entry_offset(req_idx, token_abs_idx, max_num_pages, hidden_size);
 
   // key and value cache should be stored interleaved
   kCache_ptr[to_k_idx + offset] = 
@@ -316,6 +330,8 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
   // update the kv cache, compact the q array
   int num_new_tokens = bc->num_active_tokens();
   int parallelism = m->hidden_size * num_new_tokens;
+  int const max_num_pages = (BatchConfig::max_sequence_length() + 
+          BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;
   update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
                             min(CUDA_NUM_THREADS, parallelism),
                             0,
@@ -325,8 +341,7 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
       static_cast<half *>(m->keyCache),
       m->token_infos,
       m->request_infos,
-      BatchConfig::max_sequence_length() +
-          BatchConfig::max_spec_tree_token_num(),
+      max_num_pages,
       m->hidden_size,
       num_new_tokens);
 }
@@ -391,6 +406,7 @@ void orig_update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
 __global__ void prepare_inference_params_kernel(int const num_requests,
                           BatchConfig::PerRequestInfo *request_infos,
                           bool *request_available,
+                          uint32_t const max_num_pages,
                           int32_t *q_indptr,
                           int32_t *kv_indptr,
                           int32_t *kv_indices,
@@ -403,11 +419,16 @@ __global__ void prepare_inference_params_kernel(int const num_requests,
   // request id in batch config
   int requext_idx_in_batch = -1;
   int cnt_1 = 0, q_lens = 0;
+  int indices_offset = 0, indices_lens = 0, kv_len = 0;
   while (cnt_1 < request_idx + 1) {
     requext_idx_in_batch++;
     if (request_available[requext_idx_in_batch]) {
       cnt_1++;
       q_lens += request_infos[requext_idx_in_batch].num_tokens_in_batch;
+      kv_len = request_infos[requext_idx_in_batch].num_tokens_in_batch +
+                  request_infos[requext_idx_in_batch].first_token_index_in_request;
+      indices_offset = indices_lens;
+      indices_lens += (kv_len + kPagesize - 1) / kPagesize;
     }
   }
 
@@ -417,10 +438,11 @@ __global__ void prepare_inference_params_kernel(int const num_requests,
   }
   __syncthreads();
   q_indptr[request_idx + 1] = q_lens;
-  kv_indptr[request_idx + 1] = request_idx + 1;
-  kv_indices[request_idx] = requext_idx_in_batch;
-  kv_last_page_len[request_idx] = request_infos[requext_idx_in_batch].num_tokens_in_batch +
-                                  request_infos[requext_idx_in_batch].first_token_index_in_request;
+  kv_indptr[request_idx + 1] = indices_lens;
+  for (int i = indices_offset; i < indices_lens; i++) {
+    kv_indices[i] = max_num_pages * requext_idx_in_batch + (i - indices_offset);
+  }
+  kv_last_page_len[request_idx] = kv_len % kPagesize;
 }
 
 template <typename DT>
@@ -520,7 +542,8 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const num_kv_heads = m->num_kv_heads;
   uint32_t const group_size = num_q_heads / num_kv_heads;
   uint32_t const head_dim = m->qProjSize;
-  uint32_t const page_size = BatchConfig::max_sequence_length() + BatchConfig::max_spec_tree_token_num();
+  uint32_t const max_num_pages = (BatchConfig::max_sequence_length() + 
+                      BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
 
@@ -533,6 +556,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         batch_size,
         m->request_infos,
         m->request_available,
+        max_num_pages,
         m->q_indptr,
         m->kv_indptr,
         m->kv_indices,
@@ -543,7 +567,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       * kv = static_cast<half *>(m->keyCache),
       * o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
-    num_kv_heads, page_size, head_dim, batch_size, kv,
+    num_kv_heads, kPagesize, head_dim, batch_size, kv,
     m->kv_indices, m->kv_indptr, m->kv_last_page_len);
 
   BatchPrefillHandler handler;
@@ -557,7 +581,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       DISPATCH_HEADDIM(
         head_dim, HEAD_DIM, {
           DISPATCH_PAGESIZE(
-            page_size, PAGE_SIZE, {
+            kPagesize, PAGE_SIZE, {
     cudaError_t result;
     if (bc->prompt_phase) {
       result = BatchPrefillWithPagedKVCacheWrapperDispatched<
@@ -838,7 +862,10 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   {
     size_t batch_size = BatchConfig::max_requests_per_batch();
-    size_t indices_size = std::max((batch_size + 1) * 4, 1ul * 1024 * 1024);
+    size_t max_num_pages = (BatchConfig::max_spec_tree_token_num() + 
+                  BatchConfig::max_sequence_length() + kPagesize - 1) / kPagesize;
+    size_t indices_size = std::max((batch_size + 1) * 3 + max_num_pages * batch_size,
+                            1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
                               BatchConfig::max_spec_tree_token_num() *
                               (BatchConfig::max_spec_tree_token_num() +
@@ -850,9 +877,9 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                 sizeof(float) * custom_mask_size + workspace_size);
 
     q_indptr = gpu_mem_allocator.allocate_instance<int32_t>(indices_size);
-    kv_indptr = q_indptr + indices_size / 4;
-    kv_indices = kv_indptr + indices_size / 4;
-    kv_last_page_len = kv_indices + indices_size / 4;
+    kv_indptr = q_indptr + batch_size + 1;
+    kv_indices = kv_indptr + batch_size + 1;
+    kv_last_page_len = kv_indices + max_num_pages * batch_size;
     custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
     workspace = static_cast<void *>(gpu_mem_allocator.allocate_instance<char>(workspace_size));
   }
