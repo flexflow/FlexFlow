@@ -954,8 +954,7 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
   for (auto const &kv : params.peft_configs) {
     hash_combine(key, kv.first.id);
     hash_combine(key, kv.second.rank);
-    hash_combine(key, kv.second.optimizer_type);
-    hash_combine(key, kv.second.learning_rate);
+    hash_combine(key, kv.second.optimizer_config->type);
     hash_combine(key, kv.second.cache_folder);
     hash_combine(key, kv.second.peft_model_id);
     hash_combine(key, kv.second.lora_alpha);

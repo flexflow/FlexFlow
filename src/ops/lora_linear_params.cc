@@ -134,7 +134,6 @@ LoraLinearConfig::LoraLinearConfig(std::string const &cache_folder_,
 
 bool operator==(LoraLinearConfig const &lhs, LoraLinearConfig const &rhs) {
   if (lhs.rank == rhs.rank && lhs.optimizer_config == rhs.optimizer_config &&
-      lhs.learning_rate == rhs.learning_rate &&
       lhs.cache_folder == rhs.cache_folder &&
       lhs.peft_model_id == rhs.peft_model_id &&
       lhs.lora_alpha == rhs.lora_alpha &&
