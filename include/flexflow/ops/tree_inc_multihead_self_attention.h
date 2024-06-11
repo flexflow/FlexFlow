@@ -157,6 +157,7 @@ public:
   float *custom_mask;
   size_t workspace_size;
   void *workspace;
+  void *batch_prefill_handler;
 };
 
 }; // namespace FlexFlow

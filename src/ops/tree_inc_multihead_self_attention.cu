@@ -576,9 +576,9 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     num_kv_heads, kPagesize, head_dim, batch_size, kv,
     m->kv_indices, m->kv_indptr, m->kv_last_page_len);
 
-  BatchPrefillHandler handler;
-  handler.SetCUDAStream(stream);
-  handler.BeginForward(
+  BatchPrefillHandler *handler = static_cast<BatchPrefillHandler *>(m->batch_prefill_handler);
+  handler->SetCUDAStream(stream);
+  handler->BeginForward(
       m->workspace, m->workspace_size, m->q_indptr, batch_size,
       num_q_heads, num_kv_heads, head_dim);
 
@@ -594,7 +594,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         PageStorage::kIndices, QKVLayout::kNHD, PAGE_SIZE, GROUP_SIZE,
         HEAD_DIM, PosEncodingMode::kNone, false, MaskMode::kCausal,
         half, half, int32_t>(
-          &handler, q, m->q_indptr, /*q_offset=*/nullptr, paged_kv,
+          handler, q, m->q_indptr, /*q_offset=*/nullptr, paged_kv,
           /*custom_mask=*/nullptr, /*qk_indptr=*/nullptr, o, /*lse=*/nullptr,
           sm_scale, /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
     } else {
@@ -602,7 +602,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
         PageStorage::kIndices, QKVLayout::kNHD, PAGE_SIZE, GROUP_SIZE,
         HEAD_DIM, PosEncodingMode::kNone, false, MaskMode::kCustom,
         half, half, int32_t>(
-          &handler, q, m->q_indptr, /*q_offset=*/nullptr, paged_kv,
+          handler, q, m->q_indptr, /*q_offset=*/nullptr, paged_kv,
           m->custom_mask, m->qk_indptr, o, /*lse=*/nullptr,
           sm_scale, /*rope_scale=*/1.f, /*rope_theta=*/static_cast<float>(1e4), stream);
     }
@@ -889,6 +889,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     qk_indptr = kv_last_page_len + batch_size + 1;
     custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
     workspace = static_cast<void *>(gpu_mem_allocator.allocate_instance<char>(workspace_size));
+    batch_prefill_handler = static_cast<void *>(new flashinfer::BatchPrefillHandler);
   }
 
   // allocate memory for the seqArray and reserve space
@@ -913,6 +914,7 @@ TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
   if (flashinfer_reserve_inst != Realm::RegionInstance::NO_INST) {
     flashinfer_reserve_inst.destroy();
   }
+  delete static_cast<flashinfer::BatchPrefillHandler *>(batch_prefill_handler);
 }
 
 }; // namespace FlexFlow
