@@ -3,7 +3,6 @@ name = "PatternSplit"
 features = [
   "eq",
   # "ord",
-  "json",
   "fmt",
 ]
 

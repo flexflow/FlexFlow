@@ -3,7 +3,7 @@
 namespace FlexFlow {
 
 int get_dst_idx(UpwardOpenPatternEdge const &e) {
-  return get_src_idx(e.raw_edge);
+  return get_dst_idx(e.raw_edge);
 }
 
 } // namespace FlexFlow

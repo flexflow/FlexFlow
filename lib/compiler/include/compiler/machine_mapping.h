@@ -10,7 +10,7 @@
 namespace FlexFlow {
 
 using SubParallelComputationGraphView =
-    OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
+    OutputLabelledOpenMultiDiGraphView<ParallelLayerAttrs, ParallelTensorAttrs>;
 
 struct MachineMapping {
   static MachineMapping combine(MachineMapping const &, MachineMapping const &);
@@ -63,7 +63,7 @@ private:
 OptimalCostResult
     optimal_cost(ParallelComputationGraph const &g,
                  std::function<std::unordered_set<MachineView>(
-                     Operator const &, MachineSpecification const &)> const
+                     ParallelLayerAttrs const &, MachineSpecification const &)> const
                      &allowed_machine_views,
                  CostEstimator const &cost_estimator,
                  MachineSpecification const &resources,

@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/unlabelled/pattern_split.struct.toml
 /* proj-data
 {
-  "generated_from": "8604edb5bd1a546ffa94ef496888e46d"
+  "generated_from": "05ebc8db0a83166a867af7d7f268fbc5"
 }
 */
 
@@ -11,7 +11,6 @@
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_PATTERN_SPLIT_DTG_H
 
 #include "fmt/format.h"
-#include "nlohmann/json.hpp"
 #include "substitutions/unlabelled/pattern_node.dtg.h"
 #include "utils/graph.h"
 #include <ostream>
@@ -21,8 +20,9 @@
 namespace FlexFlow {
 struct PatternSplit {
   PatternSplit() = delete;
-  PatternSplit(std::unordered_set<::FlexFlow::PatternNode> const &first,
-               std::unordered_set<::FlexFlow::PatternNode> const &second);
+  explicit PatternSplit(
+      std::unordered_set<::FlexFlow::PatternNode> const &first,
+      std::unordered_set<::FlexFlow::PatternNode> const &second);
 
   bool operator==(PatternSplit const &) const;
   bool operator!=(PatternSplit const &) const;
@@ -30,14 +30,6 @@ struct PatternSplit {
   std::unordered_set<::FlexFlow::PatternNode> second;
 };
 } // namespace FlexFlow
-
-namespace nlohmann {
-template <>
-struct adl_serializer<FlexFlow::PatternSplit> {
-  static FlexFlow::PatternSplit from_json(json const &);
-  static void to_json(json &, FlexFlow::PatternSplit const &);
-};
-} // namespace nlohmann
 
 namespace FlexFlow {
 std::string format_as(PatternSplit const &);

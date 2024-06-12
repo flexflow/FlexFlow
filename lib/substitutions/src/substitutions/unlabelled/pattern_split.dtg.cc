@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/unlabelled/pattern_split.struct.toml
 /* proj-data
 {
-  "generated_from": "8604edb5bd1a546ffa94ef496888e46d"
+  "generated_from": "05ebc8db0a83166a867af7d7f268fbc5"
 }
 */
 
@@ -28,22 +28,6 @@ bool PatternSplit::operator!=(PatternSplit const &other) const {
          std::tie(other.first, other.second);
 }
 } // namespace FlexFlow
-
-namespace nlohmann {
-FlexFlow::PatternSplit
-    adl_serializer<FlexFlow::PatternSplit>::from_json(json const &j) {
-  return {
-      j.at("first").template get<std::unordered_set<::FlexFlow::PatternNode>>(),
-      j.at("second")
-          .template get<std::unordered_set<::FlexFlow::PatternNode>>()};
-}
-void adl_serializer<FlexFlow::PatternSplit>::to_json(
-    json &j, FlexFlow::PatternSplit const &v) {
-  j["__type"] = "PatternSplit";
-  j["first"] = v.first;
-  j["second"] = v.second;
-}
-} // namespace nlohmann
 
 namespace FlexFlow {
 std::string format_as(PatternSplit const &x) {

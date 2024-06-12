@@ -32,7 +32,7 @@ Strategy
                    CostEstimator const &cost_estimator,
                    MachineSpecification const &resources,
                    std::function<std::unordered_set<MachineView>(
-                       Operator const &, MachineSpecification const &)> const
+                       ParallelLayerAttrs const &, MachineSpecification const &)> const
                        &allowed_machine_views,
                    OptimizerConfig const &opt_config);
 

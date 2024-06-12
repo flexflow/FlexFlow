@@ -1,6 +1,7 @@
 #include "substitutions/unlabelled/find_pattern_matches.h"
 #include "substitutions/unlabelled/downward_open_pattern_edge.h"
 #include "substitutions/unlabelled/multidigraph_pattern_match.h"
+#include "substitutions/unlabelled/pattern_split.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
 #include "substitutions/unlabelled/upward_open_pattern_edge.h"
 #include "utils/containers.h"
@@ -84,7 +85,7 @@ static std::optional<MultiDiGraphPatternMatch>
       UpwardOpenMultiDiEdge graph_edge = incoming_ordered[i];
       UpwardOpenPatternEdge pattern_edge = pattern_incoming_ordered[i];
       NodePort graph_port = get_dst_idx(graph_edge),
-               pattern_port = get_dst_idx(pattern_edge);
+               pattern_port = get_dst_idx(pattern_edge.raw_edge);
       if (!contains_key(node_port_mapping, graph_port)) {
         node_port_mapping.emplace(graph_port, pattern_port);
       } else {
@@ -92,20 +93,20 @@ static std::optional<MultiDiGraphPatternMatch>
           return std::nullopt;
         }
       }
-      match.edge_assignment.equate(widen<OpenMultiDiEdge>(pattern_edge),
-                                   widen<OpenMultiDiEdge>(graph_edge));
+      match.edge_assignment.equate(
+          widen<OpenMultiDiEdge>(pattern_edge.raw_edge),
+          widen<OpenMultiDiEdge>(graph_edge));
     }
   }
 
   if (pattern_outgoing.size() > 0) {
     std::unordered_map<NodePort, NodePort> node_port_mapping;
     for (int i = 0; i < outgoing_ordered.size(); ++i) {
-      DownwardOpenMultiDiEdge graph_edge = outgoing_ordered[i],
-                              DownwardOpenPatternEdge pattern_edge =
-                                  pattern_outgoing_ordered[i];
+      DownwardOpenMultiDiEdge graph_edge = outgoing_ordered[i];
+      DownwardOpenPatternEdge pattern_edge = pattern_outgoing_ordered[i];
 
       NodePort graph_port = get_src_idx(graph_edge),
-               pattern_port = get_src_idx(pattern_edge);
+               pattern_port = get_src_idx(pattern_edge.raw_edge);
       if (!contains_key(node_port_mapping, graph_port)) {
         node_port_mapping.insert({graph_port, pattern_port});
       } else {
@@ -113,8 +114,9 @@ static std::optional<MultiDiGraphPatternMatch>
           return std::nullopt;
         }
       }
-      match.edge_assignment.equate(widen<OpenMultiDiEdge>(pattern_edge),
-                                   widen<OpenMultiDiEdge>(graph_edge));
+      match.edge_assignment.equate(
+          widen<OpenMultiDiEdge>(pattern_edge.raw_edge),
+          widen<OpenMultiDiEdge>(graph_edge));
     }
   }
 
@@ -125,37 +127,38 @@ std::vector<MultiDiGraphPatternMatch>
     find_pattern_matches(UnlabelledGraphPattern const &pattern,
                          OpenMultiDiGraphView const &graph,
                          MatchAdditionalCriterion const &additional_criterion) {
-  std::vector<MultiDiGraphPatternMatch> matches;
-  if (is_singleton_pattern(pattern)) {
-    for (Node const &graph_node : get_nodes(graph)) {
-      std::optional<MultiDiGraphPatternMatch> candidate =
-          get_candidate_singleton_match(pattern, graph, graph_node);
-      if (candidate.has_value() &&
-          pattern_does_match(
-              pattern, graph, candidate.value(), additional_criterion)) {
-        matches.push_back(candidate.value());
-      }
-    }
-  } else {
-    GraphSplit split = split_pattern(pattern);
-    auto subpatterns = apply_split(pattern, split);
-    auto prefix_matches =
-        find_pattern_matches(subpatterns.first, graph, additional_criterion);
-    auto postfix_matches =
-        find_pattern_matches(subpatterns.second, graph, additional_criterion);
-    auto edge_splits = get_edge_splits(pattern, split);
-    for (MultiDiGraphPatternMatch const &prefix_match : prefix_matches) {
-      for (MultiDiGraphPatternMatch const &postfix_match : postfix_matches) {
-        std::optional<MultiDiGraphPatternMatch> unsplit =
-            unsplit_matches(prefix_match, postfix_match, edge_splits);
-        if (unsplit.has_value()) {
-          matches.push_back(unsplit.value());
-        }
-      }
-    }
-  }
+  // std::vector<MultiDiGraphPatternMatch> matches;
+  // if (is_singleton_pattern(pattern)) {
+  //   for (Node const &graph_node : get_nodes(graph)) {
+  //     std::optional<MultiDiGraphPatternMatch> candidate =
+  //         get_candidate_singleton_match(pattern, graph, graph_node);
+  //     if (candidate.has_value() &&
+  //         pattern_does_match(
+  //             pattern, graph, candidate.value(), additional_criterion)) {
+  //       matches.push_back(candidate.value());
+  //     }
+  //   }
+  // } else {
+  //   GraphSplit split = split_pattern(pattern);
+  //   auto subpatterns = apply_split(pattern, split);
+  //   auto prefix_matches =
+  //       find_pattern_matches(subpatterns.first, graph, additional_criterion);
+  //   auto postfix_matches =
+  //       find_pattern_matches(subpatterns.second, graph, additional_criterion);
+  //   auto edge_splits = get_edge_splits(pattern.raw_graph, split);
+  //   for (MultiDiGraphPatternMatch const &prefix_match : prefix_matches) {
+  //     for (MultiDiGraphPatternMatch const &postfix_match : postfix_matches) {
+  //       std::optional<MultiDiGraphPatternMatch> unsplit =
+  //           unsplit_matches(prefix_match, postfix_match, edge_splits);
+  //       if (unsplit.has_value()) {
+  //         matches.push_back(unsplit.value());
+  //       }
+  //     }
+  //   }
+  // }
 
-  return matches;
+  // return matches;
+  NOT_IMPLEMENTED();
 }
 
 } // namespace FlexFlow
