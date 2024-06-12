@@ -303,7 +303,7 @@ void LoraLinear::save_peft_weights(
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
-  MachineView const *view = &output_tensor->machine_view;
+  MachineView const *view = mv ? mv : &output_tensor->machine_view;
   size_t machine_view_hash = view->hash();
   set_argumentmap_for_inference(ff, argmap, output_tensor);
   LoraLinearSaveWeightsInfo info;
