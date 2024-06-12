@@ -2783,6 +2783,14 @@ bool is_peft_operator_type(OperatorType type) {
   }
 }
 
+void RequestManager::save_peft_weights(FFModel *model,
+                                       PEFTModelID const &model_id,
+                                       std::string const &destination_folder) {
+  // Save the weights of the model
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  im->save_peft_weights(model, model_id, destination_folder);
+}
+
 /*static*/
 void RequestManager::serve_incr_decoding(FFModel *llm) {
 

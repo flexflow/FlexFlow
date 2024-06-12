@@ -36,6 +36,9 @@ public:
   static InferenceManager *get_inference_manager();
   void compile_model_and_allocate_buffer(FFModel *model);
   void init_operators_inference(FFModel *model);
+  void save_peft_weights(FFModel *model,
+                         PEFTModelID const &model_id,
+                         std::string const &destination_folder);
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
@@ -157,6 +160,10 @@ public:
                      int non_tree_size);
 
   FFModel *get_ssm_model(int model_id);
+
+  void save_peft_weights(FFModel *model,
+                         PEFTModelID const &model_id,
+                         std::string const &destination_folder);
 
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);

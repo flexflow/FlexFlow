@@ -2722,6 +2722,27 @@ void flexflow_request_manager_terminate_background_server(
   handle->terminate_background_server();
 }
 
+void flexflow_request_manager_save_peft_weights(
+    flexflow_request_manager_t handle_,
+    flexflow_model_t model_handle_,
+    flexflow_peft_model_id_t peft_model_id_,
+    char const *destination_folder) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  FFModel *model_handle = FFCObjectWrapper::unwrap(model_handle_);
+  PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_id_);
+  assert(peft_model_id != nullptr && "PEFT model ID cannot be nullptr");
+  assert(destination_folder != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  std::string const destination_folder_str(destination_folder);
+  DEBUG_PRINT("[RequestManager] save peft weights %p %p %p %d %s",
+              handle,
+              model_handle,
+              peft_model_id,
+              destination_folder);
+  handle->save_peft_weights(
+      model_handle, *peft_model_id, destination_folder_str);
+}
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------
@@ -2846,7 +2867,7 @@ flexflow_peft_model_id_t flexflow_peft_model_id_create_id(size_t id) {
 }
 
 flexflow_peft_model_id_t flexflow_peft_model_id_no_id() {
-  PEFTModelID *handle = const_cast<PEFTModelID*>(&PEFTModelID::NO_ID);
+  PEFTModelID *handle = const_cast<PEFTModelID *>(&PEFTModelID::NO_ID);
   DEBUG_PRINT("[PEFTModelID] new %p", handle);
   return FFCObjectWrapper::wrap(handle);
 }

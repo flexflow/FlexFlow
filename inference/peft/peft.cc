@@ -352,6 +352,9 @@ void FlexFlow::top_level_task(Task const *task,
     future.get_void_result();
   }
 
+  // rm->save_peft_weights(&model, *peft_model_id,
+  // std::string("/root/.cache/flexflow/finetuned_weights"));
+
   if (peft_model_id != nullptr) {
     free(peft_model_id);
   }

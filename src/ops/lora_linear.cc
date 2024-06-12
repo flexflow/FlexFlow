@@ -274,6 +274,176 @@ void LoraLinear::init_inference(
   set_opmeta_from_futuremap_inference(ff, fm, output_tensor);
 }
 
+struct LoraLinearSaveWeightsInfo {
+  LoraLinear const *lora;
+  PEFTModelID model_id;
+  int rank;
+  std::string destination_folder;
+};
+
+void LoraLinear::save_peft_weights(
+    FFModel const &ff,
+    PEFTModelID const &model_id,
+    int rank,
+    std::string const &destination_folder,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  assert(check_output_input_weight_same_parallel_is());
+  assert(batch_inputs.size() == 2);
+  assert(batch_outputs.size() == 1);
+  // Assert that the output and the second input are mapped to the same
+  // region/part
+  assert(batch_outputs[0]->region == batch_inputs[1]->region);
+  assert(batch_outputs[0]->part == batch_inputs[1]->part);
+  // assert(check_output_input_weight_same_machine_view());
+  // output is considered as an input to allow in-place optimization
+  ParallelTensor output_tensor = batch_outputs[0];
+  parallel_is = output_tensor->parallel_is;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  MachineView const *view = &output_tensor->machine_view;
+  size_t machine_view_hash = view->hash();
+  set_argumentmap_for_inference(ff, argmap, output_tensor);
+  LoraLinearSaveWeightsInfo info;
+  info.lora = this;
+  info.model_id = model_id;
+  info.rank = rank;
+  info.destination_folder = destination_folder;
+  IndexLauncher launcher(LORA_LINEAR_SAVE_WEIGHTS_TASK_ID,
+                         parallel_is,
+                         TaskArgument(&info, sizeof(LoraLinearSaveWeightsInfo)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  FutureMap fm = runtime->execute_index_space(ctx, launcher);
+  fm.wait_all_results();
+}
+
+template <typename DT>
+void save_peft_to_file(DT const *weight_ptr,
+                       size_t size,
+                       std::string filepath) {
+  std::ofstream out(filepath, std::ios::binary);
+  // Check if the file was opened successfully
+  if (!out || !out.is_open() || !out.good()) {
+    printf("Could not open file: %s\n", filepath.c_str());
+  }
+  assert(out && out.is_open() && out.good() &&
+         "can't write to lora weight file path");
+  std::vector<DT> host_array(size);
+  copy_tensor_dev_to_host(weight_ptr, host_array.data(), size);
+
+  size_t target_data_size = sizeof(DT) * size;
+  out.write((char *)host_array.data(), target_data_size);
+
+  size_t out_written_size = out.tellp();
+  if (out_written_size != target_data_size) {
+    printf("save weight data error: %lu, %lu, %lu\n",
+           out_written_size,
+           target_data_size,
+           sizeof(DT));
+    assert(false);
+  }
+  out.close();
+}
+
+void LoraLinear::save_peft_weights_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  LoraLinearSaveWeightsInfo const *info =
+      static_cast<LoraLinearSaveWeightsInfo const *>(task->args);
+  LoraLinearMeta *m = *((LoraLinearMeta **)task->local_args);
+  LoraLinear const *lora = info->lora;
+
+  // get shard id
+  int shard_id = task->index_point.point_data[0];
+
+  // get dimensions and sizes
+  int rank = info->rank;
+  int num_dims = lora->inputs[0]->num_dims;
+  int in_dim = lora->inputs[0]->dims[0].size / lora->inputs[0]->dims[0].degree;
+  int out_dim = lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree;
+  int w0_num_elements = rank * in_dim;
+  int w1_num_elements = rank * out_dim;
+
+  // get data type
+  DataType dt = m->input_type[0];
+  assert(dt == m->input_type[1]);
+  assert(dt == m->output_type[0]);
+  assert(dt == lora->inputs[0]->data_type);
+  assert(dt == lora->inputs[1]->data_type);
+  assert(dt == lora->outputs[0]->data_type);
+
+  // get output filepaths
+  assert(info->destination_folder.length() > 0 &&
+         "Destination folder is not set");
+  struct stat st = {0};
+  assert(stat(info->destination_folder.c_str(), &st) == 0 &&
+         (st.st_mode & S_IFDIR) && "Destination folder does not exist");
+  assert(lora->name != nullptr &&
+         "Layer name is not set, cannot determine weights location");
+  std::string lora_layername = std::string(lora->name);
+  std::string searchString = "lora";
+  size_t found = lora_layername.find(searchString);
+  if (found == std::string::npos) {
+    std::cout << "LoraLinear layer name not in the right format (does not "
+                 "contain word 'lora')"
+              << std::endl;
+    assert(false);
+  }
+  std::string lora_layername_substr =
+      lora_layername.substr(0, found + searchString.length());
+  std::string w0_filepath =
+      join_path({info->destination_folder,
+                 lora_layername_substr + "_A.weight" + ".shard_" +
+                     std::to_string(shard_id)});
+  std::string w1_filepath = join_path(
+      {info->destination_folder, lora_layername_substr + "_B.weight"});
+
+  // check handle to peft weights
+  assert(m->model_weights.find(info->model_id) != m->model_weights.end());
+
+  // save weights to file
+  std::cout << "Saving LORA weight "
+            << lora_layername_substr + "_A.weight" + ".shard_" +
+                   std::to_string(shard_id)
+            << ", size: " << w0_num_elements << ", shard: " << shard_id
+            << std::endl;
+  if (dt == DT_FLOAT) {
+    save_peft_to_file((float *)m->model_weights[info->model_id].w0_ptr,
+                      w0_num_elements,
+                      w0_filepath);
+  } else if (dt == DT_HALF) {
+    save_peft_to_file((half *)m->model_weights[info->model_id].w0_ptr,
+                      w0_num_elements,
+                      w0_filepath);
+  } else {
+    assert(false && "Data type not supported");
+  }
+  if (shard_id == 0) {
+    std::cout << "Saving LORA weight " << lora_layername_substr + "_B.weight"
+              << ", size: " << w1_num_elements << ", shard: " << shard_id
+              << std::endl;
+    if (dt == DT_FLOAT) {
+      save_peft_to_file((float *)m->model_weights[info->model_id].w1_ptr,
+                        w1_num_elements,
+                        w1_filepath);
+    } else if (dt == DT_HALF) {
+      save_peft_to_file((float *)m->model_weights[info->model_id].w1_ptr,
+                        w1_num_elements,
+                        w1_filepath);
+    } else {
+      assert(false && "Data type not supported");
+    }
+  }
+}
+
 template <typename DT>
 void load_peft_from_file(
     DT *ptr, size_t size, bool sharded, int shard_id, std::string filepath) {

@@ -6734,6 +6734,22 @@ void register_flexflow_internal_tasks(Runtime *runtime,
       runtime->register_task_variant<LoraLinear::peft_bwd_task>(registrar);
     }
   }
+  {
+    TaskVariantRegistrar registrar(LORA_LINEAR_SAVE_WEIGHTS_TASK_ID,
+                                   "LoraLinear Save PEFT Weights");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<LoraLinear::save_peft_weights_task>(
+          registrar, "LoraLinear Save PEFT Weights Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<LoraLinear::save_peft_weights_task>(
+          registrar);
+    }
+  }
 
   // NoOp
   {

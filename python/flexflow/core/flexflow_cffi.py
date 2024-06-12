@@ -1624,6 +1624,12 @@ class RequestManager(object):
 
     def stop_server(self):
         return ffc().flexflow_request_manager_terminate_background_server(self.handle)
+    
+    def save_peft_weights(self, model, peft_model_id, destination_folder):
+        c_destination_folder = get_c_name(destination_folder)
+        return ffc().flexflow_request_manager_save_peft_weights(
+            self.handle, model.handle, peft_model_id.handle, c_destination_folder
+        )
 
 
 # -----------------------------------------------------------------------
