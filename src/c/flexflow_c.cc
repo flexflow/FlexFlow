@@ -2734,7 +2734,7 @@ void flexflow_request_manager_save_peft_weights(
   assert(destination_folder != nullptr &&
          "Cannot convert nullptr char * to std::string");
   std::string const destination_folder_str(destination_folder);
-  DEBUG_PRINT("[RequestManager] save peft weights %p %p %p %d %s",
+  DEBUG_PRINT("[RequestManager] save peft weights %p %p %p %s",
               handle,
               model_handle,
               peft_model_id,
