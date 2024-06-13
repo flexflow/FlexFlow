@@ -352,6 +352,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                           DT *output_ptr,
                           cudaStream_t stream) {
   // cudaEvent_t t_start, t_end;
+  // float elapsed = 0;
   // cudaEventCreate(&t_start);
   // cudaEventCreate(&t_end);
   // cudaEventRecord(t_start, stream);
@@ -437,9 +438,8 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
 
   // cudaEventRecord(t_end, stream);
   // checkCUDA(cudaEventSynchronize(t_end));
-  // float elapsed = 0;
   // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  // printf("TreeIncMultiHeadSelfAttention part 2 time: %.2f ms\n", elapsed);
+  // printf("TreeIncMultiHeadSelfAttention time: %.2f ms\n", elapsed);
   // cudaEventDestroy(t_start);
   // cudaEventDestroy(t_end);
 }
