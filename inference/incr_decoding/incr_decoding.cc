@@ -214,6 +214,9 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_decoding_mode(decoding_mode);
+  rm->set_max_spec_tree_token_num(64);
+  rm->set_max_tree_depth(8);
+  rm->set_max_tree_width(16);
   rm->set_verbose(verbose);
   rm->register_tokenizer(
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);

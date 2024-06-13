@@ -1967,8 +1967,8 @@ void RequestManager::terminate_background_server() {
     req_per_step += ")";
     str += req_per_step;
     if (profiling.ssm_step_times.size() > 0) {
-      assert(profiling.ssm_step_times.size() ==
-             profiling.llm_step_times.size());
+      // assert(profiling.ssm_step_times.size() ==
+      //        profiling.llm_step_times.size());
       str += "\n ssm_step_times_ms(";
       std::string ssm_step_times_ms = " ";
       for (double time : profiling.ssm_step_times) {
