@@ -117,57 +117,82 @@ __device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
 __global__ void commit_tokens_kernel(
     half *kCache_ptr,
     BatchConfig::CommittedTokensInfo const *committedTokenInfos,
-    int token_pos,
-    int num_active_tokens_in_last_batch,
-    int const max_num_pages,
-    int hidden_size) {
-  int const index_in_kv_cache =
-      committedTokenInfos[token_pos].index_in_kv_cache;
-  if (index_in_kv_cache == -1) {
-    return;
+    bool const *request_available,
+    int num_requests,
+    int hidden_size,
+    int num_committed_tokens,
+    int const max_num_pages) {
+  int const idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int const request_compact_idx = idx / hidden_size;
+  int const offset = idx % hidden_size;
+  // request id in batch config
+  int requext_idx_in_batch = -1;
+  int cnt_1 = 0;
+  while (cnt_1 < request_compact_idx + 1) {
+    requext_idx_in_batch++;
+    if (request_available[requext_idx_in_batch]) {
+      cnt_1++;
+    }
   }
 
-  int const req_id = committedTokenInfos[token_pos].request_index;
-  int const tok_id = committedTokenInfos[token_pos].token_depth;
+  for (int i = 0; i < num_committed_tokens; i++) {
+    if (committedTokenInfos[i].request_index == requext_idx_in_batch) {
+      int const index_in_kv_cache = committedTokenInfos[i].index_in_kv_cache;
+      if (index_in_kv_cache == -1) {
+        continue;
+      }
 
-  size_t from_k_idx = get_k_entry_offset(
-             req_id, index_in_kv_cache, max_num_pages, hidden_size),
-         from_v_idx = get_v_entry_offset(
-             req_id, index_in_kv_cache, max_num_pages, hidden_size);
-  size_t to_k_idx =
-             get_k_entry_offset(req_id, tok_id, max_num_pages, hidden_size),
-         to_v_idx =
-             get_v_entry_offset(req_id, tok_id, max_num_pages, hidden_size);
-  assert(to_k_idx <= from_k_idx);
+      int const req_id = committedTokenInfos[i].request_index;
+      int const tok_id = committedTokenInfos[i].token_depth;
 
-  CUDA_KERNEL_LOOP(offset, hidden_size) {
-    kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
-    kCache_ptr[to_v_idx + offset] = kCache_ptr[from_v_idx + offset];
+      size_t from_k_idx = get_k_entry_offset(
+                 req_id, index_in_kv_cache, max_num_pages, hidden_size),
+             from_v_idx = get_v_entry_offset(
+                 req_id, index_in_kv_cache, max_num_pages, hidden_size);
+      size_t to_k_idx =
+                 get_k_entry_offset(req_id, tok_id, max_num_pages, hidden_size),
+             to_v_idx =
+                 get_v_entry_offset(req_id, tok_id, max_num_pages, hidden_size);
+      assert(to_k_idx <= from_k_idx);
+
+      kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
+      kCache_ptr[to_v_idx + offset] = kCache_ptr[from_v_idx + offset];
+    }
   }
 }
 
 void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    BatchConfig const *bc,
                    cudaStream_t stream) {
+  //   cudaEvent_t t_start, t_end;
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
   int num_tokens_to_commit = bc->num_tokens_to_commit;
   int const max_num_pages =
       (BatchConfig::max_sequence_length() +
        BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
       kPagesize;
-  // TODO: parallel across queries
-  for (int i = 0; i < num_tokens_to_commit; i++) {
-    int parallelism = m->hidden_size;
-    commit_tokens_kernel<<<GET_BLOCKS(parallelism),
-                           min(CUDA_NUM_THREADS, parallelism),
-                           0,
-                           stream>>>(
-        static_cast<half *>(m->keyCache),
-        m->committed_token_infos,
-        i,
-        m->num_active_tokens, // number of active tokens in previous batch
-        max_num_pages,
-        m->hidden_size);
-  }
+  int const num_requests = bc->num_active_requests();
+  int parallelism = m->hidden_size * num_requests;
+  commit_tokens_kernel_new<<<GET_BLOCKS(parallelism),
+                             min(CUDA_NUM_THREADS, parallelism),
+                             0,
+                             stream>>>(static_cast<half *>(m->keyCache),
+                                       m->committed_token_infos,
+                                       m->request_available,
+                                       num_requests,
+                                       m->hidden_size,
+                                       num_tokens_to_commit,
+                                       max_num_pages);
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   float elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   printf("Commit token time: %.2f ms\n", elapsed);
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
 }
 
 __global__ void
@@ -367,10 +392,10 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                            BatchConfig const *bc,
                            DT *output_ptr,
                            cudaStream_t stream) {
-  // cudaEvent_t t_start, t_end;
-  // cudaEventCreate(&t_start);
-  // cudaEventCreate(&t_end);
-  // cudaEventRecord(t_start, stream);
+  //   cudaEvent_t t_start, t_end;
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
 
   // global constant parameters
   uint32_t const num_q_heads = m->num_q_heads;
@@ -498,13 +523,13 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                             stream>>>(m->outputTmp, output_ptr, parallelism);
   }
 
-  // cudaEventRecord(t_end, stream);
-  // checkCUDA(cudaEventSynchronize(t_end));
-  // float elapsed = 0;
-  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  // printf("TreeIncMultiHeadSelfAttention part 2 time: %.2f ms\n", elapsed);
-  // cudaEventDestroy(t_start);
-  // cudaEventDestroy(t_end);
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   float elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   printf("TreeIncMultiHeadSelfAttention part 2 time: %.2f ms\n", elapsed);
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
 }
 
 template <typename DT>
