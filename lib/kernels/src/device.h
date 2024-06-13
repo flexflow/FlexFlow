@@ -37,7 +37,9 @@ cudaError_t get_legion_stream(cudaStream_t *stream);
   do {                                                                         \
     std::stringstream _error;                                                  \
     if (status != FF_CUDNN_STATUS_SUCCESS) {                                   \
-      _error << "CUDNN failure: " << status << " (" << cudnnGetErrorString(status) << ") in function " << __FUNCTION__; \
+      _error << "CUDNN failure: " << status << " ("                            \
+             << cudnnGetErrorString(status) << ") in function "                \
+             << __FUNCTION__;                                                  \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
@@ -45,7 +47,7 @@ cudaError_t get_legion_stream(cudaStream_t *stream);
 #define checkCURAND(status)                                                    \
   do {                                                                         \
     std::stringstream _error;                                                  \
-    if (status != FF_CURAND_STATUS_SUCCESS) {                                   \
+    if (status != FF_CURAND_STATUS_SUCCESS) {                                  \
       _error << "CURAND failure: " << status;                                  \
       FatalError(_error.str());                                                \
     }                                                                          \
@@ -54,7 +56,7 @@ cudaError_t get_legion_stream(cudaStream_t *stream);
 #define checkCUBLAS(status)                                                    \
   do {                                                                         \
     std::stringstream _error;                                                  \
-    if (status != FF_CUBLAS_STATUS_SUCCESS) {                                   \
+    if (status != FF_CUBLAS_STATUS_SUCCESS) {                                  \
       _error << "CUBLAS failure: " << status;                                  \
       FatalError(_error.str());                                                \
     }                                                                          \

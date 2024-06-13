@@ -54,7 +54,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ArrayShape, dims);
 
 size_t get_volume(ArrayShape const &);
 
-TensorShape get_tensor_shape(ArrayShape const &, DataType);
+// TensorShape get_tensor_shape(ArrayShape const &, DataType);
 
 } // namespace FlexFlow
 

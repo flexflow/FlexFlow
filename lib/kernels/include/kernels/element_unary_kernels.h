@@ -4,8 +4,8 @@
 #include "device.h"
 #include "kernels/accessor.h"
 #include "kernels/ff_handle.h"
-#include "op-attrs/ops/element_unary.h"
 #include "op-attrs/operator_type.h"
+#include "op-attrs/ops/element_unary.h"
 #include <cstddef>
 
 namespace FlexFlow {
@@ -42,7 +42,6 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorW const &input_grad,
                      GenericTensorAccessorR const &output,
                      GenericTensorAccessorR const &output_grad);
-
 
 } // namespace ElementUnary
 } // namespace Kernels

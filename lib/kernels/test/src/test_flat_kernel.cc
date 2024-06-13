@@ -8,7 +8,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -35,14 +35,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     allocate_ptrs(ptrs, sizes, allocator);
     fillDeviceDataNum(&input_data, num_elements, 2.0f);
 
-    const GenericTensorAccessorR input_accessor{DataType::FLOAT, shape,
-                                                input_data};
+    const GenericTensorAccessorR input_accessor{
+        DataType::FLOAT, shape, input_data};
 
     Kernels::Flat::forward_kernel(stream, input_accessor, output_data);
 
     std::vector<float> check_output_data(num_elements);
-    checkCUDA(cudaMemcpy(check_output_data.data(), output_data,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(check_output_data.data(),
+                         output_data,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     for (std::size_t i = 0; i < num_elements; ++i) {
       REQUIRE(2.0f == check_output_data[i]);
@@ -51,15 +53,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     float *add_data =
         static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
     fillDeviceDataNum(&add_data, num_elements, 1.0f);
-    const GenericTensorAccessorR data_accessor{DataType::FLOAT, shape,
-                                               add_data};
+    const GenericTensorAccessorR data_accessor{
+        DataType::FLOAT, shape, add_data};
 
-    Kernels::Flat::backward_kernel(stream, input_accessor, output_data,
-                                   add_data);
+    Kernels::Flat::backward_kernel(
+        stream, input_accessor, output_data, add_data);
 
     std::vector<float> backward_output_data(num_elements);
-    checkCUDA(cudaMemcpy(backward_output_data.data(), output_data,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(backward_output_data.data(),
+                         output_data,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     for (std::size_t i = 0; i < num_elements; ++i) {
       CHECK(backward_output_data[i] == 3.0f);

@@ -8,8 +8,8 @@
 namespace FlexFlow {
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test concat kernel forward and backward") {
-    const int num_inputs = 3;
-    const int size_per_input = 100;
+    int const num_inputs = 3;
+    int const size_per_input = 100;
     ff_dim_t concat_axis = ff_dim_t(0);
     std::size_t dims[] = {size_per_input};
     std::size_t num_dims = 1;
@@ -33,30 +33,33 @@ TEST_SUITE(FF_TEST_SUITE) {
       for (float &val : host_input_data) {
         val = dist(gen);
       }
-      checkCUDA(cudaMemcpy(input_data_ptr, host_input_data.data(),
+      checkCUDA(cudaMemcpy(input_data_ptr,
+                           host_input_data.data(),
                            host_input_data.size() * sizeof(float),
                            cudaMemcpyHostToDevice));
     }
 
     void *output_data_ptr =
         allocator.allocate(num_inputs * size_per_input * sizeof(float));
-    const GenericTensorAccessorW output_accessor{DataType::FLOAT, shape,
-                                                 output_data_ptr};
+    const GenericTensorAccessorW output_accessor{
+        DataType::FLOAT, shape, output_data_ptr};
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
-    Kernels::Concat::forward_kernel(stream, output_accessor, input_accessors,
-                                    concat_axis);
+    Kernels::Concat::forward_kernel(
+        stream, output_accessor, input_accessors, concat_axis);
 
     std::vector<float> host_output_data(num_inputs * size_per_input);
-    checkCUDA(cudaMemcpy(host_output_data.data(), output_data_ptr,
+    checkCUDA(cudaMemcpy(host_output_data.data(),
+                         output_data_ptr,
                          host_output_data.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
     for (int i = 0; i < num_inputs; i++) {
       std::vector<float> temp(size_per_input);
-      checkCUDA(cudaMemcpy(temp.data(), input_ptrs[i],
+      checkCUDA(cudaMemcpy(temp.data(),
+                           input_ptrs[i],
                            size_per_input * sizeof(float),
                            cudaMemcpyDeviceToHost));
       for (int j = 0; j < size_per_input; j++) {
@@ -70,26 +73,28 @@ TEST_SUITE(FF_TEST_SUITE) {
       void *grad_input_data_ptr =
           allocator.allocate(size_per_input * sizeof(float));
       grad_input_ptrs.push_back(grad_input_data_ptr);
-      GenericTensorAccessorW accessor{DataType::FLOAT, shape,
-                                      grad_input_data_ptr};
+      GenericTensorAccessorW accessor{
+          DataType::FLOAT, shape, grad_input_data_ptr};
       grad_input_accessors.push_back(accessor);
       cudaMemset(grad_input_data_ptr, 0, size_per_input * sizeof(float));
     }
 
     void *grad_output_data_ptr =
         allocator.allocate(num_inputs * size_per_input * sizeof(float));
-    checkCUDA(cudaMemcpy(grad_output_data_ptr, host_output_data.data(),
+    checkCUDA(cudaMemcpy(grad_output_data_ptr,
+                         host_output_data.data(),
                          host_output_data.size() * sizeof(float),
                          cudaMemcpyHostToDevice));
-    const GenericTensorAccessorR grad_output_accessor{DataType::FLOAT, shape,
-                                                      grad_output_data_ptr};
+    const GenericTensorAccessorR grad_output_accessor{
+        DataType::FLOAT, shape, grad_output_data_ptr};
 
-    Kernels::Concat::backward_kernel(stream, grad_output_accessor,
-                                     grad_input_accessors, concat_axis);
+    Kernels::Concat::backward_kernel(
+        stream, grad_output_accessor, grad_input_accessors, concat_axis);
 
     for (int i = 0; i < num_inputs; i++) {
       std::vector<float> host_grad_input(size_per_input);
-      checkCUDA(cudaMemcpy(host_grad_input.data(), grad_input_ptrs[i],
+      checkCUDA(cudaMemcpy(host_grad_input.data(),
+                           grad_input_ptrs[i],
                            size_per_input * sizeof(float),
                            cudaMemcpyDeviceToHost));
       for (int j = 0; j < size_per_input; j++) {

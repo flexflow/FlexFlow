@@ -7,7 +7,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -36,28 +36,32 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = get_local_memory_allocator();
 
     float *device_input, *device_output, *device_indices;
-    std::vector<float **> ptrs = {&device_input, &device_output,
-                                  &device_indices};
+    std::vector<float **> ptrs = {
+        &device_input, &device_output, &device_indices};
     std::vector<size_t> sizes = {num_elements, output_size, output_size};
     allocate_ptrs(ptrs, sizes, allocator);
 
-    const GenericTensorAccessorW device_output_accessor{DataType::FLOAT, shape,
-                                                        device_input};
-    const GenericTensorAccessorR device_input_accessor{DataType::FLOAT, shape,
-                                                       device_input};
+    const GenericTensorAccessorW device_output_accessor{
+        DataType::FLOAT, shape, device_input};
+    const GenericTensorAccessorR device_input_accessor{
+        DataType::FLOAT, shape, device_input};
     const GenericTensorAccessorR device_indices_accessor{
         DataType::FLOAT, ArrayShape({output_size}), device_indices};
 
     randomFillDeviceData(&device_input, num_elements);
     randomFillDeviceData(&device_indices, output_size);
 
-    GatherPerDeviceState state = {2, DataType::FLOAT};
-    Kernels::Gather::forward_kernel(
-        stream, state, device_input_accessor, device_indices_accessor,
-        device_output_accessor, stride, input_dim_size, output_dim_size);
+    GatherPerDeviceState state = {handle, legion_dim_t(2)};
+    Kernels::Gather::forward_kernel(stream,
+                                    state,
+                                    device_input_accessor,
+                                    device_indices_accessor,
+                                    device_output_accessor);
 
     std::vector<float> host_output(output_size, 0.0f);
-    cudaMemcpy(host_output.data(), device_output, output_size * sizeof(float),
+    cudaMemcpy(host_output.data(),
+               device_output,
+               output_size * sizeof(float),
                cudaMemcpyDeviceToHost);
 
     cudaStreamDestroy(stream);

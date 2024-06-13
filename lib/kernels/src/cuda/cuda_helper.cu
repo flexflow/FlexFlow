@@ -316,7 +316,7 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
                                                        int64_t const *grad_ptr,
                                                        size_t size,
                                                        int64_t scale);
-                                
+
 template __global__ void apply_add_with_scale<bool>(bool *data_ptr,
                                                     bool const *grad_ptr,
                                                     unsigned long size,

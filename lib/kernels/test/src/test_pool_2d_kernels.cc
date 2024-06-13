@@ -8,7 +8,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -41,15 +41,29 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     randomFillDeviceData(&input_data, num_elements);
 
-    Pool2DPerDeviceState state = Kernels::Pool2D::init_kernel(
-        handle, std::nullopt, input_w, input_h, input_c, input_n, output_w,
-        output_h, output_c, output_n, pad_h, pad_w, kernel_h, kernel_w,
-        stride_h, stride_w, pool_type);
+    Pool2DPerDeviceState state = Kernels::Pool2D::init_kernel(handle,
+                                                              std::nullopt,
+                                                              input_w,
+                                                              input_h,
+                                                              input_c,
+                                                              input_n,
+                                                              output_w,
+                                                              output_h,
+                                                              output_c,
+                                                              output_n,
+                                                              pad_h,
+                                                              pad_w,
+                                                              kernel_h,
+                                                              kernel_w,
+                                                              stride_h,
+                                                              stride_w,
+                                                              pool_type);
 
     Kernels::Pool2D::forward_kernel(stream, state, input_data, output_data);
 
     std::vector<float> host_output_data(output_elements);
-    checkCUDA(cudaMemcpy(host_output_data.data(), output_data,
+    checkCUDA(cudaMemcpy(host_output_data.data(),
+                         output_data,
                          output_elements * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
@@ -59,12 +73,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     allocate_ptrs(ptrs_grad, sizes_grad, allocator);
     fillDeviceDataNum(&output_grad, output_elements, 1.0f);
 
-    Kernels::Pool2D::backward_kernel(stream, state, input_data, input_grad,
-                                     output_data, output_grad);
+    Kernels::Pool2D::backward_kernel(
+        stream, state, input_data, input_grad, output_data, output_grad);
 
     std::vector<float> host_input_grad(num_elements);
-    checkCUDA(cudaMemcpy(host_input_grad.data(), input_grad,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(host_input_grad.data(),
+                         input_grad,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     checkCUDA(cudaStreamDestroy(stream));
     checkCUDA(cudaFree(handle.workSpace));

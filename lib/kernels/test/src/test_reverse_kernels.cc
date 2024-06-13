@@ -7,7 +7,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -35,17 +35,27 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     fillDeviceDataNum(&input_data, num_elements, 1.0f);
 
-    Kernels::Reverse::forward_kernel(stream, input_data, output_data,
-                                     num_out_blks, reverse_dim_size,
-                                     in_blk_size, num_elements);
+    Kernels::Reverse::forward_kernel(stream,
+                                     input_data,
+                                     output_data,
+                                     num_out_blks,
+                                     reverse_dim_size,
+                                     in_blk_size,
+                                     num_elements);
 
-    Kernels::Reverse::backward_kernel(stream, output_data, grad_input_data,
-                                      num_out_blks, reverse_dim_size,
-                                      in_blk_size, num_elements);
+    Kernels::Reverse::backward_kernel(stream,
+                                      output_data,
+                                      grad_input_data,
+                                      num_out_blks,
+                                      reverse_dim_size,
+                                      in_blk_size,
+                                      num_elements);
 
     std::vector<float> host_grad_input_data(num_elements);
-    checkCUDA(cudaMemcpy(host_grad_input_data.data(), grad_input_data,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(host_grad_input_data.data(),
+                         grad_input_data,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     checkCUDA(cudaStreamDestroy(stream));
   }

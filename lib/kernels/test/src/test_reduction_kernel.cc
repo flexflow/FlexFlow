@@ -7,7 +7,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -34,26 +34,26 @@ TEST_SUITE(FF_TEST_SUITE) {
     checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
-    
+
     float *input_data, *output_data;
     std::vector<float **> ptrs = {&input_data, &output_data};
     std::vector<size_t> sizes = {total_elements, num_elements};
     allocate_ptrs(ptrs, sizes, allocator);
 
-    const GenericTensorAccessorR input_accessor{dtype, expanded_shape,
-                                                input_data};
+    const GenericTensorAccessorR input_accessor{
+        dtype, expanded_shape, input_data};
     const GenericTensorAccessorW output_accessor{dtype, shape, output_data};
 
     randomFillDeviceData(&input_data, total_elements);
 
-    Kernels::Reduction::forward_kernel(stream, input_accessor, output_accessor,
-                                       num_replicas);
+    Kernels::Reduction::forward_kernel(
+        stream, input_accessor, output_accessor, num_replicas);
 
     float *grad_input_data = static_cast<float *>(
         allocator.allocate(total_elements * sizeof(float)));
     fillDeviceDataNum(&grad_input_data, total_elements, 1.0f);
     const GenericTensorAccessorR grad_accessor{dtype, shape, grad_input_data};
-    
+
     Kernels::Reduction::backward_kernel(stream, output_accessor, grad_accessor);
     checkCUDA(cudaStreamDestroy(stream));
   }

@@ -8,7 +8,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -42,17 +42,17 @@ TEST_SUITE(FF_TEST_SUITE) {
         returnRandomFillDeviceData(&input_data, num_elements);
     fillDeviceDataNum(&output_data, num_elements, 0.0f);
 
-    const GenericTensorAccessorR input_accessor{DataType::FLOAT, shape,
-                                                input_data};
-    const GenericTensorAccessorW output_accessor{DataType::FLOAT, shape,
-                                                 output_data};
+    const GenericTensorAccessorR input_accessor{
+        DataType::FLOAT, shape, input_data};
+    const GenericTensorAccessorW output_accessor{
+        DataType::FLOAT, shape, output_data};
 
     TransposePerDeviceState state =
         Kernels::Transpose::init_kernel(num_dims, perm);
 
-    Kernels::Transpose::forward_kernel(stream, state, input_accessor,
-                                       output_accessor);
-    
+    Kernels::Transpose::forward_kernel(
+        stream, state, input_accessor, output_accessor);
+
     checkCUDA(cudaStreamDestroy(stream));
   }
 
@@ -80,16 +80,16 @@ TEST_SUITE(FF_TEST_SUITE) {
         returnRandomFillDeviceData(&out_grad_data, num_elements);
     fillDeviceDataNum(&in_grad_data, num_elements, 0.0f);
 
-    const GenericTensorAccessorR out_grad_accessor{DataType::FLOAT, shape,
-                                                   out_grad_data};
-    const GenericTensorAccessorW in_grad_accessor{DataType::FLOAT, shape,
-                                                  in_grad_data};
+    const GenericTensorAccessorR out_grad_accessor{
+        DataType::FLOAT, shape, out_grad_data};
+    const GenericTensorAccessorW in_grad_accessor{
+        DataType::FLOAT, shape, in_grad_data};
 
     TransposePerDeviceState state =
         Kernels::Transpose::init_kernel(num_dims, perm);
 
-    Kernels::Transpose::backward_kernel(stream, state, in_grad_accessor,
-                                        out_grad_accessor);
+    Kernels::Transpose::backward_kernel(
+        stream, state, in_grad_accessor, out_grad_accessor);
 
     checkCUDA(cudaStreamDestroy(stream));
   }

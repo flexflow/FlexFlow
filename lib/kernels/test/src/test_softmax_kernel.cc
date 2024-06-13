@@ -8,7 +8,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -46,16 +46,19 @@ TEST_SUITE(FF_TEST_SUITE) {
     Kernels::Softmax::forward_kernel(stream, state, input_data, output_data);
 
     std::vector<float> host_output_data(num_elements);
-    checkCUDA(cudaMemcpy(host_output_data.data(), output_data,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(host_output_data.data(),
+                         output_data,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     float max_input =
         *std::max_element(host_input_data.begin(), host_input_data.end());
-    float sum_exp =
-        std::accumulate(host_input_data.begin(), host_input_data.end(), 0.0f,
-                        [max_input](float acc, float val) {
-                          return acc + std::exp(val - max_input);
-                        });
+    float sum_exp = std::accumulate(host_input_data.begin(),
+                                    host_input_data.end(),
+                                    0.0f,
+                                    [max_input](float acc, float val) {
+                                      return acc + std::exp(val - max_input);
+                                    });
 
     for (std::size_t i = 0; i < num_elements; ++i) {
       float expected_value = std::exp(host_input_data[i] - max_input) / sum_exp;
@@ -89,12 +92,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     fillDeviceDataNum(&output_data, num_elements, 1.0f);
 
-    Kernels::Softmax::backward_kernel(stream, input_data, output_data,
-                                      num_elements);
+    Kernels::Softmax::backward_kernel(
+        stream, input_data, output_data, num_elements);
 
     std::vector<float> check_output_data(num_elements);
-    checkCUDA(cudaMemcpy(check_output_data.data(), input_data,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(check_output_data.data(),
+                         input_data,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     for (std::size_t i = 0; i < num_elements; ++i) {
       REQUIRE(1.0f == check_output_data[i]);

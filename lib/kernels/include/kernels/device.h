@@ -95,7 +95,8 @@ using coord_t = long long;
   do {                                                                         \
     std::stringstream _error;                                                  \
     if (status != 0) {                                                         \
-        _error << "CUDA failure: " << cudaGetErrorString(status) << " (" << status << ")"; \
+      _error << "CUDA failure: " << cudaGetErrorString(status) << " ("         \
+             << status << ")";                                                 \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)

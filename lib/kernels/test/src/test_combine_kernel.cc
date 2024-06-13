@@ -5,7 +5,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -30,10 +30,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::vector<float> host_input_data =
         returnRandomFillDeviceData(&input_data_ptr, num_elements);
 
-    const GenericTensorAccessorR accessorR{DataType::FLOAT, shape,
-                                           input_data_ptr};
-    const GenericTensorAccessorW accessorW{DataType::FLOAT, shape,
-                                           output_data_ptr};
+    const GenericTensorAccessorR accessorR{
+        DataType::FLOAT, shape, input_data_ptr};
+    const GenericTensorAccessorW accessorW{
+        DataType::FLOAT, shape, output_data_ptr};
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
@@ -41,7 +41,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     Kernels::Combine::forward_kernel(stream, accessorR, accessorW);
 
     std::vector<float> host_output_data(100 * 100);
-    checkCUDA(cudaMemcpy(host_output_data.data(), output_data_ptr,
+    checkCUDA(cudaMemcpy(host_output_data.data(),
+                         output_data_ptr,
                          host_output_data.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 
@@ -69,15 +70,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     fillDeviceDataOnes(&grad_output_data_ptr, 100 * 100);
     fillDeviceDataZeros(&grad_input_data_ptr, 100 * 100);
 
-    const GenericTensorAccessorR accessorRGrad{DataType::FLOAT, shape,
-                                               grad_output_data_ptr};
-    const GenericTensorAccessorW accessorWGrad{DataType::FLOAT, shape,
-                                               grad_input_data_ptr};
+    const GenericTensorAccessorR accessorRGrad{
+        DataType::FLOAT, shape, grad_output_data_ptr};
+    const GenericTensorAccessorW accessorWGrad{
+        DataType::FLOAT, shape, grad_input_data_ptr};
 
     Kernels::Combine::backward_kernel(stream, accessorRGrad, accessorWGrad);
 
     std::vector<float> host_input_grad(100 * 100);
-    checkCUDA(cudaMemcpy(host_input_grad.data(), grad_input_data_ptr,
+    checkCUDA(cudaMemcpy(host_input_grad.data(),
+                         grad_input_data_ptr,
                          host_input_grad.size() * sizeof(float),
                          cudaMemcpyDeviceToHost));
 

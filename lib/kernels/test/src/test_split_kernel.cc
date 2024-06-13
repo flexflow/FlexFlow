@@ -8,7 +8,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -43,13 +43,19 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate(out_blk_sizes[i] * sizeof(float)));
     }
 
-    Kernels::Split::forward_kernel(stream, output_ptrs.data(), input_data,
-                                   out_blk_sizes, in_blk_size, num_blks,
+    Kernels::Split::forward_kernel(stream,
+                                   output_ptrs.data(),
+                                   input_data,
+                                   out_blk_sizes,
+                                   in_blk_size,
+                                   num_blks,
                                    num_outputs);
 
     for (int i = 0; i < num_outputs; i++) {
-      cudaMemcpy(host_output_data[i].data(), output_ptrs[i],
-                 out_blk_sizes[i] * sizeof(float), cudaMemcpyDeviceToHost);
+      cudaMemcpy(host_output_data[i].data(),
+                 output_ptrs[i],
+                 out_blk_sizes[i] * sizeof(float),
+                 cudaMemcpyDeviceToHost);
     }
 
     for (int i = 0; i < num_outputs; i++) {
@@ -69,13 +75,19 @@ TEST_SUITE(FF_TEST_SUITE) {
     cudaMemset(grad_input_data, 0, num_elements * sizeof(float));
 
     Kernels::Split::backward_kernel(
-        stream, grad_input_data,
-        const_cast<const float **>(grad_output_ptrs.data()), out_blk_sizes,
-        in_blk_size, num_blks, num_outputs);
+        stream,
+        grad_input_data,
+        const_cast<float const **>(grad_output_ptrs.data()),
+        out_blk_sizes,
+        in_blk_size,
+        num_blks,
+        num_outputs);
 
     std::vector<float> host_grad_input_data(num_elements, 0);
-    cudaMemcpy(host_grad_input_data.data(), grad_input_data,
-               num_elements * sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(host_grad_input_data.data(),
+               grad_input_data,
+               num_elements * sizeof(float),
+               cudaMemcpyDeviceToHost);
 
     for (int i = 0; i < num_elements; i++) {
       REQUIRE(host_grad_input_data[i] == host_input_data[i]);

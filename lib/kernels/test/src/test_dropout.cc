@@ -8,7 +8,7 @@
 
 template <typename T>
 void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   const std::vector<size_t> &num_elements,
+                   std::vector<size_t> const &num_elements,
                    Allocator &allocator) {
   for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
     *gpu_data_ptrs[i] =
@@ -46,26 +46,33 @@ TEST_SUITE(FF_TEST_SUITE) {
     Kernels::Dropout::forward_kernel(stream, state, input_data, output_data);
 
     std::vector<float> host_output_data(num_elements, 0.0f);
-    checkCUDA(cudaMemcpy(host_output_data.data(), output_data,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(host_output_data.data(),
+                         output_data,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
     int zero_count = 0;
     for (float value : host_output_data) {
-      if (value == 0.0f)
+      if (value == 0.0f) {
         zero_count++;
+      }
     }
     CHECK(zero_count ==
           doctest::Approx(num_elements * dropout_rate).epsilon(0.5));
 
-    Kernels::Dropout::backward_kernel(stream, state, output_data,
-                                      grad_input_data);
+    Kernels::Dropout::backward_kernel(
+        stream, state, output_data, grad_input_data);
 
     std::vector<float> host_grad_input_data(num_elements);
-    checkCUDA(cudaMemcpy(host_grad_input_data.data(), grad_input_data,
-                         num_elements * sizeof(float), cudaMemcpyDeviceToHost));
+    checkCUDA(cudaMemcpy(host_grad_input_data.data(),
+                         grad_input_data,
+                         num_elements * sizeof(float),
+                         cudaMemcpyDeviceToHost));
 
-    Kernels::Dropout::cleanup_kernel(allocator, state.inputTensor,
-                                     state.outputTensor, state.dropoutDesc,
+    Kernels::Dropout::cleanup_kernel(allocator,
+                                     state.inputTensor,
+                                     state.outputTensor,
+                                     state.dropoutDesc,
                                      state.dropoutStates);
 
     checkCUDA(cudaStreamDestroy(stream));

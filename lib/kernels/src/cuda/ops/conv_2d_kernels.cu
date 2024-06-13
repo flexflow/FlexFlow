@@ -208,44 +208,46 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
       outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
 
   // select forward algorithm
-  fwdAlgo = selectConvolutionForwardAlgorithm(handle.dnn,
-                                              inputTensor,
-                                              static_cast<const void*>(input.get_float_ptr()),
-                                              filterDesc,
-                                              filter_ptr,
-                                              convDesc,
-                                              handle.workSpace,
-                                              handle.workSpaceSize,
-                                              outputTensor,
-                                              output.get_float_ptr(),
-                                              nullptr);
+  fwdAlgo = selectConvolutionForwardAlgorithm(
+      handle.dnn,
+      inputTensor,
+      static_cast<void const *>(input.get_float_ptr()),
+      filterDesc,
+      filter_ptr,
+      convDesc,
+      handle.workSpace,
+      handle.workSpaceSize,
+      outputTensor,
+      output.get_float_ptr(),
+      nullptr);
 
   // select backward filter algorithm
-  bwdFilterAlgo =
-      selectConvolutionBackwardFilterAlgorithm(handle.dnn,
-                                               inputTensor,
-                                               static_cast<const void*>(input.get_float_ptr()),
-                                               outputTensor,
-                                               output.get_float_ptr(),
-                                               convDesc,
-                                               handle.workSpace,
-                                               handle.workSpaceSize,
-                                               filterDesc,
-                                               filter_grad_ptr,
-                                               nullptr);
+  bwdFilterAlgo = selectConvolutionBackwardFilterAlgorithm(
+      handle.dnn,
+      inputTensor,
+      static_cast<void const *>(input.get_float_ptr()),
+      outputTensor,
+      output.get_float_ptr(),
+      convDesc,
+      handle.workSpace,
+      handle.workSpaceSize,
+      filterDesc,
+      filter_grad_ptr,
+      nullptr);
 
   // select backward data algorithm
-  bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(handle.dnn,
-                                                       filterDesc,
-                                                       filter_ptr,
-                                                       outputTensor,
-                                                       output.get_float_ptr(),
-                                                       convDesc,
-                                                       handle.workSpace,
-                                                       handle.workSpaceSize,
-                                                       inputTensor,
-                                                       static_cast<void*>(const_cast<float*>(input.get_float_ptr())),
-                                                       nullptr);
+  bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(
+      handle.dnn,
+      filterDesc,
+      filter_ptr,
+      outputTensor,
+      output.get_float_ptr(),
+      convDesc,
+      handle.workSpace,
+      handle.workSpaceSize,
+      inputTensor,
+      static_cast<void *>(const_cast<float *>(input.get_float_ptr())),
+      nullptr);
   if (activation.has_value()) {
     checkCUDNN(cudnnSetActivationDescriptor(
         actiDesc, CUDNN_ACTIVATION_RELU, CUDNN_PROPAGATE_NAN, 0.0));
