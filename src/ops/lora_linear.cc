@@ -859,6 +859,23 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
     sez.serialize(kv.second.peft_model_id.length());
     sez.serialize(kv.second.peft_model_id.c_str(),
                   kv.second.peft_model_id.length());
+    // serialize whether we should expect an optimizer or not
+    sez.serialize(kv.second.trainable);
+    if (kv.second.trainable) {
+      // Serialize LoraConfig's optimizer config
+      sez.serialize(kv.second.optimizer_config->type);
+      if (kv.second.optimizer_config->type == OPTIMIZER_TYPE_SGD) {
+        LoraSGDOptimizerConfig const *sgd_config =
+            static_cast<LoraSGDOptimizerConfig const *>(
+                kv.second.optimizer_config);
+        sez.serialize(sgd_config->lr);
+        sez.serialize(sgd_config->momentum);
+        sez.serialize(sgd_config->nesterov);
+        sez.serialize(sgd_config->weight_decay);
+      } else {
+        assert(false && "Optimizer type not yet supported");
+      }
+    }
   }
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
@@ -904,7 +921,28 @@ Node LoraLinear::deserialize(FFModel &ff,
     dez.deserialize(buffer, string_size);
     std::string peft_model_name = std::string(buffer);
 
-    LoraLinearConfig lora_linear_config(cache_folder, peft_model_name);
+    bool trainable;
+    LoraOptimizerConfig *optimizer_config_ = nullptr;
+    OptimizerType type_;
+    dez.deserialize(trainable);
+    if (trainable) {
+      dez.deserialize(type_);
+      if (type_ == OPTIMIZER_TYPE_SGD) {
+        double lr, momentum, weight_decay;
+        bool nesterov;
+        dez.deserialize(lr);
+        dez.deserialize(momentum);
+        dez.deserialize(nesterov);
+        dez.deserialize(weight_decay);
+        optimizer_config_ =
+            new LoraSGDOptimizerConfig(lr, momentum, nesterov, weight_decay);
+      } else {
+        assert(false && "Optimizer type not yet supported");
+      }
+    }
+
+    LoraLinearConfig lora_linear_config(
+        cache_folder, peft_model_name, trainable, optimizer_config_);
     params.peft_configs.emplace(
         std::make_pair(peft_model_id, lora_linear_config));
   }

@@ -37,6 +37,12 @@ using BeamSearchBatchConfigFuture = Legion::Future;
 using TreeVerifyBatchConfigFuture = Legion::Future;
 using BeamInferenceResultFuture = Legion::Future;
 
+enum GradientsUpdateMode {
+  ACCUMULATE_ONLY = 1,
+  UPDATE_WEIGHTS = 2,
+  UPDATE_AND_SAVE_WEIGHTS = 3,
+};
+
 class BatchConfig {
 public:
   using RequestGuid = size_t;
@@ -81,7 +87,7 @@ public:
       batch_config_request_id = -1;
       peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
-      peft_optimizer_update = false;
+      gradients_update_mode = GradientsUpdateMode::ACCUMULATE_ONLY;
     }
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
@@ -95,9 +101,7 @@ public:
     // PEFT fields
     PEFTModelID peft_model_id;
     bool peft_bwd;
-    bool peft_optimizer_update; // whether to update the weights after the
-                                // peft_bwd pass using the gradients, according
-                                // to the optimizer.
+    GradientsUpdateMode gradients_update_mode;
   };
   struct PerTokenInfo {
     int abs_depth_in_request;

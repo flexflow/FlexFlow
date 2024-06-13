@@ -422,7 +422,8 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     }
-    if (bc->requestsInfo[i].peft_optimizer_update) {
+    if (bc->requestsInfo[i].gradients_update_mode !=
+        GradientsUpdateMode::ACCUMULATE_ONLY) {
       LoraOptimizerConfig const *optimizer_config =
           m->model_state[bc->requestsInfo[i].peft_model_id].optimizer_config;
       assert(optimizer_config != nullptr);
