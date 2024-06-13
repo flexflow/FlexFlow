@@ -16,7 +16,6 @@
 #include "device.h"
 #include "kernels/dropout_kernels.h"
 #include "kernels/ff_handle.h"
-#include <iostream>
 
 namespace FlexFlow {
 namespace Kernels {

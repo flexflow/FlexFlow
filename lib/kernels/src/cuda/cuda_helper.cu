@@ -1,5 +1,3 @@
-// #include "flexflow/model.h"
-// #include "kernels/cuda_helper.h"
 #include "device.h"
 
 namespace FlexFlow {
@@ -221,7 +219,7 @@ __host__ void
   checkCUDA(cudaFreeHost(host_ptr));
 }
 
-cudnnStatus_t
+ffStatus_t
     cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
                                            ArrayShape const &shape) {
   ArrayShape flipped = shape.reversed_dim_order();

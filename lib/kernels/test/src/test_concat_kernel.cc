@@ -1,9 +1,6 @@
 #include "doctest/doctest.h"
 #include "kernels/concat_kernels.h"
-#include "kernels/local_allocator.h"
-#include <iostream>
-#include <random>
-#include <vector>
+#include "test_utils.h"
 
 namespace FlexFlow {
 TEST_SUITE(FF_TEST_SUITE) {
@@ -11,9 +8,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     int const num_inputs = 3;
     int const size_per_input = 100;
     ff_dim_t concat_axis = ff_dim_t(0);
-    std::size_t dims[] = {size_per_input};
-    std::size_t num_dims = 1;
-    FlexFlow::ArrayShape shape(dims, num_dims);
+
+    ArrayShape shape = ArrayShape{
+        std::vector<size_t>{size_per_input},
+    };
 
     Allocator allocator = get_local_memory_allocator();
     std::vector<void *> input_ptrs;

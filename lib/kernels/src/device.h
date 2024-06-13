@@ -29,17 +29,11 @@
 using ::FlexFlow::DataType;
 using ::FlexFlow::OperatorType;
 
-namespace FlexFlow {
-cudaError_t get_legion_stream(cudaStream_t *stream);
-} // namespace FlexFlow
-
 #define checkCUDNN(status)                                                     \
   do {                                                                         \
     std::stringstream _error;                                                  \
     if (status != FF_CUDNN_STATUS_SUCCESS) {                                   \
-      _error << "CUDNN failure: " << status << " ("                            \
-             << cudnnGetErrorString(status) << ") in function "                \
-             << __FUNCTION__;                                                  \
+      _error << "CUDNN failure: " << status;                                   \
       FatalError(_error.str());                                                \
     }                                                                          \
   } while (0)
@@ -138,7 +132,7 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
-cudnnStatus_t
+ffStatus_t
     cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
                                            FlexFlow::ArrayShape const &shape);
 

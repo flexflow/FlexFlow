@@ -15,9 +15,7 @@ ArrayShape::ArrayShape(size_t *_dims, size_t num_dims)
 } // This assumes dims can be constructed from iterators.
 
 ArrayShape::ArrayShape(TensorShape const &shape)
-    : dims(create_reversed_dims(
-          shape.dims.ff_ordered)) {
-}
+    : dims(create_reversed_dims(shape.dims.ff_ordered)) {}
 
 ArrayShape::ArrayShape(std::vector<std::size_t> const &input_dims)
     : dims(input_dims) {}
@@ -38,12 +36,11 @@ std::size_t ArrayShape::num_elements() const {
   if (dims.size() == 0) {
     return 0;
   }
-  return std::accumulate(
-      dims.begin(), dims.end(), 1, std::multiplies<std::size_t>());
+  return product(this->dims);
 }
 
 std::size_t ArrayShape::operator[](legion_dim_t idx) const {
-  return dims[idx.value]; 
+  return dims[idx.value];
 }
 
 ArrayShape ArrayShape::sub_shape(
@@ -54,7 +51,7 @@ ArrayShape ArrayShape::sub_shape(
 
 std::optional<std::size_t> ArrayShape::at_maybe(std::size_t index) const {
   if (index < dims.size()) {
-    return dims[legion_dim_t(index)];
+    return dims.at(legion_dim_t(index));
   } else {
     return std::nullopt;
   }
@@ -64,10 +61,6 @@ ArrayShape ArrayShape::reversed_dim_order() const {
   std::vector<std::size_t> reversed_dims(dims.begin(), dims.end());
   std::reverse(reversed_dims.begin(), reversed_dims.end());
   return ArrayShape(reversed_dims);
-}
-
-size_t get_volume(ArrayShape const &shape) {
-  return shape.get_volume();
 }
 
 } // namespace FlexFlow

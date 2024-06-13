@@ -4,7 +4,6 @@
 #include "device.h"
 #include "kernels/accessor.h"
 #include "kernels/ff_handle.h"
-#include "op-attrs/operator_type.h"
 #include "op-attrs/ops/element_unary.h"
 #include <cstddef>
 

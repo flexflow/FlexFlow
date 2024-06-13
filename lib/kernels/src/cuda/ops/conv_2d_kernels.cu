@@ -266,7 +266,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   return per_device_state;
 }
 
-void forward_kernel(cudaStream_t stream,
+void forward_kernel(ffStream_t stream,
                     Conv2DPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
@@ -311,7 +311,7 @@ void forward_kernel(cudaStream_t stream,
   }
 }
 
-void backward_kernel(cudaStream_t stream,
+void backward_kernel(ffStream_t stream,
                      Conv2DPerDeviceState const &m,
                      float const *input_ptr,
                      float *input_grad_ptr,

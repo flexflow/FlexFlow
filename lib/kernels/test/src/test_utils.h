@@ -3,10 +3,21 @@
 
 #include "kernels/device.h"
 #include "kernels/ff_handle.h"
+#include "kernels/local_allocator.h"
 #include <algorithm>
 #include <memory>
 #include <random>
 #include <vector>
+
+template <typename T>
+void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
+                   std::vector<size_t> const &num_elements,
+                   Allocator &allocator) {
+  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
+    *gpu_data_ptrs[i] =
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
+  }
+}
 
 template <typename T>
 void randomFillDeviceData(T **gpu_data, size_t num_elements) {

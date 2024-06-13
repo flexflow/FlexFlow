@@ -1,24 +1,10 @@
 #include "doctest/doctest.h"
-#include "kernels/local_allocator.h"
 #include "kernels/transpose_kernels.h"
 #include "test_utils.h"
-#include <algorithm>
-#include <iostream>
-#include <vector>
-
-template <typename T>
-void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   std::vector<size_t> const &num_elements,
-                   Allocator &allocator) {
-  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
-    *gpu_data_ptrs[i] =
-        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
-  }
-}
 
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Test Transpose Forward Kernel") {
+  TEST_CASE("Test Transpose Kernel Operations") {
     std::size_t num_elements = 100;
     std::size_t dims[] = {10, 10};
     std::size_t num_dims = 2;
@@ -42,55 +28,37 @@ TEST_SUITE(FF_TEST_SUITE) {
         returnRandomFillDeviceData(&input_data, num_elements);
     fillDeviceDataNum(&output_data, num_elements, 0.0f);
 
-    const GenericTensorAccessorR input_accessor{
-        DataType::FLOAT, shape, input_data};
-    const GenericTensorAccessorW output_accessor{
-        DataType::FLOAT, shape, output_data};
+    GenericTensorAccessorR input_accessor{DataType::FLOAT, shape, input_data};
+    GenericTensorAccessorW output_accessor{DataType::FLOAT, shape, output_data};
 
     TransposePerDeviceState state =
         Kernels::Transpose::init_kernel(num_dims, perm);
 
-    Kernels::Transpose::forward_kernel(
-        stream, state, input_accessor, output_accessor);
+    SUBCASE("Test Transpose Forward Kernel") {
+      Kernels::Transpose::forward_kernel(
+          stream, state, input_accessor, output_accessor);
 
-    checkCUDA(cudaStreamDestroy(stream));
-  }
+      std::vector<float> host_output_data(num_elements);
+      checkCUDA(cudaMemcpy(host_output_data.data(),
+                           output_data,
+                           num_elements * sizeof(float),
+                           cudaMemcpyDeviceToHost));
+    }
 
-  TEST_CASE("Test Transpose Backward Kernel") {
-    std::size_t num_elements = 100;
-    std::size_t dims[] = {10, 10};
-    std::size_t num_dims = 2;
-    FlexFlow::ArrayShape shape(dims, num_dims);
+    SUBCASE("Test Transpose Backward Kernel") {
+      std::vector<float **> grad_ptrs = {&output_data, &input_data};
+      allocate_ptrs(grad_ptrs, sizes, allocator);
 
-    std::vector<ff_dim_t> perm = {ff_dim_t(0), ff_dim_t(1)};
+      Kernels::Transpose::backward_kernel(
+          stream, state, output_accessor, input_accessor);
 
-    PerDeviceFFHandle handle;
-    setPerDeviceFFHandle(&handle);
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+      std::vector<float> host_grad_input_data(num_elements);
+      checkCUDA(cudaMemcpy(host_grad_input_data.data(),
+                           input_data,
+                           num_elements * sizeof(float),
+                           cudaMemcpyDeviceToHost));
+    }
 
-    Allocator allocator = get_local_memory_allocator();
-
-    float *out_grad_data, *in_grad_data;
-    std::vector<float **> ptrs = {&out_grad_data, &in_grad_data};
-    std::vector<size_t> sizes = {num_elements, num_elements};
-    allocate_ptrs(ptrs, sizes, allocator);
-
-    std::vector<float> host_out_grad_data =
-        returnRandomFillDeviceData(&out_grad_data, num_elements);
-    fillDeviceDataNum(&in_grad_data, num_elements, 0.0f);
-
-    const GenericTensorAccessorR out_grad_accessor{
-        DataType::FLOAT, shape, out_grad_data};
-    const GenericTensorAccessorW in_grad_accessor{
-        DataType::FLOAT, shape, in_grad_data};
-
-    TransposePerDeviceState state =
-        Kernels::Transpose::init_kernel(num_dims, perm);
-
-    Kernels::Transpose::backward_kernel(
-        stream, state, in_grad_accessor, out_grad_accessor);
-
-    checkCUDA(cudaStreamDestroy(stream));
+    cudaStreamDestroy(stream);
   }
 }

@@ -1,25 +1,14 @@
 #include "doctest/doctest.h"
 #include "kernels/cast_kernels.h"
-#include "kernels/local_allocator.h"
 #include "test_utils.h"
 #include <type_traits>
-
-template <typename T>
-void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   std::vector<size_t> const &num_elements,
-                   Allocator &allocator) {
-  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
-    *gpu_data_ptrs[i] =
-        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
-  }
-}
 
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test cast kernel float to double") {
-    std::size_t dims[] = {100, 100};
-    std::size_t num_dims = 2;
-    FlexFlow::ArrayShape shape(dims, num_dims);
+    ArrayShape shape = ArrayShape{
+        std::vector<size_t>{100, 100},
+    };
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -32,10 +21,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     allocate_ptrs(ptrs, sizes, allocator);
     randomFillDeviceData(&float_data_ptr, 100 * 100);
 
-    const GenericTensorAccessorR accessorR{
-        DataType::FLOAT, shape, float_data_ptr};
-    const GenericTensorAccessorW accessorW{
-        DataType::DOUBLE, shape, double_data_ptr};
+    GenericTensorAccessorR accessorR{DataType::FLOAT, shape, float_data_ptr};
+    GenericTensorAccessorW accessorW{DataType::DOUBLE, shape, double_data_ptr};
 
     Kernels::Cast::forward_kernel(
         nullptr, accessorR, accessorW, DataType::FLOAT, DataType::DOUBLE);
@@ -60,9 +47,9 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Test cast kernel Int to Float") {
-    std::size_t dims[] = {100, 100};
-    std::size_t num_dims = 2;
-    FlexFlow::ArrayShape shape(dims, num_dims);
+    ArrayShape shape = ArrayShape{
+        std::vector<size_t>{100, 100},
+    };
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -75,10 +62,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     allocate_ptrs(ptrs, sizes, allocator);
     randomFillDeviceData(&int_data_ptr, 100 * 100);
 
-    const GenericTensorAccessorR accessorR{
-        DataType::INT32, shape, int_data_ptr};
-    const GenericTensorAccessorW accessorW{
-        DataType::FLOAT, shape, float_data_ptr};
+    GenericTensorAccessorR accessorR{DataType::INT32, shape, int_data_ptr};
+    GenericTensorAccessorW accessorW{DataType::FLOAT, shape, float_data_ptr};
 
     Kernels::Cast::forward_kernel(
         nullptr, accessorR, accessorW, DataType::INT32, DataType::FLOAT);

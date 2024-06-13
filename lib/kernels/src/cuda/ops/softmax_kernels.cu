@@ -15,7 +15,6 @@
 
 #include "device.h"
 #include "kernels/softmax_kernels.h"
-#include <iostream>
 
 namespace FlexFlow {
 

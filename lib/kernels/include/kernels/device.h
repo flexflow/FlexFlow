@@ -26,6 +26,10 @@
 #include <iostream>
 #include <sstream>
 
+namespace FlexFlow {
+cudaError_t get_legion_stream(cudaStream_t *stream);
+} // namespace FlexFlow
+
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 typedef cudaStream_t ffStream_t;
 typedef cudnnTensorDescriptor_t ffTensorDescriptor_t;

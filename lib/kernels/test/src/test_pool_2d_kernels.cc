@@ -1,20 +1,6 @@
 #include "doctest/doctest.h"
-#include "kernels/local_allocator.h"
 #include "kernels/pool_2d_kernels.h"
 #include "test_utils.h"
-#include <algorithm>
-#include <iostream>
-#include <vector>
-
-template <typename T>
-void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   std::vector<size_t> const &num_elements,
-                   Allocator &allocator) {
-  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
-    *gpu_data_ptrs[i] =
-        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
-  }
-}
 
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
@@ -34,13 +20,6 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
-    float *input_data, *output_data;
-    std::vector<float **> ptrs = {&input_data, &output_data};
-    std::vector<size_t> sizes = {num_elements, output_elements};
-    allocate_ptrs(ptrs, sizes, allocator);
-
-    randomFillDeviceData(&input_data, num_elements);
-
     Pool2DPerDeviceState state = Kernels::Pool2D::init_kernel(handle,
                                                               std::nullopt,
                                                               input_w,
@@ -59,28 +38,39 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                               stride_w,
                                                               pool_type);
 
-    Kernels::Pool2D::forward_kernel(stream, state, input_data, output_data);
+    float *input_data, *output_data;
+    SUBCASE("Test Pool2D Forward") {
+      std::vector<float **> ptrs = {&input_data, &output_data};
+      std::vector<size_t> sizes = {num_elements, output_elements};
+      allocate_ptrs(ptrs, sizes, allocator);
 
-    std::vector<float> host_output_data(output_elements);
-    checkCUDA(cudaMemcpy(host_output_data.data(),
-                         output_data,
-                         output_elements * sizeof(float),
-                         cudaMemcpyDeviceToHost));
+      randomFillDeviceData(&input_data, num_elements);
 
-    float *output_grad, *input_grad;
-    std::vector<float **> ptrs_grad = {&output_grad, &input_grad};
-    std::vector<size_t> sizes_grad = {output_elements, num_elements};
-    allocate_ptrs(ptrs_grad, sizes_grad, allocator);
-    fillDeviceDataNum(&output_grad, output_elements, 1.0f);
+      Kernels::Pool2D::forward_kernel(stream, state, input_data, output_data);
 
-    Kernels::Pool2D::backward_kernel(
-        stream, state, input_data, input_grad, output_data, output_grad);
+      std::vector<float> host_output_data(output_elements);
+      checkCUDA(cudaMemcpy(host_output_data.data(),
+                           output_data,
+                           output_elements * sizeof(float),
+                           cudaMemcpyDeviceToHost));
+    }
 
-    std::vector<float> host_input_grad(num_elements);
-    checkCUDA(cudaMemcpy(host_input_grad.data(),
-                         input_grad,
-                         num_elements * sizeof(float),
-                         cudaMemcpyDeviceToHost));
+    SUBCASE("Test Pool2D Backward") {
+      float *output_grad, *input_grad;
+      std::vector<float **> ptrs_grad = {&output_grad, &input_grad};
+      std::vector<size_t> sizes_grad = {output_elements, num_elements};
+      allocate_ptrs(ptrs_grad, sizes_grad, allocator);
+      fillDeviceDataNum(&output_grad, output_elements, 1.0f);
+
+      Kernels::Pool2D::backward_kernel(
+          stream, state, input_data, input_grad, output_data, output_grad);
+
+      std::vector<float> host_input_grad(num_elements);
+      checkCUDA(cudaMemcpy(host_input_grad.data(),
+                           input_grad,
+                           num_elements * sizeof(float),
+                           cudaMemcpyDeviceToHost));
+    }
 
     checkCUDA(cudaStreamDestroy(stream));
     checkCUDA(cudaFree(handle.workSpace));

@@ -29,8 +29,7 @@
       lib = pkgs.lib;
       stdenv = pkgs.cudaPackages.backendStdenv;
       mkShell = pkgs.mkShell.override {
-        # stdenv = pkgs.cudaPackages.backendStdenv;
-        stdenv = stdenv;
+        inherit stdenv; 
       };
     in
     {
@@ -104,11 +103,6 @@
         default = mkShell {
           inputsFrom = [ ci ];
           inherit (ci) CMAKE_FLAGS;
-
-          VIMPLUGINS = lib.strings.concatStringsSep "," [
-            "${proj-repo.packages.${system}.proj-nvim}"
-          ];
-
           buildInputs = builtins.concatLists [
             (with pkgs; [
               clang-tools
@@ -120,7 +114,6 @@
               compdb
               jq
               gh
-              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj
