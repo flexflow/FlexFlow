@@ -176,7 +176,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
       kPagesize;
   int const num_requests = bc->num_active_requests();
   int parallelism = m->hidden_size * num_requests;
-  commit_tokens_kernel_new<<<GET_BLOCKS(parallelism),
+  commit_tokens_kernel<<<GET_BLOCKS(parallelism),
                              min(CUDA_NUM_THREADS, parallelism),
                              0,
                              stream>>>(static_cast<half *>(m->keyCache),
