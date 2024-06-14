@@ -2745,7 +2745,7 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
             } else if (tree_full) {
               // The layer is not full, but the tree is full and the child node acc prob is larger than the lowest acc prob node in tree
               // Can remove the node with lowest acc prob in the tree and add this child node to layer
-              ordered_nodes.top().first->pruned = true;
+              ordered_nodes.top()->pruned = true;
               spec_token_tree.tree_size--;
               ordered_nodes.pop();
               tokens.insert(node_ptr);
@@ -2798,7 +2798,12 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
 }
 
 void RequestManager::select_subtrees_on_slo_constraints(double const L, double const eps) {
+  
   const int N = get_max_tokens_per_batch();
+  std::vector<TokenTreeNode> linked_list_heads(get_max_requests_per_batch(), nullptr);
+  std::vector<double> expected_decoded_num(get_max_requests_per_batch());
+
+  int B = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -2815,13 +2820,23 @@ void RequestManager::select_subtrees_on_slo_constraints(double const L, double c
       CompareSharedTokenTreeNodePtr> ordered_nodes = request.ordered_nodes_per_tree[0];
     
     // From the ordered_nodes, create the linked-list
-    TokenTreeNode head = 
-    TokenTreeNode tail = 
+    TokenTreeNode head = ordered_nodes.top();
+    TokenTreeNode tail = ordered_nodes.top();
+    ordered_nodes.pop();
     while(ordered_nodes.size() > 0) {
-      
+      tail->next = ordered_nodes.top();
+      tail = ordered_nodes.top();
+      ordered_nodes.pop();
     }
+    tail->next = nullptr;
+    head->in_subtree = true;
+    linked_list_heads[request_index] = head->next;
+    expected_decoded_num[request_index] = exp(head->acc_log_prob);
+    B++;
+  }
 
-
+  for (int iter = 0; iter < N - B; ++iter) {
+    //TODO: implement subtree selection
   }
 }
 
