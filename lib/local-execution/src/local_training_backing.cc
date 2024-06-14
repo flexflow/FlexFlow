@@ -35,6 +35,13 @@ LocalTrainingBacking::LocalTrainingBacking(
         GenericTensorAccessorW tensor_backing =
             this->allocator.allocate_tensor(tensor_attrs.shape);
         this->local_slots_backing.tensor_mapping.insert({edge, tensor_backing});
+
+        if (tensor_attrs.create_gradients == CreateGrad::YES) {
+          GenericTensorAccessorW gradient_tensor_backing =
+              this->allocator.allocate_tensor(tensor_attrs.shape);
+          this->local_slots_backing.gradient_tensor_mapping.insert(
+              {edge, gradient_tensor_backing});
+        }
       }
     }
   }

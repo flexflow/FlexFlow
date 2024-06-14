@@ -18,9 +18,17 @@ bool LocalSlotsBacking::is_tensor_allocated(
   return contains_key(this->tensor_mapping, tensor_id);
 }
 
-GenericTensorAccessorW const &LocalSlotsBacking::get_tensor_backing(
-    tensor_guid_t const &tensor_id) const {
-  return this->tensor_mapping.at(tensor_id);
+GenericTensorAccessorW const &
+    LocalSlotsBacking::get_tensor_backing(tensor_guid_t const &tensor_id,
+                                          IsGrad const is_grad) const {
+  switch (is_grad) {
+    case IsGrad::NO:
+      return this->tensor_mapping.at(tensor_id);
+    case IsGrad::YES:
+      return this->gradient_tensor_mapping.at(tensor_id);
+    default:
+      throw mk_runtime_error(fmt::format("IsGrad should only have YES or NO"));
+  }
 }
 
 // FIXME: handle gradient tensor allocation/backing
@@ -46,8 +54,9 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
             fmt::format("Invalid TensorRole")); // inserting role yields
                                                 // "type_is_unformattable" error
     }
+    IsGrad is_grad = slot_grad_id.second;
     GenericTensorAccessorW tensor_backing =
-        this->get_tensor_backing(tensor_guids.at(tensor_spec.idx));
+        this->get_tensor_backing(tensor_guids.at(tensor_spec.idx), is_grad);
     mapping.insert({slot_grad_id, tensor_backing});
   }
   return mapping;
