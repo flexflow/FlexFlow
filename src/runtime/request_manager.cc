@@ -286,7 +286,6 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.target_slo_ms = slo;
-  request.curr_slo_ms = slo;
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -342,7 +341,6 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.target_slo_ms = slo;
-  request.curr_slo_ms = slo;
 
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
@@ -2360,8 +2358,10 @@ RequestManager *RequestManager::get_request_manager() {
 void RequestManager::init_token_tree(RequestGuid guid) {
   Request &request = all_requests[guid];
   request.speculative_token_trees.clear();
+  request.ordered_nodes_per_tree.clear();
   // Assume we only use one small model for speculation
   request.speculative_token_trees.emplace_back();
+  request.ordered_nodes_per_tree.emplace_back();
 }
 
 void RequestManager::add_root_to_spec_token_tree(
@@ -2800,7 +2800,7 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
 void RequestManager::select_subtrees_on_slo_constraints(double const L, double const eps) {
   
   const int N = get_max_tokens_per_batch();
-  std::vector<TokenTreeNode> linked_list_heads(get_max_requests_per_batch(), nullptr);
+  std::vector<std::shared_ptr<TokenTreeNode>> linked_list_heads(get_max_requests_per_batch(), nullptr);
   std::vector<double> expected_decoded_num(get_max_requests_per_batch());
 
   int B = 0;
@@ -2820,8 +2820,8 @@ void RequestManager::select_subtrees_on_slo_constraints(double const L, double c
       CompareSharedTokenTreeNodePtr> ordered_nodes = request.ordered_nodes_per_tree[0];
     
     // From the ordered_nodes, create the linked-list
-    TokenTreeNode head = ordered_nodes.top();
-    TokenTreeNode tail = ordered_nodes.top();
+    std::shared_ptr<TokenTreeNode> head = ordered_nodes.top();
+    std::shared_ptr<TokenTreeNode> tail = ordered_nodes.top();
     ordered_nodes.pop();
     while(ordered_nodes.size() > 0) {
       tail->next = ordered_nodes.top();
@@ -2836,8 +2836,37 @@ void RequestManager::select_subtrees_on_slo_constraints(double const L, double c
   }
 
   for (int iter = 0; iter < N - B; ++iter) {
-    //TODO: implement subtree selection
+    int chosen_request_index = -1;
+    double chosen_request_score = -1.0;
+    for (int request_index = 0; request_index < get_max_requests_per_batch();
+          ++request_index) {
+      if (!request_available[request_index]) {
+        // Request in this slot is unavailable
+        continue;
+      }
+      RequestGuid guid = guid_of_requests[request_index];
+      Request &request = all_requests[guid];
+      assert(request.status == Request::RUNNING);
+    
+      double score = -1.0;
+      if (expected_decoded_num[request_index] * request.target_slo_ms - L - eps < 0) {
+        score = 1-(expected_decoded_num[request_index] * request.target_slo_ms - L - eps);
+      } else {
+        score = exp(linked_list_heads[request_index]->acc_log_prob);
+      }
+      if (score > chosen_request_score) {
+        chosen_request_index = request_index;
+        chosen_request_score = score;
+      }
+    }
+    assert(chosen_request_index >= 0);
+
+    std::shared_ptr<TokenTreeNode> v = linked_list_heads[chosen_request_index];
+    expected_decoded_num[chosen_request_index] += exp(v->acc_log_prob);
+    v->in_subtree = true;
+    linked_list_heads[chosen_request_index] = v->next;
   }
+  // At this point, nodes with 'in_subtree' set to true are nodes belonging to the subtrees
 }
 
 std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {

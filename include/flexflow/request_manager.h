@@ -79,7 +79,7 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   // Required average time-per-output-token service-level objective of this request, in milliseconds
-  double target_slo_ms = std::numeric_limits<double>::max(); // TODO: change max value to prevent overflow
+  double target_slo_ms = 1000.0; // Default SLO is 1 second.
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
   // Node pool of each TokenTree, ordered in ascending order of probabilities
