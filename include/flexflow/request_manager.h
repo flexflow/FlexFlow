@@ -77,11 +77,15 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   // Required average time-per-output-token service-level objective of this request, in milliseconds
-  double target_slo_ms = std::numeric_limits<double>::max();
-  // Time-per-output-token service-level objective of this request at current generation iteration, in milliseconds
-  double curr_slo_ms = std::numeric_limits<double>::max();
+  double target_slo_ms = std::numeric_limits<double>::max(); // TODO: change max value to prevent overflow
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
+  // Node pool of each TokenTree, ordered in ascending order of probabilities
+  std::vector<std::priority_queue<
+      std::shared_ptr<TokenTreeNode>,
+      std::vector<std::shared_ptr<TokenTreeNode>>,
+      CompareSharedTokenTreeNodePtr>>
+      ordered_nodes_per_tree;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
   // Here we maintain a struct CommittedToken which has a field `from_index` and
@@ -134,17 +138,22 @@ public:
   BatchConfig::TokenId id;
   float log_accumulated_prob;
   int parent_pos;
+  int layer_idx;
   bool pruned = false;
   bool gumbel = false;
   float gumbel_logit = 0.0f;
+  bool in_subtree = false;
+  std::shared_ptr<TokenTreeNode> next;
 
   TokenTreeNode(BatchConfig::TokenId id,
                 float log_accumulated_prob,
                 int parent_pos,
+                int layer_idx,
                 bool gumbel = false,
-                float gumbel_logit = 0.0f)
-      : id(id), log_accumulated_prob(log_accumulated_prob),
-        parent_pos(parent_pos), gumbel(gumbel), gumbel_logit(gumbel_logit) {}
+                float gumbel_logit = 0.0f,
+                bool in_subtree = false)
+      : id(id), log_accumulated_prob(log_accumulated_prob), parent_pos(parent_pos),
+        layer_idx(layer_idx), gumbel(gumbel), gumbel_logit(gumbel_logit), in_subtree(in_subtree) {}
 };
 
 bool operator<(std::shared_ptr<TokenTreeNode> const &lhs,
@@ -251,6 +260,7 @@ public:
   int get_max_tree_width();
   void set_max_tree_width(int max_tree_width);
   void set_speculative_sampling(bool speculative_sampling);
+  void set_use_slo(bool use_slo);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -325,6 +335,7 @@ private:
   DecodingMode decoding_mode;
   PrefillModel prefill_model;
   bool speculative_sampling = false;
+  bool use_slo = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -442,6 +453,9 @@ private:
                                    BatchConfig::TokenId token_id);
   bool add_tokens_to_spec_token_tree(
       InferenceResult const &ssm_inference_result);
+  bool add_tokens_to_spec_token_tree_slo(
+      InferenceResult const &ssm_inference_result);
+  void select_subtrees_on_slo_constraints(double const L, double const eps);
   /* ---------- Spec Decoding Helper Functions ---------- */
   void renormalize(std::vector<std::pair<TokenId, float>> &D,
                    std::unordered_map<TokenId, float> &R,

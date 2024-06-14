@@ -206,6 +206,10 @@ void RequestManager::set_speculative_sampling(bool speculative_sampling_) {
   speculative_sampling = speculative_sampling_;
 }
 
+void RequestManager::set_use_slo(bool use_slo) {
+  this->use_slo = use_slo;
+}
+
 void RequestManager::register_tokenizer(ModelType type,
                                         int bos_token_id,
                                         int eos_token_id,
@@ -2604,6 +2608,212 @@ bool RequestManager::add_tokens_to_spec_token_tree(
   assert(token_tree_node_pool.size() <= get_max_tokens_per_batch() &&
          "The token tree node pool should not exceed the maximum size.");
   return all_request_last_layer_empty;
+}
+
+bool RequestManager::add_tokens_to_spec_token_tree_slo(
+    InferenceResult const &ssm_inference_result) {
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    int parent_num = request.num_tokens_in_batch;
+    if (parent_num == 0) {
+      // The request has no committed tokens, we don't need to add tokens to
+      // the token tree
+      continue;
+    }
+    int result_offset = request.first_token_offset_in_batch *
+                        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+
+    TokenTree &spec_token_tree = request.speculative_token_trees[0];
+    std::priority_queue<
+      std::shared_ptr<TokenTreeNode>,
+      std::vector<std::shared_ptr<TokenTreeNode>>,
+      CompareSharedTokenTreeNodePtr> ordered_nodes = request.ordered_nodes_per_tree[0];
+    std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
+        spec_token_tree.tree_layers.back();
+    std::set<std::shared_ptr<TokenTreeNode>, CompareSharedTokenTreeNodePtr>
+        tokens;
+    int layer_idx = spec_token_tree.tree_layers.size();
+    int parent_pos = 0;
+    for (auto const &parent_ptr : last_layer) {
+      if (!parent_ptr->pruned) {
+        // TODO: parameterize MAX_SPECULATIVE_TREE_BRANCHES
+        float parent_log_prob = parent_ptr->log_accumulated_prob;
+        int child_start_idx =
+            result_offset +
+            parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+        // TODO: rename child_probs to child_logits after change the output of
+        // argmax from prob to logprob
+        std::vector<std::pair<float, int>> child_probs(
+            BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
+        for (int child_pos = 0;
+             child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+             child_pos++) {
+          int result_idx = child_start_idx + child_pos;
+          if (!speculative_sampling) {
+            // TODO: the argmax will return log prob instead of prob
+            child_probs[child_pos] = std::make_pair(
+                log(ssm_inference_result.probs[result_idx]), result_idx);
+          } else {
+            // Use gumbel perturbed logits here
+            child_probs[child_pos] = std::make_pair(
+                ssm_inference_result.gumbel_logits[result_idx], result_idx);
+          }
+        }
+        // Sort in descending order
+        std::sort(child_probs.begin(),
+                  child_probs.end(),
+                  std::greater<std::pair<float, int>>());
+        if (speculative_sampling) {
+          // Condition the gumbel perturbed logits on the maximum
+          gumbel_conditioned_on_max(parent_ptr->gumbel_logit, child_probs);
+        }
+        for (auto const &child_prob : child_probs) {
+
+          float logit = child_prob.first;
+          // The value used to compare between tokens
+          float accumulated_log_prob = logit + parent_log_prob;
+          float gumbel_logit = 0.0f;
+          float cmp_value;
+          if (speculative_sampling) {
+            cmp_value = gumbel_logit = logit;
+          } else {
+            cmp_value = accumulated_log_prob;
+          }
+          int result_idx = child_prob.second;
+
+          assert(logit != -std::numeric_limits<float>::infinity() &&
+                 "Child log probability should not be -inf.");
+
+          bool tree_full = (ordered_nodes.size() + tokens.size() == get_max_spec_tree_token_num());
+          bool layer_full = (tokens.size() == get_max_tree_width());
+          bool child_leq_tree = (cmp_value <= (speculative_sampling
+                                ? ordered_nodes.top()->gumbel_logit
+                                : ordered_nodes.top()->log_accumulated_prob));
+          bool child_leq_layer = (cmp_value <= (speculative_sampling
+                                ? (*tokens.begin())->gumbel_logit
+                                : (*tokens.begin())->log_accumulated_prob));
+
+          if (layer_full and child_leq_layer) {
+            // The layer is full, and that child node (and all subsequent children nodes) have smaller acc prob than nodes in layer
+            break;
+          } else if (tree_full and child_leq_tree and child_leq_layer) {
+            // The layer is not full, but the tree is full, and all nodes from the tree and from the layer have higher acc prob than that child node (and all subsequent children nodes)
+            break;
+          } else {
+            // The child node can be added in some manner
+            std::shared_ptr<TokenTreeNode> node_ptr(nullptr);
+            if (speculative_sampling) {
+              node_ptr = std::make_shared<TokenTreeNode>(
+                  ssm_inference_result.token_ids[result_idx],
+                  accumulated_log_prob,
+                  parent_pos,
+                  layer_idx,
+                  true,
+                  gumbel_logit);
+            } else {
+              node_ptr = std::make_shared<TokenTreeNode>(
+                  ssm_inference_result.token_ids[result_idx],
+                  accumulated_log_prob,
+                  parent_pos,
+                  layer_idx);
+            }
+            if (layer_full or (tree_full and child_leq_tree)) {
+              // The layer is full OR the tree is full and no node from the tree has a smaller acc prob than child node, 
+              // But the child node acc prob is larger than the lowest acc prob node in layer
+              // Can replace the node with lowest acc prob in the layer by this child node
+              tokens.erase(tokens.begin());
+              tokens.insert(node_ptr);
+            } else if (tree_full) {
+              // The layer is not full, but the tree is full and the child node acc prob is larger than the lowest acc prob node in tree
+              // Can remove the node with lowest acc prob in the tree and add this child node to layer
+              ordered_nodes.top().first->pruned = true;
+              spec_token_tree.tree_size--;
+              ordered_nodes.pop();
+              tokens.insert(node_ptr);
+            } else {
+              // The layer is not full and the tree is not full, can add child node to layer
+              tokens.insert(node_ptr);
+            }
+          }
+        }
+      }
+      parent_pos++;
+    }
+
+    // Now add tokens to the tree
+    spec_token_tree.add_layer();
+    for (auto token_it = tokens.crbegin(); token_it != tokens.crend();
+         token_it++) {
+      ordered_nodes.push((*token_it));
+      spec_token_tree.tree_layers.back().push_back((*token_it));
+    }
+    spec_token_tree.tree_size += tokens.size();
+  }
+
+  bool all_request_last_layer_empty = true;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    TokenTree &spec_token_tree = request.speculative_token_trees[0];
+
+    if (spec_token_tree.tree_layers.size() <= current_ssm_step) {
+      // This request has no token added in this layer, skip it
+      continue;
+    }
+
+    std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
+        spec_token_tree.tree_layers.back();
+    all_request_last_layer_empty &= last_layer.empty();
+
+    if (last_layer.empty()) {
+      spec_token_tree.tree_layers.pop_back();
+    }
+  }
+  assert(token_tree_node_pool.size() <= get_max_tokens_per_batch() &&
+         "The token tree node pool should not exceed the maximum size.");
+  return all_request_last_layer_empty;
+}
+
+void RequestManager::select_subtrees_on_slo_constraints(double const L, double const eps) {
+  const int N = get_max_tokens_per_batch();
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    std::priority_queue<
+      std::shared_ptr<TokenTreeNode>,
+      std::vector<std::shared_ptr<TokenTreeNode>>,
+      CompareSharedTokenTreeNodePtr> ordered_nodes = request.ordered_nodes_per_tree[0];
+    
+    // From the ordered_nodes, create the linked-list
+    TokenTreeNode head = 
+    TokenTreeNode tail = 
+    while(ordered_nodes.size() > 0) {
+      
+    }
+
+
+  }
 }
 
 std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
