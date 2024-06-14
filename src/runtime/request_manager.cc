@@ -2630,6 +2630,14 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
     }
     int result_offset = request.first_token_offset_in_batch *
                         BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+    int current_tree_size = request.causal_mask.tree_or_prompt_size;
+    int new_layer_max_size = min(get_max_spec_tree_token_num() - current_tree_size,
+            get_max_tree_width());
+
+    if (new_layer_max_size == 0) {
+      // The token tree is full, we don't need to add tokens to it
+      continue;
+    }
 
     TokenTree &spec_token_tree = request.speculative_token_trees[0];
     std::priority_queue<
@@ -2692,8 +2700,8 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
           assert(logit != -std::numeric_limits<float>::infinity() &&
                  "Child log probability should not be -inf.");
 
-          bool tree_full = (ordered_nodes.size() + tokens.size() == get_max_spec_tree_token_num());
-          bool layer_full = (tokens.size() == get_max_tree_width());
+          bool tree_full = (current_tree_size + tokens.size() == get_max_spec_tree_token_num());
+          bool layer_full = (tokens.size() == new_layer_max_size);
           bool child_leq_tree = (cmp_value <= (speculative_sampling
                                 ? ordered_nodes.top()->gumbel_logit
                                 : ordered_nodes.top()->log_accumulated_prob));
@@ -2708,7 +2716,7 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
             // The layer is not full, but the tree is full, and all nodes from the tree and from the layer have higher acc prob than that child node (and all subsequent children nodes)
             break;
           } else {
-            // The child node can be added in some manner
+            // The child node can be added somewhere
             std::shared_ptr<TokenTreeNode> node_ptr(nullptr);
             if (speculative_sampling) {
               node_ptr = std::make_shared<TokenTreeNode>(
@@ -2783,8 +2791,6 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
       spec_token_tree.tree_layers.pop_back();
     }
   }
-  assert(token_tree_node_pool.size() <= get_max_tokens_per_batch() &&
-         "The token tree node pool should not exceed the maximum size.");
   return all_request_last_layer_empty;
 }
 
