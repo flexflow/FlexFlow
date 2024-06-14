@@ -2383,6 +2383,7 @@ void RequestManager::add_root_to_spec_token_tree(
   token_tree_node_pool.push(std::make_pair(node_ptr, guid));
   speculative_token_tree.tree_layers.front().push_back(node_ptr);
   speculative_token_tree.tree_size++;
+  request.ordered_nodes_per_tree[0].push(node_ptr);
 }
 
 bool RequestManager::add_tokens_to_spec_token_tree(
