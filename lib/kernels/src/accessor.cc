@@ -132,4 +132,10 @@ std::vector<half const *>
   return get<DataType::HALF>(a);
 }
 
+GenericTensorAccessorR
+    makeReadOnlyAccessor(GenericTensorAccessorW const &writable) {
+  return GenericTensorAccessorR{
+      writable.data_type, writable.shape, req<void const *>(writable.ptr)};
+}
+
 } // namespace FlexFlow

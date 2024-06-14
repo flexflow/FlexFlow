@@ -20,6 +20,17 @@ void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
 }
 
 template <typename T>
+std::vector<void *> alloc_ptrs(std::vector<size_t> const &num_elements,
+                               Allocator &allocator) {
+  std::vector<void *> allocated_ptrs;
+  for (size_t i = 0; i < num_elements.size(); ++i) {
+    allocated_ptrs.push_back(
+        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(T))));
+  }
+  return allocated_ptrs;
+}
+
+template <typename T>
 void randomFillDeviceData(T **gpu_data, size_t num_elements) {
   std::vector<float> host_data(num_elements);
 

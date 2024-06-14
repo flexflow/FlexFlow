@@ -142,6 +142,9 @@ std::vector<real_type<DT> const *>
   return out;
 }
 
+GenericTensorAccessorR
+    makeReadOnlyAccessor(GenericTensorAccessorW const &write_accessor);
+
 } // namespace FlexFlow
 
 namespace FlexFlow {

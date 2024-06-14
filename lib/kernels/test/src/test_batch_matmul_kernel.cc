@@ -6,17 +6,34 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test BatchMatmul Kernel") {
-    int m = 10;
-    int n = 10;
-    int k = 10;
-    int batch = 5;
-    int a_seq_length_dim = -1;
-    int b_seq_length_dim = -1;
-    int seq_length = -1;
+    size_t m = 10;
+    size_t n = 10;
+    size_t k = 10;
+    size_t batch = 5;
+    size_t a_seq_length_dim = -1;
+    size_t b_seq_length_dim = -1;
+    size_t seq_length = -1;
 
-    size_t num_elements_a = m * k * batch;
-    size_t num_elements_b = k * n * batch;
-    size_t num_elements_output = m * n * batch;
+    TensorShape input_shape_a = TensorShape{
+        TensorDims{
+            FFOrdered<size_t>{m, k, batch},
+        },
+        DataType::FLOAT,
+    };
+
+    TensorShape input_shape_b = TensorShape{
+        TensorDims{
+            FFOrdered<size_t>{k, n, batch},
+        },
+        DataType::FLOAT,
+    };
+
+    TensorShape output_shape = TensorShape{
+        TensorDims{
+            FFOrdered<size_t>{m, n, batch},
+        },
+        DataType::FLOAT,
+    };
 
     PerDeviceFFHandle handle;
     setPerDeviceFFHandle(&handle);
@@ -25,19 +42,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
-    std::vector<size_t> sizes = {
-        num_elements_a, num_elements_b, num_elements_output};
-    float *a_input, *b_input, *output;
-    std::vector<float **> ptrs = {&a_input, &b_input, &output};
-    allocate_ptrs(ptrs, sizes, allocator);
-    randomFillDevicePtrs(ptrs, sizes);
+    GenericTensorAccessorW accessor_a =
+        allocator.allocate_tensor(input_shape_a);
+    GenericTensorAccessorW accessor_b =
+        allocator.allocate_tensor(input_shape_b);
+    GenericTensorAccessorW accessor_output =
+        allocator.allocate_tensor(output_shape);
 
     SUBCASE("Test BatchMatmul Forward") {
       Kernels::BatchMatmul::forward_kernel(stream,
                                            handle,
-                                           output,
-                                           a_input,
-                                           b_input,
+                                           (float *)accessor_output.ptr,
+                                           (float *)accessor_a.ptr,
+                                           (float *)accessor_b.ptr,
                                            m,
                                            n,
                                            k,
@@ -48,18 +65,21 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("Test BatchMatmul Backward") {
-      float *a_grad, *b_grad, *o_grad;
-      std::vector<float **> ptrs_grad = {&a_grad, &b_grad, &o_grad};
-      allocate_ptrs(ptrs_grad, sizes, allocator);
+      GenericTensorAccessorW a_grad_accessor =
+          allocator.allocate_tensor(input_shape_a);
+      GenericTensorAccessorW b_grad_accessor =
+          allocator.allocate_tensor(input_shape_b);
+      GenericTensorAccessorW o_grad_accessor =
+          allocator.allocate_tensor(output_shape);
 
       Kernels::BatchMatmul::backward_kernel(stream,
                                             handle,
-                                            output,
-                                            o_grad,
-                                            a_input,
-                                            a_grad,
-                                            b_input,
-                                            b_grad,
+                                            (float *)accessor_output.ptr,
+                                            (float *)o_grad_accessor.ptr,
+                                            (float *)accessor_a.ptr,
+                                            (float *)a_grad_accessor.ptr,
+                                            (float *)accessor_b.ptr,
+                                            (float *)b_grad_accessor.ptr,
                                             m,
                                             n,
                                             k,
