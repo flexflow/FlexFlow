@@ -2832,7 +2832,7 @@ void RequestManager::select_subtrees_on_slo_constraints(double const L, double c
     tail->next = nullptr;
     head->in_subtree = true;
     linked_list_heads[request_index] = head->next;
-    expected_decoded_num[request_index] = exp(head->acc_log_prob);
+    expected_decoded_num[request_index] = exp(head->log_accumulated_prob);
     B++;
   }
 
@@ -2853,7 +2853,7 @@ void RequestManager::select_subtrees_on_slo_constraints(double const L, double c
       if (expected_decoded_num[request_index] * request.target_slo_ms - L - eps < 0) {
         score = 1-(expected_decoded_num[request_index] * request.target_slo_ms - L - eps);
       } else {
-        score = exp(linked_list_heads[request_index]->acc_log_prob);
+        score = exp(linked_list_heads[request_index]->log_accumulated_prob);
       }
       if (score > chosen_request_score) {
         chosen_request_index = request_index;
@@ -2863,7 +2863,7 @@ void RequestManager::select_subtrees_on_slo_constraints(double const L, double c
     assert(chosen_request_index >= 0);
 
     std::shared_ptr<TokenTreeNode> v = linked_list_heads[chosen_request_index];
-    expected_decoded_num[chosen_request_index] += exp(v->acc_log_prob);
+    expected_decoded_num[chosen_request_index] += exp(v->log_accumulated_prob);
     v->in_subtree = true;
     linked_list_heads[chosen_request_index] = v->next;
   }
