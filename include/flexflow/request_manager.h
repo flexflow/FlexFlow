@@ -28,7 +28,9 @@ namespace FlexFlow {
 
 class FFModel;
 class TokenTree;
+class TokenTreeNode;
 class RequestManager;
+struct CompareSharedTokenTreeNodePtr;
 using tokenizers::Tokenizer;
 
 class InferenceManager {
@@ -84,8 +86,7 @@ struct Request {
   std::vector<std::priority_queue<
       std::shared_ptr<TokenTreeNode>,
       std::vector<std::shared_ptr<TokenTreeNode>>,
-      CompareSharedTokenTreeNodePtr>>
-      ordered_nodes_per_tree;
+      CompareSharedTokenTreeNodePtr>> ordered_nodes_per_tree;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
   // Here we maintain a struct CommittedToken which has a field `from_index` and
@@ -169,7 +170,13 @@ struct CompareSharedTokenTreeNodePtr {
                   std::shared_ptr<TokenTreeNode> const &rhs) const {
     if (lhs->gumbel) {
       assert(rhs->gumbel);
+      if (lhs->gumbel_logit == rhs->gumbel_logit) {
+        return lhs->layer_idx < rhs->layer_idx;
+      }
       return lhs->gumbel_logit < rhs->gumbel_logit;
+    }
+    if (lhs->log_accumulated_prob == rhs->log_accumulated_prob) {
+      return lhs->layer_idx < rhs->layer_idx;
     }
     return lhs->log_accumulated_prob < rhs->log_accumulated_prob;
   }
@@ -184,7 +191,13 @@ struct CompareSharedTokenTreeNodePtrRequestGuidPair {
                             BatchConfig::RequestGuid> const &rhs) const {
     if (lhs.first->gumbel) {
       assert(rhs.first->gumbel);
+      if (lhs.first->gumbel_logit == rhs.first->gumbel_logit) {
+        return lhs.first->layer_idx > rhs.first->layer_idx;
+      }
       return lhs.first->gumbel_logit > rhs.first->gumbel_logit;
+    }
+    if (lhs.first->log_accumulated_prob == rhs.first->log_accumulated_prob) {
+      return lhs.first->layer_idx > rhs.first->layer_idx;
     }
     return lhs.first->log_accumulated_prob > rhs.first->log_accumulated_prob;
   }

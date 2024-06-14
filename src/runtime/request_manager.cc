@@ -2376,7 +2376,7 @@ void RequestManager::add_root_to_spec_token_tree(
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
   speculative_token_tree.add_layer();
-  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, 0.0, -1);
+  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, 0.0, -1, 0);
   if (speculative_sampling) {
     node_ptr->gumbel = true;
   }
@@ -2424,6 +2424,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
         spec_token_tree.tree_layers.back();
     std::set<std::shared_ptr<TokenTreeNode>, CompareSharedTokenTreeNodePtr>
         tokens;
+    int layer_idx = spec_token_tree.tree_layers.size();
     int parent_pos = 0;
     for (auto const &parent_ptr : last_layer) {
       if (!parent_ptr->pruned) {
@@ -2518,13 +2519,15 @@ bool RequestManager::add_tokens_to_spec_token_tree(
                   ssm_inference_result.token_ids[result_idx],
                   accumulated_log_prob,
                   parent_pos,
+                  layer_idx,
                   true,
                   gumbel_logit);
             } else {
               node_ptr = std::make_shared<TokenTreeNode>(
                   ssm_inference_result.token_ids[result_idx],
                   accumulated_log_prob,
-                  parent_pos);
+                  parent_pos,
+                  layer_idx);
             }
             // if (tokens.size() == empty_slots_in_layer and
             //     cmp_value > (speculative_sampling
