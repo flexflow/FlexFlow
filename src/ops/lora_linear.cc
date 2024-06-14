@@ -427,7 +427,10 @@ OpMeta *LoraLinear::init_task(Task const *task,
     // allocate space for gradients if the LoRA layer is trainable
     if (lora_config.trainable) {
       // Ensure we have an optimizer
-      assert(lora_config.optimizer_config->type != OPTIMIZER_TYPE_NONE);
+      assert(lora_config.optimizer_config != nullptr && "Optimizer not set");
+      assert(typeid(*lora_config.optimizer_config) !=
+                 typeid(LoraOptimizerConfig) &&
+             "Optimizer config is not a subclass of LoraOptimizerConfig");
       if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
         // Input is partitioned (no replication)
         // w0_grad is local weight gradients
@@ -446,9 +449,11 @@ OpMeta *LoraLinear::init_task(Task const *task,
             model_id, w1_num_elements * data_type_size(dt));
       }
       // allocate space for v_values if needed by optimizer
-      if (lora_config.optimizer_config->type == OPTIMIZER_TYPE_SGD) {
+      if (typeid(*lora_config.optimizer_config) ==
+          typeid(LoraSGDOptimizerConfig)) {
         LoraSGDOptimizerConfig const *sgd_config =
-            (LoraSGDOptimizerConfig const *)lora_config.optimizer_config;
+            static_cast<LoraSGDOptimizerConfig const *>(
+                lora_config.optimizer_config);
         if (sgd_config->momentum > 0.0f) {
           if (lora->inputs[0]->dims[num_dims - 1].degree == 1) {
             weight.w0_v_values_ptr = allocator->allocate_local_weights_untyped(
@@ -462,6 +467,11 @@ OpMeta *LoraLinear::init_task(Task const *task,
                 model_id, w1_num_elements * data_type_size(dt));
           }
         }
+      } else if (typeid(*lora_config.optimizer_config) ==
+                 typeid(LoraAdamOptimizerConfig)) {
+        assert(false && "Adam optim not yet implemented");
+      } else {
+        assert(false && "Optimizer not supported");
       }
     }
     assert(m->model_state.find(model_id) == m->model_state.end());
@@ -861,10 +871,12 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
                   kv.second.peft_model_id.length());
     // serialize whether we should expect an optimizer or not
     sez.serialize(kv.second.trainable);
+    assert((kv.second.trainable) == (kv.second.optimizer_config != nullptr));
     if (kv.second.trainable) {
       // Serialize LoraConfig's optimizer config
-      sez.serialize(kv.second.optimizer_config->type);
-      if (kv.second.optimizer_config->type == OPTIMIZER_TYPE_SGD) {
+      if (typeid(*kv.second.optimizer_config) ==
+          typeid(LoraSGDOptimizerConfig)) {
+        sez.serialize(OPTIMIZER_TYPE_SGD);
         LoraSGDOptimizerConfig const *sgd_config =
             static_cast<LoraSGDOptimizerConfig const *>(
                 kv.second.optimizer_config);
@@ -872,6 +884,17 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
         sez.serialize(sgd_config->momentum);
         sez.serialize(sgd_config->nesterov);
         sez.serialize(sgd_config->weight_decay);
+      } else if (typeid(*kv.second.optimizer_config) ==
+                 typeid(LoraAdamOptimizerConfig)) {
+        sez.serialize(OPTIMIZER_TYPE_ADAM);
+        LoraAdamOptimizerConfig const *adam_config =
+            static_cast<LoraAdamOptimizerConfig const *>(
+                kv.second.optimizer_config);
+        sez.serialize(adam_config->alpha);
+        sez.serialize(adam_config->beta1);
+        sez.serialize(adam_config->beta2);
+        sez.serialize(adam_config->weight_decay);
+        sez.serialize(adam_config->epsilon);
       } else {
         assert(false && "Optimizer type not yet supported");
       }
@@ -936,11 +959,20 @@ Node LoraLinear::deserialize(FFModel &ff,
         dez.deserialize(weight_decay);
         optimizer_config_ =
             new LoraSGDOptimizerConfig(lr, momentum, nesterov, weight_decay);
+      } else if (type_ == OPTIMIZER_TYPE_ADAM) {
+        double alpha, beta1, beta2, weight_decay, epsilon;
+        dez.deserialize(alpha);
+        dez.deserialize(beta1);
+        dez.deserialize(beta2);
+        dez.deserialize(weight_decay);
+        dez.deserialize(epsilon);
+        optimizer_config_ = new LoraAdamOptimizerConfig(
+            alpha, beta1, beta2, weight_decay, epsilon);
       } else {
+        printf("Optimizer type: %d\n", type_);
         assert(false && "Optimizer type not yet supported");
       }
     }
-
     LoraLinearConfig lora_linear_config(
         cache_folder, peft_model_name, trainable, optimizer_config_);
     params.peft_configs.emplace(
@@ -992,7 +1024,7 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
   for (auto const &kv : params.peft_configs) {
     hash_combine(key, kv.first.id);
     hash_combine(key, kv.second.rank);
-    hash_combine(key, kv.second.optimizer_config->type);
+    hash_combine(key, kv.second.trainable);
     hash_combine(key, kv.second.cache_folder);
     hash_combine(key, kv.second.peft_model_id);
     hash_combine(key, kv.second.lora_alpha);

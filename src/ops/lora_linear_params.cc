@@ -10,42 +10,18 @@ namespace FlexFlow {
 // ---------------------------------------------------
 
 // empty optimizer
-LoraOptimizerConfig::LoraOptimizerConfig() : type(OPTIMIZER_TYPE_NONE) {}
-
-bool operator==(LoraOptimizerConfig const &lhs,
-                LoraOptimizerConfig const &rhs) {
-  if (lhs.type == rhs.type) {
-    return true;
-  }
-  return false;
-}
-
-std::ostream &operator<<(std::ostream &os, LoraOptimizerConfig const &llc) {
-  os << "No Optimizer";
-  return os;
-}
+LoraOptimizerConfig::LoraOptimizerConfig() {}
 
 // SGD optimizer
 LoraSGDOptimizerConfig::LoraSGDOptimizerConfig()
-    : type(OPTIMIZER_TYPE_SGD), lr(0.01f), momentum(0.0f), nesterov(false),
-      weight_decay(0.0f) {}
+    : lr(0.01f), momentum(0.0f), nesterov(false), weight_decay(0.0f) {}
 
 LoraSGDOptimizerConfig::LoraSGDOptimizerConfig(double lr_,
                                                double momentum_,
                                                bool nesterov_,
                                                bool weight_decay_)
-    : type(OPTIMIZER_TYPE_SGD), lr(lr_), momentum(momentum_),
-      nesterov(nesterov_), weight_decay(weight_decay_) {}
-
-bool operator==(LoraSGDOptimizerConfig const &lhs,
-                LoraSGDOptimizerConfig const &rhs) {
-  if (lhs.type == rhs.type && lhs.lr == rhs.lr &&
-      lhs.momentum == rhs.momentum && lhs.nesterov == rhs.nesterov &&
-      lhs.weight_decay == rhs.weight_decay) {
-    return true;
-  }
-  return false;
-}
+    : lr(lr_), momentum(momentum_), nesterov(nesterov_),
+      weight_decay(weight_decay_) {}
 
 std::ostream &operator<<(std::ostream &os, LoraSGDOptimizerConfig const &llc) {
   os << "SGD Optimizer (lr=" << llc.lr << ",momentum=" << llc.momentum
@@ -56,26 +32,16 @@ std::ostream &operator<<(std::ostream &os, LoraSGDOptimizerConfig const &llc) {
 
 // Adam optimizer
 LoraAdamOptimizerConfig::LoraAdamOptimizerConfig()
-    : type(OPTIMIZER_TYPE_ADAM), alpha(0.001f), beta1(0.9f), beta2(0.999f),
-      weight_decay(0.0f), epsilon(1e-8) {}
+    : alpha(0.001f), beta1(0.9f), beta2(0.999f), weight_decay(0.0f),
+      epsilon(1e-8) {}
 
 LoraAdamOptimizerConfig::LoraAdamOptimizerConfig(double alpha_,
                                                  double beta1_,
                                                  double beta2_,
                                                  double weight_decay_,
                                                  double epsilon_)
-    : type(OPTIMIZER_TYPE_ADAM), alpha(alpha_), beta1(beta1_), beta2(beta2_),
-      weight_decay(weight_decay_), epsilon(epsilon_) {}
-
-bool operator==(LoraAdamOptimizerConfig const &lhs,
-                LoraAdamOptimizerConfig const &rhs) {
-  if (lhs.type == rhs.type && lhs.alpha == rhs.alpha &&
-      lhs.beta1 == rhs.beta1 && lhs.beta2 == rhs.beta2 &&
-      lhs.weight_decay == rhs.weight_decay && lhs.epsilon == rhs.epsilon) {
-    return true;
-  }
-  return false;
-}
+    : alpha(alpha_), beta1(beta1_), beta2(beta2_), weight_decay(weight_decay_),
+      epsilon(epsilon_) {}
 
 std::ostream &operator<<(std::ostream &os, LoraAdamOptimizerConfig const &llc) {
   os << "SGD Optimizer (alpha=" << llc.alpha << ",beta1=" << llc.beta1
@@ -154,10 +120,17 @@ std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
   os << "LoraLinearConfig: ";
   os << "trainable: " << llc.trainable << ", ";
   os << "rank: " << llc.rank << ", ";
-  if (!llc.optimizer_config) {
-    os << "optimizer_config: " << llc.optimizer_config << ", ";
-  } else {
-    os << "optimizer_config: " << *llc.optimizer_config << ", ";
+  if (llc.optimizer_config != nullptr) {
+    os << "optimizer_config: ";
+    if (typeid(*llc.optimizer_config) == typeid(LoraSGDOptimizerConfig)) {
+      os << *static_cast<LoraSGDOptimizerConfig *>(llc.optimizer_config);
+    } else if (typeid(*llc.optimizer_config) ==
+               typeid(LoraAdamOptimizerConfig)) {
+      os << *static_cast<LoraAdamOptimizerConfig *>(llc.optimizer_config);
+    } else {
+      os << "Unknown optimizer config type";
+    }
+    std::cout << std::endl;
   }
   os << "cache_folder: " << llc.cache_folder << ", ";
   os << "peft_model_id: " << llc.peft_model_id << ", ";

@@ -240,7 +240,7 @@ void FlexFlow::top_level_task(Task const *task,
           ? LoraLinearConfig::EmptyConfig
           : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
 
-  LoraSGDOptimizerConfig *optim_config = nullptr;
+  LoraOptimizerConfig *optim_config = nullptr;
   if (enable_peft_finetuning) {
     optim_config = new LoraSGDOptimizerConfig();
   }

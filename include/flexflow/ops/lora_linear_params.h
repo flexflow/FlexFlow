@@ -13,13 +13,7 @@ namespace FlexFlow {
 class LoraOptimizerConfig {
 public:
   LoraOptimizerConfig();
-  friend bool operator==(LoraOptimizerConfig const &lhs,
-                         LoraOptimizerConfig const &rhs);
-  friend std::ostream &operator<<(std::ostream &os,
-                                  LoraOptimizerConfig const &llc);
-
-public:
-  OptimizerType type = OPTIMIZER_TYPE_NONE;
+  virtual ~LoraOptimizerConfig() {}
 };
 
 class LoraSGDOptimizerConfig : public LoraOptimizerConfig {
@@ -29,13 +23,10 @@ public:
                          double momentum_ = 0.0f,
                          bool nesterov_ = false,
                          bool weight_decay_ = 0.0f);
-  friend bool operator==(LoraSGDOptimizerConfig const &lhs,
-                         LoraSGDOptimizerConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraSGDOptimizerConfig const &llc);
 
 public:
-  OptimizerType type = OPTIMIZER_TYPE_SGD;
   double lr = 0.01f;
   double momentum = 0.0f;
   bool nesterov = false;
@@ -50,13 +41,10 @@ public:
                           double beta2_ = 0.999f,
                           double weight_decay_ = 0.0f,
                           double epsilon_ = 1e-8);
-  friend bool operator==(LoraAdamOptimizerConfig const &lhs,
-                         LoraAdamOptimizerConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraAdamOptimizerConfig const &llc);
 
 public:
-  OptimizerType type = OPTIMIZER_TYPE_ADAM;
   // Adam
   double alpha = 0.001f;
   double beta1 = 0.9f;

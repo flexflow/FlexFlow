@@ -427,12 +427,12 @@ void peft_bwd_kernel(LoraLinearMeta *m,
       LoraOptimizerConfig const *optimizer_config =
           m->model_state[bc->requestsInfo[i].peft_model_id].optimizer_config;
       assert(optimizer_config != nullptr);
-      assert(optimizer_config->type != OPTIMIZER_TYPE_NONE);
+      assert(typeid(*optimizer_config) != typeid(LoraOptimizerConfig));
       int w0_num_elements = rank * in_dim;
       int w1_num_elements = rank * out_dim;
 
       // Get optimizer config
-      if (optimizer_config->type == OPTIMIZER_TYPE_SGD) {
+      if (typeid(*optimizer_config) == typeid(LoraSGDOptimizerConfig)) {
         LoraSGDOptimizerConfig const *sgd_config =
             (LoraSGDOptimizerConfig const *)optimizer_config;
         // LoRA_A weight is split in tensor parallelism, so no need to apply
@@ -469,8 +469,8 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                                static_cast<DT const *>(weight.w1_grad_ptr),
                                static_cast<DT *>(weight.w1_v_values_ptr),
                                static_cast<DT *>(weight.w1_ptr));
-      } else if (optimizer_config->type == OPTIMIZER_TYPE_ADAM) {
-
+      } else if (typeid(*optimizer_config) == typeid(LoraAdamOptimizerConfig)) {
+        assert(false && "Adam optimizer type not implemented yet");
       } else {
         assert(false && "Unsupported optimizer type");
       }
