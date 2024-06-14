@@ -225,7 +225,7 @@ public:
       bool add_zero_attn = false,
       std::optional<InitializerAttrs> initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t create_tensor(TensorShape const &, bool create_grad = true);
+  tensor_guid_t create_tensor(TensorShape const &, CreateGrad);
   tensor_guid_t create_weight(
       TensorShape const &,
       bool create_grad = true,

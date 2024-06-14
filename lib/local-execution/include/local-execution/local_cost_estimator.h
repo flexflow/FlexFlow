@@ -2,11 +2,12 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_COST_ESTIMATOR_H
 
 #include "compiler/cost_estimate.h"
+#include "local-execution/runtime_arg_config.h"
 
 namespace FlexFlow {
 
 struct LocalCostEstimator : public ICostEstimator {
-  LocalCostEstimator() = default;
+  LocalCostEstimator(RuntimeArgConfig const &);
   LocalCostEstimator(LocalCostEstimator const &) = delete;
   LocalCostEstimator(LocalCostEstimator &&) = delete;
   ~LocalCostEstimator() = default;
@@ -20,6 +21,9 @@ struct LocalCostEstimator : public ICostEstimator {
   float estimate_cost(ParallelTensorShape const &tensor_shape,
                       MachineView const &src,
                       MachineView const &dst) const override;
+
+private:
+  RuntimeArgConfig runtime_arg_config;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalCostEstimator);
 

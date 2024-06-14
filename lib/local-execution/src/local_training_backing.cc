@@ -76,36 +76,36 @@ void LocalTrainingBacking::execute_init() {
   }
 }
 
-std::optional<float>
-    LocalTrainingBacking::execute_kernel(KernelType const &kernel_type) {
-  std::optional<float> total_elapsed_time;
-  std::vector<layer_guid_t> operators;
-  if (kernel_type == KernelType::FWD) {
-    operators = topological_ordering(this->computation_graph);
-  } else if (kernel_type == KernelType::BWD) {
-    operators = reverse_topological_ordering(this->computation_graph);
-  } else {
-    throw mk_runtime_error("Invalid KernelType, must be FWD or BWD");
-  }
-
-  for (layer_guid_t operator_node : operators) {
-    auto attrs = get_layer_attrs(this->computation_graph, operator_node).attrs;
-    OpTaskInvocation invocation =
-        (kernel_type == KernelType::FWD) ? forward(attrs) : backward(attrs);
+PerLayerElapsedTime const &LocalTrainingBacking::execute_forward() {
+  PerLayerElapsedTime per_op_elapsed_time;
+  for (layer_guid_t const &operator_node :
+       topological_ordering(this->computation_graph)) {
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(this->computation_graph, operator_node).attrs;
+    OpTaskInvocation invocation = forward(attrs);
     TaskArgumentAccessor accessor =
         this->get_task_arg_accessor(invocation, operator_node);
     std::optional<float> elapsed_time =
         this->call_task_impl(invocation.task_id, accessor);
-
-    if (elapsed_time.has_value()) {
-      if (total_elapsed_time.has_value()) {
-        total_elapsed_time = total_elapsed_time.value() + elapsed_time.value();
-      } else {
-        total_elapsed_time = elapsed_time.value();
-      }
-    }
+    per_op_elapsed_time.insert({operator_node, elapsed_time});
   }
-  return total_elapsed_time;
+  return per_op_elapsed_time;
+}
+
+PerLayerElapsedTime const &LocalTrainingBacking::execute_backward() {
+  PerLayerElapsedTime per_op_elapsed_time;
+  for (layer_guid_t const &operator_node :
+       reversed(topological_ordering(this->computation_graph))) {
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(this->computation_graph, operator_node).attrs;
+    OpTaskInvocation invocation = backward(attrs);
+    TaskArgumentAccessor accessor =
+        this->get_task_arg_accessor(invocation, operator_node);
+    std::optional<float> elapsed_time =
+        this->call_task_impl(invocation.task_id, accessor);
+    per_op_elapsed_time.insert({operator_node, elapsed_time});
+  }
+  return per_op_elapsed_time;
 }
 
 void LocalTrainingBacking::execute_update() {

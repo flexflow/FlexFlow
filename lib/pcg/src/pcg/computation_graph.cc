@@ -24,14 +24,6 @@ std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg) {
       layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }
 
-std::vector<layer_guid_t>
-    reverse_topological_ordering(ComputationGraph const &cg) {
-  std::vector<Node> layers = reversed<std::vector<Node>>(
-      get_topological_ordering(cg.raw_graph.get_raw_graph()));
-  return transform(
-      layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
-}
-
 static std::vector<tensor_guid_t>
     sort_edge_set(std::unordered_set<MultiDiEdge> const &edges) {
   return transform(

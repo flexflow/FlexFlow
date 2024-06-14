@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-enum class KernelType { FWD, BWD };
+using PerLayerElapsedTime =
+    std::unordered_map<layer_guid_t, std::optional<float>>;
 
 struct LocalTrainingBacking {
   LocalTrainingBacking(Allocator const &,
@@ -16,7 +17,8 @@ struct LocalTrainingBacking {
   ~LocalTrainingBacking() = default;
 
   void execute_init();
-  std::optional<float> execute_kernel(KernelType const &);
+  PerLayerElapsedTime const &execute_forward();
+  PerLayerElapsedTime const &execute_backward();
   void execute_update();
 
 private:

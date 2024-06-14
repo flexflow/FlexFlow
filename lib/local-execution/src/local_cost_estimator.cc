@@ -1,49 +1,16 @@
 #include "local-execution/local_cost_estimator.h"
 #include "kernels/device.h"
-#include "local-execution/local_allocator.h"
 #include "local-execution/local_training_backing.h"
+#include "local-execution/tracked_allocator.h"
 #include "op-attrs/computation_graph_op_attrs.h"
+#include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/computation_graph_builder.h"
-
-// from #1384
-#include "kernels/device.h"
-#include "kernels/ff_handle.h"
+#include "pcg/parallel_tensor_attrs.h"
 
 namespace FlexFlow {
 
-// from #1384
-inline void setPerDeviceFFHandle(PerDeviceFFHandle *handle) {
-  cudnnCreate(&handle->dnn);
-  cublasCreate(&handle->blas);
-  handle->workSpaceSize = 1024 * 1024;
-  cudaMalloc(&handle->workSpace, handle->workSpaceSize);
-  handle->allowTensorOpMathConversion = true;
-}
-
-static std::vector<TensorAttrs>
-    get_piece_attrs(std::vector<ParallelTensorAttrs> const &parallel_attrs) {
-  return transform(parallel_attrs, [](ParallelTensorAttrs const &p) {
-    return get_piece_attrs(p);
-  });
-}
-
-static TensorAttrs get_piece_attrs(ParallelTensorAttrs const &parallel_attrs) {
-  return {get_piece_shape(parallel_attrs.shape),
-          parallel_attrs.initializer,
-          parallel_attrs.sync_type,
-          parallel_attrs.create_gradients};
-}
-
-static LayerAttrs
-    get_layer_attrs_from_pcg_op_attrs(PCGOperatorAttrs const &op) {
-  assert(!is_parallel_op(op));
-  return std::visit(
-      [](auto &&arg) -> LayerAttrs {
-        return LayerAttrs{
-            ComputationGraphOpAttrs{std::forward<decltype(arg)>(arg)}};
-      },
-      op);
-}
+LocalCostEstimator::LocalCostEstimator(RuntimeArgConfig const &config)
+    : runtime_arg_config(config) {}
 
 float LocalCostEstimator::estimate_cost(
     PCGOperatorAttrs const &op,
@@ -51,7 +18,7 @@ float LocalCostEstimator::estimate_cost(
     std::vector<ParallelTensorAttrs> const &weights,
     std::vector<ParallelTensorAttrs> const &outputs,
     MachineView const &mv) const {
-  LayerAttrs layer_attrs = get_layer_attrs_from_pcg_op_attrs(op);
+  LayerAttrs layer_attrs = {get_cg_attrs(op), std::nullopt};
 
   // allocate memory for inputs
   Allocator allocator = get_local_memory_allocator();
@@ -60,9 +27,10 @@ float LocalCostEstimator::estimate_cost(
 
   ComputationGraphBuilder cg_builder;
   for (ParallelTensorShape const &input : inputs) {
-    TensorShape const tensor_shape = get_piece_shape(input);
-    tensor_guid_t tensor_id = cg_builder.create_tensor(tensor_shape);
-    GenericTensorAccessorW const tensor_backing =
+    TensorShape tensor_shape = get_piece_shape(input);
+    tensor_guid_t tensor_id =
+        cg_builder.create_tensor(tensor_shape, CreateGrad::YES);
+    GenericTensorAccessorW tensor_backing =
         allocator.allocate_tensor(tensor_shape);
     tensor_backing_map.insert({tensor_id, tensor_backing});
     input_tensor_ids.push_back(tensor_id);
@@ -75,28 +43,28 @@ float LocalCostEstimator::estimate_cost(
                            get_piece_attrs(weights),
                            get_piece_attrs(outputs));
 
-  // construct local backing
-  int warmup_iters = 0;
-  int measure_iters = 1;
-  PerDeviceFFHandle handle;
-  setPerDeviceFFHandle(&handle);
-
-  RuntimeArgConfig runtime_arg_config = {
-      DeviceSpecific<PerDeviceFFHandle>::create(handle),
-      EnableProfiling::YES,
-      ProfilingSettings{warmup_iters, measure_iters}};
-
   LocalTrainingBacking local_backing(allocator,
                                      cg_builder.computation_graph,
                                      tensor_backing_map,
-                                     runtime_arg_config);
+                                     this->runtime_arg_config);
 
   local_backing.execute_init();
-  float fwd_time = local_backing.execute_kernel(KernelType::FWD).value();
-  float bwd_time = local_backing.execute_kernel(KernelType::BWD).value();
+  PerLayerElapsedTime fwd = local_backing.execute_forward();
+  PerLayerElapsedTime bwd = local_backing.execute_backward();
 
-  // NOTE: is this correct?
-  return fwd_time + bwd_time;
+  return get_total_elapsed_time(fwd, bwd);
+}
+
+static float get_total_elapsed_time(PerLayerElapsedTime const &fwd,
+                                    PerLayerElapsedTime const &bwd) {
+  float total_elapsed_time = 0;
+  for (auto const &layer_elapsed_time : fwd) {
+    layer_guid_t layer_id = layer_elapsed_time.first;
+    float fwd_time = layer_elapsed_time.second.value();
+    float bwd_time = bwd.at(layer_id).value();
+    total_elapsed_time += fwd_time + bwd_time;
+  }
+  return total_elapsed_time;
 }
 
 float LocalCostEstimator::estimate_cost(ParallelTensorShape const &tensor_shape,

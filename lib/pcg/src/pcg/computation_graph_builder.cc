@@ -21,9 +21,9 @@ TensorShape ComputationGraphBuilder::get_shape(tensor_guid_t const &t) const {
   return get_tensor_attrs(this->computation_graph, t).shape;
 }
 
-tensor_guid_t ComputationGraphBuilder::create_tensor(TensorShape const &shape,
-                                                     bool create_grad) {
-  CreateGrad create_gradients = create_grad ? CreateGrad::YES : CreateGrad::NO;
+tensor_guid_t
+    ComputationGraphBuilder::create_tensor(TensorShape const &shape,
+                                           CreateGrad const &create_gradients) {
   TensorAttrs tensor_attrs = {
       shape, std::nullopt, std::nullopt, create_gradients};
   LayerAttrs layer_attrs = LayerAttrs{
