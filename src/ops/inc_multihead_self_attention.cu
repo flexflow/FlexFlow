@@ -471,8 +471,10 @@ __global__ void
                           hidden_size * (q_tensor ? 0 : 1);
     int complex_part_index = real_part_index + (proj_size / 2);
 
-    complex_input[i] = {input_ptr[real_part_index],
-                        input_ptr[complex_part_index]};
+    // complex_input[i] = {input_ptr[real_part_index],
+    //                     input_ptr[complex_part_index]};
+    cuFloatComplex cii = {input_ptr[real_part_index],
+                          input_ptr[complex_part_index]};
 
     // get the freq_cis: shape 1 * (qProjSize/2) = 1 * 64
     // apply a Cartesian coordinate transformation
@@ -488,9 +490,13 @@ __global__ void
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
     cuFloatComplex complex_pos = {cos(freq), sin(freq)};
 
-    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-    input_ptr[real_part_index] = complex_input[i].x;
-    input_ptr[complex_part_index] = complex_input[i].y;
+    // complex_input[i] = cuCmulf(complex_input[i], complex_pos);
+    // input_ptr[real_part_index] = complex_input[i].x;
+    // input_ptr[complex_part_index] = complex_input[i].y;
+
+    cii = cuCmulf(cii, complex_pos);
+    input_ptr[real_part_index] = cii.x;
+    input_ptr[complex_part_index] = cii.y;
   }
 }
 
@@ -519,6 +525,12 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
   }
 #endif
+
+  cudaError_t err = cudaStreamSynchronize(stream);
+  cudaEvent_t t_start, t_end;
+  checkCUDA(cudaEventCreate(&t_start));
+  checkCUDA(cudaEventCreate(&t_end));
+  checkCUDA(cudaEventRecord(t_start, stream));
 
   // Step 1: Compute QKV projections
   {
@@ -560,6 +572,16 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 
+  checkCUDA(cudaEventRecord(t_end, stream));
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  if (bc->inference_mode == TREE_VERIFY_MODE) {
+    std::cout << "GEMM time: " << elapsed << " ms\n";
+  }
+
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
@@ -593,6 +615,10 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                      m->hidden_size);
   }
 
+  checkCUDA(cudaEventCreate(&t_start));
+  checkCUDA(cudaEventCreate(&t_end));
+  checkCUDA(cudaEventRecord(t_start, stream));
+
   // Step 3: apply rotary embedding if needed
   if (*m->apply_rotary_embedding) {
     /*q&k*/
@@ -608,6 +634,15 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                           num_tokens,
                                           q_array_size,
                                           m->hidden_size);
+  }
+  checkCUDA(cudaEventRecord(t_end, stream));
+  checkCUDA(cudaEventSynchronize(t_end));
+  elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  if (bc->inference_mode == TREE_VERIFY_MODE) {
+    std::cout << "Rotary time: " << elapsed << " ms\n";
   }
 }
 
@@ -822,6 +857,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
 
+  cudaEvent_t t_start, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start, stream);
+
   if (m->offload && m->biasSize > 0) {
     cudaMemcpyAsync(
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
@@ -839,6 +879,18 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  std::cout << "Prepare attn time: " << elapsed << " ms\n";
+
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start, stream);
+
   if (bc->prompt_phase) {
     // phase 3: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
@@ -848,6 +900,14 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
     compute_attention_kernel_generation<DT>(
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
+
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  std::cout << "Attn time: " << elapsed << " ms\n";
 
   // Debug output:
   //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
@@ -1182,11 +1242,9 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start, stream);
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
@@ -1229,15 +1287,13 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     assert(false && "Unspported data type");
   }
 
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-    printf("IncMultiHeadSelfAttention forward time = %.9fms\n", elapsed);
-  }
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  printf("IncMultiHeadSelfAttention forward time = %.9fms\n", elapsed);
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
@@ -1373,10 +1429,16 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t qkv_max_proj_size = max_tokens_per_batch * (qProjSize * num_q_heads +
                                                        kProjSize * num_q_heads +
                                                        vProjSize * num_q_heads);
-    size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0, qk_prod_size = 0;
-    assert((BatchConfig::max_sequence_length() + BatchConfig::max_spec_tree_token_num()) % kPagesize == 0);
-    size_t max_num_pages = (BatchConfig::max_sequence_length() +
-                BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;
+    size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
+           qk_prod_size = 0;
+    assert((BatchConfig::max_sequence_length() +
+            BatchConfig::max_spec_tree_token_num()) %
+               kPagesize ==
+           0);
+    size_t max_num_pages =
+        (BatchConfig::max_sequence_length() +
+         BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
+        kPagesize;
     switch (infer_mode) {
       case INC_DECODING_MODE: {
         key_cache_size = num_q_heads * kProjSize *
@@ -1405,18 +1467,17 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         break;
       }
       case TREE_VERIFY_MODE: {
-        query_tmp_size = num_q_heads * qProjSize *
-                         BatchConfig::max_tokens_per_batch();
+        query_tmp_size =
+            num_q_heads * qProjSize * BatchConfig::max_tokens_per_batch();
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
-                         BatchConfig::max_requests_per_batch() *
-                         max_num_pages * kPagesize;
+                         BatchConfig::max_requests_per_batch() * max_num_pages *
+                         kPagesize;
         value_cache_size = num_q_heads * vProjSize *
                            BatchConfig::max_requests_per_batch() *
                            max_num_pages * kPagesize;
-        qk_prod_size = BatchConfig::max_sequence_length() *
-                       max_num_pages * kPagesize *
-                       num_q_heads;
+        qk_prod_size = BatchConfig::max_sequence_length() * max_num_pages *
+                       kPagesize * num_q_heads;
         break;
       }
       default:
@@ -1428,8 +1489,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                    kProjSize * num_q_heads)) /
                           2;
     size_t totalSize =
-        (qkv_max_proj_size + query_tmp_size + key_cache_size + value_cache_size +
-         2 * qk_prod_size + attn_heads_size) * size_of_dt +
+        (qkv_max_proj_size + query_tmp_size + key_cache_size +
+         value_cache_size + 2 * qk_prod_size + attn_heads_size) *
+            size_of_dt +
         output_tmp_size * data_type_size(DT_HALF) +
         complex_size * sizeof(cuFloatComplex); // more components will
                                                // be added here later
@@ -1437,15 +1499,18 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       // assert that we have enough reserved work space left
       size_t totalSharedSize =
           infer_mode == TREE_VERIFY_MODE
-              ? totalSize -
-                    (query_tmp_size + key_cache_size + value_cache_size + qkv_max_proj_size) *
-                        size_of_dt
-              : totalSize - (query_tmp_size + key_cache_size + value_cache_size) * size_of_dt;
+              ? totalSize - (query_tmp_size + key_cache_size +
+                             value_cache_size + qkv_max_proj_size) *
+                                size_of_dt
+              : totalSize -
+                    (query_tmp_size + key_cache_size + value_cache_size) *
+                        size_of_dt;
 
       size_t instance_size =
           size_of_dt *
           (infer_mode == TREE_VERIFY_MODE
-               ? query_tmp_size + key_cache_size + value_cache_size + qkv_max_proj_size
+               ? query_tmp_size + key_cache_size + value_cache_size +
+                     qkv_max_proj_size
                : query_tmp_size + key_cache_size + value_cache_size);
 
       if (quantization_type != DT_NONE) {
@@ -1473,8 +1538,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       queryTmp = gpu_mem_allocator.allocate_instance_untyped(query_tmp_size *
                                                              size_of_dt);
     }
-    keyCache = gpu_mem_allocator.allocate_instance_untyped((key_cache_size + value_cache_size) *
-                                                           size_of_dt);
+    keyCache = gpu_mem_allocator.allocate_instance_untyped(
+        (key_cache_size + value_cache_size) * size_of_dt);
     valueCache = static_cast<void *>(static_cast<char *>(keyCache) +
                                      key_cache_size * size_of_dt);
     outputTmp = gpu_mem_allocator.allocate_instance<half>(output_tmp_size);

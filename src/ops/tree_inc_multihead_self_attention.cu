@@ -177,15 +177,15 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   int const num_requests = bc->num_active_requests();
   int parallelism = m->hidden_size * num_requests;
   commit_tokens_kernel<<<GET_BLOCKS(parallelism),
-                             min(CUDA_NUM_THREADS, parallelism),
-                             0,
-                             stream>>>(static_cast<half *>(m->keyCache),
-                                       m->committed_token_infos,
-                                       m->request_available,
-                                       num_requests,
-                                       m->hidden_size,
-                                       num_tokens_to_commit,
-                                       max_num_pages);
+                         min(CUDA_NUM_THREADS, parallelism),
+                         0,
+                         stream>>>(static_cast<half *>(m->keyCache),
+                                   m->committed_token_infos,
+                                   m->request_available,
+                                   num_requests,
+                                   m->hidden_size,
+                                   num_tokens_to_commit,
+                                   max_num_pages);
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
   //   float elapsed = 0;
@@ -439,6 +439,11 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       m->kv_indptr,
       m->kv_last_page_len);
 
+  //   cudaEvent_t t_start, t_end;
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
   BatchPrefillHandler *handler =
       static_cast<BatchPrefillHandler *>(m->batch_prefill_handler);
   handler->SetCUDAStream(stream);
@@ -449,6 +454,14 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                         num_q_heads,
                         num_kv_heads,
                         head_dim);
+
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   float elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   printf("paged KV construction: %.4f ms\n", elapsed);
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
 
   DISPATCH_GROUPSIZE(
       group_size,
@@ -541,6 +554,11 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+  //   cudaEvent_t t_start, t_end;
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
   // additional processing for weight uploading
   if (m->handle.offload_reserve_space != nullptr) {
     // Note that we update weight_ptr and bias_ptr when uploading weight and
@@ -569,6 +587,18 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
     commit_tokens(m, bc, stream);
   }
 
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   float elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   std::cout << "commit tokens time: " << elapsed << " ms\n";
+
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
   // After commit we update m->num_active_tokens to be the number of active
   // tokens for the current batch
   m->num_active_tokens = bc->num_active_tokens();
@@ -589,16 +619,59 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      bias_ptr,
                      stream);
 
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   std::cout << "Compute qkv time: " << elapsed << " ms\n";
+
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
   // Update gpu-side custom mask referring from CaualMask
   if (!bc->prompt_phase) {
     update_custom_mask(m, bc, stream);
   }
 
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   std::cout << "update custom mask time: " << elapsed << " ms\n";
+
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
   // Update key-val cache, compact q array
   update_qkv_cache<DT>(m, bc, stream);
 
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   std::cout << "update qkv time: " << elapsed << " ms\n";
+
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
   // Compute attention
   tree_verify_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
+
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   std::cout << "Attn time: " << elapsed << " ms\n";
 
   // Debug output:
   // {
