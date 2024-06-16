@@ -18,10 +18,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
-    float *input_data =
-        static_cast<float *>(allocator.allocate(num_elements * sizeof(float)));
+    TensorShape input_shape = get_float_tensor_shape({num_elements});
+    GenericTensorAccessorW input_accessor =
+        getRandomFilledAccessorW(input_shape,
+                                 allocator);
     std::vector<float> host_input_data =
-        returnRandomFillDeviceData(&input_data, num_elements);
+        fill_host_data<float>(input_accessor.ptr, num_elements);                              
 
     std::vector<float *> output_ptrs(num_outputs);
     for (int i = 0; i < num_outputs; i++) {
@@ -32,7 +34,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("Test Split Forward Kernel") {
       Kernels::Split::forward_kernel(stream,
                                      output_ptrs.data(),
-                                     input_data,
+                                     (const float*)input_accessor.ptr,
                                      out_blk_sizes,
                                      in_blk_size,
                                      num_blks,

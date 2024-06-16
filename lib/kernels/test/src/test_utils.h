@@ -19,113 +19,27 @@ void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
   }
 }
 
-template <typename T>
-std::vector<void *> alloc_ptrs(std::vector<size_t> const &num_elements,
-                               Allocator &allocator) {
-  std::vector<void *> allocated_ptrs;
-  for (size_t i = 0; i < num_elements.size(); ++i) {
-    allocated_ptrs.push_back(
-        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(T))));
-  }
-  return allocated_ptrs;
-}
+GenericTensorAccessorW getRandomFilledAccessorW(TensorShape const &shape,
+                                                Allocator &allocator);
+
+GenericTensorAccessorW getFilledAccessorW(TensorShape const &shape,
+                                          Allocator &allocator,
+                                          float val);
+
+void cleanup_test(cudaStream_t &stream, PerDeviceFFHandle &handle);
+
+TensorShape get_float_tensor_shape(FFOrdered<size_t> dims);
+
+TensorShape get_double_tensor_shape(FFOrdered<size_t> dims);
 
 template <typename T>
-void randomFillDeviceData(T **gpu_data, size_t num_elements) {
-  std::vector<float> host_data(num_elements);
-
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-
-  for (auto &val : host_data) {
-    val = dist(gen);
-  }
-  checkCUDA(cudaMemcpy(*gpu_data,
-                       host_data.data(),
-                       host_data.size() * sizeof(float),
-                       cudaMemcpyHostToDevice));
-}
-
-template <typename T>
-std::vector<float> returnRandomFillDeviceData(T **gpu_data,
-                                              size_t num_elements) {
-  std::vector<float> host_data(num_elements);
-
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
-
-  for (auto &val : host_data) {
-    val = dist(gen);
-  }
-  checkCUDA(cudaMemcpy(*gpu_data,
-                       host_data.data(),
-                       host_data.size() * sizeof(float),
-                       cudaMemcpyHostToDevice));
-
-  return host_data;
-}
-
-template <typename T>
-void fillDeviceDataNum(T **gpu_data, size_t num_elements, T num) {
-  std::vector<float> host_data(num_elements, num);
-  checkCUDA(cudaMemcpy(*gpu_data,
-                       host_data.data(),
-                       host_data.size() * sizeof(T),
-                       cudaMemcpyHostToDevice));
-}
-
-template <typename T>
-void fillDeviceDataIota(T **gpu_data, size_t num_elements) {
-  std::vector<float> host_data(num_elements);
-  std::iota(host_data.begin(), host_data.end(), 0.0f);
-  checkCUDA(cudaMemcpy(*gpu_data,
-                       host_data.data(),
-                       host_data.size() * sizeof(float),
-                       cudaMemcpyHostToDevice));
-}
-
-template <typename T>
-void fillDeviceDataOnes(T **gpu_data, size_t num_elements) {
-  std::vector<float> host_data(num_elements, 1.0f);
-  checkCUDA(cudaMemcpy(*gpu_data,
-                       host_data.data(),
-                       host_data.size() * sizeof(float),
-                       cudaMemcpyHostToDevice));
-}
-
-template <typename T>
-void fillDeviceDataZeros(T **gpu_data, size_t num_elements) {
-  std::vector<float> host_data(num_elements, 0.0f);
-  checkCUDA(cudaMemcpy(*gpu_data,
-                       host_data.data(),
-                       host_data.size() * sizeof(float),
-                       cudaMemcpyHostToDevice));
-}
-
-template <typename T>
-void fillDeviceDataPtrsOnes(std::vector<T **> &gpu_data_ptrs,
-                            std::vector<size_t> &num_elements) {
-  for (int i = 0; i < gpu_data_ptrs.size(); i++) {
-    fillDeviceDataOnes(gpu_data_ptrs[i], num_elements[i]);
-  }
-}
-
-template <typename T>
-void fillDeviceDataPtrsZeros(std::vector<T **> &gpu_data_ptrs,
-                             std::vector<size_t> &num_elements) {
-  for (int i = 0; i < gpu_data_ptrs.size(); i++) {
-    fillDeviceDataZeros(gpu_data_ptrs[i], num_elements[i]);
-  }
-}
-
-template <typename T>
-void randomFillDevicePtrs(std::vector<T **> &gpu_data_ptrs,
-                          std::vector<size_t> &num_elements) {
-  for (int i = 0; i < gpu_data_ptrs.size(); i++) {
-    randomFillDeviceData(gpu_data_ptrs[i], num_elements[i]);
-  }
+std::vector<T> fill_host_data(void *gpu_data, size_t num_elements) {
+  std::vector<T> local_data(num_elements);
+  checkCUDA(cudaMemcpy(local_data.data(),
+                       gpu_data,
+                       local_data.size() * sizeof(T),
+                       cudaMemcpyDeviceToHost));
+  return local_data;
 }
 
 template <typename T>

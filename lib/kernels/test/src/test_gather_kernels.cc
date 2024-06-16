@@ -8,34 +8,23 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t num_elements = 100;
     size_t output_size = 50;
 
-    ArrayShape shape = ArrayShape{
-        std::vector<size_t>{num_elements},
-    };
+    TensorShape input_shape = get_float_tensor_shape({num_elements});
+    TensorShape output_shape = get_float_tensor_shape({output_size});
 
     PerDeviceFFHandle handle;
     setPerDeviceFFHandle(&handle);
-
     cudaStream_t stream;
     cudaStreamCreate(&stream);
 
     Allocator allocator = get_local_memory_allocator();
 
-    float *device_input, *device_output, *device_indices;
-    std::vector<float **> ptrs = {
-        &device_input, &device_output, &device_indices};
-    std::vector<size_t> sizes = {num_elements, output_size, output_size};
-    allocate_ptrs(ptrs, sizes, allocator);
-
     SUBCASE("Test Gather Forward") {
-      GenericTensorAccessorW device_output_accessor{
-          DataType::FLOAT, shape, device_input};
-      GenericTensorAccessorR device_input_accessor{
-          DataType::FLOAT, shape, device_input};
-      GenericTensorAccessorR device_indices_accessor{
-          DataType::FLOAT, ArrayShape({output_size}), device_indices};
-
-      randomFillDeviceData(&device_input, num_elements);
-      randomFillDeviceData(&device_indices, output_size);
+      GenericTensorAccessorW device_output_accessor =
+          getRandomFilledAccessorW(input_shape, allocator);
+      GenericTensorAccessorR device_input_accessor = makeReadOnlyAccessor(
+          getRandomFilledAccessorW(input_shape, allocator));
+      GenericTensorAccessorR device_indices_accessor = makeReadOnlyAccessor(
+          getRandomFilledAccessorW(output_shape, allocator));
 
       GatherPerDeviceState state = {handle, legion_dim_t(2)};
       Kernels::Gather::forward_kernel(stream,
@@ -43,19 +32,32 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       device_input_accessor,
                                       device_indices_accessor,
                                       device_output_accessor);
-      std::vector<float> host_output(output_size, 0.0f);
-      cudaMemcpy(host_output.data(),
-                 device_output,
-                 output_size * sizeof(float),
-                 cudaMemcpyDeviceToHost);
+
+      std::vector<float> host_output_data =
+          fill_host_data<float>(device_output_accessor.ptr, num_elements);
+      REQUIRE(contains_non_zero(host_output_data));
+
+      SUBCASE("Test Gather Backward") {
+        GenericTensorAccessorR device_output_grad_accessor =
+            makeReadOnlyAccessor(
+                getRandomFilledAccessorW(input_shape, allocator));
+        GenericTensorAccessorR device_index_accessor = makeReadOnlyAccessor(
+            getRandomFilledAccessorW(output_shape, allocator));
+        GenericTensorAccessorW device_input_grad_accessor =
+            allocator.allocate_tensor(input_shape);
+
+        Kernels::Gather::backward_kernel(stream,
+                                         state,
+                                         device_output_grad_accessor,
+                                         device_index_accessor,
+                                         device_input_grad_accessor);
+
+        std::vector<float> host_input_grad_data =
+            fill_host_data<float>(device_input_grad_accessor.ptr, num_elements);
+        REQUIRE(contains_non_zero(host_input_grad_data));
+      }
     }
 
-    SUBCASE("Test Gather Backward") {
-      // Will add later
-    }
-
-    cudaStreamDestroy(stream);
-    cudnnDestroy(handle.dnn);
-    cublasDestroy(handle.blas);
+    cleanup_test(stream, handle);
   }
 }

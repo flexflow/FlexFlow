@@ -25,57 +25,60 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                                     output_w,
                                                                     true);
 
-    float *scale, *bias, *input_data, *output_data;
-    std::vector<float **> ptrs = {&input_data, &output_data, &scale, &bias};
-    std::vector<size_t> sizes = {
-        num_elements, num_elements, output_c, output_c};
-    allocate_ptrs(ptrs, sizes, allocator);
-    randomFillDeviceData(&input_data, num_elements);
-    fillDeviceDataOnes(&scale, output_c);
-    fillDeviceDataZeros(&bias, output_c);
+    TensorShape input_shape = get_float_tensor_shape({num_elements});
+    TensorShape output_shape = get_float_tensor_shape({num_elements});
+    TensorShape scale_shape = get_float_tensor_shape({output_c});
+    TensorShape bias_shape = get_float_tensor_shape({output_c});
+
+    GenericTensorAccessorW input_accessor =
+        getRandomFilledAccessorW(input_shape, allocator);
+    GenericTensorAccessorW output_accessor =
+        allocator.allocate_tensor(output_shape);
+    GenericTensorAccessorW scale_accessor =
+        getFilledAccessorW(scale_shape, allocator, 1.0f);
+    GenericTensorAccessorW bias_accessor =
+        getFilledAccessorW(bias_shape, allocator, 0.0f);
 
     SUBCASE("Test BatchNorm Forward") {
-      Kernels::BatchNorm::forward_kernel(
-          stream, state, input_data, output_data, scale, bias);
+      Kernels::BatchNorm::forward_kernel(stream,
+                                         state,
+                                         (float *)input_accessor.ptr,
+                                         (float *)output_accessor.ptr,
+                                         (float *)scale_accessor.ptr,
+                                         (float *)bias_accessor.ptr);
 
-      std::vector<float> host_output_data(num_elements);
-      checkCUDA(cudaMemcpy(host_output_data.data(),
-                           output_data,
-                           num_elements * sizeof(float),
-                           cudaMemcpyDeviceToHost));
+      std::vector<float> host_output_data =
+          fill_host_data<float>(output_accessor.ptr, num_elements);
+      REQUIRE(contains_non_zero(host_output_data));
+
+      SUBCASE("Test BatchNorm Backward") {
+        GenericTensorAccessorW grad_output_accessor =
+            getRandomFilledAccessorW(output_shape, allocator);
+
+        Kernels::BatchNorm::backward_kernel(stream,
+                                            state,
+                                            (float *)input_accessor.ptr,
+                                            (float *)grad_output_accessor.ptr,
+                                            (float *)output_accessor.ptr,
+                                            (float *)input_accessor.ptr,
+                                            (float *)scale_accessor.ptr,
+                                            (float *)scale_accessor.ptr,
+                                            (float *)bias_accessor.ptr,
+                                            num_elements);
+
+        std::vector<float> host_grad_input =
+            fill_host_data<float>(input_accessor.ptr, num_elements);
+        REQUIRE(contains_non_zero(host_grad_input));
+      }
     }
 
-    SUBCASE("Test BatchNorm Backward") {
-      float *grad_input, *grad_output_data;
-      std::vector<float **> ptrs_grad = {&grad_input, &grad_output_data};
-      allocate_ptrs(ptrs_grad, {num_elements, num_elements}, allocator);
-
-      Kernels::BatchNorm::backward_kernel(stream,
-                                          state,
-                                          input_data,
-                                          grad_output_data,
-                                          output_data,
-                                          grad_input,
-                                          scale,
-                                          scale,
-                                          bias,
-                                          num_elements);
-
-      std::vector<float> host_grad_input(num_elements);
-      checkCUDA(cudaMemcpy(host_grad_input.data(),
-                           grad_input,
-                           num_elements * sizeof(float),
-                           cudaMemcpyDeviceToHost));
-
-      Kernels::BatchNorm::cleanup_kernel(allocator,
-                                         state.inputTensor,
-                                         state.biasTensor,
-                                         state.outputTensor,
-                                         state.actiDesc,
-                                         true,
-                                         nullptr);
-    }
-
-    checkCUDA(cudaStreamDestroy(stream));
+    Kernels::BatchNorm::cleanup_kernel(allocator,
+                                       state.inputTensor,
+                                       state.biasTensor,
+                                       state.outputTensor,
+                                       state.actiDesc,
+                                       true,
+                                       nullptr);
+    cleanup_test(stream, handle);
   }
 }

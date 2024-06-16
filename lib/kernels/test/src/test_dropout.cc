@@ -8,9 +8,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     unsigned long long seed = 12345;
     float dropout_rate = 0.1;
     std::size_t num_elements = 100;
+
     ArrayShape shape = ArrayShape{
         std::vector<size_t>{100, 100},
     };
+
+    TensorShape input_shape = get_float_tensor_shape({num_elements});
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
@@ -23,20 +26,20 @@ TEST_SUITE(FF_TEST_SUITE) {
     DropoutPerDeviceState state = Kernels::Dropout::init_kernel(
         handle, dropout_rate, seed, shape, allocator);
 
-    float *input_data, *output_data, *grad_input_data;
-    std::vector<float **> ptrs = {&input_data, &output_data, &grad_input_data};
-    std::vector<size_t> sizes = {num_elements, num_elements, num_elements};
-    allocate_ptrs(ptrs, sizes, allocator);
-    randomFillDeviceData(&input_data, num_elements);
+    GenericTensorAccessorR input_data =
+        makeReadOnlyAccessor(getRandomFilledAccessorW(input_shape, allocator));
+    GenericTensorAccessorW output_data = allocator.allocate_tensor(input_shape);
+    GenericTensorAccessorW grad_input_data =
+        allocator.allocate_tensor(input_shape);
 
     SUBCASE("Test Dropout Forward") {
-      Kernels::Dropout::forward_kernel(stream, state, input_data, output_data);
+      Kernels::Dropout::forward_kernel(stream,
+                                       state,
+                                       (float const *)input_data.ptr,
+                                       (float *)output_data.ptr);
 
-      std::vector<float> host_output_data(num_elements, 0.0f);
-      checkCUDA(cudaMemcpy(host_output_data.data(),
-                           output_data,
-                           num_elements * sizeof(float),
-                           cudaMemcpyDeviceToHost));
+      std::vector<float> host_output_data =
+          fill_host_data<float>(output_data.ptr, num_elements);
 
       int zero_count = 0;
       for (float value : host_output_data) {
@@ -46,17 +49,25 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
       CHECK(zero_count ==
             doctest::Approx(num_elements * dropout_rate).epsilon(0.5));
-    }
 
-    SUBCASE("Test Dropout Backward") {
-      Kernels::Dropout::backward_kernel(
-          stream, state, output_data, grad_input_data);
+      SUBCASE("Test Dropout Backward") {
+        Kernels::Dropout::backward_kernel(stream,
+                                          state,
+                                          (float const *)output_data.ptr,
+                                          (float *)grad_input_data.ptr);
 
-      std::vector<float> host_grad_input_data(num_elements);
-      checkCUDA(cudaMemcpy(host_grad_input_data.data(),
-                           grad_input_data,
-                           num_elements * sizeof(float),
-                           cudaMemcpyDeviceToHost));
+        std::vector<float> host_grad_input_data =
+            fill_host_data<float>(grad_input_data.ptr, num_elements);
+
+        int zero_count = 0;
+        for (float value : host_grad_input_data) {
+          if (value == 0.0f) {
+            zero_count++;
+          }
+        }
+        CHECK(zero_count ==
+              doctest::Approx(num_elements * dropout_rate).epsilon(0.5));
+      }
     }
 
     Kernels::Dropout::cleanup_kernel(allocator,
@@ -65,6 +76,6 @@ TEST_SUITE(FF_TEST_SUITE) {
                                      state.dropoutDesc,
                                      state.dropoutStates);
 
-    checkCUDA(cudaStreamDestroy(stream));
+    cleanup_test(stream, handle);
   }
 }

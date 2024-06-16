@@ -9,12 +9,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::size_t num_replicas = 10;
     std::size_t total_elements = num_elements * num_replicas;
 
-    ArrayShape shape = ArrayShape{
-        std::vector<size_t>{num_elements},
-    };
-    ArrayShape expanded_shape = ArrayShape{
-        std::vector<size_t>{total_elements},
-    };
+    TensorShape shape = get_float_tensor_shape({num_elements});
+    TensorShape expanded_shape = get_float_tensor_shape({total_elements});
 
     PerDeviceFFHandle handle;
     setPerDeviceFFHandle(&handle);
@@ -23,36 +19,30 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
-    GenericTensorAccessorW *output_accessor_ptr;
     SUBCASE("Test Reduction Forward") {
-      float *input_data, *output_data;
-      std::vector<float **> ptrs = {&input_data, &output_data};
-      std::vector<size_t> sizes = {total_elements, num_elements};
-      allocate_ptrs(ptrs, sizes, allocator);
-
-      GenericTensorAccessorR input_accessor{
-          DataType::FLOAT, expanded_shape, input_data};
-      GenericTensorAccessorW output_accessor{
-          DataType::FLOAT, shape, output_data};
-      output_accessor_ptr = &output_accessor;
-
-      randomFillDeviceData(&input_data, total_elements);
+      GenericTensorAccessorR input_accessor = makeReadOnlyAccessor(
+          getRandomFilledAccessorW(expanded_shape, allocator));
+      GenericTensorAccessorW output_accessor =
+          getRandomFilledAccessorW(expanded_shape, allocator);
 
       Kernels::Reduction::forward_kernel(
           stream, input_accessor, output_accessor, num_replicas);
+
+      std::vector<float> host_output_data =
+          fill_host_data<float>(output_accessor.ptr, num_elements);
+
+      SUBCASE("Test Reduction Backward") {
+        GenericTensorAccessorR grad_accessor = makeReadOnlyAccessor(
+            getFilledAccessorW(expanded_shape, allocator, 1.0f));
+
+        Kernels::Reduction::backward_kernel(
+            stream, output_accessor, grad_accessor);
+
+        std::vector<float> host_grad_data =
+            fill_host_data<float>(output_accessor.ptr, total_elements);
+      }
     }
 
-    SUBCASE("Test Reduction Backward") {
-      float *grad_input_data = static_cast<float *>(
-          allocator.allocate(total_elements * sizeof(float)));
-      fillDeviceDataNum(&grad_input_data, total_elements, 1.0f);
-      GenericTensorAccessorR grad_accessor{
-          DataType::FLOAT, shape, grad_input_data};
-
-      Kernels::Reduction::backward_kernel(
-          stream, *output_accessor_ptr, grad_accessor);
-    }
-
-    checkCUDA(cudaStreamDestroy(stream));
+    cleanup_test(stream, handle);
   }
 }

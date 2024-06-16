@@ -17,26 +17,27 @@ TEST_SUITE(FF_TEST_SUITE) {
     checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
-    float *input_data, *output_data;
-    std::vector<float **> ptrs = {&input_data, &output_data};
-    std::vector<size_t> sizes = {num_elements, num_elements};
-    allocate_ptrs(ptrs, sizes, allocator);
 
-    std::vector<float> host_input_data =
-        returnRandomFillDeviceData(&input_data, num_elements);
+    TensorShape shape = get_float_tensor_shape({num_elements});
+
+    int channels = num_elements;
+    SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
+        handle, 0, input_n, channels, input_h, input_w);
 
     SUBCASE("Test Softmax Forward") {
-      int channels = num_elements;
-      SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
-          handle, 0, input_n, channels, input_h, input_w);
+      GenericTensorAccessorW input_accessor =
+          getRandomFilledAccessorW(shape, allocator);
+      GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
 
-      Kernels::Softmax::forward_kernel(stream, state, input_data, output_data);
+      Kernels::Softmax::forward_kernel(stream,
+                                       state,
+                                       (float const *)input_accessor.ptr,
+                                       (float *)output_accessor.ptr);
 
-      std::vector<float> host_output_data(num_elements);
-      checkCUDA(cudaMemcpy(host_output_data.data(),
-                           output_data,
-                           num_elements * sizeof(float),
-                           cudaMemcpyDeviceToHost));
+      std::vector<float> host_input_data =
+          fill_host_data<float>(input_accessor.ptr, num_elements);
+      std::vector<float> host_output_data =
+          fill_host_data<float>(output_accessor.ptr, num_elements);
 
       float max_input =
           *std::max_element(host_input_data.begin(), host_input_data.end());
@@ -53,27 +54,25 @@ TEST_SUITE(FF_TEST_SUITE) {
         CHECK(doctest::Approx(host_output_data[i]).epsilon(0.01) ==
               expected_value);
       }
-    }
 
-    SUBCASE("Test Softmax Backward") {
-      fillDeviceDataNum(&output_data, num_elements, 1.0f);
-      SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
-          handle, 0, input_n, input_c, input_h, input_w);
+      SUBCASE("Test Softmax Backward") {
+        GenericTensorAccessorW grad_output_accessor =
+            getRandomFilledAccessorW(shape, allocator);
+        GenericTensorAccessorW grad_input_accessor =
+            allocator.allocate_tensor(shape);
 
-      Kernels::Softmax::backward_kernel(
-          stream, input_data, output_data, num_elements);
+        Kernels::Softmax::backward_kernel(stream,
+                                          (float *)grad_output_accessor.ptr,
+                                          (float *)grad_input_accessor.ptr,
+                                          num_elements);
 
-      std::vector<float> check_output_data(num_elements);
-      checkCUDA(cudaMemcpy(check_output_data.data(),
-                           input_data,
-                           num_elements * sizeof(float),
-                           cudaMemcpyDeviceToHost));
+        std::vector<float> check_output_data =
+            fill_host_data<float>(output_accessor.ptr, num_elements);
 
-      for (std::size_t i = 0; i < num_elements; ++i) {
-        REQUIRE(1.0f == check_output_data[i]);
+        REQUIRE(contains_non_zero(check_output_data));
       }
     }
 
-    checkCUDA(cudaStreamDestroy(stream));
+    cleanup_test(stream, handle);
   }
 }

@@ -14,27 +14,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t b_seq_length_dim = -1;
     size_t seq_length = -1;
 
-    TensorShape input_shape_a = TensorShape{
-        TensorDims{
-            FFOrdered<size_t>{m, k, batch},
-        },
-        DataType::FLOAT,
-    };
-
-    TensorShape input_shape_b = TensorShape{
-        TensorDims{
-            FFOrdered<size_t>{k, n, batch},
-        },
-        DataType::FLOAT,
-    };
-
-    TensorShape output_shape = TensorShape{
-        TensorDims{
-            FFOrdered<size_t>{m, n, batch},
-        },
-        DataType::FLOAT,
-    };
-
     PerDeviceFFHandle handle;
     setPerDeviceFFHandle(&handle);
     cudaStream_t stream;
@@ -42,10 +21,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
+    TensorShape input_shape_a = get_float_tensor_shape({m, k, batch});
+    TensorShape input_shape_b = get_float_tensor_shape({k, n, batch});
+    TensorShape output_shape = get_float_tensor_shape({m, n, batch});
+
     GenericTensorAccessorW accessor_a =
-        allocator.allocate_tensor(input_shape_a);
+        getRandomFilledAccessorW(input_shape_a, allocator);
     GenericTensorAccessorW accessor_b =
-        allocator.allocate_tensor(input_shape_b);
+        getRandomFilledAccessorW(input_shape_b, allocator);
     GenericTensorAccessorW accessor_output =
         allocator.allocate_tensor(output_shape);
 
@@ -65,12 +48,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("Test BatchMatmul Backward") {
+      GenericTensorAccessorW o_grad_accessor =
+          getRandomFilledAccessorW(output_shape, allocator);
       GenericTensorAccessorW a_grad_accessor =
           allocator.allocate_tensor(input_shape_a);
       GenericTensorAccessorW b_grad_accessor =
           allocator.allocate_tensor(input_shape_b);
-      GenericTensorAccessorW o_grad_accessor =
-          allocator.allocate_tensor(output_shape);
 
       Kernels::BatchMatmul::backward_kernel(stream,
                                             handle,
@@ -86,6 +69,6 @@ TEST_SUITE(FF_TEST_SUITE) {
                                             batch);
     }
 
-    cudaStreamDestroy(stream);
+    cleanup_test(stream, handle);
   }
 }
