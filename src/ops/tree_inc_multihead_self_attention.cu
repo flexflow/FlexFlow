@@ -24,6 +24,7 @@
 
 #include <sstream>
 #include <stdexcept>
+#include <vector>
 
 #define DISPATCH_GROUPSIZE(group_size, GROUP_SIZE, ...)                        \
   if (group_size == 1) {                                                       \
@@ -409,6 +410,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
       (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+  std::vector<int32_t> q_indptr_h {0};
 
   {
     int parallelism = batch_size;
@@ -424,6 +426,13 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                                                 m->kv_indices,
                                                 m->kv_last_page_len,
                                                 m->qk_indptr);
+    for (int req_idx = 0; req_idx < bc->max_requests_per_batch();
+         req_idx++) {
+      if (bc->request_available[req_idx]) {
+        int q_len = bc->requestsInfo[req_idx].num_tokens_in_batch;
+        q_indptr_h.push_back(q_indptr_h.back() + q_len);
+      }
+    }
   }
 
   half *q = static_cast<half *>(m->queryTmp),
@@ -449,7 +458,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   handler->SetCUDAStream(stream);
   handler->BeginForward(m->workspace,
                         m->workspace_size,
-                        m->q_indptr,
+                        q_indptr_h.data(),
                         batch_size,
                         num_q_heads,
                         num_kv_heads,
