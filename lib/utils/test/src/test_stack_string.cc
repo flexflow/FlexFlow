@@ -1,4 +1,5 @@
 #include "test/utils/doctest.h"
+#include "test/utils/rapidcheck.h"
 #include "utils/stack_string.h"
 
 using namespace FlexFlow;
@@ -79,5 +80,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     StackString str{"Hello"};
     std::string stdStr = static_cast<std::string>(str);
     CHECK(stdStr == "Hello");
+  }
+
+  TEST_CASE("Arbitrary<stack_string>") {
+    constexpr std::size_t MAXSIZE = 10;  
+    rc::dc_check("arbitrary returns valid", [](stack_string<MAXSIZE> const &s) {} );
   }
 }

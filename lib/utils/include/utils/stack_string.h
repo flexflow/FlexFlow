@@ -8,6 +8,7 @@
 #include "utils/type_traits.h"
 #include <cstring>
 #include <string>
+#include <rapidcheck.h>
 
 namespace FlexFlow {
 
@@ -16,6 +17,10 @@ struct stack_basic_string {
   stack_basic_string() = default;
 
   stack_basic_string(Char const *c) : contents(c, c + std::strlen(c)) {}
+
+  template <typename Iterator>
+  stack_basic_string(Iterator start, Iterator end)
+    : contents(start, end) { }
 
   stack_basic_string(std::basic_string<Char> const &s)
       : stack_basic_string(s.c_str()) {}
@@ -91,6 +96,20 @@ struct hash<::FlexFlow::stack_basic_string<Char, MAXSIZE>> {
 };
 
 } // namespace std
+
+namespace rc {
+
+template <typename Char, size_t MAXSIZE>
+struct Arbitrary<::FlexFlow::stack_basic_string<Char, MAXSIZE>> {
+  static Gen<::FlexFlow::stack_basic_string<Char, MAXSIZE>> arbitrary() {
+  return gen::mapcat(gen::inRange<size_t>(0, MAXSIZE), [](size_t size) {
+    return gen::container<::FlexFlow::stack_basic_string<Char, MAXSIZE>>(
+        size, gen::arbitrary<Char>());
+  });
+  }
+};
+
+} // namespace rc
 
 namespace FlexFlow {
 

@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializers/uniform_initializer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "f887e1db5d5dc710793ec5fa99bb7cd4"
+  "generated_from": "dd9cbe65dc4495b031aef40d353db928"
 }
 */
 

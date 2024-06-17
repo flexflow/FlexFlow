@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializers/constant_initializer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "0162b9c49fe6cbfc65410c6fa8dec427"
+  "generated_from": "4ffc8ccd7dfdb7674556487433ea9913"
 }
 */
 
@@ -66,6 +66,14 @@ void adl_serializer<::FlexFlow::ConstantInitializerAttrs>::to_json(
   j["value"] = v.value;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<::FlexFlow::ConstantInitializerAttrs>
+    Arbitrary<::FlexFlow::ConstantInitializerAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ConstantInitializerAttrs>(
+      gen::arbitrary<::FlexFlow::DataTypeValue>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ConstantInitializerAttrs const &x) {

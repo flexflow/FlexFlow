@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializers/constant_initializer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "0162b9c49fe6cbfc65410c6fa8dec427"
+  "generated_from": "4ffc8ccd7dfdb7674556487433ea9913"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
+#include "rapidcheck.h"
 #include "utils/json.h"
 #include <functional>
 #include <ostream>
@@ -47,6 +48,13 @@ struct adl_serializer<::FlexFlow::ConstantInitializerAttrs> {
   static void to_json(json &, ::FlexFlow::ConstantInitializerAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::ConstantInitializerAttrs> {
+  static Gen<::FlexFlow::ConstantInitializerAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ConstantInitializerAttrs const &);

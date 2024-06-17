@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_tensor_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "b3e086b380bbc41d99332e1463a34b28"
+  "generated_from": "3d641c90950f49a7bef664d0153c97f6"
 }
 */
 
@@ -116,6 +116,17 @@ void adl_serializer<::FlexFlow::ParallelTensorAttrs>::to_json(
   j["create_gradients"] = v.create_gradients;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<::FlexFlow::ParallelTensorAttrs>
+    Arbitrary<::FlexFlow::ParallelTensorAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ParallelTensorAttrs>(
+      gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
+      gen::arbitrary<std::optional<::FlexFlow::ParamSync>>(),
+      gen::arbitrary<std::optional<::FlexFlow::InitializerAttrs>>(),
+      gen::arbitrary<::FlexFlow::CreateGrad>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelTensorAttrs const &x) {

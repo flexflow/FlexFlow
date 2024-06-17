@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_layer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "9bb6e3cb7b0e523fae8f33bd8ad80d6d"
+  "generated_from": "1b3a0491865fd43c79afcf4939b56fae"
 }
 */
 
@@ -73,6 +73,15 @@ void adl_serializer<::FlexFlow::ParallelLayerAttrs>::to_json(
   j["name"] = v.name;
 }
 } // namespace nlohmann
+
+namespace rc {
+Gen<::FlexFlow::ParallelLayerAttrs>
+    Arbitrary<::FlexFlow::ParallelLayerAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ParallelLayerAttrs>(
+      gen::arbitrary<::FlexFlow::PCGOperatorAttrs>(),
+      gen::arbitrary<std::optional<::FlexFlow::stack_string<MAX_OPNAME>>>());
+}
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelLayerAttrs const &x) {

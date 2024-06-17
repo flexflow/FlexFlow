@@ -4,6 +4,7 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h"
+#include "pcg/parallel_computation_graph/parallel_layer_added_result.dtg.h"
 
 namespace FlexFlow {
 
@@ -11,6 +12,11 @@ ParallelComputationGraph empty_parallel_computation_graph();
 
 std::unordered_set<parallel_layer_guid_t>
     get_parallel_layers(ParallelComputationGraph const &);
+
+ParallelLayerAddedResult add_parallel_layer(ParallelComputationGraph &pcg,
+                                            ParallelLayerAttrs const &layer_attrs,
+                                            std::vector<parallel_tensor_guid_t> const &inputs,
+                                            std::vector<ParallelTensorAttrs> const &output_labels);
 
 std::vector<parallel_tensor_guid_t>
     get_layer_inputs(ParallelComputationGraph const &,
@@ -26,6 +32,8 @@ ParallelLayerAttrs get_parallel_layer_attrs(ParallelComputationGraph const &,
                                             parallel_layer_guid_t const &);
 ParallelTensorAttrs get_parallel_tensor_attrs(ParallelComputationGraph const &,
                                               parallel_tensor_guid_t const &);
+
+std::vector<parallel_layer_guid_t> topological_ordering(ParallelComputationGraph const &);
 
 } // namespace FlexFlow
 

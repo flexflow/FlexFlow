@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_layer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "9bb6e3cb7b0e523fae8f33bd8ad80d6d"
+  "generated_from": "1b3a0491865fd43c79afcf4939b56fae"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/operator_attrs.h"
+#include "rapidcheck.h"
 #include "utils/stack_string.h"
 #include <functional>
 #include <optional>
@@ -51,6 +52,13 @@ struct adl_serializer<::FlexFlow::ParallelLayerAttrs> {
   static void to_json(json &, ::FlexFlow::ParallelLayerAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::ParallelLayerAttrs> {
+  static Gen<::FlexFlow::ParallelLayerAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelLayerAttrs const &);

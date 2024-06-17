@@ -1,14 +1,11 @@
-#include "doctest/doctest.h"
 #include "op-attrs/regularizer_attrs.dtg.h"
-#include <rapidcheck.h>
-
-using namespace FlexFlow;
+#include "test/utils/doctest.h"
+#include "test/utils/rapidcheck.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
-
-  TEST_CASE("RC") {
-    CHECK(rc::check("valid variant", [](RegularizerAttrs reg) {
-      return reg.has<L1RegularizerAttrs>() || reg.has<L2RegularizerAttrs>();
-    }));
+  TEST_CASE("Arbitrary<RegularizerAttrs>") {
+    rc::dc_check("valid variant", [](RegularizerAttrs reg) {
+      RC_ASSERT(reg.has<L1RegularizerAttrs>() || reg.has<L2RegularizerAttrs>());
+    });
   }
 }

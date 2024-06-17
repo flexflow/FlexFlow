@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_tensor_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "b3e086b380bbc41d99332e1463a34b28"
+  "generated_from": "3d641c90950f49a7bef664d0153c97f6"
 }
 */
 
@@ -16,6 +16,7 @@
 #include "op-attrs/param_sync.dtg.h"
 #include "pcg/create_grad.dtg.h"
 #include "pcg/initializer_attrs.dtg.h"
+#include "rapidcheck.h"
 #include <functional>
 #include <optional>
 #include <ostream>
@@ -57,6 +58,13 @@ struct adl_serializer<::FlexFlow::ParallelTensorAttrs> {
   static void to_json(json &, ::FlexFlow::ParallelTensorAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::ParallelTensorAttrs> {
+  static Gen<::FlexFlow::ParallelTensorAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ParallelTensorAttrs const &);
