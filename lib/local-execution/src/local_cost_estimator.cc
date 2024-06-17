@@ -12,13 +12,35 @@ namespace FlexFlow {
 LocalCostEstimator::LocalCostEstimator(RuntimeArgConfig const &config)
     : runtime_arg_config(config) {}
 
+static bool is_zero_cost_op(PCGOperatorAttrs const &op) {
+  return is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>();
+}
+
+static float get_total_elapsed_time(PerLayerElapsedTime const &fwd,
+                                    PerLayerElapsedTime const &bwd) {
+  float total_elapsed_time = 0;
+  for (auto const &layer_elapsed_time : fwd) {
+    layer_guid_t layer_id = layer_elapsed_time.first;
+    float fwd_time = layer_elapsed_time.second.value();
+    float bwd_time = bwd.at(layer_id).value();
+    total_elapsed_time += fwd_time + bwd_time;
+  }
+  return total_elapsed_time;
+}
+
 float LocalCostEstimator::estimate_cost(
     PCGOperatorAttrs const &op,
     std::vector<ParallelTensorShape> const &inputs,
     std::vector<ParallelTensorAttrs> const &weights,
     std::vector<ParallelTensorAttrs> const &outputs,
     MachineView const &mv) const {
-  LayerAttrs layer_attrs = {get_cg_attrs(op), std::nullopt};
+
+  if (is_zero_cost_op(op)) {
+    return 0.0;
+  }
+
+  LayerAttrs layer_attrs = {compgraph_op_attrs_from_pcg_op_attrs(op),
+                            std::nullopt};
 
   // allocate memory for inputs
   Allocator allocator = get_local_memory_allocator();
@@ -36,12 +58,19 @@ float LocalCostEstimator::estimate_cost(
     input_tensor_ids.push_back(tensor_id);
   }
 
+  auto get_vector_piece_attrs =
+      [](std::vector<ParallelTensorAttrs> const &parallel_attrs) {
+        return transform(parallel_attrs, [](ParallelTensorAttrs const &p) {
+          return get_piece_attrs(p);
+        });
+      };
+
   // add operator
   std::vector<tensor_guid_t> output_tensor_ids =
       cg_builder.add_layer(layer_attrs,
                            input_tensor_ids,
-                           get_piece_attrs(weights),
-                           get_piece_attrs(outputs));
+                           get_vector_piece_attrs(weights),
+                           get_vector_piece_attrs(outputs));
 
   LocalTrainingBacking local_backing(allocator,
                                      cg_builder.computation_graph,
@@ -55,18 +84,6 @@ float LocalCostEstimator::estimate_cost(
   return get_total_elapsed_time(fwd, bwd);
 }
 
-static float get_total_elapsed_time(PerLayerElapsedTime const &fwd,
-                                    PerLayerElapsedTime const &bwd) {
-  float total_elapsed_time = 0;
-  for (auto const &layer_elapsed_time : fwd) {
-    layer_guid_t layer_id = layer_elapsed_time.first;
-    float fwd_time = layer_elapsed_time.second.value();
-    float bwd_time = bwd.at(layer_id).value();
-    total_elapsed_time += fwd_time + bwd_time;
-  }
-  return total_elapsed_time;
-}
-
 float LocalCostEstimator::estimate_cost(ParallelTensorShape const &tensor_shape,
                                         MachineView const &src,
                                         MachineView const &dst) const {
@@ -76,8 +93,9 @@ float LocalCostEstimator::estimate_cost(ParallelTensorShape const &tensor_shape,
   return 0.0;
 }
 
-CostEstimator get_local_cost_estimator() {
-  return CostEstimator::create<LocalCostEstimator>();
+CostEstimator
+    get_local_cost_estimator(RuntimeArgConfig const &runtime_arg_config) {
+  return CostEstimator::create<LocalCostEstimator>(runtime_arg_config);
 }
 
 } // namespace FlexFlow

@@ -8,7 +8,8 @@ namespace FlexFlow {
 
 bool is_parallel_op(PCGOperatorAttrs const &);
 OperatorType get_op_type(PCGOperatorAttrs const &);
-ComputationGraphOpAttrs get_cg_attrs(PCGOperatorAttrs const &);
+ComputationGraphOpAttrs
+    compgraph_op_attrs_from_pcg_op_attrs(PCGOperatorAttrs const &);
 
 } // namespace FlexFlow
 

@@ -7,8 +7,6 @@
 
 namespace FlexFlow {
 
-std::vector<TensorAttrs>
-    get_piece_attrs(std::vector<ParallelTensorAttrs> const &);
 TensorAttrs get_piece_attrs(ParallelTensorAttrs const &);
 
 } // namespace FlexFlow

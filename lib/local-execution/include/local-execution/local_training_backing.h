@@ -17,8 +17,8 @@ struct LocalTrainingBacking {
   ~LocalTrainingBacking() = default;
 
   void execute_init();
-  PerLayerElapsedTime const &execute_forward();
-  PerLayerElapsedTime const &execute_backward();
+  PerLayerElapsedTime execute_forward();
+  PerLayerElapsedTime execute_backward();
   void execute_update();
 
 private:

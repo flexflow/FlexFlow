@@ -83,7 +83,7 @@ void LocalTrainingBacking::execute_init() {
   }
 }
 
-PerLayerElapsedTime const &LocalTrainingBacking::execute_forward() {
+PerLayerElapsedTime LocalTrainingBacking::execute_forward() {
   PerLayerElapsedTime per_op_elapsed_time;
   for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
@@ -99,7 +99,7 @@ PerLayerElapsedTime const &LocalTrainingBacking::execute_forward() {
   return per_op_elapsed_time;
 }
 
-PerLayerElapsedTime const &LocalTrainingBacking::execute_backward() {
+PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
   PerLayerElapsedTime per_op_elapsed_time;
   for (layer_guid_t const &operator_node :
        reversed(topological_ordering(this->computation_graph))) {

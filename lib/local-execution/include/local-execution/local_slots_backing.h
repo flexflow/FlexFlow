@@ -21,7 +21,7 @@ public:
                                DeviceSpecific<DeviceStates> const &);
   bool is_tensor_allocated(tensor_guid_t const &) const;
   GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
-                                                   IsGrad const) const;
+                                                   IsGrad) const;
   TensorSlotsBacking construct_tensor_slots_backing(OpTaskBinding const &,
                                                     layer_guid_t const &) const;
   ArgSlotsBacking construct_arg_slots_backing(OpTaskBinding const &,
