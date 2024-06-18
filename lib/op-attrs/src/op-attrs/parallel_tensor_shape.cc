@@ -77,6 +77,10 @@ TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {
   NOT_IMPLEMENTED();
 }
 
+TensorShape get_piece_shape(ParallelTensorShape const &s) {
+  return get_reduced_shape(s);
+}
+
 TensorShape get_reduced_shape(ParallelTensorShape const &s) {
   return TensorShape{
       get_reduced_dims(s.dims),
