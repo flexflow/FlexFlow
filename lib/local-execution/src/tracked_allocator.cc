@@ -26,4 +26,14 @@ Allocator get_tracked_memory_allocator(Allocator const &base_allocator) {
   return Allocator::create<TrackedAllocator>(base_allocator);
 }
 
+Allocator get_tracked_local_memory_allocator() {
+  return get_tracked_memory_allocator(get_local_memory_allocator());
+}
+
+size_t get_tracked_memory_usage(Allocator &wrapped_allocator) {
+  TrackedAllocator &tracked_allocator =
+      Allocator::unwrap<TrackedAllocator>(wrapped_allocator);
+  return tracked_allocator.get_current_mem_usage();
+}
+
 } // namespace FlexFlow

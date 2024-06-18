@@ -21,6 +21,13 @@ struct Allocator {
   void *allocate(size_t mem_size);
   void deallocate(void *ptr);
 
+  template <typename T>
+  static
+      typename std::enable_if<std::is_base_of<IAllocator, T>::value, T &>::type
+      unwrap(Allocator &arg) {
+    return *std::dynamic_pointer_cast<T>(arg.i_allocator);
+  }
+
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IAllocator, T>::value,
                                  Allocator>::type

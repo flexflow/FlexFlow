@@ -1,6 +1,5 @@
 #include "local-execution/local_cost_estimator.h"
 #include "kernels/device.h"
-#include "local-execution/local_training_backing.h"
 #include "local-execution/tracked_allocator.h"
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
@@ -9,15 +8,12 @@
 
 namespace FlexFlow {
 
-LocalCostEstimator::LocalCostEstimator(RuntimeArgConfig const &config)
-    : runtime_arg_config(config) {}
+CostDetails::CostDetails() : total_elapsed_time(0.0), memory_usage(0){};
 
-static bool is_zero_cost_op(PCGOperatorAttrs const &op) {
-  return is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>();
-}
-
-static float get_total_elapsed_time(PerLayerElapsedTime const &fwd,
-                                    PerLayerElapsedTime const &bwd) {
+CostDetails::CostDetails(PerLayerElapsedTime const &fwd,
+                         PerLayerElapsedTime const &bwd,
+                         size_t memory_usage)
+    : memory_usage(memory_usage) {
   float total_elapsed_time = 0;
   for (auto const &layer_elapsed_time : fwd) {
     layer_guid_t layer_id = layer_elapsed_time.first;
@@ -25,10 +21,17 @@ static float get_total_elapsed_time(PerLayerElapsedTime const &fwd,
     float bwd_time = bwd.at(layer_id).value();
     total_elapsed_time += fwd_time + bwd_time;
   }
-  return total_elapsed_time;
+  this->total_elapsed_time = total_elapsed_time;
 }
 
-float LocalCostEstimator::estimate_cost(
+LocalCostEstimator::LocalCostEstimator(RuntimeArgConfig const &config)
+    : runtime_arg_config(config) {}
+
+static bool is_zero_cost_op(PCGOperatorAttrs const &op) {
+  return is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>();
+}
+
+CostDetails LocalCostEstimator::estimate_cost(
     PCGOperatorAttrs const &op,
     std::vector<ParallelTensorShape> const &inputs,
     std::vector<ParallelTensorAttrs> const &weights,
@@ -36,14 +39,14 @@ float LocalCostEstimator::estimate_cost(
     MachineView const &mv) const {
 
   if (is_zero_cost_op(op)) {
-    return 0.0;
+    return CostDetails();
   }
 
   LayerAttrs layer_attrs = {compgraph_op_attrs_from_pcg_op_attrs(op),
                             std::nullopt};
 
   // allocate memory for inputs
-  Allocator allocator = get_local_memory_allocator();
+  Allocator allocator = get_tracked_local_memory_allocator();
   TensorBackingMap tensor_backing_map;
   std::vector<tensor_guid_t> input_tensor_ids;
 
@@ -65,7 +68,7 @@ float LocalCostEstimator::estimate_cost(
         });
       };
 
-  // add operator
+  // add operator to graph
   std::vector<tensor_guid_t> output_tensor_ids =
       cg_builder.add_layer(layer_attrs,
                            input_tensor_ids,
@@ -81,13 +84,15 @@ float LocalCostEstimator::estimate_cost(
   PerLayerElapsedTime fwd = local_backing.execute_forward();
   PerLayerElapsedTime bwd = local_backing.execute_backward();
 
-  return get_total_elapsed_time(fwd, bwd);
+  // get memory usage
+  return CostDetails(fwd, bwd, get_tracked_memory_usage(allocator));
 }
 
 float LocalCostEstimator::estimate_cost(ParallelTensorShape const &tensor_shape,
                                         MachineView const &src,
                                         MachineView const &dst) const {
   // TODO: model communication cost analytically
+  // https://github.com/flexflow/FlexFlow/issues/1414
   // temporarily return 0
 
   return 0.0;

@@ -20,15 +20,15 @@ bool LocalSlotsBacking::is_tensor_allocated(
 
 GenericTensorAccessorW const &
     LocalSlotsBacking::get_tensor_backing(tensor_guid_t const &tensor_id,
-                                          IsGrad const is_grad) const {
+                                          IsGrad is_grad) const {
   switch (is_grad) {
     case IsGrad::NO:
       return this->tensor_mapping.at(tensor_id);
     case IsGrad::YES:
       return this->gradient_tensor_mapping.at(tensor_id);
     default:
-      throw mk_runtime_error(
-          fmt::format("IsGrad should only have YES or NO, received {}"));
+      throw mk_runtime_error(fmt::format(
+          "IsGrad should only have YES or NO, received {}", is_grad));
   }
 }
 

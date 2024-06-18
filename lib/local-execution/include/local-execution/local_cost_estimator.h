@@ -12,11 +12,11 @@ struct LocalCostEstimator : public ICostEstimator {
   LocalCostEstimator(LocalCostEstimator &&) = delete;
   ~LocalCostEstimator() = default;
 
-  float estimate_cost(PCGOperatorAttrs const &op,
-                      std::vector<ParallelTensorShape> const &inputs,
-                      std::vector<ParallelTensorAttrs> const &weights,
-                      std::vector<ParallelTensorAttrs> const &outputs,
-                      MachineView const &mv) const override;
+  CostDetails estimate_cost(PCGOperatorAttrs const &op,
+                            std::vector<ParallelTensorShape> const &inputs,
+                            std::vector<ParallelTensorAttrs> const &weights,
+                            std::vector<ParallelTensorAttrs> const &outputs,
+                            MachineView const &mv) const override;
 
   float estimate_cost(ParallelTensorShape const &tensor_shape,
                       MachineView const &src,
@@ -27,7 +27,7 @@ private:
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalCostEstimator);
 
-CostEstimator get_local_cost_estimator();
+CostEstimator get_local_cost_estimator(RuntimeArgConfig const &);
 
 } // namespace FlexFlow
 

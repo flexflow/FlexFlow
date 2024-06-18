@@ -2,6 +2,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_COST_ESTIMATE_H
 #define _FLEXFLOW_LOCAL_EXECUTION_COST_ESTIMATE_H
 
+#include "local-execution/local_training_backing.h"
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/machine_view.h"
@@ -9,12 +10,24 @@
 
 namespace FlexFlow {
 
+struct CostDetails {
+  CostDetails();
+  CostDetails(PerLayerElapsedTime const &fwd,
+              PerLayerElapsedTime const &bwd,
+              size_t memory_usage);
+
+public:
+  float total_elapsed_time;
+  size_t memory_usage;
+};
+
 struct ICostEstimator {
-  virtual float estimate_cost(PCGOperatorAttrs const &op,
-                              std::vector<ParallelTensorShape> const &inputs,
-                              std::vector<ParallelTensorAttrs> const &weights,
-                              std::vector<ParallelTensorAttrs> const &outputs,
-                              MachineView const &mv) const = 0;
+  virtual CostDetails
+      estimate_cost(PCGOperatorAttrs const &op,
+                    std::vector<ParallelTensorShape> const &inputs,
+                    std::vector<ParallelTensorAttrs> const &weights,
+                    std::vector<ParallelTensorAttrs> const &outputs,
+                    MachineView const &mv) const = 0;
   virtual float estimate_cost(ParallelTensorShape const &tensor_shape,
                               MachineView const &src,
                               MachineView const &dst) const = 0;
@@ -28,11 +41,11 @@ struct ICostEstimator {
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ICostEstimator);
 
 struct CostEstimator {
-  float estimate_cost(PCGOperatorAttrs const &op,
-                      std::vector<ParallelTensorShape> const &inputs,
-                      std::vector<ParallelTensorAttrs> const &weights,
-                      std::vector<ParallelTensorAttrs> const &outputs,
-                      MachineView const &mv) const {
+  CostDetails estimate_cost(PCGOperatorAttrs const &op,
+                            std::vector<ParallelTensorShape> const &inputs,
+                            std::vector<ParallelTensorAttrs> const &weights,
+                            std::vector<ParallelTensorAttrs> const &outputs,
+                            MachineView const &mv) const {
     return this->implementation_ptr->estimate_cost(
         op, inputs, weights, outputs, mv);
   }
