@@ -1,6 +1,6 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
-#include "utils/containers.h"
 #include "pcg/dataflow_graph/algorithms.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
@@ -15,18 +15,22 @@ std::unordered_set<parallel_layer_guid_t>
                    [&](Node const &n) { return parallel_layer_guid_t{n}; });
 }
 
-ParallelLayerAddedResult add_parallel_layer(ParallelComputationGraph &pcg,
-                                            ParallelLayerAttrs const &layer_attrs,
-                                            std::vector<parallel_tensor_guid_t> const &inputs,
-                                            std::vector<ParallelTensorAttrs> const &output_labels) {
-  std::vector<MultiDiOutput> unwrapped_inputs = transform(inputs, [](parallel_tensor_guid_t const &t) { return t.raw_graph_output; });
-  OperatorAddedResult op_added = pcg.raw_graph.add_operator(layer_attrs,
-                                                            unwrapped_inputs,
-                                                            output_labels);
+ParallelLayerAddedResult
+    add_parallel_layer(ParallelComputationGraph &pcg,
+                       ParallelLayerAttrs const &layer_attrs,
+                       std::vector<parallel_tensor_guid_t> const &inputs,
+                       std::vector<ParallelTensorAttrs> const &output_labels) {
+  std::vector<MultiDiOutput> unwrapped_inputs =
+      transform(inputs, [](parallel_tensor_guid_t const &t) {
+        return t.raw_graph_output;
+      });
+  OperatorAddedResult op_added =
+      pcg.raw_graph.add_operator(layer_attrs, unwrapped_inputs, output_labels);
   return ParallelLayerAddedResult{
-    parallel_layer_guid_t{op_added.node},
-    transform(op_added.outputs,
-              [](MultiDiOutput const &o) { return parallel_tensor_guid_t{o}; }),
+      parallel_layer_guid_t{op_added.node},
+      transform(
+          op_added.outputs,
+          [](MultiDiOutput const &o) { return parallel_tensor_guid_t{o}; }),
   };
 }
 
@@ -62,8 +66,9 @@ ParallelTensorAttrs
   return pcg.raw_graph.at(t.raw_graph_output);
 }
 
-std::vector<parallel_layer_guid_t> topological_ordering(ParallelComputationGraph const &pcg) {
-  return transform(topological_ordering(pcg.raw_graph), 
+std::vector<parallel_layer_guid_t>
+    topological_ordering(ParallelComputationGraph const &pcg) {
+  return transform(topological_ordering(pcg.raw_graph),
                    [](Node const &n) { return parallel_layer_guid_t{n}; });
 }
 

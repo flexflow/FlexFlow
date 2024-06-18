@@ -70,7 +70,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     MultiDiOutput o3 = get_only(n3_added.outputs);
 
     std::vector<Node> result = topological_ordering(g);
-    std::vector<Node> correct = { n1, n2, n3 };
+    std::vector<Node> correct = {n1, n2, n3};
     CHECK(result == correct);
   }
 }

@@ -27,7 +27,8 @@ std::vector<MultiDiOutput>
 }
 
 template <typename NodeLabel, typename OutputLabel>
-std::vector<Node> topological_ordering(DataflowGraph<NodeLabel, OutputLabel> const &g) {
+std::vector<Node>
+    topological_ordering(DataflowGraph<NodeLabel, OutputLabel> const &g) {
   return get_topological_ordering(g.get_raw_graph());
 }
 
