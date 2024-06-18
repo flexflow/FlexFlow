@@ -3,7 +3,7 @@
 // lib/local-execution/include/local-execution/cost_details.struct.toml
 /* proj-data
 {
-  "generated_from": "7129cadda2b48028f0b4198e45d3f5f8"
+  "generated_from": "693db06746072111153062c0f087f4b6"
 }
 */
 
@@ -15,6 +15,30 @@ namespace FlexFlow {
 CostDetails::CostDetails(float const &total_elapsed_time,
                          size_t const &total_mem_usage)
     : total_elapsed_time(total_elapsed_time), total_mem_usage(total_mem_usage) {
+}
+bool CostDetails::operator==(CostDetails const &other) const {
+  return std::tie(this->total_elapsed_time, this->total_mem_usage) ==
+         std::tie(other.total_elapsed_time, other.total_mem_usage);
+}
+bool CostDetails::operator!=(CostDetails const &other) const {
+  return std::tie(this->total_elapsed_time, this->total_mem_usage) !=
+         std::tie(other.total_elapsed_time, other.total_mem_usage);
+}
+bool CostDetails::operator<(CostDetails const &other) const {
+  return std::tie(this->total_elapsed_time, this->total_mem_usage) <
+         std::tie(other.total_elapsed_time, other.total_mem_usage);
+}
+bool CostDetails::operator>(CostDetails const &other) const {
+  return std::tie(this->total_elapsed_time, this->total_mem_usage) >
+         std::tie(other.total_elapsed_time, other.total_mem_usage);
+}
+bool CostDetails::operator<=(CostDetails const &other) const {
+  return std::tie(this->total_elapsed_time, this->total_mem_usage) <=
+         std::tie(other.total_elapsed_time, other.total_mem_usage);
+}
+bool CostDetails::operator>=(CostDetails const &other) const {
+  return std::tie(this->total_elapsed_time, this->total_mem_usage) >=
+         std::tie(other.total_elapsed_time, other.total_mem_usage);
 }
 } // namespace FlexFlow
 

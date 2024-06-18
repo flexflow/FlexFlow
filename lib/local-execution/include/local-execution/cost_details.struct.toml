@@ -1,6 +1,8 @@
 namespace = "FlexFlow"
 name = "CostDetails"
 features = [
+  "eq",
+  "ord",
   "hash",
   "json",
   "rapidcheck",

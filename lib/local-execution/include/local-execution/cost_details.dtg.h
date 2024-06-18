@@ -3,7 +3,7 @@
 // lib/local-execution/include/local-execution/cost_details.struct.toml
 /* proj-data
 {
-  "generated_from": "7129cadda2b48028f0b4198e45d3f5f8"
+  "generated_from": "693db06746072111153062c0f087f4b6"
 }
 */
 
@@ -15,12 +15,19 @@
 #include "rapidcheck.h"
 #include <functional>
 #include <ostream>
+#include <tuple>
 
 namespace FlexFlow {
 struct CostDetails {
   CostDetails() = delete;
   CostDetails(float const &total_elapsed_time, size_t const &total_mem_usage);
 
+  bool operator==(CostDetails const &) const;
+  bool operator!=(CostDetails const &) const;
+  bool operator<(CostDetails const &) const;
+  bool operator>(CostDetails const &) const;
+  bool operator<=(CostDetails const &) const;
+  bool operator>=(CostDetails const &) const;
   float total_elapsed_time;
   size_t total_mem_usage;
 };
