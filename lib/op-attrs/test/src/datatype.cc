@@ -22,5 +22,13 @@ TEST_SUITE(FF_TEST_SUITE) {
         RC_ASSERT(!can_strictly_promote_datatype_from_to(r, l));
       });
     }
+
+    SUBCASE("is transitive") {
+      rc::check([](DataType d1, DataType d2, DataType d3) {
+        RC_PRE(can_strictly_promote_datatype_from_to(d1, d2));
+        RC_PRE(can_strictly_promote_datatype_from_to(d2, d3));
+        RC_ASSERT(!can_strictly_promote_datatype_from_to(d1, d3));
+      });
+    }
   }
 }
