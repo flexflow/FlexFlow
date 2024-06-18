@@ -21,13 +21,6 @@ struct Allocator {
   void *allocate(size_t mem_size);
   void deallocate(void *ptr);
 
-  template <typename T>
-  static
-      typename std::enable_if<std::is_base_of<IAllocator, T>::value, T &>::type
-      unwrap(Allocator &arg) {
-    return *std::dynamic_pointer_cast<T>(arg.i_allocator);
-  }
-
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<IAllocator, T>::value,
                                  Allocator>::type
@@ -35,8 +28,9 @@ struct Allocator {
     return Allocator(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
   Allocator(std::shared_ptr<IAllocator> ptr) : i_allocator(ptr){};
+
+private:
   std::shared_ptr<IAllocator> i_allocator;
 };
 

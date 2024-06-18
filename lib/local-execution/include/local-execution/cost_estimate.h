@@ -2,6 +2,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_COST_ESTIMATE_H
 #define _FLEXFLOW_LOCAL_EXECUTION_COST_ESTIMATE_H
 
+#include "local-execution/cost_details.dtg.h"
 #include "local-execution/local_training_backing.h"
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
@@ -9,17 +10,6 @@
 #include "pcg/parallel_tensor_attrs.dtg.h"
 
 namespace FlexFlow {
-
-struct CostDetails {
-  CostDetails();
-  CostDetails(PerLayerElapsedTime const &fwd,
-              PerLayerElapsedTime const &bwd,
-              size_t memory_usage);
-
-public:
-  float total_elapsed_time;
-  size_t memory_usage;
-};
 
 struct ICostEstimator {
   virtual CostDetails

@@ -1,5 +1,6 @@
 #include "op-attrs/pcg_operator_attrs.h"
 #include "op-attrs/get_op_type.h"
+#include "utils/overload.h"
 
 namespace FlexFlow {
 
@@ -15,58 +16,52 @@ OperatorType get_op_type(PCGOperatorAttrs const &attrs) {
 
 ComputationGraphOpAttrs
     compgraph_op_attrs_from_pcg_op_attrs(PCGOperatorAttrs const &op) {
-  if (op.has<BatchMatmulAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<BatchMatmulAttrs>()};
-  } else if (op.has<BatchNormAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<BatchNormAttrs>()};
-  } else if (op.has<CastAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<CastAttrs>()};
-  } else if (op.has<ConcatAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<ConcatAttrs>()};
-  } else if (op.has<Conv2DAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<Conv2DAttrs>()};
-  } else if (op.has<DropoutAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<DropoutAttrs>()};
-  } else if (op.has<ElementBinaryAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<ElementBinaryAttrs>()};
-  } else if (op.has<ElementUnaryAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<ElementUnaryAttrs>()};
-  } else if (op.has<EmbeddingAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<EmbeddingAttrs>()};
-  } else if (op.has<FlatAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<FlatAttrs>()};
-  } else if (op.has<GatherAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<GatherAttrs>()};
-  } else if (op.has<InputAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<InputAttrs>()};
-  } else if (op.has<LayerNormAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<LayerNormAttrs>()};
-  } else if (op.has<LinearAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<LinearAttrs>()};
-  } else if (op.has<MultiHeadAttentionAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<MultiHeadAttentionAttrs>()};
-  } else if (op.has<NoopAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<NoopAttrs>()};
-  } else if (op.has<Pool2DAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<Pool2DAttrs>()};
-  } else if (op.has<ReduceAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<ReduceAttrs>()};
-  } else if (op.has<ReverseAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<ReverseAttrs>()};
-  } else if (op.has<ReshapeAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<ReshapeAttrs>()};
-  } else if (op.has<SplitAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<SplitAttrs>()};
-  } else if (op.has<SoftmaxAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<SoftmaxAttrs>()};
-  } else if (op.has<TopKAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<TopKAttrs>()};
-  } else if (op.has<TransposeAttrs>()) {
-    return ComputationGraphOpAttrs{op.get<TransposeAttrs>()};
-  } else {
-    throw mk_runtime_error(fmt::format(
-        "Cannot convert parallel op to non-parallel, received {}", op));
-  }
+  return op.visit<ComputationGraphOpAttrs>(overload{
+      [](BatchMatmulAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](BatchNormAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](CastAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](ConcatAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](Conv2DAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](DropoutAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](ElementBinaryAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](ElementUnaryAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](EmbeddingAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](FlatAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](GatherAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](InputAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](LayerNormAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](LinearAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](MultiHeadAttentionAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](NoopAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](Pool2DAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](ReduceAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](ReverseAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](ReshapeAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](SplitAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](SoftmaxAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](TopKAttrs const &attrs) { return ComputationGraphOpAttrs{attrs}; },
+      [](TransposeAttrs const &attrs) {
+        return ComputationGraphOpAttrs{attrs};
+      },
+      [](auto const &attrs) -> ComputationGraphOpAttrs {
+        throw mk_runtime_error(fmt::format(
+            "Cannot convert parallel op to non-parallel, received {}", attrs));
+      },
+  });
 }
 
 } // namespace FlexFlow

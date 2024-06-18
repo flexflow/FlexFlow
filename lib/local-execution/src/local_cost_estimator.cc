@@ -8,12 +8,8 @@
 
 namespace FlexFlow {
 
-CostDetails::CostDetails() : total_elapsed_time(0.0), memory_usage(0){};
-
-CostDetails::CostDetails(PerLayerElapsedTime const &fwd,
-                         PerLayerElapsedTime const &bwd,
-                         size_t memory_usage)
-    : memory_usage(memory_usage) {
+static float get_total_elapsed_time(PerLayerElapsedTime const &fwd,
+                                    PerLayerElapsedTime const &bwd) {
   float total_elapsed_time = 0;
   for (auto const &layer_elapsed_time : fwd) {
     layer_guid_t layer_id = layer_elapsed_time.first;
@@ -21,15 +17,11 @@ CostDetails::CostDetails(PerLayerElapsedTime const &fwd,
     float bwd_time = bwd.at(layer_id).value();
     total_elapsed_time += fwd_time + bwd_time;
   }
-  this->total_elapsed_time = total_elapsed_time;
+  return total_elapsed_time;
 }
 
 LocalCostEstimator::LocalCostEstimator(RuntimeArgConfig const &config)
     : runtime_arg_config(config) {}
-
-static bool is_zero_cost_op(PCGOperatorAttrs const &op) {
-  return is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>();
-}
 
 CostDetails LocalCostEstimator::estimate_cost(
     PCGOperatorAttrs const &op,
@@ -38,15 +30,17 @@ CostDetails LocalCostEstimator::estimate_cost(
     std::vector<ParallelTensorAttrs> const &outputs,
     MachineView const &mv) const {
 
-  if (is_zero_cost_op(op)) {
-    return CostDetails();
+  if (is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>()) {
+    return CostDetails{0, 0};
   }
 
   LayerAttrs layer_attrs = {compgraph_op_attrs_from_pcg_op_attrs(op),
                             std::nullopt};
 
   // allocate memory for inputs
-  Allocator allocator = get_tracked_local_memory_allocator();
+  std::shared_ptr<TrackedAllocator> tracked_allocator_ptr =
+      std::make_shared<TrackedAllocator>(get_local_memory_allocator());
+  Allocator allocator = Allocator(tracked_allocator_ptr);
   TensorBackingMap tensor_backing_map;
   std::vector<tensor_guid_t> input_tensor_ids;
 
@@ -84,8 +78,8 @@ CostDetails LocalCostEstimator::estimate_cost(
   PerLayerElapsedTime fwd = local_backing.execute_forward();
   PerLayerElapsedTime bwd = local_backing.execute_backward();
 
-  // get memory usage
-  return CostDetails(fwd, bwd, get_tracked_memory_usage(allocator));
+  return CostDetails{get_total_elapsed_time(fwd, bwd),
+                     tracked_allocator_ptr->get_current_mem_usage()};
 }
 
 float LocalCostEstimator::estimate_cost(ParallelTensorShape const &tensor_shape,
