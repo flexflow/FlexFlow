@@ -9,34 +9,35 @@
 #include <random>
 #include <vector>
 
-template <typename T>
-void allocate_ptrs(std::vector<T **> &gpu_data_ptrs,
-                   std::vector<size_t> const &num_elements,
-                   Allocator &allocator) {
-  for (size_t i = 0; i < gpu_data_ptrs.size(); ++i) {
-    *gpu_data_ptrs[i] =
-        static_cast<T *>(allocator.allocate(num_elements[i] * sizeof(float)));
-  }
-}
+GenericTensorAccessorW create_random_filled_accessor_w(TensorShape const &shape,
+                                                       Allocator &allocator);
 
-GenericTensorAccessorW getRandomFilledAccessorW(TensorShape const &shape,
-                                                Allocator &allocator);
+GenericTensorAccessorW create_filled_accessor_w(TensorShape const &shape,
+                                                Allocator &allocator,
+                                                float val);
 
-GenericTensorAccessorW getFilledAccessorW(TensorShape const &shape,
-                                          Allocator &allocator,
-                                          float val);
+void fill_tensor_accessor_w(GenericTensorAccessorW accessor, float val);
 
 void cleanup_test(cudaStream_t &stream, PerDeviceFFHandle &handle);
 
-TensorShape get_float_tensor_shape(FFOrdered<size_t> dims);
+TensorShape make_float_tensor_shape_w_legion_dims(FFOrdered<size_t> dims);
 
 TensorShape get_double_tensor_shape(FFOrdered<size_t> dims);
 
+void setPerDeviceFFHandle(PerDeviceFFHandle *handle);
+
+PerDeviceFFHandle get_per_device_ff_handle();
+
 template <typename T>
-std::vector<T> fill_host_data(void *gpu_data, size_t num_elements) {
-  std::vector<T> local_data(num_elements);
+std::vector<T> load_data_to_host_from_device(GenericTensorAccessorR accessor) {
+  LegionTensorDims dims = accessor.shape.dims;
+
+  int volume =
+      std::accumulate(dims.begin(), dims.end(), 1, std::multiplies<int>());
+
+  std::vector<T> local_data(volume);
   checkCUDA(cudaMemcpy(local_data.data(),
-                       gpu_data,
+                       accessor.ptr,
                        local_data.size() * sizeof(T),
                        cudaMemcpyDeviceToHost));
   return local_data;
@@ -52,11 +53,4 @@ inline bool contains_non_zero(std::vector<T> &data) {
   return false;
 }
 
-inline void setPerDeviceFFHandle(PerDeviceFFHandle *handle) {
-  cudnnCreate(&handle->dnn);
-  cublasCreate(&handle->blas);
-  handle->workSpaceSize = 1024 * 1024;
-  cudaMalloc(&handle->workSpace, handle->workSpaceSize);
-  handle->allowTensorOpMathConversion = true;
-}
 #endif

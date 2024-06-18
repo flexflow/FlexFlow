@@ -13,51 +13,53 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::vector<size_t>{100, 100},
     };
 
-    TensorShape input_shape = get_float_tensor_shape({num_elements});
+    TensorShape input_shape =
+        make_float_tensor_shape_w_legion_dims({num_elements});
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
-    PerDeviceFFHandle handle;
-    setPerDeviceFFHandle(&handle);
+    PerDeviceFFHandle handle = get_per_device_ff_handle();
 
     Allocator allocator = get_local_memory_allocator();
 
     DropoutPerDeviceState state = Kernels::Dropout::init_kernel(
         handle, dropout_rate, seed, shape, allocator);
 
-    GenericTensorAccessorR input_data =
-        makeReadOnlyAccessor(getRandomFilledAccessorW(input_shape, allocator));
+    GenericTensorAccessorR input_data = read_only_accessor_from_write_accessor(
+        create_random_filled_accessor_w(input_shape, allocator));
     GenericTensorAccessorW output_data = allocator.allocate_tensor(input_shape);
     GenericTensorAccessorW grad_input_data =
         allocator.allocate_tensor(input_shape);
 
-    SUBCASE("Test Dropout Forward") {
+    SUBCASE("forward_kernel") {
       Kernels::Dropout::forward_kernel(stream,
                                        state,
-                                       (float const *)input_data.ptr,
-                                       (float *)output_data.ptr);
+                                       input_data.get_float_ptr(),
+                                       output_data.get_float_ptr());
 
       std::vector<float> host_output_data =
-          fill_host_data<float>(output_data.ptr, num_elements);
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_data));
 
-      int zero_count = 0;
-      for (float value : host_output_data) {
-        if (value == 0.0f) {
-          zero_count++;
-        }
-      }
-      CHECK(zero_count ==
-            doctest::Approx(num_elements * dropout_rate).epsilon(0.5));
+      int zero_count = [&]() {
+        return std::count_if(host_output_data.begin(),
+                             host_output_data.end(),
+                             [](float value) { return value == 0.0f; });
+      }();
 
-      SUBCASE("Test Dropout Backward") {
+      float correct_zero_count = num_elements * dropout_rate;
+      CHECK(zero_count == doctest::Approx(correct_zero_count).epsilon(0.5));
+
+      SUBCASE("backward_kernel") {
         Kernels::Dropout::backward_kernel(stream,
                                           state,
-                                          (float const *)output_data.ptr,
-                                          (float *)grad_input_data.ptr);
+                                          output_data.get_float_ptr(),
+                                          grad_input_data.get_float_ptr());
 
         std::vector<float> host_grad_input_data =
-            fill_host_data<float>(grad_input_data.ptr, num_elements);
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(grad_input_data));
 
         int zero_count = 0;
         for (float value : host_grad_input_data) {

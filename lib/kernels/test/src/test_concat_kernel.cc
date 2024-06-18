@@ -2,64 +2,51 @@
 #include "kernels/concat_kernels.h"
 #include "test_utils.h"
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test concat kernel forward and backward") {
-    int const num_inputs = 3;
-    int const size_per_input = 100;
+    size_t num_inputs = 3;
+    size_t size_per_input = 100;
     ff_dim_t concat_axis = ff_dim_t(0);
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
-    TensorShape input_shape = get_float_tensor_shape({size_per_input});
-
-    ArrayShape shape = ArrayShape{
-        std::vector<size_t>{size_per_input},
-    };
+    TensorShape input_shape =
+        make_float_tensor_shape_w_legion_dims({size_per_input});
 
     Allocator allocator = get_local_memory_allocator();
-    std::vector<void *> input_ptrs;
-    std::vector<GenericTensorAccessorR> input_accessors;
-
-    for (int i = 0; i < num_inputs; i++) {
-      GenericTensorAccessorR accessor = makeReadOnlyAccessor(
-          getRandomFilledAccessorW(input_shape, allocator));
-      input_accessors.push_back(accessor);
-    }
+    std::vector<GenericTensorAccessorR> input_accessors =
+        repeat(num_inputs, [&]() {
+          return read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(input_shape, allocator));
+        });
 
     GenericTensorAccessorW output_accessor =
         allocator.allocate_tensor(input_shape);
 
-    SUBCASE("Test concat forward") {
+    SUBCASE("forward_kernel") {
       Kernels::Concat::forward_kernel(
           stream, output_accessor, input_accessors, concat_axis);
 
-      std::vector<float> host_output_data = fill_host_data<float>(
-          output_accessor.ptr, num_inputs * size_per_input);
+      std::vector<float> host_output_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_accessor));
 
       for (int i = 0; i < num_inputs; i++) {
-        std::vector<float> temp(size_per_input);
-        checkCUDA(cudaMemcpy(temp.data(),
-                             input_accessors[i].ptr,
-                             size_per_input * sizeof(float),
-                             cudaMemcpyDeviceToHost));
-        for (int j = 0; j < size_per_input; j++) {
-          REQUIRE(host_output_data[i * size_per_input + j] == temp[j]);
-        }
+        std::vector<float> input_data =
+            load_data_to_host_from_device<float>(input_accessors[i]);
+        auto output_start = host_output_data.begin() + i * size_per_input;
+        REQUIRE(std::equal(
+            output_start, output_start + size_per_input, input_data.begin()));
       }
 
-      SUBCASE("Test concat backward") {
-        std::vector<void *> grad_input_ptrs;
+      SUBCASE("backward_kernel") {
         std::vector<GenericTensorAccessorW> grad_input_accessors;
         for (int i = 0; i < num_inputs; i++) {
-          void *grad_input_data_ptr =
-              allocator.allocate(size_per_input * sizeof(float));
-          grad_input_ptrs.push_back(grad_input_data_ptr);
-          GenericTensorAccessorW accessor{
-              DataType::FLOAT, shape, grad_input_data_ptr};
-          grad_input_accessors.push_back(accessor);
-          cudaMemset(grad_input_data_ptr, 0, size_per_input * sizeof(float));
+          grad_input_accessors.push_back(
+              allocator.allocate_tensor(input_shape));
+          fill_tensor_accessor_w(grad_input_accessors[i], 0.0f);
         }
 
         void *grad_output_data_ptr =
@@ -68,19 +55,23 @@ TEST_SUITE(FF_TEST_SUITE) {
                              host_output_data.data(),
                              host_output_data.size() * sizeof(float),
                              cudaMemcpyHostToDevice));
-        const GenericTensorAccessorR grad_output_accessor{
-            DataType::FLOAT, shape, grad_output_data_ptr};
+
+        GenericTensorAccessorR grad_output_accessor{
+            DataType::FLOAT, input_shape, grad_output_data_ptr};        
 
         Kernels::Concat::backward_kernel(
             stream, grad_output_accessor, grad_input_accessors, concat_axis);
 
         for (int i = 0; i < num_inputs; i++) {
-          std::vector<float> host_grad_input = fill_host_data<float>(
-              grad_input_accessors[i].ptr, size_per_input);
-          for (int j = 0; j < size_per_input; j++) {
-            REQUIRE(host_grad_input[j] ==
-                    host_output_data[i * size_per_input + j]);
-          }
+          std::vector<float> host_grad_input =
+              load_data_to_host_from_device<float>(
+                  read_only_accessor_from_write_accessor(
+                      grad_input_accessors[i]));
+          auto grad_output_start =
+              host_output_data.begin() + i * size_per_input;
+          REQUIRE(std::equal(host_grad_input.begin(),
+                             host_grad_input.end(),
+                             grad_output_start));
         }
       }
     }
@@ -88,4 +79,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     checkCUDA(cudaStreamDestroy(stream));
   }
 }
-} // namespace FlexFlow

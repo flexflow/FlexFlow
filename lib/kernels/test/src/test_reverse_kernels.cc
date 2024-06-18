@@ -10,39 +10,41 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::size_t in_blk_size = 10;
     std::size_t num_out_blks = 1;
 
-    TensorShape shape = get_float_tensor_shape({num_elements});
+    TensorShape shape = make_float_tensor_shape_w_legion_dims({num_elements});
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
-    SUBCASE("Test Reverse Kernel Forward") {
+    SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          makeReadOnlyAccessor(getFilledAccessorW(shape, allocator, 1.0f));
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(shape, allocator, 1.0f));
       GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
       GenericTensorAccessorW grad_input_accessor =
-          getFilledAccessorW(shape, allocator, 0.0f);
+          create_filled_accessor_w(shape, allocator, 0.0f);
 
       Kernels::Reverse::forward_kernel(stream,
-                                       (float const *)input_accessor.ptr,
-                                       (float *)output_accessor.ptr,
+                                       input_accessor.get_float_ptr(),
+                                       output_accessor.get_float_ptr(),
                                        num_out_blks,
                                        reverse_dim_size,
                                        in_blk_size,
                                        num_elements);
 
-      SUBCASE("Test Reverse Kernel Backward") {
+      SUBCASE("backward_kernel") {
         Kernels::Reverse::backward_kernel(stream,
-                                          (float const *)output_accessor.ptr,
-                                          (float *)grad_input_accessor.ptr,
+                                          output_accessor.get_float_ptr(),
+                                          grad_input_accessor.get_float_ptr(),
                                           num_out_blks,
                                           reverse_dim_size,
                                           in_blk_size,
                                           num_elements);
 
         std::vector<float> host_grad_input_data =
-            fill_host_data<float>(grad_input_accessor.ptr, num_elements);
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(grad_input_accessor));
       }
     }
 

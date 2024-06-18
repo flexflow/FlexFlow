@@ -5,21 +5,19 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Reshape Forward and Backward") {
-    const std::size_t num_elements = 100;
-    // ArrayShape shape = ArrayShape{
-    //     std::vector<size_t>{num_elements},
-    // };
+    std::size_t num_elements = 100;
 
-    TensorShape shape = get_float_tensor_shape({num_elements});
+    TensorShape shape = make_float_tensor_shape_w_legion_dims({num_elements});
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
-    SUBCASE("Test Reshape Forward") {
+    SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          makeReadOnlyAccessor(getFilledAccessorW(shape, allocator, 1.0f));
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(shape, allocator, 1.0f));
       GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
 
       ReshapePerDeviceState state =
@@ -29,15 +27,17 @@ TEST_SUITE(FF_TEST_SUITE) {
           stream, state, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
-          fill_host_data<float>(output_accessor.ptr, num_elements);
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_accessor));
 
       for (std::size_t i = 0; i < num_elements; ++i) {
         REQUIRE(1.0f == check_output_data[i]);
       }
 
-      SUBCASE("Test Reshape Kernel Backward") {
+      SUBCASE("backward_kernel") {
         GenericTensorAccessorR grad_accessor =
-            makeReadOnlyAccessor(getFilledAccessorW(shape, allocator, 1.0f));
+            read_only_accessor_from_write_accessor(
+                create_filled_accessor_w(shape, allocator, 1.0f));
 
         ReshapePerDeviceState state =
             Kernels::Reshape::init_kernel(DataType::FLOAT);
@@ -46,7 +46,8 @@ TEST_SUITE(FF_TEST_SUITE) {
             stream, state, output_accessor, grad_accessor);
 
         std::vector<float> host_grad_input_data =
-            fill_host_data<float>(output_accessor.ptr, num_elements);
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(output_accessor));
 
         for (std::size_t i = 0; i < num_elements; ++i) {
           CHECK(host_grad_input_data[i] == 2.0f);

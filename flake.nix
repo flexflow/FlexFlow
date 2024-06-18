@@ -1,5 +1,6 @@
 {
   description = "A framework for automatic performance optimization of DNN training and inference";
+
   nixConfig = {
     bash-prompt-prefix = "(ff) ";
     extra-substituters = [
@@ -11,30 +12,33 @@
       "ff.cachix.org-1:/kyZ0w35ToSJBjpiNfPLrL3zTjuPkUiqf2WH0GIShXM="
     ];
   };
+
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-unstable";
+    nixpkgs.url = "nixpkgs/nixos-23.11";
     flake-utils.url = "github:numtide/flake-utils";
+
     proj-repo = {
       url = "github:lockshaw/proj";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
   };
-  outputs = { self, nixpkgs, flake-utils, proj-repo, ... }: flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
-    let
+
+  outputs = { self, nixpkgs, flake-utils, proj-repo, ... }: flake-utils.lib.eachSystem [ "x86_64-linux" ] (system: 
+    let 
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
       };
       lib = pkgs.lib;
-      stdenv = pkgs.cudaPackages.backendStdenv;
+
       mkShell = pkgs.mkShell.override {
-        inherit stdenv; 
+        stdenv = pkgs.cudaPackages.backendStdenv;
       };
-    in
+    in 
     {
       packages = {
-        legion = pkgs.callPackage ./.flake/pkgs/legion.nix { inherit stdenv; };
+        legion = pkgs.callPackage ./.flake/pkgs/legion.nix { };
         hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
@@ -53,11 +57,13 @@
           ];
         });
       };
+
       devShells = rec {
         ci = mkShell {
           shellHook = ''
             export PATH="$HOME/ff/.scripts/:$PATH"
           '';
+          
           CMAKE_FLAGS = lib.strings.concatStringsSep " " [
             "-DFF_USE_EXTERNAL_LEGION=ON"
             "-DFF_USE_EXTERNAL_NCCL=ON"
@@ -71,6 +77,7 @@
             "-DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON"
             "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
           ];
+
           buildInputs = builtins.concatLists [
             (with pkgs; [
               zlib
@@ -100,9 +107,15 @@
             ])
           ];
         };
+
         default = mkShell {
           inputsFrom = [ ci ];
           inherit (ci) CMAKE_FLAGS;
+
+          VIMPLUGINS = lib.strings.concatStringsSep "," [
+            "${proj-repo.packages.${system}.proj-nvim}"
+          ];
+
           buildInputs = builtins.concatLists [
             (with pkgs; [
               clang-tools
@@ -114,6 +127,7 @@
               compdb
               jq
               gh
+              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj

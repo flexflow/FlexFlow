@@ -13,13 +13,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::size_t num_elements = input_w * input_h * input_c * input_n;
     std::size_t output_elements = output_w * output_h * output_c * output_n;
 
-    TensorShape input_shape = get_float_tensor_shape({num_elements});
-    TensorShape output_shape = get_float_tensor_shape({output_elements});
+    TensorShape input_shape =
+        make_float_tensor_shape_w_legion_dims({num_elements});
+    TensorShape output_shape =
+        make_float_tensor_shape_w_legion_dims({output_elements});
 
     PoolOp pool_type = PoolOp::MAX;
 
-    PerDeviceFFHandle handle;
-    setPerDeviceFFHandle(&handle);
+    PerDeviceFFHandle handle = get_per_device_ff_handle();
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
@@ -43,9 +44,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                               stride_w,
                                                               pool_type);
 
-    SUBCASE("Test Pool2D Forward") {
+    SUBCASE("forward_kernel") {
       GenericTensorAccessorW input_data =
-          getRandomFilledAccessorW(input_shape, allocator);
+          create_random_filled_accessor_w(input_shape, allocator);
       GenericTensorAccessorW output_data =
           allocator.allocate_tensor(output_shape);
 
@@ -53,11 +54,12 @@ TEST_SUITE(FF_TEST_SUITE) {
           stream, state, input_data.ptr, output_data.ptr);
 
       std::vector<float> host_output_data =
-          fill_host_data<float>(output_data.ptr, output_elements);
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_data));
 
-      SUBCASE("Test Pool2D Backward") {
+      SUBCASE("backward_kernel") {
         GenericTensorAccessorW output_grad =
-            getFilledAccessorW(output_shape, allocator, 1.0f);
+            create_filled_accessor_w(output_shape, allocator, 1.0f);
         GenericTensorAccessorW input_grad =
             allocator.allocate_tensor(input_shape);
 

@@ -7,12 +7,11 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Transpose Kernel Operations") {
     std::size_t num_elements = 100;
     std::size_t num_dims = 2;
-    TensorShape shape = get_float_tensor_shape({10, 10});
+    TensorShape shape = make_float_tensor_shape_w_legion_dims({10, 10});
 
     std::vector<ff_dim_t> perm = {ff_dim_t(0), ff_dim_t(1)};
 
-    PerDeviceFFHandle handle;
-    setPerDeviceFFHandle(&handle);
+    PerDeviceFFHandle handle = get_per_device_ff_handle();
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
@@ -21,29 +20,33 @@ TEST_SUITE(FF_TEST_SUITE) {
     TransposePerDeviceState state =
         Kernels::Transpose::init_kernel(num_dims, perm);
 
-    SUBCASE("Test Transpose Forward Kernel") {
+    SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          makeReadOnlyAccessor(getRandomFilledAccessorW(shape, allocator));
+          read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(shape, allocator));
       GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
 
       Kernels::Transpose::forward_kernel(
           stream, state, input_accessor, output_accessor);
 
       std::vector<float> host_output_data =
-          fill_host_data<float>(output_accessor.ptr, num_elements);
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_accessor));
 
-      SUBCASE("Test Transpose Backward Kernel") {
+      SUBCASE("backward_kernel") {
         GenericTensorAccessorW input_grad_accessor =
-            getRandomFilledAccessorW(shape, allocator);
+            create_random_filled_accessor_w(shape, allocator);
 
         GenericTensorAccessorR output_grad_accessor =
-            makeReadOnlyAccessor(allocator.allocate_tensor(shape));
+            read_only_accessor_from_write_accessor(
+                allocator.allocate_tensor(shape));
 
         Kernels::Transpose::backward_kernel(
             stream, state, input_grad_accessor, output_grad_accessor);
 
         std::vector<float> host_grad_input_data =
-            fill_host_data<float>(input_grad_accessor.ptr, num_elements);
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(input_grad_accessor));
       }
     }
 

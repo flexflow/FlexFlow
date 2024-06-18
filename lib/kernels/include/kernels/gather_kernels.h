@@ -3,7 +3,6 @@
 
 #include "accessor.h"
 #include "kernels/device.h"
-#include "kernels/legion_dim.h"
 
 namespace FlexFlow {
 

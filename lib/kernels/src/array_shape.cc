@@ -59,7 +59,7 @@ std::optional<std::size_t> ArrayShape::at_maybe(std::size_t index) const {
 
 ArrayShape ArrayShape::reversed_dim_order() const {
   std::vector<std::size_t> reversed_dims(dims.begin(), dims.end());
-  std::reverse(reversed_dims.begin(), reversed_dims.end());
+  reversed(reversed_dims);
   return ArrayShape(reversed_dims);
 }
 

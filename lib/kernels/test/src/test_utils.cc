@@ -1,7 +1,7 @@
 #include "test_utils.h"
 
-GenericTensorAccessorW getRandomFilledAccessorW(TensorShape const &shape,
-                                                Allocator &allocator) {
+GenericTensorAccessorW create_random_filled_accessor_w(TensorShape const &shape,
+                                                       Allocator &allocator) {
   GenericTensorAccessorW accessor = allocator.allocate_tensor(shape);
   FFOrdered<size_t> dims = shape.dims.ff_ordered;
 
@@ -23,9 +23,9 @@ GenericTensorAccessorW getRandomFilledAccessorW(TensorShape const &shape,
   return accessor;
 }
 
-GenericTensorAccessorW getFilledAccessorW(TensorShape const &shape,
-                                          Allocator &allocator,
-                                          float val) {
+GenericTensorAccessorW create_filled_accessor_w(TensorShape const &shape,
+                                                Allocator &allocator,
+                                                float val) {
   GenericTensorAccessorW accessor = allocator.allocate_tensor(shape);
   FFOrdered<size_t> dims = shape.dims.ff_ordered;
 
@@ -40,7 +40,20 @@ GenericTensorAccessorW getFilledAccessorW(TensorShape const &shape,
   return accessor;
 }
 
-TensorShape get_float_tensor_shape(FFOrdered<size_t> dims) {
+void fill_tensor_accessor_w(GenericTensorAccessorW accessor, float val) {
+  LegionTensorDims dims = accessor.shape.dims;
+
+  int volume =
+      std::accumulate(dims.begin(), dims.end(), 1, std::multiplies<int>());
+
+  std::vector<float> host_data(volume, val);
+  checkCUDA(cudaMemcpy(accessor.ptr,
+                       host_data.data(),
+                       host_data.size() * sizeof(float),
+                       cudaMemcpyHostToDevice));
+}
+
+TensorShape make_float_tensor_shape_w_legion_dims(FFOrdered<size_t> dims) {
   return TensorShape{
       TensorDims{
           dims,
@@ -56,6 +69,20 @@ TensorShape get_double_tensor_shape(FFOrdered<size_t> dims) {
       },
       DataType::DOUBLE,
   };
+}
+
+void setPerDeviceFFHandle(PerDeviceFFHandle *handle) {
+  cudnnCreate(&handle->dnn);
+  cublasCreate(&handle->blas);
+  handle->workSpaceSize = 1024 * 1024;
+  cudaMalloc(&handle->workSpace, handle->workSpaceSize);
+  handle->allowTensorOpMathConversion = true;
+}
+
+PerDeviceFFHandle get_per_device_ff_handle() {
+  PerDeviceFFHandle handle;
+  setPerDeviceFFHandle(&handle);
+  return handle;
 }
 
 void cleanup_test(cudaStream_t &stream, PerDeviceFFHandle &handle) {

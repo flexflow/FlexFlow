@@ -12,8 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t qProjSize = 64, kProjSize = 64, vProjSize = 64, oProjSize = 64;
     size_t qoSeqLength = 20, kvSeqLength = 20;
 
-    PerDeviceFFHandle handle;
-    setPerDeviceFFHandle(&handle);
+    PerDeviceFFHandle handle = get_per_device_ff_handle();
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
@@ -36,67 +35,69 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                  kvSeqLength,
                                                  false);
 
-    TensorShape query_shape =
-        get_float_tensor_shape({qoSeqLength, num_samples, qSize});
-    TensorShape key_shape =
-        get_float_tensor_shape({kvSeqLength, num_samples, kSize});
-    TensorShape value_shape =
-        get_float_tensor_shape({kvSeqLength, num_samples, vSize});
-    TensorShape output_shape =
-        get_float_tensor_shape({qoSeqLength, num_samples, oProjSize});
-    TensorShape weight_shape = get_float_tensor_shape({state.weightSize});
+    TensorShape query_shape = make_float_tensor_shape_w_legion_dims(
+        {qoSeqLength, num_samples, qSize});
+    TensorShape key_shape = make_float_tensor_shape_w_legion_dims(
+        {kvSeqLength, num_samples, kSize});
+    TensorShape value_shape = make_float_tensor_shape_w_legion_dims(
+        {kvSeqLength, num_samples, vSize});
+    TensorShape output_shape = make_float_tensor_shape_w_legion_dims(
+        {qoSeqLength, num_samples, oProjSize});
+    TensorShape weight_shape =
+        make_float_tensor_shape_w_legion_dims({state.weightSize});
 
-    SUBCASE("Test multi-head attention forward kernel") {
+    SUBCASE("forward_kernel") {
       GenericTensorAccessorW query_accessor =
-          getRandomFilledAccessorW(query_shape, allocator);
+          create_random_filled_accessor_w(query_shape, allocator);
       GenericTensorAccessorW key_accessor =
-          getRandomFilledAccessorW(key_shape, allocator);
+          create_random_filled_accessor_w(key_shape, allocator);
       GenericTensorAccessorW value_accessor =
-          getRandomFilledAccessorW(value_shape, allocator);
+          create_random_filled_accessor_w(value_shape, allocator);
       GenericTensorAccessorW weight_accessor =
-          getRandomFilledAccessorW(weight_shape, allocator);
+          create_random_filled_accessor_w(weight_shape, allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
-      Kernels::MultiHeadAttention::forward_kernel(stream,
-                                                  state,
-                                                  (float *)query_accessor.ptr,
-                                                  (float *)key_accessor.ptr,
-                                                  (float *)value_accessor.ptr,
-                                                  (float *)weight_accessor.ptr,
-                                                  (float *)output_accessor.ptr);
+      Kernels::MultiHeadAttention::forward_kernel(
+          stream,
+          state,
+          query_accessor.get_float_ptr(),
+          key_accessor.get_float_ptr(),
+          value_accessor.get_float_ptr(),
+          weight_accessor.get_float_ptr(),
+          output_accessor.get_float_ptr());
 
-      std::vector<float> host_output = fill_host_data<float>(
-          output_accessor.ptr, num_samples * qoSeqLength * oProjSize);
-      REQUIRE(contains_non_zero(host_output));
+      std::vector<float> host_output = load_data_to_host_from_device<float>(
+          read_only_accessor_from_write_accessor(output_accessor));
+      CHECK(contains_non_zero(host_output));
 
-      SUBCASE("Test multi-head attention backward kernel") {
+      SUBCASE("backward_kernel") {
         GenericTensorAccessorW query_grad_accessor =
-            getRandomFilledAccessorW(query_shape, allocator);
+            create_random_filled_accessor_w(query_shape, allocator);
         GenericTensorAccessorW key_grad_accessor =
-            getRandomFilledAccessorW(key_shape, allocator);
+            create_random_filled_accessor_w(key_shape, allocator);
         GenericTensorAccessorW value_grad_accessor =
-            getRandomFilledAccessorW(value_shape, allocator);
+            create_random_filled_accessor_w(value_shape, allocator);
         GenericTensorAccessorW weight_grad_accessor =
-            getRandomFilledAccessorW(weight_shape, allocator);
+            create_random_filled_accessor_w(weight_shape, allocator);
         GenericTensorAccessorW output_grad_accessor =
-            getRandomFilledAccessorW(output_shape, allocator);
+            create_random_filled_accessor_w(output_shape, allocator);
 
         Kernels::MultiHeadAttention::backward_kernel(
             stream,
             state,
-            (float *)query_accessor.ptr,
-            (float *)query_grad_accessor.ptr,
-            (float *)key_accessor.ptr,
-            (float *)key_grad_accessor.ptr,
-            (float *)value_accessor.ptr,
-            (float *)value_grad_accessor.ptr,
-            (float *)weight_accessor.ptr,
-            (float *)weight_grad_accessor.ptr,
-            (float *)output_grad_accessor.ptr);
+            query_accessor.get_float_ptr(),
+            query_grad_accessor.get_float_ptr(),
+            key_accessor.get_float_ptr(),
+            key_grad_accessor.get_float_ptr(),
+            value_accessor.get_float_ptr(),
+            value_grad_accessor.get_float_ptr(),
+            weight_accessor.get_float_ptr(),
+            weight_grad_accessor.get_float_ptr(),
+            output_grad_accessor.get_float_ptr());
 
-        std::vector<float> output_grad = fill_host_data<float>(
-            output_grad_accessor.ptr, num_samples * qoSeqLength * oProjSize);
+        std::vector<float> output_grad = load_data_to_host_from_device<float>(
+            read_only_accessor_from_write_accessor(output_grad_accessor));
 
         REQUIRE(contains_non_zero(output_grad));
       }

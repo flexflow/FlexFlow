@@ -14,30 +14,32 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t b_seq_length_dim = -1;
     size_t seq_length = -1;
 
-    PerDeviceFFHandle handle;
-    setPerDeviceFFHandle(&handle);
+    PerDeviceFFHandle handle = get_per_device_ff_handle();
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
-    TensorShape input_shape_a = get_float_tensor_shape({m, k, batch});
-    TensorShape input_shape_b = get_float_tensor_shape({k, n, batch});
-    TensorShape output_shape = get_float_tensor_shape({m, n, batch});
+    TensorShape input_shape_a =
+        make_float_tensor_shape_w_legion_dims({m, k, batch});
+    TensorShape input_shape_b =
+        make_float_tensor_shape_w_legion_dims({k, n, batch});
+    TensorShape output_shape =
+        make_float_tensor_shape_w_legion_dims({m, n, batch});
 
     GenericTensorAccessorW accessor_a =
-        getRandomFilledAccessorW(input_shape_a, allocator);
+        create_random_filled_accessor_w(input_shape_a, allocator);
     GenericTensorAccessorW accessor_b =
-        getRandomFilledAccessorW(input_shape_b, allocator);
+        create_random_filled_accessor_w(input_shape_b, allocator);
     GenericTensorAccessorW accessor_output =
         allocator.allocate_tensor(output_shape);
 
-    SUBCASE("Test BatchMatmul Forward") {
+    SUBCASE("forward_kernel") {
       Kernels::BatchMatmul::forward_kernel(stream,
                                            handle,
-                                           (float *)accessor_output.ptr,
-                                           (float *)accessor_a.ptr,
-                                           (float *)accessor_b.ptr,
+                                           accessor_output.get_float_ptr(),
+                                           accessor_a.get_float_ptr(),
+                                           accessor_b.get_float_ptr(),
                                            m,
                                            n,
                                            k,
@@ -47,9 +49,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                                            seq_length);
     }
 
-    SUBCASE("Test BatchMatmul Backward") {
+    SUBCASE("backward_kernel") {
       GenericTensorAccessorW o_grad_accessor =
-          getRandomFilledAccessorW(output_shape, allocator);
+          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW a_grad_accessor =
           allocator.allocate_tensor(input_shape_a);
       GenericTensorAccessorW b_grad_accessor =
@@ -57,12 +59,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       Kernels::BatchMatmul::backward_kernel(stream,
                                             handle,
-                                            (float *)accessor_output.ptr,
-                                            (float *)o_grad_accessor.ptr,
-                                            (float *)accessor_a.ptr,
-                                            (float *)a_grad_accessor.ptr,
-                                            (float *)accessor_b.ptr,
-                                            (float *)b_grad_accessor.ptr,
+                                            accessor_output.get_float_ptr(),
+                                            o_grad_accessor.get_float_ptr(),
+                                            accessor_a.get_float_ptr(),
+                                            a_grad_accessor.get_float_ptr(),
+                                            accessor_b.get_float_ptr(),
+                                            b_grad_accessor.get_float_ptr(),
                                             m,
                                             n,
                                             k,

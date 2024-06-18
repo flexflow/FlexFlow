@@ -46,7 +46,8 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(BatchNormPerDeviceState,
 namespace Kernels {
 namespace BatchNorm {
 
-BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
+BatchNormPerDeviceState init_kernel(cudaStream_t stream,
+                                    PerDeviceFFHandle handle,
                                     Allocator allocator,
                                     float *runningMean,
                                     int output_n,

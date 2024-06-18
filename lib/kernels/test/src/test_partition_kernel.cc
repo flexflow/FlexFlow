@@ -6,13 +6,12 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Partition Forward and Backward") {
-    const std::size_t num_elements = 100;
-    const std::size_t num_replicas = 10;
+    std::size_t num_elements = 100;
+    std::size_t num_replicas = 10;
 
-    TensorShape shape = get_float_tensor_shape({num_elements});
+    TensorShape shape = make_float_tensor_shape_w_legion_dims({num_elements});
 
-    PerDeviceFFHandle handle;
-    setPerDeviceFFHandle(&handle);
+    PerDeviceFFHandle handle = get_per_device_ff_handle();
 
     cudaStream_t stream;
     checkCUDA(cudaStreamCreate(&stream));
@@ -22,31 +21,36 @@ TEST_SUITE(FF_TEST_SUITE) {
     RepartitionPerDeviceState state =
         Kernels::Repartition::init_kernel(handle, DataType::FLOAT);
 
-    SUBCASE("Test forward partition kernel") {
+    SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          makeReadOnlyAccessor(getFilledAccessorW(shape, allocator, 1.0f));
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(shape, allocator, 1.0f));
       GenericTensorAccessorW forward_output_accessor =
-          getFilledAccessorW(shape, allocator, 0.0f);
+          create_filled_accessor_w(shape, allocator, 0.0f);
 
       Kernels::Repartition::forward_kernel(
           stream, state, input_accessor, forward_output_accessor);
 
       std::vector<float> check_output_data =
-          fill_host_data<float>(forward_output_accessor.ptr, num_elements);
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(forward_output_accessor));
 
       for (std::size_t i = 0; i < num_elements; ++i) {
         REQUIRE(check_output_data[i] == 1.0f);
       }
 
-      SUBCASE("Test backward partition kernel") {
+      SUBCASE("backward_kernel") {
         GenericTensorAccessorR grad_accessor =
-            makeReadOnlyAccessor(getFilledAccessorW(shape, allocator, 1.0f));
+            read_only_accessor_from_write_accessor(
+                create_filled_accessor_w(shape, allocator, 1.0f));
 
         Kernels::Repartition::backward_kernel(
             stream, state, forward_output_accessor, grad_accessor);
 
         std::vector<float> host_grad_input_data =
-            fill_host_data<float>(forward_output_accessor.ptr, num_elements);
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(
+                    forward_output_accessor));
 
         for (std::size_t i = 0; i < num_elements; ++i) {
           CHECK(host_grad_input_data[i] == 2.0f);
@@ -54,6 +58,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    cleanup_test(stream, handle); 
+    cleanup_test(stream, handle);
   }
 }
