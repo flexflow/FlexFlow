@@ -4,7 +4,7 @@
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Arbitrary<UniformInitializerAttrs>") {
-    CHECK_PROPERTY([](UniformInitializerAttrs const &attrs) {
+    RC_SUBCASE([](UniformInitializerAttrs const &attrs) {
       RC_ASSERT(attrs.max_val >= attrs.min_val);
     });
   }

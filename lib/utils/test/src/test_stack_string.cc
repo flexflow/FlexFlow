@@ -84,7 +84,6 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("Arbitrary<stack_string>") {
     constexpr std::size_t MAXSIZE = 10;
-    rc::dc_check("arbitrary returns valid",
-                 [](stack_string<MAXSIZE> const &s) {});
+    RCSUBCASE([](stack_string<MAXSIZE> const &s) {});
   }
 }

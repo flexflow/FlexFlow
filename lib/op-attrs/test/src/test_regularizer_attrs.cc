@@ -4,7 +4,7 @@
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Arbitrary<RegularizerAttrs>") {
-    CHECK_PROPERTY([](RegularizerAttrs reg) {
+    RC_SUBCASE([](RegularizerAttrs reg) {
       RC_ASSERT(reg.has<L1RegularizerAttrs>() || reg.has<L2RegularizerAttrs>());
     });
   }
