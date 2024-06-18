@@ -25,7 +25,7 @@ bool can_strictly_promote_datatype_from_to(DataType src, DataType dst) {
   std::unordered_set<DataType> allowed;
   switch (src) {
     case DataType::BOOL:
-      allowed = {DataType::INT32, DataType::INT64};
+      allowed = {DataType::INT32, DataType::INT64, DataType::FLOAT, DataType::DOUBLE};
       break;
     case DataType::INT32:
       allowed = {DataType::INT64};
