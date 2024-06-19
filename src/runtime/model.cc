@@ -1246,7 +1246,7 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
-      if (op_type == OP_ALLREDUCE) {                                           \
+      if (op_type == OP_ALLREDUCE || op_type == OP_LORA) {                     \
         ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
         handle.ncclComm = nccl_comms[idx++];                                   \
       }                                                                        \
