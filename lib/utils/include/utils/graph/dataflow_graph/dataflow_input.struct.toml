@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "DataflowInput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+[[fields]]
+name = "node"
+type = "::FlexFlow::Node"
+
+[[fields]]
+name = "idx"
+type = "int"

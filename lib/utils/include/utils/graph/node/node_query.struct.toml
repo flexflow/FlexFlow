@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "NodeQuery"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+  "utils/graph/query_set.h",
+]
+
+[[fields]]
+name = "nodes"
+type = "::FlexFlow::query_set<::FlexFlow::Node>"

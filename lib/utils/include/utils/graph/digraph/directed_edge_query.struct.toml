@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "DirectedEdgeQuery"
+features = [
+  "eq",
+  "ord",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/query_set.h",
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "srcs"
+type = "::FlexFlow::query_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "dsts"
+type = "::FlexFlow::query_set<::FlexFlow::Node>"

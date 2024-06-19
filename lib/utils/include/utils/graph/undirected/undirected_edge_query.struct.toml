@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "UndirectedEdgeQuery"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/query_set.h",
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "nodes"
+type = "::FlexFlow::query_set<::FlexFlow::Node>"

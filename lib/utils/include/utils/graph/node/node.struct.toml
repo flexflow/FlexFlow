@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "Node"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<cstddef>",
+]
+
+[[fields]]
+name = "raw_uid"
+type = "size_t"

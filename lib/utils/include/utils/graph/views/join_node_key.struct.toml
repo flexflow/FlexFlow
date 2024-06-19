@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "JoinNodeKey"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+  "utils/graph/views/lr_direction.dtg.h",
+]
+
+[[fields]]
+name = "node"
+type = "::FlexFlow::Node"
+
+[[fields]]
+name = "direction"
+type = "::FlexFlow::LRDirection"

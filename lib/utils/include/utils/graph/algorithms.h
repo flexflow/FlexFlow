@@ -1,21 +1,14 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_ALGORITHMS_H
 #define _FLEXFLOW_UTILS_GRAPH_ALGORITHMS_H
 
-#include "digraph.h"
-#include "labelled_graphs.h"
-#include "multidigraph.h"
-#include "node.h"
-#include "open_graphs.h"
-#include "undirected.h"
-#include "utils/containers.h"
+#include "utils/graph/digraph/digraph.h"
+#include "utils/graph/multidigraph/multidigraph.h"
+#include "utils/graph/node/graph.h"
+#include "utils/graph/undirected/undirected_graph.h"
+#include "utils/graph/open_multidigraph/open_multidigraph.h"
+#include "utils/graph/upward_open_multidigraph/upward_open_multidigraph_view.h"
+#include "utils/graph/downward_open_multidigraph/downward_open_multidigraph_view.h"
 #include "utils/dot_file.h"
-#include "utils/exception.h"
-#include "utils/graph/multidiedge.h"
-#include "utils/graph/open_graph_interfaces.h"
-#include "utils/optional.h"
-#include "views.h"
-#include <unordered_map>
-#include <vector>
 
 namespace FlexFlow {
 
@@ -25,11 +18,7 @@ std::vector<Node> add_nodes(DiGraph &, int);
 std::vector<Node> add_nodes(MultiDiGraph &, int);
 std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes);
 
-std::vector<NodePort> add_node_ports(MultiDiGraph &, int);
-
 std::unordered_set<Node> get_nodes(GraphView const &);
-std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const &);
-
 std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &);
 
 std::unordered_set<Node> query_nodes(GraphView const &,
@@ -104,9 +93,6 @@ std::unordered_set<OpenMultiDiEdge> get_edges(OpenMultiDiGraphView const &);
 std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
                                                   Node const &);
 
-std::unordered_set<MultiDiOutput> get_outputs(MultiDiGraphView const &);
-std::unordered_set<MultiDiInput> get_inputs(MultiDiGraphView const &);
-
 std::unordered_set<OutputMultiDiEdge>
     get_open_outputs(OpenMultiDiGraphView const &);
 std::unordered_set<InputMultiDiEdge>
@@ -127,11 +113,6 @@ std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
                                                    std::unordered_set<Node>);
 std::unordered_set<DirectedEdge>
     get_incoming_edges(DiGraphView const &, std::unordered_set<Node> const &);
-
-std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
-    get_incoming_edges_by_idx(MultiDiGraphView const &, Node const &);
-std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
-    get_outgoing_edges_by_idx(MultiDiGraphView const &, Node const &);
 
 std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &,
                                                    Node const &);
@@ -164,59 +145,6 @@ Node get_src_node(MultiDiEdge const &);
 Node get_dst_node(MultiDiEdge const &);
 Node get_dst_node(InputMultiDiEdge const &);
 Node get_src_node(OutputMultiDiEdge const &);
-
-struct GetSrcNodeFunctor {
-  template <typename T>
-  Node operator()(T const &t) const {
-    return get_src_node(t);
-  }
-};
-
-struct GetDstNodeFunctor {
-  template <typename T>
-  Node operator()(T const &t) const {
-    return get_dst_node(t);
-  }
-};
-
-template <typename... Args>
-Node get_src_node(std::variant<Args...> const &t) {
-  return visit(GetSrcNodeFunctor{}, t);
-}
-
-template <typename... Args>
-Node get_dst_node(std::variant<Args...> const &t) {
-  return visit(GetDstNodeFunctor{}, t);
-}
-
-NodePort get_src_idx(MultiDiEdge const &);
-NodePort get_dst_idx(MultiDiEdge const &);
-NodePort get_dst_idx(InputMultiDiEdge const &);
-NodePort get_src_idx(OutputMultiDiEdge const &);
-
-struct GetSrcIdxFunctor {
-  template <typename T>
-  NodePort operator()(T const &t) const {
-    return get_src_idx(t);
-  }
-};
-
-struct GetDstIdxFunctor {
-  template <typename T>
-  NodePort operator()(T const &t) const {
-    return get_dst_idx(t);
-  }
-};
-
-template <typename... Args>
-NodePort get_src_idx(std::variant<Args...> const &t) {
-  return visit(GetSrcIdxFunctor{}, t);
-}
-
-template <typename... Args>
-NodePort get_dst_idx(std::variant<Args...> const &t) {
-  return visit(GetDstIdxFunctor{}, t);
-}
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &,
                                        Node const &);

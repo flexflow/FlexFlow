@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "LRDirection"
+features = [
+  "hash",
+  "fmt",
+  "rapidcheck",
+  "json",
+]
+
+[[values]]
+name = "LEFT"
+
+[[values]]
+name = "RIGHT"

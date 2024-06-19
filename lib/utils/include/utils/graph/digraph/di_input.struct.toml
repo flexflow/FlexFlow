@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "DiInput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "dst"
+type = "::FlexFlow::Node"

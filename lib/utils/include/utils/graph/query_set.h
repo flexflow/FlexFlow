@@ -46,6 +46,10 @@ struct query_set {
     return {std::nullopt};
   }
 
+  static query_set<T> match_none() {
+    return {std::unordered_set<T>{}};
+  }
+
 private:
   std::optional<std::unordered_set<T>> query;
 };

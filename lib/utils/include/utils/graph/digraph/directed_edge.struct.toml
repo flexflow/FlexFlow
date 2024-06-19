@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "DirectedEdge"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "src"
+type = "::FlexFlow::Node"
+
+[[fields]]
+name = "dst"
+type = "::FlexFlow::Node"
