@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct OperatorAttributeConstraint {
   OperatorAttributeConstraint() = delete;
-  OperatorAttributeConstraint(
+  explicit OperatorAttributeConstraint(
       ::FlexFlow::ConstraintType const &constraint_type,
       ::FlexFlow::OperatorAttributeExpr const &attribute_expr,
       ::FlexFlow::OperatorAttributeValue const &attribute_value);
@@ -41,16 +41,16 @@ struct OperatorAttributeConstraint {
 
 namespace std {
 template <>
-struct hash<FlexFlow::OperatorAttributeConstraint> {
-  size_t operator()(FlexFlow::OperatorAttributeConstraint const &) const;
+struct hash<::FlexFlow::OperatorAttributeConstraint> {
+  size_t operator()(::FlexFlow::OperatorAttributeConstraint const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::OperatorAttributeConstraint> {
-  static FlexFlow::OperatorAttributeConstraint from_json(json const &);
-  static void to_json(json &, FlexFlow::OperatorAttributeConstraint const &);
+struct adl_serializer<::FlexFlow::OperatorAttributeConstraint> {
+  static ::FlexFlow::OperatorAttributeConstraint from_json(json const &);
+  static void to_json(json &, ::FlexFlow::OperatorAttributeConstraint const &);
 };
 } // namespace nlohmann
 

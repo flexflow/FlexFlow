@@ -32,7 +32,7 @@ bool ParallelMultiHeadAttentionInputs::operator!=(
 
 namespace std {
 size_t hash<FlexFlow::ParallelMultiHeadAttentionInputs>::operator()(
-    FlexFlow::ParallelMultiHeadAttentionInputs const &x) const {
+    ::FlexFlow::ParallelMultiHeadAttentionInputs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ParallelTensorShape>{}(x.query) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -45,15 +45,16 @@ size_t hash<FlexFlow::ParallelMultiHeadAttentionInputs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ParallelMultiHeadAttentionInputs
-    adl_serializer<FlexFlow::ParallelMultiHeadAttentionInputs>::from_json(
+::FlexFlow::ParallelMultiHeadAttentionInputs
+    adl_serializer<::FlexFlow::ParallelMultiHeadAttentionInputs>::from_json(
         json const &j) {
-  return {j.at("query").template get<::FlexFlow::ParallelTensorShape>(),
-          j.at("key").template get<::FlexFlow::ParallelTensorShape>(),
-          j.at("value").template get<::FlexFlow::ParallelTensorShape>()};
+  return ::FlexFlow::ParallelMultiHeadAttentionInputs{
+      j.at("query").template get<::FlexFlow::ParallelTensorShape>(),
+      j.at("key").template get<::FlexFlow::ParallelTensorShape>(),
+      j.at("value").template get<::FlexFlow::ParallelTensorShape>()};
 }
-void adl_serializer<FlexFlow::ParallelMultiHeadAttentionInputs>::to_json(
-    json &j, FlexFlow::ParallelMultiHeadAttentionInputs const &v) {
+void adl_serializer<::FlexFlow::ParallelMultiHeadAttentionInputs>::to_json(
+    json &j, ::FlexFlow::ParallelMultiHeadAttentionInputs const &v) {
   j["__type"] = "ParallelMultiHeadAttentionInputs";
   j["query"] = v.query;
   j["key"] = v.key;
@@ -62,9 +63,9 @@ void adl_serializer<FlexFlow::ParallelMultiHeadAttentionInputs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ParallelMultiHeadAttentionInputs>
-    Arbitrary<FlexFlow::ParallelMultiHeadAttentionInputs>::arbitrary() {
-  return gen::construct<FlexFlow::ParallelMultiHeadAttentionInputs>(
+Gen<::FlexFlow::ParallelMultiHeadAttentionInputs>
+    Arbitrary<::FlexFlow::ParallelMultiHeadAttentionInputs>::arbitrary() {
+  return gen::construct<::FlexFlow::ParallelMultiHeadAttentionInputs>(
       gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
       gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
       gen::arbitrary<::FlexFlow::ParallelTensorShape>());

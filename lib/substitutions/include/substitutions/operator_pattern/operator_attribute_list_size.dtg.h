@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct OperatorAttributeListSize {
   OperatorAttributeListSize() = delete;
-  OperatorAttributeListSize(
+  explicit OperatorAttributeListSize(
       ::FlexFlow::OperatorAttributeKey const &attribute_key);
 
   bool operator==(OperatorAttributeListSize const &) const;
@@ -36,23 +36,23 @@ struct OperatorAttributeListSize {
 
 namespace std {
 template <>
-struct hash<FlexFlow::OperatorAttributeListSize> {
-  size_t operator()(FlexFlow::OperatorAttributeListSize const &) const;
+struct hash<::FlexFlow::OperatorAttributeListSize> {
+  size_t operator()(::FlexFlow::OperatorAttributeListSize const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::OperatorAttributeListSize> {
-  static FlexFlow::OperatorAttributeListSize from_json(json const &);
-  static void to_json(json &, FlexFlow::OperatorAttributeListSize const &);
+struct adl_serializer<::FlexFlow::OperatorAttributeListSize> {
+  static ::FlexFlow::OperatorAttributeListSize from_json(json const &);
+  static void to_json(json &, ::FlexFlow::OperatorAttributeListSize const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::OperatorAttributeListSize> {
-  static Gen<FlexFlow::OperatorAttributeListSize> arbitrary();
+struct Arbitrary<::FlexFlow::OperatorAttributeListSize> {
+  static Gen<::FlexFlow::OperatorAttributeListSize> arbitrary();
 };
 } // namespace rc
 

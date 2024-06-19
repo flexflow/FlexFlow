@@ -19,11 +19,11 @@
 namespace FlexFlow {
 struct MachineSpecification {
   MachineSpecification() = delete;
-  MachineSpecification(int const &num_nodes,
-                       int const &num_cpus_per_node,
-                       int const &num_gpus_per_node,
-                       float const &inter_node_bandwidth,
-                       float const &intra_node_bandwidth);
+  explicit MachineSpecification(int const &num_nodes,
+                                int const &num_cpus_per_node,
+                                int const &num_gpus_per_node,
+                                float const &inter_node_bandwidth,
+                                float const &intra_node_bandwidth);
 
   bool operator==(MachineSpecification const &) const;
   bool operator!=(MachineSpecification const &) const;
@@ -41,16 +41,16 @@ struct MachineSpecification {
 
 namespace std {
 template <>
-struct hash<FlexFlow::MachineSpecification> {
-  size_t operator()(FlexFlow::MachineSpecification const &) const;
+struct hash<::FlexFlow::MachineSpecification> {
+  size_t operator()(::FlexFlow::MachineSpecification const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::MachineSpecification> {
-  static FlexFlow::MachineSpecification from_json(json const &);
-  static void to_json(json &, FlexFlow::MachineSpecification const &);
+struct adl_serializer<::FlexFlow::MachineSpecification> {
+  static ::FlexFlow::MachineSpecification from_json(json const &);
+  static void to_json(json &, ::FlexFlow::MachineSpecification const &);
 };
 } // namespace nlohmann
 

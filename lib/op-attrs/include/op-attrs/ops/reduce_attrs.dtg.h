@@ -24,10 +24,10 @@
 namespace FlexFlow {
 struct ReduceAttrs {
   ReduceAttrs() = delete;
-  ReduceAttrs(::FlexFlow::stack_vector<::FlexFlow::ff_dim_t,
-                                       MAX_TENSOR_DIM> const &axes,
-              ::FlexFlow::OperatorType const &op_type,
-              bool const &keepdims);
+  explicit ReduceAttrs(::FlexFlow::stack_vector<::FlexFlow::ff_dim_t,
+                                                MAX_TENSOR_DIM> const &axes,
+                       ::FlexFlow::OperatorType const &op_type,
+                       bool const &keepdims);
 
   bool operator==(ReduceAttrs const &) const;
   bool operator!=(ReduceAttrs const &) const;
@@ -43,23 +43,23 @@ struct ReduceAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ReduceAttrs> {
-  size_t operator()(FlexFlow::ReduceAttrs const &) const;
+struct hash<::FlexFlow::ReduceAttrs> {
+  size_t operator()(::FlexFlow::ReduceAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ReduceAttrs> {
-  static FlexFlow::ReduceAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ReduceAttrs const &);
+struct adl_serializer<::FlexFlow::ReduceAttrs> {
+  static ::FlexFlow::ReduceAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ReduceAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ReduceAttrs> {
-  static Gen<FlexFlow::ReduceAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::ReduceAttrs> {
+  static Gen<::FlexFlow::ReduceAttrs> arbitrary();
 };
 } // namespace rc
 

@@ -21,8 +21,8 @@
 namespace FlexFlow {
 struct StridedRectangleSide {
   StridedRectangleSide() = delete;
-  StridedRectangleSide(::FlexFlow::num_points_t const &num_points,
-                       int const &stride);
+  explicit StridedRectangleSide(::FlexFlow::num_points_t const &num_points,
+                                int const &stride);
 
   bool operator==(StridedRectangleSide const &) const;
   bool operator!=(StridedRectangleSide const &) const;
@@ -37,23 +37,23 @@ struct StridedRectangleSide {
 
 namespace std {
 template <>
-struct hash<FlexFlow::StridedRectangleSide> {
-  size_t operator()(FlexFlow::StridedRectangleSide const &) const;
+struct hash<::FlexFlow::StridedRectangleSide> {
+  size_t operator()(::FlexFlow::StridedRectangleSide const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::StridedRectangleSide> {
-  static FlexFlow::StridedRectangleSide from_json(json const &);
-  static void to_json(json &, FlexFlow::StridedRectangleSide const &);
+struct adl_serializer<::FlexFlow::StridedRectangleSide> {
+  static ::FlexFlow::StridedRectangleSide from_json(json const &);
+  static void to_json(json &, ::FlexFlow::StridedRectangleSide const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::StridedRectangleSide> {
-  static Gen<FlexFlow::StridedRectangleSide> arbitrary();
+struct Arbitrary<::FlexFlow::StridedRectangleSide> {
+  static Gen<::FlexFlow::StridedRectangleSide> arbitrary();
 };
 } // namespace rc
 

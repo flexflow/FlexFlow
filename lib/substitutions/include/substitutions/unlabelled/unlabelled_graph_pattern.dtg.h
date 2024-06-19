@@ -15,7 +15,8 @@
 namespace FlexFlow {
 struct UnlabelledGraphPattern {
   UnlabelledGraphPattern() = delete;
-  UnlabelledGraphPattern(::FlexFlow::OpenMultiDiGraphView const &raw_graph);
+  explicit UnlabelledGraphPattern(
+      ::FlexFlow::OpenMultiDiGraphView const &raw_graph);
 
   ::FlexFlow::OpenMultiDiGraphView raw_graph;
 };

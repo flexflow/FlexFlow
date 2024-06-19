@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializer_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "f66f3a89ea937e96a058d83ab52e2826"
+  "generated_from": "f4d932a4a7728ebfc28a23f2e6ca3201"
 }
 */
 
@@ -15,8 +15,9 @@
 #include "pcg/initializers/constant_initializer_attrs.dtg.h"
 #include "pcg/initializers/glorot_uniform_attrs.dtg.h"
 #include "pcg/initializers/norm_initializer_attrs.dtg.h"
-#include "pcg/initializers/uniform_initializer_attrs.dtg.h"
+#include "pcg/initializers/uniform_initializer_attrs.h"
 #include "pcg/initializers/zero_initializer_attrs.dtg.h"
+#include "rapidcheck.h"
 #include <cstddef>
 #include <functional>
 #include <ostream>
@@ -161,6 +162,12 @@ struct adl_serializer<::FlexFlow::InitializerAttrs> {
   static void to_json(json &, ::FlexFlow::InitializerAttrs const &);
 };
 } // namespace nlohmann
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::InitializerAttrs> {
+  static Gen<::FlexFlow::InitializerAttrs> arbitrary();
+};
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::InitializerAttrs const &);
 std::ostream &operator<<(std::ostream &, ::FlexFlow::InitializerAttrs const &);

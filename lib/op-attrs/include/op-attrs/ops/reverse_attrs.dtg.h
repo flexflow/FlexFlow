@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct ReverseAttrs {
   ReverseAttrs() = delete;
-  ReverseAttrs(::FlexFlow::ff_dim_t const &axis);
+  explicit ReverseAttrs(::FlexFlow::ff_dim_t const &axis);
 
   bool operator==(ReverseAttrs const &) const;
   bool operator!=(ReverseAttrs const &) const;
@@ -36,23 +36,23 @@ struct ReverseAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ReverseAttrs> {
-  size_t operator()(FlexFlow::ReverseAttrs const &) const;
+struct hash<::FlexFlow::ReverseAttrs> {
+  size_t operator()(::FlexFlow::ReverseAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ReverseAttrs> {
-  static FlexFlow::ReverseAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ReverseAttrs const &);
+struct adl_serializer<::FlexFlow::ReverseAttrs> {
+  static ::FlexFlow::ReverseAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ReverseAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ReverseAttrs> {
-  static Gen<FlexFlow::ReverseAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::ReverseAttrs> {
+  static Gen<::FlexFlow::ReverseAttrs> arbitrary();
 };
 } // namespace rc
 

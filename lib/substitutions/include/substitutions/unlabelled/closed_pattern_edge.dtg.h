@@ -17,7 +17,7 @@
 namespace FlexFlow {
 struct ClosedPatternEdge {
   ClosedPatternEdge() = delete;
-  ClosedPatternEdge(::FlexFlow::MultiDiEdge const &raw_edge);
+  explicit ClosedPatternEdge(::FlexFlow::MultiDiEdge const &raw_edge);
 
   bool operator==(ClosedPatternEdge const &) const;
   bool operator!=(ClosedPatternEdge const &) const;
@@ -31,8 +31,8 @@ struct ClosedPatternEdge {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ClosedPatternEdge> {
-  size_t operator()(FlexFlow::ClosedPatternEdge const &) const;
+struct hash<::FlexFlow::ClosedPatternEdge> {
+  size_t operator()(::FlexFlow::ClosedPatternEdge const &) const;
 };
 } // namespace std
 

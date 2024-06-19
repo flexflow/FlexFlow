@@ -4,7 +4,7 @@
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Reduction shape inference") {
 
-    ParallelTensorShape input = {
+    ParallelTensorShape input = ParallelTensorShape{
         ParallelTensorDims{
             FFOrdered<ShardParallelDim>{
                 ShardParallelDim{12, 2},

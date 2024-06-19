@@ -44,7 +44,7 @@ bool ReplicaParallelDim::operator>=(ReplicaParallelDim const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ReplicaParallelDim>::operator()(
-    FlexFlow::ReplicaParallelDim const &x) const {
+    ::FlexFlow::ReplicaParallelDim const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.degree) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -55,13 +55,14 @@ size_t hash<FlexFlow::ReplicaParallelDim>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ReplicaParallelDim
-    adl_serializer<FlexFlow::ReplicaParallelDim>::from_json(json const &j) {
-  return {j.at("degree").template get<int>(),
-          j.at("replica_type").template get<::FlexFlow::ReplicaType>()};
+::FlexFlow::ReplicaParallelDim
+    adl_serializer<::FlexFlow::ReplicaParallelDim>::from_json(json const &j) {
+  return ::FlexFlow::ReplicaParallelDim{
+      j.at("degree").template get<int>(),
+      j.at("replica_type").template get<::FlexFlow::ReplicaType>()};
 }
-void adl_serializer<FlexFlow::ReplicaParallelDim>::to_json(
-    json &j, FlexFlow::ReplicaParallelDim const &v) {
+void adl_serializer<::FlexFlow::ReplicaParallelDim>::to_json(
+    json &j, ::FlexFlow::ReplicaParallelDim const &v) {
   j["__type"] = "ReplicaParallelDim";
   j["degree"] = v.degree;
   j["replica_type"] = v.replica_type;
@@ -69,9 +70,9 @@ void adl_serializer<FlexFlow::ReplicaParallelDim>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ReplicaParallelDim>
-    Arbitrary<FlexFlow::ReplicaParallelDim>::arbitrary() {
-  return gen::construct<FlexFlow::ReplicaParallelDim>(
+Gen<::FlexFlow::ReplicaParallelDim>
+    Arbitrary<::FlexFlow::ReplicaParallelDim>::arbitrary() {
+  return gen::construct<::FlexFlow::ReplicaParallelDim>(
       gen::arbitrary<int>(), gen::arbitrary<::FlexFlow::ReplicaType>());
 }
 } // namespace rc

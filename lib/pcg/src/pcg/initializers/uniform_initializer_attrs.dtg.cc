@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializers/uniform_initializer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "f887e1db5d5dc710793ec5fa99bb7cd4"
+  "generated_from": "dd9cbe65dc4495b031aef40d353db928"
 }
 */
 
@@ -50,7 +50,7 @@ bool UniformInitializerAttrs::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::UniformInitializerAttrs>::operator()(
-    FlexFlow::UniformInitializerAttrs const &x) const {
+    ::FlexFlow::UniformInitializerAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.seed) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -63,15 +63,16 @@ size_t hash<FlexFlow::UniformInitializerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::UniformInitializerAttrs
-    adl_serializer<FlexFlow::UniformInitializerAttrs>::from_json(
+::FlexFlow::UniformInitializerAttrs
+    adl_serializer<::FlexFlow::UniformInitializerAttrs>::from_json(
         json const &j) {
-  return {j.at("seed").template get<int>(),
-          j.at("min_val").template get<float>(),
-          j.at("max_val").template get<float>()};
+  return ::FlexFlow::UniformInitializerAttrs{
+      j.at("seed").template get<int>(),
+      j.at("min_val").template get<float>(),
+      j.at("max_val").template get<float>()};
 }
-void adl_serializer<FlexFlow::UniformInitializerAttrs>::to_json(
-    json &j, FlexFlow::UniformInitializerAttrs const &v) {
+void adl_serializer<::FlexFlow::UniformInitializerAttrs>::to_json(
+    json &j, ::FlexFlow::UniformInitializerAttrs const &v) {
   j["__type"] = "UniformInitializerAttrs";
   j["seed"] = v.seed;
   j["min_val"] = v.min_val;

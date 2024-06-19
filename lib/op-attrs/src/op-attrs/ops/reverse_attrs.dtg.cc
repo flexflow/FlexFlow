@@ -37,7 +37,7 @@ bool ReverseAttrs::operator>=(ReverseAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ReverseAttrs>::operator()(
-    FlexFlow::ReverseAttrs const &x) const {
+    ::FlexFlow::ReverseAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ff_dim_t>{}(x.axis) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -46,20 +46,21 @@ size_t hash<FlexFlow::ReverseAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ReverseAttrs
-    adl_serializer<FlexFlow::ReverseAttrs>::from_json(json const &j) {
-  return {j.at("axis").template get<::FlexFlow::ff_dim_t>()};
+::FlexFlow::ReverseAttrs
+    adl_serializer<::FlexFlow::ReverseAttrs>::from_json(json const &j) {
+  return ::FlexFlow::ReverseAttrs{
+      j.at("axis").template get<::FlexFlow::ff_dim_t>()};
 }
-void adl_serializer<FlexFlow::ReverseAttrs>::to_json(
-    json &j, FlexFlow::ReverseAttrs const &v) {
+void adl_serializer<::FlexFlow::ReverseAttrs>::to_json(
+    json &j, ::FlexFlow::ReverseAttrs const &v) {
   j["__type"] = "ReverseAttrs";
   j["axis"] = v.axis;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ReverseAttrs> Arbitrary<FlexFlow::ReverseAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::ReverseAttrs>(
+Gen<::FlexFlow::ReverseAttrs> Arbitrary<::FlexFlow::ReverseAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ReverseAttrs>(
       gen::arbitrary<::FlexFlow::ff_dim_t>());
 }
 } // namespace rc

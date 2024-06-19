@@ -36,7 +36,7 @@ bool PatternEdge::operator>=(PatternEdge const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::PatternEdge>::operator()(
-    FlexFlow::PatternEdge const &x) const {
+    ::FlexFlow::PatternEdge const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OpenMultiDiEdge>{}(x.raw_edge) + 0x9e3779b9 +
             (result << 6) + (result >> 2);

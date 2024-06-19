@@ -35,8 +35,8 @@ bool CastAttrs::operator>=(CastAttrs const &other) const {
 } // namespace FlexFlow
 
 namespace std {
-size_t
-    hash<FlexFlow::CastAttrs>::operator()(FlexFlow::CastAttrs const &x) const {
+size_t hash<FlexFlow::CastAttrs>::operator()(
+    ::FlexFlow::CastAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<DataType>{}(x.dtype) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -45,20 +45,20 @@ size_t
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::CastAttrs
-    adl_serializer<FlexFlow::CastAttrs>::from_json(json const &j) {
-  return {j.at("dtype").template get<DataType>()};
+::FlexFlow::CastAttrs
+    adl_serializer<::FlexFlow::CastAttrs>::from_json(json const &j) {
+  return ::FlexFlow::CastAttrs{j.at("dtype").template get<DataType>()};
 }
-void adl_serializer<FlexFlow::CastAttrs>::to_json(
-    json &j, FlexFlow::CastAttrs const &v) {
+void adl_serializer<::FlexFlow::CastAttrs>::to_json(
+    json &j, ::FlexFlow::CastAttrs const &v) {
   j["__type"] = "CastAttrs";
   j["dtype"] = v.dtype;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::CastAttrs> Arbitrary<FlexFlow::CastAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::CastAttrs>(gen::arbitrary<DataType>());
+Gen<::FlexFlow::CastAttrs> Arbitrary<::FlexFlow::CastAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::CastAttrs>(gen::arbitrary<DataType>());
 }
 } // namespace rc
 

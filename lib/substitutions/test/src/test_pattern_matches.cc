@@ -44,7 +44,7 @@ struct Arbitrary<MultiDiGraph> {
 } // namespace rc
 
 // TEST_CASE("find_pattern_matches") {
-//   rc::check([](MultiDiGraph const &g) {
+//   RC_SUBCASE([](MultiDiGraph const &g) {
 //     std::unordered_set<Node> subgraph_nodes = *rc::subset_of(get_nodes(g));
 //     OpenMultiDiGraphView subgraph =
 //         get_subgraph<OpenMultiDiSubgraphView>(as_openmultidigraph(g),

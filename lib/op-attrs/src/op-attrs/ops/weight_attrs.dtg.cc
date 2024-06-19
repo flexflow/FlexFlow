@@ -34,26 +34,26 @@ bool WeightAttrs::operator>=(WeightAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::WeightAttrs>::operator()(
-    FlexFlow::WeightAttrs const &x) const {
+    ::FlexFlow::WeightAttrs const &x) const {
   size_t result = 0;
   return result;
 }
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::WeightAttrs
-    adl_serializer<FlexFlow::WeightAttrs>::from_json(json const &j) {
-  return {};
+::FlexFlow::WeightAttrs
+    adl_serializer<::FlexFlow::WeightAttrs>::from_json(json const &j) {
+  return ::FlexFlow::WeightAttrs{};
 }
-void adl_serializer<FlexFlow::WeightAttrs>::to_json(
-    json &j, FlexFlow::WeightAttrs const &v) {
+void adl_serializer<::FlexFlow::WeightAttrs>::to_json(
+    json &j, ::FlexFlow::WeightAttrs const &v) {
   j["__type"] = "WeightAttrs";
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::WeightAttrs> Arbitrary<FlexFlow::WeightAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::WeightAttrs>();
+Gen<::FlexFlow::WeightAttrs> Arbitrary<::FlexFlow::WeightAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::WeightAttrs>();
 }
 } // namespace rc
 

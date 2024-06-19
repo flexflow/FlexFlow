@@ -58,7 +58,7 @@ std::optional<ShardParallelDim>
 }
 
 ParallelTensorShape lift_to_parallel(TensorShape const &s) {
-  return {lift_to_parallel(s.dims), s.data_type};
+  return ParallelTensorShape{lift_to_parallel(s.dims), s.data_type};
 }
 
 ParallelTensorShape

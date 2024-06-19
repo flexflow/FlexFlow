@@ -22,10 +22,10 @@
 namespace FlexFlow {
 struct ElementBinaryAttrs {
   ElementBinaryAttrs() = delete;
-  ElementBinaryAttrs(::FlexFlow::OperatorType const &type,
-                     ::FlexFlow::DataType const &compute_type,
-                     bool const &should_broadcast_lhs,
-                     bool const &should_broadcast_rhs);
+  explicit ElementBinaryAttrs(::FlexFlow::OperatorType const &type,
+                              ::FlexFlow::DataType const &compute_type,
+                              bool const &should_broadcast_lhs,
+                              bool const &should_broadcast_rhs);
 
   bool operator==(ElementBinaryAttrs const &) const;
   bool operator!=(ElementBinaryAttrs const &) const;
@@ -42,23 +42,23 @@ struct ElementBinaryAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ElementBinaryAttrs> {
-  size_t operator()(FlexFlow::ElementBinaryAttrs const &) const;
+struct hash<::FlexFlow::ElementBinaryAttrs> {
+  size_t operator()(::FlexFlow::ElementBinaryAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ElementBinaryAttrs> {
-  static FlexFlow::ElementBinaryAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ElementBinaryAttrs const &);
+struct adl_serializer<::FlexFlow::ElementBinaryAttrs> {
+  static ::FlexFlow::ElementBinaryAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ElementBinaryAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ElementBinaryAttrs> {
-  static Gen<FlexFlow::ElementBinaryAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::ElementBinaryAttrs> {
+  static Gen<::FlexFlow::ElementBinaryAttrs> arbitrary();
 };
 } // namespace rc
 

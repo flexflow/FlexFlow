@@ -23,10 +23,11 @@
 namespace FlexFlow {
 struct TensorAttrs {
   TensorAttrs() = delete;
-  TensorAttrs(::FlexFlow::TensorShape const &shape,
-              std::optional<::FlexFlow::InitializerAttrs> const &initializer,
-              bool const &create_gradients,
-              std::optional<::FlexFlow::ParamSync> const &sync_type);
+  explicit TensorAttrs(
+      ::FlexFlow::TensorShape const &shape,
+      std::optional<::FlexFlow::InitializerAttrs> const &initializer,
+      bool const &create_gradients,
+      std::optional<::FlexFlow::ParamSync> const &sync_type);
 
   bool operator==(TensorAttrs const &) const;
   bool operator!=(TensorAttrs const &) const;
@@ -43,16 +44,16 @@ struct TensorAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::TensorAttrs> {
-  size_t operator()(FlexFlow::TensorAttrs const &) const;
+struct hash<::FlexFlow::TensorAttrs> {
+  size_t operator()(::FlexFlow::TensorAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::TensorAttrs> {
-  static FlexFlow::TensorAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::TensorAttrs const &);
+struct adl_serializer<::FlexFlow::TensorAttrs> {
+  static ::FlexFlow::TensorAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::TensorAttrs const &);
 };
 } // namespace nlohmann
 

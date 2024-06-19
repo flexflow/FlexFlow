@@ -1,5 +1,2 @@
-#include "doctest.h"
-#include "doctest/doctest.h"
-#include "rapidcheck/doctest.h"
-#include "rapidcheck/gen.h"
-#include "rapidcheck/visitable.h"
+#include "test/utils/doctest.h"
+#include "test/utils/rapidcheck.h"

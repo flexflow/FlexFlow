@@ -276,15 +276,6 @@ private:
                     tensor_guid_t const &input,
                     std::optional<float> scalar,
                     std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t element_scalar_unary(
-      OperatorType,
-      tensor_guid_t const &input,
-      float scalar,
-      std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t
-      element_unary(ElementUnaryAttrs const &,
-                    tensor_guid_t const &input,
-                    std::optional<std::string> const &name = std::nullopt);
 
 public:
   ComputationGraph computation_graph;

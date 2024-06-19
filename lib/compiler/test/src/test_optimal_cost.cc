@@ -16,7 +16,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   //                                        MachineSpecification const &) {
   //     return std::unordered_set<MachineView>{make_1d_machine_view(0, 1, 1)};
   //   };
-  //   rc::check([](ParallelComputationGraph const &g,
+  //   RC_SUBCASE([](ParallelComputationGraph const &g,
   //                MachineSpecification const &machine_spec) {
   //     OptimalCostCache cached_subgraph_costs;
   //     OptimalCostResult result = optimal_cost(g,
