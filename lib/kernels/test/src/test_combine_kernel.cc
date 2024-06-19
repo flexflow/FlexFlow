@@ -5,36 +5,40 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test combine kernel") {
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    ffStream_t stream = create_ff_stream();
+
     Allocator allocator = get_local_memory_allocator();
 
-    TensorShape input_shape = make_float_tensor_shape_w_legion_dims({100, 100});
+    TensorShape input_shape =
+        make_float_tensor_shape_from_legion_dims({100, 100});
 
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorR accessorR = read_only_accessor_from_write_accessor(
-          create_random_filled_accessor_w(input_shape, allocator));
-      GenericTensorAccessorW accessorW = allocator.allocate_tensor(input_shape);
+      GenericTensorAccessorR input_accessor =
+          read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(input_shape, allocator));
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(input_shape);
 
-      Kernels::Combine::forward_kernel(stream, accessorR, accessorW);
+      Kernels::Combine::forward_kernel(stream, input_accessor, output_accessor);
 
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(accessorW));
-      REQUIRE(contains_non_zero(host_output_data));
+              read_only_accessor_from_write_accessor(output_accessor));
+      CHECK(contains_non_zero(host_output_data));
 
       SUBCASE("backward_kernel") {
-        GenericTensorAccessorR accessorRGrad =
-            read_only_accessor_from_write_accessor(
-                allocator.allocate_tensor(input_shape));
-        GenericTensorAccessorW accessorWGrad =
+        GenericTensorAccessorW input_accessor_grad =
             allocator.allocate_tensor(input_shape);
 
-        Kernels::Combine::backward_kernel(stream, accessorRGrad, accessorWGrad);
+        Kernels::Combine::backward_kernel(
+            stream,
+            read_only_accessor_from_write_accessor(output_accessor),
+            input_accessor_grad);
 
         std::vector<float> host_input_grad =
             load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(accessorWGrad));
+                read_only_accessor_from_write_accessor(input_accessor_grad));
+        CHECK(contains_non_zero(host_input_grad));
       }
     }
 

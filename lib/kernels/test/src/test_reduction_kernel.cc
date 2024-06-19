@@ -5,17 +5,14 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Reduction Forward and Backward Kernel") {
-    std::size_t num_elements = 10;
-    std::size_t num_replicas = 10;
-    std::size_t total_elements = num_elements * num_replicas;
+    std::size_t num_replicas = 5;
 
-    TensorShape shape = make_float_tensor_shape_w_legion_dims({num_elements});
+    TensorShape shape = make_float_tensor_shape_from_legion_dims({10});
     TensorShape expanded_shape =
-        make_float_tensor_shape_w_legion_dims({total_elements});
+        make_float_tensor_shape_from_legion_dims({10, 10, 10, 10, 10});
 
+    ffStream_t stream = create_ff_stream();
     PerDeviceFFHandle handle = get_per_device_ff_handle();
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -44,6 +41,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::vector<float> host_grad_data =
             load_data_to_host_from_device<float>(
                 read_only_accessor_from_write_accessor(output_accessor));
+        CHECK(contains_non_zero(host_grad_data));
       }
     }
 

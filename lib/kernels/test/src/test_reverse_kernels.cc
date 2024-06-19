@@ -5,15 +5,13 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Reverse Forward and Backward Kernels") {
-    std::size_t num_elements = 100;
     std::size_t reverse_dim_size = 10;
     std::size_t in_blk_size = 10;
     std::size_t num_out_blks = 1;
 
-    TensorShape shape = make_float_tensor_shape_w_legion_dims({num_elements});
+    TensorShape shape = make_float_tensor_shape_from_legion_dims({100});
 
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    ffStream_t stream = create_ff_stream();
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -31,7 +29,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        num_out_blks,
                                        reverse_dim_size,
                                        in_blk_size,
-                                       num_elements);
+                                       input_accessor.shape.num_elements());
 
       SUBCASE("backward_kernel") {
         Kernels::Reverse::backward_kernel(stream,
@@ -40,11 +38,12 @@ TEST_SUITE(FF_TEST_SUITE) {
                                           num_out_blks,
                                           reverse_dim_size,
                                           in_blk_size,
-                                          num_elements);
+                                          input_accessor.shape.num_elements());
 
         std::vector<float> host_grad_input_data =
             load_data_to_host_from_device<float>(
                 read_only_accessor_from_write_accessor(grad_input_accessor));
+        CHECK(contains_non_zero(host_grad_input_data));
       }
     }
 

@@ -5,15 +5,11 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Flat Kernel") {
-    std::size_t num_elements = 100;
-
-    TensorShape input_shape =
-        make_float_tensor_shape_w_legion_dims({num_elements});
+    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
 
     Allocator allocator = get_local_memory_allocator();
 
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    ffStream_t stream = create_ff_stream();
 
     GenericTensorAccessorR input_accessor =
         read_only_accessor_from_write_accessor(
@@ -29,9 +25,10 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
 
-      for (std::size_t i = 0; i < num_elements; ++i) {
-        REQUIRE(2.0f == check_output_data[i]);
-      }
+      std::vector<float> expected_output_data(
+          input_accessor.shape.num_elements(), 2.0f);
+      CHECK(check_output_data == expected_output_data);
+
       SUBCASE("backward_kernel") {
         GenericTensorAccessorR data_accessor =
             read_only_accessor_from_write_accessor(
@@ -46,11 +43,9 @@ TEST_SUITE(FF_TEST_SUITE) {
             load_data_to_host_from_device<float>(
                 read_only_accessor_from_write_accessor(output_accessor));
 
-        bool correct_output = std::all_of(backward_output_data.begin(),
-                                          backward_output_data.end(),
-                                          [](float x) { return x == 3.0f; });
-
-        CHECK(correct_output);
+        std::vector<float> expected_output_data(
+            input_accessor.shape.num_elements(), 3.0f);
+        CHECK(backward_output_data == expected_output_data);
       }
     }
 

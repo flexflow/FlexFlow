@@ -20,20 +20,21 @@ void fill_tensor_accessor_w(GenericTensorAccessorW accessor, float val);
 
 void cleanup_test(cudaStream_t &stream, PerDeviceFFHandle &handle);
 
-TensorShape make_float_tensor_shape_w_legion_dims(FFOrdered<size_t> dims);
+TensorShape make_float_tensor_shape_from_legion_dims(FFOrdered<size_t> dims);
 
-TensorShape get_double_tensor_shape(FFOrdered<size_t> dims);
+TensorShape make_double_tensor_shape_from_legion_dims(FFOrdered<size_t> dims);
 
 void setPerDeviceFFHandle(PerDeviceFFHandle *handle);
 
 PerDeviceFFHandle get_per_device_ff_handle();
 
+ffStream_t create_ff_stream();
+
 template <typename T>
 std::vector<T> load_data_to_host_from_device(GenericTensorAccessorR accessor) {
   LegionTensorDims dims = accessor.shape.dims;
 
-  int volume =
-      std::accumulate(dims.begin(), dims.end(), 1, std::multiplies<int>());
+  int volume = product(dims);
 
   std::vector<T> local_data(volume);
   checkCUDA(cudaMemcpy(local_data.data(),

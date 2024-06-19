@@ -17,6 +17,7 @@
 #include "kernels/allocation.h"
 #include "kernels/batch_norm_kernels.h"
 #include "kernels/ff_handle.h"
+#include "utils/integer_conversions.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -133,9 +134,9 @@ BatchNormPerDeviceState init_kernel(cudaStream_t stream,
   float *saveVar = (float *)saveMean + output_c;
 
   assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-      runningMean, (size_t)output_c, 0.0f);
+      runningMean, size_t_from_int(output_c), 0.0f);
   assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-      runningVar, (size_t)output_c, 0.0f);
+      runningVar, size_t_from_int(output_c), 0.0f);
 
   if (relu) {
     checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));

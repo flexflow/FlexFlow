@@ -16,6 +16,7 @@
 #include "device.h"
 #include "kernels/allocation.h"
 #include "kernels/linear_kernels.h"
+#include "utils/integer_conversions.h"
 
 namespace FlexFlow {
 
@@ -178,7 +179,7 @@ void forward_kernel(cudaStream_t stream,
                                       m.outputTensor,
                                       output_ptr));
   } else if (m.activation == Activation::GELU) {
-    size_t elements = (size_t)out_dim * (size_t)batch_size;
+    size_t elements = size_t_from_int(out_dim) * size_t_from_int(batch_size);
     constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
     gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(

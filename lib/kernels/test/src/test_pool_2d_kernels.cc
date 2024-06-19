@@ -10,19 +10,15 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t pad_h = 0, pad_w = 0, kernel_h = 2, kernel_w = 2, stride_h = 2,
            stride_w = 2;
 
-    std::size_t num_elements = input_w * input_h * input_c * input_n;
-    std::size_t output_elements = output_w * output_h * output_c * output_n;
-
-    TensorShape input_shape =
-        make_float_tensor_shape_w_legion_dims({num_elements});
-    TensorShape output_shape =
-        make_float_tensor_shape_w_legion_dims({output_elements});
+    TensorShape input_shape = make_float_tensor_shape_from_legion_dims(
+        {input_w, input_h, input_c, input_n});
+    TensorShape output_shape = make_float_tensor_shape_from_legion_dims(
+        {output_w, output_h, output_c, output_n});
 
     PoolOp pool_type = PoolOp::MAX;
 
+    ffStream_t stream = create_ff_stream();
     PerDeviceFFHandle handle = get_per_device_ff_handle();
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -69,6 +65,11 @@ TEST_SUITE(FF_TEST_SUITE) {
                                          input_grad.ptr,
                                          output_data.ptr,
                                          output_grad.ptr);
+
+        std::vector<float> host_input_grad_data =
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(input_grad));
+        CHECK(contains_non_zero(host_input_grad_data));
       }
     }
 

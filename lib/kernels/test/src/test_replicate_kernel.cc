@@ -5,13 +5,11 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Replicate Kernel") {
-    std::size_t num_elements = 100;
     std::size_t num_replicas = 10;
 
-    TensorShape shape = make_float_tensor_shape_w_legion_dims({num_elements});
+    TensorShape shape = make_float_tensor_shape_from_legion_dims({100});
 
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    ffStream_t stream = create_ff_stream();
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -29,24 +27,24 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
 
-      for (std::size_t i = 0; i < num_elements; ++i) {
-        REQUIRE(1.0f == check_output_data[i]);
-      }
+      std::vector<float> expected_output_data(
+          input_accessor.shape.num_elements(), 1.0f);
+      CHECK(check_output_data == expected_output_data);
 
       SUBCASE("backward_kernel") {
-        GenericTensorAccessorR replicated_accessor =
-            read_only_accessor_from_write_accessor(
-                create_filled_accessor_w(shape, allocator, num_replicas));
-        GenericTensorAccessorW aggregated_accessor =
-            create_filled_accessor_w(shape, allocator, 0.0f);
+        GenericTensorAccessorW input_grad_accessor =
+            create_filled_accessor_w(shape, allocator, 1.0f);
 
         Kernels::Replicate::backward_kernel(
-            stream, aggregated_accessor, replicated_accessor, num_replicas);
+            stream,
+            input_grad_accessor,
+            read_only_accessor_from_write_accessor(output_accessor),
+            num_replicas);
 
         std::vector<float> check_aggregated_data =
             load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(aggregated_accessor));
-        REQUIRE(contains_non_zero(check_aggregated_data));
+                read_only_accessor_from_write_accessor(input_grad_accessor));
+        CHECK(contains_non_zero(check_aggregated_data));
       }
     }
 

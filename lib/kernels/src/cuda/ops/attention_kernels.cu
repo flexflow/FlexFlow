@@ -42,11 +42,9 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
   ffSeqDataDescriptor_t vDesc;
   ffSeqDataDescriptor_t oDesc;
   void *reserveSpace;
-  // void *dropoutStates; // NOT USED
   int *devQoSeqArray;
   int *devKvSeqArray;
   size_t reserveSpaceSize;
-  // size_t dropoutStateSize; // NOT USED
   size_t weightSize;
 
   checkCUDA(get_legion_stream(&stream));

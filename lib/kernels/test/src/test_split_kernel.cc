@@ -7,19 +7,16 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Split Forward and Backward Kernel") {
-    size_t num_elements = 100;
     size_t num_outputs = 2;
     coord_t out_blk_sizes[] = {50, 50};
     coord_t in_blk_size = 100;
     coord_t num_blks = 1;
 
-    cudaStream_t stream;
-    cudaStreamCreate(&stream);
+    ffStream_t stream = create_ff_stream();
 
     Allocator allocator = get_local_memory_allocator();
 
-    TensorShape input_shape =
-        make_float_tensor_shape_w_legion_dims({num_elements});
+    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
     GenericTensorAccessorW input_accessor =
         create_random_filled_accessor_w(input_shape, allocator);
     std::vector<float> host_input_data = load_data_to_host_from_device<float>(
@@ -57,9 +54,11 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("backward_kernel") {
-        float *grad_input_data = static_cast<float *>(
-            allocator.allocate(num_elements * sizeof(float)));
-        cudaMemset(grad_input_data, 0, num_elements * sizeof(float));
+        float *grad_input_data = static_cast<float *>(allocator.allocate(
+            input_accessor.shape.num_elements() * sizeof(float)));
+        cudaMemset(grad_input_data,
+                   0,
+                   input_accessor.shape.num_elements() * sizeof(float));
 
         Kernels::Split::backward_kernel(
             stream,
@@ -70,10 +69,11 @@ TEST_SUITE(FF_TEST_SUITE) {
             num_blks,
             num_outputs);
 
-        std::vector<float> host_grad_input_data(num_elements, 0);
+        std::vector<float> host_grad_input_data(
+            input_accessor.shape.num_elements(), 0);
         cudaMemcpy(host_grad_input_data.data(),
                    grad_input_data,
-                   num_elements * sizeof(float),
+                   input_accessor.shape.num_elements() * sizeof(float),
                    cudaMemcpyDeviceToHost);
       }
     }

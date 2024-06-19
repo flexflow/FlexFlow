@@ -14,18 +14,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t b_seq_length_dim = -1;
     size_t seq_length = -1;
 
+    ffStream_t stream = create_ff_stream();
     PerDeviceFFHandle handle = get_per_device_ff_handle();
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
     TensorShape input_shape_a =
-        make_float_tensor_shape_w_legion_dims({m, k, batch});
+        make_float_tensor_shape_from_legion_dims({m, k, batch});
     TensorShape input_shape_b =
-        make_float_tensor_shape_w_legion_dims({k, n, batch});
+        make_float_tensor_shape_from_legion_dims({k, n, batch});
     TensorShape output_shape =
-        make_float_tensor_shape_w_legion_dims({m, n, batch});
+        make_float_tensor_shape_from_legion_dims({m, n, batch});
 
     GenericTensorAccessorW accessor_a =
         create_random_filled_accessor_w(input_shape_a, allocator);
@@ -69,6 +68,18 @@ TEST_SUITE(FF_TEST_SUITE) {
                                             n,
                                             k,
                                             batch);
+      std::vector<float> host_a_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(a_grad_accessor));
+      std::vector<float> host_b_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(b_grad_accessor));
+      std::vector<float> host_o_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(o_grad_accessor));
+      CHECK(contains_non_zero(host_a_grad_data));
+      CHECK(contains_non_zero(host_b_grad_data));
+      CHECK(contains_non_zero(host_o_grad_data));
     }
 
     cleanup_test(stream, handle);

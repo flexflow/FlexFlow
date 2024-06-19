@@ -5,12 +5,9 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Reshape Forward and Backward") {
-    std::size_t num_elements = 100;
+    TensorShape shape = make_float_tensor_shape_from_legion_dims({100});
 
-    TensorShape shape = make_float_tensor_shape_w_legion_dims({num_elements});
-
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
+    ffStream_t stream = create_ff_stream();
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -30,28 +27,27 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
 
-      for (std::size_t i = 0; i < num_elements; ++i) {
-        REQUIRE(1.0f == check_output_data[i]);
-      }
+      std::vector<float> expected_output_data(
+          input_accessor.shape.num_elements(), 1.0f);
+      CHECK(check_output_data == expected_output_data);
 
       SUBCASE("backward_kernel") {
-        GenericTensorAccessorR grad_accessor =
-            read_only_accessor_from_write_accessor(
-                create_filled_accessor_w(shape, allocator, 1.0f));
-
         ReshapePerDeviceState state =
             Kernels::Reshape::init_kernel(DataType::FLOAT);
 
         Kernels::Reshape::backward_kernel(
-            stream, state, output_accessor, grad_accessor);
+            stream,
+            state,
+            output_accessor,
+            read_only_accessor_from_write_accessor(output_accessor));
 
         std::vector<float> host_grad_input_data =
             load_data_to_host_from_device<float>(
                 read_only_accessor_from_write_accessor(output_accessor));
 
-        for (std::size_t i = 0; i < num_elements; ++i) {
-          CHECK(host_grad_input_data[i] == 2.0f);
-        }
+        std::vector<float> expected_grad_input_data(
+            input_accessor.shape.num_elements(), 2.0f);
+        CHECK(host_grad_input_data == expected_grad_input_data);
       }
     }
 

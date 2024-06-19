@@ -12,10 +12,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t qProjSize = 64, kProjSize = 64, vProjSize = 64, oProjSize = 64;
     size_t qoSeqLength = 20, kvSeqLength = 20;
 
+    ffStream_t stream = create_ff_stream();
     PerDeviceFFHandle handle = get_per_device_ff_handle();
-
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -35,16 +33,16 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                  kvSeqLength,
                                                  false);
 
-    TensorShape query_shape = make_float_tensor_shape_w_legion_dims(
+    TensorShape query_shape = make_float_tensor_shape_from_legion_dims(
         {qoSeqLength, num_samples, qSize});
-    TensorShape key_shape = make_float_tensor_shape_w_legion_dims(
+    TensorShape key_shape = make_float_tensor_shape_from_legion_dims(
         {kvSeqLength, num_samples, kSize});
-    TensorShape value_shape = make_float_tensor_shape_w_legion_dims(
+    TensorShape value_shape = make_float_tensor_shape_from_legion_dims(
         {kvSeqLength, num_samples, vSize});
-    TensorShape output_shape = make_float_tensor_shape_w_legion_dims(
+    TensorShape output_shape = make_float_tensor_shape_from_legion_dims(
         {qoSeqLength, num_samples, oProjSize});
     TensorShape weight_shape =
-        make_float_tensor_shape_w_legion_dims({state.weightSize});
+        make_float_tensor_shape_from_legion_dims({state.weightSize});
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW query_accessor =
@@ -80,8 +78,6 @@ TEST_SUITE(FF_TEST_SUITE) {
             create_random_filled_accessor_w(value_shape, allocator);
         GenericTensorAccessorW weight_grad_accessor =
             create_random_filled_accessor_w(weight_shape, allocator);
-        GenericTensorAccessorW output_grad_accessor =
-            create_random_filled_accessor_w(output_shape, allocator);
 
         Kernels::MultiHeadAttention::backward_kernel(
             stream,
@@ -94,12 +90,21 @@ TEST_SUITE(FF_TEST_SUITE) {
             value_grad_accessor.get_float_ptr(),
             weight_accessor.get_float_ptr(),
             weight_grad_accessor.get_float_ptr(),
-            output_grad_accessor.get_float_ptr());
+            output_accessor.get_float_ptr());
 
-        std::vector<float> output_grad = load_data_to_host_from_device<float>(
-            read_only_accessor_from_write_accessor(output_grad_accessor));
+        std::vector<float> query_grad = load_data_to_host_from_device<float>(
+            read_only_accessor_from_write_accessor(query_grad_accessor));
+        std::vector<float> key_grad = load_data_to_host_from_device<float>(
+            read_only_accessor_from_write_accessor(key_grad_accessor));
+        std::vector<float> value_grad = load_data_to_host_from_device<float>(
+            read_only_accessor_from_write_accessor(value_grad_accessor));
+        std::vector<float> weight_grad = load_data_to_host_from_device<float>(
+            read_only_accessor_from_write_accessor(weight_grad_accessor));
 
-        REQUIRE(contains_non_zero(output_grad));
+        CHECK(contains_non_zero(query_grad));
+        CHECK(contains_non_zero(key_grad));
+        CHECK(contains_non_zero(value_grad));
+        CHECK(contains_non_zero(weight_grad));
       }
     }
 

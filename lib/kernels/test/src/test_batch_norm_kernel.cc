@@ -7,12 +7,9 @@ using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test BatchNorm Kernel") {
     size_t output_n = 1, output_c = 10, output_h = 10, output_w = 10;
-    size_t num_elements = output_n * output_c * output_h * output_w;
 
+    ffStream_t stream = create_ff_stream();
     PerDeviceFFHandle handle = get_per_device_ff_handle();
-
-    cudaStream_t stream;
-    checkCUDA(cudaStreamCreate(&stream));
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -26,12 +23,14 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                                     output_w,
                                                                     true);
 
-    TensorShape input_shape =
-        make_float_tensor_shape_w_legion_dims({num_elements});
-    TensorShape output_shape =
-        make_float_tensor_shape_w_legion_dims({num_elements});
-    TensorShape scale_shape = make_float_tensor_shape_w_legion_dims({output_c});
-    TensorShape bias_shape = make_float_tensor_shape_w_legion_dims({output_c});
+    TensorShape input_shape = make_float_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w});
+    TensorShape output_shape = make_float_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w});
+    TensorShape scale_shape = make_float_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w});
+    TensorShape bias_shape = make_float_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w});
 
     GenericTensorAccessorW input_accessor =
         create_random_filled_accessor_w(input_shape, allocator);
@@ -53,7 +52,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
-      REQUIRE(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(host_output_data));
 
       SUBCASE("backward_kernel") {
         GenericTensorAccessorW grad_output_accessor =
@@ -69,12 +68,21 @@ TEST_SUITE(FF_TEST_SUITE) {
             scale_accessor.get_float_ptr(),
             scale_accessor.get_float_ptr(),
             bias_accessor.get_float_ptr(),
-            num_elements);
+            input_accessor.shape.num_elements());
 
-        std::vector<float> host_grad_input =
+        std::vector<float> host_input_grad_data =
             load_data_to_host_from_device<float>(
                 read_only_accessor_from_write_accessor(input_accessor));
-        REQUIRE(contains_non_zero(host_grad_input));
+        std::vector<float> host_scale_grad_data =
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(scale_accessor));
+        std::vector<float> host_bias_grad_data =
+            load_data_to_host_from_device<float>(
+                read_only_accessor_from_write_accessor(bias_accessor));
+
+        CHECK(contains_non_zero(host_input_grad_data));
+        CHECK(contains_non_zero(host_scale_grad_data));
+        CHECK(contains_non_zero(host_bias_grad_data));
       }
     }
 
