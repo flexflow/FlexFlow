@@ -1,5 +1,5 @@
 #include "pcg/file_format/v1/graphs.h"
-#include "pcg/dataflow_graph.h"
+#include "pcg/dataflow_graph/dataflow_graph.h"
 #include "pcg/file_format/v1/graphs/v1_multidigraph.h"
 #include "pcg/file_format/v1/graphs/v1_operator_graph.dtg.h"
 #include "utils/graph/algorithms.h"
@@ -30,10 +30,10 @@ static V1MultiDiGraph to_v1(MultiDiGraphView const &g,
                             bidict<NodePort, size_t> const &node_ports) {
   std::unordered_set<V1GraphEdge> edges;
   for (MultiDiEdge const &e : get_edges(g)) {
-    edges.insert({nodes.at_l(e.src),
-                  node_ports.at_l(e.src_idx),
-                  nodes.at_l(e.dst),
-                  node_ports.at_l(e.dst_idx)});
+    edges.insert(V1GraphEdge{nodes.at_l(e.src),
+                             node_ports.at_l(e.src_idx),
+                             nodes.at_l(e.dst),
+                             node_ports.at_l(e.dst_idx)});
   }
 
   return V1MultiDiGraph{
@@ -107,7 +107,8 @@ static V1JsonableGraph<NodeLabel, OutputLabel>
   std::unordered_map<size_t, OutputLabel> output_labels = map_values(
       outputs_bidict, [&](MultiDiOutput const &o) { return g.at(o); });
 
-  return {node_labels, outputs, output_labels, unlabelled};
+  return V1JsonableGraph<NodeLabel, OutputLabel>{
+      node_labels, outputs, output_labels, unlabelled};
 }
 
 template <typename NodeLabel, typename OutputLabel>
@@ -129,7 +130,8 @@ static V1JsonableGraph<NodeLabel, OutputLabel>
   std::unordered_map<size_t, OutputLabel> output_labels = map_values(
       outputs_bidict, [&](MultiDiOutput const &o) { return g.at(o); });
 
-  return {node_labels, outputs, output_labels, unlabelled};
+  return V1JsonableGraph<NodeLabel, OutputLabel>{
+      node_labels, outputs, output_labels, unlabelled};
 }
 
 V1ComputationGraph to_v1(ComputationGraph const &g) {

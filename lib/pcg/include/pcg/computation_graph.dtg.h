@@ -3,21 +3,21 @@
 // lib/pcg/include/pcg/computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "8f1f0e13d75065944f7fe307e12fe280"
+  "generated_from": "bf8996bea2e022265a372d692c2db8ed"
 }
 */
 
 #ifndef _FLEXFLOW_LIB_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_DTG_H
 #define _FLEXFLOW_LIB_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_DTG_H
 
-#include "pcg/dataflow_graph.h"
+#include "pcg/dataflow_graph/dataflow_graph.h"
 #include "pcg/layer_attrs.dtg.h"
 #include "pcg/tensor_attrs.dtg.h"
 
 namespace FlexFlow {
 struct ComputationGraph {
   ComputationGraph() = delete;
-  ComputationGraph(
+  explicit ComputationGraph(
       ::FlexFlow::DataflowGraph<::FlexFlow::LayerAttrs,
                                 ::FlexFlow::TensorAttrs> const &raw_graph);
 

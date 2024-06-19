@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct ShardParallelDim {
   ShardParallelDim() = delete;
-  ShardParallelDim(size_t const &size, int const &degree);
+  explicit ShardParallelDim(size_t const &size, int const &degree);
 
   bool operator==(ShardParallelDim const &) const;
   bool operator!=(ShardParallelDim const &) const;
@@ -35,23 +35,23 @@ struct ShardParallelDim {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ShardParallelDim> {
-  size_t operator()(FlexFlow::ShardParallelDim const &) const;
+struct hash<::FlexFlow::ShardParallelDim> {
+  size_t operator()(::FlexFlow::ShardParallelDim const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ShardParallelDim> {
-  static FlexFlow::ShardParallelDim from_json(json const &);
-  static void to_json(json &, FlexFlow::ShardParallelDim const &);
+struct adl_serializer<::FlexFlow::ShardParallelDim> {
+  static ::FlexFlow::ShardParallelDim from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ShardParallelDim const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ShardParallelDim> {
-  static Gen<FlexFlow::ShardParallelDim> arbitrary();
+struct Arbitrary<::FlexFlow::ShardParallelDim> {
+  static Gen<::FlexFlow::ShardParallelDim> arbitrary();
 };
 } // namespace rc
 

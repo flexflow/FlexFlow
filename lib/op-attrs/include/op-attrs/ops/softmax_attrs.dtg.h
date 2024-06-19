@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct SoftmaxAttrs {
   SoftmaxAttrs() = delete;
-  SoftmaxAttrs(::FlexFlow::ff_dim_t const &dim);
+  explicit SoftmaxAttrs(::FlexFlow::ff_dim_t const &dim);
 
   bool operator==(SoftmaxAttrs const &) const;
   bool operator!=(SoftmaxAttrs const &) const;
@@ -36,23 +36,23 @@ struct SoftmaxAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::SoftmaxAttrs> {
-  size_t operator()(FlexFlow::SoftmaxAttrs const &) const;
+struct hash<::FlexFlow::SoftmaxAttrs> {
+  size_t operator()(::FlexFlow::SoftmaxAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::SoftmaxAttrs> {
-  static FlexFlow::SoftmaxAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::SoftmaxAttrs const &);
+struct adl_serializer<::FlexFlow::SoftmaxAttrs> {
+  static ::FlexFlow::SoftmaxAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::SoftmaxAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::SoftmaxAttrs> {
-  static Gen<FlexFlow::SoftmaxAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::SoftmaxAttrs> {
+  static Gen<::FlexFlow::SoftmaxAttrs> arbitrary();
 };
 } // namespace rc
 

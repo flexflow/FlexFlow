@@ -33,27 +33,27 @@ bool NoopAttrs::operator>=(NoopAttrs const &other) const {
 } // namespace FlexFlow
 
 namespace std {
-size_t
-    hash<FlexFlow::NoopAttrs>::operator()(FlexFlow::NoopAttrs const &x) const {
+size_t hash<FlexFlow::NoopAttrs>::operator()(
+    ::FlexFlow::NoopAttrs const &x) const {
   size_t result = 0;
   return result;
 }
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::NoopAttrs
-    adl_serializer<FlexFlow::NoopAttrs>::from_json(json const &j) {
-  return {};
+::FlexFlow::NoopAttrs
+    adl_serializer<::FlexFlow::NoopAttrs>::from_json(json const &j) {
+  return ::FlexFlow::NoopAttrs{};
 }
-void adl_serializer<FlexFlow::NoopAttrs>::to_json(
-    json &j, FlexFlow::NoopAttrs const &v) {
+void adl_serializer<::FlexFlow::NoopAttrs>::to_json(
+    json &j, ::FlexFlow::NoopAttrs const &v) {
   j["__type"] = "NoopAttrs";
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::NoopAttrs> Arbitrary<FlexFlow::NoopAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::NoopAttrs>();
+Gen<::FlexFlow::NoopAttrs> Arbitrary<::FlexFlow::NoopAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::NoopAttrs>();
 }
 } // namespace rc
 

@@ -20,8 +20,9 @@
 namespace FlexFlow {
 struct OutputOperatorAttrAccess {
   OutputOperatorAttrAccess() = delete;
-  OutputOperatorAttrAccess(::FlexFlow::Node const &node,
-                           ::FlexFlow::OperatorAttributeExpr const &attr_expr);
+  explicit OutputOperatorAttrAccess(
+      ::FlexFlow::Node const &node,
+      ::FlexFlow::OperatorAttributeExpr const &attr_expr);
 
   bool operator==(OutputOperatorAttrAccess const &) const;
   bool operator!=(OutputOperatorAttrAccess const &) const;
@@ -36,8 +37,8 @@ struct OutputOperatorAttrAccess {
 
 namespace std {
 template <>
-struct hash<FlexFlow::OutputOperatorAttrAccess> {
-  size_t operator()(FlexFlow::OutputOperatorAttrAccess const &) const;
+struct hash<::FlexFlow::OutputOperatorAttrAccess> {
+  size_t operator()(::FlexFlow::OutputOperatorAttrAccess const &) const;
 };
 } // namespace std
 

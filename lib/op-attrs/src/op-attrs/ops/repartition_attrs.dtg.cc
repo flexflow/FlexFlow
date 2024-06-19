@@ -46,7 +46,7 @@ bool RepartitionAttrs::operator>=(RepartitionAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::RepartitionAttrs>::operator()(
-    FlexFlow::RepartitionAttrs const &x) const {
+    ::FlexFlow::RepartitionAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ff_dim_t>{}(x.repartition_dim) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -57,13 +57,14 @@ size_t hash<FlexFlow::RepartitionAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::RepartitionAttrs
-    adl_serializer<FlexFlow::RepartitionAttrs>::from_json(json const &j) {
-  return {j.at("repartition_dim").template get<::FlexFlow::ff_dim_t>(),
-          j.at("repartition_degree").template get<int>()};
+::FlexFlow::RepartitionAttrs
+    adl_serializer<::FlexFlow::RepartitionAttrs>::from_json(json const &j) {
+  return ::FlexFlow::RepartitionAttrs{
+      j.at("repartition_dim").template get<::FlexFlow::ff_dim_t>(),
+      j.at("repartition_degree").template get<int>()};
 }
-void adl_serializer<FlexFlow::RepartitionAttrs>::to_json(
-    json &j, FlexFlow::RepartitionAttrs const &v) {
+void adl_serializer<::FlexFlow::RepartitionAttrs>::to_json(
+    json &j, ::FlexFlow::RepartitionAttrs const &v) {
   j["__type"] = "RepartitionAttrs";
   j["repartition_dim"] = v.repartition_dim;
   j["repartition_degree"] = v.repartition_degree;
@@ -71,9 +72,9 @@ void adl_serializer<FlexFlow::RepartitionAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::RepartitionAttrs>
-    Arbitrary<FlexFlow::RepartitionAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::RepartitionAttrs>(
+Gen<::FlexFlow::RepartitionAttrs>
+    Arbitrary<::FlexFlow::RepartitionAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::RepartitionAttrs>(
       gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
 }
 } // namespace rc

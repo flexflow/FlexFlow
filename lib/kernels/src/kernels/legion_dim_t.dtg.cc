@@ -35,7 +35,7 @@ bool legion_dim_t::operator>=(legion_dim_t const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::legion_dim_t>::operator()(
-    FlexFlow::legion_dim_t const &x) const {
+    ::FlexFlow::legion_dim_t const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.value) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -44,12 +44,12 @@ size_t hash<FlexFlow::legion_dim_t>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::legion_dim_t
-    adl_serializer<FlexFlow::legion_dim_t>::from_json(json const &j) {
-  return {j.at("value").template get<int>()};
+::FlexFlow::legion_dim_t
+    adl_serializer<::FlexFlow::legion_dim_t>::from_json(json const &j) {
+  return ::FlexFlow::legion_dim_t{j.at("value").template get<int>()};
 }
-void adl_serializer<FlexFlow::legion_dim_t>::to_json(
-    json &j, FlexFlow::legion_dim_t const &v) {
+void adl_serializer<::FlexFlow::legion_dim_t>::to_json(
+    json &j, ::FlexFlow::legion_dim_t const &v) {
   j["__type"] = "legion_dim_t";
   j["value"] = v.value;
 }

@@ -36,7 +36,7 @@ bool ReplicateAttrs::operator>=(ReplicateAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ReplicateAttrs>::operator()(
-    FlexFlow::ReplicateAttrs const &x) const {
+    ::FlexFlow::ReplicateAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.replicate_degree) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -45,20 +45,22 @@ size_t hash<FlexFlow::ReplicateAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ReplicateAttrs
-    adl_serializer<FlexFlow::ReplicateAttrs>::from_json(json const &j) {
-  return {j.at("replicate_degree").template get<int>()};
+::FlexFlow::ReplicateAttrs
+    adl_serializer<::FlexFlow::ReplicateAttrs>::from_json(json const &j) {
+  return ::FlexFlow::ReplicateAttrs{
+      j.at("replicate_degree").template get<int>()};
 }
-void adl_serializer<FlexFlow::ReplicateAttrs>::to_json(
-    json &j, FlexFlow::ReplicateAttrs const &v) {
+void adl_serializer<::FlexFlow::ReplicateAttrs>::to_json(
+    json &j, ::FlexFlow::ReplicateAttrs const &v) {
   j["__type"] = "ReplicateAttrs";
   j["replicate_degree"] = v.replicate_degree;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ReplicateAttrs> Arbitrary<FlexFlow::ReplicateAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::ReplicateAttrs>(gen::arbitrary<int>());
+Gen<::FlexFlow::ReplicateAttrs>
+    Arbitrary<::FlexFlow::ReplicateAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ReplicateAttrs>(gen::arbitrary<int>());
 }
 } // namespace rc
 

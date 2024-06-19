@@ -20,7 +20,8 @@
 namespace FlexFlow {
 struct BatchMatmulAttrs {
   BatchMatmulAttrs() = delete;
-  BatchMatmulAttrs(int const &a_seq_length_dim, int const &b_seq_length_dim);
+  explicit BatchMatmulAttrs(int const &a_seq_length_dim,
+                            int const &b_seq_length_dim);
 
   bool operator==(BatchMatmulAttrs const &) const;
   bool operator!=(BatchMatmulAttrs const &) const;
@@ -35,23 +36,23 @@ struct BatchMatmulAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::BatchMatmulAttrs> {
-  size_t operator()(FlexFlow::BatchMatmulAttrs const &) const;
+struct hash<::FlexFlow::BatchMatmulAttrs> {
+  size_t operator()(::FlexFlow::BatchMatmulAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::BatchMatmulAttrs> {
-  static FlexFlow::BatchMatmulAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::BatchMatmulAttrs const &);
+struct adl_serializer<::FlexFlow::BatchMatmulAttrs> {
+  static ::FlexFlow::BatchMatmulAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::BatchMatmulAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::BatchMatmulAttrs> {
-  static Gen<FlexFlow::BatchMatmulAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::BatchMatmulAttrs> {
+  static Gen<::FlexFlow::BatchMatmulAttrs> arbitrary();
 };
 } // namespace rc
 

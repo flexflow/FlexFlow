@@ -94,7 +94,7 @@ bool LinearAttrs::operator>=(LinearAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::LinearAttrs>::operator()(
-    FlexFlow::LinearAttrs const &x) const {
+    ::FlexFlow::LinearAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.out_channels) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -112,9 +112,9 @@ size_t hash<FlexFlow::LinearAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::LinearAttrs
-    adl_serializer<FlexFlow::LinearAttrs>::from_json(json const &j) {
-  return {
+::FlexFlow::LinearAttrs
+    adl_serializer<::FlexFlow::LinearAttrs>::from_json(json const &j) {
+  return ::FlexFlow::LinearAttrs{
       j.at("out_channels").template get<int>(),
       j.at("use_bias").template get<bool>(),
       j.at("data_type").template get<::FlexFlow::DataType>(),
@@ -122,8 +122,8 @@ FlexFlow::LinearAttrs
       j.at("regularizer")
           .template get<std::optional<::FlexFlow::RegularizerAttrs>>()};
 }
-void adl_serializer<FlexFlow::LinearAttrs>::to_json(
-    json &j, FlexFlow::LinearAttrs const &v) {
+void adl_serializer<::FlexFlow::LinearAttrs>::to_json(
+    json &j, ::FlexFlow::LinearAttrs const &v) {
   j["__type"] = "LinearAttrs";
   j["out_channels"] = v.out_channels;
   j["use_bias"] = v.use_bias;
@@ -134,8 +134,8 @@ void adl_serializer<FlexFlow::LinearAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::LinearAttrs> Arbitrary<FlexFlow::LinearAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::LinearAttrs>(
+Gen<::FlexFlow::LinearAttrs> Arbitrary<::FlexFlow::LinearAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::LinearAttrs>(
       gen::arbitrary<int>(),
       gen::arbitrary<bool>(),
       gen::arbitrary<::FlexFlow::DataType>(),

@@ -49,7 +49,7 @@ bool ReduceAttrs::operator>=(ReduceAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ReduceAttrs>::operator()(
-    FlexFlow::ReduceAttrs const &x) const {
+    ::FlexFlow::ReduceAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<
@@ -65,17 +65,17 @@ size_t hash<FlexFlow::ReduceAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ReduceAttrs
-    adl_serializer<FlexFlow::ReduceAttrs>::from_json(json const &j) {
-  return {
+::FlexFlow::ReduceAttrs
+    adl_serializer<::FlexFlow::ReduceAttrs>::from_json(json const &j) {
+  return ::FlexFlow::ReduceAttrs{
       j.at("axes")
           .template get<
               ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>(),
       j.at("op_type").template get<::FlexFlow::OperatorType>(),
       j.at("keepdims").template get<bool>()};
 }
-void adl_serializer<FlexFlow::ReduceAttrs>::to_json(
-    json &j, FlexFlow::ReduceAttrs const &v) {
+void adl_serializer<::FlexFlow::ReduceAttrs>::to_json(
+    json &j, ::FlexFlow::ReduceAttrs const &v) {
   j["__type"] = "ReduceAttrs";
   j["axes"] = v.axes;
   j["op_type"] = v.op_type;
@@ -84,8 +84,8 @@ void adl_serializer<FlexFlow::ReduceAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ReduceAttrs> Arbitrary<FlexFlow::ReduceAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::ReduceAttrs>(
+Gen<::FlexFlow::ReduceAttrs> Arbitrary<::FlexFlow::ReduceAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ReduceAttrs>(
       gen::arbitrary<
           ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>(),
       gen::arbitrary<::FlexFlow::OperatorType>(),

@@ -82,7 +82,7 @@ bool TensorAttrs::operator>=(TensorAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::TensorAttrs>::operator()(
-    FlexFlow::TensorAttrs const &x) const {
+    ::FlexFlow::TensorAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::TensorShape>{}(x.shape) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -98,17 +98,17 @@ size_t hash<FlexFlow::TensorAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::TensorAttrs
-    adl_serializer<FlexFlow::TensorAttrs>::from_json(json const &j) {
-  return {
+::FlexFlow::TensorAttrs
+    adl_serializer<::FlexFlow::TensorAttrs>::from_json(json const &j) {
+  return ::FlexFlow::TensorAttrs{
       j.at("shape").template get<::FlexFlow::TensorShape>(),
       j.at("initializer")
           .template get<std::optional<::FlexFlow::InitializerAttrs>>(),
       j.at("sync_type").template get<std::optional<::FlexFlow::ParamSync>>(),
       j.at("create_gradients").template get<::FlexFlow::CreateGrad>()};
 }
-void adl_serializer<FlexFlow::TensorAttrs>::to_json(
-    json &j, FlexFlow::TensorAttrs const &v) {
+void adl_serializer<::FlexFlow::TensorAttrs>::to_json(
+    json &j, ::FlexFlow::TensorAttrs const &v) {
   j["__type"] = "TensorAttrs";
   j["shape"] = v.shape;
   j["initializer"] = v.initializer;

@@ -35,7 +35,7 @@ bool num_points_t::operator>=(num_points_t const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::num_points_t>::operator()(
-    FlexFlow::num_points_t const &x) const {
+    ::FlexFlow::num_points_t const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.unwrapped) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -44,20 +44,20 @@ size_t hash<FlexFlow::num_points_t>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::num_points_t
-    adl_serializer<FlexFlow::num_points_t>::from_json(json const &j) {
-  return {j.at("unwrapped").template get<int>()};
+::FlexFlow::num_points_t
+    adl_serializer<::FlexFlow::num_points_t>::from_json(json const &j) {
+  return ::FlexFlow::num_points_t{j.at("unwrapped").template get<int>()};
 }
-void adl_serializer<FlexFlow::num_points_t>::to_json(
-    json &j, FlexFlow::num_points_t const &v) {
+void adl_serializer<::FlexFlow::num_points_t>::to_json(
+    json &j, ::FlexFlow::num_points_t const &v) {
   j["__type"] = "num_points_t";
   j["unwrapped"] = v.unwrapped;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::num_points_t> Arbitrary<FlexFlow::num_points_t>::arbitrary() {
-  return gen::construct<FlexFlow::num_points_t>(gen::arbitrary<int>());
+Gen<::FlexFlow::num_points_t> Arbitrary<::FlexFlow::num_points_t>::arbitrary() {
+  return gen::construct<::FlexFlow::num_points_t>(gen::arbitrary<int>());
 }
 } // namespace rc
 

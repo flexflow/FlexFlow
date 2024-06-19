@@ -36,7 +36,7 @@ bool InputPatternEdge::operator>=(InputPatternEdge const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::InputPatternEdge>::operator()(
-    FlexFlow::InputPatternEdge const &x) const {
+    ::FlexFlow::InputPatternEdge const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::InputMultiDiEdge>{}(x.raw_edge) + 0x9e3779b9 +
             (result << 6) + (result >> 2);

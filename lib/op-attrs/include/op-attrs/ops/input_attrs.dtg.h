@@ -30,23 +30,23 @@ struct InputAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::InputAttrs> {
-  size_t operator()(FlexFlow::InputAttrs const &) const;
+struct hash<::FlexFlow::InputAttrs> {
+  size_t operator()(::FlexFlow::InputAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::InputAttrs> {
-  static FlexFlow::InputAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::InputAttrs const &);
+struct adl_serializer<::FlexFlow::InputAttrs> {
+  static ::FlexFlow::InputAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::InputAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::InputAttrs> {
-  static Gen<FlexFlow::InputAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::InputAttrs> {
+  static Gen<::FlexFlow::InputAttrs> arbitrary();
 };
 } // namespace rc
 

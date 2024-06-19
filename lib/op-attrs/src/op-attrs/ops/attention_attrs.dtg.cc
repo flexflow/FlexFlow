@@ -135,7 +135,7 @@ bool MultiHeadAttentionAttrs::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::MultiHeadAttentionAttrs>::operator()(
-    FlexFlow::MultiHeadAttentionAttrs const &x) const {
+    ::FlexFlow::MultiHeadAttentionAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.embed_dim) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -158,20 +158,21 @@ size_t hash<FlexFlow::MultiHeadAttentionAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::MultiHeadAttentionAttrs
-    adl_serializer<FlexFlow::MultiHeadAttentionAttrs>::from_json(
+::FlexFlow::MultiHeadAttentionAttrs
+    adl_serializer<::FlexFlow::MultiHeadAttentionAttrs>::from_json(
         json const &j) {
-  return {j.at("embed_dim").template get<int>(),
-          j.at("num_heads").template get<int>(),
-          j.at("kdim").template get<int>(),
-          j.at("vdim").template get<int>(),
-          j.at("dropout").template get<float>(),
-          j.at("bias").template get<bool>(),
-          j.at("add_bias_kv").template get<bool>(),
-          j.at("add_zero_attn").template get<bool>()};
+  return ::FlexFlow::MultiHeadAttentionAttrs{
+      j.at("embed_dim").template get<int>(),
+      j.at("num_heads").template get<int>(),
+      j.at("kdim").template get<int>(),
+      j.at("vdim").template get<int>(),
+      j.at("dropout").template get<float>(),
+      j.at("bias").template get<bool>(),
+      j.at("add_bias_kv").template get<bool>(),
+      j.at("add_zero_attn").template get<bool>()};
 }
-void adl_serializer<FlexFlow::MultiHeadAttentionAttrs>::to_json(
-    json &j, FlexFlow::MultiHeadAttentionAttrs const &v) {
+void adl_serializer<::FlexFlow::MultiHeadAttentionAttrs>::to_json(
+    json &j, ::FlexFlow::MultiHeadAttentionAttrs const &v) {
   j["__type"] = "MultiHeadAttentionAttrs";
   j["embed_dim"] = v.embed_dim;
   j["num_heads"] = v.num_heads;
@@ -185,9 +186,9 @@ void adl_serializer<FlexFlow::MultiHeadAttentionAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::MultiHeadAttentionAttrs>
-    Arbitrary<FlexFlow::MultiHeadAttentionAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::MultiHeadAttentionAttrs>(
+Gen<::FlexFlow::MultiHeadAttentionAttrs>
+    Arbitrary<::FlexFlow::MultiHeadAttentionAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::MultiHeadAttentionAttrs>(
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),

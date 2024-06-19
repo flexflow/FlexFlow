@@ -20,14 +20,14 @@
 namespace FlexFlow {
 struct MultiHeadAttentionAttrs {
   MultiHeadAttentionAttrs() = delete;
-  MultiHeadAttentionAttrs(int const &embed_dim,
-                          int const &num_heads,
-                          int const &kdim,
-                          int const &vdim,
-                          float const &dropout,
-                          bool const &bias,
-                          bool const &add_bias_kv,
-                          bool const &add_zero_attn);
+  explicit MultiHeadAttentionAttrs(int const &embed_dim,
+                                   int const &num_heads,
+                                   int const &kdim,
+                                   int const &vdim,
+                                   float const &dropout,
+                                   bool const &bias,
+                                   bool const &add_bias_kv,
+                                   bool const &add_zero_attn);
 
   bool operator==(MultiHeadAttentionAttrs const &) const;
   bool operator!=(MultiHeadAttentionAttrs const &) const;
@@ -48,23 +48,23 @@ struct MultiHeadAttentionAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::MultiHeadAttentionAttrs> {
-  size_t operator()(FlexFlow::MultiHeadAttentionAttrs const &) const;
+struct hash<::FlexFlow::MultiHeadAttentionAttrs> {
+  size_t operator()(::FlexFlow::MultiHeadAttentionAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::MultiHeadAttentionAttrs> {
-  static FlexFlow::MultiHeadAttentionAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::MultiHeadAttentionAttrs const &);
+struct adl_serializer<::FlexFlow::MultiHeadAttentionAttrs> {
+  static ::FlexFlow::MultiHeadAttentionAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::MultiHeadAttentionAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::MultiHeadAttentionAttrs> {
-  static Gen<FlexFlow::MultiHeadAttentionAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::MultiHeadAttentionAttrs> {
+  static Gen<::FlexFlow::MultiHeadAttentionAttrs> arbitrary();
 };
 } // namespace rc
 

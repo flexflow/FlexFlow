@@ -3,14 +3,15 @@
 // lib/pcg/include/pcg/file_format/v1/graphs/v1_multidigraph.struct.toml
 /* proj-data
 {
-  "generated_from": "fb1033385645e54a19c9b44cef0be04b"
+  "generated_from": "582054edb983c3cc31d9273ce29421eb"
 }
 */
 
 #include "pcg/file_format/v1/graphs/v1_multidigraph.dtg.h"
 
 #include "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h"
-#include "utils/fmt.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 #include <sstream>
 #include <unordered_set>
 #include <vector>
@@ -24,15 +25,16 @@ V1MultiDiGraph::V1MultiDiGraph(
 } // namespace FlexFlow
 
 namespace nlohmann {
-FlexFlow::V1MultiDiGraph
-    adl_serializer<FlexFlow::V1MultiDiGraph>::from_json(json const &j) {
-  return {j.at("nodes").template get<std::vector<size_t>>(),
-          j.at("ports").template get<std::vector<size_t>>(),
-          j.at("edges")
-              .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
+::FlexFlow::V1MultiDiGraph
+    adl_serializer<::FlexFlow::V1MultiDiGraph>::from_json(json const &j) {
+  return ::FlexFlow::V1MultiDiGraph{
+      j.at("nodes").template get<std::vector<size_t>>(),
+      j.at("ports").template get<std::vector<size_t>>(),
+      j.at("edges")
+          .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
 }
-void adl_serializer<FlexFlow::V1MultiDiGraph>::to_json(
-    json &j, FlexFlow::V1MultiDiGraph const &v) {
+void adl_serializer<::FlexFlow::V1MultiDiGraph>::to_json(
+    json &j, ::FlexFlow::V1MultiDiGraph const &v) {
   j["__type"] = "V1MultiDiGraph";
   j["nodes"] = v.nodes;
   j["ports"] = v.ports;

@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct gpu_id_t {
   gpu_id_t() = delete;
-  gpu_id_t(int const &gpu_index);
+  explicit gpu_id_t(int const &gpu_index);
 
   bool operator==(gpu_id_t const &) const;
   bool operator!=(gpu_id_t const &) const;
@@ -34,23 +34,23 @@ struct gpu_id_t {
 
 namespace std {
 template <>
-struct hash<FlexFlow::gpu_id_t> {
-  size_t operator()(FlexFlow::gpu_id_t const &) const;
+struct hash<::FlexFlow::gpu_id_t> {
+  size_t operator()(::FlexFlow::gpu_id_t const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::gpu_id_t> {
-  static FlexFlow::gpu_id_t from_json(json const &);
-  static void to_json(json &, FlexFlow::gpu_id_t const &);
+struct adl_serializer<::FlexFlow::gpu_id_t> {
+  static ::FlexFlow::gpu_id_t from_json(json const &);
+  static void to_json(json &, ::FlexFlow::gpu_id_t const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::gpu_id_t> {
-  static Gen<FlexFlow::gpu_id_t> arbitrary();
+struct Arbitrary<::FlexFlow::gpu_id_t> {
+  static Gen<::FlexFlow::gpu_id_t> arbitrary();
 };
 } // namespace rc
 
