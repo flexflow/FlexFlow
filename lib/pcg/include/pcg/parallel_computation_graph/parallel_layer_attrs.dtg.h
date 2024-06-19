@@ -23,7 +23,7 @@
 namespace FlexFlow {
 struct ParallelLayerAttrs {
   ParallelLayerAttrs() = delete;
-  explicit ParallelLayerAttrs(
+  ParallelLayerAttrs(
       ::FlexFlow::PCGOperatorAttrs const &op_attrs,
       std::optional<::FlexFlow::stack_string<MAX_OPNAME>> const &name);
 
@@ -40,23 +40,23 @@ struct ParallelLayerAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::ParallelLayerAttrs> {
-  size_t operator()(::FlexFlow::ParallelLayerAttrs const &) const;
+struct hash<FlexFlow::ParallelLayerAttrs> {
+  size_t operator()(FlexFlow::ParallelLayerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::ParallelLayerAttrs> {
-  static ::FlexFlow::ParallelLayerAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::ParallelLayerAttrs const &);
+struct adl_serializer<FlexFlow::ParallelLayerAttrs> {
+  static FlexFlow::ParallelLayerAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::ParallelLayerAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::ParallelLayerAttrs> {
-  static Gen<::FlexFlow::ParallelLayerAttrs> arbitrary();
+struct Arbitrary<FlexFlow::ParallelLayerAttrs> {
+  static Gen<FlexFlow::ParallelLayerAttrs> arbitrary();
 };
 } // namespace rc
 

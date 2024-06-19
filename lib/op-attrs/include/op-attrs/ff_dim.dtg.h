@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct ff_dim_t {
   ff_dim_t() = delete;
-  explicit ff_dim_t(int const &value);
+  ff_dim_t(int const &value);
 
   bool operator==(ff_dim_t const &) const;
   bool operator!=(ff_dim_t const &) const;
@@ -33,16 +33,16 @@ struct ff_dim_t {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::ff_dim_t> {
-  size_t operator()(::FlexFlow::ff_dim_t const &) const;
+struct hash<FlexFlow::ff_dim_t> {
+  size_t operator()(FlexFlow::ff_dim_t const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::ff_dim_t> {
-  static ::FlexFlow::ff_dim_t from_json(json const &);
-  static void to_json(json &, ::FlexFlow::ff_dim_t const &);
+struct adl_serializer<FlexFlow::ff_dim_t> {
+  static FlexFlow::ff_dim_t from_json(json const &);
+  static void to_json(json &, FlexFlow::ff_dim_t const &);
 };
 } // namespace nlohmann
 

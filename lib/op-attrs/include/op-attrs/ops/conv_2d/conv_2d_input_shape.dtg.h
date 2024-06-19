@@ -22,11 +22,11 @@
 namespace FlexFlow {
 struct Conv2DInputShape {
   Conv2DInputShape() = delete;
-  explicit Conv2DInputShape(size_t const &num_samples,
-                            size_t const &num_channels,
-                            size_t const &height,
-                            size_t const &width,
-                            ::FlexFlow::DataType const &datatype);
+  Conv2DInputShape(size_t const &num_samples,
+                   size_t const &num_channels,
+                   size_t const &height,
+                   size_t const &width,
+                   ::FlexFlow::DataType const &datatype);
 
   bool operator==(Conv2DInputShape const &) const;
   bool operator!=(Conv2DInputShape const &) const;
@@ -44,23 +44,23 @@ struct Conv2DInputShape {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::Conv2DInputShape> {
-  size_t operator()(::FlexFlow::Conv2DInputShape const &) const;
+struct hash<FlexFlow::Conv2DInputShape> {
+  size_t operator()(FlexFlow::Conv2DInputShape const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::Conv2DInputShape> {
-  static ::FlexFlow::Conv2DInputShape from_json(json const &);
-  static void to_json(json &, ::FlexFlow::Conv2DInputShape const &);
+struct adl_serializer<FlexFlow::Conv2DInputShape> {
+  static FlexFlow::Conv2DInputShape from_json(json const &);
+  static void to_json(json &, FlexFlow::Conv2DInputShape const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::Conv2DInputShape> {
-  static Gen<::FlexFlow::Conv2DInputShape> arbitrary();
+struct Arbitrary<FlexFlow::Conv2DInputShape> {
+  static Gen<FlexFlow::Conv2DInputShape> arbitrary();
 };
 } // namespace rc
 

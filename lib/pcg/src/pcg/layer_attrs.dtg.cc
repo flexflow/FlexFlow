@@ -42,7 +42,7 @@ bool LayerAttrs::operator>=(LayerAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::LayerAttrs>::operator()(
-    ::FlexFlow::LayerAttrs const &x) const {
+    FlexFlow::LayerAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ComputationGraphOpAttrs>{}(x.attrs) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -54,15 +54,15 @@ size_t hash<FlexFlow::LayerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::LayerAttrs
-    adl_serializer<::FlexFlow::LayerAttrs>::from_json(json const &j) {
-  return ::FlexFlow::LayerAttrs{
+FlexFlow::LayerAttrs
+    adl_serializer<FlexFlow::LayerAttrs>::from_json(json const &j) {
+  return {
       j.at("attrs").template get<::FlexFlow::ComputationGraphOpAttrs>(),
       j.at("name")
           .template get<std::optional<::FlexFlow::stack_string<MAX_OPNAME>>>()};
 }
-void adl_serializer<::FlexFlow::LayerAttrs>::to_json(
-    json &j, ::FlexFlow::LayerAttrs const &v) {
+void adl_serializer<FlexFlow::LayerAttrs>::to_json(
+    json &j, FlexFlow::LayerAttrs const &v) {
   j["__type"] = "LayerAttrs";
   j["attrs"] = v.attrs;
   j["name"] = v.name;

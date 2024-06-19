@@ -97,7 +97,7 @@ bool MachineSpecification::operator>=(MachineSpecification const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::MachineSpecification>::operator()(
-    ::FlexFlow::MachineSpecification const &x) const {
+    FlexFlow::MachineSpecification const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.num_nodes) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -114,17 +114,16 @@ size_t hash<FlexFlow::MachineSpecification>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::MachineSpecification
-    adl_serializer<::FlexFlow::MachineSpecification>::from_json(json const &j) {
-  return ::FlexFlow::MachineSpecification{
-      j.at("num_nodes").template get<int>(),
-      j.at("num_cpus_per_node").template get<int>(),
-      j.at("num_gpus_per_node").template get<int>(),
-      j.at("inter_node_bandwidth").template get<float>(),
-      j.at("intra_node_bandwidth").template get<float>()};
+FlexFlow::MachineSpecification
+    adl_serializer<FlexFlow::MachineSpecification>::from_json(json const &j) {
+  return {j.at("num_nodes").template get<int>(),
+          j.at("num_cpus_per_node").template get<int>(),
+          j.at("num_gpus_per_node").template get<int>(),
+          j.at("inter_node_bandwidth").template get<float>(),
+          j.at("intra_node_bandwidth").template get<float>()};
 }
-void adl_serializer<::FlexFlow::MachineSpecification>::to_json(
-    json &j, ::FlexFlow::MachineSpecification const &v) {
+void adl_serializer<FlexFlow::MachineSpecification>::to_json(
+    json &j, FlexFlow::MachineSpecification const &v) {
   j["__type"] = "MachineSpecification";
   j["num_nodes"] = v.num_nodes;
   j["num_cpus_per_node"] = v.num_cpus_per_node;

@@ -21,8 +21,8 @@
 namespace FlexFlow {
 struct MachineView {
   MachineView() = delete;
-  explicit MachineView(::FlexFlow::device_id_t const &start,
-                       ::FlexFlow::StridedRectangle const &rect);
+  MachineView(::FlexFlow::device_id_t const &start,
+              ::FlexFlow::StridedRectangle const &rect);
 
   bool operator==(MachineView const &) const;
   bool operator!=(MachineView const &) const;
@@ -37,16 +37,16 @@ struct MachineView {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::MachineView> {
-  size_t operator()(::FlexFlow::MachineView const &) const;
+struct hash<FlexFlow::MachineView> {
+  size_t operator()(FlexFlow::MachineView const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::MachineView> {
-  static ::FlexFlow::MachineView from_json(json const &);
-  static void to_json(json &, ::FlexFlow::MachineView const &);
+struct adl_serializer<FlexFlow::MachineView> {
+  static FlexFlow::MachineView from_json(json const &);
+  static void to_json(json &, FlexFlow::MachineView const &);
 };
 } // namespace nlohmann
 

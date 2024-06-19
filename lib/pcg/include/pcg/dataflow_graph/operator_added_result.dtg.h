@@ -20,9 +20,8 @@
 namespace FlexFlow {
 struct OperatorAddedResult {
   OperatorAddedResult() = delete;
-  explicit OperatorAddedResult(
-      ::FlexFlow::Node const &node,
-      std::vector<::FlexFlow::MultiDiOutput> const &outputs);
+  OperatorAddedResult(::FlexFlow::Node const &node,
+                      std::vector<::FlexFlow::MultiDiOutput> const &outputs);
 
   bool operator==(OperatorAddedResult const &) const;
   bool operator!=(OperatorAddedResult const &) const;

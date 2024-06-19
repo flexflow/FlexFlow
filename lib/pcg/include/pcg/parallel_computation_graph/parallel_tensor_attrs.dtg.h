@@ -25,7 +25,7 @@
 namespace FlexFlow {
 struct ParallelTensorAttrs {
   ParallelTensorAttrs() = delete;
-  explicit ParallelTensorAttrs(
+  ParallelTensorAttrs(
       ::FlexFlow::ParallelTensorShape const &shape,
       std::optional<::FlexFlow::ParamSync> const &sync_type,
       std::optional<::FlexFlow::InitializerAttrs> const &initializer,
@@ -46,23 +46,23 @@ struct ParallelTensorAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::ParallelTensorAttrs> {
-  size_t operator()(::FlexFlow::ParallelTensorAttrs const &) const;
+struct hash<FlexFlow::ParallelTensorAttrs> {
+  size_t operator()(FlexFlow::ParallelTensorAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::ParallelTensorAttrs> {
-  static ::FlexFlow::ParallelTensorAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::ParallelTensorAttrs const &);
+struct adl_serializer<FlexFlow::ParallelTensorAttrs> {
+  static FlexFlow::ParallelTensorAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::ParallelTensorAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::ParallelTensorAttrs> {
-  static Gen<::FlexFlow::ParallelTensorAttrs> arbitrary();
+struct Arbitrary<FlexFlow::ParallelTensorAttrs> {
+  static Gen<FlexFlow::ParallelTensorAttrs> arbitrary();
 };
 } // namespace rc
 

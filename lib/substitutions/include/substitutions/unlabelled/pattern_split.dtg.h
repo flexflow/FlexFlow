@@ -21,9 +21,8 @@
 namespace FlexFlow {
 struct PatternSplit {
   PatternSplit() = delete;
-  explicit PatternSplit(
-      std::unordered_set<::FlexFlow::PatternNode> const &first,
-      std::unordered_set<::FlexFlow::PatternNode> const &second);
+  PatternSplit(std::unordered_set<::FlexFlow::PatternNode> const &first,
+               std::unordered_set<::FlexFlow::PatternNode> const &second);
 
   bool operator==(PatternSplit const &) const;
   bool operator!=(PatternSplit const &) const;
@@ -34,9 +33,9 @@ struct PatternSplit {
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::PatternSplit> {
-  static ::FlexFlow::PatternSplit from_json(json const &);
-  static void to_json(json &, ::FlexFlow::PatternSplit const &);
+struct adl_serializer<FlexFlow::PatternSplit> {
+  static FlexFlow::PatternSplit from_json(json const &);
+  static void to_json(json &, FlexFlow::PatternSplit const &);
 };
 } // namespace nlohmann
 

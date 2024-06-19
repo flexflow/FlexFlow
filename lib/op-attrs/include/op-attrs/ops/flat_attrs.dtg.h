@@ -30,23 +30,23 @@ struct FlatAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::FlatAttrs> {
-  size_t operator()(::FlexFlow::FlatAttrs const &) const;
+struct hash<FlexFlow::FlatAttrs> {
+  size_t operator()(FlexFlow::FlatAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::FlatAttrs> {
-  static ::FlexFlow::FlatAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::FlatAttrs const &);
+struct adl_serializer<FlexFlow::FlatAttrs> {
+  static FlexFlow::FlatAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::FlatAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::FlatAttrs> {
-  static Gen<::FlexFlow::FlatAttrs> arbitrary();
+struct Arbitrary<FlexFlow::FlatAttrs> {
+  static Gen<FlexFlow::FlatAttrs> arbitrary();
 };
 } // namespace rc
 

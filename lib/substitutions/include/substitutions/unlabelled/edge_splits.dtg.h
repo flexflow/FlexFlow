@@ -18,7 +18,7 @@
 namespace FlexFlow {
 struct UnlabelledPatternEdgeSplits {
   UnlabelledPatternEdgeSplits() = delete;
-  explicit UnlabelledPatternEdgeSplits(
+  UnlabelledPatternEdgeSplits(
       ::FlexFlow::bidict<::FlexFlow::MultiDiEdge,
                          std::pair<::FlexFlow::OutputMultiDiEdge,
                                    ::FlexFlow::InputMultiDiEdge>> const

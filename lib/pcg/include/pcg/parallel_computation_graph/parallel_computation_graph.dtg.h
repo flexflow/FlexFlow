@@ -17,7 +17,7 @@
 namespace FlexFlow {
 struct ParallelComputationGraph {
   ParallelComputationGraph() = delete;
-  explicit ParallelComputationGraph(
+  ParallelComputationGraph(
       ::FlexFlow::DataflowGraph<::FlexFlow::ParallelLayerAttrs,
                                 ::FlexFlow::ParallelTensorAttrs> const
           &raw_graph);

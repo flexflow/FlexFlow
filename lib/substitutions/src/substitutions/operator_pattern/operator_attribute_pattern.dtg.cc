@@ -33,7 +33,7 @@ bool OperatorAttributePattern::operator!=(
 
 namespace std {
 size_t hash<FlexFlow::OperatorAttributePattern>::operator()(
-    ::FlexFlow::OperatorAttributePattern const &x) const {
+    FlexFlow::OperatorAttributePattern const &x) const {
   size_t result = 0;
   result ^=
       std::hash<std::unordered_set<::FlexFlow::OperatorAttributeConstraint>>{}(
@@ -44,16 +44,16 @@ size_t hash<FlexFlow::OperatorAttributePattern>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::OperatorAttributePattern
-    adl_serializer<::FlexFlow::OperatorAttributePattern>::from_json(
+FlexFlow::OperatorAttributePattern
+    adl_serializer<FlexFlow::OperatorAttributePattern>::from_json(
         json const &j) {
-  return ::FlexFlow::OperatorAttributePattern{
+  return {
       j.at("attribute_constraints")
           .template get<
               std::unordered_set<::FlexFlow::OperatorAttributeConstraint>>()};
 }
-void adl_serializer<::FlexFlow::OperatorAttributePattern>::to_json(
-    json &j, ::FlexFlow::OperatorAttributePattern const &v) {
+void adl_serializer<FlexFlow::OperatorAttributePattern>::to_json(
+    json &j, FlexFlow::OperatorAttributePattern const &v) {
   j["__type"] = "OperatorAttributePattern";
   j["attribute_constraints"] = v.attribute_constraints;
 }

@@ -37,7 +37,7 @@ bool GatherAttrs::operator>=(GatherAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::GatherAttrs>::operator()(
-    ::FlexFlow::GatherAttrs const &x) const {
+    FlexFlow::GatherAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ff_dim_t>{}(x.dim) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -46,21 +46,20 @@ size_t hash<FlexFlow::GatherAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::GatherAttrs
-    adl_serializer<::FlexFlow::GatherAttrs>::from_json(json const &j) {
-  return ::FlexFlow::GatherAttrs{
-      j.at("dim").template get<::FlexFlow::ff_dim_t>()};
+FlexFlow::GatherAttrs
+    adl_serializer<FlexFlow::GatherAttrs>::from_json(json const &j) {
+  return {j.at("dim").template get<::FlexFlow::ff_dim_t>()};
 }
-void adl_serializer<::FlexFlow::GatherAttrs>::to_json(
-    json &j, ::FlexFlow::GatherAttrs const &v) {
+void adl_serializer<FlexFlow::GatherAttrs>::to_json(
+    json &j, FlexFlow::GatherAttrs const &v) {
   j["__type"] = "GatherAttrs";
   j["dim"] = v.dim;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::GatherAttrs> Arbitrary<::FlexFlow::GatherAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::GatherAttrs>(
+Gen<FlexFlow::GatherAttrs> Arbitrary<FlexFlow::GatherAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::GatherAttrs>(
       gen::arbitrary<::FlexFlow::ff_dim_t>());
 }
 } // namespace rc

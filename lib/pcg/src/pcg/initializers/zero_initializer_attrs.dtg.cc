@@ -34,27 +34,27 @@ bool ZeroInitializerAttrs::operator>=(ZeroInitializerAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ZeroInitializerAttrs>::operator()(
-    ::FlexFlow::ZeroInitializerAttrs const &x) const {
+    FlexFlow::ZeroInitializerAttrs const &x) const {
   size_t result = 0;
   return result;
 }
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::ZeroInitializerAttrs
-    adl_serializer<::FlexFlow::ZeroInitializerAttrs>::from_json(json const &j) {
-  return ::FlexFlow::ZeroInitializerAttrs{};
+FlexFlow::ZeroInitializerAttrs
+    adl_serializer<FlexFlow::ZeroInitializerAttrs>::from_json(json const &j) {
+  return {};
 }
-void adl_serializer<::FlexFlow::ZeroInitializerAttrs>::to_json(
-    json &j, ::FlexFlow::ZeroInitializerAttrs const &v) {
+void adl_serializer<FlexFlow::ZeroInitializerAttrs>::to_json(
+    json &j, FlexFlow::ZeroInitializerAttrs const &v) {
   j["__type"] = "ZeroInitializerAttrs";
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::ZeroInitializerAttrs>
-    Arbitrary<::FlexFlow::ZeroInitializerAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::ZeroInitializerAttrs>();
+Gen<FlexFlow::ZeroInitializerAttrs>
+    Arbitrary<FlexFlow::ZeroInitializerAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ZeroInitializerAttrs>();
 }
 } // namespace rc
 

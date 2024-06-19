@@ -33,27 +33,27 @@ bool FlatAttrs::operator>=(FlatAttrs const &other) const {
 } // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::FlatAttrs>::operator()(
-    ::FlexFlow::FlatAttrs const &x) const {
+size_t
+    hash<FlexFlow::FlatAttrs>::operator()(FlexFlow::FlatAttrs const &x) const {
   size_t result = 0;
   return result;
 }
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::FlatAttrs
-    adl_serializer<::FlexFlow::FlatAttrs>::from_json(json const &j) {
-  return ::FlexFlow::FlatAttrs{};
+FlexFlow::FlatAttrs
+    adl_serializer<FlexFlow::FlatAttrs>::from_json(json const &j) {
+  return {};
 }
-void adl_serializer<::FlexFlow::FlatAttrs>::to_json(
-    json &j, ::FlexFlow::FlatAttrs const &v) {
+void adl_serializer<FlexFlow::FlatAttrs>::to_json(
+    json &j, FlexFlow::FlatAttrs const &v) {
   j["__type"] = "FlatAttrs";
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::FlatAttrs> Arbitrary<::FlexFlow::FlatAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::FlatAttrs>();
+Gen<FlexFlow::FlatAttrs> Arbitrary<FlexFlow::FlatAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::FlatAttrs>();
 }
 } // namespace rc
 

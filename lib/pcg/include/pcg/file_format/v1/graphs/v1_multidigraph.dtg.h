@@ -22,10 +22,9 @@
 namespace FlexFlow {
 struct V1MultiDiGraph {
   V1MultiDiGraph() = delete;
-  explicit V1MultiDiGraph(
-      std::vector<size_t> const &nodes,
-      std::vector<size_t> const &ports,
-      std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
+  V1MultiDiGraph(std::vector<size_t> const &nodes,
+                 std::vector<size_t> const &ports,
+                 std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
 
   std::vector<size_t> nodes;
   std::vector<size_t> ports;
@@ -35,9 +34,9 @@ struct V1MultiDiGraph {
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::V1MultiDiGraph> {
-  static ::FlexFlow::V1MultiDiGraph from_json(json const &);
-  static void to_json(json &, ::FlexFlow::V1MultiDiGraph const &);
+struct adl_serializer<FlexFlow::V1MultiDiGraph> {
+  static FlexFlow::V1MultiDiGraph from_json(json const &);
+  static void to_json(json &, FlexFlow::V1MultiDiGraph const &);
 };
 } // namespace nlohmann
 

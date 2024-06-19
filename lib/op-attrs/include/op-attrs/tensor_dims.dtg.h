@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct TensorDims {
   TensorDims() = delete;
-  explicit TensorDims(::FlexFlow::FFOrdered<size_t> const &ff_ordered);
+  TensorDims(::FlexFlow::FFOrdered<size_t> const &ff_ordered);
 
   bool operator==(TensorDims const &) const;
   bool operator!=(TensorDims const &) const;
@@ -35,23 +35,23 @@ struct TensorDims {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::TensorDims> {
-  size_t operator()(::FlexFlow::TensorDims const &) const;
+struct hash<FlexFlow::TensorDims> {
+  size_t operator()(FlexFlow::TensorDims const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::TensorDims> {
-  static ::FlexFlow::TensorDims from_json(json const &);
-  static void to_json(json &, ::FlexFlow::TensorDims const &);
+struct adl_serializer<FlexFlow::TensorDims> {
+  static FlexFlow::TensorDims from_json(json const &);
+  static void to_json(json &, FlexFlow::TensorDims const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::TensorDims> {
-  static Gen<::FlexFlow::TensorDims> arbitrary();
+struct Arbitrary<FlexFlow::TensorDims> {
+  static Gen<FlexFlow::TensorDims> arbitrary();
 };
 } // namespace rc
 

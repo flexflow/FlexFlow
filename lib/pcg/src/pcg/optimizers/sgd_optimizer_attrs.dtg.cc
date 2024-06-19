@@ -52,7 +52,7 @@ bool SGDOptimizerAttrs::operator>=(SGDOptimizerAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::SGDOptimizerAttrs>::operator()(
-    ::FlexFlow::SGDOptimizerAttrs const &x) const {
+    FlexFlow::SGDOptimizerAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<double>{}(x.lr) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -67,16 +67,15 @@ size_t hash<FlexFlow::SGDOptimizerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::SGDOptimizerAttrs
-    adl_serializer<::FlexFlow::SGDOptimizerAttrs>::from_json(json const &j) {
-  return ::FlexFlow::SGDOptimizerAttrs{
-      j.at("lr").template get<double>(),
-      j.at("momentum").template get<double>(),
-      j.at("nesterov").template get<bool>(),
-      j.at("weight_decay").template get<double>()};
+FlexFlow::SGDOptimizerAttrs
+    adl_serializer<FlexFlow::SGDOptimizerAttrs>::from_json(json const &j) {
+  return {j.at("lr").template get<double>(),
+          j.at("momentum").template get<double>(),
+          j.at("nesterov").template get<bool>(),
+          j.at("weight_decay").template get<double>()};
 }
-void adl_serializer<::FlexFlow::SGDOptimizerAttrs>::to_json(
-    json &j, ::FlexFlow::SGDOptimizerAttrs const &v) {
+void adl_serializer<FlexFlow::SGDOptimizerAttrs>::to_json(
+    json &j, FlexFlow::SGDOptimizerAttrs const &v) {
   j["__type"] = "SGDOptimizerAttrs";
   j["lr"] = v.lr;
   j["momentum"] = v.momentum;
@@ -86,13 +85,12 @@ void adl_serializer<::FlexFlow::SGDOptimizerAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::SGDOptimizerAttrs>
-    Arbitrary<::FlexFlow::SGDOptimizerAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::SGDOptimizerAttrs>(
-      gen::arbitrary<double>(),
-      gen::arbitrary<double>(),
-      gen::arbitrary<bool>(),
-      gen::arbitrary<double>());
+Gen<FlexFlow::SGDOptimizerAttrs>
+    Arbitrary<FlexFlow::SGDOptimizerAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::SGDOptimizerAttrs>(gen::arbitrary<double>(),
+                                                     gen::arbitrary<double>(),
+                                                     gen::arbitrary<bool>(),
+                                                     gen::arbitrary<double>());
 }
 } // namespace rc
 

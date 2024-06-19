@@ -22,8 +22,8 @@
 namespace FlexFlow {
 struct CombineAttrs {
   CombineAttrs() = delete;
-  explicit CombineAttrs(::FlexFlow::ff_dim_t const &combine_dim,
-                        int const &combine_degree);
+  CombineAttrs(::FlexFlow::ff_dim_t const &combine_dim,
+               int const &combine_degree);
 
   bool operator==(CombineAttrs const &) const;
   bool operator!=(CombineAttrs const &) const;
@@ -38,23 +38,23 @@ struct CombineAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::CombineAttrs> {
-  size_t operator()(::FlexFlow::CombineAttrs const &) const;
+struct hash<FlexFlow::CombineAttrs> {
+  size_t operator()(FlexFlow::CombineAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::CombineAttrs> {
-  static ::FlexFlow::CombineAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::CombineAttrs const &);
+struct adl_serializer<FlexFlow::CombineAttrs> {
+  static FlexFlow::CombineAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::CombineAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::CombineAttrs> {
-  static Gen<::FlexFlow::CombineAttrs> arbitrary();
+struct Arbitrary<FlexFlow::CombineAttrs> {
+  static Gen<FlexFlow::CombineAttrs> arbitrary();
 };
 } // namespace rc
 

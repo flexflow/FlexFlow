@@ -48,7 +48,7 @@ bool LayerNormAttrs::operator>=(LayerNormAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::LayerNormAttrs>::operator()(
-    ::FlexFlow::LayerNormAttrs const &x) const {
+    FlexFlow::LayerNormAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<
@@ -64,17 +64,17 @@ size_t hash<FlexFlow::LayerNormAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::LayerNormAttrs
-    adl_serializer<::FlexFlow::LayerNormAttrs>::from_json(json const &j) {
-  return ::FlexFlow::LayerNormAttrs{
+FlexFlow::LayerNormAttrs
+    adl_serializer<FlexFlow::LayerNormAttrs>::from_json(json const &j) {
+  return {
       j.at("axes")
           .template get<
               ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>(),
       j.at("elementwise_affine").template get<bool>(),
       j.at("eps").template get<float>()};
 }
-void adl_serializer<::FlexFlow::LayerNormAttrs>::to_json(
-    json &j, ::FlexFlow::LayerNormAttrs const &v) {
+void adl_serializer<FlexFlow::LayerNormAttrs>::to_json(
+    json &j, FlexFlow::LayerNormAttrs const &v) {
   j["__type"] = "LayerNormAttrs";
   j["axes"] = v.axes;
   j["elementwise_affine"] = v.elementwise_affine;
@@ -83,9 +83,8 @@ void adl_serializer<::FlexFlow::LayerNormAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::LayerNormAttrs>
-    Arbitrary<::FlexFlow::LayerNormAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::LayerNormAttrs>(
+Gen<FlexFlow::LayerNormAttrs> Arbitrary<FlexFlow::LayerNormAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::LayerNormAttrs>(
       gen::arbitrary<
           ::FlexFlow::stack_vector<::FlexFlow::ff_dim_t, MAX_TENSOR_DIM>>(),
       gen::arbitrary<bool>(),

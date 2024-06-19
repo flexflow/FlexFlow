@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct L2RegularizerAttrs {
   L2RegularizerAttrs() = delete;
-  explicit L2RegularizerAttrs(float const &lambda);
+  L2RegularizerAttrs(float const &lambda);
 
   bool operator==(L2RegularizerAttrs const &) const;
   bool operator!=(L2RegularizerAttrs const &) const;
@@ -34,23 +34,23 @@ struct L2RegularizerAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::L2RegularizerAttrs> {
-  size_t operator()(::FlexFlow::L2RegularizerAttrs const &) const;
+struct hash<FlexFlow::L2RegularizerAttrs> {
+  size_t operator()(FlexFlow::L2RegularizerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::L2RegularizerAttrs> {
-  static ::FlexFlow::L2RegularizerAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::L2RegularizerAttrs const &);
+struct adl_serializer<FlexFlow::L2RegularizerAttrs> {
+  static FlexFlow::L2RegularizerAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::L2RegularizerAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::L2RegularizerAttrs> {
-  static Gen<::FlexFlow::L2RegularizerAttrs> arbitrary();
+struct Arbitrary<FlexFlow::L2RegularizerAttrs> {
+  static Gen<FlexFlow::L2RegularizerAttrs> arbitrary();
 };
 } // namespace rc
 

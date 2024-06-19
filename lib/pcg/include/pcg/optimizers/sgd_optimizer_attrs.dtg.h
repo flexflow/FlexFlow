@@ -20,10 +20,10 @@
 namespace FlexFlow {
 struct SGDOptimizerAttrs {
   SGDOptimizerAttrs() = delete;
-  explicit SGDOptimizerAttrs(double const &lr,
-                             double const &momentum,
-                             bool const &nesterov,
-                             double const &weight_decay);
+  SGDOptimizerAttrs(double const &lr,
+                    double const &momentum,
+                    bool const &nesterov,
+                    double const &weight_decay);
 
   bool operator==(SGDOptimizerAttrs const &) const;
   bool operator!=(SGDOptimizerAttrs const &) const;
@@ -40,23 +40,23 @@ struct SGDOptimizerAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::SGDOptimizerAttrs> {
-  size_t operator()(::FlexFlow::SGDOptimizerAttrs const &) const;
+struct hash<FlexFlow::SGDOptimizerAttrs> {
+  size_t operator()(FlexFlow::SGDOptimizerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::SGDOptimizerAttrs> {
-  static ::FlexFlow::SGDOptimizerAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::SGDOptimizerAttrs const &);
+struct adl_serializer<FlexFlow::SGDOptimizerAttrs> {
+  static FlexFlow::SGDOptimizerAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::SGDOptimizerAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::SGDOptimizerAttrs> {
-  static Gen<::FlexFlow::SGDOptimizerAttrs> arbitrary();
+struct Arbitrary<FlexFlow::SGDOptimizerAttrs> {
+  static Gen<FlexFlow::SGDOptimizerAttrs> arbitrary();
 };
 } // namespace rc
 

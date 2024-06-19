@@ -44,7 +44,7 @@ bool parallel_tensor_guid_t::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::parallel_tensor_guid_t>::operator()(
-    ::FlexFlow::parallel_tensor_guid_t const &x) const {
+    FlexFlow::parallel_tensor_guid_t const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::MultiDiOutput>{}(x.raw_graph_output) +
             0x9e3779b9 + (result << 6) + (result >> 2);

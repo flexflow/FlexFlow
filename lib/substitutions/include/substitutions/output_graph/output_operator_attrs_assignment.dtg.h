@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct OutputOperatorAttrsAssignment {
   OutputOperatorAttrsAssignment() = delete;
-  explicit OutputOperatorAttrsAssignment(
+  OutputOperatorAttrsAssignment(
       std::unordered_map<::FlexFlow::OperatorAttributeKey,
                          ::FlexFlow::OutputOperatorAttributeExpr> const
           &assignments);
@@ -36,8 +36,8 @@ struct OutputOperatorAttrsAssignment {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::OutputOperatorAttrsAssignment> {
-  size_t operator()(::FlexFlow::OutputOperatorAttrsAssignment const &) const;
+struct hash<FlexFlow::OutputOperatorAttrsAssignment> {
+  size_t operator()(FlexFlow::OutputOperatorAttrsAssignment const &) const;
 };
 } // namespace std
 

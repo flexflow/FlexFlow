@@ -35,7 +35,7 @@ bool DiscardCopyDegree::operator>=(DiscardCopyDegree const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::DiscardCopyDegree>::operator()(
-    ::FlexFlow::DiscardCopyDegree const &x) const {
+    FlexFlow::DiscardCopyDegree const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.value) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -44,21 +44,21 @@ size_t hash<FlexFlow::DiscardCopyDegree>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::DiscardCopyDegree
-    adl_serializer<::FlexFlow::DiscardCopyDegree>::from_json(json const &j) {
-  return ::FlexFlow::DiscardCopyDegree{j.at("value").template get<int>()};
+FlexFlow::DiscardCopyDegree
+    adl_serializer<FlexFlow::DiscardCopyDegree>::from_json(json const &j) {
+  return {j.at("value").template get<int>()};
 }
-void adl_serializer<::FlexFlow::DiscardCopyDegree>::to_json(
-    json &j, ::FlexFlow::DiscardCopyDegree const &v) {
+void adl_serializer<FlexFlow::DiscardCopyDegree>::to_json(
+    json &j, FlexFlow::DiscardCopyDegree const &v) {
   j["__type"] = "DiscardCopyDegree";
   j["value"] = v.value;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::DiscardCopyDegree>
-    Arbitrary<::FlexFlow::DiscardCopyDegree>::arbitrary() {
-  return gen::construct<::FlexFlow::DiscardCopyDegree>(gen::arbitrary<int>());
+Gen<FlexFlow::DiscardCopyDegree>
+    Arbitrary<FlexFlow::DiscardCopyDegree>::arbitrary() {
+  return gen::construct<FlexFlow::DiscardCopyDegree>(gen::arbitrary<int>());
 }
 } // namespace rc
 

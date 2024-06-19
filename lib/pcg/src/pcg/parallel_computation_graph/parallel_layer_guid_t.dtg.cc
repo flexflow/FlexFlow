@@ -44,7 +44,7 @@ bool parallel_layer_guid_t::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::parallel_layer_guid_t>::operator()(
-    ::FlexFlow::parallel_layer_guid_t const &x) const {
+    FlexFlow::parallel_layer_guid_t const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::Node>{}(x.raw_graph_node) + 0x9e3779b9 +
             (result << 6) + (result >> 2);

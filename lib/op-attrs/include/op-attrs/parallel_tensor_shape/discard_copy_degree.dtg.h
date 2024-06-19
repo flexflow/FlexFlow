@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct DiscardCopyDegree {
   DiscardCopyDegree() = delete;
-  explicit DiscardCopyDegree(int const &value);
+  DiscardCopyDegree(int const &value);
 
   bool operator==(DiscardCopyDegree const &) const;
   bool operator!=(DiscardCopyDegree const &) const;
@@ -34,23 +34,23 @@ struct DiscardCopyDegree {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::DiscardCopyDegree> {
-  size_t operator()(::FlexFlow::DiscardCopyDegree const &) const;
+struct hash<FlexFlow::DiscardCopyDegree> {
+  size_t operator()(FlexFlow::DiscardCopyDegree const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::DiscardCopyDegree> {
-  static ::FlexFlow::DiscardCopyDegree from_json(json const &);
-  static void to_json(json &, ::FlexFlow::DiscardCopyDegree const &);
+struct adl_serializer<FlexFlow::DiscardCopyDegree> {
+  static FlexFlow::DiscardCopyDegree from_json(json const &);
+  static void to_json(json &, FlexFlow::DiscardCopyDegree const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::DiscardCopyDegree> {
-  static Gen<::FlexFlow::DiscardCopyDegree> arbitrary();
+struct Arbitrary<FlexFlow::DiscardCopyDegree> {
+  static Gen<FlexFlow::DiscardCopyDegree> arbitrary();
 };
 } // namespace rc
 

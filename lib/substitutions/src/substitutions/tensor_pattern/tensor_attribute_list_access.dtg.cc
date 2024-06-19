@@ -50,7 +50,7 @@ bool TensorAttributeListIndexAccess::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::TensorAttributeListIndexAccess>::operator()(
-    ::FlexFlow::TensorAttributeListIndexAccess const &x) const {
+    FlexFlow::TensorAttributeListIndexAccess const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::TensorAttributeKey>{}(x.attribute_key) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -61,15 +61,14 @@ size_t hash<FlexFlow::TensorAttributeListIndexAccess>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::TensorAttributeListIndexAccess
-    adl_serializer<::FlexFlow::TensorAttributeListIndexAccess>::from_json(
+FlexFlow::TensorAttributeListIndexAccess
+    adl_serializer<FlexFlow::TensorAttributeListIndexAccess>::from_json(
         json const &j) {
-  return ::FlexFlow::TensorAttributeListIndexAccess{
-      j.at("attribute_key").template get<::FlexFlow::TensorAttributeKey>(),
-      j.at("index").template get<int>()};
+  return {j.at("attribute_key").template get<::FlexFlow::TensorAttributeKey>(),
+          j.at("index").template get<int>()};
 }
-void adl_serializer<::FlexFlow::TensorAttributeListIndexAccess>::to_json(
-    json &j, ::FlexFlow::TensorAttributeListIndexAccess const &v) {
+void adl_serializer<FlexFlow::TensorAttributeListIndexAccess>::to_json(
+    json &j, FlexFlow::TensorAttributeListIndexAccess const &v) {
   j["__type"] = "TensorAttributeListIndexAccess";
   j["attribute_key"] = v.attribute_key;
   j["index"] = v.index;
@@ -77,9 +76,9 @@ void adl_serializer<::FlexFlow::TensorAttributeListIndexAccess>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::TensorAttributeListIndexAccess>
-    Arbitrary<::FlexFlow::TensorAttributeListIndexAccess>::arbitrary() {
-  return gen::construct<::FlexFlow::TensorAttributeListIndexAccess>(
+Gen<FlexFlow::TensorAttributeListIndexAccess>
+    Arbitrary<FlexFlow::TensorAttributeListIndexAccess>::arbitrary() {
+  return gen::construct<FlexFlow::TensorAttributeListIndexAccess>(
       gen::arbitrary<::FlexFlow::TensorAttributeKey>(), gen::arbitrary<int>());
 }
 } // namespace rc

@@ -24,15 +24,14 @@ V1OperatorGraph::V1OperatorGraph(
 } // namespace FlexFlow
 
 namespace nlohmann {
-::FlexFlow::V1OperatorGraph
-    adl_serializer<::FlexFlow::V1OperatorGraph>::from_json(json const &j) {
-  return ::FlexFlow::V1OperatorGraph{
-      j.at("nodes").template get<std::vector<size_t>>(),
-      j.at("edges")
-          .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
+FlexFlow::V1OperatorGraph
+    adl_serializer<FlexFlow::V1OperatorGraph>::from_json(json const &j) {
+  return {j.at("nodes").template get<std::vector<size_t>>(),
+          j.at("edges")
+              .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
 }
-void adl_serializer<::FlexFlow::V1OperatorGraph>::to_json(
-    json &j, ::FlexFlow::V1OperatorGraph const &v) {
+void adl_serializer<FlexFlow::V1OperatorGraph>::to_json(
+    json &j, FlexFlow::V1OperatorGraph const &v) {
   j["__type"] = "V1OperatorGraph";
   j["nodes"] = v.nodes;
   j["edges"] = v.edges;

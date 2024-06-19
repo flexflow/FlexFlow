@@ -42,7 +42,7 @@ bool ShardParallelDim::operator>=(ShardParallelDim const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ShardParallelDim>::operator()(
-    ::FlexFlow::ShardParallelDim const &x) const {
+    FlexFlow::ShardParallelDim const &x) const {
   size_t result = 0;
   result ^=
       std::hash<size_t>{}(x.size) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -53,13 +53,13 @@ size_t hash<FlexFlow::ShardParallelDim>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::ShardParallelDim
-    adl_serializer<::FlexFlow::ShardParallelDim>::from_json(json const &j) {
-  return ::FlexFlow::ShardParallelDim{j.at("size").template get<size_t>(),
-                                      j.at("degree").template get<int>()};
+FlexFlow::ShardParallelDim
+    adl_serializer<FlexFlow::ShardParallelDim>::from_json(json const &j) {
+  return {j.at("size").template get<size_t>(),
+          j.at("degree").template get<int>()};
 }
-void adl_serializer<::FlexFlow::ShardParallelDim>::to_json(
-    json &j, ::FlexFlow::ShardParallelDim const &v) {
+void adl_serializer<FlexFlow::ShardParallelDim>::to_json(
+    json &j, FlexFlow::ShardParallelDim const &v) {
   j["__type"] = "ShardParallelDim";
   j["size"] = v.size;
   j["degree"] = v.degree;
@@ -67,10 +67,10 @@ void adl_serializer<::FlexFlow::ShardParallelDim>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::ShardParallelDim>
-    Arbitrary<::FlexFlow::ShardParallelDim>::arbitrary() {
-  return gen::construct<::FlexFlow::ShardParallelDim>(gen::arbitrary<size_t>(),
-                                                      gen::arbitrary<int>());
+Gen<FlexFlow::ShardParallelDim>
+    Arbitrary<FlexFlow::ShardParallelDim>::arbitrary() {
+  return gen::construct<FlexFlow::ShardParallelDim>(gen::arbitrary<size_t>(),
+                                                    gen::arbitrary<int>());
 }
 } // namespace rc
 

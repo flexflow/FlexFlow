@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct V1GraphOutput {
   V1GraphOutput() = delete;
-  explicit V1GraphOutput(size_t const &srcNode, size_t const &srcIdx);
+  V1GraphOutput(size_t const &srcNode, size_t const &srcIdx);
 
   bool operator==(V1GraphOutput const &) const;
   bool operator!=(V1GraphOutput const &) const;
@@ -34,16 +34,16 @@ struct V1GraphOutput {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::V1GraphOutput> {
-  size_t operator()(::FlexFlow::V1GraphOutput const &) const;
+struct hash<FlexFlow::V1GraphOutput> {
+  size_t operator()(FlexFlow::V1GraphOutput const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::V1GraphOutput> {
-  static ::FlexFlow::V1GraphOutput from_json(json const &);
-  static void to_json(json &, ::FlexFlow::V1GraphOutput const &);
+struct adl_serializer<FlexFlow::V1GraphOutput> {
+  static FlexFlow::V1GraphOutput from_json(json const &);
+  static void to_json(json &, FlexFlow::V1GraphOutput const &);
 };
 } // namespace nlohmann
 

@@ -20,9 +20,8 @@
 namespace FlexFlow {
 struct LayerAddedResult {
   LayerAddedResult() = delete;
-  explicit LayerAddedResult(
-      ::FlexFlow::layer_guid_t const &layer,
-      std::vector<::FlexFlow::tensor_guid_t> const &outputs);
+  LayerAddedResult(::FlexFlow::layer_guid_t const &layer,
+                   std::vector<::FlexFlow::tensor_guid_t> const &outputs);
 
   bool operator==(LayerAddedResult const &) const;
   bool operator!=(LayerAddedResult const &) const;

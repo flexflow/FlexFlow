@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct parallel_layer_guid_t {
   parallel_layer_guid_t() = delete;
-  explicit parallel_layer_guid_t(::FlexFlow::Node const &raw_graph_node);
+  parallel_layer_guid_t(::FlexFlow::Node const &raw_graph_node);
 
   bool operator==(parallel_layer_guid_t const &) const;
   bool operator!=(parallel_layer_guid_t const &) const;
@@ -33,8 +33,8 @@ struct parallel_layer_guid_t {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::parallel_layer_guid_t> {
-  size_t operator()(::FlexFlow::parallel_layer_guid_t const &) const;
+struct hash<FlexFlow::parallel_layer_guid_t> {
+  size_t operator()(FlexFlow::parallel_layer_guid_t const &) const;
 };
 } // namespace std
 

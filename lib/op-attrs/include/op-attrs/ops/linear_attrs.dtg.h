@@ -24,12 +24,11 @@
 namespace FlexFlow {
 struct LinearAttrs {
   LinearAttrs() = delete;
-  explicit LinearAttrs(
-      int const &out_channels,
-      bool const &use_bias,
-      ::FlexFlow::DataType const &data_type,
-      std::optional<::FlexFlow::Activation> const &activation,
-      std::optional<::FlexFlow::RegularizerAttrs> const &regularizer);
+  LinearAttrs(int const &out_channels,
+              bool const &use_bias,
+              ::FlexFlow::DataType const &data_type,
+              std::optional<::FlexFlow::Activation> const &activation,
+              std::optional<::FlexFlow::RegularizerAttrs> const &regularizer);
 
   bool operator==(LinearAttrs const &) const;
   bool operator!=(LinearAttrs const &) const;
@@ -47,23 +46,23 @@ struct LinearAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::LinearAttrs> {
-  size_t operator()(::FlexFlow::LinearAttrs const &) const;
+struct hash<FlexFlow::LinearAttrs> {
+  size_t operator()(FlexFlow::LinearAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::LinearAttrs> {
-  static ::FlexFlow::LinearAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::LinearAttrs const &);
+struct adl_serializer<FlexFlow::LinearAttrs> {
+  static FlexFlow::LinearAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::LinearAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::LinearAttrs> {
-  static Gen<::FlexFlow::LinearAttrs> arbitrary();
+struct Arbitrary<FlexFlow::LinearAttrs> {
+  static Gen<FlexFlow::LinearAttrs> arbitrary();
 };
 } // namespace rc
 

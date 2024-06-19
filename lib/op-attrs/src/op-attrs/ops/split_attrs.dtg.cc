@@ -47,7 +47,7 @@ bool SplitAttrs::operator>=(SplitAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::SplitAttrs>::operator()(
-    ::FlexFlow::SplitAttrs const &x) const {
+    FlexFlow::SplitAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS>>{}(x.splits) +
@@ -59,15 +59,14 @@ size_t hash<FlexFlow::SplitAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::SplitAttrs
-    adl_serializer<::FlexFlow::SplitAttrs>::from_json(json const &j) {
-  return ::FlexFlow::SplitAttrs{
-      j.at("splits")
-          .template get<::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS>>(),
-      j.at("axis").template get<::FlexFlow::ff_dim_t>()};
+FlexFlow::SplitAttrs
+    adl_serializer<FlexFlow::SplitAttrs>::from_json(json const &j) {
+  return {j.at("splits")
+              .template get<::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS>>(),
+          j.at("axis").template get<::FlexFlow::ff_dim_t>()};
 }
-void adl_serializer<::FlexFlow::SplitAttrs>::to_json(
-    json &j, ::FlexFlow::SplitAttrs const &v) {
+void adl_serializer<FlexFlow::SplitAttrs>::to_json(
+    json &j, FlexFlow::SplitAttrs const &v) {
   j["__type"] = "SplitAttrs";
   j["splits"] = v.splits;
   j["axis"] = v.axis;
@@ -75,8 +74,8 @@ void adl_serializer<::FlexFlow::SplitAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::SplitAttrs> Arbitrary<::FlexFlow::SplitAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::SplitAttrs>(
+Gen<FlexFlow::SplitAttrs> Arbitrary<FlexFlow::SplitAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::SplitAttrs>(
       gen::arbitrary<::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS>>(),
       gen::arbitrary<::FlexFlow::ff_dim_t>());
 }

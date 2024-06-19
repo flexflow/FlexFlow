@@ -22,8 +22,8 @@
 namespace FlexFlow {
 struct TensorShape {
   TensorShape() = delete;
-  explicit TensorShape(::FlexFlow::TensorDims const &dims,
-                       ::FlexFlow::DataType const &data_type);
+  TensorShape(::FlexFlow::TensorDims const &dims,
+              ::FlexFlow::DataType const &data_type);
 
   bool operator==(TensorShape const &) const;
   bool operator!=(TensorShape const &) const;
@@ -38,23 +38,23 @@ struct TensorShape {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::TensorShape> {
-  size_t operator()(::FlexFlow::TensorShape const &) const;
+struct hash<FlexFlow::TensorShape> {
+  size_t operator()(FlexFlow::TensorShape const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::TensorShape> {
-  static ::FlexFlow::TensorShape from_json(json const &);
-  static void to_json(json &, ::FlexFlow::TensorShape const &);
+struct adl_serializer<FlexFlow::TensorShape> {
+  static FlexFlow::TensorShape from_json(json const &);
+  static void to_json(json &, FlexFlow::TensorShape const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::TensorShape> {
-  static Gen<::FlexFlow::TensorShape> arbitrary();
+struct Arbitrary<FlexFlow::TensorShape> {
+  static Gen<FlexFlow::TensorShape> arbitrary();
 };
 } // namespace rc
 

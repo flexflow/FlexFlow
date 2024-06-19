@@ -34,8 +34,8 @@ bool SumDegree::operator>=(SumDegree const &other) const {
 } // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::SumDegree>::operator()(
-    ::FlexFlow::SumDegree const &x) const {
+size_t
+    hash<FlexFlow::SumDegree>::operator()(FlexFlow::SumDegree const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.value) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -44,20 +44,20 @@ size_t hash<FlexFlow::SumDegree>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::SumDegree
-    adl_serializer<::FlexFlow::SumDegree>::from_json(json const &j) {
-  return ::FlexFlow::SumDegree{j.at("value").template get<int>()};
+FlexFlow::SumDegree
+    adl_serializer<FlexFlow::SumDegree>::from_json(json const &j) {
+  return {j.at("value").template get<int>()};
 }
-void adl_serializer<::FlexFlow::SumDegree>::to_json(
-    json &j, ::FlexFlow::SumDegree const &v) {
+void adl_serializer<FlexFlow::SumDegree>::to_json(
+    json &j, FlexFlow::SumDegree const &v) {
   j["__type"] = "SumDegree";
   j["value"] = v.value;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::SumDegree> Arbitrary<::FlexFlow::SumDegree>::arbitrary() {
-  return gen::construct<::FlexFlow::SumDegree>(gen::arbitrary<int>());
+Gen<FlexFlow::SumDegree> Arbitrary<FlexFlow::SumDegree>::arbitrary() {
+  return gen::construct<FlexFlow::SumDegree>(gen::arbitrary<int>());
 }
 } // namespace rc
 

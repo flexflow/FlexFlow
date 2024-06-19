@@ -80,7 +80,7 @@ bool EmbeddingAttrs::operator>=(EmbeddingAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::EmbeddingAttrs>::operator()(
-    ::FlexFlow::EmbeddingAttrs const &x) const {
+    FlexFlow::EmbeddingAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.num_entries) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -95,16 +95,15 @@ size_t hash<FlexFlow::EmbeddingAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::EmbeddingAttrs
-    adl_serializer<::FlexFlow::EmbeddingAttrs>::from_json(json const &j) {
-  return ::FlexFlow::EmbeddingAttrs{
-      j.at("num_entries").template get<int>(),
-      j.at("out_channels").template get<int>(),
-      j.at("aggr").template get<std::optional<::FlexFlow::AggregateOp>>(),
-      j.at("data_type").template get<::FlexFlow::DataType>()};
+FlexFlow::EmbeddingAttrs
+    adl_serializer<FlexFlow::EmbeddingAttrs>::from_json(json const &j) {
+  return {j.at("num_entries").template get<int>(),
+          j.at("out_channels").template get<int>(),
+          j.at("aggr").template get<std::optional<::FlexFlow::AggregateOp>>(),
+          j.at("data_type").template get<::FlexFlow::DataType>()};
 }
-void adl_serializer<::FlexFlow::EmbeddingAttrs>::to_json(
-    json &j, ::FlexFlow::EmbeddingAttrs const &v) {
+void adl_serializer<FlexFlow::EmbeddingAttrs>::to_json(
+    json &j, FlexFlow::EmbeddingAttrs const &v) {
   j["__type"] = "EmbeddingAttrs";
   j["num_entries"] = v.num_entries;
   j["out_channels"] = v.out_channels;
@@ -114,9 +113,8 @@ void adl_serializer<::FlexFlow::EmbeddingAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::EmbeddingAttrs>
-    Arbitrary<::FlexFlow::EmbeddingAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::EmbeddingAttrs>(
+Gen<FlexFlow::EmbeddingAttrs> Arbitrary<FlexFlow::EmbeddingAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::EmbeddingAttrs>(
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),
       gen::arbitrary<std::optional<::FlexFlow::AggregateOp>>(),

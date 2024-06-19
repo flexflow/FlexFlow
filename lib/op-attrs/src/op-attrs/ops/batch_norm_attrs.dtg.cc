@@ -35,7 +35,7 @@ bool BatchNormAttrs::operator>=(BatchNormAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::BatchNormAttrs>::operator()(
-    ::FlexFlow::BatchNormAttrs const &x) const {
+    FlexFlow::BatchNormAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<bool>{}(x.relu) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -44,21 +44,20 @@ size_t hash<FlexFlow::BatchNormAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::BatchNormAttrs
-    adl_serializer<::FlexFlow::BatchNormAttrs>::from_json(json const &j) {
-  return ::FlexFlow::BatchNormAttrs{j.at("relu").template get<bool>()};
+FlexFlow::BatchNormAttrs
+    adl_serializer<FlexFlow::BatchNormAttrs>::from_json(json const &j) {
+  return {j.at("relu").template get<bool>()};
 }
-void adl_serializer<::FlexFlow::BatchNormAttrs>::to_json(
-    json &j, ::FlexFlow::BatchNormAttrs const &v) {
+void adl_serializer<FlexFlow::BatchNormAttrs>::to_json(
+    json &j, FlexFlow::BatchNormAttrs const &v) {
   j["__type"] = "BatchNormAttrs";
   j["relu"] = v.relu;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::BatchNormAttrs>
-    Arbitrary<::FlexFlow::BatchNormAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::BatchNormAttrs>(gen::arbitrary<bool>());
+Gen<FlexFlow::BatchNormAttrs> Arbitrary<FlexFlow::BatchNormAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::BatchNormAttrs>(gen::arbitrary<bool>());
 }
 } // namespace rc
 

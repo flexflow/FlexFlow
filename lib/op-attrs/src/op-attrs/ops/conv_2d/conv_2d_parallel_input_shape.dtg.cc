@@ -132,7 +132,7 @@ bool Conv2DParallelInputShape::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::Conv2DParallelInputShape>::operator()(
-    ::FlexFlow::Conv2DParallelInputShape const &x) const {
+    FlexFlow::Conv2DParallelInputShape const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ShardParallelDim>{}(x.sample_dim) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -153,20 +153,19 @@ size_t hash<FlexFlow::Conv2DParallelInputShape>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::Conv2DParallelInputShape
-    adl_serializer<::FlexFlow::Conv2DParallelInputShape>::from_json(
+FlexFlow::Conv2DParallelInputShape
+    adl_serializer<FlexFlow::Conv2DParallelInputShape>::from_json(
         json const &j) {
-  return ::FlexFlow::Conv2DParallelInputShape{
-      j.at("sample_dim").template get<::FlexFlow::ShardParallelDim>(),
-      j.at("channel_dim").template get<::FlexFlow::ShardParallelDim>(),
-      j.at("height_dim").template get<::FlexFlow::ShardParallelDim>(),
-      j.at("width_dim").template get<::FlexFlow::ShardParallelDim>(),
-      j.at("sum_reduction_degree").template get<int>(),
-      j.at("discard_copy_reduction_degree").template get<int>(),
-      j.at("datatype").template get<::FlexFlow::DataType>()};
+  return {j.at("sample_dim").template get<::FlexFlow::ShardParallelDim>(),
+          j.at("channel_dim").template get<::FlexFlow::ShardParallelDim>(),
+          j.at("height_dim").template get<::FlexFlow::ShardParallelDim>(),
+          j.at("width_dim").template get<::FlexFlow::ShardParallelDim>(),
+          j.at("sum_reduction_degree").template get<int>(),
+          j.at("discard_copy_reduction_degree").template get<int>(),
+          j.at("datatype").template get<::FlexFlow::DataType>()};
 }
-void adl_serializer<::FlexFlow::Conv2DParallelInputShape>::to_json(
-    json &j, ::FlexFlow::Conv2DParallelInputShape const &v) {
+void adl_serializer<FlexFlow::Conv2DParallelInputShape>::to_json(
+    json &j, FlexFlow::Conv2DParallelInputShape const &v) {
   j["__type"] = "Conv2DParallelInputShape";
   j["sample_dim"] = v.sample_dim;
   j["channel_dim"] = v.channel_dim;
@@ -179,9 +178,9 @@ void adl_serializer<::FlexFlow::Conv2DParallelInputShape>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::Conv2DParallelInputShape>
-    Arbitrary<::FlexFlow::Conv2DParallelInputShape>::arbitrary() {
-  return gen::construct<::FlexFlow::Conv2DParallelInputShape>(
+Gen<FlexFlow::Conv2DParallelInputShape>
+    Arbitrary<FlexFlow::Conv2DParallelInputShape>::arbitrary() {
+  return gen::construct<FlexFlow::Conv2DParallelInputShape>(
       gen::arbitrary<::FlexFlow::ShardParallelDim>(),
       gen::arbitrary<::FlexFlow::ShardParallelDim>(),
       gen::arbitrary<::FlexFlow::ShardParallelDim>(),

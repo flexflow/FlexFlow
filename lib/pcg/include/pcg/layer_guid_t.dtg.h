@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct layer_guid_t {
   layer_guid_t() = delete;
-  explicit layer_guid_t(::FlexFlow::Node const &raw_node);
+  layer_guid_t(::FlexFlow::Node const &raw_node);
 
   bool operator==(layer_guid_t const &) const;
   bool operator!=(layer_guid_t const &) const;
@@ -33,8 +33,8 @@ struct layer_guid_t {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::layer_guid_t> {
-  size_t operator()(::FlexFlow::layer_guid_t const &) const;
+struct hash<FlexFlow::layer_guid_t> {
+  size_t operator()(FlexFlow::layer_guid_t const &) const;
 };
 } // namespace std
 

@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct TopKAttrs {
   TopKAttrs() = delete;
-  explicit TopKAttrs(int const &k, bool const &sorted);
+  TopKAttrs(int const &k, bool const &sorted);
 
   bool operator==(TopKAttrs const &) const;
   bool operator!=(TopKAttrs const &) const;
@@ -35,23 +35,23 @@ struct TopKAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::TopKAttrs> {
-  size_t operator()(::FlexFlow::TopKAttrs const &) const;
+struct hash<FlexFlow::TopKAttrs> {
+  size_t operator()(FlexFlow::TopKAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::TopKAttrs> {
-  static ::FlexFlow::TopKAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::TopKAttrs const &);
+struct adl_serializer<FlexFlow::TopKAttrs> {
+  static FlexFlow::TopKAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::TopKAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::TopKAttrs> {
-  static Gen<::FlexFlow::TopKAttrs> arbitrary();
+struct Arbitrary<FlexFlow::TopKAttrs> {
+  static Gen<FlexFlow::TopKAttrs> arbitrary();
 };
 } // namespace rc
 

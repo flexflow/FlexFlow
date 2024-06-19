@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct BatchNormAttrs {
   BatchNormAttrs() = delete;
-  explicit BatchNormAttrs(bool const &relu);
+  BatchNormAttrs(bool const &relu);
 
   bool operator==(BatchNormAttrs const &) const;
   bool operator!=(BatchNormAttrs const &) const;
@@ -34,23 +34,23 @@ struct BatchNormAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::BatchNormAttrs> {
-  size_t operator()(::FlexFlow::BatchNormAttrs const &) const;
+struct hash<FlexFlow::BatchNormAttrs> {
+  size_t operator()(FlexFlow::BatchNormAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::BatchNormAttrs> {
-  static ::FlexFlow::BatchNormAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::BatchNormAttrs const &);
+struct adl_serializer<FlexFlow::BatchNormAttrs> {
+  static FlexFlow::BatchNormAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::BatchNormAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::BatchNormAttrs> {
-  static Gen<::FlexFlow::BatchNormAttrs> arbitrary();
+struct Arbitrary<FlexFlow::BatchNormAttrs> {
+  static Gen<FlexFlow::BatchNormAttrs> arbitrary();
 };
 } // namespace rc
 

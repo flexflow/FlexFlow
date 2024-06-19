@@ -42,7 +42,7 @@ bool V1GraphOutput::operator>=(V1GraphOutput const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::V1GraphOutput>::operator()(
-    ::FlexFlow::V1GraphOutput const &x) const {
+    FlexFlow::V1GraphOutput const &x) const {
   size_t result = 0;
   result ^= std::hash<size_t>{}(x.srcNode) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -53,13 +53,13 @@ size_t hash<FlexFlow::V1GraphOutput>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::V1GraphOutput
-    adl_serializer<::FlexFlow::V1GraphOutput>::from_json(json const &j) {
-  return ::FlexFlow::V1GraphOutput{j.at("srcNode").template get<size_t>(),
-                                   j.at("srcIdx").template get<size_t>()};
+FlexFlow::V1GraphOutput
+    adl_serializer<FlexFlow::V1GraphOutput>::from_json(json const &j) {
+  return {j.at("srcNode").template get<size_t>(),
+          j.at("srcIdx").template get<size_t>()};
 }
-void adl_serializer<::FlexFlow::V1GraphOutput>::to_json(
-    json &j, ::FlexFlow::V1GraphOutput const &v) {
+void adl_serializer<FlexFlow::V1GraphOutput>::to_json(
+    json &j, FlexFlow::V1GraphOutput const &v) {
   j["__type"] = "V1GraphOutput";
   j["srcNode"] = v.srcNode;
   j["srcIdx"] = v.srcIdx;

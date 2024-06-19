@@ -17,9 +17,9 @@
 namespace FlexFlow {
 struct PCGPattern {
   PCGPattern() = delete;
-  explicit PCGPattern(::FlexFlow::OutputLabelledOpenMultiDiGraph<
-                      ::FlexFlow::OperatorAttributePattern,
-                      ::FlexFlow::TensorAttributePattern> const &raw_graph);
+  PCGPattern(::FlexFlow::OutputLabelledOpenMultiDiGraph<
+             ::FlexFlow::OperatorAttributePattern,
+             ::FlexFlow::TensorAttributePattern> const &raw_graph);
 
   ::FlexFlow::OutputLabelledOpenMultiDiGraph<
       ::FlexFlow::OperatorAttributePattern,

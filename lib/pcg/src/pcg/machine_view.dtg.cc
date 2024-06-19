@@ -39,7 +39,7 @@ bool MachineView::operator>=(MachineView const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::MachineView>::operator()(
-    ::FlexFlow::MachineView const &x) const {
+    FlexFlow::MachineView const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::device_id_t>{}(x.start) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -50,14 +50,13 @@ size_t hash<FlexFlow::MachineView>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::MachineView
-    adl_serializer<::FlexFlow::MachineView>::from_json(json const &j) {
-  return ::FlexFlow::MachineView{
-      j.at("start").template get<::FlexFlow::device_id_t>(),
-      j.at("rect").template get<::FlexFlow::StridedRectangle>()};
+FlexFlow::MachineView
+    adl_serializer<FlexFlow::MachineView>::from_json(json const &j) {
+  return {j.at("start").template get<::FlexFlow::device_id_t>(),
+          j.at("rect").template get<::FlexFlow::StridedRectangle>()};
 }
-void adl_serializer<::FlexFlow::MachineView>::to_json(
-    json &j, ::FlexFlow::MachineView const &v) {
+void adl_serializer<FlexFlow::MachineView>::to_json(
+    json &j, FlexFlow::MachineView const &v) {
   j["__type"] = "MachineView";
   j["start"] = v.start;
   j["rect"] = v.rect;

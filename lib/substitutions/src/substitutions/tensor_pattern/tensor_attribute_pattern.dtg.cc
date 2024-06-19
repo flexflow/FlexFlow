@@ -33,7 +33,7 @@ bool TensorAttributePattern::operator!=(
 
 namespace std {
 size_t hash<FlexFlow::TensorAttributePattern>::operator()(
-    ::FlexFlow::TensorAttributePattern const &x) const {
+    FlexFlow::TensorAttributePattern const &x) const {
   size_t result = 0;
   result ^=
       std::hash<std::unordered_set<::FlexFlow::TensorAttributeConstraint>>{}(
@@ -44,16 +44,14 @@ size_t hash<FlexFlow::TensorAttributePattern>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::TensorAttributePattern
-    adl_serializer<::FlexFlow::TensorAttributePattern>::from_json(
-        json const &j) {
-  return ::FlexFlow::TensorAttributePattern{
-      j.at("attribute_constraints")
-          .template get<
-              std::unordered_set<::FlexFlow::TensorAttributeConstraint>>()};
+FlexFlow::TensorAttributePattern
+    adl_serializer<FlexFlow::TensorAttributePattern>::from_json(json const &j) {
+  return {j.at("attribute_constraints")
+              .template get<
+                  std::unordered_set<::FlexFlow::TensorAttributeConstraint>>()};
 }
-void adl_serializer<::FlexFlow::TensorAttributePattern>::to_json(
-    json &j, ::FlexFlow::TensorAttributePattern const &v) {
+void adl_serializer<FlexFlow::TensorAttributePattern>::to_json(
+    json &j, FlexFlow::TensorAttributePattern const &v) {
   j["__type"] = "TensorAttributePattern";
   j["attribute_constraints"] = v.attribute_constraints;
 }

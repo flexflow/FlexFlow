@@ -30,23 +30,23 @@ struct NoopAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::NoopAttrs> {
-  size_t operator()(::FlexFlow::NoopAttrs const &) const;
+struct hash<FlexFlow::NoopAttrs> {
+  size_t operator()(FlexFlow::NoopAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::NoopAttrs> {
-  static ::FlexFlow::NoopAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::NoopAttrs const &);
+struct adl_serializer<FlexFlow::NoopAttrs> {
+  static FlexFlow::NoopAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::NoopAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::NoopAttrs> {
-  static Gen<::FlexFlow::NoopAttrs> arbitrary();
+struct Arbitrary<FlexFlow::NoopAttrs> {
+  static Gen<FlexFlow::NoopAttrs> arbitrary();
 };
 } // namespace rc
 

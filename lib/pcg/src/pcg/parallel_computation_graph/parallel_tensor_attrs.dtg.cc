@@ -82,7 +82,7 @@ bool ParallelTensorAttrs::operator>=(ParallelTensorAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ParallelTensorAttrs>::operator()(
-    ::FlexFlow::ParallelTensorAttrs const &x) const {
+    FlexFlow::ParallelTensorAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ParallelTensorShape>{}(x.shape) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -98,17 +98,17 @@ size_t hash<FlexFlow::ParallelTensorAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::ParallelTensorAttrs
-    adl_serializer<::FlexFlow::ParallelTensorAttrs>::from_json(json const &j) {
-  return ::FlexFlow::ParallelTensorAttrs{
+FlexFlow::ParallelTensorAttrs
+    adl_serializer<FlexFlow::ParallelTensorAttrs>::from_json(json const &j) {
+  return {
       j.at("shape").template get<::FlexFlow::ParallelTensorShape>(),
       j.at("sync_type").template get<std::optional<::FlexFlow::ParamSync>>(),
       j.at("initializer")
           .template get<std::optional<::FlexFlow::InitializerAttrs>>(),
       j.at("create_gradients").template get<::FlexFlow::CreateGrad>()};
 }
-void adl_serializer<::FlexFlow::ParallelTensorAttrs>::to_json(
-    json &j, ::FlexFlow::ParallelTensorAttrs const &v) {
+void adl_serializer<FlexFlow::ParallelTensorAttrs>::to_json(
+    json &j, FlexFlow::ParallelTensorAttrs const &v) {
   j["__type"] = "ParallelTensorAttrs";
   j["shape"] = v.shape;
   j["sync_type"] = v.sync_type;
@@ -118,9 +118,9 @@ void adl_serializer<::FlexFlow::ParallelTensorAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::ParallelTensorAttrs>
-    Arbitrary<::FlexFlow::ParallelTensorAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::ParallelTensorAttrs>(
+Gen<FlexFlow::ParallelTensorAttrs>
+    Arbitrary<FlexFlow::ParallelTensorAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelTensorAttrs>(
       gen::arbitrary<::FlexFlow::ParallelTensorShape>(),
       gen::arbitrary<std::optional<::FlexFlow::ParamSync>>(),
       gen::arbitrary<std::optional<::FlexFlow::InitializerAttrs>>(),

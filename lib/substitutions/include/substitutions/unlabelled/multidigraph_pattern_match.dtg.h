@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct MultiDiGraphPatternMatch {
   MultiDiGraphPatternMatch() = delete;
-  explicit MultiDiGraphPatternMatch(
+  MultiDiGraphPatternMatch(
       ::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node> const
           &node_assignment,
       ::FlexFlow::bidict<::FlexFlow::PatternEdge,

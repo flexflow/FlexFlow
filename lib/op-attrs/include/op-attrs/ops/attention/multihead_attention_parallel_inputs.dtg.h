@@ -25,7 +25,7 @@
 namespace FlexFlow {
 struct MultiHeadAttentionParallelInputs {
   MultiHeadAttentionParallelInputs() = delete;
-  explicit MultiHeadAttentionParallelInputs(
+  MultiHeadAttentionParallelInputs(
       ::FlexFlow::ShardParallelDim const &batch_dim,
       ::FlexFlow::ShardParallelDim const &sequence_dim,
       ::FlexFlow::ShardParallelDim const &query_dim,
@@ -52,24 +52,24 @@ struct MultiHeadAttentionParallelInputs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::MultiHeadAttentionParallelInputs> {
-  size_t operator()(::FlexFlow::MultiHeadAttentionParallelInputs const &) const;
+struct hash<FlexFlow::MultiHeadAttentionParallelInputs> {
+  size_t operator()(FlexFlow::MultiHeadAttentionParallelInputs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::MultiHeadAttentionParallelInputs> {
-  static ::FlexFlow::MultiHeadAttentionParallelInputs from_json(json const &);
+struct adl_serializer<FlexFlow::MultiHeadAttentionParallelInputs> {
+  static FlexFlow::MultiHeadAttentionParallelInputs from_json(json const &);
   static void to_json(json &,
-                      ::FlexFlow::MultiHeadAttentionParallelInputs const &);
+                      FlexFlow::MultiHeadAttentionParallelInputs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::MultiHeadAttentionParallelInputs> {
-  static Gen<::FlexFlow::MultiHeadAttentionParallelInputs> arbitrary();
+struct Arbitrary<FlexFlow::MultiHeadAttentionParallelInputs> {
+  static Gen<FlexFlow::MultiHeadAttentionParallelInputs> arbitrary();
 };
 } // namespace rc
 

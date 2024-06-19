@@ -23,10 +23,10 @@
 namespace FlexFlow {
 struct EmbeddingAttrs {
   EmbeddingAttrs() = delete;
-  explicit EmbeddingAttrs(int const &num_entries,
-                          int const &out_channels,
-                          std::optional<::FlexFlow::AggregateOp> const &aggr,
-                          ::FlexFlow::DataType const &data_type);
+  EmbeddingAttrs(int const &num_entries,
+                 int const &out_channels,
+                 std::optional<::FlexFlow::AggregateOp> const &aggr,
+                 ::FlexFlow::DataType const &data_type);
 
   bool operator==(EmbeddingAttrs const &) const;
   bool operator!=(EmbeddingAttrs const &) const;
@@ -43,23 +43,23 @@ struct EmbeddingAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::EmbeddingAttrs> {
-  size_t operator()(::FlexFlow::EmbeddingAttrs const &) const;
+struct hash<FlexFlow::EmbeddingAttrs> {
+  size_t operator()(FlexFlow::EmbeddingAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::EmbeddingAttrs> {
-  static ::FlexFlow::EmbeddingAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::EmbeddingAttrs const &);
+struct adl_serializer<FlexFlow::EmbeddingAttrs> {
+  static FlexFlow::EmbeddingAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::EmbeddingAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::EmbeddingAttrs> {
-  static Gen<::FlexFlow::EmbeddingAttrs> arbitrary();
+struct Arbitrary<FlexFlow::EmbeddingAttrs> {
+  static Gen<FlexFlow::EmbeddingAttrs> arbitrary();
 };
 } // namespace rc
 

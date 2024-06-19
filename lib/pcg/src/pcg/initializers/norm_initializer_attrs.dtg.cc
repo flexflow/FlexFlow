@@ -44,7 +44,7 @@ bool NormInitializerAttrs::operator>=(NormInitializerAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::NormInitializerAttrs>::operator()(
-    ::FlexFlow::NormInitializerAttrs const &x) const {
+    FlexFlow::NormInitializerAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.seed) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -57,14 +57,14 @@ size_t hash<FlexFlow::NormInitializerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::NormInitializerAttrs
-    adl_serializer<::FlexFlow::NormInitializerAttrs>::from_json(json const &j) {
-  return ::FlexFlow::NormInitializerAttrs{j.at("seed").template get<int>(),
-                                          j.at("mean").template get<float>(),
-                                          j.at("stddev").template get<float>()};
+FlexFlow::NormInitializerAttrs
+    adl_serializer<FlexFlow::NormInitializerAttrs>::from_json(json const &j) {
+  return {j.at("seed").template get<int>(),
+          j.at("mean").template get<float>(),
+          j.at("stddev").template get<float>()};
 }
-void adl_serializer<::FlexFlow::NormInitializerAttrs>::to_json(
-    json &j, ::FlexFlow::NormInitializerAttrs const &v) {
+void adl_serializer<FlexFlow::NormInitializerAttrs>::to_json(
+    json &j, FlexFlow::NormInitializerAttrs const &v) {
   j["__type"] = "NormInitializerAttrs";
   j["seed"] = v.seed;
   j["mean"] = v.mean;
@@ -73,9 +73,9 @@ void adl_serializer<::FlexFlow::NormInitializerAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::NormInitializerAttrs>
-    Arbitrary<::FlexFlow::NormInitializerAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::NormInitializerAttrs>(
+Gen<FlexFlow::NormInitializerAttrs>
+    Arbitrary<FlexFlow::NormInitializerAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::NormInitializerAttrs>(
       gen::arbitrary<int>(), gen::arbitrary<float>(), gen::arbitrary<float>());
 }
 } // namespace rc

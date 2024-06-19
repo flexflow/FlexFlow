@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct TensorAttributeListIndexAccess {
   TensorAttributeListIndexAccess() = delete;
-  explicit TensorAttributeListIndexAccess(
+  TensorAttributeListIndexAccess(
       ::FlexFlow::TensorAttributeKey const &attribute_key, int const &index);
 
   bool operator==(TensorAttributeListIndexAccess const &) const;
@@ -37,24 +37,23 @@ struct TensorAttributeListIndexAccess {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::TensorAttributeListIndexAccess> {
-  size_t operator()(::FlexFlow::TensorAttributeListIndexAccess const &) const;
+struct hash<FlexFlow::TensorAttributeListIndexAccess> {
+  size_t operator()(FlexFlow::TensorAttributeListIndexAccess const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::TensorAttributeListIndexAccess> {
-  static ::FlexFlow::TensorAttributeListIndexAccess from_json(json const &);
-  static void to_json(json &,
-                      ::FlexFlow::TensorAttributeListIndexAccess const &);
+struct adl_serializer<FlexFlow::TensorAttributeListIndexAccess> {
+  static FlexFlow::TensorAttributeListIndexAccess from_json(json const &);
+  static void to_json(json &, FlexFlow::TensorAttributeListIndexAccess const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::TensorAttributeListIndexAccess> {
-  static Gen<::FlexFlow::TensorAttributeListIndexAccess> arbitrary();
+struct Arbitrary<FlexFlow::TensorAttributeListIndexAccess> {
+  static Gen<FlexFlow::TensorAttributeListIndexAccess> arbitrary();
 };
 } // namespace rc
 

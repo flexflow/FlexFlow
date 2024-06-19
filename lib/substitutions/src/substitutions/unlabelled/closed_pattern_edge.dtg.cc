@@ -36,7 +36,7 @@ bool ClosedPatternEdge::operator>=(ClosedPatternEdge const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ClosedPatternEdge>::operator()(
-    ::FlexFlow::ClosedPatternEdge const &x) const {
+    FlexFlow::ClosedPatternEdge const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::MultiDiEdge>{}(x.raw_edge) + 0x9e3779b9 +
             (result << 6) + (result >> 2);

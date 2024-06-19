@@ -17,7 +17,7 @@
 namespace FlexFlow {
 struct OutputPatternEdge {
   OutputPatternEdge() = delete;
-  explicit OutputPatternEdge(::FlexFlow::OutputMultiDiEdge const &raw_edge);
+  OutputPatternEdge(::FlexFlow::OutputMultiDiEdge const &raw_edge);
 
   bool operator==(OutputPatternEdge const &) const;
   bool operator!=(OutputPatternEdge const &) const;
@@ -31,8 +31,8 @@ struct OutputPatternEdge {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::OutputPatternEdge> {
-  size_t operator()(::FlexFlow::OutputPatternEdge const &) const;
+struct hash<FlexFlow::OutputPatternEdge> {
+  size_t operator()(FlexFlow::OutputPatternEdge const &) const;
 };
 } // namespace std
 

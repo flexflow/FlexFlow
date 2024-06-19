@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct GlorotUniformAttrs {
   GlorotUniformAttrs() = delete;
-  explicit GlorotUniformAttrs(int const &seed);
+  GlorotUniformAttrs(int const &seed);
 
   bool operator==(GlorotUniformAttrs const &) const;
   bool operator!=(GlorotUniformAttrs const &) const;
@@ -34,23 +34,23 @@ struct GlorotUniformAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::GlorotUniformAttrs> {
-  size_t operator()(::FlexFlow::GlorotUniformAttrs const &) const;
+struct hash<FlexFlow::GlorotUniformAttrs> {
+  size_t operator()(FlexFlow::GlorotUniformAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::GlorotUniformAttrs> {
-  static ::FlexFlow::GlorotUniformAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::GlorotUniformAttrs const &);
+struct adl_serializer<FlexFlow::GlorotUniformAttrs> {
+  static FlexFlow::GlorotUniformAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::GlorotUniformAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::GlorotUniformAttrs> {
-  static Gen<::FlexFlow::GlorotUniformAttrs> arbitrary();
+struct Arbitrary<FlexFlow::GlorotUniformAttrs> {
+  static Gen<FlexFlow::GlorotUniformAttrs> arbitrary();
 };
 } // namespace rc
 

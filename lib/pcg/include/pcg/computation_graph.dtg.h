@@ -17,7 +17,7 @@
 namespace FlexFlow {
 struct ComputationGraph {
   ComputationGraph() = delete;
-  explicit ComputationGraph(
+  ComputationGraph(
       ::FlexFlow::DataflowGraph<::FlexFlow::LayerAttrs,
                                 ::FlexFlow::TensorAttrs> const &raw_graph);
 

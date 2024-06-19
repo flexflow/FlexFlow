@@ -20,13 +20,13 @@
 namespace FlexFlow {
 struct AdamOptimizerAttrs {
   AdamOptimizerAttrs() = delete;
-  explicit AdamOptimizerAttrs(double const &alpha,
-                              double const &beta1,
-                              double const &beta2,
-                              double const &weight_decay,
-                              double const &alpha_t,
-                              double const &beta_t,
-                              double const &beta2_t);
+  AdamOptimizerAttrs(double const &alpha,
+                     double const &beta1,
+                     double const &beta2,
+                     double const &weight_decay,
+                     double const &alpha_t,
+                     double const &beta_t,
+                     double const &beta2_t);
 
   bool operator==(AdamOptimizerAttrs const &) const;
   bool operator!=(AdamOptimizerAttrs const &) const;
@@ -46,23 +46,23 @@ struct AdamOptimizerAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::AdamOptimizerAttrs> {
-  size_t operator()(::FlexFlow::AdamOptimizerAttrs const &) const;
+struct hash<FlexFlow::AdamOptimizerAttrs> {
+  size_t operator()(FlexFlow::AdamOptimizerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::AdamOptimizerAttrs> {
-  static ::FlexFlow::AdamOptimizerAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::AdamOptimizerAttrs const &);
+struct adl_serializer<FlexFlow::AdamOptimizerAttrs> {
+  static FlexFlow::AdamOptimizerAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::AdamOptimizerAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::AdamOptimizerAttrs> {
-  static Gen<::FlexFlow::AdamOptimizerAttrs> arbitrary();
+struct Arbitrary<FlexFlow::AdamOptimizerAttrs> {
+  static Gen<FlexFlow::AdamOptimizerAttrs> arbitrary();
 };
 } // namespace rc
 

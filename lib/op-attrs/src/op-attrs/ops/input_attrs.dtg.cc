@@ -34,26 +34,26 @@ bool InputAttrs::operator>=(InputAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::InputAttrs>::operator()(
-    ::FlexFlow::InputAttrs const &x) const {
+    FlexFlow::InputAttrs const &x) const {
   size_t result = 0;
   return result;
 }
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::InputAttrs
-    adl_serializer<::FlexFlow::InputAttrs>::from_json(json const &j) {
-  return ::FlexFlow::InputAttrs{};
+FlexFlow::InputAttrs
+    adl_serializer<FlexFlow::InputAttrs>::from_json(json const &j) {
+  return {};
 }
-void adl_serializer<::FlexFlow::InputAttrs>::to_json(
-    json &j, ::FlexFlow::InputAttrs const &v) {
+void adl_serializer<FlexFlow::InputAttrs>::to_json(
+    json &j, FlexFlow::InputAttrs const &v) {
   j["__type"] = "InputAttrs";
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::InputAttrs> Arbitrary<::FlexFlow::InputAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::InputAttrs>();
+Gen<FlexFlow::InputAttrs> Arbitrary<FlexFlow::InputAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::InputAttrs>();
 }
 } // namespace rc
 

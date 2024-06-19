@@ -36,7 +36,7 @@ bool ReductionAttrs::operator>=(ReductionAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ReductionAttrs>::operator()(
-    ::FlexFlow::ReductionAttrs const &x) const {
+    FlexFlow::ReductionAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.reduction_degree) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -45,22 +45,20 @@ size_t hash<FlexFlow::ReductionAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::ReductionAttrs
-    adl_serializer<::FlexFlow::ReductionAttrs>::from_json(json const &j) {
-  return ::FlexFlow::ReductionAttrs{
-      j.at("reduction_degree").template get<int>()};
+FlexFlow::ReductionAttrs
+    adl_serializer<FlexFlow::ReductionAttrs>::from_json(json const &j) {
+  return {j.at("reduction_degree").template get<int>()};
 }
-void adl_serializer<::FlexFlow::ReductionAttrs>::to_json(
-    json &j, ::FlexFlow::ReductionAttrs const &v) {
+void adl_serializer<FlexFlow::ReductionAttrs>::to_json(
+    json &j, FlexFlow::ReductionAttrs const &v) {
   j["__type"] = "ReductionAttrs";
   j["reduction_degree"] = v.reduction_degree;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::ReductionAttrs>
-    Arbitrary<::FlexFlow::ReductionAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::ReductionAttrs>(gen::arbitrary<int>());
+Gen<FlexFlow::ReductionAttrs> Arbitrary<FlexFlow::ReductionAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ReductionAttrs>(gen::arbitrary<int>());
 }
 } // namespace rc
 

@@ -22,9 +22,8 @@
 namespace FlexFlow {
 struct V1OperatorGraph {
   V1OperatorGraph() = delete;
-  explicit V1OperatorGraph(
-      std::vector<size_t> const &nodes,
-      std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
+  V1OperatorGraph(std::vector<size_t> const &nodes,
+                  std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
 
   std::vector<size_t> nodes;
   std::unordered_set<::FlexFlow::V1GraphEdge> edges;
@@ -33,9 +32,9 @@ struct V1OperatorGraph {
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::V1OperatorGraph> {
-  static ::FlexFlow::V1OperatorGraph from_json(json const &);
-  static void to_json(json &, ::FlexFlow::V1OperatorGraph const &);
+struct adl_serializer<FlexFlow::V1OperatorGraph> {
+  static FlexFlow::V1OperatorGraph from_json(json const &);
+  static void to_json(json &, FlexFlow::V1OperatorGraph const &);
 };
 } // namespace nlohmann
 

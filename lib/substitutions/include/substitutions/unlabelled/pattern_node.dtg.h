@@ -17,7 +17,7 @@
 namespace FlexFlow {
 struct PatternNode {
   PatternNode() = delete;
-  explicit PatternNode(::FlexFlow::Node const &raw_node);
+  PatternNode(::FlexFlow::Node const &raw_node);
 
   bool operator==(PatternNode const &) const;
   bool operator!=(PatternNode const &) const;
@@ -31,8 +31,8 @@ struct PatternNode {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::PatternNode> {
-  size_t operator()(::FlexFlow::PatternNode const &) const;
+struct hash<FlexFlow::PatternNode> {
+  size_t operator()(FlexFlow::PatternNode const &) const;
 };
 } // namespace std
 

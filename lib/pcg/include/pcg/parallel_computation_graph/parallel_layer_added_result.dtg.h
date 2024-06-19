@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct ParallelLayerAddedResult {
   ParallelLayerAddedResult() = delete;
-  explicit ParallelLayerAddedResult(
+  ParallelLayerAddedResult(
       ::FlexFlow::parallel_layer_guid_t const &parallel_layer,
       std::vector<::FlexFlow::parallel_tensor_guid_t> const &outputs);
 

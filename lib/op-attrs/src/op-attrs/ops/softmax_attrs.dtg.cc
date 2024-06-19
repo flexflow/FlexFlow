@@ -37,7 +37,7 @@ bool SoftmaxAttrs::operator>=(SoftmaxAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::SoftmaxAttrs>::operator()(
-    ::FlexFlow::SoftmaxAttrs const &x) const {
+    FlexFlow::SoftmaxAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ff_dim_t>{}(x.dim) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -46,21 +46,20 @@ size_t hash<FlexFlow::SoftmaxAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::SoftmaxAttrs
-    adl_serializer<::FlexFlow::SoftmaxAttrs>::from_json(json const &j) {
-  return ::FlexFlow::SoftmaxAttrs{
-      j.at("dim").template get<::FlexFlow::ff_dim_t>()};
+FlexFlow::SoftmaxAttrs
+    adl_serializer<FlexFlow::SoftmaxAttrs>::from_json(json const &j) {
+  return {j.at("dim").template get<::FlexFlow::ff_dim_t>()};
 }
-void adl_serializer<::FlexFlow::SoftmaxAttrs>::to_json(
-    json &j, ::FlexFlow::SoftmaxAttrs const &v) {
+void adl_serializer<FlexFlow::SoftmaxAttrs>::to_json(
+    json &j, FlexFlow::SoftmaxAttrs const &v) {
   j["__type"] = "SoftmaxAttrs";
   j["dim"] = v.dim;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::SoftmaxAttrs> Arbitrary<::FlexFlow::SoftmaxAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::SoftmaxAttrs>(
+Gen<FlexFlow::SoftmaxAttrs> Arbitrary<FlexFlow::SoftmaxAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::SoftmaxAttrs>(
       gen::arbitrary<::FlexFlow::ff_dim_t>());
 }
 } // namespace rc

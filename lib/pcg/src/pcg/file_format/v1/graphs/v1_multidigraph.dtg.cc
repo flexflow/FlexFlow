@@ -25,16 +25,15 @@ V1MultiDiGraph::V1MultiDiGraph(
 } // namespace FlexFlow
 
 namespace nlohmann {
-::FlexFlow::V1MultiDiGraph
-    adl_serializer<::FlexFlow::V1MultiDiGraph>::from_json(json const &j) {
-  return ::FlexFlow::V1MultiDiGraph{
-      j.at("nodes").template get<std::vector<size_t>>(),
-      j.at("ports").template get<std::vector<size_t>>(),
-      j.at("edges")
-          .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
+FlexFlow::V1MultiDiGraph
+    adl_serializer<FlexFlow::V1MultiDiGraph>::from_json(json const &j) {
+  return {j.at("nodes").template get<std::vector<size_t>>(),
+          j.at("ports").template get<std::vector<size_t>>(),
+          j.at("edges")
+              .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
 }
-void adl_serializer<::FlexFlow::V1MultiDiGraph>::to_json(
-    json &j, ::FlexFlow::V1MultiDiGraph const &v) {
+void adl_serializer<FlexFlow::V1MultiDiGraph>::to_json(
+    json &j, FlexFlow::V1MultiDiGraph const &v) {
   j["__type"] = "V1MultiDiGraph";
   j["nodes"] = v.nodes;
   j["ports"] = v.ports;

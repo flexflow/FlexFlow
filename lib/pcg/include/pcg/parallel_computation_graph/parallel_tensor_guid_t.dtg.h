@@ -19,8 +19,7 @@
 namespace FlexFlow {
 struct parallel_tensor_guid_t {
   parallel_tensor_guid_t() = delete;
-  explicit parallel_tensor_guid_t(
-      ::FlexFlow::MultiDiOutput const &raw_graph_output);
+  parallel_tensor_guid_t(::FlexFlow::MultiDiOutput const &raw_graph_output);
 
   bool operator==(parallel_tensor_guid_t const &) const;
   bool operator!=(parallel_tensor_guid_t const &) const;
@@ -34,8 +33,8 @@ struct parallel_tensor_guid_t {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::parallel_tensor_guid_t> {
-  size_t operator()(::FlexFlow::parallel_tensor_guid_t const &) const;
+struct hash<FlexFlow::parallel_tensor_guid_t> {
+  size_t operator()(FlexFlow::parallel_tensor_guid_t const &) const;
 };
 } // namespace std
 

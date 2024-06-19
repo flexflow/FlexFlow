@@ -47,7 +47,7 @@ bool ParallelLayerAttrs::operator>=(ParallelLayerAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ParallelLayerAttrs>::operator()(
-    ::FlexFlow::ParallelLayerAttrs const &x) const {
+    FlexFlow::ParallelLayerAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::PCGOperatorAttrs>{}(x.op_attrs) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -59,15 +59,15 @@ size_t hash<FlexFlow::ParallelLayerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::ParallelLayerAttrs
-    adl_serializer<::FlexFlow::ParallelLayerAttrs>::from_json(json const &j) {
-  return ::FlexFlow::ParallelLayerAttrs{
+FlexFlow::ParallelLayerAttrs
+    adl_serializer<FlexFlow::ParallelLayerAttrs>::from_json(json const &j) {
+  return {
       j.at("op_attrs").template get<::FlexFlow::PCGOperatorAttrs>(),
       j.at("name")
           .template get<std::optional<::FlexFlow::stack_string<MAX_OPNAME>>>()};
 }
-void adl_serializer<::FlexFlow::ParallelLayerAttrs>::to_json(
-    json &j, ::FlexFlow::ParallelLayerAttrs const &v) {
+void adl_serializer<FlexFlow::ParallelLayerAttrs>::to_json(
+    json &j, FlexFlow::ParallelLayerAttrs const &v) {
   j["__type"] = "ParallelLayerAttrs";
   j["op_attrs"] = v.op_attrs;
   j["name"] = v.name;
@@ -75,9 +75,9 @@ void adl_serializer<::FlexFlow::ParallelLayerAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::ParallelLayerAttrs>
-    Arbitrary<::FlexFlow::ParallelLayerAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::ParallelLayerAttrs>(
+Gen<FlexFlow::ParallelLayerAttrs>
+    Arbitrary<FlexFlow::ParallelLayerAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelLayerAttrs>(
       gen::arbitrary<::FlexFlow::PCGOperatorAttrs>(),
       gen::arbitrary<std::optional<::FlexFlow::stack_string<MAX_OPNAME>>>());
 }

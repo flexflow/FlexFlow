@@ -23,9 +23,8 @@
 namespace FlexFlow {
 struct LayerAttrs {
   LayerAttrs() = delete;
-  explicit LayerAttrs(
-      ::FlexFlow::ComputationGraphOpAttrs const &attrs,
-      std::optional<::FlexFlow::stack_string<MAX_OPNAME>> const &name);
+  LayerAttrs(::FlexFlow::ComputationGraphOpAttrs const &attrs,
+             std::optional<::FlexFlow::stack_string<MAX_OPNAME>> const &name);
 
   bool operator==(LayerAttrs const &) const;
   bool operator!=(LayerAttrs const &) const;
@@ -40,16 +39,16 @@ struct LayerAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::LayerAttrs> {
-  size_t operator()(::FlexFlow::LayerAttrs const &) const;
+struct hash<FlexFlow::LayerAttrs> {
+  size_t operator()(FlexFlow::LayerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::LayerAttrs> {
-  static ::FlexFlow::LayerAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::LayerAttrs const &);
+struct adl_serializer<FlexFlow::LayerAttrs> {
+  static FlexFlow::LayerAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::LayerAttrs const &);
 };
 } // namespace nlohmann
 

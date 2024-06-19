@@ -46,7 +46,7 @@ bool ParallelTensorShape::operator>=(ParallelTensorShape const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ParallelTensorShape>::operator()(
-    ::FlexFlow::ParallelTensorShape const &x) const {
+    FlexFlow::ParallelTensorShape const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ParallelTensorDims>{}(x.dims) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -57,14 +57,13 @@ size_t hash<FlexFlow::ParallelTensorShape>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::ParallelTensorShape
-    adl_serializer<::FlexFlow::ParallelTensorShape>::from_json(json const &j) {
-  return ::FlexFlow::ParallelTensorShape{
-      j.at("dims").template get<::FlexFlow::ParallelTensorDims>(),
-      j.at("data_type").template get<::FlexFlow::DataType>()};
+FlexFlow::ParallelTensorShape
+    adl_serializer<FlexFlow::ParallelTensorShape>::from_json(json const &j) {
+  return {j.at("dims").template get<::FlexFlow::ParallelTensorDims>(),
+          j.at("data_type").template get<::FlexFlow::DataType>()};
 }
-void adl_serializer<::FlexFlow::ParallelTensorShape>::to_json(
-    json &j, ::FlexFlow::ParallelTensorShape const &v) {
+void adl_serializer<FlexFlow::ParallelTensorShape>::to_json(
+    json &j, FlexFlow::ParallelTensorShape const &v) {
   j["__type"] = "ParallelTensorShape";
   j["dims"] = v.dims;
   j["data_type"] = v.data_type;
@@ -72,9 +71,9 @@ void adl_serializer<::FlexFlow::ParallelTensorShape>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::ParallelTensorShape>
-    Arbitrary<::FlexFlow::ParallelTensorShape>::arbitrary() {
-  return gen::construct<::FlexFlow::ParallelTensorShape>(
+Gen<FlexFlow::ParallelTensorShape>
+    Arbitrary<FlexFlow::ParallelTensorShape>::arbitrary() {
+  return gen::construct<FlexFlow::ParallelTensorShape>(
       gen::arbitrary<::FlexFlow::ParallelTensorDims>(),
       gen::arbitrary<::FlexFlow::DataType>());
 }

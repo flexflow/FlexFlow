@@ -32,7 +32,7 @@ bool OutputOperatorAttrsAssignment::operator!=(
 
 namespace std {
 size_t hash<FlexFlow::OutputOperatorAttrsAssignment>::operator()(
-    ::FlexFlow::OutputOperatorAttrsAssignment const &x) const {
+    FlexFlow::OutputOperatorAttrsAssignment const &x) const {
   size_t result = 0;
   result ^=
       std::hash<std::unordered_map<::FlexFlow::OperatorAttributeKey,

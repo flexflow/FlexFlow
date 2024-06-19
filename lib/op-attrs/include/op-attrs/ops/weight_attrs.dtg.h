@@ -30,23 +30,23 @@ struct WeightAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::WeightAttrs> {
-  size_t operator()(::FlexFlow::WeightAttrs const &) const;
+struct hash<FlexFlow::WeightAttrs> {
+  size_t operator()(FlexFlow::WeightAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::WeightAttrs> {
-  static ::FlexFlow::WeightAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::WeightAttrs const &);
+struct adl_serializer<FlexFlow::WeightAttrs> {
+  static FlexFlow::WeightAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::WeightAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::WeightAttrs> {
-  static Gen<::FlexFlow::WeightAttrs> arbitrary();
+struct Arbitrary<FlexFlow::WeightAttrs> {
+  static Gen<FlexFlow::WeightAttrs> arbitrary();
 };
 } // namespace rc
 

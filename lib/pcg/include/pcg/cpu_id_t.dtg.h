@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct cpu_id_t {
   cpu_id_t() = delete;
-  explicit cpu_id_t(int const &cpu_index);
+  cpu_id_t(int const &cpu_index);
 
   bool operator==(cpu_id_t const &) const;
   bool operator!=(cpu_id_t const &) const;
@@ -34,23 +34,23 @@ struct cpu_id_t {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::cpu_id_t> {
-  size_t operator()(::FlexFlow::cpu_id_t const &) const;
+struct hash<FlexFlow::cpu_id_t> {
+  size_t operator()(FlexFlow::cpu_id_t const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::cpu_id_t> {
-  static ::FlexFlow::cpu_id_t from_json(json const &);
-  static void to_json(json &, ::FlexFlow::cpu_id_t const &);
+struct adl_serializer<FlexFlow::cpu_id_t> {
+  static FlexFlow::cpu_id_t from_json(json const &);
+  static void to_json(json &, FlexFlow::cpu_id_t const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::cpu_id_t> {
-  static Gen<::FlexFlow::cpu_id_t> arbitrary();
+struct Arbitrary<FlexFlow::cpu_id_t> {
+  static Gen<FlexFlow::cpu_id_t> arbitrary();
 };
 } // namespace rc
 

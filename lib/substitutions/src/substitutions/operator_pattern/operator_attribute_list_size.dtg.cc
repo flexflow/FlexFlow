@@ -44,7 +44,7 @@ bool OperatorAttributeListSize::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::OperatorAttributeListSize>::operator()(
-    ::FlexFlow::OperatorAttributeListSize const &x) const {
+    FlexFlow::OperatorAttributeListSize const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OperatorAttributeKey>{}(x.attribute_key) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -53,23 +53,23 @@ size_t hash<FlexFlow::OperatorAttributeListSize>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::OperatorAttributeListSize
-    adl_serializer<::FlexFlow::OperatorAttributeListSize>::from_json(
+FlexFlow::OperatorAttributeListSize
+    adl_serializer<FlexFlow::OperatorAttributeListSize>::from_json(
         json const &j) {
-  return ::FlexFlow::OperatorAttributeListSize{
+  return {
       j.at("attribute_key").template get<::FlexFlow::OperatorAttributeKey>()};
 }
-void adl_serializer<::FlexFlow::OperatorAttributeListSize>::to_json(
-    json &j, ::FlexFlow::OperatorAttributeListSize const &v) {
+void adl_serializer<FlexFlow::OperatorAttributeListSize>::to_json(
+    json &j, FlexFlow::OperatorAttributeListSize const &v) {
   j["__type"] = "OperatorAttributeListSize";
   j["attribute_key"] = v.attribute_key;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::OperatorAttributeListSize>
-    Arbitrary<::FlexFlow::OperatorAttributeListSize>::arbitrary() {
-  return gen::construct<::FlexFlow::OperatorAttributeListSize>(
+Gen<FlexFlow::OperatorAttributeListSize>
+    Arbitrary<FlexFlow::OperatorAttributeListSize>::arbitrary() {
+  return gen::construct<FlexFlow::OperatorAttributeListSize>(
       gen::arbitrary<::FlexFlow::OperatorAttributeKey>());
 }
 } // namespace rc

@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct SumDegree {
   SumDegree() = delete;
-  explicit SumDegree(int const &value);
+  SumDegree(int const &value);
 
   bool operator==(SumDegree const &) const;
   bool operator!=(SumDegree const &) const;
@@ -34,23 +34,23 @@ struct SumDegree {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::SumDegree> {
-  size_t operator()(::FlexFlow::SumDegree const &) const;
+struct hash<FlexFlow::SumDegree> {
+  size_t operator()(FlexFlow::SumDegree const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::SumDegree> {
-  static ::FlexFlow::SumDegree from_json(json const &);
-  static void to_json(json &, ::FlexFlow::SumDegree const &);
+struct adl_serializer<FlexFlow::SumDegree> {
+  static FlexFlow::SumDegree from_json(json const &);
+  static void to_json(json &, FlexFlow::SumDegree const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::SumDegree> {
-  static Gen<::FlexFlow::SumDegree> arbitrary();
+struct Arbitrary<FlexFlow::SumDegree> {
+  static Gen<FlexFlow::SumDegree> arbitrary();
 };
 } // namespace rc
 

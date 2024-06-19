@@ -17,7 +17,7 @@
 namespace FlexFlow {
 struct SubParallelComputationGraph {
   SubParallelComputationGraph() = delete;
-  explicit SubParallelComputationGraph(
+  SubParallelComputationGraph(
       ::FlexFlow::OutputLabelledOpenMultiDiGraph<
           ::FlexFlow::ParallelLayerAttrs,
           ::FlexFlow::ParallelTensorAttrs> const &raw_graph);

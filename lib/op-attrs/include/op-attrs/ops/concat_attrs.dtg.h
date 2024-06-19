@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct ConcatAttrs {
   ConcatAttrs() = delete;
-  explicit ConcatAttrs(::FlexFlow::ff_dim_t const &axis, int const &num_inputs);
+  ConcatAttrs(::FlexFlow::ff_dim_t const &axis, int const &num_inputs);
 
   bool operator==(ConcatAttrs const &) const;
   bool operator!=(ConcatAttrs const &) const;
@@ -37,23 +37,23 @@ struct ConcatAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::ConcatAttrs> {
-  size_t operator()(::FlexFlow::ConcatAttrs const &) const;
+struct hash<FlexFlow::ConcatAttrs> {
+  size_t operator()(FlexFlow::ConcatAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::ConcatAttrs> {
-  static ::FlexFlow::ConcatAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::ConcatAttrs const &);
+struct adl_serializer<FlexFlow::ConcatAttrs> {
+  static FlexFlow::ConcatAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::ConcatAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::ConcatAttrs> {
-  static Gen<::FlexFlow::ConcatAttrs> arbitrary();
+struct Arbitrary<FlexFlow::ConcatAttrs> {
+  static Gen<FlexFlow::ConcatAttrs> arbitrary();
 };
 } // namespace rc
 

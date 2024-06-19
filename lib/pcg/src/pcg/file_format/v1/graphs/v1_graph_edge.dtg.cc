@@ -45,7 +45,7 @@ bool V1GraphEdge::operator>=(V1GraphEdge const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::V1GraphEdge>::operator()(
-    ::FlexFlow::V1GraphEdge const &x) const {
+    FlexFlow::V1GraphEdge const &x) const {
   size_t result = 0;
   result ^= std::hash<size_t>{}(x.srcNode) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -60,15 +60,15 @@ size_t hash<FlexFlow::V1GraphEdge>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::V1GraphEdge
-    adl_serializer<::FlexFlow::V1GraphEdge>::from_json(json const &j) {
-  return ::FlexFlow::V1GraphEdge{j.at("srcNode").template get<size_t>(),
-                                 j.at("srcIdx").template get<size_t>(),
-                                 j.at("dstNode").template get<size_t>(),
-                                 j.at("dstIdx").template get<size_t>()};
+FlexFlow::V1GraphEdge
+    adl_serializer<FlexFlow::V1GraphEdge>::from_json(json const &j) {
+  return {j.at("srcNode").template get<size_t>(),
+          j.at("srcIdx").template get<size_t>(),
+          j.at("dstNode").template get<size_t>(),
+          j.at("dstIdx").template get<size_t>()};
 }
-void adl_serializer<::FlexFlow::V1GraphEdge>::to_json(
-    json &j, ::FlexFlow::V1GraphEdge const &v) {
+void adl_serializer<FlexFlow::V1GraphEdge>::to_json(
+    json &j, FlexFlow::V1GraphEdge const &v) {
   j["__type"] = "V1GraphEdge";
   j["srcNode"] = v.srcNode;
   j["srcIdx"] = v.srcIdx;

@@ -30,23 +30,23 @@ struct ZeroInitializerAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::ZeroInitializerAttrs> {
-  size_t operator()(::FlexFlow::ZeroInitializerAttrs const &) const;
+struct hash<FlexFlow::ZeroInitializerAttrs> {
+  size_t operator()(FlexFlow::ZeroInitializerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::ZeroInitializerAttrs> {
-  static ::FlexFlow::ZeroInitializerAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::ZeroInitializerAttrs const &);
+struct adl_serializer<FlexFlow::ZeroInitializerAttrs> {
+  static FlexFlow::ZeroInitializerAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::ZeroInitializerAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::ZeroInitializerAttrs> {
-  static Gen<::FlexFlow::ZeroInitializerAttrs> arbitrary();
+struct Arbitrary<FlexFlow::ZeroInitializerAttrs> {
+  static Gen<FlexFlow::ZeroInitializerAttrs> arbitrary();
 };
 } // namespace rc
 

@@ -35,7 +35,7 @@ bool L2RegularizerAttrs::operator>=(L2RegularizerAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::L2RegularizerAttrs>::operator()(
-    ::FlexFlow::L2RegularizerAttrs const &x) const {
+    FlexFlow::L2RegularizerAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<float>{}(x.lambda) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -44,22 +44,21 @@ size_t hash<FlexFlow::L2RegularizerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::L2RegularizerAttrs
-    adl_serializer<::FlexFlow::L2RegularizerAttrs>::from_json(json const &j) {
-  return ::FlexFlow::L2RegularizerAttrs{j.at("lambda").template get<float>()};
+FlexFlow::L2RegularizerAttrs
+    adl_serializer<FlexFlow::L2RegularizerAttrs>::from_json(json const &j) {
+  return {j.at("lambda").template get<float>()};
 }
-void adl_serializer<::FlexFlow::L2RegularizerAttrs>::to_json(
-    json &j, ::FlexFlow::L2RegularizerAttrs const &v) {
+void adl_serializer<FlexFlow::L2RegularizerAttrs>::to_json(
+    json &j, FlexFlow::L2RegularizerAttrs const &v) {
   j["__type"] = "L2RegularizerAttrs";
   j["lambda"] = v.lambda;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::L2RegularizerAttrs>
-    Arbitrary<::FlexFlow::L2RegularizerAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::L2RegularizerAttrs>(
-      gen::arbitrary<float>());
+Gen<FlexFlow::L2RegularizerAttrs>
+    Arbitrary<FlexFlow::L2RegularizerAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::L2RegularizerAttrs>(gen::arbitrary<float>());
 }
 } // namespace rc
 

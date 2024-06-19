@@ -73,7 +73,7 @@ bool OperatorAttributeConstraint::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::OperatorAttributeConstraint>::operator()(
-    ::FlexFlow::OperatorAttributeConstraint const &x) const {
+    FlexFlow::OperatorAttributeConstraint const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ConstraintType>{}(x.constraint_type) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -86,17 +86,17 @@ size_t hash<FlexFlow::OperatorAttributeConstraint>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::OperatorAttributeConstraint
-    adl_serializer<::FlexFlow::OperatorAttributeConstraint>::from_json(
+FlexFlow::OperatorAttributeConstraint
+    adl_serializer<FlexFlow::OperatorAttributeConstraint>::from_json(
         json const &j) {
-  return ::FlexFlow::OperatorAttributeConstraint{
+  return {
       j.at("constraint_type").template get<::FlexFlow::ConstraintType>(),
       j.at("attribute_expr").template get<::FlexFlow::OperatorAttributeExpr>(),
       j.at("attribute_value")
           .template get<::FlexFlow::OperatorAttributeValue>()};
 }
-void adl_serializer<::FlexFlow::OperatorAttributeConstraint>::to_json(
-    json &j, ::FlexFlow::OperatorAttributeConstraint const &v) {
+void adl_serializer<FlexFlow::OperatorAttributeConstraint>::to_json(
+    json &j, FlexFlow::OperatorAttributeConstraint const &v) {
   j["__type"] = "OperatorAttributeConstraint";
   j["constraint_type"] = v.constraint_type;
   j["attribute_expr"] = v.attribute_expr;

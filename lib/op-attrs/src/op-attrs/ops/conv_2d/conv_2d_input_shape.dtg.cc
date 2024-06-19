@@ -91,7 +91,7 @@ bool Conv2DInputShape::operator>=(Conv2DInputShape const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::Conv2DInputShape>::operator()(
-    ::FlexFlow::Conv2DInputShape const &x) const {
+    FlexFlow::Conv2DInputShape const &x) const {
   size_t result = 0;
   result ^= std::hash<size_t>{}(x.num_samples) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -108,17 +108,16 @@ size_t hash<FlexFlow::Conv2DInputShape>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::Conv2DInputShape
-    adl_serializer<::FlexFlow::Conv2DInputShape>::from_json(json const &j) {
-  return ::FlexFlow::Conv2DInputShape{
-      j.at("num_samples").template get<size_t>(),
-      j.at("num_channels").template get<size_t>(),
-      j.at("height").template get<size_t>(),
-      j.at("width").template get<size_t>(),
-      j.at("datatype").template get<::FlexFlow::DataType>()};
+FlexFlow::Conv2DInputShape
+    adl_serializer<FlexFlow::Conv2DInputShape>::from_json(json const &j) {
+  return {j.at("num_samples").template get<size_t>(),
+          j.at("num_channels").template get<size_t>(),
+          j.at("height").template get<size_t>(),
+          j.at("width").template get<size_t>(),
+          j.at("datatype").template get<::FlexFlow::DataType>()};
 }
-void adl_serializer<::FlexFlow::Conv2DInputShape>::to_json(
-    json &j, ::FlexFlow::Conv2DInputShape const &v) {
+void adl_serializer<FlexFlow::Conv2DInputShape>::to_json(
+    json &j, FlexFlow::Conv2DInputShape const &v) {
   j["__type"] = "Conv2DInputShape";
   j["num_samples"] = v.num_samples;
   j["num_channels"] = v.num_channels;
@@ -129,9 +128,9 @@ void adl_serializer<::FlexFlow::Conv2DInputShape>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::Conv2DInputShape>
-    Arbitrary<::FlexFlow::Conv2DInputShape>::arbitrary() {
-  return gen::construct<::FlexFlow::Conv2DInputShape>(
+Gen<FlexFlow::Conv2DInputShape>
+    Arbitrary<FlexFlow::Conv2DInputShape>::arbitrary() {
+  return gen::construct<FlexFlow::Conv2DInputShape>(
       gen::arbitrary<size_t>(),
       gen::arbitrary<size_t>(),
       gen::arbitrary<size_t>(),

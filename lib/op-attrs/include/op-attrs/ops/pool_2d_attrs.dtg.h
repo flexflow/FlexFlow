@@ -22,14 +22,14 @@
 namespace FlexFlow {
 struct Pool2DAttrs {
   Pool2DAttrs() = delete;
-  explicit Pool2DAttrs(int const &kernel_h,
-                       int const &kernel_w,
-                       int const &stride_h,
-                       int const &stride_w,
-                       int const &padding_h,
-                       int const &padding_w,
-                       ::FlexFlow::PoolOp const &pool_type,
-                       ::FlexFlow::Activation const &activation);
+  Pool2DAttrs(int const &kernel_h,
+              int const &kernel_w,
+              int const &stride_h,
+              int const &stride_w,
+              int const &padding_h,
+              int const &padding_w,
+              ::FlexFlow::PoolOp const &pool_type,
+              ::FlexFlow::Activation const &activation);
 
   bool operator==(Pool2DAttrs const &) const;
   bool operator!=(Pool2DAttrs const &) const;
@@ -50,23 +50,23 @@ struct Pool2DAttrs {
 
 namespace std {
 template <>
-struct hash<::FlexFlow::Pool2DAttrs> {
-  size_t operator()(::FlexFlow::Pool2DAttrs const &) const;
+struct hash<FlexFlow::Pool2DAttrs> {
+  size_t operator()(FlexFlow::Pool2DAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<::FlexFlow::Pool2DAttrs> {
-  static ::FlexFlow::Pool2DAttrs from_json(json const &);
-  static void to_json(json &, ::FlexFlow::Pool2DAttrs const &);
+struct adl_serializer<FlexFlow::Pool2DAttrs> {
+  static FlexFlow::Pool2DAttrs from_json(json const &);
+  static void to_json(json &, FlexFlow::Pool2DAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<::FlexFlow::Pool2DAttrs> {
-  static Gen<::FlexFlow::Pool2DAttrs> arbitrary();
+struct Arbitrary<FlexFlow::Pool2DAttrs> {
+  static Gen<FlexFlow::Pool2DAttrs> arbitrary();
 };
 } // namespace rc
 

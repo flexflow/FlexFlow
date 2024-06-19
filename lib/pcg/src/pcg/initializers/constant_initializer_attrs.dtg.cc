@@ -45,7 +45,7 @@ bool ConstantInitializerAttrs::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::ConstantInitializerAttrs>::operator()(
-    ::FlexFlow::ConstantInitializerAttrs const &x) const {
+    FlexFlow::ConstantInitializerAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::DataTypeValue>{}(x.value) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -54,23 +54,22 @@ size_t hash<FlexFlow::ConstantInitializerAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-::FlexFlow::ConstantInitializerAttrs
-    adl_serializer<::FlexFlow::ConstantInitializerAttrs>::from_json(
+FlexFlow::ConstantInitializerAttrs
+    adl_serializer<FlexFlow::ConstantInitializerAttrs>::from_json(
         json const &j) {
-  return ::FlexFlow::ConstantInitializerAttrs{
-      j.at("value").template get<::FlexFlow::DataTypeValue>()};
+  return {j.at("value").template get<::FlexFlow::DataTypeValue>()};
 }
-void adl_serializer<::FlexFlow::ConstantInitializerAttrs>::to_json(
-    json &j, ::FlexFlow::ConstantInitializerAttrs const &v) {
+void adl_serializer<FlexFlow::ConstantInitializerAttrs>::to_json(
+    json &j, FlexFlow::ConstantInitializerAttrs const &v) {
   j["__type"] = "ConstantInitializerAttrs";
   j["value"] = v.value;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<::FlexFlow::ConstantInitializerAttrs>
-    Arbitrary<::FlexFlow::ConstantInitializerAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::ConstantInitializerAttrs>(
+Gen<FlexFlow::ConstantInitializerAttrs>
+    Arbitrary<FlexFlow::ConstantInitializerAttrs>::arbitrary() {
+  return gen::construct<FlexFlow::ConstantInitializerAttrs>(
       gen::arbitrary<::FlexFlow::DataTypeValue>());
 }
 } // namespace rc

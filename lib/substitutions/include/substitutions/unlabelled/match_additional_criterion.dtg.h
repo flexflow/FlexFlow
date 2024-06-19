@@ -18,7 +18,7 @@
 namespace FlexFlow {
 struct MatchAdditionalCriterion {
   MatchAdditionalCriterion() = delete;
-  explicit MatchAdditionalCriterion(
+  MatchAdditionalCriterion(
       std::function<bool(::FlexFlow::PatternNode const &,
                          ::FlexFlow::Node const &)> const &node_criterion,
       std::function<bool(::FlexFlow::PatternEdge const &,
