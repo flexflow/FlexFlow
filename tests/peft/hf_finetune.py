@@ -271,6 +271,7 @@ def main():
             output_dir=os.path.join(
                 output_dir if len(output_dir) > 0 else "./", "lora_training_logs"
             ),
+            optim=transformers.training_args.OptimizerNames.SGD,
         ),
         data_collator=transformers.DataCollatorForLanguageModeling(
             tokenizer, mlm=False

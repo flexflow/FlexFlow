@@ -27,7 +27,7 @@ public:
                                   LoraSGDOptimizerConfig const &llc);
 
 public:
-  double lr = 0.01f;
+  double lr = 0.001f;
   double momentum = 0.0f;
   bool nesterov = false;
   double weight_decay = 0.0f;

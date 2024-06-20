@@ -713,12 +713,7 @@ void LoraLinear::peft_bwd_task(Task const *task,
   GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  // int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
-  // int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
-  // int num_infr_tokens = bc->num_active_infr_tokens();
-  // int num_peft_tokens = bc->num_active_peft_tokens();
-  peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
-
+  std::string base_filepath = "";
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -744,7 +739,7 @@ void LoraLinear::peft_bwd_task(Task const *task,
         lora_layername.substr(0, found + searchString.length());
 
     // output base filepath, shared by all tensors from the same operator
-    std::string base_filepath = std::string(folder_path);
+    base_filepath = std::string(folder_path);
     if (m->layer_guid.model_id > 0) {
       base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
     }
@@ -752,33 +747,18 @@ void LoraLinear::peft_bwd_task(Task const *task,
     base_filepath +=
         "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
         lora_layername_substr + "_shard_" + std::to_string(shard_id);
-
+    
     // save batch config, if passed
     if (bc != nullptr) {
       bc->save_to_file(base_filepath + "_batch_config");
     }
 
-    std::string filename = base_filepath + "_input_" + std::to_string(0);
-    if (input_grad.data_type == DT_FLOAT) {
-      save_tensor(input_grad.get_float_ptr(),
-                  input_grad.domain.get_volume(),
-                  filename.c_str());
-    } else if (input_grad.data_type == DT_HALF) {
-      save_tensor(input_grad.get_half_ptr(),
-                  input_grad.domain.get_volume(),
-                  filename.c_str());
-    } else {
-      assert(false);
-    }
-
-    // std::cout << "base_filepath: " << base_filepath << std::endl;
-    // std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
     if (m->bwd_step == 0) {
       for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
         PEFTModelID peft_model_id = it->first;
         LoraLinearWeight weight = m->model_state[peft_model_id].weights;
-        std::string filenameA = base_filepath + "_weight_A";
-        std::string filenameB = base_filepath + "_weight_B";
+        std::string filenameA = base_filepath + "_weight_A_pre";
+        std::string filenameB = base_filepath + "_weight_B_pre";
         if (m->input_type[0] == DT_FLOAT) {
           save_tensor((float *)weight.w0_grad_ptr,
                       weight.rank * weight.in_dim,
@@ -796,6 +776,55 @@ void LoraLinear::peft_bwd_task(Task const *task,
         } else {
           assert(false && "Data type not supported");
         }
+      }
+    }
+  }
+
+  // int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
+  // int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
+  // int num_infr_tokens = bc->num_active_infr_tokens();
+  // int num_peft_tokens = bc->num_active_peft_tokens();
+  peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+
+  if (m->inference_debugging) {
+
+    std::string filename = base_filepath + "_input_" + std::to_string(0);
+    if (input_grad.data_type == DT_FLOAT) {
+      save_tensor(input_grad.get_float_ptr(),
+                  input_grad.domain.get_volume(),
+                  filename.c_str());
+    } else if (input_grad.data_type == DT_HALF) {
+      save_tensor(input_grad.get_half_ptr(),
+                  input_grad.domain.get_volume(),
+                  filename.c_str());
+    } else {
+      assert(false);
+    }
+
+    // std::cout << "base_filepath: " << base_filepath << std::endl;
+    // std::cout << "m->decoding_step: " << m->decoding_step << std::endl;
+  
+    for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
+      PEFTModelID peft_model_id = it->first;
+      LoraLinearWeight weight = m->model_state[peft_model_id].weights;
+      std::string filenameA = base_filepath + "_weight_A";
+      std::string filenameB = base_filepath + "_weight_B";
+      if (m->input_type[0] == DT_FLOAT) {
+        save_tensor((float *)weight.w0_grad_ptr,
+                    weight.rank * weight.in_dim,
+                    filenameA.c_str());
+        save_tensor((float *)weight.w1_grad_ptr,
+                    weight.rank * weight.out_dim,
+                    filenameB.c_str());
+      } else if (m->input_type[0] == DT_HALF) {
+        save_tensor((half *)weight.w0_grad_ptr,
+                    weight.rank * weight.in_dim,
+                    filenameA.c_str());
+        save_tensor((half *)weight.w1_grad_ptr,
+                    weight.rank * weight.out_dim,
+                    filenameB.c_str());
+      } else {
+        assert(false && "Data type not supported");
       }
     }
 

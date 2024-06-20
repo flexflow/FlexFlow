@@ -14,7 +14,7 @@ LoraOptimizerConfig::LoraOptimizerConfig() {}
 
 // SGD optimizer
 LoraSGDOptimizerConfig::LoraSGDOptimizerConfig()
-    : lr(0.01f), momentum(0.0f), nesterov(false), weight_decay(0.0f) {}
+    : lr(0.001f), momentum(0.0f), nesterov(false), weight_decay(0.0f) {}
 
 LoraSGDOptimizerConfig::LoraSGDOptimizerConfig(double lr_,
                                                double momentum_,
