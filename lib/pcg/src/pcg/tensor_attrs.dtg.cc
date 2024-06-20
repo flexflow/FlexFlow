@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/tensor_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "68447a4357476647ef25dd39dfd12578"
+  "generated_from": "545e84c03a34f24b89684feff5b81ad1"
 }
 */
 
@@ -11,6 +11,7 @@
 
 #include "op-attrs/param_sync.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
+#include "pcg/create_grad.dtg.h"
 #include "pcg/initializer_attrs.dtg.h"
 #include <optional>
 #include <sstream>
@@ -19,63 +20,63 @@ namespace FlexFlow {
 TensorAttrs::TensorAttrs(
     ::FlexFlow::TensorShape const &shape,
     std::optional<::FlexFlow::InitializerAttrs> const &initializer,
-    bool const &create_gradients,
-    std::optional<::FlexFlow::ParamSync> const &sync_type)
-    : shape(shape), initializer(initializer),
-      create_gradients(create_gradients), sync_type(sync_type) {}
+    std::optional<::FlexFlow::ParamSync> const &sync_type,
+    ::FlexFlow::CreateGrad const &create_gradients)
+    : shape(shape), initializer(initializer), sync_type(sync_type),
+      create_gradients(create_gradients) {}
 bool TensorAttrs::operator==(TensorAttrs const &other) const {
   return std::tie(this->shape,
                   this->initializer,
-                  this->create_gradients,
-                  this->sync_type) == std::tie(other.shape,
-                                               other.initializer,
-                                               other.create_gradients,
-                                               other.sync_type);
+                  this->sync_type,
+                  this->create_gradients) == std::tie(other.shape,
+                                                      other.initializer,
+                                                      other.sync_type,
+                                                      other.create_gradients);
 }
 bool TensorAttrs::operator!=(TensorAttrs const &other) const {
   return std::tie(this->shape,
                   this->initializer,
-                  this->create_gradients,
-                  this->sync_type) != std::tie(other.shape,
-                                               other.initializer,
-                                               other.create_gradients,
-                                               other.sync_type);
+                  this->sync_type,
+                  this->create_gradients) != std::tie(other.shape,
+                                                      other.initializer,
+                                                      other.sync_type,
+                                                      other.create_gradients);
 }
 bool TensorAttrs::operator<(TensorAttrs const &other) const {
   return std::tie(this->shape,
                   this->initializer,
-                  this->create_gradients,
-                  this->sync_type) < std::tie(other.shape,
-                                              other.initializer,
-                                              other.create_gradients,
-                                              other.sync_type);
+                  this->sync_type,
+                  this->create_gradients) < std::tie(other.shape,
+                                                     other.initializer,
+                                                     other.sync_type,
+                                                     other.create_gradients);
 }
 bool TensorAttrs::operator>(TensorAttrs const &other) const {
   return std::tie(this->shape,
                   this->initializer,
-                  this->create_gradients,
-                  this->sync_type) > std::tie(other.shape,
-                                              other.initializer,
-                                              other.create_gradients,
-                                              other.sync_type);
+                  this->sync_type,
+                  this->create_gradients) > std::tie(other.shape,
+                                                     other.initializer,
+                                                     other.sync_type,
+                                                     other.create_gradients);
 }
 bool TensorAttrs::operator<=(TensorAttrs const &other) const {
   return std::tie(this->shape,
                   this->initializer,
-                  this->create_gradients,
-                  this->sync_type) <= std::tie(other.shape,
-                                               other.initializer,
-                                               other.create_gradients,
-                                               other.sync_type);
+                  this->sync_type,
+                  this->create_gradients) <= std::tie(other.shape,
+                                                      other.initializer,
+                                                      other.sync_type,
+                                                      other.create_gradients);
 }
 bool TensorAttrs::operator>=(TensorAttrs const &other) const {
   return std::tie(this->shape,
                   this->initializer,
-                  this->create_gradients,
-                  this->sync_type) >= std::tie(other.shape,
-                                               other.initializer,
-                                               other.create_gradients,
-                                               other.sync_type);
+                  this->sync_type,
+                  this->create_gradients) >= std::tie(other.shape,
+                                                      other.initializer,
+                                                      other.sync_type,
+                                                      other.create_gradients);
 }
 } // namespace FlexFlow
 
@@ -88,9 +89,9 @@ size_t hash<FlexFlow::TensorAttrs>::operator()(
   result ^=
       std::hash<std::optional<::FlexFlow::InitializerAttrs>>{}(x.initializer) +
       0x9e3779b9 + (result << 6) + (result >> 2);
-  result ^= std::hash<bool>{}(x.create_gradients) + 0x9e3779b9 + (result << 6) +
-            (result >> 2);
   result ^= std::hash<std::optional<::FlexFlow::ParamSync>>{}(x.sync_type) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
+  result ^= std::hash<::FlexFlow::CreateGrad>{}(x.create_gradients) +
             0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
@@ -103,16 +104,16 @@ namespace nlohmann {
       j.at("shape").template get<::FlexFlow::TensorShape>(),
       j.at("initializer")
           .template get<std::optional<::FlexFlow::InitializerAttrs>>(),
-      j.at("create_gradients").template get<bool>(),
-      j.at("sync_type").template get<std::optional<::FlexFlow::ParamSync>>()};
+      j.at("sync_type").template get<std::optional<::FlexFlow::ParamSync>>(),
+      j.at("create_gradients").template get<::FlexFlow::CreateGrad>()};
 }
 void adl_serializer<::FlexFlow::TensorAttrs>::to_json(
     json &j, ::FlexFlow::TensorAttrs const &v) {
   j["__type"] = "TensorAttrs";
   j["shape"] = v.shape;
   j["initializer"] = v.initializer;
-  j["create_gradients"] = v.create_gradients;
   j["sync_type"] = v.sync_type;
+  j["create_gradients"] = v.create_gradients;
 }
 } // namespace nlohmann
 
@@ -122,8 +123,8 @@ std::string format_as(TensorAttrs const &x) {
   oss << "<TensorAttrs";
   oss << " shape=" << x.shape;
   oss << " initializer=" << x.initializer;
-  oss << " create_gradients=" << x.create_gradients;
   oss << " sync_type=" << x.sync_type;
+  oss << " create_gradients=" << x.create_gradients;
   oss << ">";
   return oss.str();
 }

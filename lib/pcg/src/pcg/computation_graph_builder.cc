@@ -21,10 +21,11 @@ TensorShape ComputationGraphBuilder::get_shape(tensor_guid_t const &t) const {
   return get_tensor_attrs(this->computation_graph, t).shape;
 }
 
-tensor_guid_t ComputationGraphBuilder::create_tensor(TensorShape const &shape,
-                                                     bool create_grad) {
+tensor_guid_t
+    ComputationGraphBuilder::create_tensor(TensorShape const &shape,
+                                           CreateGrad const create_gradients) {
   TensorAttrs tensor_attrs =
-      TensorAttrs{shape, std::nullopt, create_grad, std::nullopt};
+      TensorAttrs{shape, std::nullopt, std::nullopt, create_gradients};
   LayerAttrs layer_attrs = LayerAttrs{
       ComputationGraphOpAttrs{InputAttrs{}},
       std::nullopt,
@@ -87,7 +88,7 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
     std::vector<TensorShape> const &outputs) {
   return this->add_layer(
       layer, inputs, weights, transform(outputs, [](TensorShape const &s) {
-        return TensorAttrs{s, std::nullopt, true, std::nullopt};
+        return TensorAttrs{s, std::nullopt, std::nullopt, CreateGrad::YES};
       }));
 }
 
@@ -330,7 +331,7 @@ tensor_guid_t
 static TensorAttrs make_weight_attrs(
     TensorShape const &shape,
     std::optional<InitializerAttrs> const &initializer_attrs) {
-  return TensorAttrs{shape, initializer_attrs, true, std::nullopt};
+  return TensorAttrs{shape, initializer_attrs, std::nullopt, CreateGrad::YES};
 }
 
 tensor_guid_t ComputationGraphBuilder::conv2d(
