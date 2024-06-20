@@ -523,7 +523,7 @@ __host__ void
                             Context ctx,
                             Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
@@ -586,6 +586,11 @@ __host__ void
   if (start < fused->numOperators) {
     checkCUDA(get_legion_stream(&stream));
   }
+
+  // create new hip graph
+  hipGraph_t graph;
+  hipGraphExec_t instance;
+  hipStreamBeginCapture(stream, hipStreamCaptureModeThreadLocal);
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
@@ -1061,6 +1066,31 @@ __host__ void
     woff += fused->op_num_weights[op];
     ooff += fused->op_num_outputs[op];
   }
+  hipStreamEndCapture(stream, &graph);
+  std::tuple<int, int, bool> graph_params =
+      std::make_tuple(bc->num_active_requests(),
+                      bc->num_active_tokens(),
+                      bc->num_generation_tokens > 0);
+  // check if graph exists
+  if (metas->graph_collections.find(graph_params) !=
+      metas->graph_collections.end()) {
+    instance = metas->graph_collections[graph_params];
+    hipGraphExecUpdateResult updateResult;
+    hipGraphNode_t errorNode;
+    hipGraphExecUpdate(instance, graph, &errorNode, &updateResult);
+    if (updateResult != hipGraphExecUpdateSuccess) {
+      hipGraphExecDestroy(instance);
+      hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
+    }
+  } else {
+    hipGraphInstantiate(&instance, graph, NULL, NULL, 0);
+  }
+  metas->graph_collections[graph_params] = instance;
+  assert(metas->graph_collections.find(graph_params) !=
+         metas->graph_collections.end());
+  hipGraphDestroy(graph);
+  hipGraphLaunch(instance, stream);
+
   // for (int i = 0; i < fused->numOutputs; i++)
   //   print_tensor<float>(output_ptr[i], output_domain[i].get_volume(),
   //   "[Fused:forward:output]");
@@ -1079,7 +1109,7 @@ __host__ void FusedOp::backward_task(Task const *task,
                                      Context ctx,
                                      Runtime *runtime) {
   // const FusedOp* fused = (FusedOp*) task->args;
-  FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
+  FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
 
   assert(metas->numOperators == fused->numOperators);
