@@ -1061,21 +1061,13 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
 
-    causalMask = reinterpret_cast<BatchConfig::BitMask *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo));
+    causalMask = static_cast<BatchConfig::BitMask *>(
+        handler.batch_config_metadata->causalMask);
     committed_token_infos =
-        reinterpret_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
-            reinterpret_cast<char *>(handler.batch_config_metadata) +
-            sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo) +
-            sizeof(BatchConfig::causalMask));
-
-    request_completed = reinterpret_cast<bool *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BatchConfig::causalMask) +
-        sizeof(TreeVerifyBatchConfig::committed_tokens));
+        static_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
+            handler.batch_config_metadata->committed_tokens);
+    request_completed =
+        static_cast<bool *>(handler.batch_config_metadata->request_completed);
   }
 
   cudaStreamSynchronize(stream);

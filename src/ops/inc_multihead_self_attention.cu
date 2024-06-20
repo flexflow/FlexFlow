@@ -2088,11 +2088,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
                                                              size_of_dt);
 
-    token_infos =
-        static_cast<BatchConfig::PerTokenInfo *>(handler.batch_config_metadata);
-    request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo));
+    token_infos = static_cast<BatchConfig::PerTokenInfo *>(
+        handler.batch_config_metadata->tokens_info);
+    request_infos = static_cast<BatchConfig::PerRequestInfo *>(
+        handler.batch_config_metadata->requestsInfo);
 
     if (offload) {
       // token_infos =

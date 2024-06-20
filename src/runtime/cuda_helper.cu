@@ -646,6 +646,23 @@ void check_device_vs_host_ptr(void const *maybe_devicePtr) {
   }
 }
 
+void check_ptr_alignment(void const *ptr) {
+  if (!ptr) {
+    printf("Pointer is NULL\n");
+    return;
+  }
+  bool aligned2 = ((uintptr_t)ptr % 2 == 0);
+  bool aligned4 = ((uintptr_t)ptr % 4 == 0);
+  bool aligned8 = ((uintptr_t)ptr % 8 == 0);
+  bool aligned16 = ((uintptr_t)ptr % 16 == 0);
+  printf("Pointer %p is aligned as follows: 2=%s, 4=%s, 8=%s, 16=%s\n",
+         ptr,
+         (aligned2 ? "yes" : "no"),
+         (aligned4 ? "yes" : "no"),
+         (aligned8 ? "yes" : "no"),
+         (aligned16 ? "yes" : "no"));
+}
+
 template __global__ void
     assign_kernel<half>(half *ptr, coord_t size, half value);
 template __global__ void

@@ -68,6 +68,23 @@ class FFConfig;
 class MemoryAllocator;
 class PEFTWeightAllocator;
 
+struct CombinedBatchConfigMetaStruct {
+  BatchConfig::PerTokenInfo tokens_info[BatchConfig::MAX_NUM_TOKENS];
+  BatchConfig::PerRequestInfo requestsInfo[BatchConfig::MAX_NUM_REQUESTS];
+  BatchConfig::BitMask causalMask[BatchConfig::MAX_NUM_REQUESTS];
+  bool request_completed[BatchConfig::MAX_NUM_REQUESTS];
+
+  BeamSearchBatchConfig::BeamSearchPerTokenInfo
+      beamTokenInfo[BeamSearchBatchConfig::MAX_NUM_TOKENS +
+                    BeamSearchBatchConfig::MAX_SPEC_TREE_TOKEN_NUM *
+                        BeamSearchBatchConfig::MAX_NUM_REQUESTS];
+  BeamSearchBatchConfig::BeamSearchPerRequestInfo
+      beamRequestsInfo[BeamSearchBatchConfig::MAX_NUM_REQUESTS];
+
+  TreeVerifyBatchConfig::CommittedTokensInfo
+      committed_tokens[TreeVerifyBatchConfig::MAX_NUM_TOKENS];
+};
+
 struct FFHandler {
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnHandle_t dnn;
@@ -78,16 +95,10 @@ struct FFHandler {
 #endif
   void *workSpace;
   size_t workSpaceSize;
-  void *batch_config_metadata;
+  CombinedBatchConfigMetaStruct *batch_config_metadata;
 
   // request info + token info + topolopgy mask info
-  size_t batch_config_metadata_size =
-      sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-      sizeof(BeamSearchBatchConfig::beamTokenInfo) +
-      sizeof(BeamSearchBatchConfig::beamRequestsInfo) +
-      sizeof(BatchConfig::causalMask) +
-      sizeof(TreeVerifyBatchConfig::committed_tokens) +
-      sizeof(BatchConfig::request_completed);
+  size_t batch_config_metadata_size = sizeof(CombinedBatchConfigMetaStruct);
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   // PEFT related fields
