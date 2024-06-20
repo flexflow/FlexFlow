@@ -1,6 +1,15 @@
 import numpy as np
-import os, torch
+import os, torch, argparse
 from alignment.align_test_utils import *
+from transformers import AutoConfig
+
+def get_model_config(model_name):
+    try:
+        config = AutoConfig.from_pretrained(model_name)
+    except Exception as e:
+        print(f"Error loading model config for '{model_name}': {e}")
+        config = None
+    return config
 
 def convert_hf_filename_to_ff_filename(f, num_layers=12):
     if f.endswith(".lm_head.weight"):
@@ -22,10 +31,10 @@ def convert_hf_filename_to_ff_filename(f, num_layers=12):
         f_version += f"_shard_0_weight_{weight_index}"
     return f_version
 
-def check_weights_alignment():
+def check_weights_alignment(num_layers=12):
     print("-- Weights alignment --")
     files_list = os.listdir(hf_path)
-    num_layers=12
+
     for f in sorted(files_list):
         if f.endswith(".weight"):
             if "self_attn" in f:
@@ -40,9 +49,13 @@ def check_weights_alignment():
             # print("\t", ff_w_path)
 
             # check equivalence
-            compare_tensors(hf_w_path, ff_w_path, tolerance=1e-5)
+            try:
+                compare_tensors(hf_w_path, ff_w_path, tolerance=1e-5)
+            except Exception as e:
+                print(f"Error comparing {ff_w_path} weight to {hf_w_path}:\n{e}\n")
+                raise e
 
-def check_fwd_pass(tot_num_layers = 12):
+def check_llama_fwd_pass(hf_config, tot_num_layers = 12):
     print("-- FWD pass --")
     # Transfomer head
     hf_embed_input= f"{hf_path}/fwd_step_0_embed_tokens.input_0"
@@ -118,7 +131,7 @@ def check_fwd_pass(tot_num_layers = 12):
     ff_lm_head_out = f"{ff_path}/fwd_step_0_layers_{tot_num_layers-1}_lm_head_shard_0_output_0"
     compare_tensors(hf_lm_head_out, ff_lm_head_out, tolerance=1e-5)
 
-def check_bwd_pass(tot_num_layers = 12):
+def check_llama_bwd_pass(hf_config, tot_num_layers = 12):
     # ff_BWD_softmax_in = f"{ff_path}/model_0_bwd-step_0_layer-num_100_layer-name_Softmax_shard-id_0_input_0"
     print("-- LM head --")
     hf_BWD_lm_head_out = f"{hf_path}/bwd_step_0_base_model.model.lm_head.go_0"
@@ -325,9 +338,18 @@ def check_bwd_pass(tot_num_layers = 12):
                 compare_tensors(hf_input_ln_in, ff_input_ln_in0)
         
 
+parser = argparse.ArgumentParser(description='Argument Parser Example') 
+# Adding arguments
+parser.add_argument('-m', '--model-name', type=str, default="JackFram/llama-160m", help='Name of the model')
+parser.add_argument('-n', '--num-layers', type=int, default=12, help='Number of layers in the model')
+parser.add_argument('-tp', '--tensor-parallelism-degree', type=int, default=1, help='The tensor parallelism degree used when running FlexFlow')
 
+# Parse the arguments from command line
+args = parser.parse_args()
 
 if __name__ == "__main__":
-    check_weights_alignment()
-    check_fwd_pass()
-    check_bwd_pass()
+    hf_config = get_model_config(args.model_name)
+
+    check_weights_alignment(num_layers=args.num_layers)
+    check_llama_fwd_pass(hf_config, tot_num_layers=args.num_layers)
+    check_llama_bwd_pass(hf_config, tot_num_layers=args.num_layers)
