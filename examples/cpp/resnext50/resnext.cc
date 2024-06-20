@@ -7,7 +7,7 @@ using FlexFlow::Optimizer;
 using FlexFlow::SGDOptimizer;
 using FlexFlow::Tensor;
 
-LegionRuntime::Logger::Category log_app("resnext");
+Legion::Logger log_app("resnext");
 
 Tensor resnext_block(FFModel &ff,
                      Tensor input,

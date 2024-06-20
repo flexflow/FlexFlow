@@ -21,7 +21,7 @@
 using namespace Legion;
 using namespace FlexFlow;
 
-LegionRuntime::Logger::Category log_app("Inceptionv3");
+Legion::Logger log_app("Inceptionv3");
 
 Tensor InceptionA(FFModel &ff, Tensor input, int pool_features) {
   Tensor t1 = input;

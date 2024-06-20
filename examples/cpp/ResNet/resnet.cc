@@ -24,7 +24,7 @@ using FlexFlow::Optimizer;
 using FlexFlow::SGDOptimizer;
 using FlexFlow::Tensor;
 
-LegionRuntime::Logger::Category log_app("ResNet");
+Legion::Logger log_app("ResNet");
 
 void parse_input_args(char **argv, int argc, ResNetConfig &config) {
   for (int i = 1; i < argc; i++) {

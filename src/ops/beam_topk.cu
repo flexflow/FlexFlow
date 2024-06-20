@@ -25,7 +25,7 @@ using Legion::coord_t;
 enum class HeapType { kMinHeap, kMaxHeap };
 enum class PreferIndices { kLower, kHigher };
 
-LegionRuntime::Logger::Category log_beam_topk("BeamTopK");
+Legion::Logger log_beam_topk("BeamTopK");
 
 template <typename T>
 struct Entry {

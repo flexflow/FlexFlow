@@ -9,7 +9,7 @@ using FlexFlow::PCG::Graph;
 using FlexFlow::PCG::GraphSearchHelper;
 using FlexFlow::PCG::Node;
 
-LegionRuntime::Logger::Category log_app("split_test_2");
+Legion::Logger log_app("split_test_2");
 
 void top_level_task(Task const *task,
                     std::vector<PhysicalRegion> const &regions,
