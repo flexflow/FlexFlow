@@ -24,8 +24,8 @@ TensorShape ComputationGraphBuilder::get_shape(tensor_guid_t const &t) const {
 tensor_guid_t
     ComputationGraphBuilder::create_tensor(TensorShape const &shape,
                                            CreateGrad const create_gradients) {
-  TensorAttrs tensor_attrs = {
-      shape, std::nullopt, std::nullopt, create_gradients};
+  TensorAttrs tensor_attrs =
+      TensorAttrs{shape, std::nullopt, std::nullopt, create_gradients};
   LayerAttrs layer_attrs = LayerAttrs{
       ComputationGraphOpAttrs{InputAttrs{}},
       std::nullopt,

@@ -34,8 +34,8 @@ CostDetails LocalCostEstimator::estimate_cost(
     return CostDetails{0, 0};
   }
 
-  LayerAttrs layer_attrs = {compgraph_op_attrs_from_pcg_op_attrs(op),
-                            std::nullopt};
+  LayerAttrs layer_attrs =
+      LayerAttrs{compgraph_op_attrs_from_pcg_op_attrs(op), std::nullopt};
 
   // allocate memory for inputs
   std::shared_ptr<TrackedAllocator> tracked_allocator_ptr =

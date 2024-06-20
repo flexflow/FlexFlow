@@ -27,8 +27,8 @@ struct TensorAttrs {
   explicit TensorAttrs(
       ::FlexFlow::TensorShape const &shape,
       std::optional<::FlexFlow::InitializerAttrs> const &initializer,
-      bool const &create_gradients,
-      std::optional<::FlexFlow::ParamSync> const &sync_type);
+      std::optional<::FlexFlow::ParamSync> const &sync_type,
+      ::FlexFlow::CreateGrad const &create_gradients);
 
   bool operator==(TensorAttrs const &) const;
   bool operator!=(TensorAttrs const &) const;
