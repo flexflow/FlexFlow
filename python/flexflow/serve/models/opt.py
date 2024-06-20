@@ -15,6 +15,8 @@
 from flexflow.core import *
 from .base import FlexFlowModel
 import random, shutil
+import re
+import torch
 
 
 class OPTConfig:
@@ -284,7 +286,7 @@ class FlexFlowOPT(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
-    def convert_hf_weight_name(name):
+    def convert_weight_name_hf2ff(name):
         return (
             name.replace("decoder.", "")
             .replace("model.", "")
@@ -295,13 +297,79 @@ class FlexFlowOPT(FlexFlowModel):
             )  # important to use the leading "_" to avoid matching the last LayerNorm
         )
 
+    def convert_weight_name_ff2hf(name):
+        return (
+            ("model.decoder." + name)
+            .replace(".add_bias_residual_layer_norm", ".final_layer_norm")
+            .replace("add_bias_residual_layer_norm.attn_bias", "self_attn.o_proj.bias")
+            .replace("self_attn.o_proj", "self_attn.out_proj")
+        )
+
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = FlexFlowOPT.convert_hf_weight_name(name)
+            name = FlexFlowOPT.convert_weight_name_hf2ff(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
         # copy embedding weights
         shutil.copy(
             os.path.join(dst_folder, "embed_tokens.weight"),
             os.path.join(dst_folder, "lm_head.weight"),
         )
+
+    def load_weights_into_hf_model(model, src_folder):
+        """
+        Load weights from a specified folder and apply them to a Hugging Face model.
+
+        This function iterates through the weight files in the specified folder,
+        converts the FlexFlow weight names to Hugging Face format, and loads the
+        weights into the Hugging Face model. It handles special cases like shape
+        mismatches by adjusting the weights accordingly.
+
+        Parameters:
+        - model: The instance of the Hugging Face model to load the weights into.
+        - src_folder: The path to the folder containing the weight files.
+        """
+
+        for file_name in os.listdir(src_folder):
+            weight_path = os.path.join(src_folder, file_name)
+            print("Converting weight name:", weight_path)
+
+            if weight_path.endswith("rev_sha.txt"):
+                print("Skipping rev_sha.txt")
+                continue
+
+            original_name = FlexFlowOPT.convert_weight_name_ff2hf(file_name)
+            print(f"Converting weight name: {file_name} to {original_name}")
+            if not os.path.exists(weight_path):
+                raise FileNotFoundError(f"No weight file found for {file_name}")
+
+            ff_dtype = np.float32 if "full-precision" in weight_path else np.float16
+            weight_data = np.fromfile(
+                weight_path, dtype=ff_dtype
+            )  # .astype(np.float32)
+            if original_name not in model.state_dict():
+                raise KeyError(f"Parameter {original_name} not found in model.")
+            param = model.state_dict()[original_name]
+
+            # Calculate the reshape size automatically based on expected parameter size
+            expected_numel = param.numel()
+            if weight_data.size != expected_numel:
+                print(
+                    f"Adjusting shape for {original_name} from {weight_data.size} to {expected_numel}"
+                )
+                # Check if weight_data can be evenly divided by expected_numel
+                if weight_data.size % expected_numel == 0:
+                    # Determine the reshape size
+                    factor = weight_data.size // expected_numel
+                    new_shape = (factor,) + tuple(param.shape)
+                    weight_data_reshaped = weight_data.reshape(new_shape)
+                    weight_tensor = torch.from_numpy(weight_data_reshaped[0])
+                else:
+                    raise ValueError(
+                        f"Cannot adjust shape for {original_name} due to incompatible size."
+                    )
+            else:
+                weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
+
+            with torch.no_grad():
+                param.copy_(weight_tensor)

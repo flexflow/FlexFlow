@@ -15,7 +15,93 @@
 import flexflow.serve as ff
 import argparse, json, os
 from types import SimpleNamespace
+import time
+import subprocess
+import psutil
+import time
+import json
 
+
+def get_gpu_utilization():
+    try:
+        result = subprocess.run(['nvidia-smi', '--query-gpu=utilization.gpu,memory.used', '--format=csv,noheader,nounits'], stdout=subprocess.PIPE)
+        output = result.stdout.decode('utf-8').strip()
+        lines = output.split('\n')
+        
+        total_gpu_utilization = 0.0
+        total_memory_used = 0.0
+        num_gpus = len(lines)
+        
+        for line in lines:
+            try:
+                gpu_utilization, memory_used = line.split(', ')
+                total_gpu_utilization += float(gpu_utilization)
+                total_memory_used += float(memory_used)
+            except ValueError:
+                print("Error parsing line:", line)
+                num_gpus -= 1  # Adjust num_gpus in case of parsing failure
+        
+        # Handle division by zero if no GPUs are found or parsed successfully
+        if num_gpus > 0:
+            avg_gpu_utilization = total_gpu_utilization / num_gpus
+            avg_memory_used = total_memory_used / num_gpus
+        else:
+            avg_gpu_utilization = 0.0
+            avg_memory_used = 0.0
+        
+        
+        # print(f"GPU Utilization: {avg_gpu_utilization}%")
+        # print(f"Memory Used: {avg_memory_used} MiB")
+        
+        return avg_gpu_utilization, avg_memory_used
+    except Exception as e:
+        print(f"Failed to get GPU utilization: {e}")
+        return 0, 0
+
+
+
+def get_cpu_utilization():
+    # Gets the system-wide CPU utilization
+    return psutil.cpu_percent(interval=1)
+
+def get_memory_usage():
+    # Gets the system-wide memory usage
+    memory_info = psutil.virtual_memory()
+    return memory_info.used / (1024 * 1024)  # Convert to MB
+
+def monitor_resources(start_time, interval=5, duration=60):
+    """
+    Monitors and collects resource usage metrics over a specified duration and interval.
+    
+    :param start_time: The time when the monitoring started, to calculate total duration.
+    :param interval: Time in seconds between each metric collection.
+    :param duration: Total duration to monitor resources.
+    :return: A dictionary containing the collected metrics.
+    """
+    metrics = {
+        'max_gpu_utilization': 0,
+        'max_memory_usage_gpu': 0,
+        'cpu_utilization': [],
+        'peak_memory_usage_system': 0,
+    }
+    
+    while True:
+        current_time = time.time()
+        if current_time - start_time > duration:
+            break
+        
+        gpu_utilization, memory_usage_gpu = get_gpu_utilization()
+        cpu_utilization = get_cpu_utilization()
+        memory_usage_system = get_memory_usage()
+        
+        metrics['max_gpu_utilization'] = max(metrics['max_gpu_utilization'], gpu_utilization)
+        metrics['max_memory_usage_gpu'] = max(metrics['max_memory_usage_gpu'], memory_usage_gpu)
+        metrics['cpu_utilization'].append(cpu_utilization)
+        metrics['peak_memory_usage_system'] = max(metrics['peak_memory_usage_system'], memory_usage_system)
+        
+        time.sleep(interval)
+    
+    return metrics
 
 def get_configs():
     parser = argparse.ArgumentParser()
@@ -79,7 +165,7 @@ def get_configs():
             # required parameters
             "base_model": "JackFram/llama-160m",
             "peft_model_ids": [
-                "goliaro/llama-160m-lora",
+                "goliaro/llama-160m-lora-full",
             ],
             # optional parameters
             "cache_path": "~/.cache/flexflow",
@@ -99,6 +185,7 @@ def get_configs():
 
 
 def main():
+    start_time = time.time()
     configs_dict = get_configs()
     configs = SimpleNamespace(**configs_dict)
 
@@ -125,11 +212,12 @@ def main():
     )
     llm.compile(
         generation_config,
-        enable_peft_finetuning = (len(configs.finetuning_dataset) > 0),
         max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
+    
+    resource_metrics = monitor_resources(start_time, interval=5, duration=360)
 
     llm.start_server()
     
@@ -160,6 +248,14 @@ def main():
     # use the (finetuned) llm to generate some responses
     llm.generate(requests)
     
+    # After finishing the main workload, print the collected metrics.
+    avg_cpu_utilization = sum(resource_metrics['cpu_utilization']) / len(resource_metrics['cpu_utilization'])
+    print(f"Max GPU Utilization: {resource_metrics['max_gpu_utilization']}%")
+    print(f"Max GPU Memory Usage: {resource_metrics['max_memory_usage_gpu']} MiB")
+    print(f"Average CPU Utilization: {avg_cpu_utilization}%")
+    print(f"Peak System Memory Usage: {resource_metrics['peak_memory_usage_system']} MiB")
+
+    
     llm.stop_server()
     
     # upload the model back to huggingface after finetuning
@@ -173,4 +269,5 @@ def main():
 
 if __name__ == "__main__":
     print("flexflow PEFT example")
+    
     main()

@@ -17,13 +17,16 @@
 #include "flexflow/graph.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/fused.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 #include "flexflow/request_manager.h"
+#include <filesystem>
 
 namespace FlexFlow {
 
 using namespace Legion;
+namespace fs = std::filesystem;
 
 LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
 LegionRuntime::Logger::Category log_offload("Offloading");
@@ -375,6 +378,59 @@ void InferenceManager::init_operators_inference(FFModel *model) {
       }
       op->init_inference(*model, inputs, outputs);
     }
+  }
+}
+
+void InferenceManager::save_peft_weights(
+    FFModel *model,
+    PEFTModelID const &model_id,
+    std::string const &destination_folder) {
+  // check that peft model id exists and get rank
+  assert(model->peft_configs.find(model_id) != model->peft_configs.end() &&
+         "PEFT model id is invalid");
+  // get rank
+  int rank = model->peft_configs[model_id].rank;
+  assert(rank > 0 && "Rank must be greater than 0");
+  // Delete the folder if it exists, create it
+  try {
+    if (fs::exists(destination_folder) &&
+        fs::is_directory(destination_folder)) {
+      fs::remove_all(destination_folder);
+    }
+  } catch (fs::filesystem_error const &e) {
+    std::cout << "Error deleting folder: " << e.what() << std::endl;
+  }
+  try {
+    // Create the folder
+    fs::create_directory(destination_folder);
+  } catch (fs::filesystem_error const &e) {
+    std::cout << "Error creating folder: " << e.what() << std::endl;
+  }
+  for (size_t o = 0; o < model->operators.size(); o++) {
+    Op *op = model->operators[o];
+    if (op->op_type != OP_LORA) {
+      continue;
+    }
+    std::vector<ParallelTensor> inputs(op->numInputs);
+    std::vector<ParallelTensor> outputs(op->numOutputs);
+    for (int i = 0; i < op->numInputs; i++) {
+      assert(op->inputs[i] != nullptr);
+      assert(op->inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      assert(tensor_buffer[op->inputs[i]].size() > 0);
+      inputs[i] = tensor_buffer[op->inputs[i]][0];
+      assert(inputs[i]->parallel_is != IndexSpace::NO_SPACE);
+    }
+    assert(op->numOutputs > 0);
+    for (int i = 0; i < op->numOutputs; i++) {
+      assert(op->outputs[i] != nullptr);
+      assert(op->outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+      assert(tensor_buffer[op->outputs[i]].size() > 0);
+      outputs[i] = tensor_buffer[op->outputs[i]][0];
+      assert(outputs[i]->parallel_is != IndexSpace::NO_SPACE);
+    }
+    LoraLinear *lora = static_cast<LoraLinear *>(model->operators[o]);
+    lora->save_peft_weights(
+        *model, model_id, rank, destination_folder, inputs, outputs);
   }
 }
 

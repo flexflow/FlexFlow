@@ -1011,6 +1011,12 @@ void flexflow_request_manager_start_background_server(
 void flexflow_request_manager_terminate_background_server(
     flexflow_request_manager_t handle_);
 
+void flexflow_request_manager_save_peft_weights(
+    flexflow_request_manager_t handle_,
+    flexflow_model_t model_handle_,
+    flexflow_peft_model_id_t peft_model_id_,
+    char const *destination_folder);
+
 // -----------------------------------------------------------------------
 // InferenceManager
 // -----------------------------------------------------------------------

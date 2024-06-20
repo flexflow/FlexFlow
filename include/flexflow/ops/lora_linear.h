@@ -41,6 +41,13 @@ public:
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  void save_peft_weights(FFModel const &ff,
+                         PEFTModelID const &model_id,
+                         int rank,
+                         std::string const &destination_folder,
+                         std::vector<ParallelTensor> const &batch_inputs,
+                         std::vector<ParallelTensor> const &batch_outputs,
+                         MachineView const *mv = nullptr);
   Legion::FutureMap inference(FFModel const &,
                               BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
@@ -69,6 +76,11 @@ public:
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
+  static void
+      save_peft_weights_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void forward_task(Legion::Task const *task,
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,

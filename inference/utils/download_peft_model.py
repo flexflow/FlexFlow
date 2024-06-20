@@ -6,7 +6,7 @@ import argparse, os
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--base_model_name", type=str, help="Name of the model to download"
+        "--base_model_name", type=str, required=True, help="Name of the model to download"
     )
     parser.add_argument(
         "peft_model_ids", type=str, nargs="+", help="Name of the PEFT model(s) to download"

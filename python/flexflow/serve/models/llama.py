@@ -15,6 +15,10 @@
 from flexflow.core import *
 from .base import FlexFlowModel
 import random
+import re
+import os
+import numpy as np
+import torch
 
 
 class LLAMAConfig:
@@ -251,11 +255,64 @@ class FlexFlowLLAMA(FlexFlowModel):
 
         self.ffmodel = ffmodel
 
-    def convert_hf_weight_name(name):
+    def convert_weight_name_hf2ff(name):
         return name.replace("model.", "")
+
+    def convert_weight_name_ff2hf(name):
+        if name == "lm_head.weight":
+            return name
+        else:
+            return "model." + name
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = FlexFlowLLAMA.convert_hf_weight_name(name)
+            name = FlexFlowLLAMA.convert_weight_name_hf2ff(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
+
+    def load_weights_into_hf_model(model, src_folder):
+        """
+        Load weights from a specified folder and apply them to a Hugging Face model.
+
+        Parameters:
+        - model: The instance of the Hugging Face model to load weights into.
+        - src_folder: The path to the folder containing the weight files.
+        """
+        for file_name in os.listdir(src_folder):
+            weight_path = os.path.join(src_folder, file_name)
+            if weight_path.endswith("rev_sha.txt"):
+                print("skipping rev_sha.txt")
+                continue
+            original_name = FlexFlowLLAMA.convert_weight_name_ff2hf(file_name)
+            print(f"Converting weight name: {file_name} to {original_name}")
+
+            if not os.path.exists(weight_path):
+                raise FileNotFoundError(f"No weight file found for {file_name}")
+
+            ff_dtype = np.float32 if "full-precision" in weight_path else np.float16
+            weight_data = np.fromfile(
+                weight_path, dtype=ff_dtype
+            )  # .astype(np.float32)
+            if original_name not in model.state_dict():
+                raise KeyError(f"Parameter {original_name} not found in model.")
+
+            param = model.state_dict()[original_name]
+            expected_numel = param.numel()
+            if weight_data.size != expected_numel:
+                print(
+                    f"Adjusting shape for {original_name} from {weight_data.size} to {expected_numel}."
+                )
+                if weight_data.size % expected_numel == 0:
+                    factor = weight_data.size // expected_numel
+                    new_shape = (factor,) + tuple(param.shape)
+                    weight_data_reshaped = weight_data.reshape(new_shape)[0]
+                    weight_tensor = torch.from_numpy(weight_data_reshaped)
+                else:
+                    raise ValueError(
+                        f"Cannot adjust shape for {original_name} due to incompatible size."
+                    )
+            else:
+                weight_tensor = torch.from_numpy(weight_data).reshape(param.shape)
+
+            with torch.no_grad():
+                param.copy_(weight_tensor)
