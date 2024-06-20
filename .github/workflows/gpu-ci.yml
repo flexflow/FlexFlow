@@ -1,5 +1,7 @@
 name: "gpu-ci"
 on:
+  schedule:
+    - cron: "0 0 1,14,28 * *" # At 00:00 on day-of-month 1, 14, and 28.
   push:
     branches:
       - "inference"
@@ -43,8 +45,28 @@ jobs:
           pip3 install pygithub
           python3 .github/workflows/helpers/gpu_ci_helper.py
 
+  keep-runner-registered:
+    name: Keep runner alive
+    if: ${{ github.event_name == 'schedule' }}
+    runs-on: [self-hosted, gpu]
+    defaults:
+      run:
+        shell: bash -l {0} # required to use an activated conda environment
+    env: 
+      CONDA: "3"    
+    needs: gpu-ci-concierge
+    container:
+      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
+      options: --gpus all --shm-size=8192m
+    steps:
+      - name: Keep alive
+        run: |
+          echo "Keep self-hosted runner registered with Github"
+          sleep 10m
+  
   python-interface-check:
     name: Check Python Interface
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: [self-hosted, gpu]
     defaults:
       run:
@@ -119,6 +141,7 @@ jobs:
 
   inference-tests:
     name: Inference Tests
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: [self-hosted, gpu]
     defaults:
       run:
@@ -195,6 +218,7 @@ jobs:
 
   training-tests:
     name: Training Tests
+    if: ${{ github.event_name != 'schedule' }}
     runs-on: [self-hosted, gpu]
     # skip this time-consuming test for PRs to the inference branch
     # if: ${{ github.event_name != 'pull_request' || github.base_ref != 'inference' }}
