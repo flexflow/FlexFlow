@@ -123,7 +123,7 @@ void RequestManager::register_tokenizer(ModelType type,
   this->eos_token_id = eos_token_id;
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
-  if (model_type == ModelType::LLAMA) {
+  if (model_type == ModelType::LLAMA || model_type == ModelType::MIXTRAL) {
     bool path_to_file = !path.empty() &&
                         (path.size() >= strlen("tokenizer.model")) &&
                         path.find("tokenizer.model") ==
