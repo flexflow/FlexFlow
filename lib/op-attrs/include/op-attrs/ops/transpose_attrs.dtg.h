@@ -23,7 +23,8 @@
 namespace FlexFlow {
 struct TransposeAttrs {
   TransposeAttrs() = delete;
-  TransposeAttrs(::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t> const &perm);
+  explicit TransposeAttrs(
+      ::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t> const &perm);
 
   bool operator==(TransposeAttrs const &) const;
   bool operator!=(TransposeAttrs const &) const;
@@ -37,23 +38,23 @@ struct TransposeAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::TransposeAttrs> {
-  size_t operator()(FlexFlow::TransposeAttrs const &) const;
+struct hash<::FlexFlow::TransposeAttrs> {
+  size_t operator()(::FlexFlow::TransposeAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::TransposeAttrs> {
-  static FlexFlow::TransposeAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::TransposeAttrs const &);
+struct adl_serializer<::FlexFlow::TransposeAttrs> {
+  static ::FlexFlow::TransposeAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::TransposeAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::TransposeAttrs> {
-  static Gen<FlexFlow::TransposeAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::TransposeAttrs> {
+  static Gen<::FlexFlow::TransposeAttrs> arbitrary();
 };
 } // namespace rc
 

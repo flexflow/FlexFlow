@@ -4,8 +4,6 @@ features = [
   "eq",
   "ord",
   "hash",
-  # "json",
-  # "rapidcheck",
   "fmt",
 ]
 

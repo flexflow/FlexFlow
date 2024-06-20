@@ -131,7 +131,7 @@ bool Pool2DAttrs::operator>=(Pool2DAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::Pool2DAttrs>::operator()(
-    FlexFlow::Pool2DAttrs const &x) const {
+    ::FlexFlow::Pool2DAttrs const &x) const {
   size_t result = 0;
   result ^=
       std::hash<int>{}(x.kernel_h) + 0x9e3779b9 + (result << 6) + (result >> 2);
@@ -154,19 +154,20 @@ size_t hash<FlexFlow::Pool2DAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::Pool2DAttrs
-    adl_serializer<FlexFlow::Pool2DAttrs>::from_json(json const &j) {
-  return {j.at("kernel_h").template get<int>(),
-          j.at("kernel_w").template get<int>(),
-          j.at("stride_h").template get<int>(),
-          j.at("stride_w").template get<int>(),
-          j.at("padding_h").template get<int>(),
-          j.at("padding_w").template get<int>(),
-          j.at("pool_type").template get<::FlexFlow::PoolOp>(),
-          j.at("activation").template get<::FlexFlow::Activation>()};
+::FlexFlow::Pool2DAttrs
+    adl_serializer<::FlexFlow::Pool2DAttrs>::from_json(json const &j) {
+  return ::FlexFlow::Pool2DAttrs{
+      j.at("kernel_h").template get<int>(),
+      j.at("kernel_w").template get<int>(),
+      j.at("stride_h").template get<int>(),
+      j.at("stride_w").template get<int>(),
+      j.at("padding_h").template get<int>(),
+      j.at("padding_w").template get<int>(),
+      j.at("pool_type").template get<::FlexFlow::PoolOp>(),
+      j.at("activation").template get<::FlexFlow::Activation>()};
 }
-void adl_serializer<FlexFlow::Pool2DAttrs>::to_json(
-    json &j, FlexFlow::Pool2DAttrs const &v) {
+void adl_serializer<::FlexFlow::Pool2DAttrs>::to_json(
+    json &j, ::FlexFlow::Pool2DAttrs const &v) {
   j["__type"] = "Pool2DAttrs";
   j["kernel_h"] = v.kernel_h;
   j["kernel_w"] = v.kernel_w;
@@ -180,8 +181,8 @@ void adl_serializer<FlexFlow::Pool2DAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::Pool2DAttrs> Arbitrary<FlexFlow::Pool2DAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::Pool2DAttrs>(
+Gen<::FlexFlow::Pool2DAttrs> Arbitrary<::FlexFlow::Pool2DAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::Pool2DAttrs>(
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),
       gen::arbitrary<int>(),

@@ -19,10 +19,10 @@
 namespace FlexFlow {
 struct V1GraphEdge {
   V1GraphEdge() = delete;
-  V1GraphEdge(size_t const &srcNode,
-              size_t const &srcIdx,
-              size_t const &dstNode,
-              size_t const &dstIdx);
+  explicit V1GraphEdge(size_t const &srcNode,
+                       size_t const &srcIdx,
+                       size_t const &dstNode,
+                       size_t const &dstIdx);
 
   bool operator==(V1GraphEdge const &) const;
   bool operator!=(V1GraphEdge const &) const;
@@ -39,16 +39,16 @@ struct V1GraphEdge {
 
 namespace std {
 template <>
-struct hash<FlexFlow::V1GraphEdge> {
-  size_t operator()(FlexFlow::V1GraphEdge const &) const;
+struct hash<::FlexFlow::V1GraphEdge> {
+  size_t operator()(::FlexFlow::V1GraphEdge const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::V1GraphEdge> {
-  static FlexFlow::V1GraphEdge from_json(json const &);
-  static void to_json(json &, FlexFlow::V1GraphEdge const &);
+struct adl_serializer<::FlexFlow::V1GraphEdge> {
+  static ::FlexFlow::V1GraphEdge from_json(json const &);
+  static void to_json(json &, ::FlexFlow::V1GraphEdge const &);
 };
 } // namespace nlohmann
 

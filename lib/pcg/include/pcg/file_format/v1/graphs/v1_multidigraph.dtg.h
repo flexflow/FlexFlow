@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/file_format/v1/graphs/v1_multidigraph.struct.toml
 /* proj-data
 {
-  "generated_from": "fb1033385645e54a19c9b44cef0be04b"
+  "generated_from": "582054edb983c3cc31d9273ce29421eb"
 }
 */
 
@@ -13,7 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h"
-#include "utils/fmt.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 #include <ostream>
 #include <unordered_set>
 #include <vector>
@@ -21,9 +22,10 @@
 namespace FlexFlow {
 struct V1MultiDiGraph {
   V1MultiDiGraph() = delete;
-  V1MultiDiGraph(std::vector<size_t> const &nodes,
-                 std::vector<size_t> const &ports,
-                 std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
+  explicit V1MultiDiGraph(
+      std::vector<size_t> const &nodes,
+      std::vector<size_t> const &ports,
+      std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
 
   std::vector<size_t> nodes;
   std::vector<size_t> ports;
@@ -33,9 +35,9 @@ struct V1MultiDiGraph {
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::V1MultiDiGraph> {
-  static FlexFlow::V1MultiDiGraph from_json(json const &);
-  static void to_json(json &, FlexFlow::V1MultiDiGraph const &);
+struct adl_serializer<::FlexFlow::V1MultiDiGraph> {
+  static ::FlexFlow::V1MultiDiGraph from_json(json const &);
+  static void to_json(json &, ::FlexFlow::V1MultiDiGraph const &);
 };
 } // namespace nlohmann
 

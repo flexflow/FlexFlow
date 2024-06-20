@@ -20,7 +20,9 @@
 namespace FlexFlow {
 struct NormInitializerAttrs {
   NormInitializerAttrs() = delete;
-  NormInitializerAttrs(int const &seed, float const &mean, float const &stddev);
+  explicit NormInitializerAttrs(int const &seed,
+                                float const &mean,
+                                float const &stddev);
 
   bool operator==(NormInitializerAttrs const &) const;
   bool operator!=(NormInitializerAttrs const &) const;
@@ -36,23 +38,23 @@ struct NormInitializerAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::NormInitializerAttrs> {
-  size_t operator()(FlexFlow::NormInitializerAttrs const &) const;
+struct hash<::FlexFlow::NormInitializerAttrs> {
+  size_t operator()(::FlexFlow::NormInitializerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::NormInitializerAttrs> {
-  static FlexFlow::NormInitializerAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::NormInitializerAttrs const &);
+struct adl_serializer<::FlexFlow::NormInitializerAttrs> {
+  static ::FlexFlow::NormInitializerAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::NormInitializerAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::NormInitializerAttrs> {
-  static Gen<FlexFlow::NormInitializerAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::NormInitializerAttrs> {
+  static Gen<::FlexFlow::NormInitializerAttrs> arbitrary();
 };
 } // namespace rc
 

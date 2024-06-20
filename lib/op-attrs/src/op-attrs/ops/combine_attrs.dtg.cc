@@ -45,7 +45,7 @@ bool CombineAttrs::operator>=(CombineAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::CombineAttrs>::operator()(
-    FlexFlow::CombineAttrs const &x) const {
+    ::FlexFlow::CombineAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ff_dim_t>{}(x.combine_dim) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -56,13 +56,14 @@ size_t hash<FlexFlow::CombineAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::CombineAttrs
-    adl_serializer<FlexFlow::CombineAttrs>::from_json(json const &j) {
-  return {j.at("combine_dim").template get<::FlexFlow::ff_dim_t>(),
-          j.at("combine_degree").template get<int>()};
+::FlexFlow::CombineAttrs
+    adl_serializer<::FlexFlow::CombineAttrs>::from_json(json const &j) {
+  return ::FlexFlow::CombineAttrs{
+      j.at("combine_dim").template get<::FlexFlow::ff_dim_t>(),
+      j.at("combine_degree").template get<int>()};
 }
-void adl_serializer<FlexFlow::CombineAttrs>::to_json(
-    json &j, FlexFlow::CombineAttrs const &v) {
+void adl_serializer<::FlexFlow::CombineAttrs>::to_json(
+    json &j, ::FlexFlow::CombineAttrs const &v) {
   j["__type"] = "CombineAttrs";
   j["combine_dim"] = v.combine_dim;
   j["combine_degree"] = v.combine_degree;
@@ -70,8 +71,8 @@ void adl_serializer<FlexFlow::CombineAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::CombineAttrs> Arbitrary<FlexFlow::CombineAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::CombineAttrs>(
+Gen<::FlexFlow::CombineAttrs> Arbitrary<::FlexFlow::CombineAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::CombineAttrs>(
       gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
 }
 } // namespace rc

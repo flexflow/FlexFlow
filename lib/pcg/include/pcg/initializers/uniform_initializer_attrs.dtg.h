@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializers/uniform_initializer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "f887e1db5d5dc710793ec5fa99bb7cd4"
+  "generated_from": "dd9cbe65dc4495b031aef40d353db928"
 }
 */
 
@@ -19,9 +19,9 @@
 namespace FlexFlow {
 struct UniformInitializerAttrs {
   UniformInitializerAttrs() = delete;
-  UniformInitializerAttrs(int const &seed,
-                          float const &min_val,
-                          float const &max_val);
+  explicit UniformInitializerAttrs(int const &seed,
+                                   float const &min_val,
+                                   float const &max_val);
 
   bool operator==(UniformInitializerAttrs const &) const;
   bool operator!=(UniformInitializerAttrs const &) const;
@@ -37,16 +37,16 @@ struct UniformInitializerAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::UniformInitializerAttrs> {
-  size_t operator()(FlexFlow::UniformInitializerAttrs const &) const;
+struct hash<::FlexFlow::UniformInitializerAttrs> {
+  size_t operator()(::FlexFlow::UniformInitializerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::UniformInitializerAttrs> {
-  static FlexFlow::UniformInitializerAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::UniformInitializerAttrs const &);
+struct adl_serializer<::FlexFlow::UniformInitializerAttrs> {
+  static ::FlexFlow::UniformInitializerAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::UniformInitializerAttrs const &);
 };
 } // namespace nlohmann
 

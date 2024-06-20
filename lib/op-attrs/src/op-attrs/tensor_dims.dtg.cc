@@ -37,7 +37,7 @@ bool TensorDims::operator>=(TensorDims const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::TensorDims>::operator()(
-    FlexFlow::TensorDims const &x) const {
+    ::FlexFlow::TensorDims const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::FFOrdered<size_t>>{}(x.ff_ordered) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -46,20 +46,21 @@ size_t hash<FlexFlow::TensorDims>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::TensorDims
-    adl_serializer<FlexFlow::TensorDims>::from_json(json const &j) {
-  return {j.at("ff_ordered").template get<::FlexFlow::FFOrdered<size_t>>()};
+::FlexFlow::TensorDims
+    adl_serializer<::FlexFlow::TensorDims>::from_json(json const &j) {
+  return ::FlexFlow::TensorDims{
+      j.at("ff_ordered").template get<::FlexFlow::FFOrdered<size_t>>()};
 }
-void adl_serializer<FlexFlow::TensorDims>::to_json(
-    json &j, FlexFlow::TensorDims const &v) {
+void adl_serializer<::FlexFlow::TensorDims>::to_json(
+    json &j, ::FlexFlow::TensorDims const &v) {
   j["__type"] = "TensorDims";
   j["ff_ordered"] = v.ff_ordered;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::TensorDims> Arbitrary<FlexFlow::TensorDims>::arbitrary() {
-  return gen::construct<FlexFlow::TensorDims>(
+Gen<::FlexFlow::TensorDims> Arbitrary<::FlexFlow::TensorDims>::arbitrary() {
+  return gen::construct<::FlexFlow::TensorDims>(
       gen::arbitrary<::FlexFlow::FFOrdered<size_t>>());
 }
 } // namespace rc

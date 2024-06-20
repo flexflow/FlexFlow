@@ -58,6 +58,8 @@ using DataTypeValue = std::variant<real_type<DataType::FLOAT>,
 
 size_t size_of_datatype(DataType);
 
+bool can_strictly_promote_datatype_from_to(DataType, DataType);
+
 } // namespace FlexFlow
 
 #endif

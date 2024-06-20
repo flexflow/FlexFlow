@@ -44,7 +44,7 @@ bool TensorAttributeListSize::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::TensorAttributeListSize>::operator()(
-    FlexFlow::TensorAttributeListSize const &x) const {
+    ::FlexFlow::TensorAttributeListSize const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::TensorAttributeKey>{}(x.attribute_key) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -53,22 +53,23 @@ size_t hash<FlexFlow::TensorAttributeListSize>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::TensorAttributeListSize
-    adl_serializer<FlexFlow::TensorAttributeListSize>::from_json(
+::FlexFlow::TensorAttributeListSize
+    adl_serializer<::FlexFlow::TensorAttributeListSize>::from_json(
         json const &j) {
-  return {j.at("attribute_key").template get<::FlexFlow::TensorAttributeKey>()};
+  return ::FlexFlow::TensorAttributeListSize{
+      j.at("attribute_key").template get<::FlexFlow::TensorAttributeKey>()};
 }
-void adl_serializer<FlexFlow::TensorAttributeListSize>::to_json(
-    json &j, FlexFlow::TensorAttributeListSize const &v) {
+void adl_serializer<::FlexFlow::TensorAttributeListSize>::to_json(
+    json &j, ::FlexFlow::TensorAttributeListSize const &v) {
   j["__type"] = "TensorAttributeListSize";
   j["attribute_key"] = v.attribute_key;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::TensorAttributeListSize>
-    Arbitrary<FlexFlow::TensorAttributeListSize>::arbitrary() {
-  return gen::construct<FlexFlow::TensorAttributeListSize>(
+Gen<::FlexFlow::TensorAttributeListSize>
+    Arbitrary<::FlexFlow::TensorAttributeListSize>::arbitrary() {
+  return gen::construct<::FlexFlow::TensorAttributeListSize>(
       gen::arbitrary<::FlexFlow::TensorAttributeKey>());
 }
 } // namespace rc

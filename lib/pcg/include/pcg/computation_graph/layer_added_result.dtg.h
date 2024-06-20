@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/computation_graph/layer_added_result.struct.toml
 /* proj-data
 {
-  "generated_from": "15bf9d73ef934599c9b11807d86ae5d4"
+  "generated_from": "234b5c222ae4ce1da36194b4eb519145"
 }
 */
 
@@ -13,14 +13,16 @@
 #include "fmt/format.h"
 #include "pcg/layer_guid_t.dtg.h"
 #include "pcg/tensor_guid_t.dtg.h"
+#include "utils/fmt/vector.h"
 #include <ostream>
 #include <tuple>
 
 namespace FlexFlow {
 struct LayerAddedResult {
   LayerAddedResult() = delete;
-  LayerAddedResult(::FlexFlow::layer_guid_t const &layer,
-                   std::vector<::FlexFlow::tensor_guid_t> const &outputs);
+  explicit LayerAddedResult(
+      ::FlexFlow::layer_guid_t const &layer,
+      std::vector<::FlexFlow::tensor_guid_t> const &outputs);
 
   bool operator==(LayerAddedResult const &) const;
   bool operator!=(LayerAddedResult const &) const;

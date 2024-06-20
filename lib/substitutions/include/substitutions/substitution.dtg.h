@@ -16,14 +16,14 @@
 namespace FlexFlow {
 struct Substitution {
   Substitution() = delete;
-  Substitution(::FlexFlow::PCGPattern const &pcg_pattern,
-               ::FlexFlow::OutputGraphExpr const &output_graph_expr,
-               ::FlexFlow::bidict<::FlexFlow::InputMultiDiEdge,
-                                  ::FlexFlow::InputMultiDiEdge> const
-                   &input_edge_match_to_output,
-               ::FlexFlow::bidict<::FlexFlow::OutputMultiDiEdge,
-                                  ::FlexFlow::OutputMultiDiEdge> const
-                   &output_edge_match_to_output);
+  explicit Substitution(::FlexFlow::PCGPattern const &pcg_pattern,
+                        ::FlexFlow::OutputGraphExpr const &output_graph_expr,
+                        ::FlexFlow::bidict<::FlexFlow::InputMultiDiEdge,
+                                           ::FlexFlow::InputMultiDiEdge> const
+                            &input_edge_match_to_output,
+                        ::FlexFlow::bidict<::FlexFlow::OutputMultiDiEdge,
+                                           ::FlexFlow::OutputMultiDiEdge> const
+                            &output_edge_match_to_output);
 
   ::FlexFlow::PCGPattern pcg_pattern;
   ::FlexFlow::OutputGraphExpr output_graph_expr;

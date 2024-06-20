@@ -35,7 +35,7 @@ bool side_size_t::operator>=(side_size_t const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::side_size_t>::operator()(
-    FlexFlow::side_size_t const &x) const {
+    ::FlexFlow::side_size_t const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.unwrapped) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -44,20 +44,20 @@ size_t hash<FlexFlow::side_size_t>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::side_size_t
-    adl_serializer<FlexFlow::side_size_t>::from_json(json const &j) {
-  return {j.at("unwrapped").template get<int>()};
+::FlexFlow::side_size_t
+    adl_serializer<::FlexFlow::side_size_t>::from_json(json const &j) {
+  return ::FlexFlow::side_size_t{j.at("unwrapped").template get<int>()};
 }
-void adl_serializer<FlexFlow::side_size_t>::to_json(
-    json &j, FlexFlow::side_size_t const &v) {
+void adl_serializer<::FlexFlow::side_size_t>::to_json(
+    json &j, ::FlexFlow::side_size_t const &v) {
   j["__type"] = "side_size_t";
   j["unwrapped"] = v.unwrapped;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::side_size_t> Arbitrary<FlexFlow::side_size_t>::arbitrary() {
-  return gen::construct<FlexFlow::side_size_t>(gen::arbitrary<int>());
+Gen<::FlexFlow::side_size_t> Arbitrary<::FlexFlow::side_size_t>::arbitrary() {
+  return gen::construct<::FlexFlow::side_size_t>(gen::arbitrary<int>());
 }
 } // namespace rc
 
