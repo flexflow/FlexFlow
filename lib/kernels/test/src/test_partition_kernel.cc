@@ -22,37 +22,38 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
               create_filled_accessor_w(shape, allocator, 1.0f));
-      GenericTensorAccessorW forward_output_accessor =
+      GenericTensorAccessorW output_accessor =
           create_filled_accessor_w(shape, allocator, 0.0f);
 
       Kernels::Repartition::forward_kernel(
-          stream, state, input_accessor, forward_output_accessor);
+          stream, state, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(forward_output_accessor));
+              read_only_accessor_from_write_accessor(output_accessor));
 
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 1.0f);
       CHECK(check_output_data == expected_output_data);
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorR grad_accessor =
-            read_only_accessor_from_write_accessor(
-                create_filled_accessor_w(shape, allocator, 1.0f));
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          create_filled_accessor_w(shape, allocator, 1.0f);
+      GenericTensorAccessorR grad_accessor =
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(shape, allocator, 1.0f));
 
-        Kernels::Repartition::backward_kernel(
-            stream, state, forward_output_accessor, grad_accessor);
+      Kernels::Repartition::backward_kernel(
+          stream, state, output_accessor, grad_accessor);
 
-        std::vector<float> host_grad_input_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(
-                    forward_output_accessor));
+      std::vector<float> host_grad_input_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_accessor));
 
-        std::vector<float> expected_grad_input_data(
-            input_accessor.shape.num_elements(), 2.0f);
-        CHECK(host_grad_input_data == expected_grad_input_data);
-      }
+      std::vector<float> expected_grad_input_data(
+          output_accessor.shape.num_elements(), 2.0f);
+      CHECK(host_grad_input_data == expected_grad_input_data);
     }
 
     cleanup_test(stream, handle);

@@ -40,9 +40,10 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                               stride_w,
                                                               pool_type);
 
+    GenericTensorAccessorW input_data =
+        create_random_filled_accessor_w(input_shape, allocator);
+
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorW input_data =
-          create_random_filled_accessor_w(input_shape, allocator);
       GenericTensorAccessorW output_data =
           allocator.allocate_tensor(output_shape);
 
@@ -52,25 +53,28 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_data));
+      CHECK(contains_non_zero(host_output_data));
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorW output_grad =
-            create_filled_accessor_w(output_shape, allocator, 1.0f);
-        GenericTensorAccessorW input_grad =
-            allocator.allocate_tensor(input_shape);
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorW output_data =
+          create_random_filled_accessor_w(output_shape, allocator);
+      GenericTensorAccessorW output_grad =
+          create_filled_accessor_w(output_shape, allocator, 1.0f);
+      GenericTensorAccessorW input_grad =
+          allocator.allocate_tensor(input_shape);
 
-        Kernels::Pool2D::backward_kernel(stream,
-                                         state,
-                                         input_data.ptr,
-                                         input_grad.ptr,
-                                         output_data.ptr,
-                                         output_grad.ptr);
+      Kernels::Pool2D::backward_kernel(stream,
+                                       state,
+                                       input_data.ptr,
+                                       input_grad.ptr,
+                                       output_data.ptr,
+                                       output_grad.ptr);
 
-        std::vector<float> host_input_grad_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(input_grad));
-        CHECK(contains_non_zero(host_input_grad_data));
-      }
+      std::vector<float> host_input_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(input_grad));
+      CHECK(contains_non_zero(host_input_grad_data));
     }
 
     cleanup_test(stream, handle);

@@ -30,22 +30,22 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 1.0f);
       CHECK(check_output_data == expected_output_data);
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorW input_grad_accessor =
-            create_filled_accessor_w(shape, allocator, 1.0f);
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorR output_accessor =
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(shape, allocator, 1.0f));
+      GenericTensorAccessorW input_grad_accessor =
+          create_filled_accessor_w(shape, allocator, 1.0f);
 
-        Kernels::Replicate::backward_kernel(
-            stream,
-            input_grad_accessor,
-            read_only_accessor_from_write_accessor(output_accessor),
-            num_replicas);
+      Kernels::Replicate::backward_kernel(
+          stream, input_grad_accessor, output_accessor, num_replicas);
 
-        std::vector<float> check_aggregated_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(input_grad_accessor));
-        CHECK(contains_non_zero(check_aggregated_data));
-      }
+      std::vector<float> check_aggregated_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(input_grad_accessor));
+      CHECK(contains_non_zero(check_aggregated_data));
     }
 
     checkCUDA(cudaStreamDestroy(stream));

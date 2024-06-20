@@ -11,14 +11,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
+    ReshapePerDeviceState state =
+        Kernels::Reshape::init_kernel(DataType::FLOAT);
+
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
               create_filled_accessor_w(shape, allocator, 1.0f));
       GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
-
-      ReshapePerDeviceState state =
-          Kernels::Reshape::init_kernel(DataType::FLOAT);
 
       Kernels::Reshape::forward_kernel(
           stream, state, input_accessor, output_accessor);
@@ -30,25 +30,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 1.0f);
       CHECK(check_output_data == expected_output_data);
+    }
 
-      SUBCASE("backward_kernel") {
-        ReshapePerDeviceState state =
-            Kernels::Reshape::init_kernel(DataType::FLOAT);
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          create_filled_accessor_w(shape, allocator, 1.0f);
+      Kernels::Reshape::backward_kernel(
+          stream,
+          state,
+          output_accessor,
+          read_only_accessor_from_write_accessor(output_accessor));
 
-        Kernels::Reshape::backward_kernel(
-            stream,
-            state,
-            output_accessor,
-            read_only_accessor_from_write_accessor(output_accessor));
+      std::vector<float> host_grad_input_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_accessor));
 
-        std::vector<float> host_grad_input_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(output_accessor));
-
-        std::vector<float> expected_grad_input_data(
-            input_accessor.shape.num_elements(), 2.0f);
-        CHECK(host_grad_input_data == expected_grad_input_data);
-      }
+      std::vector<float> expected_grad_input_data(
+          output_accessor.shape.num_elements(), 2.0f);
+      CHECK(host_grad_input_data == expected_grad_input_data);
     }
 
     checkCUDA(cudaStreamDestroy(stream));

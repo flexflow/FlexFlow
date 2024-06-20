@@ -15,34 +15,38 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape output_shape =
         make_double_tensor_shape_from_legion_dims({100, 100});
 
-    GenericTensorAccessorW input_accessor =
-        create_random_filled_accessor_w(input_shape, allocator);
-    GenericTensorAccessorR input_accessorR =
-        read_only_accessor_from_write_accessor(input_accessor);
+    GenericTensorAccessorR input_accessor =
+        read_only_accessor_from_write_accessor(
+            create_random_filled_accessor_w(input_shape, allocator));
 
-    GenericTensorAccessorW output_accessor =
-        allocator.allocate_tensor(output_shape);
+    SUBCASE("forward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
+      Kernels::Cast::forward_kernel(stream,
+                                    input_accessor,
+                                    output_accessor,
+                                    DataType::FLOAT,
+                                    DataType::DOUBLE);
 
-    Kernels::Cast::forward_kernel(stream,
-                                  input_accessorR,
-                                  output_accessor,
-                                  DataType::FLOAT,
-                                  DataType::DOUBLE);
+      std::vector<double> host_double_data =
+          load_data_to_host_from_device<double>(
+              read_only_accessor_from_write_accessor(output_accessor));
 
-    std::vector<double> host_double_data =
-        load_data_to_host_from_device<double>(
-            read_only_accessor_from_write_accessor(output_accessor));
+      CHECK(contains_non_zero(host_double_data));
+    }
 
     SUBCASE("backward_kernel") {
+      GenericTensorAccessorR output_accessor =
+          read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(output_shape, allocator));
       GenericTensorAccessorW grad_output_accessor =
           allocator.allocate_tensor(input_shape);
 
-      Kernels::Cast::backward_kernel(
-          stream,
-          read_only_accessor_from_write_accessor(output_accessor),
-          grad_output_accessor,
-          DataType::DOUBLE,
-          DataType::FLOAT);
+      Kernels::Cast::backward_kernel(stream,
+                                     output_accessor,
+                                     grad_output_accessor,
+                                     DataType::DOUBLE,
+                                     DataType::FLOAT);
 
       std::vector<float> host_grad_float_data =
           load_data_to_host_from_device<float>(

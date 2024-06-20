@@ -32,13 +32,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     GenericTensorAccessorR input_accessor =
         read_only_accessor_from_write_accessor(
             create_random_filled_accessor_w(shape, allocator));
-    GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
     GenericTensorAccessorW gamma_accessor =
         create_filled_accessor_w(feature_shape, allocator, 1.0f);
-    GenericTensorAccessorW beta_accessor =
-        create_filled_accessor_w(feature_shape, allocator, 0.0f);
 
     SUBCASE("forward_kernel") {
+      GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
+      GenericTensorAccessorW beta_accessor =
+          create_filled_accessor_w(feature_shape, allocator, 0.0f);
       Kernels::LayerNorm::forward_kernel(stream,
                                          state,
                                          input_accessor,
@@ -49,39 +49,43 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
+      CHECK(contains_non_zero(host_output_data));
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorW grad_input_accessor =
-            create_random_filled_accessor_w(shape, allocator);
-        GenericTensorAccessorW gamma_grad_accessor =
-            allocator.allocate_tensor(feature_shape);
-        GenericTensorAccessorW beta_grad_accessor =
-            allocator.allocate_tensor(feature_shape);
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorR output_accessor =
+          read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(shape, allocator));
+      GenericTensorAccessorW grad_input_accessor =
+          create_random_filled_accessor_w(shape, allocator);
+      GenericTensorAccessorW gamma_grad_accessor =
+          allocator.allocate_tensor(feature_shape);
+      GenericTensorAccessorW beta_grad_accessor =
+          allocator.allocate_tensor(feature_shape);
 
-        Kernels::LayerNorm::backward_kernel(
-            stream,
-            state,
-            read_only_accessor_from_write_accessor(output_accessor),
-            input_accessor,
-            grad_input_accessor,
-            read_only_accessor_from_write_accessor(gamma_accessor),
-            gamma_grad_accessor,
-            beta_grad_accessor);
+      Kernels::LayerNorm::backward_kernel(
+          stream,
+          state,
+          output_accessor,
+          input_accessor,
+          grad_input_accessor,
+          read_only_accessor_from_write_accessor(gamma_accessor),
+          gamma_grad_accessor,
+          beta_grad_accessor);
 
-        std::vector<float> host_grad_input_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(grad_input_accessor));
-        std::vector<float> host_gamma_grad_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(gamma_grad_accessor));
-        std::vector<float> host_beta_grad_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(beta_grad_accessor));
+      std::vector<float> host_grad_input_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(grad_input_accessor));
+      std::vector<float> host_gamma_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(gamma_grad_accessor));
+      std::vector<float> host_beta_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(beta_grad_accessor));
 
-        CHECK(contains_non_zero(host_grad_input_data));
-        CHECK(contains_non_zero(host_gamma_grad_data));
-        CHECK(contains_non_zero(host_beta_grad_data));
-      }
+      CHECK(contains_non_zero(host_grad_input_data));
+      CHECK(contains_non_zero(host_gamma_grad_data));
+      CHECK(contains_non_zero(host_beta_grad_data));
     }
 
     cleanup_test(stream, handle);

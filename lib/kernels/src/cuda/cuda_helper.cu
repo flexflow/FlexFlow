@@ -222,7 +222,9 @@ __host__ void
 ffStatus_t
     cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
                                            ArrayShape const &shape) {
-  ArrayShape flipped = shape.reversed_dim_order();
+  std::vector<std::size_t> reversed_dims(shape.dims.begin(), shape.dims.end());
+  reversed(reversed_dims);
+  ArrayShape flipped(reversed_dims);
 
   if (flipped.get_dim() == 5) {
     assert(flipped[legion_dim_t(0)] == 1);

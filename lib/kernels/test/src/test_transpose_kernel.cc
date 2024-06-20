@@ -30,22 +30,23 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
+      CHECK(contains_non_zero(host_output_data));
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorW input_grad_accessor =
-            create_random_filled_accessor_w(shape, allocator);
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorR output_accessor =
+          read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(shape, allocator));
+      GenericTensorAccessorW input_grad_accessor =
+          create_random_filled_accessor_w(shape, allocator);
 
-        Kernels::Transpose::backward_kernel(
-            stream,
-            state,
-            input_grad_accessor,
-            read_only_accessor_from_write_accessor(output_accessor));
+      Kernels::Transpose::backward_kernel(
+          stream, state, input_grad_accessor, output_accessor);
 
-        std::vector<float> host_grad_input_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(input_grad_accessor));
-        CHECK(contains_non_zero(host_grad_input_data));
-      }
+      std::vector<float> host_grad_input_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(input_grad_accessor));
+      CHECK(contains_non_zero(host_grad_input_data));
     }
 
     cleanup_test(stream, handle);

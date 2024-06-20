@@ -24,6 +24,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     DropoutPerDeviceState state = Kernels::Dropout::init_kernel(
         handle, dropout_rate, seed, shape, allocator);
 
+    auto get_zero_count = [](std::vector<float> const &data) {
+      return count(data, [](float x) { return x == 0.0f; });
+    };
+
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_data =
           read_only_accessor_from_write_accessor(
@@ -42,9 +46,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_data));
 
-      int zero_count = [&]() {
-        return count(host_output_data.begin(), host_output_data.end(), 0.0f);
-      }();
+      int zero_count = get_zero_count(host_output_data);
       float correct_zero_count = input_data.shape.num_elements() * dropout_rate;
       CHECK(zero_count == doctest::Approx(correct_zero_count).epsilon(0.5));
 
@@ -58,10 +60,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             load_data_to_host_from_device<float>(
                 read_only_accessor_from_write_accessor(grad_input_data));
 
-        int zero_count = [&]() {
-          return count(
-              host_grad_input_data.begin(), host_grad_input_data.end(), 0.0f);
-        }();
+        int zero_count = get_zero_count(host_grad_input_data);
         float correct_zero_count =
             output_data.shape.num_elements() * dropout_rate;
         CHECK(zero_count == doctest::Approx(correct_zero_count).epsilon(0.5));

@@ -14,10 +14,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     GenericTensorAccessorR input_accessor =
         read_only_accessor_from_write_accessor(
             create_filled_accessor_w(input_shape, allocator, 2.0f));
-    GenericTensorAccessorW output_accessor =
-        allocator.allocate_tensor(input_shape);
 
     SUBCASE("forward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(input_shape);
       Kernels::Flat::forward_kernel(
           stream, input_accessor, output_accessor.get_float_ptr());
 
@@ -28,25 +28,28 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 2.0f);
       CHECK(check_output_data == expected_output_data);
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorR data_accessor =
-            read_only_accessor_from_write_accessor(
-                create_filled_accessor_w(input_shape, allocator, 1.0f));
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          create_filled_accessor_w(input_shape, allocator, 2.0f);
 
-        Kernels::Flat::backward_kernel(stream,
-                                       input_accessor,
-                                       output_accessor.get_float_ptr(),
-                                       data_accessor.get_float_ptr());
+      GenericTensorAccessorR data_accessor =
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(input_shape, allocator, 1.0f));
 
-        std::vector<float> backward_output_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(output_accessor));
+      Kernels::Flat::backward_kernel(stream,
+                                     input_accessor,
+                                     output_accessor.get_float_ptr(),
+                                     data_accessor.get_float_ptr());
 
-        std::vector<float> expected_output_data(
-            input_accessor.shape.num_elements(), 3.0f);
-        CHECK(backward_output_data == expected_output_data);
-      }
+      std::vector<float> backward_output_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_accessor));
+
+      std::vector<float> expected_output_data(
+          input_accessor.shape.num_elements(), 3.0f);
+      CHECK(backward_output_data == expected_output_data);
     }
 
     checkCUDA(cudaStreamDestroy(stream));

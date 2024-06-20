@@ -41,8 +41,6 @@ public:
 
   std::optional<std::size_t> at_maybe(std::size_t) const;
 
-  ArrayShape reversed_dim_order() const;
-
   ArrayShape
       sub_shape(std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
                 std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const;

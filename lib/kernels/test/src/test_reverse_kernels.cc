@@ -15,13 +15,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
+    GenericTensorAccessorW grad_input_accessor =
+        create_filled_accessor_w(shape, allocator, 0.0f);
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
               create_filled_accessor_w(shape, allocator, 1.0f));
       GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
-      GenericTensorAccessorW grad_input_accessor =
-          create_filled_accessor_w(shape, allocator, 0.0f);
 
       Kernels::Reverse::forward_kernel(stream,
                                        input_accessor.get_float_ptr(),
@@ -31,20 +31,28 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        in_blk_size,
                                        input_accessor.shape.num_elements());
 
-      SUBCASE("backward_kernel") {
-        Kernels::Reverse::backward_kernel(stream,
-                                          output_accessor.get_float_ptr(),
-                                          grad_input_accessor.get_float_ptr(),
-                                          num_out_blks,
-                                          reverse_dim_size,
-                                          in_blk_size,
-                                          input_accessor.shape.num_elements());
+      std::vector<float> check_output_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(output_accessor));
 
-        std::vector<float> host_grad_input_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(grad_input_accessor));
-        CHECK(contains_non_zero(host_grad_input_data));
-      }
+      CHECK(contains_non_zero(check_output_data));
+    }
+
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          create_random_filled_accessor_w(shape, allocator);
+      Kernels::Reverse::backward_kernel(stream,
+                                        output_accessor.get_float_ptr(),
+                                        grad_input_accessor.get_float_ptr(),
+                                        num_out_blks,
+                                        reverse_dim_size,
+                                        in_blk_size,
+                                        output_accessor.shape.num_elements());
+
+      std::vector<float> host_grad_input_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(grad_input_accessor));
+      CHECK(contains_non_zero(host_grad_input_data));
     }
 
     checkCUDA(cudaStreamDestroy(stream));

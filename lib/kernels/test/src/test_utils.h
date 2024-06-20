@@ -45,13 +45,19 @@ std::vector<T> load_data_to_host_from_device(GenericTensorAccessorR accessor) {
 }
 
 template <typename T>
-inline bool contains_non_zero(std::vector<T> &data) {
-  for (auto &val : data) {
-    if (val != 0) {
-      return true;
-    }
-  }
-  return false;
+std::vector<T> load_vector_to_host_from_device(T *gpu_ptr,
+                                               size_t num_elements) {
+  std::vector<T> local_data(num_elements);
+  checkCUDA(cudaMemcpy(local_data.data(),
+                       gpu_ptr,
+                       num_elements * sizeof(T),
+                       cudaMemcpyDeviceToHost));
+  return local_data;
+}
+
+template <typename T>
+bool contains_non_zero(std::vector<T> &data) {
+  return !all_of(data, [](T const &val) { return val == 0; });
 }
 
 #endif

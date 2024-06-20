@@ -13,4 +13,5 @@ ff_add_library(
     kernels
     pcg
     spdlog
+    kernels
 )

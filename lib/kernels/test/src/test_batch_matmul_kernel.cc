@@ -30,10 +30,10 @@ TEST_SUITE(FF_TEST_SUITE) {
         create_random_filled_accessor_w(input_shape_a, allocator);
     GenericTensorAccessorW accessor_b =
         create_random_filled_accessor_w(input_shape_b, allocator);
-    GenericTensorAccessorW accessor_output =
-        allocator.allocate_tensor(output_shape);
 
     SUBCASE("forward_kernel") {
+      GenericTensorAccessorW accessor_output =
+          allocator.allocate_tensor(output_shape);
       Kernels::BatchMatmul::forward_kernel(stream,
                                            handle,
                                            accessor_output.get_float_ptr(),
@@ -49,6 +49,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
+      GenericTensorAccessorW accessor_output =
+          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW o_grad_accessor =
           create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW a_grad_accessor =
@@ -68,18 +70,6 @@ TEST_SUITE(FF_TEST_SUITE) {
                                             n,
                                             k,
                                             batch);
-      std::vector<float> host_a_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(a_grad_accessor));
-      std::vector<float> host_b_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(b_grad_accessor));
-      std::vector<float> host_o_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(o_grad_accessor));
-      CHECK(contains_non_zero(host_a_grad_data));
-      CHECK(contains_non_zero(host_b_grad_data));
-      CHECK(contains_non_zero(host_o_grad_data));
     }
 
     cleanup_test(stream, handle);

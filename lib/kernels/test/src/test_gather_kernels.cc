@@ -13,6 +13,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
+    GatherPerDeviceState state = {handle, legion_dim_t(2)};
+
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW device_output_accessor =
           create_random_filled_accessor_w(input_shape, allocator);
@@ -23,7 +25,6 @@ TEST_SUITE(FF_TEST_SUITE) {
           read_only_accessor_from_write_accessor(
               create_random_filled_accessor_w(output_shape, allocator));
 
-      GatherPerDeviceState state = {handle, legion_dim_t(2)};
       Kernels::Gather::forward_kernel(stream,
                                       state,
                                       device_input_accessor,
@@ -34,27 +35,29 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(device_output_accessor));
       CHECK(contains_non_zero(host_output_data));
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorR device_index_accessor =
-            read_only_accessor_from_write_accessor(
-                create_random_filled_accessor_w(output_shape, allocator));
-        GenericTensorAccessorW device_input_grad_accessor =
-            allocator.allocate_tensor(input_shape);
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorR device_output_accessor =
+          read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(input_shape, allocator));
+      GenericTensorAccessorR device_index_accessor =
+          read_only_accessor_from_write_accessor(
+              create_random_filled_accessor_w(output_shape, allocator));
+      GenericTensorAccessorW device_input_grad_accessor =
+          allocator.allocate_tensor(input_shape);
 
-        Kernels::Gather::backward_kernel(
-            stream,
-            state,
-            read_only_accessor_from_write_accessor(device_output_accessor),
-            device_index_accessor,
-            device_input_grad_accessor);
+      Kernels::Gather::backward_kernel(stream,
+                                       state,
+                                       device_output_accessor,
+                                       device_index_accessor,
+                                       device_input_grad_accessor);
 
-        std::vector<float> host_input_grad_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(
-                    device_input_grad_accessor));
-        CHECK(contains_non_zero(host_input_grad_data));
-      }
+      std::vector<float> host_input_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(
+                  device_input_grad_accessor));
+      CHECK(contains_non_zero(host_input_grad_data));
     }
 
     cleanup_test(stream, handle);

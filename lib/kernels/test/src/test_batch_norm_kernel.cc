@@ -34,14 +34,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     GenericTensorAccessorW input_accessor =
         create_random_filled_accessor_w(input_shape, allocator);
-    GenericTensorAccessorW output_accessor =
-        allocator.allocate_tensor(output_shape);
     GenericTensorAccessorW scale_accessor =
         create_filled_accessor_w(scale_shape, allocator, 1.0f);
     GenericTensorAccessorW bias_accessor =
         create_filled_accessor_w(bias_shape, allocator, 0.0f);
 
     SUBCASE("forward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
       Kernels::BatchNorm::forward_kernel(stream,
                                          state,
                                          input_accessor.get_float_ptr(),
@@ -53,37 +53,38 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
       CHECK(contains_non_zero(host_output_data));
+    }
 
-      SUBCASE("backward_kernel") {
-        GenericTensorAccessorW grad_output_accessor =
-            create_random_filled_accessor_w(output_shape, allocator);
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          create_random_filled_accessor_w(output_shape, allocator);
+      GenericTensorAccessorW grad_output_accessor =
+          create_random_filled_accessor_w(output_shape, allocator);
 
-        Kernels::BatchNorm::backward_kernel(
-            stream,
-            state,
-            input_accessor.get_float_ptr(),
-            grad_output_accessor.get_float_ptr(),
-            output_accessor.get_float_ptr(),
-            input_accessor.get_float_ptr(),
-            scale_accessor.get_float_ptr(),
-            scale_accessor.get_float_ptr(),
-            bias_accessor.get_float_ptr(),
-            input_accessor.shape.num_elements());
+      Kernels::BatchNorm::backward_kernel(stream,
+                                          state,
+                                          input_accessor.get_float_ptr(),
+                                          grad_output_accessor.get_float_ptr(),
+                                          output_accessor.get_float_ptr(),
+                                          input_accessor.get_float_ptr(),
+                                          scale_accessor.get_float_ptr(),
+                                          scale_accessor.get_float_ptr(),
+                                          bias_accessor.get_float_ptr(),
+                                          input_accessor.shape.num_elements());
 
-        std::vector<float> host_input_grad_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(input_accessor));
-        std::vector<float> host_scale_grad_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(scale_accessor));
-        std::vector<float> host_bias_grad_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(bias_accessor));
+      std::vector<float> host_input_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(input_accessor));
+      std::vector<float> host_scale_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(scale_accessor));
+      std::vector<float> host_bias_grad_data =
+          load_data_to_host_from_device<float>(
+              read_only_accessor_from_write_accessor(bias_accessor));
 
-        CHECK(contains_non_zero(host_input_grad_data));
-        CHECK(contains_non_zero(host_scale_grad_data));
-        CHECK(contains_non_zero(host_bias_grad_data));
-      }
+      CHECK(contains_non_zero(host_input_grad_data));
+      CHECK(contains_non_zero(host_scale_grad_data));
+      CHECK(contains_non_zero(host_bias_grad_data));
     }
 
     Kernels::BatchNorm::cleanup_kernel(allocator,
