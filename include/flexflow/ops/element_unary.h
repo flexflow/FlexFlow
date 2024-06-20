@@ -12,9 +12,11 @@
 
 namespace FlexFlow {
 
+class ElementUnary;
+
 class ElementUnaryMeta : public OpMeta {
 public:
-  ElementUnaryMeta(FFHandler handle);
+  ElementUnaryMeta(FFHandler handle, ElementUnary const *unary);
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnTensorDescriptor_t inputTensor, outputTensor;
   cudnnActivationDescriptor_t actiDesc;

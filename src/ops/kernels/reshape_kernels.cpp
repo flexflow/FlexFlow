@@ -14,12 +14,14 @@
  */
 
 #include "flexflow/ops/kernels/reshape_kernels.h"
+#include "flexflow/ops/reshape.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-ReshapeMeta::ReshapeMeta(FFHandler handler) : OpMeta(handler) {}
+ReshapeMeta::ReshapeMeta(FFHandler handler, Reshape const *reshape)
+    : OpMeta(handler, reshape) {}
 
 namespace Kernels {
 namespace Reshape {

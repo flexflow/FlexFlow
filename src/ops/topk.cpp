@@ -513,6 +513,7 @@ void TopK::backward_kernel_wrapper(TopKMeta const *m,
   // TODO: missing profiling here
 }
 
-TopKMeta::TopKMeta(FFHandler handler) : OpMeta(handler) {}
+TopKMeta::TopKMeta(FFHandler handler, TopK const *topk)
+    : OpMeta(handler, topk) {}
 
 }; // namespace FlexFlow

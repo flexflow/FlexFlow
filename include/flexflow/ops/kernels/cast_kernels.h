@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class Cast;
+
 class CastMeta : public OpMeta {
 public:
-  CastMeta(FFHandler handle);
+  CastMeta(FFHandler handle, Cast const *cast);
   DataType input_data_type, output_data_type;
 };
 

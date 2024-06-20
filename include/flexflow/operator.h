@@ -234,6 +234,13 @@ public:
                                       MachineView const *mv = nullptr) {
     assert(false);
   };
+  virtual Legion::FutureMap peft_bwd(FFModel const &,
+                                     BatchConfigFuture const &,
+                                     std::vector<ParallelTensor> const &,
+                                     std::vector<ParallelTensor> const &,
+                                     MachineView const *mv = nullptr) {
+    assert(false);
+  }
   virtual void print_layer(FFModel const &model) = 0;
   template <typename OpMetaType>
   static std::string get_op_name_without_uid(OpMetaType *m) {
@@ -257,9 +264,10 @@ public:
       std::vector<GenericTensorAccessorR> input_tensors,
       std::vector<GenericTensorAccessorR> weight_tensors,
       std::vector<GenericTensorAccessorR> output_tensors,
+      bool fwd_pass = true,
       bool before_kernel = false) {
     // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors";
+    char const *folder_path = "./inference_tensors/";
     struct stat st = {0};
     if (stat(folder_path, &st) == -1) {
       // Directory does not exist, create it
@@ -267,17 +275,26 @@ public:
     }
     // output base filepath, shared by all tensors from the same operator
     std::string op_name_without_uid = get_op_name_without_uid(m);
-    std::string base_filepath =
-        "./inference_tensors/model_" + std::to_string(m->layer_guid.model_id) +
-        "_decoding-step_" + std::to_string(m->decoding_step) + "_layer-num_" +
-        std::to_string(m->layer_guid.transformer_layer_id) + "_layer-name_" +
-        op_name_without_uid + "_shard-id_" + std::to_string(shard_id);
+    std::cout << (fwd_pass ? "INF " : "BWD ") << op_name_without_uid
+              << std::endl;
+    std::string base_filepath = std::string(folder_path);
+    if (m->layer_guid.model_id > 0) {
+      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    }
+    if (fwd_pass) {
+      base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
+    } else {
+      base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+    }
+    base_filepath += "_layers_" +
+                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
+                     op_name_without_uid + "_shard_" + std::to_string(shard_id);
     if (before_kernel) {
       base_filepath += "_pre";
     }
     // save batch config, if passed
     if (bc != nullptr) {
-      bc->save_to_file(base_filepath + "_batch-config");
+      bc->save_to_file(base_filepath + "_batch_config");
     }
     // save all inputs
     for (int i = 0; i < input_tensors.size(); i++) {
@@ -302,8 +319,8 @@ public:
         assert(false && "Tensor data type not supported");
       }
     }
-    // only dump the weights once
-    if (m->decoding_step == 0) {
+    // only dump the weights once (in fwd passes)
+    if (fwd_pass && m->decoding_step == 0) {
       for (int i = 0; i < weight_tensors.size(); i++) {
         std::string filename = base_filepath + "_weight_" + std::to_string(i);
         if (weight_tensors[i].data_type == DT_FLOAT) {
@@ -352,7 +369,11 @@ public:
     }
     // increase count of decoding steps
     if (!before_kernel) {
-      m->decoding_step++;
+      if (fwd_pass) {
+        m->decoding_step++;
+      } else {
+        m->bwd_step++;
+      }
     }
   }
   virtual bool measure_operator_cost(Simulator *sim,
@@ -446,7 +467,8 @@ public:
   ParallelTensor outputs[MAX_NUM_OUTPUTS];
   ParallelTensor inputs[MAX_NUM_INPUTS];
   ParallelParameter weights[MAX_NUM_WEIGHTS];
-  bool trainableInputs[MAX_NUM_INPUTS];
+  bool trainable_inputs[MAX_NUM_INPUTS];
+  bool reset_input_grads[MAX_NUM_INPUTS];
   OpMeta *meta[MAX_NUM_WORKERS];
   std::map<ParallelTensor, OpMeta *[MAX_NUM_WORKERS]> inference_meta;
   int numInputs, numWeights, numOutputs;

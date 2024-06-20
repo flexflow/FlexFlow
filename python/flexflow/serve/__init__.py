@@ -15,7 +15,16 @@
 from typing import Optional
 from ..type import *
 from flexflow.core import *
-from .serve import LLM, SSM, GenerationConfig, GenerationResult
+from .serve import (
+    LLM,
+    SSM,
+    GenerationConfig,
+    GenerationResult,
+    LoraLinearConfig,
+    PEFTModelID,
+    Request,
+    RequestType,
+)
 
 
 def __check_positive_int(configs_dict: dict, key: str):
@@ -44,6 +53,9 @@ def init(
     offload_reserve_space_size: Optional[int] = None,
     use_4bit_quantization: Optional[bool] = None,
     use_8bit_quantization: Optional[bool] = None,
+    enable_peft: Optional[bool] = None,
+    peft_activation_reserve_space_size: Optional[int] = None,
+    peft_weight_reserve_space_size: Optional[int] = None,
     profiling: Optional[bool] = None,
     benchmarking: Optional[bool] = None,
     inference_debugging: Optional[bool] = None,
@@ -69,9 +81,12 @@ def init(
     - tensor_parallelism_degree: the degree of parallelization in the tensor parallel dimension (using the Megatron technique), defaults to 1
     - pipeline_parallelism_degree: the degree of parallelization in the pipeline parallel dimension, defaults to 1
     - offload: whether to enable offloading of the weights to CPU, defaults to False
-    - offload_reserve_space_size: the space (in MB) to reserve on CPU for offloading, default to 1024^2
+    - offload_reserve_space_size: the space (in MB) to reserve on CPU for offloading, defaults to 8 GB
     - use_4bit_quantization: whether to use 4-bit quantization, defaults to False
     - use_8bit_quantization: whether to use 8-bit quantization, defaults to False
+    - enable_peft: whether to enable the use of PEFT, defaults to False
+    - peft_activation_reserve_space_size: the space (in MB) to reserve on GPU for PEFT activations, default to 1 GB
+    - peft_weight_reserve_space_size: the space (in MB) to reserve on GPU for PEFT weights, default to 1 GB
     - profiling: whether to enable the FlexFlow profiling mode, defaults to False
     - benchmarking: whether to run benchmaking only, without loading real weights, defaults to False
     - inference_debugging: whether to run inference in debugging mode, saving all inputs/outputs/weights to file, defaults to False
@@ -100,12 +115,18 @@ def init(
     :type pipeline_parallelism_degree: Optional[int], optional
     :param offload: whether to enable offloading of the weights to CPU, defaults to False
     :type offload: Optional[bool], optional
-    :param offload_reserve_space_size: the space (in MB) to reserve on CPU for offloading, default to 1024^2
+    :param offload_reserve_space_size: the space (in MB) to reserve on CPU for offloading, defaults to 8 GB
     :type offload_reserve_space_size: Optional[int], optional
     :param use_4bit_quantization: whether to use 4-bit quantization, defaults to False
     :type use_4bit_quantization: Optional[bool], optional
     :param use_8bit_quantization: whether to use 8-bit quantization, defaults to False
     :type use_8bit_quantization: Optional[bool], optional
+    :param enable_peft: whether to enable the use of PEFT, defaults to False
+    :type enable_peft: Optional[bool], optional
+    :param peft_activation_reserve_space_size: the space (in MB) to reserve on GPU for PEFT activations, default to 1 GB
+    :type peft_activation_reserve_space_size: Optional[int], optional
+    :param peft_weight_reserve_space_size: the space (in MB) to reserve on GPU for PEFT weights, default to 1 GB
+    :type peft_weight_reserve_space_size: Optional[int], optional
     :param profiling: whether to enable the FlexFlow profiling mode, defaults to False
     :type profiling: Optional[bool], optional
     :param benchmarking: whether to run benchmaking only, without loading real weights, defaults to False
@@ -135,6 +156,9 @@ def init(
             offload_reserve_space_size is not None,
             use_4bit_quantization is not None,
             use_8bit_quantization is not None,
+            enable_peft is not None,
+            peft_activation_reserve_space_size is not None,
+            peft_weight_reserve_space_size is not None,
             profiling is not None,
             benchmarking is not None,
             inference_debugging is not None,
@@ -161,6 +185,9 @@ def init(
             "offload_reserve_space_size": offload_reserve_space_size,
             "use_4bit_quantization": use_4bit_quantization,
             "use_8bit_quantization": use_8bit_quantization,
+            "enable_peft": enable_peft,
+            "peft_activation_reserve_space_size": peft_activation_reserve_space_size,
+            "peft_weight_reserve_space_size": peft_weight_reserve_space_size,
             "profiling": profiling,
             "benchmarking": benchmarking,
             "inference_debugging": inference_debugging,
@@ -182,6 +209,8 @@ def init(
         "tensor_parallelism_degree",
         "pipeline_parallelism_degree",
         "offload_reserve_space_size",
+        "peft_activation_reserve_space_size",
+        "peft_weight_reserve_space_size",
     ]
     for param in positive_int_params:
         __check_positive_int(configs_dict, param)
@@ -200,11 +229,17 @@ def init(
     if configs_dict.get("offload", None) is None:
         configs_dict["offload"] = False
     if configs_dict.get("offload_reserve_space_size", None) is None:
-        configs_dict["offload_reserve_space_size"] = 1024**2
+        configs_dict["offload_reserve_space_size"] = 8 * 1024**3
     if configs_dict.get("use_4bit_quantization", None) is None:
         configs_dict["use_4bit_quantization"] = False
     if configs_dict.get("use_8bit_quantization", None) is None:
         configs_dict["use_8bit_quantization"] = False
+    if configs_dict.get("enable_peft", None) is None:
+        configs_dict["enable_peft"] = False
+    if configs_dict.get("peft_activation_reserve_space_size", None) is None:
+        configs_dict["peft_activation_reserve_space_size"] = 8 * 1024**3
+    if configs_dict.get("peft_weight_reserve_space_size", None) is None:
+        configs_dict["peft_weight_reserve_space_size"] = 1024**3
     if configs_dict.get("profiling", None) is None:
         configs_dict["profiling"] = False
     if configs_dict.get("benchmarking", None) is None:

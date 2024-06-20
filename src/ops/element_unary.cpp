@@ -282,7 +282,8 @@ void ElementUnary::backward_kernel_wrapper(ElementUnaryMeta const *m,
                                    stream);
 }
 
-ElementUnaryMeta::ElementUnaryMeta(FFHandler handler) : OpMeta(handler) {
+ElementUnaryMeta::ElementUnaryMeta(FFHandler handler, ElementUnary const *unary)
+    : OpMeta(handler, unary) {
   checkCUDNN(miopenCreateTensorDescriptor(&inputTensor));
   checkCUDNN(miopenCreateTensorDescriptor(&outputTensor));
   checkCUDNN(miopenCreateActivationDescriptor(&actiDesc));

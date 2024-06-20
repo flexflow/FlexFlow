@@ -361,7 +361,7 @@ template <typename DT>
 void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                             BeamSearchBatchConfig const *bc,
                             cudaStream_t stream) {
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   int curr_depth = bc->beamRequestsInfo[0].current_depth;
   if (num_tokens > 0) {
     int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens;
@@ -471,17 +471,18 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
@@ -541,20 +542,9 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
     DT const *A = static_cast<DT *>(m->devQKVProjArray) +
                   bc->requestsInfo[i].first_token_offset_in_batch *
                       m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM;
-    // To get B, skip over K entries from previous requests (all heads +
-    // padding)
-
-    // print_tensor<float>((float*)A, 32, "A");
     DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
+    DT *C = static_cast<DT *>(m->qk_prods);
 
-    // if (i == 0 && sub_req_id == 0 &&
-    //     bc->beam_slots.at(0).current_depth == 1) {
-    //   int offset = (float *)B - m->keyCache;
-    //   printf("key cache offset %d\n", kt_req_block_size);
-    // }
-    // To get C, skip over QK^T products from previous requests
-    DT *C = static_cast<DT *>(m->qk_prods) +
-            m->num_q_heads * tokens_prev_requests_squares;
     checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
                                          CUBLAS_OP_T,
                                          CUBLAS_OP_N,
@@ -854,29 +844,15 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
     beam_token_infos =
-        reinterpret_cast<BeamSearchBatchConfig::BeamSearchPerTokenInfo *>(
-            reinterpret_cast<char *>(handler.batch_config_metadata) +
-            sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo));
-
+        static_cast<BeamSearchBatchConfig::BeamSearchPerTokenInfo *>(
+            handler.batch_config_metadata->beamTokenInfo);
     beam_request_infos =
-        reinterpret_cast<BeamSearchBatchConfig::BeamSearchPerRequestInfo *>(
-            reinterpret_cast<char *>(handler.batch_config_metadata) +
-            sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo) +
-            sizeof(BeamSearchBatchConfig::beamTokenInfo));
-    causalMask = reinterpret_cast<BatchConfig::BitMask *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BeamSearchBatchConfig::beamTokenInfo) +
-        sizeof(BeamSearchBatchConfig::beamRequestsInfo));
-
-    request_completed = reinterpret_cast<bool *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BeamSearchBatchConfig::beamTokenInfo) +
-        sizeof(BeamSearchBatchConfig::beamRequestsInfo) +
-        sizeof(BatchConfig::causalMask));
+        static_cast<BeamSearchBatchConfig::BeamSearchPerRequestInfo *>(
+            handler.batch_config_metadata->beamRequestsInfo);
+    causalMask = static_cast<BatchConfig::BitMask *>(
+        handler.batch_config_metadata->causalMask);
+    request_completed =
+        static_cast<bool *>(handler.batch_config_metadata->request_completed);
   }
 
   cudaStreamSynchronize(stream);

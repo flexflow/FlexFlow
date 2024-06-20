@@ -197,7 +197,7 @@ OpMeta *Concat::init_task(Task const *task,
                           Runtime *runtime) {
   Concat *cc = (Concat *)task->args;
   FFHandler handler = *((FFHandler const *)task->local_args);
-  ConcatMeta *m = new ConcatMeta(handler);
+  ConcatMeta *m = new ConcatMeta(handler, cc);
   // Note that our internal axis index ordering is opposite to other frameworks
   init_meta(m, cc->legion_axis);
   m->profiling = cc->profiling;
@@ -365,7 +365,7 @@ bool Concat::measure_operator_cost(Simulator *sim,
     }
   }
 
-  ConcatMeta *m = sim->concat_meta;
+  ConcatMeta *m = new ConcatMeta(sim->handler, this);
   init_meta(m, this->legion_axis);
 
   sim->free_all();

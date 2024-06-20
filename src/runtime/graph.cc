@@ -36,6 +36,7 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
@@ -1995,6 +1996,7 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
         mv.device_type = MachineView::GPU;
         mv.ndims = 1;
         int total_parallel_degree = 1;
+        assert(op->numOutputs > 0);
         for (int i = 0; i < op->outputs[0]->num_dims; i++) {
           total_parallel_degree *= op->outputs[0]->dims[i].degree;
         }
@@ -2478,6 +2480,7 @@ namespace FlexFlow {
 using PCG::Edge;
 using PCG::Graph;
 using PCG::GraphCostResult;
+using PCG::log_graph;
 using PCG::Node;
 
 void FFModel::register_all_machine_views(
@@ -2760,6 +2763,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_LINEAR: {
         node = Linear::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_LORA: {
+        node = LoraLinear::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_MULTIHEAD_ATTENTION: {
@@ -3152,20 +3159,20 @@ void FFModel::deserialize_graph_optimal_view(
     optimal_views[guid_to_nodes[guid]] = view;
   }
   assert(dez.get_remaining_bytes() == 0);
-  printf("Deserialized Views...\n");
+  log_graph.debug("Deserialized Views...\n");
   for (auto const &it : optimal_views) {
-    printf("node[%zu]: type(%s) view(%d %d %d) ",
-           it.first.guid,
-           it.first.to_string().c_str(),
-           it.second.ndims,
-           it.second.dim[0],
-           it.second.start_device_id);
+    log_graph.debug("node[%zu]: type(%s) view(%d %d %d) ",
+                    it.first.guid,
+                    it.first.to_string().c_str(),
+                    it.second.ndims,
+                    it.second.dim[0],
+                    it.second.start_device_id);
     auto const &list = graph->inEdges.at(it.first);
     for (auto const &it2 : list) {
       Edge e = it2;
-      printf(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
+      log_graph.debug(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
     }
-    printf("\n");
+    log_graph.debug("\n");
   }
 }
 

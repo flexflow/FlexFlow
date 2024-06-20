@@ -25,7 +25,7 @@ LegionRuntime::Logger::Category log_bc("BatchConfig");
 using Legion::Future;
 using Legion::Memory;
 
-BatchConfig::BatchConfig() : num_tokens(0) {
+BatchConfig::BatchConfig() : num_tokens(0), num_peft_tokens(0) {
   for (int i = 0; i < MAX_NUM_REQUESTS; i++) {
     requestsInfo[i].first_token_depth_in_request = 0;
     requestsInfo[i].first_token_offset_in_batch = 0;
@@ -74,6 +74,14 @@ int BatchConfig::num_active_tokens() const {
   return num_tokens;
 }
 
+int BatchConfig::num_active_infr_tokens() const {
+  return num_tokens;
+}
+
+int BatchConfig::num_active_peft_tokens() const {
+  return num_peft_tokens;
+}
+
 /*static*/
 int BatchConfig::max_requests_per_batch() {
   return RequestManager::get_request_manager()->get_max_requests_per_batch();
@@ -107,8 +115,13 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   os << "Max number of tokens: " << bc.max_tokens_per_batch() << std::endl;
   os << "Max sequence length: " << bc.max_sequence_length() << std::endl;
   // Current values
-  os << "Number of tokens: " << bc.num_active_tokens() << std::endl;
+  os << "Number of active tokens: " << bc.num_active_tokens() << std::endl;
+  os << "Number of inference tokens: " << bc.num_active_infr_tokens()
+     << std::endl;
+  os << "Number of peft tokens: " << bc.num_active_peft_tokens() << std::endl;
   os << "Number of requests: " << bc.num_active_requests() << std::endl;
+  os << "Number of generation tokens: " << bc.num_generation_tokens
+     << std::endl;
 
   // Per-request info
   os << "Per-request info:\n";
@@ -122,6 +135,14 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
       os << "    Number of tokens in batch: "
          << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
       os << "    GUID: " << bc.requestsInfo[i].request_guid << std::endl;
+      os << "    Prompt phase: " << bc.requestsInfo[i].prompt_phase
+         << std::endl;
+      os << "    BatchConfig Req ID: "
+         << bc.requestsInfo[i].batch_config_request_id << std::endl;
+      // PEFT values
+      os << "    PEFT Model ID: " << bc.requestsInfo[i].peft_model_id
+         << std::endl;
+      os << "    PEFT bwd: " << bc.requestsInfo[i].peft_bwd << std::endl;
       os << "    Max sequence length: "
          << bc.requestsInfo[i].max_sequence_length << std::endl;
       os << "    Request completed: " << bc.request_completed[i] << std::endl;

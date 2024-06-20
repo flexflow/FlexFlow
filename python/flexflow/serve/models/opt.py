@@ -139,7 +139,7 @@ class FlexFlowOPT(FlexFlowModel):
                     axes,
                     self.opt_config.layer_norm_elementwise_affine,
                     1e-05,
-                    name=f"layers_{i}_attention_layer_norm",
+                    name=f"layers.{i}.self_attn_layer_norm",
                 )
             else:
                 hidden_states = ffmodel.add(token, positional_embedding)
@@ -163,7 +163,7 @@ class FlexFlowOPT(FlexFlowModel):
                     (self.opt_config.hidden_size / self.opt_config.num_attention_heads)
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attn",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multihead_self_attention_verify(
@@ -183,7 +183,7 @@ class FlexFlowOPT(FlexFlowModel):
                     (self.opt_config.hidden_size / self.opt_config.num_attention_heads)
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attn",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multihead_self_attention(
@@ -203,7 +203,7 @@ class FlexFlowOPT(FlexFlowModel):
                     (self.opt_config.hidden_size / self.opt_config.num_attention_heads)
                     ** (-0.5),  # scaling_factor
                     False,  # qk_prod_scaling
-                    name=f"layers_{i}_attention",
+                    name=f"layers.{i}.self_attn",
                 )
             else:
                 assert False
@@ -215,7 +215,7 @@ class FlexFlowOPT(FlexFlowModel):
                 axes,
                 self.opt_config.layer_norm_elementwise_affine,
                 1e-05,
-                name=f"layers_{i}_add_bias_residual_layer_norm",
+                name=f"layers.{i}.add_bias_residual_layer_norm",
             )
 
             if not self.opt_config.do_layer_norm_before:
@@ -226,14 +226,14 @@ class FlexFlowOPT(FlexFlowModel):
                 self.opt_config.ffn_dim,
                 ActiMode.AC_MODE_RELU,
                 True,
-                name=f"layers_{i}_fc1",
+                name=f"layers.{i}.fc1",
             )
             fc2 = ffmodel.dense(
                 fc1,
                 self.opt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 True,
-                name=f"layers_{i}_fc2",
+                name=f"layers.{i}.fc2",
             )
 
             if not self.opt_config.do_layer_norm_before:
@@ -245,7 +245,7 @@ class FlexFlowOPT(FlexFlowModel):
                     axes,
                     self.opt_config.layer_norm_elementwise_affine,
                     1e-05,
-                    name=f"layers_{i}_final_layer_norm",
+                    name=f"layers.{i}.final_layer_norm",
                 )
 
         _, all_final_norm = ffmodel.residual_layer_norm(
@@ -263,7 +263,7 @@ class FlexFlowOPT(FlexFlowModel):
             self.opt_config.vocab_size,
             ActiMode.AC_MODE_NONE,
             False,
-            name="embed_tokens_weight_lm_head",
+            name="lm_head",
         )
 
         if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -279,30 +279,29 @@ class FlexFlowOPT(FlexFlowModel):
                 output = ffmodel.sampling(softmax, self.generation_config.topp)
             else:
                 # output = ffmodel.arg_top_k(lm_head, 1, False)
-                output = ffmodel.argmax(lm_head, False)
+                softmax = ffmodel.softmax(lm_head, -1)
+                output = ffmodel.argmax(softmax, False)
 
         self.ffmodel = ffmodel
+
+    def convert_hf_weight_name(name):
+        return (
+            name.replace("decoder.", "")
+            .replace("model.", "")
+            .replace("self_attn.out_proj", "self_attn.o_proj")
+            .replace("self_attn.o_proj.bias", "add_bias_residual_layer_norm.attn_bias")
+            .replace(
+                ".final_layer_norm", ".add_bias_residual_layer_norm"
+            )  # important to use the leading "_" to avoid matching the last LayerNorm
+        )
 
     def convert_hf_model(model, dst_folder):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
-            name = (
-                name.replace(".", "_")
-                .replace("decoder_", "")
-                .replace("model_", "")
-                .replace("self_attn", "attention")
-                .replace("q_proj", "wq")
-                .replace("k_proj", "wk")
-                .replace("v_proj", "wv")
-                .replace("out_proj", "wo")
-                .replace("attention_wo_bias", "add_bias_residual_layer_norm_attn_bias")
-                .replace(
-                    "_final_layer_norm", "_add_bias_residual_layer_norm"
-                )  # important to use the leading "_" to avoid matching the last LayerNorm
-            )
+            name = FlexFlowOPT.convert_hf_weight_name(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
         # copy embedding weights
         shutil.copy(
-            os.path.join(dst_folder, "embed_tokens_weight"),
-            os.path.join(dst_folder, "embed_tokens_weight_lm_head"),
+            os.path.join(dst_folder, "embed_tokens.weight"),
+            os.path.join(dst_folder, "lm_head.weight"),
         )

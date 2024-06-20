@@ -14,11 +14,13 @@
  */
 
 #include "flexflow/parallel_ops/kernels/partition_kernels.h"
+#include "flexflow/parallel_ops/partition.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-RepartitionMeta::RepartitionMeta(FFHandler handler) : OpMeta(handler) {}
+RepartitionMeta::RepartitionMeta(FFHandler handler, Repartition const *repart)
+    : OpMeta(handler, repart) {}
 
 namespace Kernels {
 namespace Repartition {

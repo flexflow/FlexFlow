@@ -81,7 +81,7 @@ void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
       logit_grad_ptr, label_ptr, num_samples, num_classes, k);
   // Scale logit gradients by op->scale_factor
   scale_kernel<<<GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
-      logit_grad_ptr, logit_grad_volume, 0, scale_factor * k);
+      logit_grad_ptr, logit_grad_volume, 0.0f, scale_factor * k);
 }
 
 void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
@@ -100,7 +100,7 @@ void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
       logit_grad_ptr, logit_ptr, label_ptr, logit_volume);
   // Scale logit gradients by loss->scale_factor
   scale_kernel<<<GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
-      logit_grad_ptr, logit_grad_volume, 0, scale_factor);
+      logit_grad_ptr, logit_grad_volume, 0.0f, scale_factor);
 }
 
 void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
@@ -119,7 +119,7 @@ void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
       logit_grad_ptr, logit_ptr, label_ptr, logit_volume);
   // Scale logit gradients by loss->scale_factor
   scale_kernel<<<GET_BLOCKS(logit_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
-      logit_grad_ptr, logit_grad_volume, 0, scale_factor);
+      logit_grad_ptr, logit_grad_volume, 0.0f, scale_factor);
 }
 
 void Loss::identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
@@ -135,7 +135,7 @@ void Loss::identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
                            stream>>>(loss_grad_ptr, loss_ptr, loss_volume);
   // Scale logit gradients by loss->scale_factor
   scale_kernel<<<GET_BLOCKS(loss_grad_volume), CUDA_NUM_THREADS, 0, stream>>>(
-      loss_grad_ptr, loss_grad_volume, 0, scale_factor);
+      loss_grad_ptr, loss_grad_volume, 0.0f, scale_factor);
 }
 
 }; // namespace FlexFlow

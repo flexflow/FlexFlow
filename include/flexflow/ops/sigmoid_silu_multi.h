@@ -1,5 +1,6 @@
 #pragma once
 
+#include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/memory_allocator.h"
@@ -27,6 +28,11 @@ public:
                       MachineView const *mv = nullptr) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
+  Legion::FutureMap peft_bwd(FFModel const &,
+                             BatchConfigFuture const &,
+                             std::vector<ParallelTensor> const &,
+                             std::vector<ParallelTensor> const &,
+                             MachineView const *mv = nullptr) override;
   Legion::FutureMap inference(FFModel const &,
                               BatchConfigFuture const &,
                               std::vector<ParallelTensor> const &,
@@ -55,6 +61,14 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+  static void peft_bwd_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
@@ -65,10 +79,24 @@ public:
                                T const *input2_ptr,
                                T *output_ptr,
                                ffStream_t stream);
-  static void inference_kernel_wrapper(SigmoidSiluMultiMeta const *m,
+  static void inference_kernel_wrapper(SigmoidSiluMultiMeta *m,
+                                       BatchConfig const *bc,
                                        GenericTensorAccessorR const &input1,
                                        GenericTensorAccessorR const &input2,
                                        GenericTensorAccessorW const &output);
+  static void
+      backward_kernel_wrapper(SigmoidSiluMultiMeta const *m,
+                              GenericTensorAccessorR const &output_grad,
+                              GenericTensorAccessorR const &input1,
+                              GenericTensorAccessorR const &input2,
+                              GenericTensorAccessorW const &input1_grad,
+                              GenericTensorAccessorW const &input2_grad);
+  static void
+      peft_bwd_kernel_wrapper(SigmoidSiluMultiMeta const *m,
+                              BatchConfig const *bc,
+                              GenericTensorAccessorR const &output_grad,
+                              GenericTensorAccessorW const &input1_grad,
+                              GenericTensorAccessorW const &input2_grad);
 };
 
 class SigmoidSiluMultiMeta : public OpMeta {
@@ -80,6 +108,9 @@ public:
 
 public:
   Realm::RegionInstance reserveInst;
+  // PEFT related fields
+  void *input_activation;
+  size_t allocated_peft_buffer_size = 0;
 };
 
 }; // namespace FlexFlow

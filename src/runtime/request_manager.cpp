@@ -73,74 +73,69 @@ void RequestManager::load_batch_config_task(
 
   // copy meta data to workSpace
   FFHandler handle = *((FFHandler const *)task->local_args);
-  size_t total_copy_size = 0;
-  checkCUDA(hipMemcpyAsync(handle.batch_config_metadata,
+  checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->tokens_info,
                            &(batch_config->tokensInfo),
                            sizeof(BatchConfig::tokensInfo),
                            hipMemcpyHostToDevice,
                            stream));
-  total_copy_size += sizeof(BatchConfig::tokensInfo);
 
-  checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                               total_copy_size,
+  checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->requestsInfo,
                            &(batch_config->requestsInfo),
                            sizeof(BatchConfig::requestsInfo),
                            hipMemcpyHostToDevice,
                            stream));
-  total_copy_size += sizeof(BatchConfig::requestsInfo);
 
   // load speculative metadata
   if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
     BeamSearchBatchConfig const *beam_batch_config =
         static_cast<BeamSearchBatchConfig const *>(batch_config);
 
-    checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                                 total_copy_size,
+    checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->beamTokenInfo,
                              &(beam_batch_config->beamTokenInfo),
                              sizeof(BeamSearchBatchConfig::beamTokenInfo),
                              hipMemcpyHostToDevice,
                              stream));
 
-    total_copy_size += sizeof(BeamSearchBatchConfig::beamTokenInfo);
-
-    checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                                 total_copy_size,
+    checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->beamRequestsInfo,
                              &(beam_batch_config->beamRequestsInfo),
                              sizeof(BeamSearchBatchConfig::beamRequestsInfo),
                              hipMemcpyHostToDevice,
                              stream));
-    total_copy_size += sizeof(BeamSearchBatchConfig::beamRequestsInfo);
 
-    checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                                 total_copy_size,
+    checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->causalMask,
                              &(beam_batch_config->causalMask),
                              sizeof(BatchConfig::causalMask),
                              hipMemcpyHostToDevice,
                              stream));
 
-    total_copy_size += sizeof(BatchConfig::causalMask);
+    checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->request_completed,
+                             &(batch_config->request_completed),
+                             sizeof(BatchConfig::request_completed),
+                             hipMemcpyHostToDevice,
+                             stream));
+
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     TreeVerifyBatchConfig const *tree_batch_config =
         static_cast<TreeVerifyBatchConfig const *>(batch_config);
 
-    checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                                 total_copy_size,
+    checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->causalMask,
                              &(tree_batch_config->causalMask),
                              sizeof(BatchConfig::causalMask),
                              hipMemcpyHostToDevice,
                              stream));
-    total_copy_size += sizeof(BatchConfig::causalMask);
-    checkCUDA(hipMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                                 total_copy_size,
+
+    checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->committed_tokens,
                              &(tree_batch_config->committed_tokens),
                              sizeof(TreeVerifyBatchConfig::committed_tokens),
                              hipMemcpyHostToDevice,
                              stream));
-    total_copy_size += sizeof(TreeVerifyBatchConfig::committed_tokens);
-  }
 
-  // add a size check
-  assert(total_copy_size <= handle.batch_config_metadata_size);
+    checkCUDA(hipMemcpyAsync(handle.batch_config_metadata->request_completed,
+                             &(batch_config->request_completed),
+                             sizeof(BatchConfig::request_completed),
+                             hipMemcpyHostToDevice,
+                             stream));
+  }
 }
 
 void RequestManager::load_positions_task(

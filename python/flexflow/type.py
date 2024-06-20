@@ -152,6 +152,9 @@ class OpType(Enum):
     RESIDUAL_RMS_NORM = 2305
     RESIDUAL_LAYERNORM = 2306
 
+class RequestType(Enum):
+    REQ_INFERENCE = 4001
+    REQ_FINETUNING = 4002
 
 def enum_to_int(enum, enum_item):
     for item in enum:

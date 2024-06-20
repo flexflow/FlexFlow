@@ -75,8 +75,8 @@ inline int GET_BLOCKS(int const N) {
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
 
-__global__ void
-    scale_kernel(float *ptr, Legion::coord_t size, float a, float b);
+template <typename DT>
+__global__ void scale_kernel(DT *ptr, Legion::coord_t size, DT a, DT b);
 
 __global__ void ones_kernel(float *ptr, Legion::coord_t size);
 
@@ -156,10 +156,13 @@ template <typename T>
 void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
 
 template <typename T>
-T *download_tensor(T const *ptr, size_t num_elements);
+T *copy_tensor_dev_to_host(T const *ptr, size_t num_elements);
 
 template <typename T>
-bool download_tensor(T const *ptr, T *dst, size_t num_elements);
+void copy_tensor_dev_to_host(T const *ptr, T *dst, size_t num_elements);
+
+template <typename T>
+void copy_tensor_host_to_dev(T *dst, T const *src, size_t num_elements);
 
 cudnnStatus_t cudnnSetTensorDescriptorFromDomain(cudnnTensorDescriptor_t tensor,
                                                  Legion::Domain domain,
@@ -179,3 +182,5 @@ ncclDataType_t ff_to_nccl_datatype(DataType type);
 cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type);
 cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type);
 #endif
+void check_device_vs_host_ptr(void const *maybe_devicePtr);
+void check_ptr_alignment(void const *ptr);

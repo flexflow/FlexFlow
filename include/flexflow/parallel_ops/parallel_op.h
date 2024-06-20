@@ -41,7 +41,7 @@ public:
 public:
   Legion::LogicalPartition input_lp, output_grad_lp;
   std::unordered_map<ParallelTensor, Legion::LogicalPartition>
-      inference_input_lps;
+      inference_input_lps, inference_output_grad_lps;
 };
 
 }; // namespace FlexFlow

@@ -49,7 +49,7 @@ public:
   Tensor outputs[MAX_NUM_OUTPUTS];
   Tensor inputs[MAX_NUM_INPUTS];
   Tensor weights[MAX_NUM_WEIGHTS];
-  bool trainableInputs[MAX_NUM_INPUTS];
+  // bool trainable_inputs[MAX_NUM_INPUTS];
   int numInputs, numWeights, numOutputs;
   bool profiling;
   bool inference_debugging;

@@ -14,11 +14,13 @@
  */
 
 #include "flexflow/ops/kernels/pool_2d_kernels.h"
+#include "flexflow/ops/pool_2d.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-Pool2DMeta::Pool2DMeta(FFHandler handler) : OpMeta(handler) {
+Pool2DMeta::Pool2DMeta(FFHandler handler, Pool2D const *pool)
+    : OpMeta(handler, pool) {
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
   checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));

@@ -40,8 +40,21 @@ void RequestManager::load_tokens_task(
     printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
            BatchConfig::max_tokens_per_batch());
     printf("Got: %d tokens\n", batch_config->num_tokens);
+
+    // pid_t pid = getpid();
+    // std::string filename = "bc_" + std::to_string(pid) + ".txt";
+    // std::ofstream file(filename);
+    // if (file.is_open()) {
+    //     file << *batch_config << std::endl;
+    //     file.close();
+    //     std::cout << "String written to file: " << filename << std::endl;
+    // } else {
+    //     std::cout << "Unable to open file: " << filename << std::endl;
+    // }
+
   } else if (batch_config->num_tokens >
-             BatchConfig::max_verify_tokens_per_batch()) {
+                 BatchConfig::max_verify_tokens_per_batch() &&
+             batch_config->get_mode() != INC_DECODING_MODE) {
     printf("Warning: Speculative decoding. too many tokens in prompt, only "
            "load up to %d tokens\n",
            BatchConfig::max_verify_tokens_per_batch());
@@ -80,91 +93,69 @@ void RequestManager::load_batch_config_task(
 
   // copy meta data to workSpace
   FFHandler handle = *((FFHandler const *)task->local_args);
-  size_t total_copy_size = 0;
-  checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata,
+  checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->tokens_info,
                             &(batch_config->tokensInfo),
                             sizeof(BatchConfig::tokensInfo),
                             cudaMemcpyHostToDevice,
                             stream));
-  total_copy_size += sizeof(BatchConfig::tokensInfo);
 
-  checkCUDA(cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                                total_copy_size,
+  checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->requestsInfo,
                             &(batch_config->requestsInfo),
                             sizeof(BatchConfig::requestsInfo),
                             cudaMemcpyHostToDevice,
                             stream));
-  total_copy_size += sizeof(BatchConfig::requestsInfo);
 
   // load speculative metadata
   if (batch_config->get_mode() == BEAM_SEARCH_MODE) {
     BeamSearchBatchConfig const *beam_batch_config =
         static_cast<BeamSearchBatchConfig const *>(batch_config);
 
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(beam_batch_config->beamTokenInfo),
-        sizeof(BeamSearchBatchConfig::beamTokenInfo),
-        cudaMemcpyHostToDevice,
-        stream));
+    checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->beamTokenInfo,
+                              &(beam_batch_config->beamTokenInfo),
+                              sizeof(BeamSearchBatchConfig::beamTokenInfo),
+                              cudaMemcpyHostToDevice,
+                              stream));
 
-    total_copy_size += sizeof(BeamSearchBatchConfig::beamTokenInfo);
+    checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->beamRequestsInfo,
+                              &(beam_batch_config->beamRequestsInfo),
+                              sizeof(BeamSearchBatchConfig::beamRequestsInfo),
+                              cudaMemcpyHostToDevice,
+                              stream));
 
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(beam_batch_config->beamRequestsInfo),
-        sizeof(BeamSearchBatchConfig::beamRequestsInfo),
-        cudaMemcpyHostToDevice,
-        stream));
-    total_copy_size += sizeof(BeamSearchBatchConfig::beamRequestsInfo);
+    checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->causalMask,
+                              &(beam_batch_config->causalMask),
+                              sizeof(BatchConfig::causalMask),
+                              cudaMemcpyHostToDevice,
+                              stream));
 
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(beam_batch_config->causalMask),
-        sizeof(BatchConfig::causalMask),
-        cudaMemcpyHostToDevice,
-        stream));
-    total_copy_size += sizeof(BatchConfig::causalMask);
+    checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->request_completed,
+                              &(batch_config->request_completed),
+                              sizeof(BatchConfig::request_completed),
+                              cudaMemcpyHostToDevice,
+                              stream));
 
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(batch_config->request_completed),
-        sizeof(BatchConfig::request_completed),
-        cudaMemcpyHostToDevice,
-        stream));
-
-    total_copy_size += sizeof(BatchConfig::request_completed);
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     TreeVerifyBatchConfig const *tree_batch_config =
         static_cast<TreeVerifyBatchConfig const *>(batch_config);
 
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(tree_batch_config->causalMask),
-        sizeof(BatchConfig::causalMask),
-        cudaMemcpyHostToDevice,
-        stream));
-    total_copy_size += sizeof(BatchConfig::causalMask);
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(tree_batch_config->committed_tokens),
-        sizeof(TreeVerifyBatchConfig::committed_tokens),
-        cudaMemcpyHostToDevice,
-        stream));
-    total_copy_size += sizeof(TreeVerifyBatchConfig::committed_tokens);
+    checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->causalMask,
+                              &(tree_batch_config->causalMask),
+                              sizeof(BatchConfig::causalMask),
+                              cudaMemcpyHostToDevice,
+                              stream));
 
-    checkCUDA(cudaMemcpyAsync(
-        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-        &(batch_config->request_completed),
-        sizeof(BatchConfig::request_completed),
-        cudaMemcpyHostToDevice,
-        stream));
+    checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->committed_tokens,
+                              &(tree_batch_config->committed_tokens),
+                              sizeof(TreeVerifyBatchConfig::committed_tokens),
+                              cudaMemcpyHostToDevice,
+                              stream));
 
-    total_copy_size += sizeof(BatchConfig::request_completed);
+    checkCUDA(cudaMemcpyAsync(handle.batch_config_metadata->request_completed,
+                              &(batch_config->request_completed),
+                              sizeof(BatchConfig::request_completed),
+                              cudaMemcpyHostToDevice,
+                              stream));
   }
-
-  // add a size check
-  assert(total_copy_size <= handle.batch_config_metadata_size);
 }
 
 void RequestManager::load_positions_task(

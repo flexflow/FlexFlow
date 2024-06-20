@@ -305,7 +305,7 @@ InferenceResult
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc->num_active_infr_tokens();
   Sampling::forward_kernel_wrapper(m, input, indices, batch_size);
 
   if (m->inference_debugging) {
@@ -316,7 +316,7 @@ InferenceResult
   }
 
   InferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
 }
