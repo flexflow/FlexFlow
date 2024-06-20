@@ -183,3 +183,4 @@ cudaDataType_t cudnn_to_cuda_datatype(cudnnDataType_t type);
 cudnnDataType_t cuda_to_cudnn_datatype(cudaDataType_t type);
 #endif
 void check_device_vs_host_ptr(void const *maybe_devicePtr);
+void check_ptr_alignment(void const *ptr);
