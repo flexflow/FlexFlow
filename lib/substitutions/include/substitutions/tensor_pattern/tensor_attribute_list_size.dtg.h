@@ -21,7 +21,8 @@
 namespace FlexFlow {
 struct TensorAttributeListSize {
   TensorAttributeListSize() = delete;
-  TensorAttributeListSize(::FlexFlow::TensorAttributeKey const &attribute_key);
+  explicit TensorAttributeListSize(
+      ::FlexFlow::TensorAttributeKey const &attribute_key);
 
   bool operator==(TensorAttributeListSize const &) const;
   bool operator!=(TensorAttributeListSize const &) const;
@@ -35,23 +36,23 @@ struct TensorAttributeListSize {
 
 namespace std {
 template <>
-struct hash<FlexFlow::TensorAttributeListSize> {
-  size_t operator()(FlexFlow::TensorAttributeListSize const &) const;
+struct hash<::FlexFlow::TensorAttributeListSize> {
+  size_t operator()(::FlexFlow::TensorAttributeListSize const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::TensorAttributeListSize> {
-  static FlexFlow::TensorAttributeListSize from_json(json const &);
-  static void to_json(json &, FlexFlow::TensorAttributeListSize const &);
+struct adl_serializer<::FlexFlow::TensorAttributeListSize> {
+  static ::FlexFlow::TensorAttributeListSize from_json(json const &);
+  static void to_json(json &, ::FlexFlow::TensorAttributeListSize const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::TensorAttributeListSize> {
-  static Gen<FlexFlow::TensorAttributeListSize> arbitrary();
+struct Arbitrary<::FlexFlow::TensorAttributeListSize> {
+  static Gen<::FlexFlow::TensorAttributeListSize> arbitrary();
 };
 } // namespace rc
 

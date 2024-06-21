@@ -52,7 +52,7 @@ bool OutputOperatorAttrAccess::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::OutputOperatorAttrAccess>::operator()(
-    FlexFlow::OutputOperatorAttrAccess const &x) const {
+    ::FlexFlow::OutputOperatorAttrAccess const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::Node>{}(x.node) + 0x9e3779b9 + (result << 6) +
             (result >> 2);

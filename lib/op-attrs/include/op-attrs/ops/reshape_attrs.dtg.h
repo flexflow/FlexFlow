@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct ReshapeAttrs {
   ReshapeAttrs() = delete;
-  ReshapeAttrs(::FlexFlow::TensorShape const &shape);
+  explicit ReshapeAttrs(::FlexFlow::TensorShape const &shape);
 
   bool operator==(ReshapeAttrs const &) const;
   bool operator!=(ReshapeAttrs const &) const;
@@ -35,23 +35,23 @@ struct ReshapeAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ReshapeAttrs> {
-  size_t operator()(FlexFlow::ReshapeAttrs const &) const;
+struct hash<::FlexFlow::ReshapeAttrs> {
+  size_t operator()(::FlexFlow::ReshapeAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ReshapeAttrs> {
-  static FlexFlow::ReshapeAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ReshapeAttrs const &);
+struct adl_serializer<::FlexFlow::ReshapeAttrs> {
+  static ::FlexFlow::ReshapeAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ReshapeAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ReshapeAttrs> {
-  static Gen<FlexFlow::ReshapeAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::ReshapeAttrs> {
+  static Gen<::FlexFlow::ReshapeAttrs> arbitrary();
 };
 } // namespace rc
 

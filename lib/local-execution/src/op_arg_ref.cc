@@ -2,13 +2,10 @@
 
 namespace FlexFlow {
 
-template <typename T>
-OpArgRef<DeviceSpecific<T>> per_device_op_state() {
-  return {OpArgRefType::PER_DEVICE_OP_STATE};
-}
-
 OpArgRef<ParallelTensorShape> input_parallel_tensor_shape(int idx) {
-  return {OpArgRefType::PARALLEL_TENSOR_SHAPE};
+  OpArgRefType arg_ref_type = ParallelTensorShapeRefType{idx};
+  ArgRef<OpArgRefType, ParallelTensorShape> arg_ref = {arg_ref_type};
+  return arg_ref;
 }
 
 } // namespace FlexFlow

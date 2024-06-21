@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct num_points_t {
   num_points_t() = delete;
-  num_points_t(int const &unwrapped);
+  explicit num_points_t(int const &unwrapped);
 
   bool operator==(num_points_t const &) const;
   bool operator!=(num_points_t const &) const;
@@ -34,23 +34,23 @@ struct num_points_t {
 
 namespace std {
 template <>
-struct hash<FlexFlow::num_points_t> {
-  size_t operator()(FlexFlow::num_points_t const &) const;
+struct hash<::FlexFlow::num_points_t> {
+  size_t operator()(::FlexFlow::num_points_t const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::num_points_t> {
-  static FlexFlow::num_points_t from_json(json const &);
-  static void to_json(json &, FlexFlow::num_points_t const &);
+struct adl_serializer<::FlexFlow::num_points_t> {
+  static ::FlexFlow::num_points_t from_json(json const &);
+  static void to_json(json &, ::FlexFlow::num_points_t const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::num_points_t> {
-  static Gen<FlexFlow::num_points_t> arbitrary();
+struct Arbitrary<::FlexFlow::num_points_t> {
+  static Gen<::FlexFlow::num_points_t> arbitrary();
 };
 } // namespace rc
 

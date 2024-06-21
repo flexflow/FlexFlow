@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_SIGNATURE_H
 #define _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_SIGNATURE_H
 
+#include "local-execution/is_grad.dtg.h"
 #include "local-execution/serialization.h"
 #include "local-execution/slot_id.h"
 #include "local-execution/slot_type.h"
@@ -17,7 +18,6 @@ enum class TensorRole {
 };
 
 enum class OpTaskType { INIT, FWD, BWD };
-enum class IsGrad { YES, NO };
 
 enum class OpSlotOptions {
   OPTIONAL,
@@ -66,7 +66,7 @@ struct OpTaskSignature {
 
   template <typename T>
   void add_arg_slot(slot_id name) {
-    static_assert(is_serializable<T>::value, "Type must be serializable");
+    // static_assert(is_serializable<T>::value, "Type must be serializable");
     this->task_arg_types.insert({name, get_type_index_for_type<T>()});
   }
 

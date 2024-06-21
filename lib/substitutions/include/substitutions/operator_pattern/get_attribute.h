@@ -28,8 +28,6 @@ std::optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
                                                     OperatorAttributeKey);
 std::optional<OperatorAttributeValue> get_attribute(DropoutAttrs const &p,
                                                     OperatorAttributeKey);
-std::optional<OperatorAttributeValue>
-    get_attribute(ElementScalarUnaryAttrs const &p, OperatorAttributeKey);
 std::optional<OperatorAttributeValue> get_attribute(EmbeddingAttrs const &p,
                                                     OperatorAttributeKey);
 std::optional<OperatorAttributeValue> get_attribute(FlatAttrs const &p,

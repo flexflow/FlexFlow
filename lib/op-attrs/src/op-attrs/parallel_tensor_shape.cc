@@ -58,7 +58,7 @@ std::optional<ShardParallelDim>
 }
 
 ParallelTensorShape lift_to_parallel(TensorShape const &s) {
-  return {lift_to_parallel(s.dims), s.data_type};
+  return ParallelTensorShape{lift_to_parallel(s.dims), s.data_type};
 }
 
 ParallelTensorShape
@@ -75,6 +75,10 @@ ParallelTensorShape
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {
   NOT_IMPLEMENTED();
+}
+
+TensorShape get_piece_shape(ParallelTensorShape const &s) {
+  return get_reduced_shape(s);
 }
 
 TensorShape get_reduced_shape(ParallelTensorShape const &s) {

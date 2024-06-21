@@ -7,62 +7,16 @@
 
 namespace FlexFlow {
 
-template <>
-void register_task<SPLIT_INIT_TASK_ID>();
-template <>
-void register_task<SPLIT_FWD_TASK_ID>();
-template <>
-void register_task<SPLIT_BWD_TASK_ID>();
+std::vector<task_id_t> get_task_ids(SplitAttrs const &);
 
-OpTaskInvocation init(SplitAttrs const &);
+TaskImplFunction get_split_fwd_task_impl();
+TaskImplFunction get_split_bwd_task_impl();
+
+OpTaskSignature get_split_fwd_signature();
+OpTaskSignature get_split_bwd_signature();
+
 OpTaskInvocation forward(SplitAttrs const &);
 OpTaskInvocation backward(SplitAttrs const &);
-
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  SplitAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view);
-
-/* class Split : public Op { */
-/* public: */
-/*   Split(FFModel &model, */
-/*         const ParallelTensor input, */
-/*         std::vector<int> const &split, */
-/*         int legion_axis, */
-/*         char const *name = nullptr); */
-/*   void init(FFModel const &) override; */
-/*   void forward(FFModel const &) override; */
-/*   void backward(FFModel const &) override; */
-/*   static Op * */
-/*       create_operator_from_layer(FFModel &model, */
-/*                                  Layer const *layer, */
-/*                                  std::vector<ParallelTensor> const &inputs);
- */
-
-/*   static PerDeviceOpState *init_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                            Legion::Context ctx, */
-/*                            Legion::Runtime *runtime); */
-/*   static void forward_task(Legion::Task const *task, */
-/*                            std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                            Legion::Context ctx, */
-/*                            Legion::Runtime *runtime); */
-/*   static void backward_task(Legion::Task const *task, */
-/*                             std::vector<Legion::PhysicalRegion> const
- * &regions, */
-/*                             Legion::Context ctx, */
-/*                             Legion::Runtime *runtime); */
-/*   bool measure_operator_cost(Simulator *sim, */
-/*                              MachineView const &pc, */
-/*                              CostMetrics &cost_metrics) const override; */
-
-/* public: */
-/*   int legion_axis; */
-/*   std::vector<int> splits; */
-/* }; */
 
 } // namespace FlexFlow
 

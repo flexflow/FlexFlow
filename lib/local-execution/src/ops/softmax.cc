@@ -52,15 +52,14 @@ OpTaskInvocation backward(SoftmaxAttrs const &attrs) {
   return {SOFTMAX_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<SoftmaxPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
   auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
 
-  DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
-      init_kernel(handle, attrs.dim.value());
-  return per_device_state;
+  SoftmaxPerDeviceState per_device_state = init_kernel(handle, attrs.dim.value);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -99,56 +98,25 @@ static std::optional<float>
                  output_grad.shape.get_volume());
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  SoftmaxAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  SimTaskBinding init_binding;
-
-  init_binding.bind_arg(ATTRS, attrs);
-  init_binding.bind_arg(HANDLE, ff_handle());
-
-  auto init_accessor =
-      env.get_init_accessor(SOFTMAX_INIT_TASK_ID, init_binding);
-  DeviceSpecific<SoftmaxPerDeviceState> per_device_state =
-      init_task_impl(init_accessor);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(PER_DEVICE_STATE, per_device_state);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(SOFTMAX_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(SOFTMAX_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_softmax_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_softmax_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_softmax_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<SOFTMAX_INIT_TASK_ID>() {
+OpTaskSignature get_softmax_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_unchecked_arg_slot<PerDeviceFFHandle>(HANDLE);
   init.add_arg_slot<SoftmaxAttrs>(ATTRS);
   init.add_return_value<SoftmaxPerDeviceState>();
-
-  register_task(SOFTMAX_INIT_TASK_ID, "SoftMax Init", init, init_task_impl);
+  return init;
 }
-
-template <>
-void register_task<SOFTMAX_FWD_TASK_ID>() {
+OpTaskSignature get_softmax_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -156,18 +124,15 @@ void register_task<SOFTMAX_FWD_TASK_ID>() {
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-
-  register_task(SOFTMAX_FWD_TASK_ID, "SoftMax Fwd", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_softmax_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_softmax_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<SOFTMAX_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(SOFTMAX_FWD_TASK_ID));
-
-//   register_task(SOFTMAX_BWD_TASK_ID, "SoftMax Bwd", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(SoftmaxAttrs const &) {
+  return {SOFTMAX_INIT_TASK_ID, SOFTMAX_FWD_TASK_ID, SOFTMAX_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

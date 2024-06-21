@@ -66,12 +66,12 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<SplitAttrs>(ATTRS);
 
   coord_t num_blocks, in_block_size, out_block_size[MAX_NUM_OUTPUTS];
-  calc_block_size(num_blocks, in_block_size, input.shape, attrs.axis.value());
+  calc_block_size(num_blocks, in_block_size, input.shape, attrs.axis.value);
 
   for (int i = 0; i < attrs.splits.size(); i++) {
     coord_t out_num_blocks;
     calc_block_size(
-        out_num_blocks, out_block_size[i], output.shape, attrs.axis.value());
+        out_num_blocks, out_block_size[i], output.shape, attrs.axis.value);
   }
   float *output_float_ptr = output.get_float_ptr();
   return profile(forward_kernel,
@@ -95,13 +95,11 @@ static std::optional<float>
 
   coord_t num_blocks, in_block_size, out_block_size[MAX_NUM_OUTPUTS];
   calc_block_size(
-      num_blocks, in_block_size, input_grad.shape, attrs.axis.value());
+      num_blocks, in_block_size, input_grad.shape, attrs.axis.value);
   for (int i = 0; i < attrs.splits.size(); i++) {
     coord_t out_num_blocks;
-    calc_block_size(out_num_blocks,
-                    out_block_size[i],
-                    output_grad.shape,
-                    attrs.axis.value());
+    calc_block_size(
+        out_num_blocks, out_block_size[i], output_grad.shape, attrs.axis.value);
   }
   float const *output_grad_ptr = output_grad.get_float_ptr();
   return profile(backward_kernel,
@@ -115,52 +113,29 @@ static std::optional<float>
                  attrs.splits.size());
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  SplitAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  auto env = sim_factory.new_environment();
-
-  std::vector<ParallelTensorShape> output_shape =
-      get_output_shapes(attrs, input.shape);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind_arg(PROFILING, settings);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(SPLIT_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(SPLIT_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_split_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_split_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-// TODO: OpTaskSignature
-
-template <>
-void register_task<SPLIT_FWD_TASK_ID>() {
+OpTaskSignature get_split_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-  register_task(SPLIT_FWD_TASK_ID, "Split Fwd", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_split_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_split_fwd_signature());
+  return bwd;
 }
 
-// template <>
-// void register_task<SPLIT_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(SPLIT_FWD_TASK_ID));
-
-//   register_task(SPLIT_BWD_TASK_ID, "Split Bwd", bwd, backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(SplitAttrs const &) {
+  return {SPLIT_FWD_TASK_ID, SPLIT_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

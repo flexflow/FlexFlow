@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/computation_graph/layer_added_result.struct.toml
 /* proj-data
 {
-  "generated_from": "15bf9d73ef934599c9b11807d86ae5d4"
+  "generated_from": "234b5c222ae4ce1da36194b4eb519145"
 }
 */
 
@@ -11,6 +11,7 @@
 
 #include "pcg/layer_guid_t.dtg.h"
 #include "pcg/tensor_guid_t.dtg.h"
+#include "utils/fmt/vector.h"
 #include <sstream>
 
 namespace FlexFlow {

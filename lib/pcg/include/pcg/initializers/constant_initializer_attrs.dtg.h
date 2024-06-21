@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializers/constant_initializer_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "0162b9c49fe6cbfc65410c6fa8dec427"
+  "generated_from": "4ffc8ccd7dfdb7674556487433ea9913"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "op-attrs/datatype.h"
+#include "rapidcheck.h"
 #include "utils/json.h"
 #include <functional>
 #include <ostream>
@@ -21,7 +22,7 @@
 namespace FlexFlow {
 struct ConstantInitializerAttrs {
   ConstantInitializerAttrs() = delete;
-  ConstantInitializerAttrs(::FlexFlow::DataTypeValue const &value);
+  explicit ConstantInitializerAttrs(::FlexFlow::DataTypeValue const &value);
 
   bool operator==(ConstantInitializerAttrs const &) const;
   bool operator!=(ConstantInitializerAttrs const &) const;
@@ -35,18 +36,25 @@ struct ConstantInitializerAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ConstantInitializerAttrs> {
-  size_t operator()(FlexFlow::ConstantInitializerAttrs const &) const;
+struct hash<::FlexFlow::ConstantInitializerAttrs> {
+  size_t operator()(::FlexFlow::ConstantInitializerAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ConstantInitializerAttrs> {
-  static FlexFlow::ConstantInitializerAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ConstantInitializerAttrs const &);
+struct adl_serializer<::FlexFlow::ConstantInitializerAttrs> {
+  static ::FlexFlow::ConstantInitializerAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ConstantInitializerAttrs const &);
 };
 } // namespace nlohmann
+
+namespace rc {
+template <>
+struct Arbitrary<::FlexFlow::ConstantInitializerAttrs> {
+  static Gen<::FlexFlow::ConstantInitializerAttrs> arbitrary();
+};
+} // namespace rc
 
 namespace FlexFlow {
 std::string format_as(ConstantInitializerAttrs const &);

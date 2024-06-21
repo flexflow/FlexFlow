@@ -6,6 +6,7 @@
 #include "local-execution/cost_metrics.h"
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/task_argument_accessor.h"
+#include "local-execution/task_signature_impl.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/machine_view.h"
 #include <vector>

@@ -11,7 +11,7 @@ RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> ff_handle() {
   return {RuntimeArgRefType::FF_HANDLE};
 }
 
-RuntimeArgRef<DeviceSpecific<PerDeviceFFHandle>> iteration_config() {
+RuntimeArgRef<FFIterationConfig> iteration_config() {
   return {RuntimeArgRefType::FF_ITERATION_CONFIG};
 }
 

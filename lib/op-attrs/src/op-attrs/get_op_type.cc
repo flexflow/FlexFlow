@@ -29,9 +29,6 @@ OperatorType get_op_type(ElementBinaryAttrs const &attrs) {
 OperatorType get_op_type(ElementUnaryAttrs const &attrs) {
   return attrs.op_type;
 }
-OperatorType get_op_type(ElementScalarUnaryAttrs const &attrs) {
-  return attrs.op_type;
-}
 OperatorType get_op_type(EmbeddingAttrs const &) {
   return OperatorType::EMBEDDING;
 }

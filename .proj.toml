@@ -6,6 +6,11 @@ fix_compile_commands = false
 
 build_targets = [
   "kernels",
+  "pcg",
+  # "substitutions",
+  # "compiler",
+  "substitution-generator",
+  "local-execution",
 ]
 test_targets = [
   # "utils-tests",

@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct AttrConstant {
   AttrConstant() = delete;
-  AttrConstant(::FlexFlow::OperatorAttributeValue const &value);
+  explicit AttrConstant(::FlexFlow::OperatorAttributeValue const &value);
 
   bool operator==(AttrConstant const &) const;
   bool operator!=(AttrConstant const &) const;
@@ -33,8 +33,8 @@ struct AttrConstant {
 
 namespace std {
 template <>
-struct hash<FlexFlow::AttrConstant> {
-  size_t operator()(FlexFlow::AttrConstant const &) const;
+struct hash<::FlexFlow::AttrConstant> {
+  size_t operator()(::FlexFlow::AttrConstant const &) const;
 };
 } // namespace std
 

@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/pcg_operator_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "e1d10b0c7c98524c27886bdae0972321"
+  "generated_from": "72d324ec59ca0c5a390458ea20e79338"
 }
 */
 
@@ -31,8 +31,6 @@ PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::DropoutAttrs const &v)
 PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::ElementBinaryAttrs const &v)
     : raw_variant(v) {}
 PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::ElementUnaryAttrs const &v)
-    : raw_variant(v) {}
-PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::ElementScalarUnaryAttrs const &v)
     : raw_variant(v) {}
 PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::EmbeddingAttrs const &v)
     : raw_variant(v) {}
@@ -72,6 +70,8 @@ PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::TopKAttrs const &v)
     : raw_variant(v) {}
 PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::TransposeAttrs const &v)
     : raw_variant(v) {}
+PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::WeightAttrs const &v)
+    : raw_variant(v) {}
 bool PCGOperatorAttrs::operator==(PCGOperatorAttrs const &other) const {
   return this->raw_variant == other.raw_variant;
 }
@@ -103,7 +103,6 @@ size_t hash<::FlexFlow::PCGOperatorAttrs>::operator()(
                                 ::FlexFlow::DropoutAttrs,
                                 ::FlexFlow::ElementBinaryAttrs,
                                 ::FlexFlow::ElementUnaryAttrs,
-                                ::FlexFlow::ElementScalarUnaryAttrs,
                                 ::FlexFlow::EmbeddingAttrs,
                                 ::FlexFlow::FlatAttrs,
                                 ::FlexFlow::GatherAttrs,
@@ -122,7 +121,8 @@ size_t hash<::FlexFlow::PCGOperatorAttrs>::operator()(
                                 ::FlexFlow::SplitAttrs,
                                 ::FlexFlow::SoftmaxAttrs,
                                 ::FlexFlow::TopKAttrs,
-                                ::FlexFlow::TransposeAttrs>>{}(x.raw_variant);
+                                ::FlexFlow::TransposeAttrs,
+                                ::FlexFlow::WeightAttrs>>{}(x.raw_variant);
 }
 } // namespace std
 namespace nlohmann {
@@ -156,9 +156,6 @@ namespace nlohmann {
   } else if (key == "element_unary") {
     return ::FlexFlow::PCGOperatorAttrs{
         j.at("value").template get<::FlexFlow::ElementUnaryAttrs>()};
-  } else if (key == "element_scalar_unary") {
-    return ::FlexFlow::PCGOperatorAttrs{
-        j.at("value").template get<::FlexFlow::ElementScalarUnaryAttrs>()};
   } else if (key == "embedding") {
     return ::FlexFlow::PCGOperatorAttrs{
         j.at("value").template get<::FlexFlow::EmbeddingAttrs>()};
@@ -216,6 +213,9 @@ namespace nlohmann {
   } else if (key == "transpose") {
     return ::FlexFlow::PCGOperatorAttrs{
         j.at("value").template get<::FlexFlow::TransposeAttrs>()};
+  } else if (key == "weight") {
+    return ::FlexFlow::PCGOperatorAttrs{
+        j.at("value").template get<::FlexFlow::WeightAttrs>()};
   } else {
     throw std::runtime_error(fmt::format("Unknown type key {}", key));
   }
@@ -270,103 +270,103 @@ void adl_serializer<::FlexFlow::PCGOperatorAttrs>::to_json(
       break;
     }
     case 9: {
-      j["type"] = "element_scalar_unary";
-      j["value"] = x.get<::FlexFlow::ElementScalarUnaryAttrs>();
-      break;
-    }
-    case 10: {
       j["type"] = "embedding";
       j["value"] = x.get<::FlexFlow::EmbeddingAttrs>();
       break;
     }
-    case 11: {
+    case 10: {
       j["type"] = "flat";
       j["value"] = x.get<::FlexFlow::FlatAttrs>();
       break;
     }
-    case 12: {
+    case 11: {
       j["type"] = "gather";
       j["value"] = x.get<::FlexFlow::GatherAttrs>();
       break;
     }
-    case 13: {
+    case 12: {
       j["type"] = "input";
       j["value"] = x.get<::FlexFlow::InputAttrs>();
       break;
     }
-    case 14: {
+    case 13: {
       j["type"] = "layer_norm";
       j["value"] = x.get<::FlexFlow::LayerNormAttrs>();
       break;
     }
-    case 15: {
+    case 14: {
       j["type"] = "linear";
       j["value"] = x.get<::FlexFlow::LinearAttrs>();
       break;
     }
-    case 16: {
+    case 15: {
       j["type"] = "multi_head_attention";
       j["value"] = x.get<::FlexFlow::MultiHeadAttentionAttrs>();
       break;
     }
-    case 17: {
+    case 16: {
       j["type"] = "noop";
       j["value"] = x.get<::FlexFlow::NoopAttrs>();
       break;
     }
-    case 18: {
+    case 17: {
       j["type"] = "pool2d";
       j["value"] = x.get<::FlexFlow::Pool2DAttrs>();
       break;
     }
-    case 19: {
+    case 18: {
       j["type"] = "reduce";
       j["value"] = x.get<::FlexFlow::ReduceAttrs>();
       break;
     }
-    case 20: {
+    case 19: {
       j["type"] = "reduce_distributed";
       j["value"] = x.get<::FlexFlow::ReductionAttrs>();
       break;
     }
-    case 21: {
+    case 20: {
       j["type"] = "partition_distributed";
       j["value"] = x.get<::FlexFlow::RepartitionAttrs>();
       break;
     }
-    case 22: {
+    case 21: {
       j["type"] = "replicate_distributed";
       j["value"] = x.get<::FlexFlow::ReplicateAttrs>();
       break;
     }
-    case 23: {
+    case 22: {
       j["type"] = "reverse";
       j["value"] = x.get<::FlexFlow::ReverseAttrs>();
       break;
     }
-    case 24: {
+    case 23: {
       j["type"] = "reshape";
       j["value"] = x.get<::FlexFlow::ReshapeAttrs>();
       break;
     }
-    case 25: {
+    case 24: {
       j["type"] = "split";
       j["value"] = x.get<::FlexFlow::SplitAttrs>();
       break;
     }
-    case 26: {
+    case 25: {
       j["type"] = "softmax";
       j["value"] = x.get<::FlexFlow::SoftmaxAttrs>();
       break;
     }
-    case 27: {
+    case 26: {
       j["type"] = "topk";
       j["value"] = x.get<::FlexFlow::TopKAttrs>();
       break;
     }
-    case 28: {
+    case 27: {
       j["type"] = "transpose";
       j["value"] = x.get<::FlexFlow::TransposeAttrs>();
+      break;
+    }
+    case 28: {
+      j["type"] = "weight";
+      j["value"] = x.get<::FlexFlow::WeightAttrs>();
       break;
     }
     default: {
@@ -397,8 +397,6 @@ Gen<::FlexFlow::PCGOperatorAttrs>
                         gen::arbitrary<::FlexFlow::ElementBinaryAttrs>()),
                     gen::construct<::FlexFlow::PCGOperatorAttrs>(
                         gen::arbitrary<::FlexFlow::ElementUnaryAttrs>()),
-                    gen::construct<::FlexFlow::PCGOperatorAttrs>(
-                        gen::arbitrary<::FlexFlow::ElementScalarUnaryAttrs>()),
                     gen::construct<::FlexFlow::PCGOperatorAttrs>(
                         gen::arbitrary<::FlexFlow::EmbeddingAttrs>()),
                     gen::construct<::FlexFlow::PCGOperatorAttrs>(
@@ -436,7 +434,9 @@ Gen<::FlexFlow::PCGOperatorAttrs>
                     gen::construct<::FlexFlow::PCGOperatorAttrs>(
                         gen::arbitrary<::FlexFlow::TopKAttrs>()),
                     gen::construct<::FlexFlow::PCGOperatorAttrs>(
-                        gen::arbitrary<::FlexFlow::TransposeAttrs>()));
+                        gen::arbitrary<::FlexFlow::TransposeAttrs>()),
+                    gen::construct<::FlexFlow::PCGOperatorAttrs>(
+                        gen::arbitrary<::FlexFlow::WeightAttrs>()));
 }
 } // namespace rc
 namespace FlexFlow {
@@ -488,100 +488,100 @@ std::string format_as(::FlexFlow::PCGOperatorAttrs const &x) {
       break;
     }
     case 9: {
-      oss << "<PCGOperatorAttrs element_scalar_unary="
-          << x.get<::FlexFlow::ElementScalarUnaryAttrs>() << ">";
-      break;
-    }
-    case 10: {
       oss << "<PCGOperatorAttrs embedding="
           << x.get<::FlexFlow::EmbeddingAttrs>() << ">";
       break;
     }
-    case 11: {
+    case 10: {
       oss << "<PCGOperatorAttrs flat=" << x.get<::FlexFlow::FlatAttrs>() << ">";
       break;
     }
-    case 12: {
+    case 11: {
       oss << "<PCGOperatorAttrs gather=" << x.get<::FlexFlow::GatherAttrs>()
           << ">";
       break;
     }
-    case 13: {
+    case 12: {
       oss << "<PCGOperatorAttrs input=" << x.get<::FlexFlow::InputAttrs>()
           << ">";
       break;
     }
-    case 14: {
+    case 13: {
       oss << "<PCGOperatorAttrs layer_norm="
           << x.get<::FlexFlow::LayerNormAttrs>() << ">";
       break;
     }
-    case 15: {
+    case 14: {
       oss << "<PCGOperatorAttrs linear=" << x.get<::FlexFlow::LinearAttrs>()
           << ">";
       break;
     }
-    case 16: {
+    case 15: {
       oss << "<PCGOperatorAttrs multi_head_attention="
           << x.get<::FlexFlow::MultiHeadAttentionAttrs>() << ">";
       break;
     }
-    case 17: {
+    case 16: {
       oss << "<PCGOperatorAttrs noop=" << x.get<::FlexFlow::NoopAttrs>() << ">";
       break;
     }
-    case 18: {
+    case 17: {
       oss << "<PCGOperatorAttrs pool2d=" << x.get<::FlexFlow::Pool2DAttrs>()
           << ">";
       break;
     }
-    case 19: {
+    case 18: {
       oss << "<PCGOperatorAttrs reduce=" << x.get<::FlexFlow::ReduceAttrs>()
           << ">";
       break;
     }
-    case 20: {
+    case 19: {
       oss << "<PCGOperatorAttrs reduce_distributed="
           << x.get<::FlexFlow::ReductionAttrs>() << ">";
       break;
     }
-    case 21: {
+    case 20: {
       oss << "<PCGOperatorAttrs partition_distributed="
           << x.get<::FlexFlow::RepartitionAttrs>() << ">";
       break;
     }
-    case 22: {
+    case 21: {
       oss << "<PCGOperatorAttrs replicate_distributed="
           << x.get<::FlexFlow::ReplicateAttrs>() << ">";
       break;
     }
-    case 23: {
+    case 22: {
       oss << "<PCGOperatorAttrs reverse=" << x.get<::FlexFlow::ReverseAttrs>()
           << ">";
       break;
     }
-    case 24: {
+    case 23: {
       oss << "<PCGOperatorAttrs reshape=" << x.get<::FlexFlow::ReshapeAttrs>()
           << ">";
       break;
     }
-    case 25: {
+    case 24: {
       oss << "<PCGOperatorAttrs split=" << x.get<::FlexFlow::SplitAttrs>()
           << ">";
       break;
     }
-    case 26: {
+    case 25: {
       oss << "<PCGOperatorAttrs softmax=" << x.get<::FlexFlow::SoftmaxAttrs>()
           << ">";
       break;
     }
-    case 27: {
+    case 26: {
       oss << "<PCGOperatorAttrs topk=" << x.get<::FlexFlow::TopKAttrs>() << ">";
       break;
     }
-    case 28: {
+    case 27: {
       oss << "<PCGOperatorAttrs transpose="
           << x.get<::FlexFlow::TransposeAttrs>() << ">";
+      break;
+    }
+    case 28: {
+      oss << "<PCGOperatorAttrs weight=" << x.get<::FlexFlow::WeightAttrs>()
+          << ">";
       break;
     }
     default: {

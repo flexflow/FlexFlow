@@ -58,7 +58,7 @@ OpTaskInvocation backward(GatherAttrs const &attrs) {
   return {GATHER_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<GatherPerDeviceState>
+static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto index = acc.get_tensor<Permissions::RO>(INDEX);
@@ -66,19 +66,21 @@ static DeviceSpecific<GatherPerDeviceState>
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto const &attrs = acc.get_argument<GatherAttrs>(ATTRS);
-  legion_dim_t legion_dim = to_legion(attrs.dim, input.shape.num_dims());
+  legion_dim_t legion_dim =
+      legion_dim_from_ff_dim(attrs.dim, input.shape.num_dims());
 
   assert(input.shape.get_dim() == index.shape.get_dim());
   assert(output.shape.get_dim() == index.shape.get_dim());
 
   for (int i = 0; i < input.shape.get_dim(); i++) {
     assert(index.shape[legion_dim_t(i)] == output.shape[legion_dim_t(i)]);
-    if (i != legion_dim.value()) {
+    if (i != legion_dim.value) {
       assert(input.shape[legion_dim_t(i)] == index.shape[legion_dim_t(i)]);
     }
   }
 
-  return DeviceSpecific<GatherPerDeviceState>({handle, legion_dim});
+  GatherPerDeviceState per_device_state = {handle, legion_dim};
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -118,40 +120,17 @@ static std::optional<float>
                  input_grad);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  GatherAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  InputParallelTensorDesc const &index_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-
-  auto env = sim.new_environment();
-
-  std::vector<ParallelTensorShape> output_shape =
-      get_output_shapes(attrs, input_shape.shape, index_shape.shape);
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-  fwd_binding.bind(INDEX, index_shape);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(GATHER_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(GATHER_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_gather_init_task_impl() {
+  return init_task_impl;
+}
+TaskImplFunction get_gather_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_gather_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-OpTaskSignature init_signature<GATHER_INIT_TASK_ID>() {
+OpTaskSignature get_gather_init_signature() {
   OpTaskSignature init(OpTaskType::INIT);
 
   init.add_input_slot(INPUT);
@@ -166,16 +145,7 @@ OpTaskSignature init_signature<GATHER_INIT_TASK_ID>() {
   return init;
 }
 
-template <>
-void register_task<GATHER_INIT_TASK_ID>() {
-  register_task(GATHER_INIT_TASK_ID,
-                "Gather Init",
-                init_signature<GATHER_INIT_TASK_ID>(),
-                init_task_impl);
-}
-
-template <>
-OpTaskSignature fwd_signature<GATHER_FWD_TASK_ID>() {
+OpTaskSignature get_gather_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -188,28 +158,14 @@ OpTaskSignature fwd_signature<GATHER_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-void register_task<GATHER_FWD_TASK_ID>() {
-  register_task(GATHER_FWD_TASK_ID,
-                "Gather Fwd",
-                fwd_signature<GATHER_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-OpTaskSignature bwd_signature<GATHER_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<GATHER_FWD_TASK_ID>());
+OpTaskSignature get_gather_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_gather_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<GATHER_BWD_TASK_ID>() {
-  register_task(GATHER_BWD_TASK_ID,
-                "Gather Bwd",
-                bwd_signature<GATHER_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(GatherAttrs const &) {
+  return {GATHER_INIT_TASK_ID, GATHER_FWD_TASK_ID, GATHER_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

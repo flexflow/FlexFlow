@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/pcg_operator_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "e1d10b0c7c98524c27886bdae0972321"
+  "generated_from": "72d324ec59ca0c5a390458ea20e79338"
 }
 */
 
@@ -21,7 +21,6 @@
 #include "op-attrs/ops/conv_2d_attrs.dtg.h"
 #include "op-attrs/ops/dropout_attrs.dtg.h"
 #include "op-attrs/ops/element_binary_attrs.dtg.h"
-#include "op-attrs/ops/element_scalar_unary_attrs.dtg.h"
 #include "op-attrs/ops/element_unary_attrs.dtg.h"
 #include "op-attrs/ops/embedding_attrs.dtg.h"
 #include "op-attrs/ops/flat_attrs.dtg.h"
@@ -41,6 +40,7 @@
 #include "op-attrs/ops/split_attrs.dtg.h"
 #include "op-attrs/ops/topk_attrs.dtg.h"
 #include "op-attrs/ops/transpose_attrs.dtg.h"
+#include "op-attrs/ops/weight_attrs.dtg.h"
 #include "rapidcheck.h"
 #include <cstddef>
 #include <functional>
@@ -60,7 +60,6 @@ struct PCGOperatorAttrs {
   explicit PCGOperatorAttrs(::FlexFlow::DropoutAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::ElementBinaryAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::ElementUnaryAttrs const &);
-  explicit PCGOperatorAttrs(::FlexFlow::ElementScalarUnaryAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::EmbeddingAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::FlatAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::GatherAttrs const &);
@@ -80,6 +79,7 @@ struct PCGOperatorAttrs {
   explicit PCGOperatorAttrs(::FlexFlow::SoftmaxAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::TopKAttrs const &);
   explicit PCGOperatorAttrs(::FlexFlow::TransposeAttrs const &);
+  explicit PCGOperatorAttrs(::FlexFlow::WeightAttrs const &);
   template <typename T>
   static constexpr bool IsPartOfPCGOperatorAttrs_v =
       std::is_same_v<T, ::FlexFlow::BatchMatmulAttrs> ||
@@ -91,7 +91,6 @@ struct PCGOperatorAttrs {
       std::is_same_v<T, ::FlexFlow::DropoutAttrs> ||
       std::is_same_v<T, ::FlexFlow::ElementBinaryAttrs> ||
       std::is_same_v<T, ::FlexFlow::ElementUnaryAttrs> ||
-      std::is_same_v<T, ::FlexFlow::ElementScalarUnaryAttrs> ||
       std::is_same_v<T, ::FlexFlow::EmbeddingAttrs> ||
       std::is_same_v<T, ::FlexFlow::FlatAttrs> ||
       std::is_same_v<T, ::FlexFlow::GatherAttrs> ||
@@ -110,7 +109,8 @@ struct PCGOperatorAttrs {
       std::is_same_v<T, ::FlexFlow::SplitAttrs> ||
       std::is_same_v<T, ::FlexFlow::SoftmaxAttrs> ||
       std::is_same_v<T, ::FlexFlow::TopKAttrs> ||
-      std::is_same_v<T, ::FlexFlow::TransposeAttrs>;
+      std::is_same_v<T, ::FlexFlow::TransposeAttrs> ||
+      std::is_same_v<T, ::FlexFlow::WeightAttrs>;
   template <typename ReturnType, typename Visitor>
   ReturnType visit(Visitor &&v) const {
     switch (this->index()) {
@@ -151,83 +151,83 @@ struct PCGOperatorAttrs {
         return result;
       }
       case 9: {
-        ReturnType result = v(this->get<::FlexFlow::ElementScalarUnaryAttrs>());
-        return result;
-      }
-      case 10: {
         ReturnType result = v(this->get<::FlexFlow::EmbeddingAttrs>());
         return result;
       }
-      case 11: {
+      case 10: {
         ReturnType result = v(this->get<::FlexFlow::FlatAttrs>());
         return result;
       }
-      case 12: {
+      case 11: {
         ReturnType result = v(this->get<::FlexFlow::GatherAttrs>());
         return result;
       }
-      case 13: {
+      case 12: {
         ReturnType result = v(this->get<::FlexFlow::InputAttrs>());
         return result;
       }
-      case 14: {
+      case 13: {
         ReturnType result = v(this->get<::FlexFlow::LayerNormAttrs>());
         return result;
       }
-      case 15: {
+      case 14: {
         ReturnType result = v(this->get<::FlexFlow::LinearAttrs>());
         return result;
       }
-      case 16: {
+      case 15: {
         ReturnType result = v(this->get<::FlexFlow::MultiHeadAttentionAttrs>());
         return result;
       }
-      case 17: {
+      case 16: {
         ReturnType result = v(this->get<::FlexFlow::NoopAttrs>());
         return result;
       }
-      case 18: {
+      case 17: {
         ReturnType result = v(this->get<::FlexFlow::Pool2DAttrs>());
         return result;
       }
-      case 19: {
+      case 18: {
         ReturnType result = v(this->get<::FlexFlow::ReduceAttrs>());
         return result;
       }
-      case 20: {
+      case 19: {
         ReturnType result = v(this->get<::FlexFlow::ReductionAttrs>());
         return result;
       }
-      case 21: {
+      case 20: {
         ReturnType result = v(this->get<::FlexFlow::RepartitionAttrs>());
         return result;
       }
-      case 22: {
+      case 21: {
         ReturnType result = v(this->get<::FlexFlow::ReplicateAttrs>());
         return result;
       }
-      case 23: {
+      case 22: {
         ReturnType result = v(this->get<::FlexFlow::ReverseAttrs>());
         return result;
       }
-      case 24: {
+      case 23: {
         ReturnType result = v(this->get<::FlexFlow::ReshapeAttrs>());
         return result;
       }
-      case 25: {
+      case 24: {
         ReturnType result = v(this->get<::FlexFlow::SplitAttrs>());
         return result;
       }
-      case 26: {
+      case 25: {
         ReturnType result = v(this->get<::FlexFlow::SoftmaxAttrs>());
         return result;
       }
-      case 27: {
+      case 26: {
         ReturnType result = v(this->get<::FlexFlow::TopKAttrs>());
         return result;
       }
-      case 28: {
+      case 27: {
         ReturnType result = v(this->get<::FlexFlow::TransposeAttrs>());
+        return result;
+      }
+      case 28: {
+        ReturnType result = v(this->get<::FlexFlow::WeightAttrs>());
         return result;
       }
       default: {
@@ -276,83 +276,83 @@ struct PCGOperatorAttrs {
         return result;
       }
       case 9: {
-        ReturnType result = v(this->get<::FlexFlow::ElementScalarUnaryAttrs>());
-        return result;
-      }
-      case 10: {
         ReturnType result = v(this->get<::FlexFlow::EmbeddingAttrs>());
         return result;
       }
-      case 11: {
+      case 10: {
         ReturnType result = v(this->get<::FlexFlow::FlatAttrs>());
         return result;
       }
-      case 12: {
+      case 11: {
         ReturnType result = v(this->get<::FlexFlow::GatherAttrs>());
         return result;
       }
-      case 13: {
+      case 12: {
         ReturnType result = v(this->get<::FlexFlow::InputAttrs>());
         return result;
       }
-      case 14: {
+      case 13: {
         ReturnType result = v(this->get<::FlexFlow::LayerNormAttrs>());
         return result;
       }
-      case 15: {
+      case 14: {
         ReturnType result = v(this->get<::FlexFlow::LinearAttrs>());
         return result;
       }
-      case 16: {
+      case 15: {
         ReturnType result = v(this->get<::FlexFlow::MultiHeadAttentionAttrs>());
         return result;
       }
-      case 17: {
+      case 16: {
         ReturnType result = v(this->get<::FlexFlow::NoopAttrs>());
         return result;
       }
-      case 18: {
+      case 17: {
         ReturnType result = v(this->get<::FlexFlow::Pool2DAttrs>());
         return result;
       }
-      case 19: {
+      case 18: {
         ReturnType result = v(this->get<::FlexFlow::ReduceAttrs>());
         return result;
       }
-      case 20: {
+      case 19: {
         ReturnType result = v(this->get<::FlexFlow::ReductionAttrs>());
         return result;
       }
-      case 21: {
+      case 20: {
         ReturnType result = v(this->get<::FlexFlow::RepartitionAttrs>());
         return result;
       }
-      case 22: {
+      case 21: {
         ReturnType result = v(this->get<::FlexFlow::ReplicateAttrs>());
         return result;
       }
-      case 23: {
+      case 22: {
         ReturnType result = v(this->get<::FlexFlow::ReverseAttrs>());
         return result;
       }
-      case 24: {
+      case 23: {
         ReturnType result = v(this->get<::FlexFlow::ReshapeAttrs>());
         return result;
       }
-      case 25: {
+      case 24: {
         ReturnType result = v(this->get<::FlexFlow::SplitAttrs>());
         return result;
       }
-      case 26: {
+      case 25: {
         ReturnType result = v(this->get<::FlexFlow::SoftmaxAttrs>());
         return result;
       }
-      case 27: {
+      case 26: {
         ReturnType result = v(this->get<::FlexFlow::TopKAttrs>());
         return result;
       }
-      case 28: {
+      case 27: {
         ReturnType result = v(this->get<::FlexFlow::TransposeAttrs>());
+        return result;
+      }
+      case 28: {
+        ReturnType result = v(this->get<::FlexFlow::WeightAttrs>());
         return result;
       }
       default: {
@@ -370,17 +370,17 @@ struct PCGOperatorAttrs {
         "::FlexFlow::CastAttrs, ::FlexFlow::CombineAttrs, "
         "::FlexFlow::ConcatAttrs, ::FlexFlow::Conv2DAttrs, "
         "::FlexFlow::DropoutAttrs, ::FlexFlow::ElementBinaryAttrs, "
-        "::FlexFlow::ElementUnaryAttrs, ::FlexFlow::ElementScalarUnaryAttrs, "
-        "::FlexFlow::EmbeddingAttrs, ::FlexFlow::FlatAttrs, "
-        "::FlexFlow::GatherAttrs, ::FlexFlow::InputAttrs, "
-        "::FlexFlow::LayerNormAttrs, ::FlexFlow::LinearAttrs, "
-        "::FlexFlow::MultiHeadAttentionAttrs, ::FlexFlow::NoopAttrs, "
-        "::FlexFlow::Pool2DAttrs, ::FlexFlow::ReduceAttrs, "
-        "::FlexFlow::ReductionAttrs, ::FlexFlow::RepartitionAttrs, "
-        "::FlexFlow::ReplicateAttrs, ::FlexFlow::ReverseAttrs, "
-        "::FlexFlow::ReshapeAttrs, ::FlexFlow::SplitAttrs, "
-        "::FlexFlow::SoftmaxAttrs, ::FlexFlow::TopKAttrs, "
-        "::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::ElementUnaryAttrs, ::FlexFlow::EmbeddingAttrs, "
+        "::FlexFlow::FlatAttrs, ::FlexFlow::GatherAttrs, "
+        "::FlexFlow::InputAttrs, ::FlexFlow::LayerNormAttrs, "
+        "::FlexFlow::LinearAttrs, ::FlexFlow::MultiHeadAttentionAttrs, "
+        "::FlexFlow::NoopAttrs, ::FlexFlow::Pool2DAttrs, "
+        "::FlexFlow::ReduceAttrs, ::FlexFlow::ReductionAttrs, "
+        "::FlexFlow::RepartitionAttrs, ::FlexFlow::ReplicateAttrs, "
+        "::FlexFlow::ReverseAttrs, ::FlexFlow::ReshapeAttrs, "
+        "::FlexFlow::SplitAttrs, ::FlexFlow::SoftmaxAttrs, "
+        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs, "
+        "::FlexFlow::WeightAttrs], received T");
     return std::holds_alternative<T>(this->raw_variant);
   }
   template <typename T>
@@ -392,17 +392,17 @@ struct PCGOperatorAttrs {
         "::FlexFlow::CastAttrs, ::FlexFlow::CombineAttrs, "
         "::FlexFlow::ConcatAttrs, ::FlexFlow::Conv2DAttrs, "
         "::FlexFlow::DropoutAttrs, ::FlexFlow::ElementBinaryAttrs, "
-        "::FlexFlow::ElementUnaryAttrs, ::FlexFlow::ElementScalarUnaryAttrs, "
-        "::FlexFlow::EmbeddingAttrs, ::FlexFlow::FlatAttrs, "
-        "::FlexFlow::GatherAttrs, ::FlexFlow::InputAttrs, "
-        "::FlexFlow::LayerNormAttrs, ::FlexFlow::LinearAttrs, "
-        "::FlexFlow::MultiHeadAttentionAttrs, ::FlexFlow::NoopAttrs, "
-        "::FlexFlow::Pool2DAttrs, ::FlexFlow::ReduceAttrs, "
-        "::FlexFlow::ReductionAttrs, ::FlexFlow::RepartitionAttrs, "
-        "::FlexFlow::ReplicateAttrs, ::FlexFlow::ReverseAttrs, "
-        "::FlexFlow::ReshapeAttrs, ::FlexFlow::SplitAttrs, "
-        "::FlexFlow::SoftmaxAttrs, ::FlexFlow::TopKAttrs, "
-        "::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::ElementUnaryAttrs, ::FlexFlow::EmbeddingAttrs, "
+        "::FlexFlow::FlatAttrs, ::FlexFlow::GatherAttrs, "
+        "::FlexFlow::InputAttrs, ::FlexFlow::LayerNormAttrs, "
+        "::FlexFlow::LinearAttrs, ::FlexFlow::MultiHeadAttentionAttrs, "
+        "::FlexFlow::NoopAttrs, ::FlexFlow::Pool2DAttrs, "
+        "::FlexFlow::ReduceAttrs, ::FlexFlow::ReductionAttrs, "
+        "::FlexFlow::RepartitionAttrs, ::FlexFlow::ReplicateAttrs, "
+        "::FlexFlow::ReverseAttrs, ::FlexFlow::ReshapeAttrs, "
+        "::FlexFlow::SplitAttrs, ::FlexFlow::SoftmaxAttrs, "
+        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs, "
+        "::FlexFlow::WeightAttrs], received T");
     return std::get<T>(this->raw_variant);
   }
   template <typename T>
@@ -414,17 +414,17 @@ struct PCGOperatorAttrs {
         "::FlexFlow::CastAttrs, ::FlexFlow::CombineAttrs, "
         "::FlexFlow::ConcatAttrs, ::FlexFlow::Conv2DAttrs, "
         "::FlexFlow::DropoutAttrs, ::FlexFlow::ElementBinaryAttrs, "
-        "::FlexFlow::ElementUnaryAttrs, ::FlexFlow::ElementScalarUnaryAttrs, "
-        "::FlexFlow::EmbeddingAttrs, ::FlexFlow::FlatAttrs, "
-        "::FlexFlow::GatherAttrs, ::FlexFlow::InputAttrs, "
-        "::FlexFlow::LayerNormAttrs, ::FlexFlow::LinearAttrs, "
-        "::FlexFlow::MultiHeadAttentionAttrs, ::FlexFlow::NoopAttrs, "
-        "::FlexFlow::Pool2DAttrs, ::FlexFlow::ReduceAttrs, "
-        "::FlexFlow::ReductionAttrs, ::FlexFlow::RepartitionAttrs, "
-        "::FlexFlow::ReplicateAttrs, ::FlexFlow::ReverseAttrs, "
-        "::FlexFlow::ReshapeAttrs, ::FlexFlow::SplitAttrs, "
-        "::FlexFlow::SoftmaxAttrs, ::FlexFlow::TopKAttrs, "
-        "::FlexFlow::TransposeAttrs], received T");
+        "::FlexFlow::ElementUnaryAttrs, ::FlexFlow::EmbeddingAttrs, "
+        "::FlexFlow::FlatAttrs, ::FlexFlow::GatherAttrs, "
+        "::FlexFlow::InputAttrs, ::FlexFlow::LayerNormAttrs, "
+        "::FlexFlow::LinearAttrs, ::FlexFlow::MultiHeadAttentionAttrs, "
+        "::FlexFlow::NoopAttrs, ::FlexFlow::Pool2DAttrs, "
+        "::FlexFlow::ReduceAttrs, ::FlexFlow::ReductionAttrs, "
+        "::FlexFlow::RepartitionAttrs, ::FlexFlow::ReplicateAttrs, "
+        "::FlexFlow::ReverseAttrs, ::FlexFlow::ReshapeAttrs, "
+        "::FlexFlow::SplitAttrs, ::FlexFlow::SoftmaxAttrs, "
+        "::FlexFlow::TopKAttrs, ::FlexFlow::TransposeAttrs, "
+        "::FlexFlow::WeightAttrs], received T");
     return std::get<T>(this->raw_variant);
   }
   size_t index() const {
@@ -445,7 +445,6 @@ struct PCGOperatorAttrs {
                ::FlexFlow::DropoutAttrs,
                ::FlexFlow::ElementBinaryAttrs,
                ::FlexFlow::ElementUnaryAttrs,
-               ::FlexFlow::ElementScalarUnaryAttrs,
                ::FlexFlow::EmbeddingAttrs,
                ::FlexFlow::FlatAttrs,
                ::FlexFlow::GatherAttrs,
@@ -464,7 +463,8 @@ struct PCGOperatorAttrs {
                ::FlexFlow::SplitAttrs,
                ::FlexFlow::SoftmaxAttrs,
                ::FlexFlow::TopKAttrs,
-               ::FlexFlow::TransposeAttrs>
+               ::FlexFlow::TransposeAttrs,
+               ::FlexFlow::WeightAttrs>
       raw_variant;
 };
 } // namespace FlexFlow

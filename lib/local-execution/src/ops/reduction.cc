@@ -20,7 +20,6 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-// declare Legion names
 
 using namespace FlexFlow::Kernels::Reduction;
 
@@ -74,36 +73,14 @@ static std::optional<float>
                  output_grad);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim_factory,
-                                  ReductionAttrs const &attrs,
-                                  InputParallelTensorDesc const &input,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &machine_view) {
-  ParallelTensorShape output_shape = get_output_shape(attrs, input.shape);
-
-  auto env = sim_factory.new_environment();
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(ATTRS, attrs);
-  fwd_binding.bind(INPUT, input.shape);
-  fwd_binding.bind(OUTPUT, output_shape);
-
-  auto fwd_accessor = env.get_fwd_accessor(REDUCTION_FWD_TASK_ID, fwd_binding);
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(REDUCTION_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_reduction_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_reduction_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-void register_task<REDUCTION_FWD_TASK_ID>() {
+OpTaskSignature get_reduction_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<ProfilingSettings>(PROFILING);
@@ -111,19 +88,15 @@ void register_task<REDUCTION_FWD_TASK_ID>() {
 
   fwd.add_input_slot(INPUT);
   fwd.add_output_slot(OUTPUT);
-
-  register_task(REDUCTION_FWD_TASK_ID, "Reduction Fwd", fwd, forward_task_impl);
+  return fwd;
+}
+OpTaskSignature get_reduction_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_reduction_fwd_signature());
+  return bwd;
 }
 
-// TODO: OpTaskSignature
-
-// template <>
-// void register_task<REDUCTION_BWD_TASK_ID>() {
-//   OpTaskSignature bwd =
-//       infer_bwd_signature(get_op_signature(REDUCTION_FWD_TASK_ID));
-
-//   register_task(REDUCTION_BWD_TASK_ID, "Reduction Bwd", bwd,
-//   backward_task_impl);
-// }
+std::vector<task_id_t> get_task_ids(ReductionAttrs const &) {
+  return {REDUCTION_FWD_TASK_ID, REDUCTION_BWD_TASK_ID};
+}
 
 }; // namespace FlexFlow

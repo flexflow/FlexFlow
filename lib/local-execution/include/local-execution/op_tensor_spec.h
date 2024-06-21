@@ -12,9 +12,11 @@ struct OpTensorSpec {
 };
 FF_VISITABLE_STRUCT(OpTensorSpec, role, slot_option, idx);
 
-OpTensorSpec input_tensor(int);
-OpTensorSpec output_tensor(int);
-OpTensorSpec weight_tensor(int);
+OpTensorSpec input_tensor(int, OpSlotOptions option = OpSlotOptions::NECESSARY);
+OpTensorSpec output_tensor(int,
+                           OpSlotOptions option = OpSlotOptions::NECESSARY);
+OpTensorSpec weight_tensor(int,
+                           OpSlotOptions option = OpSlotOptions::NECESSARY);
 
 } // namespace FlexFlow
 

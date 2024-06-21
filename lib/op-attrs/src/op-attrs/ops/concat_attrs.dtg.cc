@@ -45,7 +45,7 @@ bool ConcatAttrs::operator>=(ConcatAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ConcatAttrs>::operator()(
-    FlexFlow::ConcatAttrs const &x) const {
+    ::FlexFlow::ConcatAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::ff_dim_t>{}(x.axis) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -56,13 +56,14 @@ size_t hash<FlexFlow::ConcatAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ConcatAttrs
-    adl_serializer<FlexFlow::ConcatAttrs>::from_json(json const &j) {
-  return {j.at("axis").template get<::FlexFlow::ff_dim_t>(),
-          j.at("num_inputs").template get<int>()};
+::FlexFlow::ConcatAttrs
+    adl_serializer<::FlexFlow::ConcatAttrs>::from_json(json const &j) {
+  return ::FlexFlow::ConcatAttrs{
+      j.at("axis").template get<::FlexFlow::ff_dim_t>(),
+      j.at("num_inputs").template get<int>()};
 }
-void adl_serializer<FlexFlow::ConcatAttrs>::to_json(
-    json &j, FlexFlow::ConcatAttrs const &v) {
+void adl_serializer<::FlexFlow::ConcatAttrs>::to_json(
+    json &j, ::FlexFlow::ConcatAttrs const &v) {
   j["__type"] = "ConcatAttrs";
   j["axis"] = v.axis;
   j["num_inputs"] = v.num_inputs;
@@ -70,8 +71,8 @@ void adl_serializer<FlexFlow::ConcatAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ConcatAttrs> Arbitrary<FlexFlow::ConcatAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::ConcatAttrs>(
+Gen<::FlexFlow::ConcatAttrs> Arbitrary<::FlexFlow::ConcatAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ConcatAttrs>(
       gen::arbitrary<::FlexFlow::ff_dim_t>(), gen::arbitrary<int>());
 }
 } // namespace rc

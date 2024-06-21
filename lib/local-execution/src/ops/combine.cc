@@ -19,7 +19,6 @@
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
-// declare Legion names
 
 using namespace FlexFlow::Kernels::Combine;
 
@@ -69,21 +68,7 @@ static std::optional<float>
                  output_grad);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  CombineAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-  // TODO: to be implemented
-  float forward_time = 0.5;
-  float backward_time = 0.5;
-  float sync_time = 0.0;
-  return make_metrics(forward_time, backward_time, sync_time, env);
-}
-
-template <>
-OpTaskSignature fwd_signature<COMBINE_FWD_TASK_ID>() {
+OpTaskSignature get_combine_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<bool>(PROFILING);
@@ -93,28 +78,10 @@ OpTaskSignature fwd_signature<COMBINE_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-void register_task<COMBINE_FWD_TASK_ID>() {
-  register_task(COMBINE_FWD_TASK_ID,
-                "Combine Fwd",
-                fwd_signature<COMBINE_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-OpTaskSignature bwd_signature<COMBINE_BWD_TASK_ID>() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<COMBINE_FWD_TASK_ID>());
+OpTaskSignature get_combine_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_combine_fwd_signature());
 
   return bwd;
-}
-
-template <>
-void register_task<COMBINE_BWD_TASK_ID>() {
-  register_task(COMBINE_BWD_TASK_ID,
-                "Combine Bwd",
-                bwd_signature<COMBINE_BWD_TASK_ID>(),
-                backward_task_impl);
 }
 
 }; // namespace FlexFlow

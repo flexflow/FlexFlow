@@ -19,6 +19,16 @@ LayerAddedResult add_layer(ComputationGraph &computation_graph,
                            std::vector<TensorAttrs> const &outputs);
 TensorAttrs get_tensor_attrs(ComputationGraph const &, tensor_guid_t const &);
 
+std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg);
+
+std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
+                                                layer_guid_t n);
+
+std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
+                                                layer_guid_t n);
+
+LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
+
 } // namespace FlexFlow
 
 #endif

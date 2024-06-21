@@ -84,6 +84,10 @@ jobs:
         run: |
           build_libs.sh substitution-generator
 
+      - name: Build local-execution
+        run: |
+          build_libs.sh local-execution
+
       - name: Test utils
         run: |
           test_libs.sh utils

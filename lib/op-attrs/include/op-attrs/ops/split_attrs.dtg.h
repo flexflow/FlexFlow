@@ -23,8 +23,9 @@
 namespace FlexFlow {
 struct SplitAttrs {
   SplitAttrs() = delete;
-  SplitAttrs(::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS> const &splits,
-             ::FlexFlow::ff_dim_t const &axis);
+  explicit SplitAttrs(
+      ::FlexFlow::stack_vector<int, MAX_NUM_OUTPUTS> const &splits,
+      ::FlexFlow::ff_dim_t const &axis);
 
   bool operator==(SplitAttrs const &) const;
   bool operator!=(SplitAttrs const &) const;
@@ -39,23 +40,23 @@ struct SplitAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::SplitAttrs> {
-  size_t operator()(FlexFlow::SplitAttrs const &) const;
+struct hash<::FlexFlow::SplitAttrs> {
+  size_t operator()(::FlexFlow::SplitAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::SplitAttrs> {
-  static FlexFlow::SplitAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::SplitAttrs const &);
+struct adl_serializer<::FlexFlow::SplitAttrs> {
+  static ::FlexFlow::SplitAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::SplitAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::SplitAttrs> {
-  static Gen<FlexFlow::SplitAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::SplitAttrs> {
+  static Gen<::FlexFlow::SplitAttrs> arbitrary();
 };
 } // namespace rc
 

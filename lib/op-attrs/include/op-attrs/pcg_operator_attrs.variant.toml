@@ -19,7 +19,6 @@ includes = [
   "op-attrs/ops/conv_2d_attrs.dtg.h",
   "op-attrs/ops/dropout_attrs.dtg.h",
   "op-attrs/ops/element_binary_attrs.dtg.h",
-  "op-attrs/ops/element_scalar_unary_attrs.dtg.h",
   "op-attrs/ops/element_unary_attrs.dtg.h",
   "op-attrs/ops/embedding_attrs.dtg.h",
   "op-attrs/ops/flat_attrs.dtg.h",
@@ -39,6 +38,7 @@ includes = [
   "op-attrs/ops/split_attrs.dtg.h",
   "op-attrs/ops/topk_attrs.dtg.h",
   "op-attrs/ops/transpose_attrs.dtg.h",
+  "op-attrs/ops/weight_attrs.dtg.h",
 ]
 
 [[values]]
@@ -76,10 +76,6 @@ key = "element_binary"
 [[values]]
 type = "::FlexFlow::ElementUnaryAttrs"
 key = "element_unary"
-
-[[values]]
-type = "::FlexFlow::ElementScalarUnaryAttrs"
-key = "element_scalar_unary"
 
 [[values]]
 type = "::FlexFlow::EmbeddingAttrs"
@@ -156,3 +152,7 @@ key = "topk"
 [[values]]
 type = "::FlexFlow::TransposeAttrs"
 key = "transpose"
+
+[[values]]
+type = "::FlexFlow::WeightAttrs"
+key = "weight"

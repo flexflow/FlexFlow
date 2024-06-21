@@ -78,35 +78,14 @@ static std::optional<float>
                  attrs.dtype);
 }
 
-CostMetrics measure_operator_cost(SimEnvFactory const &sim,
-                                  CastAttrs const &attrs,
-                                  InputParallelTensorDesc const &input_shape,
-                                  ProfilingSettings const &settings,
-                                  MachineView const &mv) {
-  auto env = sim.new_environment();
-
-  SimTaskBinding fwd_binding;
-  fwd_binding.bind_arg(PROFILING, settings);
-  fwd_binding.bind_arg(ATTRS, attrs);
-
-  fwd_binding.bind(INPUT, input_shape);
-  fwd_binding.bind(OUTPUT, input_shape); // cast does not change shape
-
-  SimTaskBinding bwd_binding = infer_bwd_binding(fwd_binding);
-
-  auto fwd_accessor = env.get_fwd_accessor(CAST_FWD_TASK_ID, fwd_binding);
-  auto bwd_accessor = env.get_bwd_accessor(CAST_BWD_TASK_ID, bwd_binding);
-
-  float forward_time = forward_task_impl(fwd_accessor).value();
-  float backward_time = backward_task_impl(bwd_accessor).value();
-
-  float sync_time = default_estimate_sync_time(env);
-
-  return make_metrics(forward_time, backward_time, sync_time, env);
+TaskImplFunction get_cast_fwd_task_impl() {
+  return forward_task_impl;
+}
+TaskImplFunction get_cast_bwd_task_impl() {
+  return backward_task_impl;
 }
 
-template <>
-OpTaskSignature fwd_signature<CAST_FWD_TASK_ID>() {
+OpTaskSignature get_cast_fwd_signature() {
   OpTaskSignature fwd(OpTaskType::FWD);
 
   fwd.add_arg_slot<CastAttrs>(ATTRS);
@@ -118,27 +97,14 @@ OpTaskSignature fwd_signature<CAST_FWD_TASK_ID>() {
   return fwd;
 }
 
-template <>
-void register_task<CAST_FWD_TASK_ID>() {
-  register_task(CAST_FWD_TASK_ID,
-                "Cast Fwd",
-                fwd_signature<CAST_FWD_TASK_ID>(),
-                forward_task_impl);
-}
-
-template <>
-OpTaskSignature bwd_signature<CAST_BWD_TASK_ID>() {
-  OpTaskSignature bwd = infer_bwd_signature(fwd_signature<CAST_FWD_TASK_ID>());
+OpTaskSignature get_cast_bwd_signature() {
+  OpTaskSignature bwd = infer_bwd_signature(get_cast_fwd_signature());
 
   return bwd;
 }
 
-template <>
-void register_task<CAST_BWD_TASK_ID>() {
-  register_task(CAST_BWD_TASK_ID,
-                "Cast Bwd",
-                bwd_signature<CAST_BWD_TASK_ID>(),
-                backward_task_impl);
+std::vector<task_id_t> get_task_ids(CastAttrs const &) {
+  return {CAST_FWD_TASK_ID, CAST_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

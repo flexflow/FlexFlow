@@ -45,7 +45,7 @@ bool TensorShape::operator>=(TensorShape const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::TensorShape>::operator()(
-    FlexFlow::TensorShape const &x) const {
+    ::FlexFlow::TensorShape const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::TensorDims>{}(x.dims) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -56,13 +56,14 @@ size_t hash<FlexFlow::TensorShape>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::TensorShape
-    adl_serializer<FlexFlow::TensorShape>::from_json(json const &j) {
-  return {j.at("dims").template get<::FlexFlow::TensorDims>(),
-          j.at("data_type").template get<::FlexFlow::DataType>()};
+::FlexFlow::TensorShape
+    adl_serializer<::FlexFlow::TensorShape>::from_json(json const &j) {
+  return ::FlexFlow::TensorShape{
+      j.at("dims").template get<::FlexFlow::TensorDims>(),
+      j.at("data_type").template get<::FlexFlow::DataType>()};
 }
-void adl_serializer<FlexFlow::TensorShape>::to_json(
-    json &j, FlexFlow::TensorShape const &v) {
+void adl_serializer<::FlexFlow::TensorShape>::to_json(
+    json &j, ::FlexFlow::TensorShape const &v) {
   j["__type"] = "TensorShape";
   j["dims"] = v.dims;
   j["data_type"] = v.data_type;
@@ -70,8 +71,8 @@ void adl_serializer<FlexFlow::TensorShape>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::TensorShape> Arbitrary<FlexFlow::TensorShape>::arbitrary() {
-  return gen::construct<FlexFlow::TensorShape>(
+Gen<::FlexFlow::TensorShape> Arbitrary<::FlexFlow::TensorShape>::arbitrary() {
+  return gen::construct<::FlexFlow::TensorShape>(
       gen::arbitrary<::FlexFlow::TensorDims>(),
       gen::arbitrary<::FlexFlow::DataType>());
 }

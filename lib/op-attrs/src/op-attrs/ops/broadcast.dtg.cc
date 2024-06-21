@@ -38,7 +38,7 @@ bool BroadcastAttrs::operator>=(BroadcastAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::BroadcastAttrs>::operator()(
-    FlexFlow::BroadcastAttrs const &x) const {
+    ::FlexFlow::BroadcastAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>{}(
                 x.target_dims) +
@@ -48,21 +48,23 @@ size_t hash<FlexFlow::BroadcastAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::BroadcastAttrs
-    adl_serializer<FlexFlow::BroadcastAttrs>::from_json(json const &j) {
-  return {j.at("target_dims")
-              .template get<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>()};
+::FlexFlow::BroadcastAttrs
+    adl_serializer<::FlexFlow::BroadcastAttrs>::from_json(json const &j) {
+  return ::FlexFlow::BroadcastAttrs{
+      j.at("target_dims")
+          .template get<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>()};
 }
-void adl_serializer<FlexFlow::BroadcastAttrs>::to_json(
-    json &j, FlexFlow::BroadcastAttrs const &v) {
+void adl_serializer<::FlexFlow::BroadcastAttrs>::to_json(
+    json &j, ::FlexFlow::BroadcastAttrs const &v) {
   j["__type"] = "BroadcastAttrs";
   j["target_dims"] = v.target_dims;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::BroadcastAttrs> Arbitrary<FlexFlow::BroadcastAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::BroadcastAttrs>(
+Gen<::FlexFlow::BroadcastAttrs>
+    Arbitrary<::FlexFlow::BroadcastAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::BroadcastAttrs>(
       gen::arbitrary<::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>>());
 }
 } // namespace rc
