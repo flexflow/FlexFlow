@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "IntermediateSpDecompositionTree"
+features = [
+  "eq",
+  "ord",
+  "hash",
+]
+
+includes = [
+  "utils/graph/serial_parallel/split_type.dtg.h",
+  "<vector>",
+  "<variant>",
+  "utils/graph/node/node.dtg.h",
+]
+
+src_includes = [
+  "utils/hash/vector.h",
+]
+
+[[fields]]
+name = "type"
+type = "::FlexFlow::SplitType"
+
+[[fields]]
+name = "children"
+type = "std::vector<std::variant<::FlexFlow::IntermediateSpDecompositionTree, ::FlexFlow::Node>>"

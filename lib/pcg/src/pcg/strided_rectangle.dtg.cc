@@ -9,8 +9,6 @@
 
 #include "pcg/strided_rectangle.dtg.h"
 
-#include "op-attrs/dim_ordered.h"
-#include "pcg/strided_rectangle_side.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

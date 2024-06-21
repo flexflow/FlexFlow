@@ -1,0 +1,10 @@
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_PARALLEL_FWD_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_PARALLEL_FWD_H
+
+namespace FlexFlow {
+
+struct Parallel;
+
+} // namespace FlexFlow
+
+#endif

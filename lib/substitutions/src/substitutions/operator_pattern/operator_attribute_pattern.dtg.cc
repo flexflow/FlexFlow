@@ -9,10 +9,7 @@
 
 #include "substitutions/operator_pattern/operator_attribute_pattern.dtg.h"
 
-#include "substitutions/operator_pattern/operator_attribute_constraint.dtg.h"
-#include "utils/fmt.h"
 #include <sstream>
-#include <unordered_set>
 
 namespace FlexFlow {
 OperatorAttributePattern::OperatorAttributePattern(

@@ -9,12 +9,7 @@
 
 #include "pcg/file_format/v1/graphs/v1_operator_graph.dtg.h"
 
-#include "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h"
-#include "utils/fmt/unordered_set.h"
-#include "utils/fmt/vector.h"
 #include <sstream>
-#include <unordered_set>
-#include <vector>
 
 namespace FlexFlow {
 V1OperatorGraph::V1OperatorGraph(

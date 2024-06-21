@@ -9,10 +9,6 @@
 
 #include "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h"
 
-#include "pcg/dataflow_graph/dataflow_graph.h"
-#include "pcg/parallel_computation_graph/parallel_layer_attrs.dtg.h"
-#include "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h"
-
 namespace FlexFlow {
 ParallelComputationGraph::ParallelComputationGraph(
     ::FlexFlow::DataflowGraph<::FlexFlow::ParallelLayerAttrs,

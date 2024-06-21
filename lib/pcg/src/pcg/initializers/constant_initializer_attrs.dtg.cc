@@ -9,8 +9,6 @@
 
 #include "pcg/initializers/constant_initializer_attrs.dtg.h"
 
-#include "op-attrs/datatype.h"
-#include "utils/json.h"
 #include <sstream>
 
 namespace FlexFlow {

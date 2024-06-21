@@ -3,14 +3,14 @@
 // lib/utils/include/utils/graph/digraph/di_output.struct.toml
 /* proj-data
 {
-  "generated_from": "a8f3fc2ad9e00f3c29a6dcd4658199ba"
+  "generated_from": "61e6ee4a13c7608bf6df0a549b94b2bc"
 }
 */
 
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DIGRAPH_DI_OUTPUT_DTG_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DIGRAPH_DI_OUTPUT_DTG_H
 
-#include "utils/graph/node.dtg.h"
+#include "utils/graph/node/node.dtg.h"
 #include <functional>
 #include <tuple>
 

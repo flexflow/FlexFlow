@@ -9,13 +9,7 @@
 
 #include "op-attrs/parallel_tensor_dims.dtg.h"
 
-#include "op-attrs/dim_ordered.h"
-#include "op-attrs/replica_parallel_dim_set.dtg.h"
-#include "op-attrs/shard_parallel_dim.dtg.h"
-#include "utils/fmt/pair.h"
-#include "utils/fmt/unordered_map.h"
 #include <sstream>
-#include <unordered_map>
 
 namespace FlexFlow {
 ParallelTensorDims::ParallelTensorDims(

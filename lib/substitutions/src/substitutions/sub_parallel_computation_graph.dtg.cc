@@ -9,10 +9,6 @@
 
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
 
-#include "pcg/parallel_layer_attrs.dtg.h"
-#include "pcg/parallel_tensor_attrs.dtg.h"
-#include "utils/graph.h"
-
 namespace FlexFlow {
 SubParallelComputationGraph::SubParallelComputationGraph(
     ::FlexFlow::OutputLabelledOpenMultiDiGraph<

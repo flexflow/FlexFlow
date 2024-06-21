@@ -9,8 +9,6 @@
 
 #include "op-attrs/tensor_shape.dtg.h"
 
-#include "op-attrs/datatype.dtg.h"
-#include "op-attrs/tensor_dims.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

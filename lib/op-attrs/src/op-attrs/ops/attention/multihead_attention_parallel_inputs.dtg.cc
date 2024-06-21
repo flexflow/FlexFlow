@@ -9,11 +9,6 @@
 
 #include "op-attrs/ops/attention/multihead_attention_parallel_inputs.dtg.h"
 
-#include "op-attrs/datatype.dtg.h"
-#include "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h"
-#include "op-attrs/parallel_tensor_shape/sum_degree.dtg.h"
-#include "op-attrs/shard_parallel_dim.dtg.h"
-#include <cstddef>
 #include <sstream>
 
 namespace FlexFlow {

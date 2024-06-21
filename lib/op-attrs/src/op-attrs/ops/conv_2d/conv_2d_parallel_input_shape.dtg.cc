@@ -9,8 +9,6 @@
 
 #include "op-attrs/ops/conv_2d/conv_2d_parallel_input_shape.dtg.h"
 
-#include "op-attrs/datatype.dtg.h"
-#include "op-attrs/shard_parallel_dim.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

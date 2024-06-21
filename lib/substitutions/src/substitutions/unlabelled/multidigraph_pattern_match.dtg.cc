@@ -9,11 +9,6 @@
 
 #include "substitutions/unlabelled/multidigraph_pattern_match.dtg.h"
 
-#include "substitutions/unlabelled/pattern_edge.dtg.h"
-#include "substitutions/unlabelled/pattern_node.dtg.h"
-#include "utils/bidict.h"
-#include "utils/graph.h"
-
 namespace FlexFlow {
 MultiDiGraphPatternMatch::MultiDiGraphPatternMatch(
     ::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node> const

@@ -3,6 +3,7 @@ name = "DirectedEdgeQuery"
 features = [
   "eq",
   "ord",
+  "hash",
   "fmt",
 ]
 

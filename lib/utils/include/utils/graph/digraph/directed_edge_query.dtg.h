@@ -3,7 +3,7 @@
 // lib/utils/include/utils/graph/digraph/directed_edge_query.struct.toml
 /* proj-data
 {
-  "generated_from": "294ae0103df2a3c388a2ce140c271f4e"
+  "generated_from": "4d7f3398fb178b272a4230d2db24c0d5"
 }
 */
 
@@ -13,6 +13,7 @@
 #include "fmt/format.h"
 #include "utils/graph/node/node.dtg.h"
 #include "utils/graph/query_set.h"
+#include <functional>
 #include <ostream>
 #include <tuple>
 
@@ -33,6 +34,13 @@ struct DirectedEdgeQuery {
   ::FlexFlow::query_set<::FlexFlow::Node> dsts;
 };
 } // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<::FlexFlow::DirectedEdgeQuery> {
+  size_t operator()(::FlexFlow::DirectedEdgeQuery const &) const;
+};
+} // namespace std
 
 namespace FlexFlow {
 std::string format_as(DirectedEdgeQuery const &);

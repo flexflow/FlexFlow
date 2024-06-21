@@ -9,10 +9,7 @@
 
 #include "substitutions/unlabelled/pattern_split.dtg.h"
 
-#include "substitutions/unlabelled/pattern_node.dtg.h"
-#include "utils/graph.h"
 #include <sstream>
-#include <unordered_set>
 
 namespace FlexFlow {
 PatternSplit::PatternSplit(

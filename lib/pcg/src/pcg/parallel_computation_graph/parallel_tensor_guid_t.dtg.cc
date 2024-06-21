@@ -9,7 +9,6 @@
 
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h"
 
-#include "utils/graph/multidiedge.h"
 #include <sstream>
 
 namespace FlexFlow {

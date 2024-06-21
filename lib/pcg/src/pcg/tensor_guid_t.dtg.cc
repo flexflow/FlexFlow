@@ -9,7 +9,6 @@
 
 #include "pcg/tensor_guid_t.dtg.h"
 
-#include "utils/graph.h"
 #include <sstream>
 
 namespace FlexFlow {

@@ -3,7 +3,7 @@
 // lib/utils/include/utils/graph/dataflow_graph/dataflow_input.struct.toml
 /* proj-data
 {
-  "generated_from": "9fc7657f7fcc71fdad9e6a5040771ad7"
+  "generated_from": "d43532deb325bcf8a502efbe90cd287b"
 }
 */
 
@@ -11,6 +11,7 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_DATAFLOW_INPUT_DTG_H
 
 #include "fmt/format.h"
+#include "utils/graph/node/node.dtg.h"
 #include <functional>
 #include <ostream>
 #include <tuple>

@@ -9,7 +9,6 @@
 
 #include "op-attrs/ops/cast_attrs.dtg.h"
 
-#include "op-attrs/datatype.h"
 #include <sstream>
 
 namespace FlexFlow {

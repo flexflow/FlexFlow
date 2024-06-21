@@ -9,8 +9,6 @@
 
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 
-#include "utils/graph.h"
-
 namespace FlexFlow {
 UnlabelledGraphPattern::UnlabelledGraphPattern(
     ::FlexFlow::OpenMultiDiGraphView const &raw_graph)

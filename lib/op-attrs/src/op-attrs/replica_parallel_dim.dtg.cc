@@ -9,7 +9,6 @@
 
 #include "op-attrs/replica_parallel_dim.dtg.h"
 
-#include "op-attrs/replica_type.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

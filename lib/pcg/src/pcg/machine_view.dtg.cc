@@ -9,8 +9,6 @@
 
 #include "pcg/machine_view.dtg.h"
 
-#include "pcg/device_id_t.dtg.h"
-#include "pcg/strided_rectangle.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

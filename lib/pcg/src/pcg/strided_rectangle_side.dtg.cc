@@ -9,7 +9,6 @@
 
 #include "pcg/strided_rectangle_side.dtg.h"
 
-#include "pcg/num_points_t.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

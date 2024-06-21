@@ -9,10 +9,6 @@
 
 #include "substitutions/unlabelled/edge_splits.dtg.h"
 
-#include "utils/bidict.h"
-#include "utils/graph.h"
-#include <utility>
-
 namespace FlexFlow {
 UnlabelledPatternEdgeSplits::UnlabelledPatternEdgeSplits(
     ::FlexFlow::bidict<::FlexFlow::MultiDiEdge,

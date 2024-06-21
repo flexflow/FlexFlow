@@ -9,9 +9,6 @@
 
 #include "op-attrs/ops/embedding_attrs.dtg.h"
 
-#include "op-attrs/aggregate_op.dtg.h"
-#include "op-attrs/datatype.dtg.h"
-#include "utils/stack_vector.h"
 #include <sstream>
 
 namespace FlexFlow {

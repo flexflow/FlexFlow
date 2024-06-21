@@ -9,8 +9,6 @@
 
 #include "substitutions/unlabelled/input_pattern_edge.dtg.h"
 
-#include "utils/graph.h"
-
 namespace FlexFlow {
 InputPatternEdge::InputPatternEdge(::FlexFlow::InputMultiDiEdge const &raw_edge)
     : raw_edge(raw_edge) {}

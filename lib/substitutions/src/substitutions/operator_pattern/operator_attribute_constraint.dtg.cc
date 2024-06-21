@@ -9,9 +9,6 @@
 
 #include "substitutions/operator_pattern/operator_attribute_constraint.dtg.h"
 
-#include "substitutions/constraint_type.dtg.h"
-#include "substitutions/operator_pattern/operator_attribute_expr.dtg.h"
-#include "substitutions/operator_pattern/operator_attribute_value.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

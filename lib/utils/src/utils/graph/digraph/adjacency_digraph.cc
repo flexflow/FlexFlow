@@ -40,7 +40,7 @@ std::unordered_set<DirectedEdge>
   std::unordered_set<DirectedEdge> result;
   for (auto const &src_kv : query_keys(query.srcs, this->adjacency)) {
     for (auto const &dst : apply_query(query.dsts, src_kv.second)) {
-      result.insert({src_kv.first, dst});
+      result.insert(DirectedEdge{src_kv.first, dst});
     }
   }
   return result;

@@ -9,8 +9,6 @@
 
 #include "op-attrs/ops/element_unary_attrs.dtg.h"
 
-#include "op-attrs/operator_type.h"
-#include "utils/json.h"
 #include <sstream>
 
 namespace FlexFlow {

@@ -9,7 +9,6 @@
 
 #include "utils/graph/digraph/di_input.dtg.h"
 
-#include "utils/graph/node/node.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

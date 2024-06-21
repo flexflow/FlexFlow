@@ -9,11 +9,7 @@
 
 #include "pcg/parallel_computation_graph/parallel_layer_added_result.dtg.h"
 
-#include "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h"
-#include "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h"
-#include "utils/fmt/vector.h"
 #include <sstream>
-#include <vector>
 
 namespace FlexFlow {
 ParallelLayerAddedResult::ParallelLayerAddedResult(

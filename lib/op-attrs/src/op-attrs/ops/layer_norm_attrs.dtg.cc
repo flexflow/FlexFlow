@@ -9,9 +9,6 @@
 
 #include "op-attrs/ops/layer_norm_attrs.dtg.h"
 
-#include "op-attrs/ff_dim.dtg.h"
-#include "op-attrs/ff_dim.h"
-#include "utils/stack_vector.h"
 #include <sstream>
 
 namespace FlexFlow {

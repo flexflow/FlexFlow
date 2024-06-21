@@ -7,7 +7,7 @@ features = [
 ]
 
 includes = [
-  "utils/graph/node.dtg.h",
+  "utils/graph/node/node.dtg.h",
 ]
 
 [[fields]]

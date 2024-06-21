@@ -9,9 +9,6 @@
 
 #include "substitutions/output_graph/output_graph_expr.dtg.h"
 
-#include "substitutions/output_graph/output_operator_attrs_assignment.dtg.h"
-#include "utils/graph.h"
-
 namespace FlexFlow {
 OutputGraphExpr::OutputGraphExpr(
     ::FlexFlow::NodeLabelledOpenMultiDiGraph<

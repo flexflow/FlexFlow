@@ -9,7 +9,6 @@
 
 #include "substitutions/operator_pattern/operator_attribute_list_access.dtg.h"
 
-#include "substitutions/operator_pattern/operator_attribute_key.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

@@ -9,8 +9,6 @@
 
 #include "substitutions/unlabelled/closed_pattern_edge.dtg.h"
 
-#include "utils/graph.h"
-
 namespace FlexFlow {
 ClosedPatternEdge::ClosedPatternEdge(::FlexFlow::MultiDiEdge const &raw_edge)
     : raw_edge(raw_edge) {}

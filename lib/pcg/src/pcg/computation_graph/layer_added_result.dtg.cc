@@ -9,9 +9,6 @@
 
 #include "pcg/computation_graph/layer_added_result.dtg.h"
 
-#include "pcg/layer_guid_t.dtg.h"
-#include "pcg/tensor_guid_t.dtg.h"
-#include "utils/fmt/vector.h"
 #include <sstream>
 
 namespace FlexFlow {

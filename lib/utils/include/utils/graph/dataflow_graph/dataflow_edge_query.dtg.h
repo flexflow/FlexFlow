@@ -3,7 +3,7 @@
 // lib/utils/include/utils/graph/dataflow_graph/dataflow_edge_query.struct.toml
 /* proj-data
 {
-  "generated_from": "684726a7add4aa912e194335fcfe91ab"
+  "generated_from": "111e640382a80b659bc33dd86a416ded"
 }
 */
 
@@ -11,7 +11,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_DATAFLOW_EDGE_QUERY_DTG_H
 
 #include "fmt/format.h"
-#include "utils/graph/node.dtg.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/graph/node/node.dtg.h"
 #include "utils/graph/query_set.h"
 #include <functional>
 #include <ostream>

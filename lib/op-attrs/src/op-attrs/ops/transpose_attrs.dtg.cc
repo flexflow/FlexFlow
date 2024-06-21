@@ -9,9 +9,6 @@
 
 #include "op-attrs/ops/transpose_attrs.dtg.h"
 
-#include "op-attrs/dim_ordered.h"
-#include "op-attrs/ff_dim.dtg.h"
-#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {

@@ -9,7 +9,6 @@
 
 #include "op-attrs/tensor_dims.dtg.h"
 
-#include "op-attrs/dim_ordered.h"
 #include <sstream>
 
 namespace FlexFlow {

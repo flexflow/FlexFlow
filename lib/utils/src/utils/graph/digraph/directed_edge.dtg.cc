@@ -9,7 +9,6 @@
 
 #include "utils/graph/digraph/directed_edge.dtg.h"
 
-#include "utils/graph/node/node.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

@@ -3,14 +3,12 @@
 // lib/utils/include/utils/graph/dataflow_graph/dataflow_edge_query.struct.toml
 /* proj-data
 {
-  "generated_from": "684726a7add4aa912e194335fcfe91ab"
+  "generated_from": "111e640382a80b659bc33dd86a416ded"
 }
 */
 
 #include "utils/graph/dataflow_graph/dataflow_edge_query.dtg.h"
 
-#include "utils/graph/node.dtg.h"
-#include "utils/graph/query_set.h"
 #include <sstream>
 
 namespace FlexFlow {

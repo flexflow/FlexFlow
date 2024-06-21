@@ -3,14 +3,12 @@
 // lib/utils/include/utils/graph/dataflow_graph/dataflow_output_query.struct.toml
 /* proj-data
 {
-  "generated_from": "6f662c3c4d285a4fd3c60713e6fc67fa"
+  "generated_from": "de957a7524bf0423dcfb68f70b2e6815"
 }
 */
 
 #include "utils/graph/dataflow_graph/dataflow_output_query.dtg.h"
 
-#include "utils/graph/node.dtg.h"
-#include "utils/graph/query_set.h"
 #include <sstream>
 
 namespace FlexFlow {

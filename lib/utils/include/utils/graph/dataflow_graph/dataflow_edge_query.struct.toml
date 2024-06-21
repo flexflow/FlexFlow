@@ -9,7 +9,8 @@ features = [
 
 includes = [
   "utils/graph/query_set.h",
-  "utils/graph/node.dtg.h",
+  "utils/graph/node/node.dtg.h",
+  "utils/fmt/unordered_set.h",
 ]
 
 [[fields]]

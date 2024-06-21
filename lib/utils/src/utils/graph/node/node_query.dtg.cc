@@ -9,8 +9,6 @@
 
 #include "utils/graph/node/node_query.dtg.h"
 
-#include "utils/graph/node/node.dtg.h"
-#include "utils/graph/query_set.h"
 #include <sstream>
 
 namespace FlexFlow {

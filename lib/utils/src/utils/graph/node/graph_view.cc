@@ -1,4 +1,4 @@
-#include "utils/graph/undirected/graph_view.h"
+#include "utils/graph/node/graph_view.h"
 
 namespace FlexFlow {
 

@@ -9,10 +9,7 @@
 
 #include "pcg/dataflow_graph/operator_added_result.dtg.h"
 
-#include "utils/fmt/vector.h"
-#include "utils/graph.h"
 #include <sstream>
-#include <vector>
 
 namespace FlexFlow {
 OperatorAddedResult::OperatorAddedResult(

@@ -9,7 +9,6 @@
 
 #include "utils/graph/node/node.dtg.h"
 
-#include <cstddef>
 #include <sstream>
 
 namespace FlexFlow {

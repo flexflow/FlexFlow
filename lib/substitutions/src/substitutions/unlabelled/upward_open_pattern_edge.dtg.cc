@@ -9,8 +9,6 @@
 
 #include "substitutions/unlabelled/upward_open_pattern_edge.dtg.h"
 
-#include "utils/graph.h"
-
 namespace FlexFlow {
 UpwardOpenPatternEdge::UpwardOpenPatternEdge(
     ::FlexFlow::UpwardOpenMultiDiEdge const &raw_edge)

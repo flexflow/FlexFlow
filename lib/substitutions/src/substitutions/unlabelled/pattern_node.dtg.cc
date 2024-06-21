@@ -9,8 +9,6 @@
 
 #include "substitutions/unlabelled/pattern_node.dtg.h"
 
-#include "utils/graph.h"
-
 namespace FlexFlow {
 PatternNode::PatternNode(::FlexFlow::Node const &raw_node)
     : raw_node(raw_node) {}

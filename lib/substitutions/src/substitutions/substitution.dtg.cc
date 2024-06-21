@@ -9,9 +9,6 @@
 
 #include "substitutions/substitution.dtg.h"
 
-#include "substitutions/output_graph/output_graph_expr.dtg.h"
-#include "substitutions/pcg_pattern.dtg.h"
-
 namespace FlexFlow {
 Substitution::Substitution(
     ::FlexFlow::PCGPattern const &pcg_pattern,

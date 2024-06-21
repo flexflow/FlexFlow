@@ -9,8 +9,6 @@
 
 #include "substitutions/unlabelled/output_pattern_edge.dtg.h"
 
-#include "utils/graph.h"
-
 namespace FlexFlow {
 OutputPatternEdge::OutputPatternEdge(
     ::FlexFlow::OutputMultiDiEdge const &raw_edge)

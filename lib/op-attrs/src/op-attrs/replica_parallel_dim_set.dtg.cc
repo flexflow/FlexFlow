@@ -9,8 +9,6 @@
 
 #include "op-attrs/replica_parallel_dim_set.dtg.h"
 
-#include "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h"
-#include "op-attrs/parallel_tensor_shape/sum_degree.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

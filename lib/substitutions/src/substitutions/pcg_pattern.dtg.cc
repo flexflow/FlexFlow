@@ -9,10 +9,6 @@
 
 #include "substitutions/pcg_pattern.dtg.h"
 
-#include "substitutions/operator_pattern/operator_attribute_pattern.dtg.h"
-#include "substitutions/tensor_pattern/tensor_attribute_pattern.dtg.h"
-#include "utils/graph.h"
-
 namespace FlexFlow {
 PCGPattern::PCGPattern(::FlexFlow::OutputLabelledOpenMultiDiGraph<
                        ::FlexFlow::OperatorAttributePattern,

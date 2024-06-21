@@ -1,14 +1,14 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_DATAFLOW_GRAPH_VIEW_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_DATAFLOW_GRAPH_VIEW_H
 
-#include "utils/graph/multidigraph/multidigraph_view.h"
+#include "utils/graph/digraph/digraph_view.h"
 #include "utils/graph/dataflow_graph/i_dataflow_graph_view.h"
 #include "utils/graph/dataflow_graph/dataflow_edge_query.dtg.h"
 #include "utils/graph/dataflow_graph/dataflow_output_query.dtg.h"
 
 namespace FlexFlow {
 
-struct DataflowGraphView : virtual MultiDiGraphView {
+struct DataflowGraphView : virtual DiGraphView {
   DataflowGraphView(DataflowGraphView const &) = default;
   DataflowGraphView &operator=(DataflowGraphView const &) = default;
 

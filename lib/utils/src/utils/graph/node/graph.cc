@@ -1,4 +1,4 @@
-#include "utils/graph/undirected/graph.h"
+#include "utils/graph/node/graph.h"
 
 namespace FlexFlow {
 

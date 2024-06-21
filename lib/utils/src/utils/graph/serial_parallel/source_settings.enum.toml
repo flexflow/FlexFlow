@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "SourceSettings"
+features = [
+  "hash",
+  "fmt",
+  "json",
+  "rapidcheck",
+]
+
+[[values]]
+name = "INCLUDE_SOURCE_NODES"
+
+[[values]]
+name = "EXCLUDE_SOURCE_NODES"

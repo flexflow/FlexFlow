@@ -9,11 +9,6 @@
 
 #include "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h"
 
-#include "op-attrs/parallel_tensor_shape.dtg.h"
-#include "op-attrs/param_sync.dtg.h"
-#include "pcg/create_grad.dtg.h"
-#include "pcg/initializer_attrs.dtg.h"
-#include <optional>
 #include <sstream>
 
 namespace FlexFlow {

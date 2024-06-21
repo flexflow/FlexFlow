@@ -9,8 +9,6 @@
 
 #include "op-attrs/ops/pool_2d_attrs.dtg.h"
 
-#include "op-attrs/activation.dtg.h"
-#include "op-attrs/pool_op.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

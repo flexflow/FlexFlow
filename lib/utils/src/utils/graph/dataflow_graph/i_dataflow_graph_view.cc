@@ -3,7 +3,7 @@
 
 namespace FlexFlow {
 
-std::unordered_set<MultiDiEdge> IDataflowGraphView::query_edges(MultiDiEdgeQuery const &q) const {
+std::unordered_set<DirectedEdge> IDataflowGraphView::query_edges(DirectedEdgeQuery const &q) const {
   DataflowEdgeQuery dataflow_query = DataflowEdgeQuery{
     q.srcs,
     matchall<int>(),
@@ -13,7 +13,7 @@ std::unordered_set<MultiDiEdge> IDataflowGraphView::query_edges(MultiDiEdgeQuery
   std::unordered_set<DataflowEdge> dataflow_edges = this->query_edges(dataflow_query);
 
   return transform(dataflow_edges, [](DataflowEdge const &e) {
-    return MultiDiEdge{e.src.node, e.dst.node, std::make_pair(e.src.idx, e.dst.idx)};
+    return DirectedEdge{e.src.node, e.dst.node};
   });
 }
 

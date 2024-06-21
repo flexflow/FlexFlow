@@ -9,10 +9,6 @@
 
 #include "pcg/computation_graph.dtg.h"
 
-#include "pcg/dataflow_graph/dataflow_graph.h"
-#include "pcg/layer_attrs.dtg.h"
-#include "pcg/tensor_attrs.dtg.h"
-
 namespace FlexFlow {
 ComputationGraph::ComputationGraph(
     ::FlexFlow::DataflowGraph<::FlexFlow::LayerAttrs,

@@ -9,9 +9,6 @@
 
 #include "op-attrs/ops/conv_2d_attrs.dtg.h"
 
-#include "op-attrs/activation.dtg.h"
-#include "utils/json.h"
-#include <optional>
 #include <sstream>
 
 namespace FlexFlow {

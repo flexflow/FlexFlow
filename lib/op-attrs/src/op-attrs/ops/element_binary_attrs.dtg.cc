@@ -9,8 +9,6 @@
 
 #include "op-attrs/ops/element_binary_attrs.dtg.h"
 
-#include "op-attrs/datatype.h"
-#include "op-attrs/operator_type.h"
 #include <sstream>
 
 namespace FlexFlow {

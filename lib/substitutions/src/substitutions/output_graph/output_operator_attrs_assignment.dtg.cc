@@ -9,10 +9,7 @@
 
 #include "substitutions/output_graph/output_operator_attrs_assignment.dtg.h"
 
-#include "substitutions/operator_pattern/operator_attribute_key.dtg.h"
-#include "substitutions/output_graph/output_operator_attribute_expr.dtg.h"
 #include <sstream>
-#include <unordered_map>
 
 namespace FlexFlow {
 OutputOperatorAttrsAssignment::OutputOperatorAttrsAssignment(

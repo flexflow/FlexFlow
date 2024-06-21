@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "Serial"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/serial_parallel/parallel.fwd.h",
+  "<vector>",
+  "<variant>",
+  "utils/graph/node/node.dtg.h",
+]
+
+src_includes = [
+  "utils/fmt/vector.h",
+  "utils/fmt/variant.h",
+  "utils/hash/vector.h",
+]
+
+trailing_includes = [
+  "utils/graph/serial_parallel/parallel.dtg.h",
+]
+
+[[fields]]
+name = "children"
+type = "std::vector<std::variant<::FlexFlow::Parallel, ::FlexFlow::Node>>"

@@ -9,7 +9,6 @@
 
 #include "op-attrs/ops/broadcast.dtg.h"
 
-#include "utils/stack_vector.h"
 #include <sstream>
 
 namespace FlexFlow {

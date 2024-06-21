@@ -7,6 +7,10 @@ features = [
   "fmt",
 ]
 
+includes = [
+  "utils/graph/node/node.dtg.h",
+]
+
 [[fields]]
 name = "node"
 type = "::FlexFlow::Node"

@@ -9,11 +9,6 @@
 
 #include "substitutions/unlabelled/match_additional_criterion.dtg.h"
 
-#include "substitutions/unlabelled/pattern_edge.dtg.h"
-#include "substitutions/unlabelled/pattern_node.dtg.h"
-#include "utils/graph.h"
-#include <functional>
-
 namespace FlexFlow {
 MatchAdditionalCriterion::MatchAdditionalCriterion(
     std::function<bool(::FlexFlow::PatternNode const &,

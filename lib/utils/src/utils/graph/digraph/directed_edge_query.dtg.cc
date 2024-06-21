@@ -3,14 +3,12 @@
 // lib/utils/include/utils/graph/digraph/directed_edge_query.struct.toml
 /* proj-data
 {
-  "generated_from": "294ae0103df2a3c388a2ce140c271f4e"
+  "generated_from": "4d7f3398fb178b272a4230d2db24c0d5"
 }
 */
 
 #include "utils/graph/digraph/directed_edge_query.dtg.h"
 
-#include "utils/graph/node/node.dtg.h"
-#include "utils/graph/query_set.h"
 #include <sstream>
 
 namespace FlexFlow {
@@ -37,6 +35,18 @@ bool DirectedEdgeQuery::operator>=(DirectedEdgeQuery const &other) const {
   return std::tie(this->srcs, this->dsts) >= std::tie(other.srcs, other.dsts);
 }
 } // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::DirectedEdgeQuery>::operator()(
+    ::FlexFlow::DirectedEdgeQuery const &x) const {
+  size_t result = 0;
+  result ^= std::hash<::FlexFlow::query_set<::FlexFlow::Node>>{}(x.srcs) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
+  result ^= std::hash<::FlexFlow::query_set<::FlexFlow::Node>>{}(x.dsts) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
+  return result;
+}
+} // namespace std
 
 namespace FlexFlow {
 std::string format_as(DirectedEdgeQuery const &x) {

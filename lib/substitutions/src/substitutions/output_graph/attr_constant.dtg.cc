@@ -9,7 +9,6 @@
 
 #include "substitutions/output_graph/attr_constant.dtg.h"
 
-#include "substitutions/operator_pattern/operator_attribute_value.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

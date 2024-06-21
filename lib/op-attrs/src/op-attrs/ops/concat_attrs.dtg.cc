@@ -9,8 +9,6 @@
 
 #include "op-attrs/ops/concat_attrs.dtg.h"
 
-#include "op-attrs/ff_dim.dtg.h"
-#include "op-attrs/ff_dim.h"
 #include <sstream>
 
 namespace FlexFlow {

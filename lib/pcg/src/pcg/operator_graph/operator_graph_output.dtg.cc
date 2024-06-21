@@ -9,7 +9,6 @@
 
 #include "pcg/operator_graph/operator_graph_output.dtg.h"
 
-#include "utils/graph.h"
 #include <sstream>
 
 namespace FlexFlow {

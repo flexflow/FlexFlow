@@ -9,7 +9,6 @@
 
 #include "substitutions/tensor_pattern/tensor_attribute_list_access.dtg.h"
 
-#include "substitutions/tensor_pattern/tensor_attribute_key.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

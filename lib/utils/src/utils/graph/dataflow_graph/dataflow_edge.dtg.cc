@@ -9,8 +9,6 @@
 
 #include "utils/graph/dataflow_graph/dataflow_edge.dtg.h"
 
-#include "utils/graph/dataflow_graph/dataflow_input.dtg.h"
-#include "utils/graph/dataflow_graph/dataflow_output.dtg.h"
 #include <sstream>
 
 namespace FlexFlow {

@@ -9,8 +9,6 @@
 
 #include "op-attrs/ops/attention/multihead_attention_inputs.dtg.h"
 
-#include "op-attrs/datatype.dtg.h"
-#include <cstddef>
 #include <sstream>
 
 namespace FlexFlow {

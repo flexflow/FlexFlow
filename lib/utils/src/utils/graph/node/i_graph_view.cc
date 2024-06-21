@@ -1,1 +1,1 @@
-#include "utils/graph/undirected/i_graph_view.h"
+#include "utils/graph/node/i_graph_view.h"

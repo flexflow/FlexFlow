@@ -6,31 +6,37 @@
 #include "utils/exception.h"
 #include <optional>
 #include <unordered_set>
+#include <set>
+#include "utils/optional.h"
+#include "utils/hash-utils.h"
+#include "utils/fmt/unordered_set.h"
 
 namespace FlexFlow {
 
 template <typename T>
 struct query_set {
   query_set() = delete;
-  query_set(T const &t) : query(std::unordered_set<T>{t}) {}
+  query_set(T const &t) : query(std::set<T>{t}) {}
 
-  query_set(std::unordered_set<T> const &query) : query(query) {}
+  query_set(std::unordered_set<T> const &query) : query(std::set<T>{query.cbegin(), query.cend()}) {}
 
-  query_set(std::optional<std::unordered_set<T>> const &query) : query(query) {}
+  query_set(std::optional<std::unordered_set<T>> const &query)
+    : query(transform(query, [](std::unordered_set<T> const &s) { return std::set<T>{s.cbegin(), s.cend()}; })) 
+    { }
 
   query_set(std::initializer_list<T> const &l)
       : query_set(std::unordered_set<T>{l}) {}
 
   friend bool operator==(query_set const &lhs, query_set const &rhs) {
-    return lhs.value == rhs.value;
+    return lhs.query == rhs.query;
   }
 
   friend bool operator!=(query_set const &lhs, query_set const &rhs) {
-    return lhs.value != rhs.value;
+    return lhs.query != rhs.query;
   }
 
   friend bool operator<(query_set const &lhs, query_set const &rhs) {
-    return lhs.value < rhs.value;
+    return lhs.query < rhs.query;
   }
 
   friend bool is_matchall(query_set const &q) {
@@ -39,7 +45,8 @@ struct query_set {
 
   friend std::unordered_set<T> allowed_values(query_set const &q) {
     assert(!is_matchall(q));
-    return q.query.value();
+    std::set<T> query_value = q.query.value();
+    return std::unordered_set<T>{query_value.begin(), query_value.end()};
   }
 
   static query_set<T> matchall() {
@@ -50,8 +57,11 @@ struct query_set {
     return {std::unordered_set<T>{}};
   }
 
+  std::optional<std::set<T>> const &value() const {
+    return this->query;
+  }
 private:
-  std::optional<std::unordered_set<T>> query;
+  std::optional<std::set<T>> query;
 };
 
 template <typename T>
@@ -127,5 +137,16 @@ query_set<T> query_union(query_set<T> const &lhs, query_set<T> const &rhs) {
 }
 
 } // namespace FlexFlow
+
+namespace std {
+
+template <typename T>
+struct hash<::FlexFlow::query_set<T>> {
+  size_t operator()(::FlexFlow::query_set<T> const &q) const {
+    return ::FlexFlow::get_std_hash(q.value());
+  }
+};
+
+}
 
 #endif

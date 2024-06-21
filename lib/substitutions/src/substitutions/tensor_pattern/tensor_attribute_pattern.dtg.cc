@@ -9,10 +9,7 @@
 
 #include "substitutions/tensor_pattern/tensor_attribute_pattern.dtg.h"
 
-#include "substitutions/tensor_pattern/tensor_attribute_constraint.dtg.h"
-#include "utils/hash-utils.h"
 #include <sstream>
-#include <unordered_set>
 
 namespace FlexFlow {
 TensorAttributePattern::TensorAttributePattern(

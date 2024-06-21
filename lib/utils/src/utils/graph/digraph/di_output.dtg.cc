@@ -3,13 +3,11 @@
 // lib/utils/include/utils/graph/digraph/di_output.struct.toml
 /* proj-data
 {
-  "generated_from": "a8f3fc2ad9e00f3c29a6dcd4658199ba"
+  "generated_from": "61e6ee4a13c7608bf6df0a549b94b2bc"
 }
 */
 
 #include "utils/graph/digraph/di_output.dtg.h"
-
-#include "utils/graph/node.dtg.h"
 
 namespace FlexFlow {
 DiOutput::DiOutput(::FlexFlow::Node const &src) : src(src) {}

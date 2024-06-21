@@ -9,8 +9,6 @@
 
 #include "substitutions/unlabelled/match_split.dtg.h"
 
-#include "substitutions/unlabelled/multidigraph_pattern_match.dtg.h"
-
 namespace FlexFlow {
 MatchSplit::MatchSplit(MultiDiGraphPatternMatch const &prefix_submatch,
                        MultiDiGraphPatternMatch const &postfix_submatch)

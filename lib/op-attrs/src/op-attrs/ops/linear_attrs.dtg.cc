@@ -9,10 +9,6 @@
 
 #include "op-attrs/ops/linear_attrs.dtg.h"
 
-#include "op-attrs/activation.dtg.h"
-#include "op-attrs/datatype.dtg.h"
-#include "op-attrs/regularizer_attrs.dtg.h"
-#include "utils/json.h"
 #include <sstream>
 
 namespace FlexFlow {
