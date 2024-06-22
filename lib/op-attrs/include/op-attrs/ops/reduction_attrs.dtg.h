@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct ReductionAttrs {
   ReductionAttrs() = delete;
-  ReductionAttrs(int const &reduction_degree);
+  explicit ReductionAttrs(int const &reduction_degree);
 
   bool operator==(ReductionAttrs const &) const;
   bool operator!=(ReductionAttrs const &) const;
@@ -34,23 +34,23 @@ struct ReductionAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ReductionAttrs> {
-  size_t operator()(FlexFlow::ReductionAttrs const &) const;
+struct hash<::FlexFlow::ReductionAttrs> {
+  size_t operator()(::FlexFlow::ReductionAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ReductionAttrs> {
-  static FlexFlow::ReductionAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ReductionAttrs const &);
+struct adl_serializer<::FlexFlow::ReductionAttrs> {
+  static ::FlexFlow::ReductionAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ReductionAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ReductionAttrs> {
-  static Gen<FlexFlow::ReductionAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::ReductionAttrs> {
+  static Gen<::FlexFlow::ReductionAttrs> arbitrary();
 };
 } // namespace rc
 

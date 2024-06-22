@@ -114,13 +114,57 @@ tl::expected<TensorShape, std::string>
 
   // W^O in "Attention Is All You Need" top of page 5, with num_heads factored
   // out
-  size_t outWeightSize = parsed.value_size * attrs.embed_dim;
+  size_t outWeightSize = attrs.vdim * attrs.embed_dim;
 
   return TensorShape{
       TensorDims{FFOrdered<size_t>{
           (qProjectWeightSize + kProjectWeightSize + vProjectWeightSize +
            outWeightSize),
           size_t_from_int(attrs.num_heads),
+      }},
+      parsed.datatype,
+  };
+}
+
+tl::expected<TensorShape, std::string>
+    get_input_bias_shape(MultiHeadAttentionAttrs const &attrs,
+                         TensorShape const &input_q,
+                         TensorShape const &input_k,
+                         TensorShape const &input_v) {
+  MultiHeadAttentionInputs parsed = ({
+    tl::expected<MultiHeadAttentionInputs, std::string> parse_result =
+        parse_attention_input_shape(input_q, input_k, input_v);
+    if (!parse_result.has_value()) {
+      return tl::unexpected(parse_result.error());
+    }
+    parse_result.value();
+  });
+
+  return TensorShape{
+      TensorDims{FFOrdered<size_t>{
+          size_t_from_int(attrs.kdim + attrs.kdim + attrs.vdim),
+      }},
+      parsed.datatype,
+  };
+}
+
+tl::expected<TensorShape, std::string>
+    get_output_bias_shape(MultiHeadAttentionAttrs const &attrs,
+                          TensorShape const &input_q,
+                          TensorShape const &input_k,
+                          TensorShape const &input_v) {
+  MultiHeadAttentionInputs parsed = ({
+    tl::expected<MultiHeadAttentionInputs, std::string> parse_result =
+        parse_attention_input_shape(input_q, input_k, input_v);
+    if (!parse_result.has_value()) {
+      return tl::unexpected(parse_result.error());
+    }
+    parse_result.value();
+  });
+
+  return TensorShape{
+      TensorDims{FFOrdered<size_t>{
+          size_t_from_int(attrs.embed_dim),
       }},
       parsed.datatype,
   };
@@ -156,6 +200,78 @@ tl::expected<ParallelTensorShape, std::string>
       SumDegree{1},
       DiscardCopyDegree{parsed.batch_dim.degree},
       FFOrdered<int>{joined_dim_degree, head_dim_degree});
+}
+
+tl::expected<ParallelTensorShape, std::string>
+    get_input_bias_shape(MultiHeadAttentionAttrs const &attrs,
+                         ParallelTensorShape const &input_q,
+                         ParallelTensorShape const &input_k,
+                         ParallelTensorShape const &input_v) {
+  MultiHeadAttentionParallelInputs parsed = ({
+    tl::expected<MultiHeadAttentionParallelInputs, std::string> parse_result =
+        parse_attention_parallel_input_shape(input_q, input_k, input_v);
+    if (!parse_result.has_value()) {
+      return tl::unexpected(parse_result.error());
+    }
+
+    parse_result.value();
+  });
+
+  TensorShape unpar_shape = ({
+    tl::expected<TensorShape, std::string> result_unpar =
+        get_input_bias_shape(attrs,
+                             get_reduced_shape(input_q),
+                             get_reduced_shape(input_k),
+                             get_reduced_shape(input_v));
+    if (!result_unpar.has_value()) {
+      return tl::unexpected(result_unpar.error());
+    }
+
+    result_unpar.value();
+  });
+
+  SumDegree sum_degree = SumDegree{1};
+  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{
+      parsed.batch_dim.degree * parsed.discard_copy_degree.value};
+  FFOrdered<int> shard_degrees = FFOrdered<int>{1};
+  return lift_to_parallel_with_degrees(
+      unpar_shape, sum_degree, discard_copy_degree, shard_degrees);
+}
+
+tl::expected<ParallelTensorShape, std::string>
+    get_output_bias_shape(MultiHeadAttentionAttrs const &attrs,
+                          ParallelTensorShape const &input_q,
+                          ParallelTensorShape const &input_k,
+                          ParallelTensorShape const &input_v) {
+  MultiHeadAttentionParallelInputs parsed = ({
+    tl::expected<MultiHeadAttentionParallelInputs, std::string> parse_result =
+        parse_attention_parallel_input_shape(input_q, input_k, input_v);
+    if (!parse_result.has_value()) {
+      return tl::unexpected(parse_result.error());
+    }
+
+    parse_result.value();
+  });
+
+  TensorShape unpar_shape = ({
+    tl::expected<TensorShape, std::string> result_unpar =
+        get_output_bias_shape(attrs,
+                              get_reduced_shape(input_q),
+                              get_reduced_shape(input_k),
+                              get_reduced_shape(input_v));
+    if (!result_unpar.has_value()) {
+      return tl::unexpected(result_unpar.error());
+    }
+
+    result_unpar.value();
+  });
+
+  SumDegree sum_degree = SumDegree{1};
+  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{
+      parsed.batch_dim.degree * parsed.discard_copy_degree.value};
+  FFOrdered<int> shard_degrees = FFOrdered<int>{1};
+  return lift_to_parallel_with_degrees(
+      unpar_shape, sum_degree, discard_copy_degree, shard_degrees);
 }
 
 tl::expected<ParallelTensorShape, std::string>

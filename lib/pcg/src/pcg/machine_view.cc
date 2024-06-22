@@ -25,18 +25,19 @@ static StridedRectangle make_1d_rect(int start, int stop, int stride) {
   assert(stride > 0);
   StridedRectangleSide side =
       strided_side_from_size_and_stride(side_size_t{stop - start}, stride);
-  StridedRectangle rect = {{side}};
+  StridedRectangle rect =
+      StridedRectangle{std::vector<StridedRectangleSide>{side}};
   return rect;
 }
 
 MachineView make_1d_machine_view(gpu_id_t start, gpu_id_t stop, int stride) {
   StridedRectangle rect = make_1d_rect(start.gpu_index, stop.gpu_index, stride);
-  return {device_id_t{start}, rect};
+  return MachineView{device_id_t{start}, rect};
 }
 
 MachineView make_1d_machine_view(cpu_id_t start, cpu_id_t stop, int stride) {
   StridedRectangle rect = make_1d_rect(start.cpu_index, stop.cpu_index, stride);
-  return {device_id_t{start}, rect};
+  return MachineView{device_id_t{start}, rect};
 }
 
 MachineView make_1d_machine_view(device_id_t start,

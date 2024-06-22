@@ -7,7 +7,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*replicate_degree=*/4,
     };
 
-    ParallelTensorShape input = {
+    ParallelTensorShape input = ParallelTensorShape{
         ParallelTensorDims{
             FFOrdered<ShardParallelDim>{
                 ShardParallelDim{10, 2},
@@ -26,7 +26,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ParallelTensorShape result = get_output_shape(attrs, input);
 
     ParallelTensorShape correct_output = input;
-    correct_output.dims.replica_dims.discard_copy_degree = 8;
+    correct_output.dims.replica_dims.discard_copy_degree = DiscardCopyDegree{8};
 
     CHECK(result == correct_output);
   }

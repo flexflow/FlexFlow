@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/tensor_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "68447a4357476647ef25dd39dfd12578"
+  "generated_from": "545e84c03a34f24b89684feff5b81ad1"
 }
 */
 
@@ -14,6 +14,7 @@
 #include "nlohmann/json.hpp"
 #include "op-attrs/param_sync.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
+#include "pcg/create_grad.dtg.h"
 #include "pcg/initializer_attrs.dtg.h"
 #include <functional>
 #include <optional>
@@ -23,10 +24,11 @@
 namespace FlexFlow {
 struct TensorAttrs {
   TensorAttrs() = delete;
-  TensorAttrs(::FlexFlow::TensorShape const &shape,
-              std::optional<::FlexFlow::InitializerAttrs> const &initializer,
-              bool const &create_gradients,
-              std::optional<::FlexFlow::ParamSync> const &sync_type);
+  explicit TensorAttrs(
+      ::FlexFlow::TensorShape const &shape,
+      std::optional<::FlexFlow::InitializerAttrs> const &initializer,
+      std::optional<::FlexFlow::ParamSync> const &sync_type,
+      ::FlexFlow::CreateGrad const &create_gradients);
 
   bool operator==(TensorAttrs const &) const;
   bool operator!=(TensorAttrs const &) const;
@@ -36,23 +38,23 @@ struct TensorAttrs {
   bool operator>=(TensorAttrs const &) const;
   ::FlexFlow::TensorShape shape;
   std::optional<::FlexFlow::InitializerAttrs> initializer;
-  bool create_gradients;
   std::optional<::FlexFlow::ParamSync> sync_type;
+  ::FlexFlow::CreateGrad create_gradients;
 };
 } // namespace FlexFlow
 
 namespace std {
 template <>
-struct hash<FlexFlow::TensorAttrs> {
-  size_t operator()(FlexFlow::TensorAttrs const &) const;
+struct hash<::FlexFlow::TensorAttrs> {
+  size_t operator()(::FlexFlow::TensorAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::TensorAttrs> {
-  static FlexFlow::TensorAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::TensorAttrs const &);
+struct adl_serializer<::FlexFlow::TensorAttrs> {
+  static ::FlexFlow::TensorAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::TensorAttrs const &);
 };
 } // namespace nlohmann
 

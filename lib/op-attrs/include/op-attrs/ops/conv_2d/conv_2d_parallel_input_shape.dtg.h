@@ -22,13 +22,14 @@
 namespace FlexFlow {
 struct Conv2DParallelInputShape {
   Conv2DParallelInputShape() = delete;
-  Conv2DParallelInputShape(::FlexFlow::ShardParallelDim const &sample_dim,
-                           ::FlexFlow::ShardParallelDim const &channel_dim,
-                           ::FlexFlow::ShardParallelDim const &height_dim,
-                           ::FlexFlow::ShardParallelDim const &width_dim,
-                           int const &sum_reduction_degree,
-                           int const &discard_copy_reduction_degree,
-                           ::FlexFlow::DataType const &datatype);
+  explicit Conv2DParallelInputShape(
+      ::FlexFlow::ShardParallelDim const &sample_dim,
+      ::FlexFlow::ShardParallelDim const &channel_dim,
+      ::FlexFlow::ShardParallelDim const &height_dim,
+      ::FlexFlow::ShardParallelDim const &width_dim,
+      int const &sum_reduction_degree,
+      int const &discard_copy_reduction_degree,
+      ::FlexFlow::DataType const &datatype);
 
   bool operator==(Conv2DParallelInputShape const &) const;
   bool operator!=(Conv2DParallelInputShape const &) const;
@@ -48,23 +49,23 @@ struct Conv2DParallelInputShape {
 
 namespace std {
 template <>
-struct hash<FlexFlow::Conv2DParallelInputShape> {
-  size_t operator()(FlexFlow::Conv2DParallelInputShape const &) const;
+struct hash<::FlexFlow::Conv2DParallelInputShape> {
+  size_t operator()(::FlexFlow::Conv2DParallelInputShape const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::Conv2DParallelInputShape> {
-  static FlexFlow::Conv2DParallelInputShape from_json(json const &);
-  static void to_json(json &, FlexFlow::Conv2DParallelInputShape const &);
+struct adl_serializer<::FlexFlow::Conv2DParallelInputShape> {
+  static ::FlexFlow::Conv2DParallelInputShape from_json(json const &);
+  static void to_json(json &, ::FlexFlow::Conv2DParallelInputShape const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::Conv2DParallelInputShape> {
-  static Gen<FlexFlow::Conv2DParallelInputShape> arbitrary();
+struct Arbitrary<::FlexFlow::Conv2DParallelInputShape> {
+  static Gen<::FlexFlow::Conv2DParallelInputShape> arbitrary();
 };
 } // namespace rc
 

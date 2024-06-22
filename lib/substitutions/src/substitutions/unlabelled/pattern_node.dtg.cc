@@ -36,7 +36,7 @@ bool PatternNode::operator>=(PatternNode const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::PatternNode>::operator()(
-    FlexFlow::PatternNode const &x) const {
+    ::FlexFlow::PatternNode const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::Node>{}(x.raw_node) + 0x9e3779b9 +
             (result << 6) + (result >> 2);

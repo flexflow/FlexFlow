@@ -30,15 +30,15 @@ bool PatternSplit::operator!=(PatternSplit const &other) const {
 } // namespace FlexFlow
 
 namespace nlohmann {
-FlexFlow::PatternSplit
-    adl_serializer<FlexFlow::PatternSplit>::from_json(json const &j) {
-  return {
+::FlexFlow::PatternSplit
+    adl_serializer<::FlexFlow::PatternSplit>::from_json(json const &j) {
+  return ::FlexFlow::PatternSplit{
       j.at("first").template get<std::unordered_set<::FlexFlow::PatternNode>>(),
       j.at("second")
           .template get<std::unordered_set<::FlexFlow::PatternNode>>()};
 }
-void adl_serializer<FlexFlow::PatternSplit>::to_json(
-    json &j, FlexFlow::PatternSplit const &v) {
+void adl_serializer<::FlexFlow::PatternSplit>::to_json(
+    json &j, ::FlexFlow::PatternSplit const &v) {
   j["__type"] = "PatternSplit";
   j["first"] = v.first;
   j["second"] = v.second;

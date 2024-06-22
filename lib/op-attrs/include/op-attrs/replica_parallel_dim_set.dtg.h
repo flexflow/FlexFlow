@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct ReplicaParallelDimSet {
   ReplicaParallelDimSet() = delete;
-  ReplicaParallelDimSet(
+  explicit ReplicaParallelDimSet(
       ::FlexFlow::SumDegree const &sum_degree,
       ::FlexFlow::DiscardCopyDegree const &discard_copy_degree);
 
@@ -39,23 +39,23 @@ struct ReplicaParallelDimSet {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ReplicaParallelDimSet> {
-  size_t operator()(FlexFlow::ReplicaParallelDimSet const &) const;
+struct hash<::FlexFlow::ReplicaParallelDimSet> {
+  size_t operator()(::FlexFlow::ReplicaParallelDimSet const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ReplicaParallelDimSet> {
-  static FlexFlow::ReplicaParallelDimSet from_json(json const &);
-  static void to_json(json &, FlexFlow::ReplicaParallelDimSet const &);
+struct adl_serializer<::FlexFlow::ReplicaParallelDimSet> {
+  static ::FlexFlow::ReplicaParallelDimSet from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ReplicaParallelDimSet const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ReplicaParallelDimSet> {
-  static Gen<FlexFlow::ReplicaParallelDimSet> arbitrary();
+struct Arbitrary<::FlexFlow::ReplicaParallelDimSet> {
+  static Gen<::FlexFlow::ReplicaParallelDimSet> arbitrary();
 };
 } // namespace rc
 

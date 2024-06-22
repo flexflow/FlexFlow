@@ -13,7 +13,6 @@ ff_add_library(
     kernels
     pcg
     spdlog
-    kernels
 )
 
 add_subdirectory(test)

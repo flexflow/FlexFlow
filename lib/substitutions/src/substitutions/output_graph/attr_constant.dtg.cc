@@ -37,7 +37,7 @@ bool AttrConstant::operator>=(AttrConstant const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::AttrConstant>::operator()(
-    FlexFlow::AttrConstant const &x) const {
+    ::FlexFlow::AttrConstant const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OperatorAttributeValue>{}(x.value) +
             0x9e3779b9 + (result << 6) + (result >> 2);

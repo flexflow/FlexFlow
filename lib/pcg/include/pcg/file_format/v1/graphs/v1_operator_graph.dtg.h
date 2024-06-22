@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/file_format/v1/graphs/v1_operator_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "5bfd7d8755cfd8cd9dbf57d5c367038e"
+  "generated_from": "fed215ca219af1bd375801eb2e33b473"
 }
 */
 
@@ -13,7 +13,8 @@
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
 #include "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h"
-#include "utils/fmt.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 #include <ostream>
 #include <unordered_set>
 #include <vector>
@@ -21,8 +22,9 @@
 namespace FlexFlow {
 struct V1OperatorGraph {
   V1OperatorGraph() = delete;
-  V1OperatorGraph(std::vector<size_t> const &nodes,
-                  std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
+  explicit V1OperatorGraph(
+      std::vector<size_t> const &nodes,
+      std::unordered_set<::FlexFlow::V1GraphEdge> const &edges);
 
   std::vector<size_t> nodes;
   std::unordered_set<::FlexFlow::V1GraphEdge> edges;
@@ -31,9 +33,9 @@ struct V1OperatorGraph {
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::V1OperatorGraph> {
-  static FlexFlow::V1OperatorGraph from_json(json const &);
-  static void to_json(json &, FlexFlow::V1OperatorGraph const &);
+struct adl_serializer<::FlexFlow::V1OperatorGraph> {
+  static ::FlexFlow::V1OperatorGraph from_json(json const &);
+  static void to_json(json &, ::FlexFlow::V1OperatorGraph const &);
 };
 } // namespace nlohmann
 

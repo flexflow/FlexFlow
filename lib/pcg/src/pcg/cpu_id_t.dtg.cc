@@ -34,7 +34,8 @@ bool cpu_id_t::operator>=(cpu_id_t const &other) const {
 } // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::cpu_id_t>::operator()(FlexFlow::cpu_id_t const &x) const {
+size_t
+    hash<FlexFlow::cpu_id_t>::operator()(::FlexFlow::cpu_id_t const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.cpu_index) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -43,20 +44,20 @@ size_t hash<FlexFlow::cpu_id_t>::operator()(FlexFlow::cpu_id_t const &x) const {
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::cpu_id_t
-    adl_serializer<FlexFlow::cpu_id_t>::from_json(json const &j) {
-  return {j.at("cpu_index").template get<int>()};
+::FlexFlow::cpu_id_t
+    adl_serializer<::FlexFlow::cpu_id_t>::from_json(json const &j) {
+  return ::FlexFlow::cpu_id_t{j.at("cpu_index").template get<int>()};
 }
-void adl_serializer<FlexFlow::cpu_id_t>::to_json(json &j,
-                                                 FlexFlow::cpu_id_t const &v) {
+void adl_serializer<::FlexFlow::cpu_id_t>::to_json(
+    json &j, ::FlexFlow::cpu_id_t const &v) {
   j["__type"] = "cpu_id_t";
   j["cpu_index"] = v.cpu_index;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::cpu_id_t> Arbitrary<FlexFlow::cpu_id_t>::arbitrary() {
-  return gen::construct<FlexFlow::cpu_id_t>(gen::arbitrary<int>());
+Gen<::FlexFlow::cpu_id_t> Arbitrary<::FlexFlow::cpu_id_t>::arbitrary() {
+  return gen::construct<::FlexFlow::cpu_id_t>(gen::arbitrary<int>());
 }
 } // namespace rc
 

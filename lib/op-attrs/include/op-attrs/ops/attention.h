@@ -42,17 +42,37 @@ tl::expected<TensorShape, std::string>
                       TensorShape const &input_q,
                       TensorShape const &input_k,
                       TensorShape const &input_v);
-tl::expected<ParallelTensorShape, std::string>
-    get_weights_shape(MultiHeadAttentionAttrs const &,
-                      ParallelTensorShape const &input_q,
-                      ParallelTensorShape const &input_k,
-                      ParallelTensorShape const &input_v);
-
+tl::expected<TensorShape, std::string>
+    get_input_bias_shape(MultiHeadAttentionAttrs const &,
+                         TensorShape const &input_q,
+                         TensorShape const &input_k,
+                         TensorShape const &input_v);
+tl::expected<TensorShape, std::string>
+    get_output_bias_shape(MultiHeadAttentionAttrs const &,
+                          TensorShape const &input_q,
+                          TensorShape const &input_k,
+                          TensorShape const &input_v);
 tl::expected<TensorShape, std::string>
     get_output_shape(MultiHeadAttentionAttrs const &,
                      TensorShape const &input_q,
                      TensorShape const &input_k,
                      TensorShape const &input_v);
+
+tl::expected<ParallelTensorShape, std::string>
+    get_weights_shape(MultiHeadAttentionAttrs const &,
+                      ParallelTensorShape const &input_q,
+                      ParallelTensorShape const &input_k,
+                      ParallelTensorShape const &input_v);
+tl::expected<ParallelTensorShape, std::string>
+    get_input_bias_shape(MultiHeadAttentionAttrs const &,
+                         ParallelTensorShape const &input_q,
+                         ParallelTensorShape const &input_k,
+                         ParallelTensorShape const &input_v);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_bias_shape(MultiHeadAttentionAttrs const &,
+                          ParallelTensorShape const &input_q,
+                          ParallelTensorShape const &input_k,
+                          ParallelTensorShape const &input_v);
 tl::expected<ParallelTensorShape, std::string>
     get_output_shape(MultiHeadAttentionAttrs const &,
                      ParallelTensorShape const &input_q,

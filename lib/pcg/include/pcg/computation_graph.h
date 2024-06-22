@@ -21,9 +21,6 @@ TensorAttrs get_tensor_attrs(ComputationGraph const &, tensor_guid_t const &);
 
 std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg);
 
-std::vector<layer_guid_t>
-    reverse_topological_ordering(ComputationGraph const &cg);
-
 std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n);
 

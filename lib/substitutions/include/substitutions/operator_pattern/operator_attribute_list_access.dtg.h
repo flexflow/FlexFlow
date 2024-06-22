@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct OperatorAttributeListIndexAccess {
   OperatorAttributeListIndexAccess() = delete;
-  OperatorAttributeListIndexAccess(
+  explicit OperatorAttributeListIndexAccess(
       ::FlexFlow::OperatorAttributeKey const &attribute_key, int const &index);
 
   bool operator==(OperatorAttributeListIndexAccess const &) const;
@@ -37,24 +37,24 @@ struct OperatorAttributeListIndexAccess {
 
 namespace std {
 template <>
-struct hash<FlexFlow::OperatorAttributeListIndexAccess> {
-  size_t operator()(FlexFlow::OperatorAttributeListIndexAccess const &) const;
+struct hash<::FlexFlow::OperatorAttributeListIndexAccess> {
+  size_t operator()(::FlexFlow::OperatorAttributeListIndexAccess const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::OperatorAttributeListIndexAccess> {
-  static FlexFlow::OperatorAttributeListIndexAccess from_json(json const &);
+struct adl_serializer<::FlexFlow::OperatorAttributeListIndexAccess> {
+  static ::FlexFlow::OperatorAttributeListIndexAccess from_json(json const &);
   static void to_json(json &,
-                      FlexFlow::OperatorAttributeListIndexAccess const &);
+                      ::FlexFlow::OperatorAttributeListIndexAccess const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::OperatorAttributeListIndexAccess> {
-  static Gen<FlexFlow::OperatorAttributeListIndexAccess> arbitrary();
+struct Arbitrary<::FlexFlow::OperatorAttributeListIndexAccess> {
+  static Gen<::FlexFlow::OperatorAttributeListIndexAccess> arbitrary();
 };
 } // namespace rc
 

@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/initializer_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "f66f3a89ea937e96a058d83ab52e2826"
+  "generated_from": "f4d932a4a7728ebfc28a23f2e6ca3201"
 }
 */
 
@@ -114,6 +114,22 @@ void adl_serializer<::FlexFlow::InitializerAttrs>::to_json(
   }
 }
 } // namespace nlohmann
+namespace rc {
+Gen<::FlexFlow::InitializerAttrs>
+    Arbitrary<::FlexFlow::InitializerAttrs>::arbitrary() {
+  return gen::oneOf(
+      gen::construct<::FlexFlow::InitializerAttrs>(
+          gen::arbitrary<::FlexFlow::GlorotUniformAttrs>()),
+      gen::construct<::FlexFlow::InitializerAttrs>(
+          gen::arbitrary<::FlexFlow::ZeroInitializerAttrs>()),
+      gen::construct<::FlexFlow::InitializerAttrs>(
+          gen::arbitrary<::FlexFlow::UniformInitializerAttrs>()),
+      gen::construct<::FlexFlow::InitializerAttrs>(
+          gen::arbitrary<::FlexFlow::NormInitializerAttrs>()),
+      gen::construct<::FlexFlow::InitializerAttrs>(
+          gen::arbitrary<::FlexFlow::ConstantInitializerAttrs>()));
+}
+} // namespace rc
 namespace FlexFlow {
 std::string format_as(::FlexFlow::InitializerAttrs const &x) {
   std::ostringstream oss;

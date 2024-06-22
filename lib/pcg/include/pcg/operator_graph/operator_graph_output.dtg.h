@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct OperatorGraphOutput {
   OperatorGraphOutput() = delete;
-  OperatorGraphOutput(::FlexFlow::Node const &node, int const &idx);
+  explicit OperatorGraphOutput(::FlexFlow::Node const &node, int const &idx);
 
   bool operator==(OperatorGraphOutput const &) const;
   bool operator!=(OperatorGraphOutput const &) const;
@@ -34,8 +34,8 @@ struct OperatorGraphOutput {
 
 namespace std {
 template <>
-struct hash<FlexFlow::OperatorGraphOutput> {
-  size_t operator()(FlexFlow::OperatorGraphOutput const &) const;
+struct hash<::FlexFlow::OperatorGraphOutput> {
+  size_t operator()(::FlexFlow::OperatorGraphOutput const &) const;
 };
 } // namespace std
 
