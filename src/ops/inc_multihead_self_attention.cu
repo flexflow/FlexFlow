@@ -526,11 +526,12 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 #endif
 
-  cudaError_t err = cudaStreamSynchronize(stream);
-  cudaEvent_t t_start, t_end;
-  checkCUDA(cudaEventCreate(&t_start));
-  checkCUDA(cudaEventCreate(&t_end));
-  checkCUDA(cudaEventRecord(t_start, stream));
+  //   int device;
+  //   checkCUDA(cudaGetDevice(&device));
+  //   cudaEvent_t t_start, t_end;
+  //   checkCUDA(cudaEventCreate(&t_start));
+  //   checkCUDA(cudaEventCreate(&t_end));
+  //   checkCUDA(cudaEventRecord(t_start, stream));
 
   // Step 1: Compute QKV projections
   {
@@ -572,15 +573,15 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 
-  checkCUDA(cudaEventRecord(t_end, stream));
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  if (bc->inference_mode == TREE_VERIFY_MODE) {
-    std::cout << "GEMM time: " << elapsed << " ms\n";
-  }
+  //   checkCUDA(cudaEventRecord(t_end, stream));
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   float elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   if (bc->inference_mode == TREE_VERIFY_MODE and device == 0) {
+  //     std::cout << "GEMM time: " << elapsed << " ms\n";
+  //   }
 
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
@@ -615,9 +616,9 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                      m->hidden_size);
   }
 
-  checkCUDA(cudaEventCreate(&t_start));
-  checkCUDA(cudaEventCreate(&t_end));
-  checkCUDA(cudaEventRecord(t_start, stream));
+  //   checkCUDA(cudaEventCreate(&t_start));
+  //   checkCUDA(cudaEventCreate(&t_end));
+  //   checkCUDA(cudaEventRecord(t_start, stream));
 
   // Step 3: apply rotary embedding if needed
   if (*m->apply_rotary_embedding) {
@@ -635,15 +636,15 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                           q_array_size,
                                           m->hidden_size);
   }
-  checkCUDA(cudaEventRecord(t_end, stream));
-  checkCUDA(cudaEventSynchronize(t_end));
-  elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  if (bc->inference_mode == TREE_VERIFY_MODE) {
-    std::cout << "Rotary time: " << elapsed << " ms\n";
-  }
+  //   checkCUDA(cudaEventRecord(t_end, stream));
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   if (bc->inference_mode == TREE_VERIFY_MODE and device == 0) {
+  //     std::cout << "Rotary time: " << elapsed << " ms\n";
+  //   }
 }
 
 template <typename DT>

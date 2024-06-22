@@ -393,6 +393,8 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                            BatchConfig const *bc,
                            DT *output_ptr,
                            cudaStream_t stream) {
+  //   int device;
+  //   checkCUDA(cudaGetDevice(&device));
   //   cudaEvent_t t_start, t_end;
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -410,7 +412,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
       (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  std::vector<int32_t> q_indptr_h {0};
+  std::vector<int32_t> q_indptr_h{0};
 
   {
     int parallelism = batch_size;
@@ -426,8 +428,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                                                 m->kv_indices,
                                                 m->kv_last_page_len,
                                                 m->qk_indptr);
-    for (int req_idx = 0; req_idx < bc->max_requests_per_batch();
-         req_idx++) {
+    for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
       if (bc->request_available[req_idx]) {
         int q_len = bc->requestsInfo[req_idx].num_tokens_in_batch;
         q_indptr_h.push_back(q_indptr_h.back() + q_len);
@@ -448,7 +449,16 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       m->kv_indptr,
       m->kv_last_page_len);
 
-  //   cudaEvent_t t_start, t_end;
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   float elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   if (device == 0) {
+  //     printf("    attn prep time: %.4f ms\n", elapsed);
+  //   }
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
@@ -466,11 +476,17 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
-  //   float elapsed = 0;
+  //   elapsed = 0;
   //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  //   printf("paged KV construction: %.4f ms\n", elapsed);
+  //   if (device == 0) {
+  //     printf("    BeginForward time: %.4f ms\n", elapsed);
+  //   }
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
+
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
 
   DISPATCH_GROUPSIZE(
       group_size,
@@ -537,6 +553,20 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
             }
           })})});
 
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   if (device == 0) {
+  //     printf("    actual attn time: %.4f ms\n", elapsed);
+  //   }
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
   {
     int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
     produce_output_kernel<<<GET_BLOCKS(parallelism),
@@ -547,9 +577,11 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
-  //   float elapsed = 0;
+  //   elapsed = 0;
   //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  //   printf("TreeIncMultiHeadSelfAttention part 2 time: %.2f ms\n", elapsed);
+  //   if (device == 0) {
+  //     printf("    produce_output_kernel time: %.4f ms\n", elapsed);
+  //   }
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
 }
@@ -563,6 +595,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+
+  //   int device;
+  //   checkCUDA(cudaGetDevice(&device));
   //   cudaEvent_t t_start, t_end;
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -602,7 +637,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
-  //   std::cout << "commit tokens time: " << elapsed << " ms\n";
+  //   if (device == 0) {
+  //     std::cout << "Commit tokens time: " << elapsed << " ms\n";
+  //   }
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -634,7 +671,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
-  //   std::cout << "Compute qkv time: " << elapsed << " ms\n";
+  //   if (device == 0) {
+  //     std::cout << "Compute qkv time: " << elapsed << " ms\n";
+  //   }
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -651,11 +690,14 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
-  //   std::cout << "update custom mask time: " << elapsed << " ms\n";
+  //   if (device == 0) {
+  //     std::cout << "Update custom mask time: " << elapsed << " ms\n";
+  //   }
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
+
   // Update key-val cache, compact q array
   update_qkv_cache<DT>(m, bc, stream);
 
@@ -665,7 +707,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
-  //   std::cout << "update qkv time: " << elapsed << " ms\n";
+  //   if (device == 0) {
+  //     std::cout << "Update qkv time: " << elapsed << " ms\n";
+  //   }
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -680,7 +724,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
-  //   std::cout << "Attn time: " << elapsed << " ms\n";
+  //   if (device == 0) {
+  //     std::cout << "Attn time: " << elapsed << " ms\n";
+  //   }
 
   // Debug output:
   // {
@@ -702,6 +748,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   //   delete[] temp_output;
   // }
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
@@ -714,6 +763,15 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       processed_tokens_in_batch,
                       stream);
 
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   if (device == 0) {
+  //     std::cout << "Compute output proj time: " << elapsed << " ms\n";
+  //   }
   // {
   //   int size = m->oProjSize;
   //   DT *temp_output = new DT[size];
@@ -747,12 +805,12 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
   checkCUDA(get_legion_stream(&stream));
   bool use_bias = *m->qkv_bias || *m->final_bias;
 
-  cudaEvent_t t_start, t_end;
-  if (m->profiling) {
-    cudaEventCreate(&t_start);
-    cudaEventCreate(&t_end);
-    cudaEventRecord(t_start, stream);
-  }
+  //   int device;
+  //   checkCUDA(cudaGetDevice(&device));
+  //   cudaEvent_t t_start, t_end;
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
@@ -796,14 +854,16 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     assert(false && "Unspported data type");
   }
 
-  if (m->profiling) {
-    cudaEventRecord(t_end, stream);
-    checkCUDA(cudaEventSynchronize(t_end));
-    float elapsed = 0;
-    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    cudaEventDestroy(t_start);
-    cudaEventDestroy(t_end);
-  }
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   float elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   if (device == 0) {
+  //     std::cout << "TreeIncMultiHeadSelfAttention time: " << elapsed << "
+  //     ms\n";
+  //   }
 }
 
 TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
