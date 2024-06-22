@@ -37,12 +37,10 @@ public:
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       input_tensor_slots;
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
-      weight_tensor_slots;
-  std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       output_tensor_slots;
 
   // arguments
-  std::unordered_map<layer_guid_t, std::optional<DeviceSpecific<DeviceStates>>>
+  std::unordered_map<layer_guid_t, DeviceSpecific<DeviceStates>>
       per_device_op_states;
   RuntimeArgConfig runtime_arg_config;
 };

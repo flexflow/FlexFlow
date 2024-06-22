@@ -71,15 +71,17 @@ std::optional<float>
 void LocalTrainingBacking::execute_init() {
   for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
-    ComputationGraphOpAttrs attrs =
-        get_layer_attrs(this->computation_graph, operator_node).attrs;
-    OpTaskInvocation invocation = init(attrs);
-    TaskArgumentAccessor accessor =
-        this->get_task_arg_accessor(invocation, operator_node);
-    DeviceSpecific<DeviceStates> device_state =
-        this->call_init_task_impl(invocation.task_id, accessor);
-    this->local_slots_backing.add_per_device_op_state(operator_node,
-                                                      device_state);
+    if (contains_key(this->task_registry.init_task_ids, operator_node)) {
+      ComputationGraphOpAttrs attrs =
+          get_layer_attrs(this->computation_graph, operator_node).attrs;
+      OpTaskInvocation invocation = init(attrs);
+      TaskArgumentAccessor accessor =
+          this->get_task_arg_accessor(invocation, operator_node);
+      DeviceSpecific<DeviceStates> device_state =
+          this->call_init_task_impl(invocation.task_id, accessor);
+      this->local_slots_backing.add_per_device_op_state(operator_node,
+                                                        device_state);
+    }
   }
 }
 
@@ -119,7 +121,7 @@ void LocalTrainingBacking::execute_update() {
   NOT_IMPLEMENTED();
 }
 
-TaskArgumentAccessor const & LocalTrainingBacking::get_task_arg_accessor(
+TaskArgumentAccessor const &LocalTrainingBacking::get_task_arg_accessor(
     OpTaskInvocation const &invocation, layer_guid_t const &op_guid) const {
   TensorSlotsBacking tensor_slots_backing =
       this->local_slots_backing.construct_tensor_slots_backing(
@@ -132,15 +134,11 @@ TaskArgumentAccessor const & LocalTrainingBacking::get_task_arg_accessor(
       this->allocator, tensor_slots_backing, arg_slots_backing);
 }
 
-TaskRegistry const & LocalTrainingBacking::get_task_registry() const {
+TaskRegistry const &LocalTrainingBacking::get_task_registry() const {
   return this->task_registry;
 }
 
-ComputationGraph const & LocalTrainingBacking::get_computation_graph() const {
-  return this->computation_graph;
-}
-
-LocalSlotsBacking const & LocalTrainingBacking::get_local_slots_backing() const {
+LocalSlotsBacking const &LocalTrainingBacking::get_local_slots_backing() const {
   return this->local_slots_backing;
 }
 

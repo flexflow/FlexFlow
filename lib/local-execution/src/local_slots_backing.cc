@@ -41,10 +41,8 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     std::vector<tensor_guid_t> tensor_guids;
     switch (tensor_spec.role) {
       case TensorRole::INPUT:
-        tensor_guids = this->input_tensor_slots.at(op_guid);
-        break;
       case TensorRole::WEIGHT:
-        tensor_guids = this->weight_tensor_slots.at(op_guid);
+        tensor_guids = this->input_tensor_slots.at(op_guid);
         break;
       case TensorRole::OUTPUT:
         tensor_guids = this->output_tensor_slots.at(op_guid);
