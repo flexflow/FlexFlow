@@ -37,7 +37,7 @@ bool ReshapeAttrs::operator>=(ReshapeAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ReshapeAttrs>::operator()(
-    FlexFlow::ReshapeAttrs const &x) const {
+    ::FlexFlow::ReshapeAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::TensorShape>{}(x.shape) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -46,20 +46,21 @@ size_t hash<FlexFlow::ReshapeAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ReshapeAttrs
-    adl_serializer<FlexFlow::ReshapeAttrs>::from_json(json const &j) {
-  return {j.at("shape").template get<::FlexFlow::TensorShape>()};
+::FlexFlow::ReshapeAttrs
+    adl_serializer<::FlexFlow::ReshapeAttrs>::from_json(json const &j) {
+  return ::FlexFlow::ReshapeAttrs{
+      j.at("shape").template get<::FlexFlow::TensorShape>()};
 }
-void adl_serializer<FlexFlow::ReshapeAttrs>::to_json(
-    json &j, FlexFlow::ReshapeAttrs const &v) {
+void adl_serializer<::FlexFlow::ReshapeAttrs>::to_json(
+    json &j, ::FlexFlow::ReshapeAttrs const &v) {
   j["__type"] = "ReshapeAttrs";
   j["shape"] = v.shape;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ReshapeAttrs> Arbitrary<FlexFlow::ReshapeAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::ReshapeAttrs>(
+Gen<::FlexFlow::ReshapeAttrs> Arbitrary<::FlexFlow::ReshapeAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ReshapeAttrs>(
       gen::arbitrary<::FlexFlow::TensorShape>());
 }
 } // namespace rc

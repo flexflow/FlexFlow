@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct OperatorAttributePattern {
   OperatorAttributePattern() = delete;
-  OperatorAttributePattern(
+  explicit OperatorAttributePattern(
       std::unordered_set<::FlexFlow::OperatorAttributeConstraint> const
           &attribute_constraints);
 
@@ -35,16 +35,16 @@ struct OperatorAttributePattern {
 
 namespace std {
 template <>
-struct hash<FlexFlow::OperatorAttributePattern> {
-  size_t operator()(FlexFlow::OperatorAttributePattern const &) const;
+struct hash<::FlexFlow::OperatorAttributePattern> {
+  size_t operator()(::FlexFlow::OperatorAttributePattern const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::OperatorAttributePattern> {
-  static FlexFlow::OperatorAttributePattern from_json(json const &);
-  static void to_json(json &, FlexFlow::OperatorAttributePattern const &);
+struct adl_serializer<::FlexFlow::OperatorAttributePattern> {
+  static ::FlexFlow::OperatorAttributePattern from_json(json const &);
+  static void to_json(json &, ::FlexFlow::OperatorAttributePattern const &);
 };
 } // namespace nlohmann
 

@@ -22,12 +22,12 @@
 namespace FlexFlow {
 struct MultiHeadAttentionInputs {
   MultiHeadAttentionInputs() = delete;
-  MultiHeadAttentionInputs(size_t const &batch_size,
-                           size_t const &sequence_length,
-                           size_t const &query_size,
-                           size_t const &key_size,
-                           size_t const &value_size,
-                           ::FlexFlow::DataType const &datatype);
+  explicit MultiHeadAttentionInputs(size_t const &batch_size,
+                                    size_t const &sequence_length,
+                                    size_t const &query_size,
+                                    size_t const &key_size,
+                                    size_t const &value_size,
+                                    ::FlexFlow::DataType const &datatype);
 
   bool operator==(MultiHeadAttentionInputs const &) const;
   bool operator!=(MultiHeadAttentionInputs const &) const;
@@ -46,23 +46,23 @@ struct MultiHeadAttentionInputs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::MultiHeadAttentionInputs> {
-  size_t operator()(FlexFlow::MultiHeadAttentionInputs const &) const;
+struct hash<::FlexFlow::MultiHeadAttentionInputs> {
+  size_t operator()(::FlexFlow::MultiHeadAttentionInputs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::MultiHeadAttentionInputs> {
-  static FlexFlow::MultiHeadAttentionInputs from_json(json const &);
-  static void to_json(json &, FlexFlow::MultiHeadAttentionInputs const &);
+struct adl_serializer<::FlexFlow::MultiHeadAttentionInputs> {
+  static ::FlexFlow::MultiHeadAttentionInputs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::MultiHeadAttentionInputs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::MultiHeadAttentionInputs> {
-  static Gen<FlexFlow::MultiHeadAttentionInputs> arbitrary();
+struct Arbitrary<::FlexFlow::MultiHeadAttentionInputs> {
+  static Gen<::FlexFlow::MultiHeadAttentionInputs> arbitrary();
 };
 } // namespace rc
 

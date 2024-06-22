@@ -37,7 +37,7 @@ bool OutputPatternEdge::operator>=(OutputPatternEdge const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::OutputPatternEdge>::operator()(
-    FlexFlow::OutputPatternEdge const &x) const {
+    ::FlexFlow::OutputPatternEdge const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OutputMultiDiEdge>{}(x.raw_edge) +
             0x9e3779b9 + (result << 6) + (result >> 2);

@@ -26,7 +26,7 @@
 namespace FlexFlow {
 struct ParallelTensorDims {
   ParallelTensorDims() = delete;
-  ParallelTensorDims(
+  explicit ParallelTensorDims(
       ::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim> const &shard_dims,
       ::FlexFlow::ReplicaParallelDimSet const &replica_dims);
 
@@ -43,23 +43,23 @@ struct ParallelTensorDims {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ParallelTensorDims> {
-  size_t operator()(FlexFlow::ParallelTensorDims const &) const;
+struct hash<::FlexFlow::ParallelTensorDims> {
+  size_t operator()(::FlexFlow::ParallelTensorDims const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ParallelTensorDims> {
-  static FlexFlow::ParallelTensorDims from_json(json const &);
-  static void to_json(json &, FlexFlow::ParallelTensorDims const &);
+struct adl_serializer<::FlexFlow::ParallelTensorDims> {
+  static ::FlexFlow::ParallelTensorDims from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ParallelTensorDims const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ParallelTensorDims> {
-  static Gen<FlexFlow::ParallelTensorDims> arbitrary();
+struct Arbitrary<::FlexFlow::ParallelTensorDims> {
+  static Gen<::FlexFlow::ParallelTensorDims> arbitrary();
 };
 } // namespace rc
 

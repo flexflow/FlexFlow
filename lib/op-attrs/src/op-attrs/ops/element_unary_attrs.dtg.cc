@@ -45,7 +45,7 @@ bool ElementUnaryAttrs::operator>=(ElementUnaryAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ElementUnaryAttrs>::operator()(
-    FlexFlow::ElementUnaryAttrs const &x) const {
+    ::FlexFlow::ElementUnaryAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OperatorType>{}(x.op_type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -56,13 +56,14 @@ size_t hash<FlexFlow::ElementUnaryAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ElementUnaryAttrs
-    adl_serializer<FlexFlow::ElementUnaryAttrs>::from_json(json const &j) {
-  return {j.at("op_type").template get<::FlexFlow::OperatorType>(),
-          j.at("scalar").template get<std::optional<float>>()};
+::FlexFlow::ElementUnaryAttrs
+    adl_serializer<::FlexFlow::ElementUnaryAttrs>::from_json(json const &j) {
+  return ::FlexFlow::ElementUnaryAttrs{
+      j.at("op_type").template get<::FlexFlow::OperatorType>(),
+      j.at("scalar").template get<std::optional<float>>()};
 }
-void adl_serializer<FlexFlow::ElementUnaryAttrs>::to_json(
-    json &j, FlexFlow::ElementUnaryAttrs const &v) {
+void adl_serializer<::FlexFlow::ElementUnaryAttrs>::to_json(
+    json &j, ::FlexFlow::ElementUnaryAttrs const &v) {
   j["__type"] = "ElementUnaryAttrs";
   j["op_type"] = v.op_type;
   j["scalar"] = v.scalar;
@@ -70,9 +71,9 @@ void adl_serializer<FlexFlow::ElementUnaryAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ElementUnaryAttrs>
-    Arbitrary<FlexFlow::ElementUnaryAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::ElementUnaryAttrs>(
+Gen<::FlexFlow::ElementUnaryAttrs>
+    Arbitrary<::FlexFlow::ElementUnaryAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ElementUnaryAttrs>(
       gen::arbitrary<::FlexFlow::OperatorType>(),
       gen::arbitrary<std::optional<float>>());
 }

@@ -85,7 +85,7 @@ bool ElementBinaryAttrs::operator>=(ElementBinaryAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ElementBinaryAttrs>::operator()(
-    FlexFlow::ElementBinaryAttrs const &x) const {
+    ::FlexFlow::ElementBinaryAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OperatorType>{}(x.type) + 0x9e3779b9 +
             (result << 6) + (result >> 2);
@@ -100,15 +100,16 @@ size_t hash<FlexFlow::ElementBinaryAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ElementBinaryAttrs
-    adl_serializer<FlexFlow::ElementBinaryAttrs>::from_json(json const &j) {
-  return {j.at("type").template get<::FlexFlow::OperatorType>(),
-          j.at("compute_type").template get<::FlexFlow::DataType>(),
-          j.at("should_broadcast_lhs").template get<bool>(),
-          j.at("should_broadcast_rhs").template get<bool>()};
+::FlexFlow::ElementBinaryAttrs
+    adl_serializer<::FlexFlow::ElementBinaryAttrs>::from_json(json const &j) {
+  return ::FlexFlow::ElementBinaryAttrs{
+      j.at("type").template get<::FlexFlow::OperatorType>(),
+      j.at("compute_type").template get<::FlexFlow::DataType>(),
+      j.at("should_broadcast_lhs").template get<bool>(),
+      j.at("should_broadcast_rhs").template get<bool>()};
 }
-void adl_serializer<FlexFlow::ElementBinaryAttrs>::to_json(
-    json &j, FlexFlow::ElementBinaryAttrs const &v) {
+void adl_serializer<::FlexFlow::ElementBinaryAttrs>::to_json(
+    json &j, ::FlexFlow::ElementBinaryAttrs const &v) {
   j["__type"] = "ElementBinaryAttrs";
   j["type"] = v.type;
   j["compute_type"] = v.compute_type;
@@ -118,9 +119,9 @@ void adl_serializer<FlexFlow::ElementBinaryAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ElementBinaryAttrs>
-    Arbitrary<FlexFlow::ElementBinaryAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::ElementBinaryAttrs>(
+Gen<::FlexFlow::ElementBinaryAttrs>
+    Arbitrary<::FlexFlow::ElementBinaryAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::ElementBinaryAttrs>(
       gen::arbitrary<::FlexFlow::OperatorType>(),
       gen::arbitrary<::FlexFlow::DataType>(),
       gen::arbitrary<bool>(),

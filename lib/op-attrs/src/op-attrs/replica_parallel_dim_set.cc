@@ -4,7 +4,7 @@
 namespace FlexFlow {
 
 ReplicaParallelDimSet empty_replica_parallel_dim_set() {
-  return ReplicaParallelDimSet{1, 1};
+  return ReplicaParallelDimSet{SumDegree{1}, DiscardCopyDegree{1}};
 }
 
 int get_order_of_replica_type(ReplicaParallelDimSet const &s,

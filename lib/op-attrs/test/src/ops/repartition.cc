@@ -3,14 +3,14 @@
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Repartition shape inference") {
-    ff_dim_t dim = 2;
+    ff_dim_t dim = ff_dim_t{2};
     int degree = 4;
     RepartitionAttrs attrs = RepartitionAttrs{
         /*repartition_dim=*/dim,
         /*repartition_degree=*/degree,
     };
 
-    ParallelTensorShape input = {
+    ParallelTensorShape input = ParallelTensorShape{
         ParallelTensorDims{
             FFOrdered<ShardParallelDim>{
                 ShardParallelDim{12, 2},

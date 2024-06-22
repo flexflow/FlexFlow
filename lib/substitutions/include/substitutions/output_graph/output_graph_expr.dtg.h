@@ -16,8 +16,9 @@
 namespace FlexFlow {
 struct OutputGraphExpr {
   OutputGraphExpr() = delete;
-  OutputGraphExpr(::FlexFlow::NodeLabelledOpenMultiDiGraph<
-                  ::FlexFlow::OutputOperatorAttrsAssignment> const &raw_graph);
+  explicit OutputGraphExpr(
+      ::FlexFlow::NodeLabelledOpenMultiDiGraph<
+          ::FlexFlow::OutputOperatorAttrsAssignment> const &raw_graph);
 
   ::FlexFlow::NodeLabelledOpenMultiDiGraph<
       ::FlexFlow::OutputOperatorAttrsAssignment>

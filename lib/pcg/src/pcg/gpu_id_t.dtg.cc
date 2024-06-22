@@ -34,7 +34,8 @@ bool gpu_id_t::operator>=(gpu_id_t const &other) const {
 } // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::gpu_id_t>::operator()(FlexFlow::gpu_id_t const &x) const {
+size_t
+    hash<FlexFlow::gpu_id_t>::operator()(::FlexFlow::gpu_id_t const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.gpu_index) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -43,20 +44,20 @@ size_t hash<FlexFlow::gpu_id_t>::operator()(FlexFlow::gpu_id_t const &x) const {
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::gpu_id_t
-    adl_serializer<FlexFlow::gpu_id_t>::from_json(json const &j) {
-  return {j.at("gpu_index").template get<int>()};
+::FlexFlow::gpu_id_t
+    adl_serializer<::FlexFlow::gpu_id_t>::from_json(json const &j) {
+  return ::FlexFlow::gpu_id_t{j.at("gpu_index").template get<int>()};
 }
-void adl_serializer<FlexFlow::gpu_id_t>::to_json(json &j,
-                                                 FlexFlow::gpu_id_t const &v) {
+void adl_serializer<::FlexFlow::gpu_id_t>::to_json(
+    json &j, ::FlexFlow::gpu_id_t const &v) {
   j["__type"] = "gpu_id_t";
   j["gpu_index"] = v.gpu_index;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::gpu_id_t> Arbitrary<FlexFlow::gpu_id_t>::arbitrary() {
-  return gen::construct<FlexFlow::gpu_id_t>(gen::arbitrary<int>());
+Gen<::FlexFlow::gpu_id_t> Arbitrary<::FlexFlow::gpu_id_t>::arbitrary() {
+  return gen::construct<::FlexFlow::gpu_id_t>(gen::arbitrary<int>());
 }
 } // namespace rc
 

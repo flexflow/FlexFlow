@@ -38,7 +38,7 @@ bool OperatorGraphOutput::operator>=(OperatorGraphOutput const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::OperatorGraphOutput>::operator()(
-    FlexFlow::OperatorGraphOutput const &x) const {
+    ::FlexFlow::OperatorGraphOutput const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::Node>{}(x.node) + 0x9e3779b9 + (result << 6) +
             (result >> 2);

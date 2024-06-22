@@ -8,12 +8,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     size_t batch_size = 2;
 
-    TensorShape input_shape = {
+    TensorShape input_shape = TensorShape{
         TensorDims{FFOrdered<size_t>{batch_size, 3, 10, 10}},
         DataType::FLOAT,
     };
 
-    tensor_guid_t input = b.create_tensor(input_shape, /*create_grad=*/true);
+    tensor_guid_t input = b.create_tensor(input_shape, CreateGrad::YES);
     tensor_guid_t output = b.conv2d(input,
                                     /*outChannels=*/5,
                                     /*kernelH=*/3,

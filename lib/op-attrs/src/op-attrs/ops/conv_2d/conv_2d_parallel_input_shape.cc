@@ -12,7 +12,7 @@ Conv2DParallelInputShape
   ShardParallelDim height_dim = shard_dim_at_idx(input, ff_dim_t{2});
   ShardParallelDim width_dim = shard_dim_at_idx(input, ff_dim_t{3});
 
-  return Conv2DParallelInputShape{
+  Conv2DParallelInputShape parsed = Conv2DParallelInputShape{
       sample_dim,
       channel_dim,
       height_dim,
@@ -21,6 +21,11 @@ Conv2DParallelInputShape
       get_discard_copy_degree(input),
       input.data_type,
   };
+
+  assert(parsed.height_dim.degree == 1);
+  assert(parsed.width_dim.degree == 1);
+
+  return parsed;
 }
 
 } // namespace FlexFlow

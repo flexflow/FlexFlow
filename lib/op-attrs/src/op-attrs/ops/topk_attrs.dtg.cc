@@ -34,8 +34,8 @@ bool TopKAttrs::operator>=(TopKAttrs const &other) const {
 } // namespace FlexFlow
 
 namespace std {
-size_t
-    hash<FlexFlow::TopKAttrs>::operator()(FlexFlow::TopKAttrs const &x) const {
+size_t hash<FlexFlow::TopKAttrs>::operator()(
+    ::FlexFlow::TopKAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<int>{}(x.k) + 0x9e3779b9 + (result << 6) + (result >> 2);
   result ^=
@@ -45,12 +45,13 @@ size_t
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::TopKAttrs
-    adl_serializer<FlexFlow::TopKAttrs>::from_json(json const &j) {
-  return {j.at("k").template get<int>(), j.at("sorted").template get<bool>()};
+::FlexFlow::TopKAttrs
+    adl_serializer<::FlexFlow::TopKAttrs>::from_json(json const &j) {
+  return ::FlexFlow::TopKAttrs{j.at("k").template get<int>(),
+                               j.at("sorted").template get<bool>()};
 }
-void adl_serializer<FlexFlow::TopKAttrs>::to_json(
-    json &j, FlexFlow::TopKAttrs const &v) {
+void adl_serializer<::FlexFlow::TopKAttrs>::to_json(
+    json &j, ::FlexFlow::TopKAttrs const &v) {
   j["__type"] = "TopKAttrs";
   j["k"] = v.k;
   j["sorted"] = v.sorted;
@@ -58,9 +59,9 @@ void adl_serializer<FlexFlow::TopKAttrs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::TopKAttrs> Arbitrary<FlexFlow::TopKAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::TopKAttrs>(gen::arbitrary<int>(),
-                                             gen::arbitrary<bool>());
+Gen<::FlexFlow::TopKAttrs> Arbitrary<::FlexFlow::TopKAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::TopKAttrs>(gen::arbitrary<int>(),
+                                               gen::arbitrary<bool>());
 }
 } // namespace rc
 

@@ -78,6 +78,8 @@
             "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
           ];
 
+          RC_PARAMS = "max_discard_ratio=100";
+
           buildInputs = builtins.concatLists [
             (with pkgs; [
               zlib
@@ -110,7 +112,7 @@
 
         default = mkShell {
           inputsFrom = [ ci ];
-          inherit (ci) CMAKE_FLAGS;
+          inherit (ci) CMAKE_FLAGS RC_PARAMS;
 
           VIMPLUGINS = lib.strings.concatStringsSep "," [
             "${proj-repo.packages.${system}.proj-nvim}"

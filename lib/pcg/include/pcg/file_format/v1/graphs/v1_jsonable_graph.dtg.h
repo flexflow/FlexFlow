@@ -22,7 +22,7 @@ namespace FlexFlow {
 template <typename NodeT, typename TensorT>
 struct V1JsonableGraph {
   V1JsonableGraph() = delete;
-  V1JsonableGraph(
+  explicit V1JsonableGraph(
       std::unordered_map<size_t, NodeT> const &node_labels,
       std::unordered_map<size_t, ::FlexFlow::V1GraphOutput> const &outputs,
       std::unordered_map<size_t, TensorT> const &output_labels,
@@ -37,10 +37,10 @@ struct V1JsonableGraph {
 
 namespace nlohmann {
 template <typename NodeT, typename TensorT>
-struct adl_serializer<FlexFlow::V1JsonableGraph<NodeT, TensorT>> {
-  static FlexFlow::V1JsonableGraph<NodeT, TensorT> from_json(json const &);
+struct adl_serializer<::FlexFlow::V1JsonableGraph<NodeT, TensorT>> {
+  static ::FlexFlow::V1JsonableGraph<NodeT, TensorT> from_json(json const &);
   static void to_json(json &,
-                      FlexFlow::V1JsonableGraph<NodeT, TensorT> const &);
+                      ::FlexFlow::V1JsonableGraph<NodeT, TensorT> const &);
 };
 } // namespace nlohmann
 
@@ -65,10 +65,10 @@ V1JsonableGraph<NodeT, TensorT>::V1JsonableGraph(
 
 namespace nlohmann {
 template <typename NodeT, typename TensorT>
-FlexFlow::V1JsonableGraph<NodeT, TensorT>
-    adl_serializer<FlexFlow::V1JsonableGraph<NodeT, TensorT>>::from_json(
+::FlexFlow::V1JsonableGraph<NodeT, TensorT>
+    adl_serializer<::FlexFlow::V1JsonableGraph<NodeT, TensorT>>::from_json(
         json const &j) {
-  return {
+  return ::FlexFlow::V1JsonableGraph<NodeT, TensorT>{
       j.at("node_labels").template get<std::unordered_map<size_t, NodeT>>(),
       j.at("outputs")
           .template get<
@@ -77,8 +77,8 @@ FlexFlow::V1JsonableGraph<NodeT, TensorT>
       j.at("graph").template get<::FlexFlow::V1MultiDiGraph>()};
 }
 template <typename NodeT, typename TensorT>
-void adl_serializer<FlexFlow::V1JsonableGraph<NodeT, TensorT>>::to_json(
-    json &j, FlexFlow::V1JsonableGraph<NodeT, TensorT> const &v) {
+void adl_serializer<::FlexFlow::V1JsonableGraph<NodeT, TensorT>>::to_json(
+    json &j, ::FlexFlow::V1JsonableGraph<NodeT, TensorT> const &v) {
   j["__type"] = "V1JsonableGraph";
   j["node_labels"] = v.node_labels;
   j["outputs"] = v.outputs;

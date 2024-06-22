@@ -112,7 +112,7 @@ bool MultiHeadAttentionInputs::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::MultiHeadAttentionInputs>::operator()(
-    FlexFlow::MultiHeadAttentionInputs const &x) const {
+    ::FlexFlow::MultiHeadAttentionInputs const &x) const {
   size_t result = 0;
   result ^= std::hash<size_t>{}(x.batch_size) + 0x9e3779b9 + (result << 6) +
             (result >> 2);
@@ -131,18 +131,19 @@ size_t hash<FlexFlow::MultiHeadAttentionInputs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::MultiHeadAttentionInputs
-    adl_serializer<FlexFlow::MultiHeadAttentionInputs>::from_json(
+::FlexFlow::MultiHeadAttentionInputs
+    adl_serializer<::FlexFlow::MultiHeadAttentionInputs>::from_json(
         json const &j) {
-  return {j.at("batch_size").template get<size_t>(),
-          j.at("sequence_length").template get<size_t>(),
-          j.at("query_size").template get<size_t>(),
-          j.at("key_size").template get<size_t>(),
-          j.at("value_size").template get<size_t>(),
-          j.at("datatype").template get<::FlexFlow::DataType>()};
+  return ::FlexFlow::MultiHeadAttentionInputs{
+      j.at("batch_size").template get<size_t>(),
+      j.at("sequence_length").template get<size_t>(),
+      j.at("query_size").template get<size_t>(),
+      j.at("key_size").template get<size_t>(),
+      j.at("value_size").template get<size_t>(),
+      j.at("datatype").template get<::FlexFlow::DataType>()};
 }
-void adl_serializer<FlexFlow::MultiHeadAttentionInputs>::to_json(
-    json &j, FlexFlow::MultiHeadAttentionInputs const &v) {
+void adl_serializer<::FlexFlow::MultiHeadAttentionInputs>::to_json(
+    json &j, ::FlexFlow::MultiHeadAttentionInputs const &v) {
   j["__type"] = "MultiHeadAttentionInputs";
   j["batch_size"] = v.batch_size;
   j["sequence_length"] = v.sequence_length;
@@ -154,9 +155,9 @@ void adl_serializer<FlexFlow::MultiHeadAttentionInputs>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::MultiHeadAttentionInputs>
-    Arbitrary<FlexFlow::MultiHeadAttentionInputs>::arbitrary() {
-  return gen::construct<FlexFlow::MultiHeadAttentionInputs>(
+Gen<::FlexFlow::MultiHeadAttentionInputs>
+    Arbitrary<::FlexFlow::MultiHeadAttentionInputs>::arbitrary() {
+  return gen::construct<::FlexFlow::MultiHeadAttentionInputs>(
       gen::arbitrary<size_t>(),
       gen::arbitrary<size_t>(),
       gen::arbitrary<size_t>(),

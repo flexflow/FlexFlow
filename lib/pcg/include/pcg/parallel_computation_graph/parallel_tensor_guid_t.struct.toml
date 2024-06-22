@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "parallel_tensor_guid_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/multidiedge.h"
+]
+
+[[fields]]
+name = "raw_graph_output"
+type = "::FlexFlow::MultiDiOutput"

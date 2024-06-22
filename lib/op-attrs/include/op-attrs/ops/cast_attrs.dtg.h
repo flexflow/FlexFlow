@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct CastAttrs {
   CastAttrs() = delete;
-  CastAttrs(DataType const &dtype);
+  explicit CastAttrs(DataType const &dtype);
 
   bool operator==(CastAttrs const &) const;
   bool operator!=(CastAttrs const &) const;
@@ -35,23 +35,23 @@ struct CastAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::CastAttrs> {
-  size_t operator()(FlexFlow::CastAttrs const &) const;
+struct hash<::FlexFlow::CastAttrs> {
+  size_t operator()(::FlexFlow::CastAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::CastAttrs> {
-  static FlexFlow::CastAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::CastAttrs const &);
+struct adl_serializer<::FlexFlow::CastAttrs> {
+  static ::FlexFlow::CastAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::CastAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::CastAttrs> {
-  static Gen<FlexFlow::CastAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::CastAttrs> {
+  static Gen<::FlexFlow::CastAttrs> arbitrary();
 };
 } // namespace rc
 
