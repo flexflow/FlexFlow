@@ -67,6 +67,8 @@ stdenv.mkDerivation rec {
         (cmakeFeature "HIP_THRUST_ROOT_DIR" "${rocmPackages.rocthrust}")
         (cmakeFeature "ROCM_PATH" "${rocmPackages.clr}")
 
+        (cmakeFeature "HIP_INCLUDE_DIRS" "${rocmPackages.clr}/hip/include")
+
         (cmakeFeature "CMAKE_CXX_COMPILER" "hipcc")
         (cmakeFeature "CMAKE_C_COMPILER" "hipcc")
       ]

@@ -100,7 +100,7 @@ include(doctestlib) # named doctestlib to avoid a name collision with doctest.cm
 include(visit_struct)
 include(CTest)
 include(fmt)
-# include(legion)
+include(legion)
 include(rapidcheck)
 #include(gtest)
 

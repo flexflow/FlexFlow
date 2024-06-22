@@ -37,6 +37,8 @@
       };
       lib = pkgs.lib;
 
+      inherit (pkgs.rocmPackages) clr miopen miopengemm rccl rocm-runtime;
+
       rocm = pkgs.symlinkJoin {
         name = "rocm";
         paths = with pkgs.rocmPackages; [ 
@@ -46,12 +48,13 @@
           clr 
           hipcc
           rccl
+          llvm.clang
           miopen
           miopengemm
           miopen-hip
           hipblas
           rocm-cmake
-          clr
+          hip-common
         ];
       };
 
@@ -84,7 +87,13 @@
       devShells = rec {
         ci = mkShell {
           shellHook = ''
+            export HIP_COMPILER="${pkgs.rocmPackages.llvm.clang}/bin/clang"
             export PATH="$HOME/ff/.scripts/:$PATH"
+            export ROCM_PATH=${clr}
+            export HIP_DEVICE_LIB_PATH="${pkgs.rocmPackages.rocm-device-libs}/amdgcn/bitcode"
+            # export HIP_ROOT_DIR=${clr}
+            # export HIP_PATH=${clr}/hip
+            # export HIP_INCLUDE_DIRS=${clr}/hip/include
             echo "ROCm path set to: $ROCM_PATH"
           '';
           
@@ -100,6 +109,14 @@
             "-DFF_USE_EXTERNAL_RANGEV3=ON"
             "-DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON"
             "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
+
+            # hip related flags
+            "-DHIP_PLATFORM=amd"
+            # "-DHIP_RUNTIME=rocclr"
+            # "-DHIP_COMPILER=${pkgs.rocmPackages.llvm.clang}/bin/clang"
+            "-DHIP_PATH=${clr}/hip"
+            "-DHIP_ROOT_DIR=${clr}/hip"
+
           ];
 
           RC_PARAMS = "max_discard_ratio=100";
@@ -116,12 +133,6 @@
               ccache
               pkg-config
               python3
-              # cudatoolkit
-              # cudaPackages.cuda_nvcc
-              # cudaPackages.cudnn
-              # cudaPackages.nccl
-              # cudaPackages.libcublas
-              # cudaPackages.cuda_cudart
               tl-expected
             ])
             (with self.packages.${system}; [
@@ -130,16 +141,21 @@
               rapidcheckFull
               doctest
             ])
-            [ rocm ]
-            # (with pkgs.rocmPackages; [
-            #   hipcc
-            #   rccl
-            #   miopen
-            #   miopen-hip
-            #   hipblas
-            #   rocm-cmake
-            #   clr
-            # ])
+            (with pkgs.rocmPackages; [
+              clr
+              miopen
+              miopengemm
+              rccl
+              rocm-runtime
+              hipblas
+              hipcc
+              hip-common
+              rocm-cmake
+              miopen-hip
+              rocm-thunk
+              rocm-device-libs
+            ])
+            # [ rocm ]
           ];
         };
 

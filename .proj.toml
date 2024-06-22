@@ -6,27 +6,30 @@ fix_compile_commands = false
 
 build_targets = [
   "kernels",
-  "pcg",
+  # "pcg",
   # "substitutions",
   # "compiler",
-  "substitution-generator",
-  "local-execution",
+  # "substitution-generator",
+  # "local-execution",
 ]
 test_targets = [
   # "utils-tests",
   # "substitutions-tests",
   # "compiler-tests",
-  "pcg",
+  # "pcg",
   # "substitutions",
   # "compiler",
-  "substitution-generator",
+  # "substitution-generator",
 ]
 
 [cmake_flags_extra]
 FF_USE_HIP_ROCM = "ON"
 FF_GPU_BACKEND = "hip_rocm"
-CMAKE_CUDA_ARCHITECTURES = "60"
+# CMAKE_CUDA_ARCHITECTURES = "60"
 CMAKE_HIP_ARCHITECTURES = "gfx900"
+# HIP_PLATFORM = "amd"
+# HIP_RUNTIME = "rocclr"
 CMAKE_CXX_COMPILER = "hipcc"
 CMAKE_C_COMPILER = "hipcc"
+
 # FF_CUDA_ARCH = "60"
