@@ -15,3 +15,5 @@ ff_add_library(
     spdlog
     kernels
 )
+
+add_subdirectory(test)

@@ -20,6 +20,11 @@ void OpTaskBinding::insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
   this->arg_bindings.insert({name, arg_spec});
 }
 
+bool OpTaskBinding::operator==(OpTaskBinding const & other) {
+  return this->get_tensor_bindings() == other.get_tensor_bindings() &&
+         this->get_arg_bindings() == other.get_arg_bindings();
+}
+
 std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
     OpTaskBinding::get_tensor_bindings() const {
   return this->tensor_bindings;
