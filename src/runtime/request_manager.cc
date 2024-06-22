@@ -2086,8 +2086,11 @@ bool RequestManager::add_tokens_to_spec_token_tree(
              child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
              child_pos++) {
           int result_idx = child_start_idx + child_pos;
-          child_probs[child_pos] = std::make_pair(
-              log(ssm_inference_result.probs[result_idx]), result_idx);
+          if (log(ssm_inference_result.probs[result_idx]) !=
+              -std::numeric_limits<float>::infinity()) {
+            child_probs[child_pos] = std::make_pair(
+                log(ssm_inference_result.probs[result_idx]), result_idx);
+          }
         }
         // Sort in descending order
         std::sort(child_probs.begin(),
