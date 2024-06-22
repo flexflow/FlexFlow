@@ -21,13 +21,18 @@ struct LocalTrainingBacking {
   PerLayerElapsedTime execute_backward();
   void execute_update();
 
+  TaskRegistry const & get_task_registry() const;
+  ComputationGraph const & get_computation_graph() const;
+  LocalSlotsBacking const & get_local_slots_backing() const;
+
+  TaskArgumentAccessor const & get_task_arg_accessor(OpTaskInvocation const &,
+                                             layer_guid_t const &) const;
+
 private:
   DeviceSpecific<DeviceStates>
       call_init_task_impl(task_id_t, TaskArgumentAccessor const &);
   std::optional<float> call_task_impl(task_id_t, TaskArgumentAccessor);
 
-  TaskArgumentAccessor get_task_arg_accessor(OpTaskInvocation const &,
-                                             layer_guid_t const &) const;
 
   Allocator allocator;
   ComputationGraph computation_graph;

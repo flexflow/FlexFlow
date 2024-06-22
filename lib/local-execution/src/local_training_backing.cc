@@ -119,7 +119,7 @@ void LocalTrainingBacking::execute_update() {
   NOT_IMPLEMENTED();
 }
 
-TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
+TaskArgumentAccessor const & LocalTrainingBacking::get_task_arg_accessor(
     OpTaskInvocation const &invocation, layer_guid_t const &op_guid) const {
   TensorSlotsBacking tensor_slots_backing =
       this->local_slots_backing.construct_tensor_slots_backing(
@@ -130,6 +130,18 @@ TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
 
   return TaskArgumentAccessor::create<LocalTaskArgumentAccessor>(
       this->allocator, tensor_slots_backing, arg_slots_backing);
+}
+
+TaskRegistry const & LocalTrainingBacking::get_task_registry() const {
+  return this->task_registry;
+}
+
+ComputationGraph const & LocalTrainingBacking::get_computation_graph() const {
+  return this->computation_graph;
+}
+
+LocalSlotsBacking const & LocalTrainingBacking::get_local_slots_backing() const {
+  return this->local_slots_backing;
 }
 
 } // namespace FlexFlow
