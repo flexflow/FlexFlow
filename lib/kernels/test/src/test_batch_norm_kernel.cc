@@ -8,20 +8,20 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test BatchNorm Kernel") {
     size_t output_n = 1, output_c = 10, output_h = 10, output_w = 10;
 
-    ffStream_t stream = create_ff_stream();
-    PerDeviceFFHandle handle = get_per_device_ff_handle();
+    ManagedStream mStream = get_managed_stream();
+    ManagedHandle mHandle = get_managed_handle();
 
     Allocator allocator = get_local_memory_allocator();
 
-    BatchNormPerDeviceState state = Kernels::BatchNorm::init_kernel(stream,
-                                                                    handle,
-                                                                    allocator,
-                                                                    nullptr,
-                                                                    output_n,
-                                                                    output_c,
-                                                                    output_h,
-                                                                    output_w,
-                                                                    true);
+    BatchNormPerDeviceState state =
+        Kernels::BatchNorm::init_kernel(mHandle.handle,
+                                        allocator,
+                                        nullptr,
+                                        output_n,
+                                        output_c,
+                                        output_h,
+                                        output_w,
+                                        true);
 
     TensorShape input_shape = make_float_tensor_shape_from_legion_dims(
         {output_n, output_c, output_h, output_w});
@@ -34,15 +34,15 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     GenericTensorAccessorW input_accessor =
         create_random_filled_accessor_w(input_shape, allocator);
+    GenericTensorAccessorW output_accessor =
+        create_random_filled_accessor_w(output_shape, allocator);
     GenericTensorAccessorW scale_accessor =
         create_filled_accessor_w(scale_shape, allocator, 1.0f);
     GenericTensorAccessorW bias_accessor =
         create_filled_accessor_w(bias_shape, allocator, 0.0f);
 
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorW output_accessor =
-          allocator.allocate_tensor(output_shape);
-      Kernels::BatchNorm::forward_kernel(stream,
+      Kernels::BatchNorm::forward_kernel(mStream.stream,
                                          state,
                                          input_accessor.get_float_ptr(),
                                          output_accessor.get_float_ptr(),
@@ -56,12 +56,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW output_accessor =
-          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW grad_output_accessor =
           create_random_filled_accessor_w(output_shape, allocator);
 
-      Kernels::BatchNorm::backward_kernel(stream,
+      Kernels::BatchNorm::backward_kernel(mStream.stream,
                                           state,
                                           input_accessor.get_float_ptr(),
                                           grad_output_accessor.get_float_ptr(),
@@ -94,6 +92,5 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        state.actiDesc,
                                        true,
                                        nullptr);
-    cleanup_test(stream, handle);
   }
 }

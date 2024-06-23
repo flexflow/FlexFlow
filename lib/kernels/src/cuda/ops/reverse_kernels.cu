@@ -36,6 +36,24 @@ __global__ void reverse_forward_kernel(float const *in_ptr,
     out_ptr[i] = in_ptr[in_idx];
   }
 }
+// __global__ void reverse_forward_kernel(float const *in_ptr,
+//                                        float *out_ptr,
+//                                        coord_t num_out_blks,
+//                                        coord_t reverse_dim_size,
+//                                        coord_t in_blk_size) {
+//   CUDA_KERNEL_LOOP(i, num_out_blks * reverse_dim_size * in_blk_size) {
+//     coord_t blk_idx = i / (reverse_dim_size * in_blk_size);
+//     coord_t idx_within_blk = i % (reverse_dim_size * in_blk_size);
+//     coord_t reverse_dim_idx = idx_within_blk / in_blk_size;
+//     coord_t in_idx = idx_within_blk % in_blk_size;
+
+//     coord_t input_index =
+//         blk_idx * (reverse_dim_size * in_blk_size) +
+//         (reverse_dim_size - 1 - reverse_dim_idx) * in_blk_size + in_idx;
+
+//     out_ptr[i] = in_ptr[input_index];
+//   }
+// }
 
 void forward_kernel(cudaStream_t stream,
                     float const *in_ptr,

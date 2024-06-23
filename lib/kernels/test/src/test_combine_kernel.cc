@@ -5,21 +5,23 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test combine kernel") {
-    ffStream_t stream = create_ff_stream();
+    ManagedStream mStream = get_managed_stream();
 
     Allocator allocator = get_local_memory_allocator();
 
     TensorShape input_shape =
         make_float_tensor_shape_from_legion_dims({100, 100});
 
+    GenericTensorAccessorW output_accessor =
+        create_random_filled_accessor_w(input_shape, allocator);
+
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
               create_random_filled_accessor_w(input_shape, allocator));
-      GenericTensorAccessorW output_accessor =
-          allocator.allocate_tensor(input_shape);
 
-      Kernels::Combine::forward_kernel(stream, input_accessor, output_accessor);
+      Kernels::Combine::forward_kernel(
+          mStream.stream, input_accessor, output_accessor);
 
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
@@ -28,20 +30,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorR output_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(input_shape, allocator));
       GenericTensorAccessorW input_accessor_grad =
           allocator.allocate_tensor(input_shape);
 
       Kernels::Combine::backward_kernel(
-          stream, output_accessor, input_accessor_grad);
+          mStream.stream,
+          read_only_accessor_from_write_accessor(output_accessor),
+          input_accessor_grad);
 
       std::vector<float> host_input_grad = load_data_to_host_from_device<float>(
           read_only_accessor_from_write_accessor(input_accessor_grad));
       CHECK(contains_non_zero(host_input_grad));
     }
-
-    checkCUDA(cudaStreamDestroy(stream));
   }
 }

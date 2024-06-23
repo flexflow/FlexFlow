@@ -9,17 +9,17 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = get_local_memory_allocator();
 
-    ffStream_t stream = create_ff_stream();
+    ManagedStream mStream = get_managed_stream();
 
     GenericTensorAccessorR input_accessor =
         read_only_accessor_from_write_accessor(
             create_filled_accessor_w(input_shape, allocator, 2.0f));
+    GenericTensorAccessorW output_accessor =
+        create_filled_accessor_w(input_shape, allocator, 2.0f);
 
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorW output_accessor =
-          allocator.allocate_tensor(input_shape);
       Kernels::Flat::forward_kernel(
-          stream, input_accessor, output_accessor.get_float_ptr());
+          mStream.stream, input_accessor, output_accessor.get_float_ptr());
 
       std::vector<float> check_output_data =
           load_data_to_host_from_device<float>(
@@ -31,14 +31,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW output_accessor =
-          create_filled_accessor_w(input_shape, allocator, 2.0f);
-
       GenericTensorAccessorR data_accessor =
           read_only_accessor_from_write_accessor(
               create_filled_accessor_w(input_shape, allocator, 1.0f));
 
-      Kernels::Flat::backward_kernel(stream,
+      Kernels::Flat::backward_kernel(mStream.stream,
                                      input_accessor,
                                      output_accessor.get_float_ptr(),
                                      data_accessor.get_float_ptr());
@@ -51,7 +48,5 @@ TEST_SUITE(FF_TEST_SUITE) {
           input_accessor.shape.num_elements(), 3.0f);
       CHECK(backward_output_data == expected_output_data);
     }
-
-    checkCUDA(cudaStreamDestroy(stream));
   }
 }

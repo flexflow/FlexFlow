@@ -17,12 +17,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     PoolOp pool_type = PoolOp::MAX;
 
-    ffStream_t stream = create_ff_stream();
-    PerDeviceFFHandle handle = get_per_device_ff_handle();
+    ManagedStream mStream = get_managed_stream();
+    ManagedHandle mHandle = get_managed_handle();
 
     Allocator allocator = get_local_memory_allocator();
 
-    Pool2DPerDeviceState state = Kernels::Pool2D::init_kernel(handle,
+    Pool2DPerDeviceState state = Kernels::Pool2D::init_kernel(mHandle.handle,
                                                               std::nullopt,
                                                               input_w,
                                                               input_h,
@@ -42,13 +42,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     GenericTensorAccessorW input_data =
         create_random_filled_accessor_w(input_shape, allocator);
+    GenericTensorAccessorW output_data =
+        create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorW output_data =
-          allocator.allocate_tensor(output_shape);
-
       Kernels::Pool2D::forward_kernel(
-          stream, state, input_data.ptr, output_data.ptr);
+          mStream.stream, state, input_data.ptr, output_data.ptr);
 
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
@@ -57,14 +56,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW output_data =
-          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW output_grad =
           create_filled_accessor_w(output_shape, allocator, 1.0f);
       GenericTensorAccessorW input_grad =
           allocator.allocate_tensor(input_shape);
 
-      Kernels::Pool2D::backward_kernel(stream,
+      Kernels::Pool2D::backward_kernel(mStream.stream,
                                        state,
                                        input_data.ptr,
                                        input_grad.ptr,
@@ -76,7 +73,5 @@ TEST_SUITE(FF_TEST_SUITE) {
               read_only_accessor_from_write_accessor(input_grad));
       CHECK(contains_non_zero(host_input_grad_data));
     }
-
-    cleanup_test(stream, handle);
   }
 }

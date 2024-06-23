@@ -14,8 +14,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t b_seq_length_dim = -1;
     size_t seq_length = -1;
 
-    ffStream_t stream = create_ff_stream();
-    PerDeviceFFHandle handle = get_per_device_ff_handle();
+    ManagedStream mStream = get_managed_stream();
+    ManagedHandle mHandle = get_managed_handle();
 
     Allocator allocator = get_local_memory_allocator();
 
@@ -30,12 +30,12 @@ TEST_SUITE(FF_TEST_SUITE) {
         create_random_filled_accessor_w(input_shape_a, allocator);
     GenericTensorAccessorW accessor_b =
         create_random_filled_accessor_w(input_shape_b, allocator);
+    GenericTensorAccessorW accessor_output =
+        create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorW accessor_output =
-          allocator.allocate_tensor(output_shape);
-      Kernels::BatchMatmul::forward_kernel(stream,
-                                           handle,
+      Kernels::BatchMatmul::forward_kernel(mStream.stream,
+                                           mHandle.handle,
                                            accessor_output.get_float_ptr(),
                                            accessor_a.get_float_ptr(),
                                            accessor_b.get_float_ptr(),
@@ -49,8 +49,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW accessor_output =
-          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW o_grad_accessor =
           create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW a_grad_accessor =
@@ -58,8 +56,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW b_grad_accessor =
           allocator.allocate_tensor(input_shape_b);
 
-      Kernels::BatchMatmul::backward_kernel(stream,
-                                            handle,
+      Kernels::BatchMatmul::backward_kernel(mStream.stream,
+                                            mHandle.handle,
                                             accessor_output.get_float_ptr(),
                                             o_grad_accessor.get_float_ptr(),
                                             accessor_a.get_float_ptr(),
@@ -71,7 +69,5 @@ TEST_SUITE(FF_TEST_SUITE) {
                                             k,
                                             batch);
     }
-
-    cleanup_test(stream, handle);
   }
 }
