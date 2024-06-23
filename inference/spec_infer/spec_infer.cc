@@ -63,6 +63,9 @@ void parse_input_args(char **argv,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
+                      int &max_spec_tree_token_num,
+                      int &max_tree_width,
+                      int &max_tree_depth,
                       int &expansion_degree,
                       bool &spec_sampling,
                       bool &do_sample,
@@ -119,6 +122,18 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--max-sequence-length")) {
       max_sequence_length = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-spec-tree-token-num")) {
+      max_spec_tree_token_num = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-tree-width")) {
+      max_tree_width = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-tree-depth")) {
+      max_tree_depth = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--expansion-degree")) {
@@ -315,6 +330,9 @@ void FlexFlow::top_level_task(Task const *task,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length,
+                   max_spec_tree_token_num,
+                   max_tree_width,
+                   max_tree_depth,
                    expansion_degree,
                    spec_sampling,
                    do_sample,
