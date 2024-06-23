@@ -1798,9 +1798,6 @@ void RequestManager::get_verify_results_sample(
       request.tokens.push_back(token_id);
     }
 
-    request.llm_committed = false;
-    request.ssm_committed = false;
-
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
