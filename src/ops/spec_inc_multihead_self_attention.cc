@@ -736,8 +736,9 @@ void SpecIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
-  if (bc.num_tokens == 0) {
+  // BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_tokens == 0) {
     return;
   }
 
@@ -777,7 +778,7 @@ void SpecIncMultiHeadSelfAttention::inference_task(
 
   assert(task->index_point.get_dim() == 1);
   SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, &bc, task->index_point.point_data[0], input, weight, output, biases);
+      m, bc, task->index_point.point_data[0], input, weight, output, biases);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -787,7 +788,7 @@ void SpecIncMultiHeadSelfAttention::inference_task(
       weights_accessors.push_back(biases);
     }
     SpecIncMultiHeadSelfAttention::save_inference_tensors_to_file(
-        m, shard_id, &bc, {input}, weights_accessors, {output});
+        m, shard_id, bc, {input}, weights_accessors, {output});
   }
 }
 
