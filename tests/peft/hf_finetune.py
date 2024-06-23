@@ -12,7 +12,7 @@ np.random.seed(0)
 import torch.nn as nn
 
 # import bitsandbytes as bnb
-from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM, LlamaTokenizer
+from transformers import AutoTokenizer, AutoConfig, AutoModelForCausalLM, LlamaTokenizer, TrainerCallback
 import argparse
 from peft import LoraConfig, get_peft_model, PeftModel, PeftConfig
 import transformers
@@ -132,6 +132,25 @@ def peft_forward_hook(module, input, output):
     print("===")
     module.fwd_step += 1
 
+class OptimizerHookCallback(TrainerCallback):
+    def on_train_begin(self, args, state, control, **kwargs):
+        print("Starting training")
+        self.step_count = 0
+
+    def save_lora_weights(self, model):
+        lora_weights_handles = [(name.replace("base_model.model.model.", ""), params) for name, params in model.named_parameters() if "lora" in name]
+        save_dir = "./hf_peft_tensors"
+        os.makedirs(save_dir, exist_ok=True)
+        for simplified_name, params in lora_weights_handles:
+            torch.save(params, os.path.join(save_dir, f"{simplified_name}_step_{self.step_count}"))
+            print(f"Step {self.step_count}: Saving weight {simplified_name}")
+        self.step_count+=1
+
+    def on_step_end(self, args, state, control, model, tokenizer, optimizer, lr_scheduler, **kwargs):
+        self.save_lora_weights(model)
+
+    def on_train_end(self, args, state, control, **kwargs):
+        print(f"Training ended with {self.step_count} steps")
 
 def main():
     parser = argparse.ArgumentParser()
@@ -264,18 +283,20 @@ def main():
             per_device_train_batch_size=1,
             gradient_accumulation_steps=1,
             warmup_steps=0,
-            max_steps=1,
-            learning_rate=2e-4,
+            max_steps=5,
+            learning_rate=2e-1,
             fp16=True if not use_full_precision else False,
             logging_steps=1,
             output_dir=os.path.join(
                 output_dir if len(output_dir) > 0 else "./", "lora_training_logs"
             ),
             optim=transformers.training_args.OptimizerNames.SGD,
+            lr_scheduler_type=transformers.training_args.SchedulerType.CONSTANT,
         ),
         data_collator=transformers.DataCollatorForLanguageModeling(
             tokenizer, mlm=False
         ),
+        callbacks=[OptimizerHookCallback],
     )
     model.config.use_cache = (
         False
