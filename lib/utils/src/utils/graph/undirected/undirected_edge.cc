@@ -1,5 +1,5 @@
 #include "utils/graph/undirected/undirected_edge.h"
-#include "utils/hash-utils.h"
+#include "utils/hash/tuple.h"
 
 namespace FlexFlow {
 

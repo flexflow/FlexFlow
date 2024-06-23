@@ -8,6 +8,7 @@
 // #include "utils/graph/upward_open_multidigraph/upward_open_multidigraph_view.h"
 // #include "utils/graph/downward_open_multidigraph/downward_open_multidigraph_view.h"
 #include "utils/dot_file.h"
+#include "utils/graph/graph_split.dtg.h"
 
 namespace FlexFlow {
 
@@ -17,7 +18,6 @@ std::vector<Node> add_nodes(DiGraph &, int);
 // std::vector<Node> add_nodes(MultiDiGraph &, int);
 // std::vector<Node> add_nodes(OpenMultiDiGraph &g, int num_nodes);
 
-std::unordered_set<Node> get_nodes(GraphView const &);
 // std::unordered_set<Node> get_nodes(OpenMultiDiEdge const &);
 
 std::unordered_set<Node> query_nodes(GraphView const &,
@@ -208,9 +208,6 @@ std::unordered_set<std::unordered_set<Node>>
 
 std::unordered_set<DirectedEdge>
     get_transitive_reduction_delta(DiGraphView const &);
-
-using GraphSplit =
-    std::pair<std::unordered_set<Node>, std::unordered_set<Node>>;
 
 // std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
 // MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);

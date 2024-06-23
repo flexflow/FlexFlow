@@ -595,6 +595,13 @@ void inplace_sorted_by(C &c, F const &f) {
   std::sort(c.begin(), c.end(), custom_comparator);
 }
 
+template <typename C, typename Elem>
+std::vector<Elem> sorted(C const &c) {
+  std::vector<Elem> result(c.begin(), c.end());
+  inplace_sorted_by(result, [](Elem const &l, Elem const &r) { return l < r; });
+  return result;
+}
+
 template <typename C, typename F, typename Elem>
 std::vector<Elem> sorted_by(C const &c, F const &f) {
   std::vector<Elem> result(c.begin(), c.end());

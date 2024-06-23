@@ -2,7 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_HASH_PAIR_H
 
 #include <utility>
-#include "utils/hash-utils-core.h"
+#include "utils/hash-utils.h"
 
 namespace std {
 
@@ -11,8 +11,8 @@ struct hash<std::pair<L, R>> {
   size_t operator()(std::pair<L, R> const &p) const {
     size_t seed = 283746;
 
-    hash_combine(seed, p.first);
-    hash_combine(seed, p.second);
+    ::FlexFlow::hash_combine(seed, p.first);
+    ::FlexFlow::hash_combine(seed, p.second);
 
     return seed;
   }

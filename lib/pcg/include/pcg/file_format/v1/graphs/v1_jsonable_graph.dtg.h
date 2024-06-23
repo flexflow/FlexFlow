@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/file_format/v1/graphs/v1_jsonable_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "0595a9f5a6bc19f9a170cb0e42c4202d"
+  "generated_from": "ac98d063410ebe1c14f58ea8e17c272e"
 }
 */
 
@@ -12,8 +12,8 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
+#include "pcg/file_format/v1/graphs/v1_dataflow_graph.dtg.h"
 #include "pcg/file_format/v1/graphs/v1_graph_output.dtg.h"
-#include "pcg/file_format/v1/graphs/v1_multidigraph.dtg.h"
 #include <ostream>
 #include <sstream>
 #include <unordered_map>
@@ -24,14 +24,12 @@ struct V1JsonableGraph {
   V1JsonableGraph() = delete;
   explicit V1JsonableGraph(
       std::unordered_map<size_t, NodeT> const &node_labels,
-      std::unordered_map<size_t, ::FlexFlow::V1GraphOutput> const &outputs,
       std::unordered_map<size_t, TensorT> const &output_labels,
-      ::FlexFlow::V1MultiDiGraph const &graph);
+      ::FlexFlow::V1DataflowGraph const &graph);
 
   std::unordered_map<size_t, NodeT> node_labels;
-  std::unordered_map<size_t, ::FlexFlow::V1GraphOutput> outputs;
   std::unordered_map<size_t, TensorT> output_labels;
-  ::FlexFlow::V1MultiDiGraph graph;
+  ::FlexFlow::V1DataflowGraph graph;
 };
 } // namespace FlexFlow
 
@@ -56,11 +54,9 @@ namespace FlexFlow {
 template <typename NodeT, typename TensorT>
 V1JsonableGraph<NodeT, TensorT>::V1JsonableGraph(
     std::unordered_map<size_t, NodeT> const &node_labels,
-    std::unordered_map<size_t, ::FlexFlow::V1GraphOutput> const &outputs,
     std::unordered_map<size_t, TensorT> const &output_labels,
-    ::FlexFlow::V1MultiDiGraph const &graph)
-    : node_labels(node_labels), outputs(outputs), output_labels(output_labels),
-      graph(graph) {}
+    ::FlexFlow::V1DataflowGraph const &graph)
+    : node_labels(node_labels), output_labels(output_labels), graph(graph) {}
 } // namespace FlexFlow
 
 namespace nlohmann {
@@ -70,18 +66,14 @@ template <typename NodeT, typename TensorT>
         json const &j) {
   return ::FlexFlow::V1JsonableGraph<NodeT, TensorT>{
       j.at("node_labels").template get<std::unordered_map<size_t, NodeT>>(),
-      j.at("outputs")
-          .template get<
-              std::unordered_map<size_t, ::FlexFlow::V1GraphOutput>>(),
       j.at("output_labels").template get<std::unordered_map<size_t, TensorT>>(),
-      j.at("graph").template get<::FlexFlow::V1MultiDiGraph>()};
+      j.at("graph").template get<::FlexFlow::V1DataflowGraph>()};
 }
 template <typename NodeT, typename TensorT>
 void adl_serializer<::FlexFlow::V1JsonableGraph<NodeT, TensorT>>::to_json(
     json &j, ::FlexFlow::V1JsonableGraph<NodeT, TensorT> const &v) {
   j["__type"] = "V1JsonableGraph";
   j["node_labels"] = v.node_labels;
-  j["outputs"] = v.outputs;
   j["output_labels"] = v.output_labels;
   j["graph"] = v.graph;
 }
@@ -93,7 +85,6 @@ std::string format_as(V1JsonableGraph<NodeT, TensorT> const &x) {
   std::ostringstream oss;
   oss << "<V1JsonableGraph";
   oss << " node_labels=" << x.node_labels;
-  oss << " outputs=" << x.outputs;
   oss << " output_labels=" << x.output_labels;
   oss << " graph=" << x.graph;
   oss << ">";

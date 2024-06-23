@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/cast_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "c171c87db89b9ec9ea7d52a50c153054"
+  "generated_from": "902985a57f18e36925e35d90701329fa"
 }
 */
 
@@ -12,7 +12,7 @@
 #include <sstream>
 
 namespace FlexFlow {
-CastAttrs::CastAttrs(DataType const &dtype) : dtype(dtype) {}
+CastAttrs::CastAttrs(::FlexFlow::DataType const &dtype) : dtype(dtype) {}
 bool CastAttrs::operator==(CastAttrs const &other) const {
   return std::tie(this->dtype) == std::tie(other.dtype);
 }
@@ -37,8 +37,8 @@ namespace std {
 size_t hash<FlexFlow::CastAttrs>::operator()(
     ::FlexFlow::CastAttrs const &x) const {
   size_t result = 0;
-  result ^= std::hash<DataType>{}(x.dtype) + 0x9e3779b9 + (result << 6) +
-            (result >> 2);
+  result ^= std::hash<::FlexFlow::DataType>{}(x.dtype) + 0x9e3779b9 +
+            (result << 6) + (result >> 2);
   return result;
 }
 } // namespace std
@@ -46,7 +46,8 @@ size_t hash<FlexFlow::CastAttrs>::operator()(
 namespace nlohmann {
 ::FlexFlow::CastAttrs
     adl_serializer<::FlexFlow::CastAttrs>::from_json(json const &j) {
-  return ::FlexFlow::CastAttrs{j.at("dtype").template get<DataType>()};
+  return ::FlexFlow::CastAttrs{
+      j.at("dtype").template get<::FlexFlow::DataType>()};
 }
 void adl_serializer<::FlexFlow::CastAttrs>::to_json(
     json &j, ::FlexFlow::CastAttrs const &v) {
@@ -57,7 +58,8 @@ void adl_serializer<::FlexFlow::CastAttrs>::to_json(
 
 namespace rc {
 Gen<::FlexFlow::CastAttrs> Arbitrary<::FlexFlow::CastAttrs>::arbitrary() {
-  return gen::construct<::FlexFlow::CastAttrs>(gen::arbitrary<DataType>());
+  return gen::construct<::FlexFlow::CastAttrs>(
+      gen::arbitrary<::FlexFlow::DataType>());
 }
 } // namespace rc
 

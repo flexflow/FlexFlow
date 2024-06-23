@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_HASH_TUPLE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_HASH_TUPLE_H
 
-#include "utils/hash-utils-core.h"
+#include "utils/hash-utils.h"
 #include <tuple>
 
 namespace std {
@@ -23,7 +23,7 @@ private:
       inline typename std::enable_if < Idx<sizeof...(TupleTypes), void>::type
       hash_combine_tup(size_t &seed,
                        std::tuple<TupleTypes...> const &tup) const {
-    hash_combine(seed, std::get<Idx>(tup));
+    ::FlexFlow::hash_combine(seed, std::get<Idx>(tup));
 
     //  on to next element
     hash_combine_tup<Idx + 1>(seed, tup);

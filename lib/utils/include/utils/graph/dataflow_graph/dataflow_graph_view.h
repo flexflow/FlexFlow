@@ -22,6 +22,9 @@ struct DataflowGraphView : virtual DiGraphView {
       create(Args &&...args) {
     return DataflowGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
+protected:
+  using DiGraphView::DiGraphView;
+
 private:
   IDataflowGraphView const &get_interface() const;
 };

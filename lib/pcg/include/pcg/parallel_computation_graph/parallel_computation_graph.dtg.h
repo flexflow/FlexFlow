@@ -3,27 +3,27 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "1339be6e86e9818c36d6ecf5475e2d4b"
+  "generated_from": "c9b193f4f31976528951a507119483a3"
 }
 */
 
 #ifndef _FLEXFLOW_LIB_PCG_INCLUDE_PCG_PARALLEL_COMPUTATION_GRAPH_PARALLEL_COMPUTATION_GRAPH_DTG_H
 #define _FLEXFLOW_LIB_PCG_INCLUDE_PCG_PARALLEL_COMPUTATION_GRAPH_PARALLEL_COMPUTATION_GRAPH_DTG_H
 
-#include "pcg/dataflow_graph/dataflow_graph.h"
 #include "pcg/parallel_computation_graph/parallel_layer_attrs.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h"
+#include "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph.h"
 
 namespace FlexFlow {
 struct ParallelComputationGraph {
   ParallelComputationGraph() = delete;
   explicit ParallelComputationGraph(
-      ::FlexFlow::DataflowGraph<::FlexFlow::ParallelLayerAttrs,
-                                ::FlexFlow::ParallelTensorAttrs> const
+      ::FlexFlow::LabelledDataflowGraph<::FlexFlow::ParallelLayerAttrs,
+                                        ::FlexFlow::ParallelTensorAttrs> const
           &raw_graph);
 
-  ::FlexFlow::DataflowGraph<::FlexFlow::ParallelLayerAttrs,
-                            ::FlexFlow::ParallelTensorAttrs>
+  ::FlexFlow::LabelledDataflowGraph<::FlexFlow::ParallelLayerAttrs,
+                                    ::FlexFlow::ParallelTensorAttrs>
       raw_graph;
 };
 } // namespace FlexFlow

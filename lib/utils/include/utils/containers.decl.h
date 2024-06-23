@@ -253,6 +253,9 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
 template <typename C, typename F, typename Elem = typename C::value_type>
 void inplace_sorted_by(C &c, F const &f);
 
+template <typename C, typename Elem = typename C::value_type>
+std::vector<Elem> sorted(C const &c);
+
 template <typename C, typename F, typename Elem = typename C::value_type>
 std::vector<Elem> sorted_by(C const &c, F const &f);
 

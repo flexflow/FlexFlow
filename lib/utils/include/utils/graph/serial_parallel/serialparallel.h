@@ -20,6 +20,9 @@ SerialParallelDecomposition
     get_serial_parallel_decomposition(DiGraphView const &);
 
 std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp);
+std::unordered_set<Node> get_nodes(Serial const &);
+std::unordered_set<Node> get_nodes(Parallel const &);
+std::unordered_set<Node> get_nodes(Node const &);
 
 // std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
 //                                                MultiDiGraph const &ext);

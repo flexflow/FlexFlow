@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "1339be6e86e9818c36d6ecf5475e2d4b"
+  "generated_from": "c9b193f4f31976528951a507119483a3"
 }
 */
 
@@ -11,7 +11,8 @@
 
 namespace FlexFlow {
 ParallelComputationGraph::ParallelComputationGraph(
-    ::FlexFlow::DataflowGraph<::FlexFlow::ParallelLayerAttrs,
-                              ::FlexFlow::ParallelTensorAttrs> const &raw_graph)
+    ::FlexFlow::LabelledDataflowGraph<::FlexFlow::ParallelLayerAttrs,
+                                      ::FlexFlow::ParallelTensorAttrs> const
+        &raw_graph)
     : raw_graph(raw_graph) {}
 } // namespace FlexFlow

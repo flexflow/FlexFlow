@@ -10,6 +10,7 @@
 #include "utils/optional.h"
 #include "utils/hash-utils.h"
 #include "utils/fmt/unordered_set.h"
+#include "utils/hash/set.h"
 
 namespace FlexFlow {
 

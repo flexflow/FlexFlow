@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/ops/cast_attrs.struct.toml
 /* proj-data
 {
-  "generated_from": "c171c87db89b9ec9ea7d52a50c153054"
+  "generated_from": "902985a57f18e36925e35d90701329fa"
 }
 */
 
@@ -12,7 +12,7 @@
 
 #include "fmt/format.h"
 #include "nlohmann/json.hpp"
-#include "op-attrs/datatype.h"
+#include "op-attrs/datatype.dtg.h"
 #include "rapidcheck.h"
 #include <functional>
 #include <ostream>
@@ -21,7 +21,7 @@
 namespace FlexFlow {
 struct CastAttrs {
   CastAttrs() = delete;
-  explicit CastAttrs(DataType const &dtype);
+  explicit CastAttrs(::FlexFlow::DataType const &dtype);
 
   bool operator==(CastAttrs const &) const;
   bool operator!=(CastAttrs const &) const;
@@ -29,7 +29,7 @@ struct CastAttrs {
   bool operator>(CastAttrs const &) const;
   bool operator<=(CastAttrs const &) const;
   bool operator>=(CastAttrs const &) const;
-  DataType dtype;
+  ::FlexFlow::DataType dtype;
 };
 } // namespace FlexFlow
 

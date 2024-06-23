@@ -6,6 +6,7 @@
 #include "utils/graph/undirected/undirected_edge_query.h"
 #include "utils/graph/node/node_query.h"
 #include "utils/graph/digraph/directed_edge_query.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 

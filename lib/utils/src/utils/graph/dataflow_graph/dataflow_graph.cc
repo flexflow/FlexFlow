@@ -24,7 +24,7 @@ IDataflowGraph &DataflowGraph::get_interface() {
 }
 
 IDataflowGraph const &DataflowGraph::get_interface() const {
-  return *std::dynamic_pointer_cast<IDataflowGraph const>(GraphView::ptr.get_mutable());
+  return *std::dynamic_pointer_cast<IDataflowGraph const>(GraphView::ptr.get());
 }
 
 } // namespace FlexFlow

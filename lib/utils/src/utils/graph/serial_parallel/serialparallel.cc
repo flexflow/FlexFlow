@@ -41,45 +41,14 @@ std::unordered_set<Node> from_source_to_sink(DiGraphView const &g,
   return result;
 }
 
-struct FlattenAST {
-  void add_flattened_child_to_parent(IntermediateSpDecompositionTree &parent,
-                                     SplitAST const &child) {
-    if (std::holds_alternative<Node>(child)) {
-      parent.children.push_back(child);
-      return;
-    }
-
-    IntermediateSpDecompositionTree child_node = get<IntermediateSpDecompositionTree>(child);
-
-    if (parent.type == child_node.type) {
-      extend(parent.children, child_node.children);
-    } else {
-      parent.children.push_back(child);
-    }
-  }
-
-  SplitAST operator()(IntermediateSpDecompositionTree const &ast_node) {
-    IntermediateSpDecompositionTree result(ast_node.type);
-    for (SplitAST const &child : ast_node.children) {
-      SplitAST flattened_child = flatten_ast(child);
-      add_flattened_child_to_parent(result, flattened_child);
-    }
-    return result;
-  }
-
-  SplitAST operator()(Node const &ast_node) {
-    return ast_node;
-  }
-};
-
 SerialParallelDecomposition
     get_serial_parallel_decomposition(DiGraphView const &g) {
-  SplitAST ast = sp_decomposition(g);
+  std::variant<IntermediateSpDecompositionTree, Node> ast = sp_decomposition(g);
   return to_final_ast(ast);
 }
 
 std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
-  return sp.visit([](auto &&t) { return get_nodes(t); });
+  return sp.visit<std::unordered_set<Node>>([](auto &&t) { return get_nodes(t); });
 }
 
 std::unordered_set<Node> get_nodes(Serial const &serial) {
@@ -93,7 +62,7 @@ std::unordered_set<Node> get_nodes(Serial const &serial) {
 std::unordered_set<Node> get_nodes(Parallel const &parallel) {
   return set_union(
       transform(parallel.children, [](std::variant<Serial, Node> const &child) {
-        return visit(GetNodes{}, child);
+        return std::visit([](auto &&t) { return get_nodes(t); }, child);
       }));
 }
 

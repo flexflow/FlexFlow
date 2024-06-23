@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/tensor_guid_t.struct.toml
 /* proj-data
 {
-  "generated_from": "1e3914b97a465f1752ce510614145b37"
+  "generated_from": "1a659fe73845127890c449f505aef094"
 }
 */
 
@@ -11,7 +11,7 @@
 #define _FLEXFLOW_LIB_PCG_INCLUDE_PCG_TENSOR_GUID_T_DTG_H
 
 #include "fmt/format.h"
-#include "utils/graph.h"
+#include "utils/graph/dataflow_graph/dataflow_output.dtg.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -19,7 +19,7 @@
 namespace FlexFlow {
 struct tensor_guid_t {
   tensor_guid_t() = delete;
-  explicit tensor_guid_t(::FlexFlow::MultiDiOutput const &raw_graph_output);
+  explicit tensor_guid_t(::FlexFlow::DataflowOutput const &raw_graph_output);
 
   bool operator==(tensor_guid_t const &) const;
   bool operator!=(tensor_guid_t const &) const;
@@ -27,7 +27,7 @@ struct tensor_guid_t {
   bool operator>(tensor_guid_t const &) const;
   bool operator<=(tensor_guid_t const &) const;
   bool operator>=(tensor_guid_t const &) const;
-  ::FlexFlow::MultiDiOutput raw_graph_output;
+  ::FlexFlow::DataflowOutput raw_graph_output;
 };
 } // namespace FlexFlow
 

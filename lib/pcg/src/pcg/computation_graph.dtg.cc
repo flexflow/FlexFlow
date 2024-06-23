@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "bf8996bea2e022265a372d692c2db8ed"
+  "generated_from": "79ce58a361b164cad98643f961b9e266"
 }
 */
 
@@ -11,7 +11,7 @@
 
 namespace FlexFlow {
 ComputationGraph::ComputationGraph(
-    ::FlexFlow::DataflowGraph<::FlexFlow::LayerAttrs,
-                              ::FlexFlow::TensorAttrs> const &raw_graph)
+    ::FlexFlow::LabelledDataflowGraph<::FlexFlow::LayerAttrs,
+                                      ::FlexFlow::TensorAttrs> const &raw_graph)
     : raw_graph(raw_graph) {}
 } // namespace FlexFlow

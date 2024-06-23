@@ -12,17 +12,15 @@ namespace FlexFlow {
 
 struct ParallelInternal;
 
-using SplitAST = std::variant<IntermediateSpDecompositionTree, Node>;
-
-IntermediateSpDecompositionTree sp_decomposition(DiGraphView const &g);
+std::variant<IntermediateSpDecompositionTree, Node> sp_decomposition(DiGraphView const &g);
 IntermediateSpDecompositionTree parallel_decomposition(DiGraphView const &g);
 
 std::unordered_set<Node>
     from_source_to_sink(DiGraphView const &, Node const &src, Node const &sink);
 
-std::variant<Serial, Parallel, Node> internal_to_final_ast(SplitAST const &);
-SerialParallelDecomposition to_final_ast(SplitAST const &);
-SplitAST flatten_ast(SplitAST const &ast);
+std::variant<Serial, Parallel, Node> internal_to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &);
+SerialParallelDecomposition to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &);
+std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast);
 
 } // namespace FlexFlow
 

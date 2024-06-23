@@ -1,6 +1,7 @@
 #include "utils/graph/algorithms.h"
 #include "utils/containers.h"
 #include "utils/exception.h"
+#include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_query.h"
 #include "utils/graph/traversal.h"
 #include "utils/graph/views/views.h"
@@ -52,10 +53,6 @@ std::vector<Node> add_nodes(DiGraph &g, int num_nodes) {
 //   }
 //   return node_ports;
 // }
-
-std::unordered_set<Node> get_nodes(GraphView const &g) {
-  return g.query_nodes(node_query_all());
-}
 
 // std::unordered_set<Node> get_nodes(InputMultiDiEdge const &edge) {
 //   return {edge.dst};

@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/tensor_guid_t.struct.toml
 /* proj-data
 {
-  "generated_from": "1e3914b97a465f1752ce510614145b37"
+  "generated_from": "1a659fe73845127890c449f505aef094"
 }
 */
 
@@ -12,7 +12,7 @@
 #include <sstream>
 
 namespace FlexFlow {
-tensor_guid_t::tensor_guid_t(::FlexFlow::MultiDiOutput const &raw_graph_output)
+tensor_guid_t::tensor_guid_t(::FlexFlow::DataflowOutput const &raw_graph_output)
     : raw_graph_output(raw_graph_output) {}
 bool tensor_guid_t::operator==(tensor_guid_t const &other) const {
   return std::tie(this->raw_graph_output) == std::tie(other.raw_graph_output);
@@ -38,7 +38,7 @@ namespace std {
 size_t hash<FlexFlow::tensor_guid_t>::operator()(
     ::FlexFlow::tensor_guid_t const &x) const {
   size_t result = 0;
-  result ^= std::hash<::FlexFlow::MultiDiOutput>{}(x.raw_graph_output) +
+  result ^= std::hash<::FlexFlow::DataflowOutput>{}(x.raw_graph_output) +
             0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
