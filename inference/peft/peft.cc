@@ -242,7 +242,8 @@ void FlexFlow::top_level_task(Task const *task,
 
   LoraOptimizerConfig *optim_config = nullptr;
   if (enable_peft_finetuning) {
-    optim_config = new LoraSGDOptimizerConfig();
+    float sgd_learning_rate = 2e-1;
+    optim_config = new LoraSGDOptimizerConfig(sgd_learning_rate);
   }
   LoraLinearConfig peft_config_finetuning =
       peft_model_name.empty() ? LoraLinearConfig::EmptyConfig
@@ -352,7 +353,7 @@ void FlexFlow::top_level_task(Task const *task,
                                           ? *peft_model_id_finetuning
                                           : PEFTModelID::NO_ID;
       fine_tuning_req.dataset_filepath = file_paths.dataset_file_path;
-      fine_tuning_req.max_training_steps = 1;
+      fine_tuning_req.max_training_steps = 5;
       requests.push_back(fine_tuning_req);
     }
     std::vector<GenerationResult> result = model.generate(requests);

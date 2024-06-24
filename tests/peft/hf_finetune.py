@@ -132,6 +132,18 @@ def peft_forward_hook(module, input, output):
     print("===")
     module.fwd_step += 1
 
+def peft_weigth_hook(module):
+    def hook(grad):
+        assert module.name is not None and module.bwd_step is not None
+        name = module.name.replace("base_model.model.model.", "")
+        print(f"Step {module.bwd_step}, Weight Gradient for {name}:")
+        print(grad.shape)
+        dst_filepath = f"./hf_peft_tensors/bwd_step_{module.bwd_step}_{name}.grad"
+        torch.save(grad, dst_filepath)
+    
+    return hook
+
+
 class OptimizerHookCallback(TrainerCallback):
     def on_train_begin(self, args, state, control, **kwargs):
         print("Starting training")
@@ -260,6 +272,12 @@ def main():
                 torch.save(params, f"./hf_peft_tensors/{simplified_name}")
             if "down_proj" in name or "self_attn" in name:
                 torch.save(params, f"./hf_peft_tensors/{simplified_name}")
+        
+        # Add hooks to trainable weights
+        for name, module in model.named_modules():
+            for param_name, param in module.named_parameters(recurse=False):
+                if param.requires_grad:
+                    param.register_hook(peft_weigth_hook(module))
 
     # Load fine-tuning dataset
     data = load_dataset("Abirate/english_quotes")
