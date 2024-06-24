@@ -3,27 +3,43 @@
 // lib/substitutions/include/substitutions/unlabelled/match_split.struct.toml
 /* proj-data
 {
-  "generated_from": "e44c4347e07263a493cbbd5caccedd22"
+  "generated_from": "bf7b8b9b9a9bad1d6c4d632d58ca82ab"
 }
 */
 
 #ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_MATCH_SPLIT_DTG_H
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_MATCH_SPLIT_DTG_H
 
-#include "substitutions/unlabelled/multidigraph_pattern_match.dtg.h"
+#include "fmt/format.h"
+#include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
+#include <functional>
+#include <ostream>
 #include <tuple>
 
 namespace FlexFlow {
 struct MatchSplit {
   MatchSplit() = delete;
-  explicit MatchSplit(MultiDiGraphPatternMatch const &prefix_submatch,
-                      MultiDiGraphPatternMatch const &postfix_submatch);
+  explicit MatchSplit(
+      UnlabelledDataflowGraphPatternMatch const &prefix_submatch,
+      UnlabelledDataflowGraphPatternMatch const &postfix_submatch);
 
   bool operator==(MatchSplit const &) const;
   bool operator!=(MatchSplit const &) const;
-  MultiDiGraphPatternMatch prefix_submatch;
-  MultiDiGraphPatternMatch postfix_submatch;
+  UnlabelledDataflowGraphPatternMatch prefix_submatch;
+  UnlabelledDataflowGraphPatternMatch postfix_submatch;
 };
+} // namespace FlexFlow
+
+namespace std {
+template <>
+struct hash<::FlexFlow::MatchSplit> {
+  size_t operator()(::FlexFlow::MatchSplit const &) const;
+};
+} // namespace std
+
+namespace FlexFlow {
+std::string format_as(MatchSplit const &);
+std::ostream &operator<<(std::ostream &, MatchSplit const &);
 } // namespace FlexFlow
 
 #endif // _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_MATCH_SPLIT_DTG_H

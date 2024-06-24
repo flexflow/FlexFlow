@@ -17,8 +17,8 @@ type = "::FlexFlow::OutputGraphExpr"
 
 [[fields]]
 name = "input_edge_match_to_output"
-type = "::FlexFlow::bidict<::FlexFlow::InputMultiDiEdge, ::FlexFlow::InputMultiDiEdge>"
+type = "::FlexFlow::bidict<::FlexFlow::DataflowGraphInput, ::FlexFlow::OpenDataflowValue>"
 
 [[fields]]
 name = "output_edge_match_to_output"
-type = "::FlexFlow::bidict<::FlexFlow::OutputMultiDiEdge, ::FlexFlow::OutputMultiDiEdge>"
+type = "::FlexFlow::bidict<::FlexFlow::DataflowOutput, ::FlexFlow::DataflowOutput>"

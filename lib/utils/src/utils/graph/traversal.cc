@@ -1,6 +1,7 @@
 #include "utils/graph/traversal.h"
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
+#include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
@@ -34,7 +35,7 @@ udi &udi::operator++() {
   Node const last = this->operator*();
   this->stack.pop_back();
 
-  std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(graph, {last});
+  std::unordered_set<DirectedEdge> outgoing = get_outgoing_edges(graph, last);
   for (DirectedEdge const &e : outgoing) {
     auto it = std::find(stack.begin(), stack.end(), e.dst);
     if (it == stack.end()) {

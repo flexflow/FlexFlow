@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/unlabelled/match_additional_criterion.struct.toml
 /* proj-data
 {
-  "generated_from": "2dff356c85dccda1fce8f714d41c6202"
+  "generated_from": "86e465bc7dbcbece46db9919f4a61a22"
 }
 */
 
@@ -13,8 +13,8 @@ namespace FlexFlow {
 MatchAdditionalCriterion::MatchAdditionalCriterion(
     std::function<bool(::FlexFlow::PatternNode const &,
                        ::FlexFlow::Node const &)> const &node_criterion,
-    std::function<bool(::FlexFlow::PatternEdge const &,
-                       ::FlexFlow::OpenMultiDiEdge const &)> const
-        &edge_criterion)
-    : node_criterion(node_criterion), edge_criterion(edge_criterion) {}
+    std::function<bool(::FlexFlow::PatternValue const &,
+                       ::FlexFlow::OpenDataflowValue const &)> const
+        &value_criterion)
+    : node_criterion(node_criterion), value_criterion(value_criterion) {}
 } // namespace FlexFlow

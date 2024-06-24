@@ -3,15 +3,18 @@
 // lib/substitutions/include/substitutions/unlabelled/match_split.struct.toml
 /* proj-data
 {
-  "generated_from": "e44c4347e07263a493cbbd5caccedd22"
+  "generated_from": "bf7b8b9b9a9bad1d6c4d632d58ca82ab"
 }
 */
 
 #include "substitutions/unlabelled/match_split.dtg.h"
 
+#include <sstream>
+
 namespace FlexFlow {
-MatchSplit::MatchSplit(MultiDiGraphPatternMatch const &prefix_submatch,
-                       MultiDiGraphPatternMatch const &postfix_submatch)
+MatchSplit::MatchSplit(
+    UnlabelledDataflowGraphPatternMatch const &prefix_submatch,
+    UnlabelledDataflowGraphPatternMatch const &postfix_submatch)
     : prefix_submatch(prefix_submatch), postfix_submatch(postfix_submatch) {}
 bool MatchSplit::operator==(MatchSplit const &other) const {
   return std::tie(this->prefix_submatch, this->postfix_submatch) ==
@@ -20,5 +23,33 @@ bool MatchSplit::operator==(MatchSplit const &other) const {
 bool MatchSplit::operator!=(MatchSplit const &other) const {
   return std::tie(this->prefix_submatch, this->postfix_submatch) !=
          std::tie(other.prefix_submatch, other.postfix_submatch);
+}
+} // namespace FlexFlow
+
+namespace std {
+size_t hash<FlexFlow::MatchSplit>::operator()(
+    ::FlexFlow::MatchSplit const &x) const {
+  size_t result = 0;
+  result ^=
+      std::hash<UnlabelledDataflowGraphPatternMatch>{}(x.prefix_submatch) +
+      0x9e3779b9 + (result << 6) + (result >> 2);
+  result ^=
+      std::hash<UnlabelledDataflowGraphPatternMatch>{}(x.postfix_submatch) +
+      0x9e3779b9 + (result << 6) + (result >> 2);
+  return result;
+}
+} // namespace std
+
+namespace FlexFlow {
+std::string format_as(MatchSplit const &x) {
+  std::ostringstream oss;
+  oss << "<MatchSplit";
+  oss << " prefix_submatch=" << x.prefix_submatch;
+  oss << " postfix_submatch=" << x.postfix_submatch;
+  oss << ">";
+  return oss.str();
+}
+std::ostream &operator<<(std::ostream &s, MatchSplit const &x) {
+  return s << fmt::to_string(x);
 }
 } // namespace FlexFlow

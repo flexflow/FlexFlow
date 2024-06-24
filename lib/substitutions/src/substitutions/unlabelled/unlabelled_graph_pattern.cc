@@ -1,5 +1,9 @@
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
 #include "utils/containers.h"
+#include "utils/graph/node/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/digraph/algorithms.h"
 
 namespace FlexFlow {
 
@@ -13,40 +17,39 @@ bool is_singleton_pattern(UnlabelledGraphPattern const &pattern) {
 
 std::unordered_set<PatternNode> get_nodes(UnlabelledGraphPattern const &p) {
   return transform(get_nodes(p.raw_graph),
-                   [](Node const &n) {
-  return PatternNode{n}; }});
+                   [](Node const &n) { return PatternNode{n}; });
 }
 
-std::unordered_set<PatternEdge> get_edges(UnlabelledGraphPattern const &p) {
-  return transform(get_nodes(p.raw_graph),
-                   [](OpenMultiDiEdge const &e) {
-  return PatternEdge{e}; }});
+std::unordered_set<PatternValue> get_values(UnlabelledGraphPattern const &p) {
+  return transform(get_open_dataflow_values(p.raw_graph),
+                   [](OpenDataflowValue const &v) { return PatternValue{v}; });
 }
 
 std::vector<PatternNode> get_topological_ordering(UnlabelledGraphPattern const &p) {
-  return transform(get_topological_ordering(p),
-                   [](Node const &n) {
-  return PatternNode{n}; }});
+  return transform(get_topological_ordering(p.raw_graph),
+                   [](Node const &n) { return PatternNode{n}; });
+}
+
+std::vector<PatternValue>
+    get_inputs_to_pattern_node(UnlabelledGraphPattern const &p, PatternNode const &n) {
+  return transform(get_inputs(p.raw_graph, n.raw_node),
+                   [](OpenDataflowValue const &v) { return PatternValue{v}; });
+}
+
+std::vector<PatternValue>
+    get_outputs_from_pattern_node(UnlabelledGraphPattern const &p, PatternNode const &n) {
+  return transform(get_outputs(p.raw_graph, n.raw_node),
+                   [](DataflowOutput const &o) { return PatternValue{OpenDataflowValue{o}}; });
 }
 
 UnlabelledGraphPattern get_subgraph(UnlabelledGraphPattern const &p,
                                     std::unordered_set<PatternNode> const &n) {
-  return {
-    get_subgraph(p.raw_graph,
-                 transform(n, [](PatternNode const &n) { return n.raw_node; }));
-  };
+  NOT_IMPLEMENTED();
+  // return UnlabelledGraphPattern{
+  //   get_subgraph(p.raw_graph,
+  //                transform(n, [](PatternNode const &n) { return n.raw_node; }));
+  // };
 }
 
-std::unordered_set<UpwardOpenPatternEdge>
-    get_incoming_edges(UnlabelledGraphPattern const &p, PatternNode const &n) {
-  return transform(get_incoming_edges(p.raw_graph, n.raw_node),
-                   [](Node const &n) { return PatternNode{n}; });
-}
-
-std::unordered_set<DownwardOpenPatternEdge>
-    get_outgoing_edges(UnlabelledGraphPattern const &p, PatternNode const &n) {
-  return transform(get_outgoing_edges(p.raw_graph, n.raw_node),
-                   [](Node const &n) { return PatternNode{n}; });
-}
 
 } // namespace FlexFlow

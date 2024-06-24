@@ -11,8 +11,9 @@ features = [
 
 includes = [
   "<unordered_set>",
-  "utils/fmt.h",
+  "utils/fmt/unordered_set.h",
   "substitutions/operator_pattern/operator_attribute_constraint.dtg.h",
+  "utils/hash/unordered_set.h",
 ]
 
 [[fields]]

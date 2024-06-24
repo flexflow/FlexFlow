@@ -3,6 +3,7 @@
 #include "utils/graph/serial_parallel/sink_settings.dtg.h" 
 #include "utils/graph/serial_parallel/source_settings.dtg.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/digraph/algorithms.h"
 
 namespace FlexFlow {
 

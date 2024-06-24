@@ -11,11 +11,23 @@ struct LabelledDataflowGraph : virtual LabelledDataflowGraphView<NodeLabel, Outp
 private:
   using Interface = ILabelledDataflowGraph<NodeLabel, OutputLabel>;
 public:
+  LabelledDataflowGraph(LabelledDataflowGraph const &) = default;
+  LabelledDataflowGraph &operator=(LabelledDataflowGraph const &) = default;
+
   NodeAddedResult add_node(NodeLabel const &node_label,
                            std::vector<DataflowOutput> const &inputs,
                            std::vector<OutputLabel> const &output_labels) {
     return this->get_interface().add_node(node_label, inputs, output_labels);
   }
+
+  template <typename T>
+  static typename std::enable_if<std::is_base_of<Interface, T>::value,
+                                 LabelledDataflowGraph>::type
+      create() {
+    return LabelledDataflowGraph(make_cow_ptr<T>());
+  }
+protected:
+  using LabelledDataflowGraphView<NodeLabel, OutputLabel>::LabelledDataflowGraphView;
 
 private:
   Interface &get_interface() {

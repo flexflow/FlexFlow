@@ -3,14 +3,14 @@
 // lib/substitutions/include/substitutions/pcg_pattern.struct.toml
 /* proj-data
 {
-  "generated_from": "f536f846828ba39266dd4a1fbaeec0e6"
+  "generated_from": "95b0a94000f16024bd541c492bf8a9b1"
 }
 */
 
 #include "substitutions/pcg_pattern.dtg.h"
 
 namespace FlexFlow {
-PCGPattern::PCGPattern(::FlexFlow::OutputLabelledOpenMultiDiGraph<
+PCGPattern::PCGPattern(::FlexFlow::LabelledOpenDataflowGraph<
                        ::FlexFlow::OperatorAttributePattern,
                        ::FlexFlow::TensorAttributePattern> const &raw_graph)
     : raw_graph(raw_graph) {}

@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_layer_guid_t.struct.toml
 /* proj-data
 {
-  "generated_from": "c31301efeb92e151b04943786aa7bec1"
+  "generated_from": "74a9d264b25676dd5dfd62538af8cf82"
 }
 */
 
@@ -11,7 +11,7 @@
 #define _FLEXFLOW_LIB_PCG_INCLUDE_PCG_PARALLEL_COMPUTATION_GRAPH_PARALLEL_LAYER_GUID_T_DTG_H
 
 #include "fmt/format.h"
-#include "utils/graph.h"
+#include "utils/graph/node/node.dtg.h"
 #include <functional>
 #include <ostream>
 #include <tuple>

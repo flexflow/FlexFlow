@@ -3,16 +3,18 @@ name = "MatchSplit"
 features = [
   "eq",
   # "ord",
+  "hash",
+  "fmt",
 ]
 
 includes = [
-  "substitutions/unlabelled/multidigraph_pattern_match.dtg.h"
+  "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 ]
 
 [[fields]]
 name = "prefix_submatch"
-type = "MultiDiGraphPatternMatch"
+type = "UnlabelledDataflowGraphPatternMatch"
 
 [[fields]]
 name = "postfix_submatch"
-type = "MultiDiGraphPatternMatch"
+type = "UnlabelledDataflowGraphPatternMatch"

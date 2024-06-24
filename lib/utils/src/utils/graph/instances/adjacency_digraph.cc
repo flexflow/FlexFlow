@@ -1,4 +1,4 @@
-#include "utils/graph/digraph/adjacency_digraph.h"
+#include "utils/graph/instances/adjacency_digraph.h"
 #include <cassert>
 
 namespace FlexFlow {

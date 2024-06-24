@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/file_format/v1/graphs/v1_labelled_dataflow_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "5b6ac94ce5ca0fe62b2309c7a87b583a"
+  "generated_from": "89120d1975d2e727327594b4ab8a4952"
 }
 */
 
@@ -19,62 +19,67 @@
 #include <unordered_map>
 
 namespace FlexFlow {
-template <typename NodeT, typename TensorT>
+template <typename NodeLabel, typename OutputLabel>
 struct V1LabelledDataflowGraph {
   V1LabelledDataflowGraph() = delete;
   explicit V1LabelledDataflowGraph(
-      std::unordered_map<size_t, NodeT> const &node_labels,
-      std::unordered_map<size_t, TensorT> const &output_labels,
+      std::unordered_map<size_t, NodeLabel> const &node_labels,
+      std::unordered_map<size_t, std::vector<OutputLabel>> const &output_labels,
       ::FlexFlow::V1DataflowGraph const &graph);
 
-  std::unordered_map<size_t, NodeT> node_labels;
-  std::unordered_map<size_t, TensorT> output_labels;
+  std::unordered_map<size_t, NodeLabel> node_labels;
+  std::unordered_map<size_t, std::vector<OutputLabel>> output_labels;
   ::FlexFlow::V1DataflowGraph graph;
 };
 } // namespace FlexFlow
 
 namespace nlohmann {
-template <typename NodeT, typename TensorT>
-struct adl_serializer<::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT>> {
-  static ::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT>
+template <typename NodeLabel, typename OutputLabel>
+struct adl_serializer<
+    ::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel>> {
+  static ::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel>
       from_json(json const &);
-  static void
-      to_json(json &,
-              ::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT> const &);
+  static void to_json(
+      json &,
+      ::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel> const &);
 };
 } // namespace nlohmann
 
 namespace FlexFlow {
-template <typename NodeT, typename TensorT>
-std::string format_as(V1LabelledDataflowGraph<NodeT, TensorT> const &);
-template <typename NodeT, typename TensorT>
-std::ostream &operator<<(std::ostream &,
-                         V1LabelledDataflowGraph<NodeT, TensorT> const &);
+template <typename NodeLabel, typename OutputLabel>
+std::string format_as(V1LabelledDataflowGraph<NodeLabel, OutputLabel> const &);
+template <typename NodeLabel, typename OutputLabel>
+std::ostream &
+    operator<<(std::ostream &,
+               V1LabelledDataflowGraph<NodeLabel, OutputLabel> const &);
 } // namespace FlexFlow
 
 namespace FlexFlow {
-template <typename NodeT, typename TensorT>
-V1LabelledDataflowGraph<NodeT, TensorT>::V1LabelledDataflowGraph(
-    std::unordered_map<size_t, NodeT> const &node_labels,
-    std::unordered_map<size_t, TensorT> const &output_labels,
+template <typename NodeLabel, typename OutputLabel>
+V1LabelledDataflowGraph<NodeLabel, OutputLabel>::V1LabelledDataflowGraph(
+    std::unordered_map<size_t, NodeLabel> const &node_labels,
+    std::unordered_map<size_t, std::vector<OutputLabel>> const &output_labels,
     ::FlexFlow::V1DataflowGraph const &graph)
     : node_labels(node_labels), output_labels(output_labels), graph(graph) {}
 } // namespace FlexFlow
 
 namespace nlohmann {
-template <typename NodeT, typename TensorT>
-::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT>
-    adl_serializer<::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT>>::
-        from_json(json const &j) {
-  return ::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT>{
-      j.at("node_labels").template get<std::unordered_map<size_t, NodeT>>(),
-      j.at("output_labels").template get<std::unordered_map<size_t, TensorT>>(),
+template <typename NodeLabel, typename OutputLabel>
+::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel> adl_serializer<
+    ::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel>>::
+    from_json(json const &j) {
+  return ::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel>{
+      j.at("node_labels").template get<std::unordered_map<size_t, NodeLabel>>(),
+      j.at("output_labels")
+          .template get<std::unordered_map<size_t, std::vector<OutputLabel>>>(),
       j.at("graph").template get<::FlexFlow::V1DataflowGraph>()};
 }
-template <typename NodeT, typename TensorT>
-void adl_serializer<::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT>>::
-    to_json(json &j,
-            ::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT> const &v) {
+template <typename NodeLabel, typename OutputLabel>
+void adl_serializer<
+    ::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel>>::
+    to_json(
+        json &j,
+        ::FlexFlow::V1LabelledDataflowGraph<NodeLabel, OutputLabel> const &v) {
   j["__type"] = "V1LabelledDataflowGraph";
   j["node_labels"] = v.node_labels;
   j["output_labels"] = v.output_labels;
@@ -83,8 +88,9 @@ void adl_serializer<::FlexFlow::V1LabelledDataflowGraph<NodeT, TensorT>>::
 } // namespace nlohmann
 
 namespace FlexFlow {
-template <typename NodeT, typename TensorT>
-std::string format_as(V1LabelledDataflowGraph<NodeT, TensorT> const &x) {
+template <typename NodeLabel, typename OutputLabel>
+std::string
+    format_as(V1LabelledDataflowGraph<NodeLabel, OutputLabel> const &x) {
   std::ostringstream oss;
   oss << "<V1LabelledDataflowGraph";
   oss << " node_labels=" << x.node_labels;
@@ -93,9 +99,10 @@ std::string format_as(V1LabelledDataflowGraph<NodeT, TensorT> const &x) {
   oss << ">";
   return oss.str();
 }
-template <typename NodeT, typename TensorT>
-std::ostream &operator<<(std::ostream &s,
-                         V1LabelledDataflowGraph<NodeT, TensorT> const &x) {
+template <typename NodeLabel, typename OutputLabel>
+std::ostream &
+    operator<<(std::ostream &s,
+               V1LabelledDataflowGraph<NodeLabel, OutputLabel> const &x) {
   return s << fmt::to_string(x);
 }
 } // namespace FlexFlow

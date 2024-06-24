@@ -11,6 +11,9 @@ struct LabelledDataflowGraphView : virtual public DataflowGraphView {
 private:
   using Interface = ILabelledDataflowGraphView<NodeLabel, OutputLabel>;
 public:
+  LabelledDataflowGraphView(LabelledDataflowGraphView const &) = default;
+  LabelledDataflowGraphView &operator=(LabelledDataflowGraphView const &) = default;
+
   NodeLabel const &at(Node const &n) const {
     return this->get_interface().at(n);
   }

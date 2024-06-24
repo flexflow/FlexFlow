@@ -17,4 +17,10 @@ DataflowInputEdgeQuery dataflow_input_edge_query_none() {
   };
 }
 
+bool dataflow_input_edge_query_includes(DataflowInputEdgeQuery const &q, DataflowInputEdge const &e) {
+  return includes(q.srcs, e.src)
+    && includes(q.dst_nodes, e.dst.node)
+    && includes(q.dst_idxs, e.dst.idx);
+}
+
 } // namespace FlexFlow

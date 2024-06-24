@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_tensor_guid_t.struct.toml
 /* proj-data
 {
-  "generated_from": "de2c2d33bfa5cd72f0e51954d6879f38"
+  "generated_from": "ff4f90460638385dc94c7f0e87a0bf7f"
 }
 */
 
@@ -11,7 +11,7 @@
 #define _FLEXFLOW_LIB_PCG_INCLUDE_PCG_PARALLEL_COMPUTATION_GRAPH_PARALLEL_TENSOR_GUID_T_DTG_H
 
 #include "fmt/format.h"
-#include "utils/graph/multidiedge.h"
+#include "utils/graph/dataflow_graph/dataflow_output.dtg.h"
 #include <functional>
 #include <ostream>
 #include <tuple>
@@ -20,7 +20,7 @@ namespace FlexFlow {
 struct parallel_tensor_guid_t {
   parallel_tensor_guid_t() = delete;
   explicit parallel_tensor_guid_t(
-      ::FlexFlow::MultiDiOutput const &raw_graph_output);
+      ::FlexFlow::DataflowOutput const &raw_graph_output);
 
   bool operator==(parallel_tensor_guid_t const &) const;
   bool operator!=(parallel_tensor_guid_t const &) const;
@@ -28,7 +28,7 @@ struct parallel_tensor_guid_t {
   bool operator>(parallel_tensor_guid_t const &) const;
   bool operator<=(parallel_tensor_guid_t const &) const;
   bool operator>=(parallel_tensor_guid_t const &) const;
-  ::FlexFlow::MultiDiOutput raw_graph_output;
+  ::FlexFlow::DataflowOutput raw_graph_output;
 };
 } // namespace FlexFlow
 

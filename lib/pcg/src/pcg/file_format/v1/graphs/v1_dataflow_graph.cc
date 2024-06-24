@@ -1,6 +1,7 @@
 #include "pcg/file_format/v1/graphs/v1_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/integer_conversions.h"
 
 namespace FlexFlow {
 
@@ -9,13 +10,13 @@ V1DataflowGraph to_v1(DataflowGraphView const &g) {
 }
 
 V1DataflowGraph to_v1(DataflowGraphView const &g,
-                      bidict<Node, size_t> const &nodes) {
+                      std::unordered_map<Node, size_t> const &nodes) {
   std::unordered_set<V1GraphEdge> edges;
   for (DataflowEdge const &e : get_edges(g)) {
-    edges.insert(V1GraphEdge{nodes.at_l(e.src.node),
-                             e.src.idx,
-                             nodes.at_l(e.dst.node),
-                             e.dst.idx});
+    edges.insert(V1GraphEdge{nodes.at(e.src.node),
+                             size_t_from_int(e.src.idx),
+                             nodes.at(e.dst.node),
+                             size_t_from_int(e.dst.idx)});
   }
 
   return V1DataflowGraph{

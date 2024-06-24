@@ -15,8 +15,8 @@ PCGOperatorAttrs get_operator_attrs(SubParallelComputationGraph const &spcg,
 
 ParallelTensorAttrs
     get_parallel_tensor_attrs(SubParallelComputationGraph const &spcg,
-                              OpenMultiDiEdge const &e) {
-  return spcg.raw_graph.at(e);
+                              OpenDataflowValue const &v) {
+  return spcg.raw_graph.at(v);
 }
 
 } // namespace FlexFlow

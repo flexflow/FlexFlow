@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/operator_pattern/operator_attribute_value.variant.toml
 /* proj-data
 {
-  "generated_from": "de14592f1f4bcfb52689bc95e9d3b55f"
+  "generated_from": "c5c01fab8309c4abd9915570d2005390"
 }
 */
 
@@ -20,6 +20,7 @@
 #include "op-attrs/pool_op.dtg.h"
 #include "op-attrs/regularizer_attrs.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
+#include "utils/hash/vector.h"
 #include <cstddef>
 #include <functional>
 #include <optional>

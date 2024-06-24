@@ -1,5 +1,5 @@
 #include "test/utils/doctest.h"
-#include "utils/graph/dataflow_graph/unordered_set_dataflow_graph.h"
+#include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/dataflow_graph/dataflow_graph.h"
 #include "utils/graph/node/node_query.h"
 #include "utils/graph/dataflow_graph/dataflow_edge_query.h"

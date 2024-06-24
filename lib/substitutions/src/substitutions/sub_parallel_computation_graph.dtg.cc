@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/sub_parallel_computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "0022d1b2c1447667695a120c154a0168"
+  "generated_from": "c8f31135c257713d2a44680af5eb7feb"
 }
 */
 
@@ -11,8 +11,8 @@
 
 namespace FlexFlow {
 SubParallelComputationGraph::SubParallelComputationGraph(
-    ::FlexFlow::OutputLabelledOpenMultiDiGraph<
-        ::FlexFlow::ParallelLayerAttrs,
-        ::FlexFlow::ParallelTensorAttrs> const &raw_graph)
+    ::FlexFlow::LabelledOpenDataflowGraph<::FlexFlow::ParallelLayerAttrs,
+                                          ::FlexFlow::ParallelTensorAttrs> const
+        &raw_graph)
     : raw_graph(raw_graph) {}
 } // namespace FlexFlow

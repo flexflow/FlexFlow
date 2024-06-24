@@ -11,7 +11,7 @@ PCGOperatorAttrs get_operator_attrs(SubParallelComputationGraph const &,
                                     Node const &);
 ParallelTensorAttrs
     get_parallel_tensor_attrs(SubParallelComputationGraph const &,
-                              OpenMultiDiEdge const &);
+                              OpenDataflowValue const &);
 
 } // namespace FlexFlow
 

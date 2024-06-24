@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "UnlabelledDataflowGraphPatternMatch"
+features = [
+  "eq",
+  # "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/bidict.h",
+  "utils/graph/node/node.dtg.h",
+  "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
+  "substitutions/unlabelled/pattern_value.dtg.h",
+  "substitutions/unlabelled/pattern_node.dtg.h",
+]
+
+[[fields]]
+name = "node_assignment"
+type = "::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node>"
+
+[[fields]]
+name = "value_assignment"
+type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::OpenDataflowValue>"

@@ -2,11 +2,11 @@ namespace = "FlexFlow"
 name = "PCGPattern"
 features = []
 includes = [
-  "utils/graph.h",
+  "utils/graph/labelled_open_dataflow_graph/labelled_open_dataflow_graph.h",
   "substitutions/operator_pattern/operator_attribute_pattern.dtg.h",
   "substitutions/tensor_pattern/tensor_attribute_pattern.dtg.h",
 ]
 
 [[fields]]
 name = "raw_graph"
-type = "::FlexFlow::OutputLabelledOpenMultiDiGraph<::FlexFlow::OperatorAttributePattern, ::FlexFlow::TensorAttributePattern>"
+type = "::FlexFlow::LabelledOpenDataflowGraph<::FlexFlow::OperatorAttributePattern, ::FlexFlow::TensorAttributePattern>"

@@ -370,6 +370,16 @@ std::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
   }
 }
 
+std::optional<OperatorAttributeValue> get_attribute(WeightAttrs const &p,
+                                                    OperatorAttributeKey key) {
+  switch (key) {
+    case OperatorAttributeKey::OP_TYPE:
+      return get_op_type(p);
+    default:
+      return std::nullopt;
+  }
+}
+
 std::optional<OperatorAttributeValue> get_attribute(PCGOperatorAttrs const &p,
                                                     OperatorAttributeKey key) {
   return p.visit<std::optional<OperatorAttributeValue>>(

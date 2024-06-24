@@ -3,27 +3,27 @@
 // lib/substitutions/include/substitutions/sub_parallel_computation_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "0022d1b2c1447667695a120c154a0168"
+  "generated_from": "c8f31135c257713d2a44680af5eb7feb"
 }
 */
 
 #ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_SUB_PARALLEL_COMPUTATION_GRAPH_DTG_H
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_SUB_PARALLEL_COMPUTATION_GRAPH_DTG_H
 
-#include "pcg/parallel_layer_attrs.dtg.h"
-#include "pcg/parallel_tensor_attrs.dtg.h"
-#include "utils/graph.h"
+#include "pcg/parallel_computation_graph/parallel_layer_attrs.dtg.h"
+#include "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h"
+#include "utils/graph/labelled_open_dataflow_graph/labelled_open_dataflow_graph.h"
 
 namespace FlexFlow {
 struct SubParallelComputationGraph {
   SubParallelComputationGraph() = delete;
   explicit SubParallelComputationGraph(
-      ::FlexFlow::OutputLabelledOpenMultiDiGraph<
+      ::FlexFlow::LabelledOpenDataflowGraph<
           ::FlexFlow::ParallelLayerAttrs,
           ::FlexFlow::ParallelTensorAttrs> const &raw_graph);
 
-  ::FlexFlow::OutputLabelledOpenMultiDiGraph<::FlexFlow::ParallelLayerAttrs,
-                                             ::FlexFlow::ParallelTensorAttrs>
+  ::FlexFlow::LabelledOpenDataflowGraph<::FlexFlow::ParallelLayerAttrs,
+                                        ::FlexFlow::ParallelTensorAttrs>
       raw_graph;
 };
 } // namespace FlexFlow

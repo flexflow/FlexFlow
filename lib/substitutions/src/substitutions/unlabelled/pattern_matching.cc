@@ -1,8 +1,5 @@
 #include "substitutions/unlabelled/pattern_matching.h"
-#include "substitutions/unlabelled/input_pattern_edge.h"
 #include "substitutions/unlabelled/match_split.h"
-#include "substitutions/unlabelled/output_pattern_edge.h"
-#include "substitutions/unlabelled/pattern_edge.h"
 #include "substitutions/unlabelled/pattern_split.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
 #include <memory>
@@ -11,8 +8,8 @@ namespace FlexFlow {
 
 bool unlabelled_pattern_does_match(
     UnlabelledGraphPattern const &pattern,
-    OpenMultiDiGraphView const &graph,
-    MultiDiGraphPatternMatch const &match,
+    OpenDataflowGraphView const &graph,
+    UnlabelledDataflowGraphPatternMatch const &match,
     MatchAdditionalCriterion const &additional_criterion) {
   if (is_singleton_pattern(pattern)) {
     PatternNode pattern_node = get_only(get_nodes(pattern));
@@ -20,8 +17,10 @@ bool unlabelled_pattern_does_match(
     if (!additional_criterion.node_criterion(pattern_node, matched_node)) {
       return false;
     }
-    for (PatternEdge const &e : get_edges(pattern)) {
-      OpenMultiDiEdge matched_edge = match.edge_assignment.at_l(e);
+    for (PatternValue const &pattern_value : get_values(pattern)) {
+      OpenDataflowValue matched_value = match.value_assignment.at_l(v);
+
+       
 
       assert(is_input_edge(e) || is_output_edge(e));
       if (is_input_edge(e)) {
@@ -48,7 +47,7 @@ bool unlabelled_pattern_does_match(
         }
       }
 
-      if (!additional_criterion.edge_criterion(e, matched_edge)) {
+      if (!additional_criterion.value_criterion(pattern_value, matched_value)) {
         return false;
       }
     }

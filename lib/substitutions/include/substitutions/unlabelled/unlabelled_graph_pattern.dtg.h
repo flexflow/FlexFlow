@@ -3,22 +3,22 @@
 // lib/substitutions/include/substitutions/unlabelled/unlabelled_graph_pattern.struct.toml
 /* proj-data
 {
-  "generated_from": "f494ed79eb1ba4010155e456b452157f"
+  "generated_from": "7d8730b1ab76f6356bb09084d1c55f06"
 }
 */
 
 #ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_UNLABELLED_GRAPH_PATTERN_DTG_H
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_UNLABELLED_GRAPH_PATTERN_DTG_H
 
-#include "utils/graph.h"
+#include "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h"
 
 namespace FlexFlow {
 struct UnlabelledGraphPattern {
   UnlabelledGraphPattern() = delete;
   explicit UnlabelledGraphPattern(
-      ::FlexFlow::OpenMultiDiGraphView const &raw_graph);
+      ::FlexFlow::OpenDataflowGraphView const &raw_graph);
 
-  ::FlexFlow::OpenMultiDiGraphView raw_graph;
+  ::FlexFlow::OpenDataflowGraphView raw_graph;
 };
 } // namespace FlexFlow
 

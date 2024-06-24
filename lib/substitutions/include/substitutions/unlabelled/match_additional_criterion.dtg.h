@@ -3,16 +3,17 @@
 // lib/substitutions/include/substitutions/unlabelled/match_additional_criterion.struct.toml
 /* proj-data
 {
-  "generated_from": "2dff356c85dccda1fce8f714d41c6202"
+  "generated_from": "86e465bc7dbcbece46db9919f4a61a22"
 }
 */
 
 #ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_MATCH_ADDITIONAL_CRITERION_DTG_H
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_MATCH_ADDITIONAL_CRITERION_DTG_H
 
-#include "substitutions/unlabelled/pattern_edge.dtg.h"
 #include "substitutions/unlabelled/pattern_node.dtg.h"
-#include "utils/graph.h"
+#include "substitutions/unlabelled/pattern_value.dtg.h"
+#include "utils/graph/node/node.dtg.h"
+#include "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
 #include <functional>
 
 namespace FlexFlow {
@@ -21,15 +22,15 @@ struct MatchAdditionalCriterion {
   explicit MatchAdditionalCriterion(
       std::function<bool(::FlexFlow::PatternNode const &,
                          ::FlexFlow::Node const &)> const &node_criterion,
-      std::function<bool(::FlexFlow::PatternEdge const &,
-                         ::FlexFlow::OpenMultiDiEdge const &)> const
-          &edge_criterion);
+      std::function<bool(::FlexFlow::PatternValue const &,
+                         ::FlexFlow::OpenDataflowValue const &)> const
+          &value_criterion);
 
   std::function<bool(::FlexFlow::PatternNode const &, ::FlexFlow::Node const &)>
       node_criterion;
-  std::function<bool(::FlexFlow::PatternEdge const &,
-                     ::FlexFlow::OpenMultiDiEdge const &)>
-      edge_criterion;
+  std::function<bool(::FlexFlow::PatternValue const &,
+                     ::FlexFlow::OpenDataflowValue const &)>
+      value_criterion;
 };
 } // namespace FlexFlow
 

@@ -3,15 +3,15 @@
 // lib/substitutions/include/substitutions/output_graph/output_graph_expr.struct.toml
 /* proj-data
 {
-  "generated_from": "9084c9afb2724504a6f4db4288a83a0d"
+  "generated_from": "9ce2d1b90d941d5362bdd9d671ff4349"
 }
 */
 
 #include "substitutions/output_graph/output_graph_expr.dtg.h"
 
 namespace FlexFlow {
-OutputGraphExpr::OutputGraphExpr(
-    ::FlexFlow::NodeLabelledOpenMultiDiGraph<
-        ::FlexFlow::OutputOperatorAttrsAssignment> const &raw_graph)
+OutputGraphExpr::OutputGraphExpr(::FlexFlow::LabelledOpenDataflowGraph<
+                                 ::FlexFlow::OutputOperatorAttrsAssignment,
+                                 std::nullopt_t> const &raw_graph)
     : raw_graph(raw_graph) {}
 } // namespace FlexFlow

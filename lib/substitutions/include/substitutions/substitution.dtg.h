@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/substitution.struct.toml
 /* proj-data
 {
-  "generated_from": "c101f1d63e2d8d80a0ec9c5f5db4fa12"
+  "generated_from": "9e0ea4f3e23858068cc975534e6c4cf7"
 }
 */
 
@@ -18,19 +18,19 @@ struct Substitution {
   Substitution() = delete;
   explicit Substitution(::FlexFlow::PCGPattern const &pcg_pattern,
                         ::FlexFlow::OutputGraphExpr const &output_graph_expr,
-                        ::FlexFlow::bidict<::FlexFlow::InputMultiDiEdge,
-                                           ::FlexFlow::InputMultiDiEdge> const
+                        ::FlexFlow::bidict<::FlexFlow::DataflowGraphInput,
+                                           ::FlexFlow::OpenDataflowValue> const
                             &input_edge_match_to_output,
-                        ::FlexFlow::bidict<::FlexFlow::OutputMultiDiEdge,
-                                           ::FlexFlow::OutputMultiDiEdge> const
+                        ::FlexFlow::bidict<::FlexFlow::DataflowOutput,
+                                           ::FlexFlow::DataflowOutput> const
                             &output_edge_match_to_output);
 
   ::FlexFlow::PCGPattern pcg_pattern;
   ::FlexFlow::OutputGraphExpr output_graph_expr;
-  ::FlexFlow::bidict<::FlexFlow::InputMultiDiEdge, ::FlexFlow::InputMultiDiEdge>
+  ::FlexFlow::bidict<::FlexFlow::DataflowGraphInput,
+                     ::FlexFlow::OpenDataflowValue>
       input_edge_match_to_output;
-  ::FlexFlow::bidict<::FlexFlow::OutputMultiDiEdge,
-                     ::FlexFlow::OutputMultiDiEdge>
+  ::FlexFlow::bidict<::FlexFlow::DataflowOutput, ::FlexFlow::DataflowOutput>
       output_edge_match_to_output;
 };
 } // namespace FlexFlow

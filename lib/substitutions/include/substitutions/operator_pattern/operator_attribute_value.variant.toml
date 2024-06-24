@@ -21,6 +21,7 @@ includes = [
   "op-attrs/tensor_shape.dtg.h",
   "op-attrs/datatype.dtg.h",
   "<cstddef>",
+  "utils/hash/vector.h",
 ]
 
 [[values]]

@@ -20,4 +20,11 @@ DataflowEdgeQuery dataflow_edge_query_none() {
   };
 }
 
+bool dataflow_edge_query_includes_dataflow_edge(DataflowEdgeQuery const &q, DataflowEdge const &e) {
+  return includes(q.src_nodes, e.src.node)
+    && includes(q.dst_nodes, e.dst.node)
+    && includes(q.src_idxs, e.src.idx)
+    && includes(q.dst_idxs, e.dst.idx);
+}
+
 } // namespace FlexFlow

@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/layer_guid_t.struct.toml
 /* proj-data
 {
-  "generated_from": "a672ffe470fd1dde8299f91f3038ca7a"
+  "generated_from": "7876f785878716e3f2af2b4a5c1cab28"
 }
 */
 

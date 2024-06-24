@@ -61,7 +61,6 @@ DiGraphView apply_contraction(DiGraphView const &,
 UndirectedGraphView apply_contraction(UndirectedGraphView const &,
                                       std::unordered_map<Node, Node> const &);
 
-std::size_t num_nodes(GraphView const &);
 bool empty(GraphView const &);
 
 // void add_edges(MultiDiGraph &, std::vector<MultiDiEdge> const &);
@@ -97,10 +96,6 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
 // std::unordered_set<InputMultiDiEdge>
 //     get_open_inputs(OpenMultiDiGraphView const &);
 
-// std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
-//                                                    Node const &);
-std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &,
-                                                    Node const &);
 // std::unordered_set<UpwardOpenMultiDiEdge>
 //     get_incoming_edges(UpwardOpenMultiDiGraphView const &, Node const &);
 // std::unordered_set<MultiDiEdge>
@@ -110,13 +105,9 @@ std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &,
 
 // std::unordered_set<MultiDiEdge> get_incoming_edges(MultiDiGraphView const &,
 //                                                    std::unordered_set<Node>);
-std::unordered_set<DirectedEdge>
-    get_incoming_edges(DiGraphView const &, std::unordered_set<Node> const &);
 
 // std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &,
 //                                                    Node const &);
-std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &,
-                                                    Node const &);
 // std::unordered_set<MultiDiEdge>
 //     get_outgoing_edges(UpwardOpenMultiDiGraphView const &, Node const &);
 // std::unordered_set<DownwardOpenMultiDiEdge>
@@ -127,18 +118,12 @@ std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &,
 // std::unordered_set<MultiDiEdge>
 //     get_outgoing_edges(MultiDiGraphView const &,
 //                        std::unordered_set<Node> const &);
-std::unordered_set<DirectedEdge>
-    get_outgoing_edges(DiGraphView const &, std::unordered_set<Node> const &);
 
 std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &,
                                                   Node const &);
 std::unordered_set<UndirectedEdge>
     get_node_edges(UndirectedGraphView const &,
                    std::unordered_set<Node> const &);
-
-std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
 // Node get_src_node(MultiDiEdge const &);
 // Node get_dst_node(MultiDiEdge const &);
@@ -160,10 +145,6 @@ std::unordered_set<Node> get_sinks(DiGraphView const &);
 // std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);
 // std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
 // std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
-
-// bool is_acyclic(MultiDiGraphView const &, std::unordered_set<Node> const &);
-std::optional<bool> is_acyclic(DiGraphView const &);
-// std::optional<bool> is_acyclic(MultiDiGraphView const &);
 
 std::unordered_map<Node, std::unordered_set<Node>>
     get_dominators(DiGraphView const &);

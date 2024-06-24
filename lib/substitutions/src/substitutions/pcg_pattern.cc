@@ -1,4 +1,4 @@
-#include "substitutions/graph_pattern.h"
+#include "substitutions/pcg_pattern.h"
 #include "substitutions/operator_pattern/satisfies_pattern.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "substitutions/tensor_pattern/satisfies_pattern.h"

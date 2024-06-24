@@ -4,9 +4,10 @@ features = []
 
 includes = [
   "<functional>",
-  "utils/graph.h",
+  "utils/graph/node/node.dtg.h",
+  "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
   "substitutions/unlabelled/pattern_node.dtg.h",
-  "substitutions/unlabelled/pattern_edge.dtg.h",
+  "substitutions/unlabelled/pattern_value.dtg.h",
 ]
 
 [[fields]]
@@ -14,5 +15,5 @@ name = "node_criterion"
 type = "std::function<bool(::FlexFlow::PatternNode const &, ::FlexFlow::Node const &)>"
 
 [[fields]]
-name = "edge_criterion"
-type = "std::function<bool(::FlexFlow::PatternEdge const &, ::FlexFlow::OpenMultiDiEdge const &)>"
+name = "value_criterion"
+type = "std::function<bool(::FlexFlow::PatternValue const &, ::FlexFlow::OpenDataflowValue const &)>"

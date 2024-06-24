@@ -2,10 +2,13 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_OPEN_DATAFLOW_GRAPH_OPEN_DATAFLOW_EDGE_H
 
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h"
+#include "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
 
 namespace FlexFlow {
 
 int get_open_dataflow_edge_dst_idx(OpenDataflowEdge const &);
+OpenDataflowValue get_open_dataflow_edge_source(OpenDataflowEdge const &);
+OpenDataflowEdge open_dataflow_edge_from_src_and_dst(OpenDataflowValue const &src, DataflowInput const &dst);
 
 } // namespace FlexFlow
 

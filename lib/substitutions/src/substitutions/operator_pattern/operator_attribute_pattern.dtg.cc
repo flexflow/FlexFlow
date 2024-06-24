@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/operator_pattern/operator_attribute_pattern.struct.toml
 /* proj-data
 {
-  "generated_from": "968d7a3e93303a7fa7482bbcd50246b6"
+  "generated_from": "256aae1d067ff00dda6cf9a94032d17a"
 }
 */
 

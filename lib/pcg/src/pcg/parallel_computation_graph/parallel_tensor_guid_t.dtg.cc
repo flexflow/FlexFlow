@@ -3,7 +3,7 @@
 // lib/pcg/include/pcg/parallel_computation_graph/parallel_tensor_guid_t.struct.toml
 /* proj-data
 {
-  "generated_from": "de2c2d33bfa5cd72f0e51954d6879f38"
+  "generated_from": "ff4f90460638385dc94c7f0e87a0bf7f"
 }
 */
 
@@ -13,7 +13,7 @@
 
 namespace FlexFlow {
 parallel_tensor_guid_t::parallel_tensor_guid_t(
-    ::FlexFlow::MultiDiOutput const &raw_graph_output)
+    ::FlexFlow::DataflowOutput const &raw_graph_output)
     : raw_graph_output(raw_graph_output) {}
 bool parallel_tensor_guid_t::operator==(
     parallel_tensor_guid_t const &other) const {
@@ -45,7 +45,7 @@ namespace std {
 size_t hash<FlexFlow::parallel_tensor_guid_t>::operator()(
     ::FlexFlow::parallel_tensor_guid_t const &x) const {
   size_t result = 0;
-  result ^= std::hash<::FlexFlow::MultiDiOutput>{}(x.raw_graph_output) +
+  result ^= std::hash<::FlexFlow::DataflowOutput>{}(x.raw_graph_output) +
             0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }

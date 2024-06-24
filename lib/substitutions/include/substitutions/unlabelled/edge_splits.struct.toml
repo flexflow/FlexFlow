@@ -10,6 +10,7 @@ includes = [
   "<utility>",
 ]
 
-[[fields]]
-name = "unwrapped"
-type = "::FlexFlow::bidict<::FlexFlow::MultiDiEdge, std::pair<::FlexFlow::OutputMultiDiEdge, ::FlexFlow::InputMultiDiEdge>>"
+fields = []
+# [[fields]]
+# name = "unwrapped"
+# type = "::FlexFlow::bidict<::FlexFlow::MultiDiEdge, std::pair<::FlexFlow::OutputMultiDiEdge, ::FlexFlow::InputMultiDiEdge>>"

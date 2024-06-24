@@ -16,4 +16,9 @@ DataflowOutputQuery dataflow_output_query_none() {
   };
 }
 
+bool dataflow_output_query_includes_dataflow_output(DataflowOutputQuery const &q, DataflowOutput const &o) {
+  return includes(q.nodes, o.node)
+    && includes(q.output_idxs, o.idx);
+}
+
 } // namespace FlexFlow

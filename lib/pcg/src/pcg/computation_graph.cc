@@ -1,12 +1,18 @@
 #include "pcg/computation_graph.h"
 #include "utils/containers.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
 ComputationGraph make_empty_computation_graph() {
-  return ComputationGraph{LabelledDataflowGraph<LayerAttrs, TensorAttrs>{}};
+  return ComputationGraph{
+    LabelledDataflowGraph<LayerAttrs, TensorAttrs>::create<
+      UnorderedSetLabelledOpenDataflowGraph<LayerAttrs, TensorAttrs>
+    >()
+  };
 }
 
 std::unordered_set<layer_guid_t> get_layers(ComputationGraph const &cg) {

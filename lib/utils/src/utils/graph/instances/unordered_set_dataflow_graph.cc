@@ -1,4 +1,4 @@
-#include "utils/graph/dataflow_graph/unordered_set_dataflow_graph.h"
+#include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/containers/enumerate_vector.h"
 
 namespace FlexFlow {

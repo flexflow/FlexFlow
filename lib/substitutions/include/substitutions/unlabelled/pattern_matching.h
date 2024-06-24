@@ -3,21 +3,22 @@
 
 #include "substitutions/unlabelled/match_additional_criterion.dtg.h"
 #include "substitutions/unlabelled/match_split.dtg.h"
-#include "substitutions/unlabelled/multidigraph_pattern_match.dtg.h"
+#include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 #include "utils/graph.h"
+#include "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h"
 
 namespace FlexFlow {
 
 bool unlabelled_pattern_does_match(
     UnlabelledGraphPattern const &pattern,
-    OpenMultiDiGraphView const &graph,
-    MultiDiGraphPatternMatch const &match,
+    OpenDataflowGraphView const &graph,
+    UnlabelledDataflowGraphPatternMatch const &match,
     MatchAdditionalCriterion const &additional_criterion);
 
-std::vector<MultiDiGraphPatternMatch>
+std::vector<UnlabelledDataflowGraphPatternMatch>
     find_pattern_matches(UnlabelledGraphPattern const &pattern,
-                         OpenMultiDiGraphView const &graph,
+                         OpenDataflowGraphView const &graph,
                          MatchAdditionalCriterion const &additional_criterion);
 
 } // namespace FlexFlow

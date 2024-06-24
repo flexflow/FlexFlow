@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/output_graph/output_graph_expr.struct.toml
 /* proj-data
 {
-  "generated_from": "9084c9afb2724504a6f4db4288a83a0d"
+  "generated_from": "9ce2d1b90d941d5362bdd9d671ff4349"
 }
 */
 
@@ -11,17 +11,18 @@
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_OUTPUT_GRAPH_OUTPUT_GRAPH_EXPR_DTG_H
 
 #include "substitutions/output_graph/output_operator_attrs_assignment.dtg.h"
-#include "utils/graph.h"
+#include "utils/graph/labelled_open_dataflow_graph/labelled_open_dataflow_graph.h"
 
 namespace FlexFlow {
 struct OutputGraphExpr {
   OutputGraphExpr() = delete;
-  explicit OutputGraphExpr(
-      ::FlexFlow::NodeLabelledOpenMultiDiGraph<
-          ::FlexFlow::OutputOperatorAttrsAssignment> const &raw_graph);
+  explicit OutputGraphExpr(::FlexFlow::LabelledOpenDataflowGraph<
+                           ::FlexFlow::OutputOperatorAttrsAssignment,
+                           std::nullopt_t> const &raw_graph);
 
-  ::FlexFlow::NodeLabelledOpenMultiDiGraph<
-      ::FlexFlow::OutputOperatorAttrsAssignment>
+  ::FlexFlow::LabelledOpenDataflowGraph<
+      ::FlexFlow::OutputOperatorAttrsAssignment,
+      std::nullopt_t>
       raw_graph;
 };
 } // namespace FlexFlow

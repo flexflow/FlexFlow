@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/unlabelled/edge_splits.struct.toml
 /* proj-data
 {
-  "generated_from": "f172b041a99f4de1d396e5d451a5e64d"
+  "generated_from": "5002edd65d1a15b8a2aae04c671d1a73"
 }
 */
 
@@ -17,19 +17,8 @@
 
 namespace FlexFlow {
 struct UnlabelledPatternEdgeSplits {
-  UnlabelledPatternEdgeSplits() = delete;
-  explicit UnlabelledPatternEdgeSplits(
-      ::FlexFlow::bidict<::FlexFlow::MultiDiEdge,
-                         std::pair<::FlexFlow::OutputMultiDiEdge,
-                                   ::FlexFlow::InputMultiDiEdge>> const
-          &unwrapped);
-
   bool operator==(UnlabelledPatternEdgeSplits const &) const;
   bool operator!=(UnlabelledPatternEdgeSplits const &) const;
-  ::FlexFlow::bidict<
-      ::FlexFlow::MultiDiEdge,
-      std::pair<::FlexFlow::OutputMultiDiEdge, ::FlexFlow::InputMultiDiEdge>>
-      unwrapped;
 };
 } // namespace FlexFlow
 

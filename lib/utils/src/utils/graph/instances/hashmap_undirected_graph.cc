@@ -1,4 +1,4 @@
-#include "utils/graph/undirected/hashmap_undirected_graph.h"
+#include "utils/graph/instances/hashmap_undirected_graph.h"
 #include "utils/containers.h"
 #include "utils/exception.h"
 

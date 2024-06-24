@@ -10,8 +10,8 @@ features = [
 ]
 
 template_params = [
-  "NodeT",
-  "TensorT",
+  "NodeLabel",
+  "OutputLabel",
 ]
 
 includes = [
@@ -22,11 +22,11 @@ includes = [
 
 [[fields]]
 name = "node_labels"
-type = "std::unordered_map<size_t, NodeT>"
+type = "std::unordered_map<size_t, NodeLabel>"
 
 [[fields]]
 name = "output_labels"
-type = "std::unordered_map<size_t, std::vector<TensorT>>"
+type = "std::unordered_map<size_t, std::vector<OutputLabel>>"
 
 [[fields]]
 name = "graph"

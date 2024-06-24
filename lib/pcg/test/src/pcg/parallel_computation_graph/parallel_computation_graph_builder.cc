@@ -5,6 +5,7 @@
 #include "test/utils/doctest.h"
 #include "utils/containers.h"
 #include "utils/containers/without_nullopts.h"
+#include "utils/hash/pair.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ParallelComputationGraphBuilder::add") {
