@@ -50,7 +50,7 @@ tl::expected<ParallelTensorShape, std::string>
     result_unpar.value();
   });
 
-  SumDegree sum_degree = 1;
+  SumDegree sum_degree = SumDegree{1};
   DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{
       get_sum_degree(input) *
       product(
@@ -75,10 +75,10 @@ tl::expected<ParallelTensorShape, std::string>
     result_unpar.value();
   });
 
-  SumDegree sum_degree =
-      get_sum_degree(input) * shard_dim_at_idx(input, ff_dim_t{-1}).degree;
-  DiscardCopyDegree discard_copy_degree = product(
-      slice(ff_ordered_shard_degrees(input), std::nullopt, ff_dim_t{-1}));
+  SumDegree sum_degree = SumDegree{
+      get_sum_degree(input) * shard_dim_at_idx(input, ff_dim_t{-1}).degree};
+  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{product(
+      slice(ff_ordered_shard_degrees(input), std::nullopt, ff_dim_t{-1}))};
   FFOrdered<int> shard_degrees = FFOrdered<int>{get_discard_copy_degree(input)};
 
   return lift_to_parallel_with_degrees(
@@ -97,9 +97,9 @@ tl::expected<ParallelTensorShape, std::string>
     result_unpar.value();
   });
 
-  SumDegree sum_degree =
-      get_sum_degree(input) * shard_dim_at_idx(input, ff_dim_t{-1}).degree;
-  DiscardCopyDegree discard_copy_degree = 1;
+  SumDegree sum_degree = SumDegree{
+      get_sum_degree(input) * shard_dim_at_idx(input, ff_dim_t{-1}).degree};
+  DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{1};
   FFOrdered<int> shard_degrees = ff_ordered_shard_degrees(input);
   shard_degrees.at(ff_dim_t{-1}) = get_discard_copy_degree(input);
 

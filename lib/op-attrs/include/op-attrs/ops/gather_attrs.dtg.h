@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct GatherAttrs {
   GatherAttrs() = delete;
-  GatherAttrs(::FlexFlow::ff_dim_t const &dim);
+  explicit GatherAttrs(::FlexFlow::ff_dim_t const &dim);
 
   bool operator==(GatherAttrs const &) const;
   bool operator!=(GatherAttrs const &) const;
@@ -36,23 +36,23 @@ struct GatherAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::GatherAttrs> {
-  size_t operator()(FlexFlow::GatherAttrs const &) const;
+struct hash<::FlexFlow::GatherAttrs> {
+  size_t operator()(::FlexFlow::GatherAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::GatherAttrs> {
-  static FlexFlow::GatherAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::GatherAttrs const &);
+struct adl_serializer<::FlexFlow::GatherAttrs> {
+  static ::FlexFlow::GatherAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::GatherAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::GatherAttrs> {
-  static Gen<FlexFlow::GatherAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::GatherAttrs> {
+  static Gen<::FlexFlow::GatherAttrs> arbitrary();
 };
 } // namespace rc
 

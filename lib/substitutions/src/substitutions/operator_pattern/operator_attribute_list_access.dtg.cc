@@ -50,7 +50,7 @@ bool OperatorAttributeListIndexAccess::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::OperatorAttributeListIndexAccess>::operator()(
-    FlexFlow::OperatorAttributeListIndexAccess const &x) const {
+    ::FlexFlow::OperatorAttributeListIndexAccess const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::OperatorAttributeKey>{}(x.attribute_key) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -61,15 +61,15 @@ size_t hash<FlexFlow::OperatorAttributeListIndexAccess>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::OperatorAttributeListIndexAccess
-    adl_serializer<FlexFlow::OperatorAttributeListIndexAccess>::from_json(
+::FlexFlow::OperatorAttributeListIndexAccess
+    adl_serializer<::FlexFlow::OperatorAttributeListIndexAccess>::from_json(
         json const &j) {
-  return {
+  return ::FlexFlow::OperatorAttributeListIndexAccess{
       j.at("attribute_key").template get<::FlexFlow::OperatorAttributeKey>(),
       j.at("index").template get<int>()};
 }
-void adl_serializer<FlexFlow::OperatorAttributeListIndexAccess>::to_json(
-    json &j, FlexFlow::OperatorAttributeListIndexAccess const &v) {
+void adl_serializer<::FlexFlow::OperatorAttributeListIndexAccess>::to_json(
+    json &j, ::FlexFlow::OperatorAttributeListIndexAccess const &v) {
   j["__type"] = "OperatorAttributeListIndexAccess";
   j["attribute_key"] = v.attribute_key;
   j["index"] = v.index;
@@ -77,9 +77,9 @@ void adl_serializer<FlexFlow::OperatorAttributeListIndexAccess>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::OperatorAttributeListIndexAccess>
-    Arbitrary<FlexFlow::OperatorAttributeListIndexAccess>::arbitrary() {
-  return gen::construct<FlexFlow::OperatorAttributeListIndexAccess>(
+Gen<::FlexFlow::OperatorAttributeListIndexAccess>
+    Arbitrary<::FlexFlow::OperatorAttributeListIndexAccess>::arbitrary() {
+  return gen::construct<::FlexFlow::OperatorAttributeListIndexAccess>(
       gen::arbitrary<::FlexFlow::OperatorAttributeKey>(),
       gen::arbitrary<int>());
 }

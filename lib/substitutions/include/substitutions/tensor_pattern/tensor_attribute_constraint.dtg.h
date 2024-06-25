@@ -22,7 +22,7 @@
 namespace FlexFlow {
 struct TensorAttributeConstraint {
   TensorAttributeConstraint() = delete;
-  TensorAttributeConstraint(
+  explicit TensorAttributeConstraint(
       ::FlexFlow::ConstraintType const &constraint_type,
       ::FlexFlow::TensorAttributeExpr const &attribute_expr,
       ::FlexFlow::TensorAttributeValue const &attribute_value);
@@ -41,16 +41,16 @@ struct TensorAttributeConstraint {
 
 namespace std {
 template <>
-struct hash<FlexFlow::TensorAttributeConstraint> {
-  size_t operator()(FlexFlow::TensorAttributeConstraint const &) const;
+struct hash<::FlexFlow::TensorAttributeConstraint> {
+  size_t operator()(::FlexFlow::TensorAttributeConstraint const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::TensorAttributeConstraint> {
-  static FlexFlow::TensorAttributeConstraint from_json(json const &);
-  static void to_json(json &, FlexFlow::TensorAttributeConstraint const &);
+struct adl_serializer<::FlexFlow::TensorAttributeConstraint> {
+  static ::FlexFlow::TensorAttributeConstraint from_json(json const &);
+  static void to_json(json &, ::FlexFlow::TensorAttributeConstraint const &);
 };
 } // namespace nlohmann
 

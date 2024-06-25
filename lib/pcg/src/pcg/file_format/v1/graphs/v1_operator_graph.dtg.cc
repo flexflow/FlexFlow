@@ -3,14 +3,15 @@
 // lib/pcg/include/pcg/file_format/v1/graphs/v1_operator_graph.struct.toml
 /* proj-data
 {
-  "generated_from": "5bfd7d8755cfd8cd9dbf57d5c367038e"
+  "generated_from": "fed215ca219af1bd375801eb2e33b473"
 }
 */
 
 #include "pcg/file_format/v1/graphs/v1_operator_graph.dtg.h"
 
 #include "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h"
-#include "utils/fmt.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 #include <sstream>
 #include <unordered_set>
 #include <vector>
@@ -23,14 +24,15 @@ V1OperatorGraph::V1OperatorGraph(
 } // namespace FlexFlow
 
 namespace nlohmann {
-FlexFlow::V1OperatorGraph
-    adl_serializer<FlexFlow::V1OperatorGraph>::from_json(json const &j) {
-  return {j.at("nodes").template get<std::vector<size_t>>(),
-          j.at("edges")
-              .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
+::FlexFlow::V1OperatorGraph
+    adl_serializer<::FlexFlow::V1OperatorGraph>::from_json(json const &j) {
+  return ::FlexFlow::V1OperatorGraph{
+      j.at("nodes").template get<std::vector<size_t>>(),
+      j.at("edges")
+          .template get<std::unordered_set<::FlexFlow::V1GraphEdge>>()};
 }
-void adl_serializer<FlexFlow::V1OperatorGraph>::to_json(
-    json &j, FlexFlow::V1OperatorGraph const &v) {
+void adl_serializer<::FlexFlow::V1OperatorGraph>::to_json(
+    json &j, ::FlexFlow::V1OperatorGraph const &v) {
   j["__type"] = "V1OperatorGraph";
   j["nodes"] = v.nodes;
   j["edges"] = v.edges;

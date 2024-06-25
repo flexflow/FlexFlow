@@ -22,6 +22,8 @@ private:
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(TrackedAllocator);
 
 Allocator get_tracked_memory_allocator(Allocator const &base_allocator);
+Allocator get_tracked_local_memory_allocator();
+size_t get_tracked_memory_usage(Allocator &wrapped_allocator);
 
 } // namespace FlexFlow
 

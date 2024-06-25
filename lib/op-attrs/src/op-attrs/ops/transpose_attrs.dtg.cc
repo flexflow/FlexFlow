@@ -40,7 +40,7 @@ bool TransposeAttrs::operator>=(TransposeAttrs const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::TransposeAttrs>::operator()(
-    FlexFlow::TransposeAttrs const &x) const {
+    ::FlexFlow::TransposeAttrs const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t>>{}(x.perm) +
             0x9e3779b9 + (result << 6) + (result >> 2);
@@ -49,21 +49,22 @@ size_t hash<FlexFlow::TransposeAttrs>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::TransposeAttrs
-    adl_serializer<FlexFlow::TransposeAttrs>::from_json(json const &j) {
-  return {
+::FlexFlow::TransposeAttrs
+    adl_serializer<::FlexFlow::TransposeAttrs>::from_json(json const &j) {
+  return ::FlexFlow::TransposeAttrs{
       j.at("perm").template get<::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t>>()};
 }
-void adl_serializer<FlexFlow::TransposeAttrs>::to_json(
-    json &j, FlexFlow::TransposeAttrs const &v) {
+void adl_serializer<::FlexFlow::TransposeAttrs>::to_json(
+    json &j, ::FlexFlow::TransposeAttrs const &v) {
   j["__type"] = "TransposeAttrs";
   j["perm"] = v.perm;
 }
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::TransposeAttrs> Arbitrary<FlexFlow::TransposeAttrs>::arbitrary() {
-  return gen::construct<FlexFlow::TransposeAttrs>(
+Gen<::FlexFlow::TransposeAttrs>
+    Arbitrary<::FlexFlow::TransposeAttrs>::arbitrary() {
+  return gen::construct<::FlexFlow::TransposeAttrs>(
       gen::arbitrary<::FlexFlow::FFOrdered<::FlexFlow::ff_dim_t>>());
 }
 } // namespace rc

@@ -122,7 +122,7 @@ tl::expected<MultiHeadAttentionParallelInputs, std::string>
       query_dim,
       key_dim,
       value_dim,
-      discard_copy_q,
+      DiscardCopyDegree{discard_copy_q},
       input_q.data_type,
   };
 

@@ -50,7 +50,7 @@ bool ParallelTensorDims::operator>=(ParallelTensorDims const &other) const {
 
 namespace std {
 size_t hash<FlexFlow::ParallelTensorDims>::operator()(
-    FlexFlow::ParallelTensorDims const &x) const {
+    ::FlexFlow::ParallelTensorDims const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim>>{}(
                 x.shard_dims) +
@@ -62,15 +62,15 @@ size_t hash<FlexFlow::ParallelTensorDims>::operator()(
 } // namespace std
 
 namespace nlohmann {
-FlexFlow::ParallelTensorDims
-    adl_serializer<FlexFlow::ParallelTensorDims>::from_json(json const &j) {
-  return {
+::FlexFlow::ParallelTensorDims
+    adl_serializer<::FlexFlow::ParallelTensorDims>::from_json(json const &j) {
+  return ::FlexFlow::ParallelTensorDims{
       j.at("shard_dims")
           .template get<::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim>>(),
       j.at("replica_dims").template get<::FlexFlow::ReplicaParallelDimSet>()};
 }
-void adl_serializer<FlexFlow::ParallelTensorDims>::to_json(
-    json &j, FlexFlow::ParallelTensorDims const &v) {
+void adl_serializer<::FlexFlow::ParallelTensorDims>::to_json(
+    json &j, ::FlexFlow::ParallelTensorDims const &v) {
   j["__type"] = "ParallelTensorDims";
   j["shard_dims"] = v.shard_dims;
   j["replica_dims"] = v.replica_dims;
@@ -78,9 +78,9 @@ void adl_serializer<FlexFlow::ParallelTensorDims>::to_json(
 } // namespace nlohmann
 
 namespace rc {
-Gen<FlexFlow::ParallelTensorDims>
-    Arbitrary<FlexFlow::ParallelTensorDims>::arbitrary() {
-  return gen::construct<FlexFlow::ParallelTensorDims>(
+Gen<::FlexFlow::ParallelTensorDims>
+    Arbitrary<::FlexFlow::ParallelTensorDims>::arbitrary() {
+  return gen::construct<::FlexFlow::ParallelTensorDims>(
       gen::arbitrary<::FlexFlow::FFOrdered<::FlexFlow::ShardParallelDim>>(),
       gen::arbitrary<::FlexFlow::ReplicaParallelDimSet>());
 }

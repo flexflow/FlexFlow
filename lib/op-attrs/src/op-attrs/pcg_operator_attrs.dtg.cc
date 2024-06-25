@@ -3,7 +3,7 @@
 // lib/op-attrs/include/op-attrs/pcg_operator_attrs.variant.toml
 /* proj-data
 {
-  "generated_from": "9149c47c2055195f15966ae7a3f619ff"
+  "generated_from": "72d324ec59ca0c5a390458ea20e79338"
 }
 */
 
@@ -70,6 +70,8 @@ PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::TopKAttrs const &v)
     : raw_variant(v) {}
 PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::TransposeAttrs const &v)
     : raw_variant(v) {}
+PCGOperatorAttrs::PCGOperatorAttrs(::FlexFlow::WeightAttrs const &v)
+    : raw_variant(v) {}
 bool PCGOperatorAttrs::operator==(PCGOperatorAttrs const &other) const {
   return this->raw_variant == other.raw_variant;
 }
@@ -119,7 +121,8 @@ size_t hash<::FlexFlow::PCGOperatorAttrs>::operator()(
                                 ::FlexFlow::SplitAttrs,
                                 ::FlexFlow::SoftmaxAttrs,
                                 ::FlexFlow::TopKAttrs,
-                                ::FlexFlow::TransposeAttrs>>{}(x.raw_variant);
+                                ::FlexFlow::TransposeAttrs,
+                                ::FlexFlow::WeightAttrs>>{}(x.raw_variant);
 }
 } // namespace std
 namespace nlohmann {
@@ -210,6 +213,9 @@ namespace nlohmann {
   } else if (key == "transpose") {
     return ::FlexFlow::PCGOperatorAttrs{
         j.at("value").template get<::FlexFlow::TransposeAttrs>()};
+  } else if (key == "weight") {
+    return ::FlexFlow::PCGOperatorAttrs{
+        j.at("value").template get<::FlexFlow::WeightAttrs>()};
   } else {
     throw std::runtime_error(fmt::format("Unknown type key {}", key));
   }
@@ -358,6 +364,11 @@ void adl_serializer<::FlexFlow::PCGOperatorAttrs>::to_json(
       j["value"] = x.get<::FlexFlow::TransposeAttrs>();
       break;
     }
+    case 28: {
+      j["type"] = "weight";
+      j["value"] = x.get<::FlexFlow::WeightAttrs>();
+      break;
+    }
     default: {
       throw std::runtime_error(
           fmt::format("Unknown index {} for type PCGOperatorAttrs", x.index()));
@@ -423,7 +434,9 @@ Gen<::FlexFlow::PCGOperatorAttrs>
                     gen::construct<::FlexFlow::PCGOperatorAttrs>(
                         gen::arbitrary<::FlexFlow::TopKAttrs>()),
                     gen::construct<::FlexFlow::PCGOperatorAttrs>(
-                        gen::arbitrary<::FlexFlow::TransposeAttrs>()));
+                        gen::arbitrary<::FlexFlow::TransposeAttrs>()),
+                    gen::construct<::FlexFlow::PCGOperatorAttrs>(
+                        gen::arbitrary<::FlexFlow::WeightAttrs>()));
 }
 } // namespace rc
 namespace FlexFlow {
@@ -564,6 +577,11 @@ std::string format_as(::FlexFlow::PCGOperatorAttrs const &x) {
     case 27: {
       oss << "<PCGOperatorAttrs transpose="
           << x.get<::FlexFlow::TransposeAttrs>() << ">";
+      break;
+    }
+    case 28: {
+      oss << "<PCGOperatorAttrs weight=" << x.get<::FlexFlow::WeightAttrs>()
+          << ">";
       break;
     }
     default: {

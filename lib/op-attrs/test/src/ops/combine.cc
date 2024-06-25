@@ -4,7 +4,7 @@
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Combine shape inference") {
 
-    ParallelTensorShape input = {
+    ParallelTensorShape input = ParallelTensorShape{
         ParallelTensorDims{
             FFOrdered<ShardParallelDim>{
                 ShardParallelDim{12, 2},
@@ -21,7 +21,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     SUBCASE("valid") {
-      ff_dim_t dim = 2;
+      ff_dim_t dim = ff_dim_t{2};
       int degree = 3;
       CombineAttrs attrs = CombineAttrs{
           /*repartition_dim=*/dim,
@@ -41,7 +41,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("invalid") {
-      ff_dim_t dim = 2;
+      ff_dim_t dim = ff_dim_t{2};
       int degree = 4;
       CombineAttrs attrs = CombineAttrs{
           /*repartition_dim=*/dim,

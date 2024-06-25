@@ -35,6 +35,13 @@ LocalTrainingBacking::LocalTrainingBacking(
         GenericTensorAccessorW tensor_backing =
             this->allocator.allocate_tensor(tensor_attrs.shape);
         this->local_slots_backing.tensor_mapping.insert({edge, tensor_backing});
+
+        if (tensor_attrs.create_gradients == CreateGrad::YES) {
+          GenericTensorAccessorW gradient_tensor_backing =
+              this->allocator.allocate_tensor(tensor_attrs.shape);
+          this->local_slots_backing.gradient_tensor_mapping.insert(
+              {edge, gradient_tensor_backing});
+        }
       }
     }
   }
@@ -50,14 +57,15 @@ DeviceSpecific<DeviceStates>
   return fn(acc);
 }
 
-void LocalTrainingBacking::call_task_impl(task_id_t task_id,
-                                          TaskArgumentAccessor acc) {
+std::optional<float>
+    LocalTrainingBacking::call_task_impl(task_id_t task_id,
+                                         TaskArgumentAccessor acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
   auto fn = std::get<
       std::function<std::optional<float>(TaskArgumentAccessor const &)>>(
       task_sig_impl.impl_function);
-  fn(acc);
+  return fn(acc);
 }
 
 void LocalTrainingBacking::execute_init() {
@@ -75,26 +83,36 @@ void LocalTrainingBacking::execute_init() {
   }
 }
 
-void LocalTrainingBacking::execute_forward() {
-  for (layer_guid_t operator_node :
+PerLayerElapsedTime LocalTrainingBacking::execute_forward() {
+  PerLayerElapsedTime per_op_elapsed_time;
+  for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
-    auto attrs = get_layer_attrs(this->computation_graph, operator_node).attrs;
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(this->computation_graph, operator_node).attrs;
     OpTaskInvocation invocation = forward(attrs);
     TaskArgumentAccessor accessor =
         this->get_task_arg_accessor(invocation, operator_node);
-    this->call_task_impl(invocation.task_id, accessor);
+    std::optional<float> elapsed_time =
+        this->call_task_impl(invocation.task_id, accessor);
+    per_op_elapsed_time.insert({operator_node, elapsed_time});
   }
+  return per_op_elapsed_time;
 }
 
-void LocalTrainingBacking::execute_backward() {
-  for (layer_guid_t operator_node :
-       reverse_topological_ordering(computation_graph)) {
-    auto attrs = get_layer_attrs(this->computation_graph, operator_node).attrs;
+PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
+  PerLayerElapsedTime per_op_elapsed_time;
+  for (layer_guid_t const &operator_node :
+       reversed(topological_ordering(this->computation_graph))) {
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(this->computation_graph, operator_node).attrs;
     OpTaskInvocation invocation = backward(attrs);
     TaskArgumentAccessor accessor =
         this->get_task_arg_accessor(invocation, operator_node);
-    this->call_task_impl(invocation.task_id, accessor);
+    std::optional<float> elapsed_time =
+        this->call_task_impl(invocation.task_id, accessor);
+    per_op_elapsed_time.insert({operator_node, elapsed_time});
   }
+  return per_op_elapsed_time;
 }
 
 void LocalTrainingBacking::execute_update() {

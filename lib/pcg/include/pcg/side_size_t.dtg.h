@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct side_size_t {
   side_size_t() = delete;
-  side_size_t(int const &unwrapped);
+  explicit side_size_t(int const &unwrapped);
 
   bool operator==(side_size_t const &) const;
   bool operator!=(side_size_t const &) const;
@@ -34,23 +34,23 @@ struct side_size_t {
 
 namespace std {
 template <>
-struct hash<FlexFlow::side_size_t> {
-  size_t operator()(FlexFlow::side_size_t const &) const;
+struct hash<::FlexFlow::side_size_t> {
+  size_t operator()(::FlexFlow::side_size_t const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::side_size_t> {
-  static FlexFlow::side_size_t from_json(json const &);
-  static void to_json(json &, FlexFlow::side_size_t const &);
+struct adl_serializer<::FlexFlow::side_size_t> {
+  static ::FlexFlow::side_size_t from_json(json const &);
+  static void to_json(json &, ::FlexFlow::side_size_t const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::side_size_t> {
-  static Gen<FlexFlow::side_size_t> arbitrary();
+struct Arbitrary<::FlexFlow::side_size_t> {
+  static Gen<::FlexFlow::side_size_t> arbitrary();
 };
 } // namespace rc
 

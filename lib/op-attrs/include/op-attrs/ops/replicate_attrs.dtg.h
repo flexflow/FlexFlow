@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct ReplicateAttrs {
   ReplicateAttrs() = delete;
-  ReplicateAttrs(int const &replicate_degree);
+  explicit ReplicateAttrs(int const &replicate_degree);
 
   bool operator==(ReplicateAttrs const &) const;
   bool operator!=(ReplicateAttrs const &) const;
@@ -34,23 +34,23 @@ struct ReplicateAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::ReplicateAttrs> {
-  size_t operator()(FlexFlow::ReplicateAttrs const &) const;
+struct hash<::FlexFlow::ReplicateAttrs> {
+  size_t operator()(::FlexFlow::ReplicateAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::ReplicateAttrs> {
-  static FlexFlow::ReplicateAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::ReplicateAttrs const &);
+struct adl_serializer<::FlexFlow::ReplicateAttrs> {
+  static ::FlexFlow::ReplicateAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::ReplicateAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::ReplicateAttrs> {
-  static Gen<FlexFlow::ReplicateAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::ReplicateAttrs> {
+  static Gen<::FlexFlow::ReplicateAttrs> arbitrary();
 };
 } // namespace rc
 

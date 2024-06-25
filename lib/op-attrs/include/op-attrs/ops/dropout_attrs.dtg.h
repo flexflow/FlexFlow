@@ -20,7 +20,7 @@
 namespace FlexFlow {
 struct DropoutAttrs {
   DropoutAttrs() = delete;
-  DropoutAttrs(float const &rate, unsigned long long const &seed);
+  explicit DropoutAttrs(float const &rate, unsigned long long const &seed);
 
   bool operator==(DropoutAttrs const &) const;
   bool operator!=(DropoutAttrs const &) const;
@@ -35,23 +35,23 @@ struct DropoutAttrs {
 
 namespace std {
 template <>
-struct hash<FlexFlow::DropoutAttrs> {
-  size_t operator()(FlexFlow::DropoutAttrs const &) const;
+struct hash<::FlexFlow::DropoutAttrs> {
+  size_t operator()(::FlexFlow::DropoutAttrs const &) const;
 };
 } // namespace std
 
 namespace nlohmann {
 template <>
-struct adl_serializer<FlexFlow::DropoutAttrs> {
-  static FlexFlow::DropoutAttrs from_json(json const &);
-  static void to_json(json &, FlexFlow::DropoutAttrs const &);
+struct adl_serializer<::FlexFlow::DropoutAttrs> {
+  static ::FlexFlow::DropoutAttrs from_json(json const &);
+  static void to_json(json &, ::FlexFlow::DropoutAttrs const &);
 };
 } // namespace nlohmann
 
 namespace rc {
 template <>
-struct Arbitrary<FlexFlow::DropoutAttrs> {
-  static Gen<FlexFlow::DropoutAttrs> arbitrary();
+struct Arbitrary<::FlexFlow::DropoutAttrs> {
+  static Gen<::FlexFlow::DropoutAttrs> arbitrary();
 };
 } // namespace rc
 

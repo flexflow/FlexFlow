@@ -43,7 +43,7 @@ bool DownwardOpenPatternEdge::operator>=(
 
 namespace std {
 size_t hash<FlexFlow::DownwardOpenPatternEdge>::operator()(
-    FlexFlow::DownwardOpenPatternEdge const &x) const {
+    ::FlexFlow::DownwardOpenPatternEdge const &x) const {
   size_t result = 0;
   result ^= std::hash<::FlexFlow::DownwardOpenMultiDiEdge>{}(x.raw_edge) +
             0x9e3779b9 + (result << 6) + (result >> 2);
