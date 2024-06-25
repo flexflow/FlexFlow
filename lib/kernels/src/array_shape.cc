@@ -39,7 +39,7 @@ std::size_t ArrayShape::num_elements() const {
 }
 
 std::size_t ArrayShape::operator[](legion_dim_t idx) const {
-  return dims[idx.value];
+  return dims[idx];
 }
 
 ArrayShape ArrayShape::sub_shape(
