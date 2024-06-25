@@ -111,7 +111,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    // -- check task argument accessor
     SUBCASE("Task Argument Accessor") {
       enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
       CastAttrs attrs = CastAttrs{output_dtype};
