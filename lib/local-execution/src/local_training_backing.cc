@@ -121,7 +121,7 @@ void LocalTrainingBacking::execute_update() {
   NOT_IMPLEMENTED();
 }
 
-TaskArgumentAccessor const &LocalTrainingBacking::get_task_arg_accessor(
+TaskArgumentAccessor const LocalTrainingBacking::get_task_arg_accessor(
     OpTaskInvocation const &invocation, layer_guid_t const &op_guid) const {
   TensorSlotsBacking tensor_slots_backing =
       this->local_slots_backing.construct_tensor_slots_backing(

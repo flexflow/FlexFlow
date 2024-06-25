@@ -8,38 +8,25 @@ namespace FlexFlow {
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Local Backing Single Operator -- Cast") {
+    // allocate input memory
     Allocator allocator = get_local_memory_allocator();
-
-    // define operator
-    size_t d1 = 12;
-    size_t d2 = 16;
-    DataType input_datatype = DataType::FLOAT;
-    DataType output_datatype = DataType::DOUBLE;
-
-    TensorShape input = TensorShape{
-        TensorDims{FFOrdered<size_t>{d1, d2}},
-        input_datatype,
+    DataType input_dtype = DataType::FLOAT;
+    DataType output_dtype = DataType::DOUBLE;
+    TensorShape input_tensor_shape = TensorShape{
+        TensorDims{FFOrdered<size_t>{12, 16}},
+        input_dtype,
     };
-    TensorAttrs output = TensorAttrs{TensorShape{
-                                         TensorDims{FFOrdered<size_t>{d1, d2}},
-                                         output_datatype,
-                                     },
-                                     std::nullopt,
-                                     std::nullopt,
-                                     CreateGrad::YES};
-    CastAttrs attrs = CastAttrs{output_datatype};
+    GenericTensorAccessorW tensor_backing =
+        allocator.allocate_tensor(input_tensor_shape);
 
     // build graph
-    TensorBackingMap tensor_backing_map;
     ComputationGraphBuilder cg_builder;
-    tensor_guid_t tensor_id = cg_builder.create_tensor(input, CreateGrad::YES);
-    GenericTensorAccessorW tensor_backing = allocator.allocate_tensor(input);
-    tensor_backing_map.insert({tensor_id, tensor_backing});
-    cg_builder.add_layer(
-        LayerAttrs{ComputationGraphOpAttrs{attrs}, std::nullopt},
-        std::vector<tensor_guid_t>{tensor_id},
-        {},
-        std::vector<TensorAttrs>{output});
+    TensorBackingMap tensor_backing_map;
+    tensor_guid_t input_tensor_guid =
+        cg_builder.create_tensor(input_tensor_shape, CreateGrad::YES);
+    tensor_backing_map.insert({input_tensor_guid, tensor_backing});
+    tensor_guid_t output_tensor_guid =
+        cg_builder.cast(input_tensor_guid, output_dtype);
 
     // local backing initialization
     RuntimeArgConfig runtime_arg_config = RuntimeArgConfig{
@@ -55,163 +42,148 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     layer_guid_t layer_guid =
         get_only(topological_ordering(cg_builder.computation_graph));
-
-    SUBCASE("Task Registration") {
-      TaskRegistry const task_registry = local_backing.get_task_registry();
-      std::unordered_map<layer_guid_t, task_id_t> correct_forward_task_ids;
-      std::unordered_map<layer_guid_t, task_id_t> correct_backward_task_ids;
-
-      correct_forward_task_ids.insert({layer_guid, CAST_FWD_TASK_ID});
-      correct_backward_task_ids.insert({layer_guid, CAST_BWD_TASK_ID});
-
-      CHECK(correct_forward_task_ids == task_registry.forward_task_ids);
-      CHECK(correct_backward_task_ids == task_registry.backward_task_ids);
-    }
-
-    std::vector<tensor_guid_t> input_tensor_guids =
-        get_incoming_tensors(cg_builder.computation_graph, layer_guid);
-    std::vector<tensor_guid_t> output_tensor_guids =
-        get_outgoing_tensors(cg_builder.computation_graph, layer_guid);
-
-    SUBCASE("Tensor Slot Insertion") {
-      LocalSlotsBacking const local_slots_backing =
-          local_backing.get_local_slots_backing();
-      std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
-          correct_input_tensor_slots;
-      std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
-          correct_output_tensor_slots;
-
-      correct_input_tensor_slots.insert({layer_guid, input_tensor_guids});
-      correct_output_tensor_slots.insert({layer_guid, output_tensor_guids});
-
-      CHECK(correct_input_tensor_slots ==
-            local_slots_backing.input_tensor_slots);
-      CHECK(correct_output_tensor_slots ==
-            local_slots_backing.output_tensor_slots);
-    }
-
-    ArrayShape correct_input_array_shape = ArrayShape{input};
-    ArrayShape correct_output_array_shape = ArrayShape{output.shape};
-    tensor_guid_t input_tensor_guid = get_only(input_tensor_guids);
-    tensor_guid_t output_tensor_guid = get_only(output_tensor_guids);
-    LocalSlotsBacking const local_slots_backing =
+    TaskRegistry task_registry = local_backing.get_task_registry();
+    LocalSlotsBacking local_slots_backing =
         local_backing.get_local_slots_backing();
 
+    SUBCASE("Task Registration") {
+      SUBCASE("Task Registration Fwd") {
+        std::unordered_map<layer_guid_t, task_id_t> correct_forward_task_ids = {
+            {layer_guid, CAST_FWD_TASK_ID}};
+        CHECK(correct_forward_task_ids == task_registry.forward_task_ids);
+      }
+
+      SUBCASE("Task Registration Bwd") {
+        std::unordered_map<layer_guid_t, task_id_t> correct_backward_task_ids =
+            {{layer_guid, CAST_BWD_TASK_ID}};
+        CHECK(correct_backward_task_ids == task_registry.backward_task_ids);
+      }
+    }
+
+    SUBCASE("Tensor Slot Insertion") {
+      SUBCASE("Input Tensor Slot Insertion") {
+        std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
+            correct_input_tensor_slots = {
+                {layer_guid, std::vector<tensor_guid_t>{input_tensor_guid}}};
+        CHECK(correct_input_tensor_slots ==
+              local_slots_backing.input_tensor_slots);
+      }
+
+      SUBCASE("Output Tensor Slot Insertion") {
+        std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
+            correct_output_tensor_slots = {
+                {layer_guid, std::vector<tensor_guid_t>{output_tensor_guid}}};
+        CHECK(correct_output_tensor_slots ==
+              local_slots_backing.output_tensor_slots);
+      }
+    }
+
     SUBCASE("Tensor Allocation") {
-      GenericTensorAccessorW input_tensor_backing =
-          local_slots_backing.tensor_mapping.at(input_tensor_guid);
-      GenericTensorAccessorW output_tensor_backing =
-          local_slots_backing.tensor_mapping.at(output_tensor_guid);
-      CHECK(correct_input_array_shape == input_tensor_backing.shape);
-      CHECK(input_datatype == input_tensor_backing.data_type);
-      CHECK(correct_output_array_shape == output_tensor_backing.shape);
-      CHECK(output_datatype == output_tensor_backing.data_type);
+      SUBCASE("Input Tensor Allocation") {
+        GenericTensorAccessorW input_tensor_backing =
+            local_slots_backing.tensor_mapping.at(input_tensor_guid);
+        CHECK(is_shape_and_dtype_correct(
+            input_tensor_backing, ArrayShape{input_tensor_shape}, input_dtype));
+      }
 
-      // gradient tensors
-      GenericTensorAccessorW input_grad_tensor_backing =
-          local_slots_backing.gradient_tensor_mapping.at(input_tensor_guid);
-      GenericTensorAccessorW output_grad_tensor_backing =
-          local_slots_backing.gradient_tensor_mapping.at(output_tensor_guid);
-      CHECK(correct_input_array_shape == input_grad_tensor_backing.shape);
-      CHECK(input_datatype == input_grad_tensor_backing.data_type);
-      CHECK(correct_output_array_shape == output_grad_tensor_backing.shape);
-      CHECK(output_datatype == output_grad_tensor_backing.data_type);
+      SUBCASE("Output Tensor Allocation") {
+        GenericTensorAccessorW output_tensor_backing =
+            local_slots_backing.tensor_mapping.at(output_tensor_guid);
+        CHECK(is_shape_and_dtype_correct(output_tensor_backing,
+                                         ArrayShape{input_tensor_shape},
+                                         output_dtype));
+      }
+
+      SUBCASE("Input Gradient Tensor Allocation") {
+        GenericTensorAccessorW input_grad_tensor_backing =
+            local_slots_backing.gradient_tensor_mapping.at(input_tensor_guid);
+        CHECK(is_shape_and_dtype_correct(input_grad_tensor_backing,
+                                         ArrayShape{input_tensor_shape},
+                                         input_dtype));
+      }
+
+      SUBCASE("Output Gradient Tensor Allocation") {
+        GenericTensorAccessorW output_grad_tensor_backing =
+            local_slots_backing.gradient_tensor_mapping.at(output_tensor_guid);
+        CHECK(is_shape_and_dtype_correct(output_grad_tensor_backing,
+                                         ArrayShape{input_tensor_shape},
+                                         output_dtype));
+      }
     }
 
-    enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
-    SUBCASE("Forward Task Argument Accessor") {
-      // initialize invocation
-      OpTaskBinding binding;
-      binding.bind_arg(PROFILING, profiling_settings());
-      binding.bind_arg(ATTRS, attrs);
-      binding.bind(INPUT, input_tensor(0));
-      binding.bind(OUTPUT, output_tensor(0));
-      OpTaskInvocation fwd_invocation = {CAST_FWD_TASK_ID, binding};
-      ProfilingSettings correct_settings = ProfilingSettings{0, 0};
+    // -- check task argument accessor
+    SUBCASE("Task Argument Accessor") {
+      enum Slots { INPUT, OUTPUT, ATTRS, PROFILING };
+      CastAttrs attrs = CastAttrs{output_dtype};
+      OpTaskBinding binding = [&] {
+        OpTaskBinding b;
+        b.bind_arg(PROFILING, profiling_settings());
+        b.bind_arg(ATTRS, attrs);
+        b.bind(INPUT, input_tensor(0));
+        b.bind(OUTPUT, output_tensor(0));
+        return b;
+      }();
 
-      // get accessor
-      TaskArgumentAccessor acc =
-          local_backing.get_task_arg_accessor(fwd_invocation, layer_guid);
-      ProfilingSettings result_settings =
-          acc.get_argument<ProfilingSettings>(PROFILING);
-      CastAttrs result_attrs = acc.get_argument<CastAttrs>(ATTRS);
-      GenericTensorAccessorR result_input_tensor_backing =
-          acc.get_tensor<Permissions::RO>(INPUT);
-      GenericTensorAccessorW result_output_tensor_backing =
-          acc.get_tensor<Permissions::WO>(OUTPUT);
+      SUBCASE("Forward Task Argument Accessor") {
+        OpTaskInvocation fwd_invocation = {CAST_FWD_TASK_ID, binding};
+        TaskArgumentAccessor acc =
+            local_backing.get_task_arg_accessor(fwd_invocation, layer_guid);
 
-      CHECK(correct_settings == result_settings);
-      CHECK(attrs == result_attrs);
-      CHECK(correct_input_array_shape == result_input_tensor_backing.shape);
-      CHECK(input_datatype == result_input_tensor_backing.data_type);
-      CHECK(correct_output_array_shape == result_output_tensor_backing.shape);
-      CHECK(output_datatype == result_output_tensor_backing.data_type);
+        SUBCASE("Profiling Settings") {
+          ProfilingSettings result_settings =
+              acc.get_argument<ProfilingSettings>(PROFILING);
+          CHECK(runtime_arg_config.profiling_settings == result_settings);
+        }
+        SUBCASE("Attrs") {
+          CastAttrs result_attrs = acc.get_argument<CastAttrs>(ATTRS);
+          CHECK(attrs == result_attrs);
+        }
+        SUBCASE("Matches Tensors from Slots Backing") {
+          SUBCASE("Input Tensor") {
+            GenericTensorAccessorW result_input_tensor_backing =
+                acc.get_tensor<Permissions::WO>(INPUT);
+            GenericTensorAccessorW slots_input_tensor_backing =
+                local_slots_backing.tensor_mapping.at(input_tensor_guid);
+            CHECK(slots_input_tensor_backing == result_input_tensor_backing);
+          }
+          SUBCASE("Output Tensor") {
+            GenericTensorAccessorW result_output_tensor_backing =
+                acc.get_tensor<Permissions::WO>(OUTPUT);
+            GenericTensorAccessorW slots_output_tensor_backing =
+                local_slots_backing.tensor_mapping.at(output_tensor_guid);
+            CHECK(slots_output_tensor_backing == result_output_tensor_backing);
+          }
+        }
+      }
 
-      // check against slots backing
-      LocalSlotsBacking const local_slots_backing =
-          local_backing.get_local_slots_backing();
-      GenericTensorAccessorW slots_input_tensor_backing =
-          local_slots_backing.tensor_mapping.at(input_tensor_guid);
-      GenericTensorAccessorW slots_output_tensor_backing =
-          local_slots_backing.tensor_mapping.at(output_tensor_guid);
-      CHECK(result_input_tensor_backing ==
-            read_only_accessor_from_write_accessor(slots_input_tensor_backing));
-      CHECK(result_output_tensor_backing == slots_output_tensor_backing);
-    }
+      SUBCASE("Backward Task Argument Accessor") {
+        binding.bind_grad(INPUT, input_tensor(0));
+        binding.bind_grad(OUTPUT, output_tensor(0));
+        OpTaskInvocation bwd_invocation = {CAST_BWD_TASK_ID, binding};
+        TaskArgumentAccessor acc =
+            local_backing.get_task_arg_accessor(bwd_invocation, layer_guid);
 
-    SUBCASE("Backward Task Argument Accessor") {
-      // initialize invocation
-      OpTaskBinding binding;
-      binding.bind_arg(PROFILING, profiling_settings());
-      binding.bind_arg(ATTRS, attrs);
-      binding.bind(INPUT, input_tensor(0));
-      binding.bind_grad(INPUT, input_tensor(0));
-      binding.bind(OUTPUT, output_tensor(0));
-      binding.bind_grad(OUTPUT, output_tensor(0));
-      OpTaskInvocation bwd_invocation = {CAST_BWD_TASK_ID, binding};
-      ProfilingSettings correct_settings = ProfilingSettings{0, 0};
-
-      // get acc
-      TaskArgumentAccessor acc =
-          local_backing.get_task_arg_accessor(bwd_invocation, layer_guid);
-      ProfilingSettings result_settings =
-          acc.get_argument<ProfilingSettings>(PROFILING);
-      CastAttrs result_attrs = acc.get_argument<CastAttrs>(ATTRS);
-      GenericTensorAccessorR result_input_tensor_backing =
-          acc.get_tensor<Permissions::RO>(INPUT);
-      GenericTensorAccessorR result_input_grad_tensor_backing =
-          acc.get_tensor_grad<Permissions::RO>(INPUT);
-      GenericTensorAccessorW result_output_grad_tensor_backing =
-          acc.get_tensor_grad<Permissions::WO>(OUTPUT);
-
-      CHECK(correct_settings == result_settings);
-      CHECK(attrs == result_attrs);
-      CHECK(correct_input_array_shape == result_input_tensor_backing.shape);
-      CHECK(correct_input_array_shape ==
-            result_input_grad_tensor_backing.shape);
-      CHECK(input_datatype == result_input_tensor_backing.data_type);
-      CHECK(input_datatype == result_input_grad_tensor_backing.data_type);
-      CHECK(correct_output_array_shape ==
-            result_output_grad_tensor_backing.shape);
-      CHECK(output_datatype == result_output_grad_tensor_backing.data_type);
-
-      // check against slots backing
-      LocalSlotsBacking const local_slots_backing =
-          local_backing.get_local_slots_backing();
-      GenericTensorAccessorW slots_input_tensor_backing =
-          local_slots_backing.tensor_mapping.at(input_tensor_guid);
-      GenericTensorAccessorW slots_input_grad_tensor_backing =
-          local_slots_backing.gradient_tensor_mapping.at(input_tensor_guid);
-      GenericTensorAccessorW slots_output_grad_tensor_backing =
-          local_slots_backing.gradient_tensor_mapping.at(output_tensor_guid);
-
-      CHECK(result_input_tensor_backing ==
-            read_only_accessor_from_write_accessor(slots_input_tensor_backing));
-      CHECK(result_input_grad_tensor_backing ==
-            read_only_accessor_from_write_accessor(
-                slots_input_grad_tensor_backing));
-      CHECK(result_output_grad_tensor_backing ==
-            slots_output_grad_tensor_backing);
+        SUBCASE("Matches Grad Tensors from Slots Backing") {
+          SUBCASE("Input Grad Tensor") {
+            GenericTensorAccessorW result_input_grad_tensor_backing =
+                acc.get_tensor<Permissions::WO>(INPUT);
+            GenericTensorAccessorW slots_input_grad_tensor_backing =
+                local_slots_backing.gradient_tensor_mapping.at(
+                    input_tensor_guid);
+            CHECK(slots_input_grad_tensor_backing ==
+                  result_input_grad_tensor_backing);
+          }
+          SUBCASE("Output Grad Tensor") {
+            GenericTensorAccessorW result_output_grad_tensor_backing =
+                acc.get_tensor<Permissions::WO>(OUTPUT);
+            GenericTensorAccessorW slots_output_grad_tensor_backing =
+                local_slots_backing.gradient_tensor_mapping.at(
+                    output_tensor_guid);
+            CHECK(slots_output_grad_tensor_backing ==
+                  result_output_grad_tensor_backing);
+          }
+        }
+      }
     }
 
     SUBCASE("End-to-end") {

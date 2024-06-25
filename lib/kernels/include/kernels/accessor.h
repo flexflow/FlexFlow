@@ -145,6 +145,14 @@ std::vector<real_type<DT> const *>
 GenericTensorAccessorR read_only_accessor_from_write_accessor(
     GenericTensorAccessorW const &write_accessor);
 
+bool is_shape_and_dtype_correct(GenericTensorAccessorW const &accessor,
+                                ArrayShape const &expected_shape,
+                                DataType const &expected_dtype);
+
+bool is_shape_and_dtype_correct(GenericTensorAccessorR const &accessor,
+                                ArrayShape const &expected_shape,
+                                DataType const &expected_dtype);
+
 } // namespace FlexFlow
 
 namespace FlexFlow {

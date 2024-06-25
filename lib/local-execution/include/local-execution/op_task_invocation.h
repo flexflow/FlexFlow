@@ -58,7 +58,8 @@ struct OpTaskBinding {
     this->insert_arg_spec(name, OpArgRefSpec::create(ref));
   }
 
-  bool operator==(OpTaskBinding const &other);
+  bool operator==(OpTaskBinding const &other) const;
+  bool operator!=(OpTaskBinding const &other) const;
 
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
       get_tensor_bindings() const;
@@ -70,6 +71,8 @@ private:
   void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
   std::unordered_map<slot_id, OpArgSpec> arg_bindings;
+  std::tuple<decltype(tensor_bindings) const &, decltype(arg_bindings) const &>
+      tie() const;
 };
 
 struct OpTaskInvocation {
