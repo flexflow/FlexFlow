@@ -6,6 +6,10 @@
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph.h"
 #include "substitutions/sub_parallel_computation_graph.h"
+#include "compiler/machine_mapping.h"
+
+using SubParallelComputationGraphView =
+    OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
 
 namespace FlexFlow {
 

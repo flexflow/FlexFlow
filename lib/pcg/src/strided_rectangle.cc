@@ -35,6 +35,11 @@ side_size_t StridedRectangleSide::get_size() const {
   NOT_IMPLEMENTED();
 }
 
+num_points_t StridedRectangleSide::get_num_points() const {
+  return num_points;
+}
+
+
 size_t StridedRectangle::num_dims() const {
   return this->sides.size();
 }
