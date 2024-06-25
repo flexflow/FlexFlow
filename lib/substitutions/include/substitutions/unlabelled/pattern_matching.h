@@ -10,6 +10,12 @@
 
 namespace FlexFlow {
 
+// OpenDataflowGraphView apply_match(UnlabelledGraphPattern const &pattern,
+//                                   UnlabelledDataflowGraphPatternMatch const &match);
+
+OpenDataflowGraphView subgraph_matched(UnlabelledGraphPattern const &pattern,
+                                       UnlabelledDataflowGraphPatternMatch const &match);
+
 bool unlabelled_pattern_does_match(
     UnlabelledGraphPattern const &pattern,
     OpenDataflowGraphView const &graph,

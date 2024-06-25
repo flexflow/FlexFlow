@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.struct.toml
 /* proj-data
 {
-  "generated_from": "8e2550c2e4cd04bb1458f9e3f4ac05ba"
+  "generated_from": "a640c8f9530a44d78c1bce32d801360d"
 }
 */
 
@@ -14,19 +14,15 @@
 namespace FlexFlow {
 UnlabelledDataflowGraphPatternMatch::UnlabelledDataflowGraphPatternMatch(
     ::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node> const
-        &node_assignment,
-    ::FlexFlow::bidict<::FlexFlow::PatternValue,
-                       ::FlexFlow::OpenDataflowValue> const &value_assignment)
-    : node_assignment(node_assignment), value_assignment(value_assignment) {}
+        &node_assignment)
+    : node_assignment(node_assignment) {}
 bool UnlabelledDataflowGraphPatternMatch::operator==(
     UnlabelledDataflowGraphPatternMatch const &other) const {
-  return std::tie(this->node_assignment, this->value_assignment) ==
-         std::tie(other.node_assignment, other.value_assignment);
+  return std::tie(this->node_assignment) == std::tie(other.node_assignment);
 }
 bool UnlabelledDataflowGraphPatternMatch::operator!=(
     UnlabelledDataflowGraphPatternMatch const &other) const {
-  return std::tie(this->node_assignment, this->value_assignment) !=
-         std::tie(other.node_assignment, other.value_assignment);
+  return std::tie(this->node_assignment) != std::tie(other.node_assignment);
 }
 } // namespace FlexFlow
 
@@ -39,10 +35,6 @@ size_t hash<FlexFlow::UnlabelledDataflowGraphPatternMatch>::operator()(
           ::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node>>{}(
           x.node_assignment) +
       0x9e3779b9 + (result << 6) + (result >> 2);
-  result ^= std::hash<::FlexFlow::bidict<::FlexFlow::PatternValue,
-                                         ::FlexFlow::OpenDataflowValue>>{}(
-                x.value_assignment) +
-            0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
 } // namespace std
@@ -52,7 +44,6 @@ std::string format_as(UnlabelledDataflowGraphPatternMatch const &x) {
   std::ostringstream oss;
   oss << "<UnlabelledDataflowGraphPatternMatch";
   oss << " node_assignment=" << x.node_assignment;
-  oss << " value_assignment=" << x.value_assignment;
   oss << ">";
   return oss.str();
 }

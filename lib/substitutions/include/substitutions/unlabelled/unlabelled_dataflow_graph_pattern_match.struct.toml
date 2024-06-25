@@ -19,6 +19,6 @@ includes = [
 name = "node_assignment"
 type = "::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node>"
 
-[[fields]]
-name = "value_assignment"
-type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::OpenDataflowValue>"
+# [[fields]]
+# name = "value_assignment"
+# type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::OpenDataflowValue>"

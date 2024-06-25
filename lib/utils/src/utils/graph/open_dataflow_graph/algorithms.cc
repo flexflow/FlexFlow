@@ -34,6 +34,10 @@ std::vector<OpenDataflowEdge> get_incoming_edges(OpenDataflowGraphView const &g,
   }), [](OpenDataflowEdge const &l, OpenDataflowEdge const &r) { return get_open_dataflow_edge_dst_idx(l) < get_open_dataflow_edge_dst_idx(r); });
 }
 
+std::unordered_map<Node, std::vector<OpenDataflowEdge>> get_incoming_edges(OpenDataflowGraphView const &, std::unordered_set<Node> const &) {
+  NOT_IMPLEMENTED();
+}
+
 std::unordered_set<OpenDataflowValue> get_open_dataflow_values(OpenDataflowGraphView const &g) {
   return set_union(
      transform(without_order(g.get_inputs()), 

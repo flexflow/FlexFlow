@@ -3,7 +3,7 @@
 // lib/substitutions/include/substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.struct.toml
 /* proj-data
 {
-  "generated_from": "8e2550c2e4cd04bb1458f9e3f4ac05ba"
+  "generated_from": "a640c8f9530a44d78c1bce32d801360d"
 }
 */
 
@@ -25,16 +25,11 @@ struct UnlabelledDataflowGraphPatternMatch {
   UnlabelledDataflowGraphPatternMatch() = delete;
   explicit UnlabelledDataflowGraphPatternMatch(
       ::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node> const
-          &node_assignment,
-      ::FlexFlow::bidict<::FlexFlow::PatternValue,
-                         ::FlexFlow::OpenDataflowValue> const
-          &value_assignment);
+          &node_assignment);
 
   bool operator==(UnlabelledDataflowGraphPatternMatch const &) const;
   bool operator!=(UnlabelledDataflowGraphPatternMatch const &) const;
   ::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node> node_assignment;
-  ::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::OpenDataflowValue>
-      value_assignment;
 };
 } // namespace FlexFlow
 
