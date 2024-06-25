@@ -1,4 +1,3 @@
-#include "doctest/doctest.h"
 #include "kernels/partition_kernels.h"
 #include "test_utils.h"
 
@@ -6,28 +5,27 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Partition Forward and Backward") {
-    std::size_t num_replicas = 10;
+    ManagedPerDeviceFFHandle managed_handle{};
+    ManagedFFStream managed_stream{};
 
-    TensorShape shape = make_float_tensor_shape_from_legion_dims({100});
+    Allocator allocator = get_local_cuda_memory_allocator();
 
-    ManagedStream mStream = get_managed_stream();
-    ManagedHandle mHandle = get_managed_handle();
+    RepartitionPerDeviceState state = Kernels::Repartition::init_kernel(
+        managed_handle.handle, DataType::FLOAT);
 
-    Allocator allocator = get_local_memory_allocator();
-
-    RepartitionPerDeviceState state =
-        Kernels::Repartition::init_kernel(mHandle.handle, DataType::FLOAT);
-
-    GenericTensorAccessorW output_accessor =
-        create_filled_accessor_w(shape, allocator, 1.0f);
+    TensorShape input_shape =
+        make_float_tensor_shape_from_legion_dims({10, 10});
+    TensorShape output_shape = input_shape;
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_filled_accessor_w(shape, allocator, 1.0f));
+              create_filled_accessor_w(input_shape, allocator, 1.0f));
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
 
       Kernels::Repartition::forward_kernel(
-          mStream.stream, state, input_accessor, output_accessor);
+          managed_stream.stream, state, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
           load_data_to_host_from_device<float>(
@@ -39,19 +37,23 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorR grad_accessor =
+      GenericTensorAccessorR output_grad_accessor =
           read_only_accessor_from_write_accessor(
-              create_filled_accessor_w(shape, allocator, 1.0f));
+              create_filled_accessor_w(output_shape, allocator, 1.0f));
+      GenericTensorAccessorW input_grad_accessor =
+          create_filled_accessor_w(input_shape, allocator, 2.0f);
 
-      Kernels::Repartition::backward_kernel(
-          mStream.stream, state, output_accessor, grad_accessor);
+      Kernels::Repartition::backward_kernel(managed_stream.stream,
+                                            state,
+                                            input_grad_accessor,
+                                            output_grad_accessor);
 
       std::vector<float> host_grad_input_data =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_accessor));
+              read_only_accessor_from_write_accessor(input_grad_accessor));
 
       std::vector<float> expected_grad_input_data(
-          output_accessor.shape.num_elements(), 2.0f);
+          input_grad_accessor.shape.num_elements(), 3.0f);
       CHECK(host_grad_input_data == expected_grad_input_data);
     }
   }

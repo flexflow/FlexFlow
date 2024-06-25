@@ -59,10 +59,10 @@ static DeviceSpecific<DeviceStates>
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
 
-  int output_w = output.shape[legion_dim_t(0)];
-  int output_h = output.shape[legion_dim_t(1)];
-  int output_c = output.shape[legion_dim_t(2)];
-  int output_n = output.shape[legion_dim_t(3)];
+  int output_w = output.shape.at(legion_dim_t(0));
+  int output_h = output.shape.at(legion_dim_t(1));
+  int output_c = output.shape.at(legion_dim_t(2));
+  int output_n = output.shape.at(legion_dim_t(3));
 
   SoftmaxPerDeviceState per_device_state = init_kernel(
       handle, attrs.dim.value, output_n, output_c, output_h, output_w);

@@ -1,4 +1,3 @@
-#include "doctest/doctest.h"
 #include "kernels/replicate_kernels.h"
 #include "test_utils.h"
 
@@ -7,22 +6,23 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Replicate Kernel") {
     std::size_t num_replicas = 10;
 
-    TensorShape shape = make_float_tensor_shape_from_legion_dims({100});
+    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
+    TensorShape output_shape = input_shape;
 
-    ManagedStream mStream = get_managed_stream();
+    ManagedPerDeviceFFHandle managed_handle{};
+    ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_memory_allocator();
-
-    GenericTensorAccessorW output_accessor =
-        create_filled_accessor_w(shape, allocator, 1.0f);
+    Allocator allocator = get_local_cuda_memory_allocator();
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_filled_accessor_w(shape, allocator, 1.0f));
+              create_filled_accessor_w(input_shape, allocator, 1.0f));
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
 
       Kernels::Replicate::forward_kernel(
-          mStream.stream, input_accessor, output_accessor);
+          managed_stream.stream, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
           load_data_to_host_from_device<float>(
@@ -35,13 +35,15 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW input_grad_accessor =
-          create_filled_accessor_w(shape, allocator, 1.0f);
+          create_filled_accessor_w(input_shape, allocator, 1.0f);
+      GenericTensorAccessorR output_grad_accessor =
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(output_shape, allocator, 1.0f));
 
-      Kernels::Replicate::backward_kernel(
-          mStream.stream,
-          input_grad_accessor,
-          read_only_accessor_from_write_accessor(output_accessor),
-          num_replicas);
+      Kernels::Replicate::backward_kernel(managed_stream.stream,
+                                          input_grad_accessor,
+                                          output_grad_accessor,
+                                          num_replicas);
 
       std::vector<float> check_aggregated_data =
           load_data_to_host_from_device<float>(

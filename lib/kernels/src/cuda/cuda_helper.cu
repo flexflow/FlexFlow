@@ -275,21 +275,24 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
 template <DataType DT>
 struct AssignKernel {
   void operator()(void *ptr, size_t size, void *value) const {
-    using ValueType = typename data_type_enum_to_class<DT>::type;
+    using ValueType = real_type<DT>;
     ValueType val = *static_cast<ValueType *>(value);
     assign_kernel<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         static_cast<ValueType *>(ptr), size, val);
   }
 };
 
-void dispatch_assign(DataType type, void *ptr, size_t size, void *value) {
+void dispatch_assign_kernel(DataType type,
+                            void *ptr,
+                            size_t size,
+                            void *value) {
   DataTypeDispatch1<AssignKernel>{}(type, ptr, size, value);
 }
 
 template <DataType DT>
 struct AddKernel {
   void operator()(void *dst, void const *src, size_t size) const {
-    using ValueType = typename data_type_enum_to_class<DT>::type;
+    using ValueType = real_type<DT>;
     add_kernel<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         static_cast<ValueType *>(dst),
         static_cast<ValueType const *>(src),
@@ -297,14 +300,17 @@ struct AddKernel {
   }
 };
 
-void dispatch_add(DataType type, void *dst, void const *src, size_t size) {
+void dispatch_add_kernel(DataType type,
+                         void *dst,
+                         void const *src,
+                         size_t size) {
   DataTypeDispatch1<AddKernel>{}(type, dst, src, size);
 }
 
 template <DataType DT>
 struct CopyKernel {
   void operator()(void *dst, void const *src, coord_t size) const {
-    using ValueType = typename data_type_enum_to_class<DT>::type;
+    using ValueType = real_type<DT>;
     copy_kernel<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         static_cast<ValueType *>(dst),
         static_cast<ValueType const *>(src),
@@ -312,7 +318,10 @@ struct CopyKernel {
   }
 };
 
-void dispatch_copy(DataType type, void *dst, void const *src, coord_t size) {
+void dispatch_copy_kernel(DataType type,
+                          void *dst,
+                          void const *src,
+                          coord_t size) {
   DataTypeDispatch1<CopyKernel>{}(type, dst, src, size);
 }
 
@@ -322,7 +331,7 @@ struct ApplyAddWithScaleKernel {
                   void const *grad_ptr,
                   size_t size,
                   float scale) const {
-    using ValueType = typename data_type_enum_to_class<DT>::type;
+    using ValueType = real_type<DT>;
     apply_add_with_scale<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
         static_cast<ValueType *>(data_ptr),
         static_cast<ValueType const *>(grad_ptr),
@@ -331,28 +340,20 @@ struct ApplyAddWithScaleKernel {
   }
 };
 
-void dispatch_apply_add_with_scale(DataType type,
-                                   void *data_ptr,
-                                   void const *grad_ptr,
-                                   size_t size,
-                                   float scale) {
+void dispatch_apply_add_with_scale_kernel(DataType type,
+                                          void *data_ptr,
+                                          void const *grad_ptr,
+                                          size_t size,
+                                          float scale) {
   DataTypeDispatch1<ApplyAddWithScaleKernel>{}(
       type, data_ptr, grad_ptr, size, scale);
 }
 
-template <DataType DT>
-struct PrintTensorKernel {
-  void operator()(void const *ptr,
-                  size_t num_elements,
-                  char const *prefix) const {
-    using ValueType = typename data_type_enum_to_class<DT>::type;
-    print_tensor(static_cast<ValueType const *>(ptr), num_elements, prefix);
-  }
-};
-
-void dispatch_print_tensor(DataType type,
-                           void const *ptr,
-                           size_t num_elements,
-                           char const *prefix) {
-  DataTypeDispatch1<PrintTensorKernel>{}(type, ptr, num_elements, prefix);
-}
+template __host__ void
+    print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
+template __host__ void
+    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
+template __host__ void
+    print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
+template __host__ void
+    print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);

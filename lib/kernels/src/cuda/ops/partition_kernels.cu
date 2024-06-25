@@ -65,10 +65,10 @@ void forward_kernel(cudaStream_t stream,
 
 void backward_kernel(cudaStream_t stream,
                      RepartitionPerDeviceState const &m,
-                     GenericTensorAccessorW const &output_grad,
-                     GenericTensorAccessorR const &input_grad) {
+                     GenericTensorAccessorW const &input_grad,
+                     GenericTensorAccessorR const &output_grad) {
   DataTypeDispatch1<BackwardKernel>{}(
-      m.data_type, stream, m, output_grad, input_grad);
+      m.data_type, stream, m, input_grad, output_grad);
 }
 
 } // namespace Repartition

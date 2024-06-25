@@ -142,4 +142,24 @@ ffCudnnDataType_t ff_to_cudnn_datatype(DataType type);
 
 void handle_unimplemented_kernel(OperatorType op_type);
 
+void dispatch_assign_kernel(DataType data_type,
+                            void *ptr,
+                            size_t size,
+                            void const *value);
+
+void dispatch_add_kernel(DataType data_type,
+                         void *dst,
+                         void const *src,
+                         size_t size);
+
+void dispatch_copy_kernel(DataType type,
+                          void *dst,
+                          void const *src,
+                          coord_t size);
+
+void dispatch_apply_add_with_scale_kernel(DataType type,
+                                          void *data_ptr,
+                                          void const *grad_ptr,
+                                          size_t size,
+                                          float scale);
 #endif

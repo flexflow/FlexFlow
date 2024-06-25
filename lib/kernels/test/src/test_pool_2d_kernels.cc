@@ -1,4 +1,3 @@
-#include "doctest/doctest.h"
 #include "kernels/pool_2d_kernels.h"
 #include "test_utils.h"
 
@@ -10,68 +9,70 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t pad_h = 0, pad_w = 0, kernel_h = 2, kernel_w = 2, stride_h = 2,
            stride_w = 2;
 
+    PoolOp pool_type = PoolOp::MAX;
+
+    ManagedPerDeviceFFHandle managed_handle{};
+    ManagedFFStream managed_stream{};
+
+    Allocator allocator = get_local_cuda_memory_allocator();
+
+    Pool2DPerDeviceState state =
+        Kernels::Pool2D::init_kernel(managed_handle.handle,
+                                     std::nullopt,
+                                     input_w,
+                                     input_h,
+                                     input_c,
+                                     input_n,
+                                     output_w,
+                                     output_h,
+                                     output_c,
+                                     output_n,
+                                     pad_h,
+                                     pad_w,
+                                     kernel_h,
+                                     kernel_w,
+                                     stride_h,
+                                     stride_w,
+                                     pool_type);
+
     TensorShape input_shape = make_float_tensor_shape_from_legion_dims(
         {input_w, input_h, input_c, input_n});
     TensorShape output_shape = make_float_tensor_shape_from_legion_dims(
         {output_w, output_h, output_c, output_n});
 
-    PoolOp pool_type = PoolOp::MAX;
-
-    ManagedStream mStream = get_managed_stream();
-    ManagedHandle mHandle = get_managed_handle();
-
-    Allocator allocator = get_local_memory_allocator();
-
-    Pool2DPerDeviceState state = Kernels::Pool2D::init_kernel(mHandle.handle,
-                                                              std::nullopt,
-                                                              input_w,
-                                                              input_h,
-                                                              input_c,
-                                                              input_n,
-                                                              output_w,
-                                                              output_h,
-                                                              output_c,
-                                                              output_n,
-                                                              pad_h,
-                                                              pad_w,
-                                                              kernel_h,
-                                                              kernel_w,
-                                                              stride_h,
-                                                              stride_w,
-                                                              pool_type);
-
-    GenericTensorAccessorW input_data =
+    GenericTensorAccessorW input_accessor =
         create_random_filled_accessor_w(input_shape, allocator);
-    GenericTensorAccessorW output_data =
+    GenericTensorAccessorW output_accessor =
         create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
-      Kernels::Pool2D::forward_kernel(
-          mStream.stream, state, input_data.ptr, output_data.ptr);
+      Kernels::Pool2D::forward_kernel(managed_stream.stream,
+                                      state,
+                                      input_accessor.ptr,
+                                      output_accessor.ptr);
 
-      std::vector<float> host_output_data =
+      std::vector<float> host_output_accessor =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_data));
-      CHECK(contains_non_zero(host_output_data));
+              read_only_accessor_from_write_accessor(output_accessor));
+      CHECK(contains_non_zero(host_output_accessor));
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW output_grad =
+      GenericTensorAccessorW output_grad_accessor =
           create_filled_accessor_w(output_shape, allocator, 1.0f);
-      GenericTensorAccessorW input_grad =
+      GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
-      Kernels::Pool2D::backward_kernel(mStream.stream,
+      Kernels::Pool2D::backward_kernel(managed_stream.stream,
                                        state,
-                                       input_data.ptr,
-                                       input_grad.ptr,
-                                       output_data.ptr,
-                                       output_grad.ptr);
+                                       input_accessor.ptr,
+                                       input_grad_accessor.ptr,
+                                       output_accessor.ptr,
+                                       output_grad_accessor.ptr);
 
-      std::vector<float> host_input_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(input_grad));
-      CHECK(contains_non_zero(host_input_grad_data));
+      std::vector<float> host_input_grad = load_data_to_host_from_device<float>(
+          read_only_accessor_from_write_accessor(input_grad_accessor));
+      CHECK(contains_non_zero(host_input_grad));
     }
   }
 }

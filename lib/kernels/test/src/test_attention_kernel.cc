@@ -1,4 +1,3 @@
-#include "doctest/doctest.h"
 #include "kernels/attention_kernels.h"
 #include "test_utils.h"
 
@@ -12,13 +11,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t qProjSize = 64, kProjSize = 64, vProjSize = 64, oProjSize = 64;
     size_t qoSeqLength = 20, kvSeqLength = 20;
 
-    ManagedStream mStream = get_managed_stream();
-    ManagedHandle mHandle = get_managed_handle();
+    ManagedFFStream managed_stream{};
+    ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = get_local_cuda_memory_allocator();
 
     MHAPerDeviceState state =
-        Kernels::MultiHeadAttention::init_kernel(mHandle.handle,
+        Kernels::MultiHeadAttention::init_kernel(managed_handle.handle,
                                                  allocator,
                                                  num_samples,
                                                  num_heads,
@@ -52,12 +51,13 @@ TEST_SUITE(FF_TEST_SUITE) {
         create_random_filled_accessor_w(value_shape, allocator);
     GenericTensorAccessorW weight_accessor =
         create_random_filled_accessor_w(weight_shape, allocator);
-    GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
+
       Kernels::MultiHeadAttention::forward_kernel(
-          mStream.stream,
+          managed_stream.stream,
           state,
           query_accessor.get_float_ptr(),
           key_accessor.get_float_ptr(),
@@ -79,9 +79,11 @@ TEST_SUITE(FF_TEST_SUITE) {
           create_random_filled_accessor_w(value_shape, allocator);
       GenericTensorAccessorW weight_grad_accessor =
           create_random_filled_accessor_w(weight_shape, allocator);
+      GenericTensorAccessorW output_grad_accessor =
+          create_random_filled_accessor_w(output_shape, allocator);
 
       Kernels::MultiHeadAttention::backward_kernel(
-          mStream.stream,
+          managed_stream.stream,
           state,
           query_accessor.get_float_ptr(),
           query_grad_accessor.get_float_ptr(),
@@ -91,7 +93,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           value_grad_accessor.get_float_ptr(),
           weight_accessor.get_float_ptr(),
           weight_grad_accessor.get_float_ptr(),
-          output_accessor.get_float_ptr());
+          output_grad_accessor.get_float_ptr());
     }
 
     Kernels::MultiHeadAttention::cleanup_kernel(allocator, state);

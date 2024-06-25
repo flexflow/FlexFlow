@@ -15,46 +15,49 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     TensorShape input_shape =
         make_float_tensor_shape_from_legion_dims({10, 10});
+    TensorShape output_shape = input_shape;
 
-    ManagedStream mStream = get_managed_stream();
-    ManagedHandle mHandle = get_managed_handle();
+    ManagedFFStream managed_stream{};
+    ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = get_local_cuda_memory_allocator();
 
     DropoutPerDeviceState state = Kernels::Dropout::init_kernel(
-        mHandle.handle, dropout_rate, seed, shape, allocator);
+        managed_handle.handle, dropout_rate, seed, shape, allocator);
 
     auto get_zero_count = [](std::vector<float> const &data) {
       return count(data, [](float x) { return x == 0.0f; });
     };
 
-    GenericTensorAccessorW output_data =
-        create_random_filled_accessor_w(input_shape, allocator);
-    GenericTensorAccessorW grad_input_data =
-        create_random_filled_accessor_w(input_shape, allocator);
-
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorR input_data =
+      GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
               create_random_filled_accessor_w(input_shape, allocator));
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
 
-      Kernels::Dropout::forward_kernel(mStream.stream,
+      Kernels::Dropout::forward_kernel(managed_stream.stream,
                                        state,
-                                       input_data.get_float_ptr(),
-                                       output_data.get_float_ptr());
+                                       input_accessor.get_float_ptr(),
+                                       output_accessor.get_float_ptr());
 
-      std::vector<float> host_output_data =
+      std::vector<float> host_output_accessor =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_data));
+              read_only_accessor_from_write_accessor(output_accessor));
 
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(host_output_accessor));
     }
 
     SUBCASE("backward_kernel") {
-      Kernels::Dropout::backward_kernel(mStream.stream,
+      GenericTensorAccessorW output_grad_data =
+          create_random_filled_accessor_w(output_shape, allocator);
+      GenericTensorAccessorW input_grad_data =
+          create_random_filled_accessor_w(input_shape, allocator);
+
+      Kernels::Dropout::backward_kernel(managed_stream.stream,
                                         state,
-                                        output_data.get_float_ptr(),
-                                        grad_input_data.get_float_ptr());
+                                        output_grad_data.get_float_ptr(),
+                                        input_grad_data.get_float_ptr());
     }
 
     Kernels::Dropout::cleanup_kernel(allocator,

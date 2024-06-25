@@ -14,10 +14,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t b_seq_length_dim = -1;
     size_t seq_length = -1;
 
-    ManagedStream mStream = get_managed_stream();
-    ManagedHandle mHandle = get_managed_handle();
+    ManagedFFStream managed_stream{};
+    ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = get_local_cuda_memory_allocator();
 
     TensorShape input_shape_a =
         make_float_tensor_shape_from_legion_dims({m, k, batch});
@@ -26,19 +26,19 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape output_shape =
         make_float_tensor_shape_from_legion_dims({m, n, batch});
 
-    GenericTensorAccessorW accessor_a =
+    GenericTensorAccessorW a_accessor =
         create_random_filled_accessor_w(input_shape_a, allocator);
-    GenericTensorAccessorW accessor_b =
+    GenericTensorAccessorW b_accessor =
         create_random_filled_accessor_w(input_shape_b, allocator);
-    GenericTensorAccessorW accessor_output =
+    GenericTensorAccessorW output_accessor =
         create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
-      Kernels::BatchMatmul::forward_kernel(mStream.stream,
-                                           mHandle.handle,
-                                           accessor_output.get_float_ptr(),
-                                           accessor_a.get_float_ptr(),
-                                           accessor_b.get_float_ptr(),
+      Kernels::BatchMatmul::forward_kernel(managed_stream.stream,
+                                           managed_handle.handle,
+                                           output_accessor.get_float_ptr(),
+                                           a_accessor.get_float_ptr(),
+                                           b_accessor.get_float_ptr(),
                                            m,
                                            n,
                                            k,
@@ -56,13 +56,13 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW b_grad_accessor =
           allocator.allocate_tensor(input_shape_b);
 
-      Kernels::BatchMatmul::backward_kernel(mStream.stream,
-                                            mHandle.handle,
-                                            accessor_output.get_float_ptr(),
+      Kernels::BatchMatmul::backward_kernel(managed_stream.stream,
+                                            managed_handle.handle,
+                                            output_accessor.get_float_ptr(),
                                             o_grad_accessor.get_float_ptr(),
-                                            accessor_a.get_float_ptr(),
+                                            a_accessor.get_float_ptr(),
                                             a_grad_accessor.get_float_ptr(),
-                                            accessor_b.get_float_ptr(),
+                                            b_accessor.get_float_ptr(),
                                             b_grad_accessor.get_float_ptr(),
                                             m,
                                             n,
