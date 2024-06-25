@@ -10,8 +10,14 @@ void *LocalCudaAllocator::allocate(size_t requested_memory_size) {
 }
 
 void LocalCudaAllocator::deallocate(void *ptr) {
-  checkCUDA(cudaFree(ptr));
-  this->ptrs.erase(ptr);
+  auto it = this->ptrs.find(ptr);
+  if (it != this->ptrs.end()) {
+    checkCUDA(cudaFree(ptr));
+    this->ptrs.erase(ptr);
+  } else {
+    throw std::runtime_error(
+        "Deallocating a pointer that was not allocated by this Allocator");
+  }
 }
 
 LocalCudaAllocator::~LocalCudaAllocator() {
@@ -22,7 +28,7 @@ LocalCudaAllocator::~LocalCudaAllocator() {
   }
 }
 
-Allocator get_local_cuda_memory_allocator() {
+Allocator create_local_cuda_memory_allocator() {
   return Allocator::create<LocalCudaAllocator>();
 }
 

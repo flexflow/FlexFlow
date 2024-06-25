@@ -20,7 +20,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedFFStream managed_stream{};
     ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     DropoutPerDeviceState state = Kernels::Dropout::init_kernel(
         managed_handle.handle, dropout_rate, seed, shape, allocator);

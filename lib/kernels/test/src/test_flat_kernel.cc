@@ -1,10 +1,11 @@
+#include "doctest/doctest.h"
 #include "kernels/flat_kernels.h"
 #include "test_utils.h"
 
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Flat Kernel") {
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};

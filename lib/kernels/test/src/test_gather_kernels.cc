@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/gather_kernels.h"
 #include "test_utils.h"
 
@@ -7,7 +8,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     GatherPerDeviceState state = {managed_handle.handle, legion_dim_t(2)};
 

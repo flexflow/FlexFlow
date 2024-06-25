@@ -86,20 +86,6 @@ void fill_tensor_accessor_w(GenericTensorAccessorW accessor,
   }
 }
 
-GenericTensorAccessorW
-    cpu_accessor_from_gpu_accessor(TensorShape shape,
-                                   GenericTensorAccessorR gpu_accessor,
-                                   Allocator &cpu_allocator) {
-  GenericTensorAccessorW cpu_accessor = cpu_allocator.allocate_tensor(shape);
-  size_t num_elements = cpu_accessor.shape.num_elements();
-  checkCUDA(cudaMemcpy(cpu_accessor.ptr,
-                       gpu_accessor.ptr,
-                       num_elements * sizeof(float),
-                       cudaMemcpyDeviceToHost));
-
-  return cpu_accessor;
-}
-
 TensorShape make_float_tensor_shape_from_legion_dims(FFOrdered<size_t> dims) {
   return TensorShape{
       TensorDims{

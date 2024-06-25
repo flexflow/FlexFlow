@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_KERNELS_TEST_UTILS
 #define _FLEXFLOW_KERNELS_TEST_UTILS
 
-#include "doctest/doctest.h"
 #include "kernels/device.h"
 #include "kernels/local_cuda_allocator.h"
 #include "kernels/managed_ff_stream.h"

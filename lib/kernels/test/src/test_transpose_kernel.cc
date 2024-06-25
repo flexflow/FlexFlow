@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/transpose_kernels.h"
 #include "test_utils.h"
 
@@ -11,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     TransposePerDeviceState state =
         Kernels::Transpose::init_kernel(num_dims, perm);

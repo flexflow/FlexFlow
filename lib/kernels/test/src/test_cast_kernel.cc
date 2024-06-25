@@ -9,7 +9,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Call Cast Forward and Backward Kernels") {
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape =
         make_float_tensor_shape_from_legion_dims({100, 100});

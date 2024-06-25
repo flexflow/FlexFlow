@@ -272,82 +272,56 @@ cudaDataType_t ff_to_cuda_datatype(DataType type) {
   return CUDA_R_32F;
 }
 
-template <DataType DT>
-struct AssignKernel {
-  void operator()(void *ptr, size_t size, void *value) const {
-    using ValueType = real_type<DT>;
-    ValueType val = *static_cast<ValueType *>(value);
-    assign_kernel<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
-        static_cast<ValueType *>(ptr), size, val);
-  }
-};
+template __global__ void
+    assign_kernel<half>(half *ptr, size_t size, half value);
+template __global__ void
+    assign_kernel<float>(float *ptr, size_t size, float value);
+template __global__ void
+    assign_kernel<double>(double *ptr, size_t size, double value);
+template __global__ void
+    assign_kernel<int32_t>(int32_t *ptr, size_t size, int32_t value);
+template __global__ void
+    assign_kernel<int64_t>(int64_t *ptr, size_t size, int64_t value);
 
-void dispatch_assign_kernel(DataType type,
-                            void *ptr,
-                            size_t size,
-                            void *value) {
-  DataTypeDispatch1<AssignKernel>{}(type, ptr, size, value);
-}
+template __global__ void
+    add_kernel<float>(float *dst, float const *src, size_t size);
+template __global__ void
+    add_kernel<double>(double *dst, double const *src, size_t size);
+template __global__ void
+    add_kernel<int32_t>(int32_t *dst, int32_t const *src, size_t size);
+template __global__ void
+    add_kernel<int64_t>(int64_t *dst, int64_t const *src, size_t size);
+template __global__ void
+    add_kernel<bool>(bool *dst, bool const *src, unsigned long size);
 
-template <DataType DT>
-struct AddKernel {
-  void operator()(void *dst, void const *src, size_t size) const {
-    using ValueType = real_type<DT>;
-    add_kernel<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
-        static_cast<ValueType *>(dst),
-        static_cast<ValueType const *>(src),
-        size);
-  }
-};
+template __global__ void
+    copy_kernel<float>(float *dst, float const *src, coord_t size);
+template __global__ void
+    copy_kernel<int32_t>(int32_t *dst, int32_t const *src, coord_t size);
+template __global__ void
+    copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
 
-void dispatch_add_kernel(DataType type,
-                         void *dst,
-                         void const *src,
-                         size_t size) {
-  DataTypeDispatch1<AddKernel>{}(type, dst, src, size);
-}
+template __global__ void apply_add_with_scale<float>(float *data_ptr,
+                                                     float const *grad_ptr,
+                                                     size_t size,
+                                                     float scale);
+template __global__ void apply_add_with_scale<double>(double *data_ptr,
+                                                      double const *grad_ptr,
+                                                      size_t size,
+                                                      double scale);
+template __global__ void apply_add_with_scale<int32_t>(int32_t *data_ptr,
+                                                       int32_t const *grad_ptr,
+                                                       size_t size,
+                                                       int32_t scale);
+template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
+                                                       int64_t const *grad_ptr,
+                                                       size_t size,
+                                                       int64_t scale);
 
-template <DataType DT>
-struct CopyKernel {
-  void operator()(void *dst, void const *src, coord_t size) const {
-    using ValueType = real_type<DT>;
-    copy_kernel<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
-        static_cast<ValueType *>(dst),
-        static_cast<ValueType const *>(src),
-        size);
-  }
-};
-
-void dispatch_copy_kernel(DataType type,
-                          void *dst,
-                          void const *src,
-                          coord_t size) {
-  DataTypeDispatch1<CopyKernel>{}(type, dst, src, size);
-}
-
-template <DataType DT>
-struct ApplyAddWithScaleKernel {
-  void operator()(void *data_ptr,
-                  void const *grad_ptr,
-                  size_t size,
-                  float scale) const {
-    using ValueType = real_type<DT>;
-    apply_add_with_scale<ValueType><<<GET_BLOCKS(size), CUDA_NUM_THREADS>>>(
-        static_cast<ValueType *>(data_ptr),
-        static_cast<ValueType const *>(grad_ptr),
-        size,
-        scale);
-  }
-};
-
-void dispatch_apply_add_with_scale_kernel(DataType type,
-                                          void *data_ptr,
-                                          void const *grad_ptr,
-                                          size_t size,
-                                          float scale) {
-  DataTypeDispatch1<ApplyAddWithScaleKernel>{}(
-      type, data_ptr, grad_ptr, size, scale);
-}
+template __global__ void apply_add_with_scale<bool>(bool *data_ptr,
+                                                    bool const *grad_ptr,
+                                                    unsigned long size,
+                                                    bool scale);
 
 template __host__ void
     print_tensor<float>(float const *ptr, size_t rect, char const *prefix);

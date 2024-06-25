@@ -17,6 +17,6 @@ private:
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalCudaAllocator);
 
-Allocator get_local_cuda_memory_allocator();
+Allocator create_local_cuda_memory_allocator();
 
 } // namespace FlexFlow

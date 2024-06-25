@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/pool_2d_kernels.h"
 #include "test_utils.h"
 
@@ -14,7 +15,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     Pool2DPerDeviceState state =
         Kernels::Pool2D::init_kernel(managed_handle.handle,
@@ -51,10 +52,10 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       input_accessor.ptr,
                                       output_accessor.ptr);
 
-      std::vector<float> host_output_accessor =
+      std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
-      CHECK(contains_non_zero(host_output_accessor));
+      CHECK(contains_non_zero(host_output_data));
     }
 
     SUBCASE("backward_kernel") {

@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/layer_norm_kernels.h"
 #include "test_utils.h"
 
@@ -19,7 +20,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     LayerNormPerDeviceState state =
         Kernels::LayerNorm::init_kernel(managed_handle.handle,

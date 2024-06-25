@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/attention_kernels.h"
 #include "test_utils.h"
 
@@ -14,7 +15,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedFFStream managed_stream{};
     ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     MHAPerDeviceState state =
         Kernels::MultiHeadAttention::init_kernel(managed_handle.handle,

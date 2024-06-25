@@ -11,6 +11,22 @@ struct ManagedPerDeviceFFHandle {
   ManagedPerDeviceFFHandle();
 
   ~ManagedPerDeviceFFHandle();
+
+  ManagedPerDeviceFFHandle(ManagedPerDeviceFFHandle &&other) noexcept
+      : handle(std::move(other.handle)) {}
+
+  ManagedPerDeviceFFHandle &
+      operator=(ManagedPerDeviceFFHandle &&other) noexcept {
+    if (this != &other) {
+      handle = std::move(other.handle);
+    }
+    return *this;
+  }
+
+  ManagedPerDeviceFFHandle(ManagedPerDeviceFFHandle const &) = delete;
+
+  ManagedPerDeviceFFHandle &
+      operator=(ManagedPerDeviceFFHandle const &) = delete;
 };
 
 } // namespace FlexFlow

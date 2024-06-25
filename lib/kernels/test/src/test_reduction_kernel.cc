@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/reduction_kernels.h"
 #include "test_utils.h"
 
@@ -12,7 +13,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     SUBCASE("forward_kernel") {
       TensorShape output_shape = make_float_tensor_shape_from_legion_dims({10});

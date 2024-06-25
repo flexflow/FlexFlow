@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/partition_kernels.h"
 #include "test_utils.h"
 
@@ -8,7 +9,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     RepartitionPerDeviceState state = Kernels::Repartition::init_kernel(
         managed_handle.handle, DataType::FLOAT);

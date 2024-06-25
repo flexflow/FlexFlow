@@ -1,3 +1,4 @@
+#include "doctest/doctest.h"
 #include "kernels/split_kernels.h"
 #include "test_utils.h"
 
@@ -13,7 +14,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
     TensorShape output_shape = make_float_tensor_shape_from_legion_dims({50});
@@ -22,12 +23,11 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_accessor =
           create_random_filled_accessor_w(input_shape, allocator);
 
-      std::vector<float *> output_ptrs(num_outputs);
-      for (int i = 0; i < num_outputs; i++) {
+      std::vector<float *> output_ptrs = repeat(num_outputs, [&]() {
         GenericTensorAccessorW output_accessor =
             allocator.allocate_tensor(output_shape);
-        output_ptrs[i] = output_accessor.get_float_ptr();
-      }
+        return output_accessor.get_float_ptr();
+      });
 
       Kernels::Split::forward_kernel(managed_stream.stream,
                                      output_ptrs.data(),

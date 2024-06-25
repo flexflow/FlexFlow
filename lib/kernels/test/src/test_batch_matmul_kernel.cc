@@ -17,7 +17,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedFFStream managed_stream{};
     ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_cuda_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape_a =
         make_float_tensor_shape_from_legion_dims({m, k, batch});

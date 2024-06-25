@@ -10,10 +10,22 @@ struct ManagedFFStream {
 
   ManagedFFStream();
 
-  ManagedFFStream(ManagedFFStream const &) = delete;
-  ManagedFFStream(ManagedFFStream &&) = delete;
-
   ~ManagedFFStream();
+
+  ManagedFFStream(ManagedFFStream &&other) noexcept
+      : stream(std::exchange(other.stream, nullptr)) {}
+
+  ManagedFFStream &operator=(ManagedFFStream &&other) noexcept {
+    if (this != &other) {
+      checkCUDA(cudaStreamDestroy(stream));
+      stream = std::exchange(other.stream, nullptr);
+    }
+    return *this;
+  }
+
+  ManagedFFStream(ManagedFFStream const &) = delete;
+
+  ManagedFFStream &operator=(ManagedFFStream const &) = delete;
 };
 
 } // namespace FlexFlow
