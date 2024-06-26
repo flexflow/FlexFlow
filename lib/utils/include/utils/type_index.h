@@ -3,17 +3,18 @@
 
 #include "fmt.h"
 #include <typeindex>
+#include <typeinfo>
 
 namespace FlexFlow {
 
 template <typename T>
-std::type_index type_index() {
+std::type_index get_type_index_for_type() {
   return std::type_index(typeid(T));
 }
 
 template <typename T>
 bool matches(std::type_index idx) {
-  return idx == type_index<T>();
+  return idx == get_type_index_for_type<T>();
 }
 
 } // namespace FlexFlow

@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_BUILDER_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_BUILDER_H
 
-#include "computation_graph.h"
-#include "optimizer.h"
+#include "pcg/computation_graph.dtg.h"
+#include "pcg/initializer_attrs.dtg.h"
+#include "pcg/tensor_guid_t.dtg.h"
 
 namespace FlexFlow {
 
-struct ComputationGraphBuilder
-    : public use_visitable_cmp<ComputationGraphBuilder> {
+struct ComputationGraphBuilder {
 public:
   ComputationGraphBuilder();
 
@@ -95,8 +95,8 @@ public:
       std::optional<Activation> const &activation = std::nullopt,
       int groups = 1,
       bool use_bias = true,
-      std::optional<Initializer> const &kernel_initializer = std::nullopt,
-      std::optional<Initializer> const &bias_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &bias_initializer = std::nullopt,
       std::optional<RegularizerAttrs> const &kernel_regularizer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
   // Add a dropout layer
@@ -111,7 +111,7 @@ public:
       int outDim,
       AggregateOp aggr,
       DataType dtype = DataType::FLOAT,
-      std::optional<Initializer> const &kernel_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
   // Add a gather layer
   std::vector<tensor_guid_t>
@@ -154,15 +154,15 @@ public:
                    int a_seq_length_dim = -1,
                    int b_seq_length_dim = -1,
                    std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t
-      dense(tensor_guid_t const &input,
-            int outDim,
-            std::optional<Activation> activation = std::nullopt,
-            bool use_bias = true,
-            DataType data_type = DataType::FLOAT,
-            std::optional<Initializer> const &kernel_initializer = std::nullopt,
-            std::optional<Initializer> const &bias_initializer = std::nullopt,
-            std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t dense(
+      tensor_guid_t const &input,
+      int outDim,
+      std::optional<Activation> activation = std::nullopt,
+      bool use_bias = true,
+      DataType data_type = DataType::FLOAT,
+      std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &bias_initializer = std::nullopt,
+      std::optional<std::string> const &name = std::nullopt);
   // Add a cast layer
   tensor_guid_t cast(tensor_guid_t const &input,
                      DataType dtype,
@@ -178,11 +178,11 @@ public:
                      bool keepdims,
                      char const *name);
   // Add a split layer
-  void split(tensor_guid_t const &input,
-             tensor_guid_t *outputs,
-             std::vector<int> const &split,
-             int axis,
-             std::optional<std::string> const &name = std::nullopt);
+  std::vector<tensor_guid_t>
+      split(tensor_guid_t const &input,
+            std::vector<int> const &split,
+            int axis,
+            std::optional<std::string> const &name = std::nullopt);
   // Add a flat layer
   tensor_guid_t flat(tensor_guid_t const &input,
                      std::optional<std::string> const &name = std::nullopt);
@@ -191,8 +191,6 @@ public:
                         int dim = -1,
                         std::optional<std::string> const &name = std::nullopt);
   // Create input tensors and constants
-  tensor_guid_t input(Tensor const &input_tensor,
-                      std::optional<std::string> const &name = std::nullopt);
   tensor_guid_t
       transpose(tensor_guid_t const &input,
                 std::vector<int> const &perm,
@@ -208,11 +206,11 @@ public:
   tensor_guid_t reverse(tensor_guid_t const &input,
                         int axis,
                         std::optional<std::string> const &name = std::nullopt);
-  void top_k(tensor_guid_t const &input,
-             tensor_guid_t *outputs,
-             int k,
-             bool sorted,
-             std::optional<std::string> const &name = std::nullopt);
+  std::vector<tensor_guid_t>
+      top_k(tensor_guid_t const &input,
+            int k,
+            bool sorted,
+            std::optional<std::string> const &name = std::nullopt);
   tensor_guid_t multihead_attention(
       tensor_guid_t const &query,
       tensor_guid_t const &key,
@@ -225,44 +223,48 @@ public:
       bool bias = true,
       bool add_bias_kv = false,
       bool add_zero_attn = false,
-      std::optional<Initializer> initializer = std::nullopt,
+      std::optional<InitializerAttrs> initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t create_tensor(TensorShape const &, bool create_grad = true);
-  Parameter create_weight(
+  tensor_guid_t create_tensor(TensorShape const &, CreateGrad);
+  tensor_guid_t create_weight(
       TensorShape const &,
       bool create_grad = true,
-      std::optional<Initializer> const &initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &initializer = std::nullopt,
       std::optional<ParamSync> sync_type = std::nullopt);
 
-  std::vector<tensor_guid_t> get_outputs(operator_guid_t const &) const;
-  tensor_guid_t get_output(operator_guid_t const &, int idx) const;
-  Tensor get_tensor(tensor_guid_t const &) const;
+  std::vector<tensor_guid_t> get_outputs(LayerAttrs const &) const;
+  tensor_guid_t get_output(LayerAttrs const &, int idx) const;
+
+  std::vector<tensor_guid_t> add_layer(LayerAttrs const &layer,
+                                       std::vector<tensor_guid_t> const &inputs,
+                                       std::vector<TensorAttrs> const &weights,
+                                       std::vector<TensorAttrs> const &outputs);
 
 private:
-  tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &);
+  TensorShape get_shape(tensor_guid_t const &) const;
 
-  void add_layer(Layer const &layer,
-                 std::vector<tensor_guid_t> const &inputs,
-                 std::vector<tensor_guid_t> const &weights,
-                 std::vector<tensor_guid_t> const &outputs);
-  tensor_guid_t add_layer(
-      Layer const &layer,
-      std::vector<tensor_guid_t> const &inputs,
-      std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
-          &weight_shapes,
-      TensorShape const &output_shape);
-  std::vector<tensor_guid_t> add_layer(
-      Layer const &layer,
-      std::vector<tensor_guid_t> const &inputs,
-      std::vector<std::pair<TensorShape, std::optional<Initializer>>> const
-          &weight_shapes,
-      std::vector<TensorShape> const &output_shapes);
+  tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &);
 
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
 
+  tensor_guid_t add_layer(LayerAttrs const &layer,
+                          std::vector<tensor_guid_t> const &inputs,
+                          std::vector<TensorAttrs> const &weights,
+                          TensorAttrs const &output);
+
+  std::vector<tensor_guid_t> add_layer(LayerAttrs const &layer,
+                                       std::vector<tensor_guid_t> const &inputs,
+                                       std::vector<TensorAttrs> const &weights,
+                                       std::vector<TensorShape> const &outputs);
+
+  tensor_guid_t add_layer(LayerAttrs const &layer,
+                          std::vector<tensor_guid_t> const &inputs,
+                          std::vector<TensorAttrs> const &weights,
+                          TensorShape const &output);
+
+  TensorShape get_broadcast_target_shape(std::vector<tensor_guid_t> const &);
   TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
-  TensorShape get_shape(tensor_guid_t const &t);
-  std::vector<TensorShape> get_shapes(std::vector<tensor_guid_t> const &t);
+
   tensor_guid_t
       element_binary(OperatorType,
                      tensor_guid_t const &lhs,
@@ -272,32 +274,13 @@ private:
   tensor_guid_t
       element_unary(OperatorType,
                     tensor_guid_t const &input,
+                    std::optional<float> scalar,
                     std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t element_scalar_unary(
-      OperatorType,
-      tensor_guid_t const &input,
-      float scalar,
-      std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t
-      element_unary(ElementUnaryAttrs const &,
-                    tensor_guid_t const &input,
-                    std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t
-      element_scalar_unary(ElementScalarUnaryAttrs const &attrs,
-                           tensor_guid_t const &x,
-                           std::optional<std::string> const &maybe_name);
 
 public:
   ComputationGraph computation_graph;
 };
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ComputationGraphBuilder, computation_graph);
-
-namespace FlexFlow {
-static_assert(
-    is_well_behaved_value_type_no_hash<ComputationGraphBuilder>::value, "");
-}
 
 #endif

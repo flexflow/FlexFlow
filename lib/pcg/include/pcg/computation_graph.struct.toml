@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "ComputationGraph"
+features = [ ]
+
+includes = [
+  "pcg/layer_attrs.dtg.h",
+  "pcg/tensor_attrs.dtg.h",
+  "pcg/dataflow_graph/dataflow_graph.h",
+]
+
+[[fields]]
+name = "raw_graph"
+type = "::FlexFlow::DataflowGraph<::FlexFlow::LayerAttrs, ::FlexFlow::TensorAttrs>"

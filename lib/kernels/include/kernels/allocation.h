@@ -17,6 +17,7 @@ struct IAllocator {
 struct Allocator {
   Allocator() = delete;
 
+  GenericTensorAccessorW allocate_tensor(TensorShape const &tensor_shape);
   void *allocate(size_t mem_size);
   void deallocate(void *ptr);
 
@@ -27,8 +28,9 @@ struct Allocator {
     return Allocator(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
   Allocator(std::shared_ptr<IAllocator> ptr) : i_allocator(ptr){};
+
+private:
   std::shared_ptr<IAllocator> i_allocator;
 };
 

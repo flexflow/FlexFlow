@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "tensor_guid_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph.h"
+]
+
+[[fields]]
+name = "raw_graph_output"
+type = "::FlexFlow::MultiDiOutput"

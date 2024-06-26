@@ -270,8 +270,6 @@ std::vector<Node>
     get_bfs_ordering(DiGraphView const &,
                      std::unordered_set<Node> const &starting_points);
 std::vector<Node> get_topological_ordering(DiGraphView const &);
-// std::vector<Node> get_topological_ordering(MultiDiGraphView const &);
-// std::vector<Node> get_topological_ordering(OpenMultiDiGraphView const &);
 std::vector<Node> get_unchecked_topological_ordering(DiGraphView const &);
 
 std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &);

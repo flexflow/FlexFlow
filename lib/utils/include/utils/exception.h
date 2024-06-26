@@ -4,8 +4,18 @@
 #include "utils/exception.decl.h"
 #include "utils/fmt.h"
 #include <stdexcept>
+#include <tl/expected.hpp>
 
 namespace FlexFlow {
+
+template <typename T, typename E>
+T throw_if_unexpected(tl::expected<T, E> const &r) {
+  if (r.has_value()) {
+    return r.value();
+  } else {
+    throw std::runtime_error(fmt::to_string(r.error()));
+  }
+}
 
 template <typename... T>
 std::runtime_error mk_runtime_error(fmt::format_string<T...> fmt_str,

@@ -35,7 +35,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE_TEMPLATE(
       "UndirectedGraph implementations", T, HashmapUndirectedGraph) {
 
-    rc::dc_check("Full", [&]() {
+    RC_SUBCASE("Full", [&]() {
       UndirectedGraph g = UndirectedGraph::create<T>();
       int num_nodes = *gen::inRange(1, 10);
       std::vector<Node> n = repeat(num_nodes, [&] { return g.add_node(); });

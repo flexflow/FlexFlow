@@ -4,6 +4,7 @@
 #include "diedge.h"
 #include "node.h"
 #include "node_port.h"
+#include "utils/fmt/pair.h"
 #include "utils/strong_typedef.h"
 #include "utils/visitable.h"
 
@@ -17,6 +18,10 @@ FF_VISIT_FMTABLE(MultiDiInput);
 
 struct MultiDiOutput : DiOutput {
   NodePort src_idx;
+
+  bool operator>(MultiDiOutput const &) const;
+  bool operator>=(MultiDiOutput const &) const;
+  bool operator<=(MultiDiOutput const &) const;
 };
 FF_VISITABLE_STRUCT(MultiDiOutput, src, src_idx);
 FF_VISIT_FMTABLE(MultiDiOutput);

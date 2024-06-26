@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "OperatorAttributeListSize"
+features = [
+  "eq", 
+  "ord",
+  "hash",
+  "rapidcheck",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "substitutions/operator_pattern/operator_attribute_key.dtg.h",
+]
+
+
+[[fields]]
+name = "attribute_key"
+type = "::FlexFlow::OperatorAttributeKey"
