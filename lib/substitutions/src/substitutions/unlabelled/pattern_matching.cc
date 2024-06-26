@@ -8,7 +8,10 @@
 
 namespace FlexFlow {
 
-OpenDataflowGraphView subgraph_matched(OpenDataflowGraphView const &g,
+std::pair<
+  OpenDataflowGraphView,
+  bidict<OpenDataflowValue, DataflowGraphInput>
+> subgraph_matched(OpenDataflowGraphView const &g,
                                        UnlabelledDataflowGraphPatternMatch const &match) {
   std::unordered_set<Node> matched_nodes = keys(match.node_assignment.reversed());
   std::vector<OpenDataflowValue> subgraph_inputs = sorted(get_subgraph_inputs(g, matched_nodes));

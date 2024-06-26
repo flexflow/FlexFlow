@@ -74,7 +74,7 @@ private:
 };
 
 
-OpenDataflowGraphView get_subgraph(OpenDataflowGraphView const &g,
+OpenDataflowSubgraphResult get_subgraph(OpenDataflowGraphView const &g,
                                    std::unordered_set<Node> const &subgraph_nodes,
                                    std::vector<OpenDataflowValue> const &input_ordering) {
   std::vector<DataflowGraphInput> subgraph_inputs;
@@ -85,11 +85,14 @@ OpenDataflowGraphView get_subgraph(OpenDataflowGraphView const &g,
     full_graph_values_to_subgraph_inputs.equate({full_graph_value, subgraph_input});
   }
 
-  return OpenDataflowGraphView::create<OpenDataflowSubgraph>(
-    g, 
-    subgraph_nodes,
-    subgraph_inputs,
-    input_ordering);
+  return OpenDataflowSubgraphResult{
+    OpenDataflowGraphView::create<OpenDataflowSubgraph>(
+      g, 
+      subgraph_nodes,
+      subgraph_inputs,
+      input_ordering),
+    full_graph_values_to_subgraph_inputs,
+  };
 }
 
 } // namespace FlexFlow

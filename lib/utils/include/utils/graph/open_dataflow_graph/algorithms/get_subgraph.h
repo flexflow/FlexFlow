@@ -3,9 +3,11 @@
 
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
+#include "utils/graph/open_dataflow_graph/algorithms/open_dataflow_subgraph_result.dtg.h"
+
 namespace FlexFlow {
 
-OpenDataflowGraphView get_subgraph(OpenDataflowGraphView const &,
+OpenDataflowSubgraphResult get_subgraph(OpenDataflowGraphView const &,
                                    std::unordered_set<Node> const &,
                                    std::vector<OpenDataflowValue> const &);
 
