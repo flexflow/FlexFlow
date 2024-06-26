@@ -4,8 +4,8 @@
 #include "utils/graph/algorithms.h"
 #include "utils/graph/construction.h"
 #include "utils/graph/hashmap_undirected_graph.h"
-#include "utils/graph/undirected.h"
 #include "utils/graph/open_graphs.h"
+#include "utils/graph/undirected.h"
 #include <cinttypes>
 #include <iterator>
 #include <type_traits>
@@ -108,12 +108,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-
-
-
-
-
-
   TEST_CASE("OpenMultiDiGraph") {
     /* graph TD
     .(( )) -->|e0| n0
@@ -133,27 +127,18 @@ TEST_SUITE(FF_TEST_SUITE) {
     NodePort p2 = g.add_node_port();
     NodePort p3 = g.add_node_port();
     NodePort p4 = g.add_node_port();
-    std::vector<NodePort> p = {p1,p2,p3,p4};
+    std::vector<NodePort> p = {p1, p2, p3, p4};
 
-    InputMultiDiEdge e0{n[0], p[0], {1,1}};
+    InputMultiDiEdge e0{n[0], p[0], {1, 1}};
     MultiDiEdge e1{n[1], p[1], n[0], p[0]};
     MultiDiEdge e2{n[2], p[2], n[0], p[0]};
     MultiDiEdge e3{n[3], p[3], n[1], p[1]};
     MultiDiEdge e4{n[3], p[3], n[2], p[2]};
-    OutputMultiDiEdge e5{n[3], p[3], {3,3}};
-    OutputMultiDiEdge e6{n[2], p[2], {2,2}};
+    OutputMultiDiEdge e5{n[3], p[3], {3, 3}};
+    OutputMultiDiEdge e6{n[2], p[2], {2, 2}};
 
     std::vector<OpenMultiDiEdge> e = {e0, e1, e2, e3, e4, e5, e6};
-
   }
-
-
-
-
-
-
-
-
 
   TEST_CASE("traversal") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
@@ -188,14 +173,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("nonlinear") {
       g.add_edge({n[1], n[3]});
-      CHECK(is_acyclic(g) ==
-            true); // TODO, maybe a bug about the unchecked_dfs
+      CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the unchecked_dfs
     }
 
     SUBCASE("not connected") {
       g.remove_edge({n[2], n[3]});
-      CHECK(get_dfs_ordering(g, {n[0]}) ==
-            std::vector<Node>{n[0], n[1], n[2]});
+      CHECK(get_dfs_ordering(g, {n[0]}) == std::vector<Node>{n[0], n[1], n[2]});
     }
   }
 
@@ -243,11 +226,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> n = add_nodes(g, 6);
     std::vector<DirectedEdge> edges = {{n[0], n[1]},
-                                        {n[0], n[2]},
-                                        {n[1], n[5]},
-                                        {n[2], n[3]},
-                                        {n[3], n[4]},
-                                        {n[4], n[5]}};
+                                       {n[0], n[2]},
+                                       {n[1], n[5]},
+                                       {n[2], n[3]},
+                                       {n[3], n[4]},
+                                       {n[4], n[5]}};
     add_edges(g, edges);
     std::vector<Node> ordering = get_topological_ordering(g);
     auto CHECK_BEFORE = [&](int l, int r) {
