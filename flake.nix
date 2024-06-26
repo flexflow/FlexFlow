@@ -101,6 +101,9 @@
               tl-expected
               lcov # for code coverage
             ])
+            (with proj-repo.packages.${system}; [
+              proj
+            ])
             (with self.packages.${system}; [
               legion
               hpp2plantuml
@@ -130,9 +133,6 @@
               jq
               gh
               lcov # for code coverage
-            ])
-            (with proj-repo.packages.${system}; [
-              proj
             ])
             (with pkgs.python3Packages; [
               gitpython
