@@ -8,6 +8,7 @@ using namespace FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE_TEMPLATE("MultiDiGraph implementations", T, AdjacencyMultiDiGraph) {
     MultiDiGraph g = MultiDiGraph::create<T>();
+
     std::vector<Node> n = repeat(3, [&] { return g.add_node(); });
     std::vector<NodePort> p = repeat(3, [&] { return g.add_node_port(); });
 
@@ -80,8 +81,14 @@ TEST_SUITE(FF_TEST_SUITE) {
       g.remove_edge(e[0]);
 
       CHECK(g.query_edges(
-                MultiDiEdgeQuery::all()) == std::unordered_set<MultiDiEdge>{});
+                MultiDiEdgeQuery::all().with_src_nodes({n[0]}).with_dst_nodes(
+                    {n[1]})) == std::unordered_set<MultiDiEdge>{});
 
+      CHECK(g.query_edges(MultiDiEdgeQuery::all().with_dst_nodes({n[2]})) ==
+            std::unordered_set<MultiDiEdge>{e[1]});
+
+      CHECK(g.query_edges(MultiDiEdgeQuery::all().with_src_idxs({p[2]})) ==
+            std::unordered_set<MultiDiEdge>{e[2], e[3]});
     }
   }
 }
