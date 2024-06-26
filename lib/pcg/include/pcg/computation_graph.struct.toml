@@ -6,7 +6,6 @@ includes = [
   "pcg/layer_attrs.dtg.h",
   "pcg/tensor_attrs.dtg.h",
   "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph.h",
-
 ]
 
 [[fields]]

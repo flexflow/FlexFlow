@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "CostDetails"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "total_elapsed_time"
+type = "float"
+
+[[fields]]
+name = "total_mem_usage"
+type = "size_t"
+

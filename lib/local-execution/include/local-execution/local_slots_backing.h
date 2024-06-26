@@ -20,7 +20,8 @@ public:
   void add_per_device_op_state(layer_guid_t const &,
                                DeviceSpecific<DeviceStates> const &);
   bool is_tensor_allocated(tensor_guid_t const &) const;
-  GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &) const;
+  GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
+                                                   IsGrad) const;
   TensorSlotsBacking construct_tensor_slots_backing(OpTaskBinding const &,
                                                     layer_guid_t const &) const;
   ArgSlotsBacking construct_arg_slots_backing(OpTaskBinding const &,
@@ -32,6 +33,7 @@ public:
 public:
   // tensors
   TensorBackingMap tensor_mapping;
+  TensorBackingMap gradient_tensor_mapping;
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       input_tensor_slots;
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>

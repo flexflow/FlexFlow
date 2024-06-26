@@ -80,7 +80,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE_TEMPLATE("Arbitrary<stack_vector>", T, int, double, char) {
     constexpr std::size_t MAXSIZE = 10;
-    rc::dc_check("within bound" , [&](stack_vector<T, MAXSIZE> v) {
+    RC_SUBCASE("within bound", [&](stack_vector<T, MAXSIZE> v) {
       RC_ASSERT(v.size() <= MAXSIZE);
     });
   }

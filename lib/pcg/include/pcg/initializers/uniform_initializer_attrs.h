@@ -11,6 +11,6 @@ struct Arbitrary<::FlexFlow::UniformInitializerAttrs> {
   static Gen<::FlexFlow::UniformInitializerAttrs> arbitrary();
 };
 
-}
+} // namespace rc
 
 #endif

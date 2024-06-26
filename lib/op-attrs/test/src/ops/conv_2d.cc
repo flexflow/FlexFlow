@@ -1,5 +1,5 @@
 #include "op-attrs/ops/conv_2d.h"
-#include "test/utils/doctest.h"
+#include "doctest/doctest.h"
 #include "utils/integer_conversions.h"
 
 TEST_SUITE(FF_TEST_SUITE) {

@@ -87,7 +87,7 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
     std::vector<TensorShape> const &outputs) {
   return this->add_layer(
       layer, inputs, weights, transform(outputs, [](TensorShape const &s) {
-        return TensorAttrs{s, std::nullopt, true, std::nullopt};
+        return TensorAttrs{s, std::nullopt, std::nullopt, CreateGrad::YES};
       }));
 }
 
@@ -330,7 +330,7 @@ tensor_guid_t
 static TensorAttrs make_weight_attrs(
     TensorShape const &shape,
     std::optional<InitializerAttrs> const &initializer_attrs) {
-  return TensorAttrs{shape, initializer_attrs, true, std::nullopt};
+  return TensorAttrs{shape, initializer_attrs, std::nullopt, CreateGrad::YES};
 }
 
 tensor_guid_t ComputationGraphBuilder::conv2d(

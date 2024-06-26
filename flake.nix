@@ -79,6 +79,8 @@
             "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
           ];
 
+          RC_PARAMS = "max_discard_ratio=100";
+
           buildInputs = builtins.concatLists [
             (with pkgs; [
               zlib
@@ -100,6 +102,9 @@
               tl-expected
               lcov # for code coverage
             ])
+            (with proj-repo.packages.${system}; [
+              proj
+            ])
             (with self.packages.${system}; [
               legion
               hpp2plantuml
@@ -111,7 +116,7 @@
 
         default = mkShell {
           inputsFrom = [ ci ];
-          inherit (ci) CMAKE_FLAGS;
+          inherit (ci) CMAKE_FLAGS RC_PARAMS;
 
           VIMPLUGINS = lib.strings.concatStringsSep "," [
             "${proj-repo.packages.${system}.proj-nvim}"
@@ -129,9 +134,6 @@
               jq
               gh
               lcov # for code coverage
-            ])
-            (with proj-repo.packages.${system}; [
-              proj
             ])
             (with pkgs.python3Packages; [
               gitpython

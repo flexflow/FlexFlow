@@ -43,16 +43,17 @@
         ]
       },
       "locked": {
-        "dirtyRev": "5dc9d970f0fe67e65146b2ba1d7aa44d11324d48-dirty",
-        "dirtyShortRev": "5dc9d97-dirty",
-        "lastModified": 1718643207,
-        "narHash": "sha256-tZwDcHotcUrvQlyBxavhQRpMCFAiu100V/q9YeHJhdM=",
-        "type": "git",
-        "url": "file:///home/lockshaw/x/proj/proj"
+        "lastModified": 1719373251,
+        "narHash": "sha256-n1Rm8vOflScty0XRzkjUvJEFHfDhyqTriZZ8AFZJbT0=",
+        "owner": "lockshaw",
+        "repo": "proj",
+        "rev": "a01d0b1e60a05703c5e42f9e924a183a65032de8",
+        "type": "github"
       },
       "original": {
-        "type": "git",
-        "url": "file:///home/lockshaw/x/proj/proj"
+        "owner": "lockshaw",
+        "repo": "proj",
+        "type": "github"
       }
     },
     "root": {

@@ -17,12 +17,35 @@ size_t size_of_datatype(DataType data_type) {
     case DataType::DOUBLE:
       return sizeof(double);
     default:
-      throw mk_runtime_error("Unknown data type {}", data_type);
+      throw mk_runtime_error("Unknown DataType {}", data_type);
   }
 }
 
 bool can_strictly_promote_datatype_from_to(DataType src, DataType dst) {
-  return src < dst;
+  std::unordered_set<DataType> allowed;
+  switch (src) {
+    case DataType::BOOL:
+      allowed = {
+          DataType::INT32, DataType::INT64, DataType::FLOAT, DataType::DOUBLE};
+      break;
+    case DataType::INT32:
+      allowed = {DataType::INT64};
+      break;
+    case DataType::INT64:
+      break;
+    case DataType::HALF:
+      allowed = {DataType::FLOAT, DataType::DOUBLE};
+      break;
+    case DataType::FLOAT:
+      allowed = {DataType::DOUBLE};
+      break;
+    case DataType::DOUBLE:
+      break;
+    default:
+      throw mk_runtime_error(fmt::format("Unknown DataType {}", src));
+  }
+
+  return contains(allowed, dst);
 }
 
 } // namespace FlexFlow

@@ -28,8 +28,9 @@ struct Allocator {
     return Allocator(std::make_shared<T>(std::forward<Args>(args)...));
   }
 
-private:
   Allocator(std::shared_ptr<IAllocator> ptr) : i_allocator(ptr){};
+
+private:
   std::shared_ptr<IAllocator> i_allocator;
 };
 
