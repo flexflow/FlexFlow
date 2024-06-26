@@ -4,6 +4,7 @@
 #include "utils/graph/algorithms.h"
 #include "utils/graph/construction.h"
 #include "utils/graph/hashmap_undirected_graph.h"
+#include "utils/graph/open_graphs.h"
 #include "utils/graph/undirected.h"
 #include <cinttypes>
 #include <iterator>
@@ -65,13 +66,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 
     SUBCASE("get_imm_dominators") {
-      std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
+      std::unordered_map<Node, std::optional<Node>> result =
+          get_imm_dominators(g);
 
-      std::unordered_map<Node, optional<Node>> expected_result = {
+      std::unordered_map<Node, std::optional<Node>> expected_result = {
           {n[2], n[0]},
           {n[1], n[0]},
           {n[3], n[0]},
-          {n[0], nullopt},
+          {n[0], std::nullopt},
       };
       CHECK(result == expected_result);
     }
@@ -104,6 +106,38 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
       CHECK(get_predecessors(g, {n[1], n[2]}) == expected_result);
     }
+  }
+
+  TEST_CASE("OpenMultiDiGraph") {
+    /* graph TD
+    .(( )) -->|e0| n0
+
+    n0 -->|e1| n1
+    n0 -->|e2| n2
+    n1 -->|e3| n3
+    n2 -->|e4| n3
+
+    n3 -->|e5| ..(( ))
+    n2 -->|e6| ...(( ))
+    */
+
+    OpenMultiDiGraph g = OpenMultiDiGraph::create<AdjacencyOpenMultiDiGraph>();
+    std::vector<Node> n = add_nodes(g, 4);
+    NodePort p1 = g.add_node_port();
+    NodePort p2 = g.add_node_port();
+    NodePort p3 = g.add_node_port();
+    NodePort p4 = g.add_node_port();
+    std::vector<NodePort> p = {p1, p2, p3, p4};
+
+    InputMultiDiEdge e0{n[0], p[0], {1, 1}};
+    MultiDiEdge e1{n[1], p[1], n[0], p[0]};
+    MultiDiEdge e2{n[2], p[2], n[0], p[0]};
+    MultiDiEdge e3{n[3], p[3], n[1], p[1]};
+    MultiDiEdge e4{n[3], p[3], n[2], p[2]};
+    OutputMultiDiEdge e5{n[3], p[3], {3, 3}};
+    OutputMultiDiEdge e6{n[2], p[2], {2, 2}};
+
+    std::vector<OpenMultiDiEdge> e = {e0, e1, e2, e3, e4, e5, e6};
   }
 
   TEST_CASE("traversal") {
