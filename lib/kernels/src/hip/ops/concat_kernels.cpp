@@ -13,10 +13,12 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/concat_kernels.h"
 #include "device.h"
 #include <cassert>
 #include <hip/hip_runtime.h>
+#include <cassert>
 
 namespace FlexFlow {
 namespace Kernels {
@@ -73,9 +75,10 @@ void backward_kernel(hipStream_t stream,
   coord_t num_blocks = 1, output_blk_size = 1, input_blk_sizes[MAX_NUM_INPUTS];
   int num_inputs = input_grads.size();
   assert(num_inputs <= MAX_NUM_INPUTS);
+  
   calc_blk_size(num_blocks, output_blk_size, output_grad.shape, axis);
   for (int i = 0; i < num_inputs; i++) {
-    shape = input_grads[i].shape;
+    ArrayShape shape = input_grads[i].shape;
     size_t input_num_blocks = 1;
     calc_blk_size(input_num_blocks, input_blk_sizes[i], shape, axis);
     assert(input_num_blocks == num_blocks);

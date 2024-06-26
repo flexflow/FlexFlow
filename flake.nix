@@ -6,10 +6,14 @@
     extra-substituters = [
       "https://ff.cachix.org"
       "https://cuda-maintainers.cachix.org/"
+      "https://llama-cpp.cachix.org"
+      "https://nixos-rocm.cachix.org/"
     ];
     extra-trusted-public-keys = [
       "cuda-maintainers.cachix.org-1:0dq3bujKpuEPMCX6U4WylrUDZ9JyUG0VpVZa7CNfq5E="
       "ff.cachix.org-1:/kyZ0w35ToSJBjpiNfPLrL3zTjuPkUiqf2WH0GIShXM="
+      "nixos-rocm.cachix.org-1:VEpsf7pRIijjd8csKjFNBGzkBqOmw8H9PRmgAq14LnE="
+      "llama-cpp.cachix.org-1:H75X+w83wUKTIPSO1KWy9ADUrzThyGs8P5tmAbkWhQc="
     ];
   };
 
@@ -29,11 +33,33 @@
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
+        config.rocmSupport = true;
       };
       lib = pkgs.lib;
 
+      inherit (pkgs.rocmPackages) clr miopen miopengemm rccl rocm-runtime;
+
+      rocm = pkgs.symlinkJoin {
+        name = "rocm";
+        paths = with pkgs.rocmPackages; [ 
+          rocm-thunk 
+          rocm-runtime 
+          rocm-device-libs 
+          clr 
+          hipcc
+          rccl
+          llvm.clang
+          miopen
+          miopengemm
+          miopen-hip
+          hipblas
+          rocm-cmake
+          hip-common
+        ];
+      };
+
       mkShell = pkgs.mkShell.override {
-        stdenv = pkgs.cudaPackages.backendStdenv;
+        stdenv = pkgs.rocmPackages.llvm.rocmClangStdenv;
       };
     in 
     {
@@ -61,7 +87,14 @@
       devShells = rec {
         ci = mkShell {
           shellHook = ''
+            export HIP_COMPILER="${pkgs.rocmPackages.llvm.clang}/bin/clang"
             export PATH="$HOME/ff/.scripts/:$PATH"
+            export ROCM_PATH=${clr}
+            export HIP_DEVICE_LIB_PATH="${pkgs.rocmPackages.rocm-device-libs}/amdgcn/bitcode"
+            # export HIP_ROOT_DIR=${clr}
+            # export HIP_PATH=${clr}/hip
+            # export HIP_INCLUDE_DIRS=${clr}/hip/include
+            echo "ROCm path set to: $ROCM_PATH"
           '';
           
           CMAKE_FLAGS = lib.strings.concatStringsSep " " [
@@ -76,6 +109,14 @@
             "-DFF_USE_EXTERNAL_RANGEV3=ON"
             "-DFF_USE_EXTERNAL_BOOST_PREPROCESSOR=ON"
             "-DFF_USE_EXTERNAL_TYPE_INDEX=ON"
+
+            # hip related flags
+            "-DHIP_PLATFORM=amd"
+            # "-DHIP_RUNTIME=rocclr"
+            # "-DHIP_COMPILER=${pkgs.rocmPackages.llvm.clang}/bin/clang"
+            "-DHIP_PATH=${clr}/hip"
+            "-DHIP_ROOT_DIR=${clr}/hip"
+
           ];
 
           RC_PARAMS = "max_discard_ratio=100";
@@ -92,14 +133,7 @@
               ccache
               pkg-config
               python3
-              cudatoolkit
-              cudaPackages.cuda_nvcc
-              cudaPackages.cudnn
-              cudaPackages.nccl
-              cudaPackages.libcublas
-              cudaPackages.cuda_cudart
               tl-expected
-              lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
               proj
@@ -110,6 +144,21 @@
               rapidcheckFull
               doctest
             ])
+            (with pkgs.rocmPackages; [
+              clr
+              miopen
+              miopengemm
+              rccl
+              rocm-runtime
+              hipblas
+              hipcc
+              hip-common
+              rocm-cmake
+              miopen-hip
+              rocm-thunk
+              rocm-device-libs
+            ])
+            # [ rocm ]
           ];
         };
 
@@ -132,7 +181,6 @@
               compdb
               jq
               gh
-              lcov # for code coverage
             ])
             (with pkgs.python3Packages; [
               gitpython

@@ -1,10 +1,15 @@
 #ifndef _FLEXFLOW_KERNELS_INCLUDE_KERNELS_NCCL_H
 #define _FLEXFLOW_KERNELS_INCLUDE_KERNELS_NCCL_H
 
-#ifdef FF_USE_NCCL
+#ifdef FF_USE_HIP_ROCM
+#include <rccl/rccl.h>
+#elif FF_USE_NCCL
+#include <nccl.h>
+#endif
+
+#if defined(FF_USE_HIP_ROCM) || defined(FF_USE_NCCL)
 #include <cstdio>
 #include <cstdlib>
-#include <nccl.h>
 
 #define checkNCCL(cmd)                                                         \
   do {                                                                         \

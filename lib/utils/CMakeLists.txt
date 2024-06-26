@@ -12,7 +12,7 @@ ff_add_library(
     visit_struct
     fmt
     json
-    cuda
+    # cuda
 )      
 
 add_subdirectory(ffi)
