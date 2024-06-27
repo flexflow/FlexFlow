@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "ParallelLayerAddedResult"
+
+features = [
+  "eq",
+  "ord",
+  "fmt",
+]
+
+includes = [
+  "<vector>",
+  "utils/fmt/vector.h",
+  "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
+  "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h",
+]
+
+[[fields]]
+name = "parallel_layer"
+type = "::FlexFlow::parallel_layer_guid_t"
+
+[[fields]]
+name = "outputs"
+type = "std::vector<::FlexFlow::parallel_tensor_guid_t>"

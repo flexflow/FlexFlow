@@ -5,6 +5,8 @@
 #include "containers.decl.h"
 #include "required_core.h"
 #include "type_traits_core.h"
+#include "utils/containers/extend_vector.h"
+#include "utils/containers/vector_transform.h"
 #include "utils/exception.h"
 #include "utils/type_traits.h"
 #include <algorithm>
@@ -20,38 +22,6 @@
 #include <vector>
 
 namespace FlexFlow {
-
-template <typename InputIt, typename F>
-std::string join_strings(InputIt first,
-                         InputIt last,
-                         std::string const &delimiter,
-                         F const &f) {
-  std::ostringstream oss;
-  bool first_iter = true;
-  /* int i = 0; */
-  for (; first != last; first++) {
-    if (!first_iter) {
-      oss << delimiter;
-    }
-    oss << *first;
-    /* break; */
-    first_iter = false;
-    /* i++; */
-  }
-  return oss.str();
-}
-
-template <typename InputIt>
-std::string
-    join_strings(InputIt first, InputIt last, std::string const &delimiter) {
-  using Ref = typename InputIt::reference;
-  return join_strings<InputIt>(first, last, delimiter, [](Ref r) { return r; });
-}
-
-template <typename Container>
-std::string join_strings(Container const &c, std::string const &delimiter) {
-  return join_strings(c.cbegin(), c.cend(), delimiter);
-}
 
 template <typename Container>
 typename Container::const_iterator
@@ -346,6 +316,15 @@ bidict<K, V> generate_bidict(C const &c, F const &f) {
   return {transformed.cbegin(), transformed.cend()};
 }
 
+template <typename E>
+std::optional<E> at_idx(std::vector<E> const &v, size_t idx) {
+  if (idx >= v.size()) {
+    return std::nullopt;
+  } else {
+    return v.at(idx);
+  }
+}
+
 template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
   return [&m](K const &k) -> V { return m.at(k); };
@@ -441,6 +420,7 @@ T get_first(std::unordered_set<T> const &s) {
 
 template <typename T, typename C>
 void extend(std::vector<T> &lhs, C const &rhs) {
+  extend_vector(lhs, rhs);
   lhs.reserve(lhs.size() + std::distance(rhs.begin(), rhs.end()));
   lhs.insert(lhs.end(), rhs.begin(), rhs.end());
 }
@@ -462,6 +442,22 @@ template <typename C, typename F>
 bool all_of(C const &c, F const &f) {
   for (auto const &v : c) {
     if (!f(v)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+template <typename Container, typename Function>
+std::optional<bool> optional_all_of(Container const &container,
+                                    Function const &func) {
+  for (auto const &element : container) {
+    std::optional<bool> condition = func(element);
+    if (!condition.has_value()) {
+      return std::nullopt;
+    }
+
+    if (!condition.value()) {
       return false;
     }
   }
@@ -507,11 +503,6 @@ template <typename F, typename C>
 auto transform(req<C> const &c, F const &f)
     -> decltype(transform(std::declval<C>(), std::declval<F>())) {
   return transform(static_cast<C>(c), f);
-}
-
-template <typename F, typename In, typename Out>
-std::vector<Out> vector_transform(F const &f, std::vector<In> const &v) {
-  return transform(v, f);
 }
 
 template <typename F, typename In, typename Out>
@@ -693,7 +684,7 @@ std::vector<T> subvec(std::vector<T> const &v,
   auto resolve_loc = [&](int idx) ->
       typename std::vector<T>::iterator::difference_type {
         if (idx < 0) {
-          return v.size() - idx;
+          return v.size() + idx;
         } else {
           return idx;
         }

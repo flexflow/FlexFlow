@@ -34,12 +34,12 @@ TEST_CASE("Serialization") {
   }
 
   for (CompleteOperatorAttrs const &op : operator_attrs) {
-    CHECK(rc::check("Serialization", [](CompleteOperatorAttrs const &pre_op) {
+    RC_SUBCASE("Serialization", [](CompleteOperatorAttrs const &pre_op) {
       pre_op = *rc::gen::arbitrary<CompleteOperatorAttrs>();
       auto post_op = pre_op;
       ff_task_serialize<CompleteOperatorAttrs>(sez, post_op);
       auto post_op = ff_task_deserialize<CompleteOperatorAttrs>(dez);
       RC_ASSERT(post_op == pre_op);
-    }))
+    });
   }
 }

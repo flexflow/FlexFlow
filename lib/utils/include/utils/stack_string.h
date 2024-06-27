@@ -4,8 +4,10 @@
 #include "fmt/core.h"
 #include "stack_vector.h"
 #include "utils/fmt.h"
+#include "utils/json.h"
 #include "utils/type_traits.h"
 #include <cstring>
+#include <rapidcheck.h>
 #include <string>
 
 namespace FlexFlow {
@@ -15,6 +17,9 @@ struct stack_basic_string {
   stack_basic_string() = default;
 
   stack_basic_string(Char const *c) : contents(c, c + std::strlen(c)) {}
+
+  template <typename Iterator>
+  stack_basic_string(Iterator start, Iterator end) : contents(start, end) {}
 
   stack_basic_string(std::basic_string<Char> const &s)
       : stack_basic_string(s.c_str()) {}
@@ -64,6 +69,19 @@ private:
 template <size_t MAXSIZE>
 using stack_string = stack_basic_string<char, MAXSIZE>;
 
+template <std::size_t MAXSIZE>
+void to_json(json &j, stack_string<MAXSIZE> const &v) {
+  std::string as_string = v;
+  j = as_string;
+}
+
+template <std::size_t MAXSIZE>
+void from_json(json const &j, stack_string<MAXSIZE> &v) {
+  std::string as_string;
+  j.get_to(as_string);
+  v = stack_string<MAXSIZE>{as_string};
+}
+
 } // namespace FlexFlow
 
 namespace std {
@@ -77,6 +95,20 @@ struct hash<::FlexFlow::stack_basic_string<Char, MAXSIZE>> {
 };
 
 } // namespace std
+
+namespace rc {
+
+template <typename Char, size_t MAXSIZE>
+struct Arbitrary<::FlexFlow::stack_basic_string<Char, MAXSIZE>> {
+  static Gen<::FlexFlow::stack_basic_string<Char, MAXSIZE>> arbitrary() {
+    return gen::mapcat(gen::inRange<size_t>(0, MAXSIZE), [](size_t size) {
+      return gen::container<::FlexFlow::stack_basic_string<Char, MAXSIZE>>(
+          size, gen::arbitrary<Char>());
+    });
+  }
+};
+
+} // namespace rc
 
 namespace FlexFlow {
 

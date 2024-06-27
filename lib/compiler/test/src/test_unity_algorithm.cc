@@ -6,7 +6,7 @@
 TEST_SUITE(FF_TEST_SUITE) {
   // Rapidcheck does not work for now
   // TEST_CASE("graph_optimize") {
-  //   rc::check([](ComputationGraph const &g,
+  //   RC_SUBCASE([](ComputationGraph const &g,
   //                float alpha,
   //                int budget,
   //                float threshold,

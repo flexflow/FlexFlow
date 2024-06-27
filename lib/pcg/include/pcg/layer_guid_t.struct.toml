@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "layer_guid_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph.h",
+]
+
+[[fields]]
+name = "raw_node"
+type = "::FlexFlow::Node"

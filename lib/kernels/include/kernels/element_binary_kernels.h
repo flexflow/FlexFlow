@@ -5,7 +5,7 @@
 #include "ff_handle.h"
 #include "kernels/array_shape.h"
 #include "op-attrs/datatype.h"
-#include "op-attrs/op.h"
+#include "op-attrs/operator_type.h"
 
 namespace FlexFlow {
 

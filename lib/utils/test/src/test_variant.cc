@@ -1,4 +1,5 @@
 #include "test/utils/doctest.h"
+#include "test/utils/rapidcheck.h"
 #include "utils/variant.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
@@ -68,5 +69,11 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     // Check the result
     CHECK(get<int>(wider_variant) == 42);
+  }
+
+  TEST_CASE("Arbitrary<std::variant>") {
+    RC_SUBCASE("valid type", [](std::variant<int, float> v) {
+      return std::holds_alternative<int>(v) || std::holds_alternative<float>(v);
+    });
   }
 }

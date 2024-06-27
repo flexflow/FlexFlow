@@ -1,45 +1,38 @@
 #ifndef _OP_META_PARALLEL_TENSOR_SHAPE_H
 #define _OP_META_PARALLEL_TENSOR_SHAPE_H
 
-#include "datatype.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.h"
-#include "parallel_tensor_dims.h"
-#include "utils/bidict.h"
-#include "utils/record_formatter.h"
-#include "utils/stack_vector.h"
-#include "utils/visitable.h"
-#include <unordered_map>
 #include <vector>
 
 namespace FlexFlow {
 
-/**
- * @brief Represent the shape of a ParallelTensor.
- */
-struct ParallelTensorShape : public use_visitable_cmp<ParallelTensorShape> {
-  ParallelTensorShape() = delete;
+int num_shard_dims(ParallelTensorShape const &);
+ShardParallelDim shard_dim_at_idx(ParallelTensorShape const &, ff_dim_t);
+ShardParallelDim &shard_dim_at_idx(ParallelTensorShape &, ff_dim_t);
 
-  template <typename Dims>
-  ParallelTensorShape(Dims const &dims, DataType data_type)
-      : dims(dims), data_type(data_type) {}
+FFOrdered<int> ff_ordered_shard_degrees(ParallelTensorShape const &);
 
-  ParallelTensorShape(TensorShape const &);
+std::optional<ShardParallelDim>
+    try_get_shard_dim_at_idx(ParallelTensorShape const &, ff_dim_t);
 
-  int num_dims() const;
+ParallelTensorShape lift_to_parallel(TensorShape const &);
+ParallelTensorShape
+    lift_to_parallel_with_degrees(TensorShape const &,
+                                  SumDegree sum_degree,
+                                  DiscardCopyDegree discard_copy_degree,
+                                  FFOrdered<int> const &shard_degrees);
 
-  ParallelDim const &at(ff_dim_t const &) const;
-  ParallelDim &at(ff_dim_t const &);
-  ParallelDim const &operator[](ff_dim_t const &) const;
-  ParallelDim &operator[](ff_dim_t const &);
-
-public:
-  ParallelTensorDims dims;
-  DataType data_type;
-};
-
+std::unordered_set<ReplicaParallelDim>
+    replica_dims(ParallelTensorShape const &);
 TensorShape get_piece_shape(ParallelTensorShape const &);
 int get_num_replica_dims(ParallelTensorShape const &);
 int get_num_replicas(ParallelTensorShape const &);
+
+int get_sum_degree(ParallelTensorShape const &);
+int get_discard_copy_degree(ParallelTensorShape const &);
+
+int get_total_parallel_degree(ParallelTensorShape const &);
 
 bool is_valid(ParallelTensorShape const &);
 
@@ -47,9 +40,8 @@ TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &);
 std::vector<TensorShape>
     get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
 
-} // namespace FlexFlow
+TensorShape get_reduced_shape(ParallelTensorShape const &);
 
-VISITABLE_STRUCT(::FlexFlow::ParallelTensorShape, data_type, dims);
-MAKE_VISIT_HASHABLE(::FlexFlow::ParallelTensorShape);
+} // namespace FlexFlow
 
 #endif
