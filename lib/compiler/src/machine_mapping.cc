@@ -113,7 +113,6 @@ float estimate_cost(SubParallelComputationGraphView const &g,
   return cost;
 }
 
-
 void minimize_runtime(OptimalCostResult &m1, OptimalCostResult const &m2) {
   minimize(m1, m2, OptimalCostRuntimeCmp{});
 }

@@ -1,12 +1,12 @@
-#ifndef _FLEXFLOW_COMPILER_MACHINE_MAPPING_H
-#define _FLEXFLOW_COMPILER_MACHINE_MAPPING_H
+#ifndef _FLEXFLOW_COMPILER_COST_ESTIMATOR_H
+#define _FLEXFLOW_COMPILER_COST_ESTIMATOR_H
 
+#include "compiler/machine_mapping.h"
 #include "cost_estimate.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph.h"
 #include "substitutions/sub_parallel_computation_graph.h"
-#include "compiler/machine_mapping.h"
 
 using SubParallelComputationGraphView =
     OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
@@ -21,16 +21,5 @@ float parallel_estimate_cost(
         &frontier_machine_views);
 
 } // namespace FlexFlow
-
-namespace std {
-
-template <>
-struct hash<std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping>> {
-  size_t operator()(
-      std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g)
-      const;
-};
-
-}; // namespace std
 
 #endif
