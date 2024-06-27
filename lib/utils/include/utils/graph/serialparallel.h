@@ -8,6 +8,8 @@
 #include <vector>
 
 namespace FlexFlow {
+bool has_single_source(DiGraphView const &g);
+bool has_single_sink(DiGraphView const &g);
 
 Node find_source_node(DiGraphView const &);
 Node find_sink_node(DiGraphView const &);

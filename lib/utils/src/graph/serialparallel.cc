@@ -4,8 +4,15 @@
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
-
 namespace FlexFlow {
+
+bool has_single_source(DiGraphView const &g) {
+  return get_sources(g).size() == 1;
+}
+
+bool has_single_sink(DiGraphView const &g) {
+  return get_sinks(g).size() == 1;
+}
 
 Node find_source_node(DiGraphView const &g) {
   std::unordered_set<Node> srcs = get_sources(g);

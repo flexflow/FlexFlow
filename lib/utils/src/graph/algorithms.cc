@@ -657,24 +657,26 @@ Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &nodes,
                            });
 }
 
-std::unordered_map<Node, int> get_unchecked_longest_path_lengths(DiGraphView const& g) {
+std::unordered_map<Node, int>
+    get_unchecked_longest_path_lengths(DiGraphView const &g) {
   std::vector<Node> topo_order = get_topological_ordering(g);
   std::unordered_map<Node, int> longest_path_lengths;
 
-  for (const Node& n : topo_order) {
+  for (Node const &n : topo_order) {
     longest_path_lengths[n] = 0;
   }
 
-  for (const Node& n : topo_order) {
-    for (const Node& pred : get_predecessors(g, n)) {
-      longest_path_lengths[n] = std::max(longest_path_lengths[n], longest_path_lengths[pred] + 1);
+  for (Node const &n : topo_order) {
+    for (Node const &pred : get_predecessors(g, n)) {
+      longest_path_lengths[n] =
+          std::max(longest_path_lengths[n], longest_path_lengths[pred] + 1);
     }
   }
 
   return longest_path_lengths;
 }
 
-std::unordered_map<Node, int> get_longest_path_lengths(DiGraphView const& g) {
+std::unordered_map<Node, int> get_longest_path_lengths(DiGraphView const &g) {
   assert(is_acyclic(g));
   return get_unchecked_longest_path_lengths(g);
 }

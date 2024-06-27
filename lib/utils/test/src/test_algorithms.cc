@@ -65,7 +65,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 
     SUBCASE("get_imm_dominators") {
-      std::unordered_map<Node, std::optional<Node>> result = get_imm_dominators(g);
+      std::unordered_map<Node, std::optional<Node>> result =
+          get_imm_dominators(g);
 
       std::unordered_map<Node, std::optional<Node>> expected_result = {
           {n[2], n[0]},
@@ -246,56 +247,53 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("get_longest_path_lengths - linear graph") {
-  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  std::vector<Node> n = add_nodes(g, 5);
-  std::vector<DirectedEdge> edges = {
-    {n[0], n[1]},
-    {n[1], n[2]},
-    {n[2], n[3]},
-    {n[3], n[4]},
-  };
+    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+    std::vector<Node> n = add_nodes(g, 5);
+    std::vector<DirectedEdge> edges = {
+        {n[0], n[1]},
+        {n[1], n[2]},
+        {n[2], n[3]},
+        {n[3], n[4]},
+    };
 
-  add_edges(g, edges);
+    add_edges(g, edges);
 
-  std::unordered_map<Node, int> expected_lengths = {
-    {n[0], 0},
-    {n[1], 1},
-    {n[2], 2},
-    {n[3], 3},
-    {n[4], 4},
-  };
+    std::unordered_map<Node, int> expected_lengths = {
+        {n[0], 0},
+        {n[1], 1},
+        {n[2], 2},
+        {n[3], 3},
+        {n[4], 4},
+    };
 
-  CHECK(get_longest_path_lengths(g) == expected_lengths);
+    CHECK(get_longest_path_lengths(g) == expected_lengths);
   }
 
   TEST_CASE("get_longest_path_lengths - more complex graph") {
-  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  std::vector<Node> n = add_nodes(g, 7);
-  std::vector<DirectedEdge> edges = {
-    {n[0], n[1]},
-    {n[0], n[3]},
-    {n[0], n[4]},
-    {n[0], n[6]},
-    {n[1], n[2]},
-    {n[2], n[3]},
-    {n[3], n[5]},
-    {n[4], n[5]},
-    {n[5], n[6]}
-  };
+    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+    std::vector<Node> n = add_nodes(g, 7);
+    std::vector<DirectedEdge> edges = {{n[0], n[1]},
+                                       {n[0], n[3]},
+                                       {n[0], n[4]},
+                                       {n[0], n[6]},
+                                       {n[1], n[2]},
+                                       {n[2], n[3]},
+                                       {n[3], n[5]},
+                                       {n[4], n[5]},
+                                       {n[5], n[6]}};
 
-  add_edges(g, edges);
+    add_edges(g, edges);
 
-  std::unordered_map<Node, int> expected_lengths = {
-    {n[0], 0},
-    {n[1], 1},
-    {n[2], 2},
-    {n[3], 3},
-    {n[4], 1},
-    {n[5], 4},
-    {n[6], 5},
-  };
+    std::unordered_map<Node, int> expected_lengths = {
+        {n[0], 0},
+        {n[1], 1},
+        {n[2], 2},
+        {n[3], 3},
+        {n[4], 1},
+        {n[5], 4},
+        {n[6], 5},
+    };
 
-  CHECK(get_longest_path_lengths(g) == expected_lengths);
+    CHECK(get_longest_path_lengths(g) == expected_lengths);
   }
-
 }
