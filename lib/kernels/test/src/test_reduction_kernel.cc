@@ -24,8 +24,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
-      Kernels::Reduction::forward_kernel(
-          managed_stream.stream, input_accessor, output_accessor, num_replicas);
+      Kernels::Reduction::forward_kernel(managed_stream.raw_stream(),
+                                         input_accessor,
+                                         output_accessor,
+                                         num_replicas);
 
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
@@ -42,8 +44,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
-      Kernels::Reduction::backward_kernel(
-          managed_stream.stream, input_grad_accessor, output_grad_accessor);
+      Kernels::Reduction::backward_kernel(managed_stream.raw_stream(),
+                                          input_grad_accessor,
+                                          output_grad_accessor);
 
       std::vector<float> expected_grad_input_data(
           input_grad_accessor.shape.num_elements(), 1.0f);

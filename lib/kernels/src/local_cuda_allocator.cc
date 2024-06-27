@@ -10,8 +10,7 @@ void *LocalCudaAllocator::allocate(size_t requested_memory_size) {
 }
 
 void LocalCudaAllocator::deallocate(void *ptr) {
-  auto it = this->ptrs.find(ptr);
-  if (it != this->ptrs.end()) {
+  if (contains(this->ptrs, ptr)) {
     checkCUDA(cudaFree(ptr));
     this->ptrs.erase(ptr);
   } else {
@@ -21,9 +20,9 @@ void LocalCudaAllocator::deallocate(void *ptr) {
 }
 
 LocalCudaAllocator::~LocalCudaAllocator() {
-  for (auto it = this->ptrs.begin(); it != this->ptrs.end();) {
+  while (!ptrs.empty()) {
+    auto it = ptrs.begin();
     void *ptr = *it;
-    it++;
     this->deallocate(ptr);
   }
 }

@@ -23,7 +23,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate_tensor(output_shape);
 
       Kernels::Replicate::forward_kernel(
-          managed_stream.stream, input_accessor, output_accessor);
+          managed_stream.raw_stream(), input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
           load_data_to_host_from_device<float>(
@@ -41,7 +41,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           read_only_accessor_from_write_accessor(
               create_filled_accessor_w(output_shape, allocator, 1.0f));
 
-      Kernels::Replicate::backward_kernel(managed_stream.stream,
+      Kernels::Replicate::backward_kernel(managed_stream.raw_stream(),
                                           input_grad_accessor,
                                           output_grad_accessor,
                                           num_replicas);

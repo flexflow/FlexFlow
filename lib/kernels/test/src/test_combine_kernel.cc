@@ -22,7 +22,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate_tensor(output_shape);
 
       Kernels::Combine::forward_kernel(
-          managed_stream.stream, input_accessor, output_accessor);
+          managed_stream.raw_stream(), input_accessor, output_accessor);
 
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
@@ -37,8 +37,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
-      Kernels::Combine::backward_kernel(
-          managed_stream.stream, output_grad_accessor, input_grad_accessor);
+      Kernels::Combine::backward_kernel(managed_stream.raw_stream(),
+                                        output_grad_accessor,
+                                        input_grad_accessor);
 
       std::vector<float> host_input_grad = load_data_to_host_from_device<float>(
           read_only_accessor_from_write_accessor(input_grad_accessor));

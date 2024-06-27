@@ -23,7 +23,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     DropoutPerDeviceState state = Kernels::Dropout::init_kernel(
-        managed_handle.handle, dropout_rate, seed, shape, allocator);
+        managed_handle.raw_handle(), dropout_rate, seed, shape, allocator);
 
     auto get_zero_count = [](std::vector<float> const &data) {
       return count(data, [](float x) { return x == 0.0f; });
@@ -36,7 +36,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
-      Kernels::Dropout::forward_kernel(managed_stream.stream,
+      Kernels::Dropout::forward_kernel(managed_stream.raw_stream(),
                                        state,
                                        input_accessor.get_float_ptr(),
                                        output_accessor.get_float_ptr());
@@ -54,7 +54,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_data =
           create_random_filled_accessor_w(input_shape, allocator);
 
-      Kernels::Dropout::backward_kernel(managed_stream.stream,
+      Kernels::Dropout::backward_kernel(managed_stream.raw_stream(),
                                         state,
                                         output_grad_data.get_float_ptr(),
                                         input_grad_data.get_float_ptr());

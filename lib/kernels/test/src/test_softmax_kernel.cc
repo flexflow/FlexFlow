@@ -17,7 +17,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape output_shape = input_shape;
 
     SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
-        managed_handle.handle, 0, input_n, channels, input_h, input_w);
+        managed_handle.raw_handle(), 0, input_n, channels, input_h, input_w);
 
     GenericTensorAccessorW output_accessor =
         create_random_filled_accessor_w(output_shape, allocator);
@@ -26,7 +26,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_accessor =
           create_random_filled_accessor_w(input_shape, allocator);
 
-      Kernels::Softmax::forward_kernel(managed_stream.stream,
+      Kernels::Softmax::forward_kernel(managed_stream.raw_stream(),
                                        state,
                                        input_accessor.get_float_ptr(),
                                        output_accessor.get_float_ptr());
@@ -44,7 +44,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate_tensor(input_shape);
 
       Kernels::Softmax::backward_kernel(
-          managed_stream.stream,
+          managed_stream.raw_stream(),
           input_grad_accessor.get_float_ptr(),
           output_grad_accessor.get_float_ptr(),
           output_grad_accessor.shape.num_elements());

@@ -24,7 +24,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           read_only_accessor_from_write_accessor(
               create_random_filled_accessor_w(input_shape, allocator));
 
-      Kernels::Cast::forward_kernel(managed_stream.stream,
+      Kernels::Cast::forward_kernel(managed_stream.raw_stream(),
                                     input_accessor,
                                     output_accessor,
                                     DataType::FLOAT,
@@ -42,7 +42,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate_tensor(input_shape);
 
       Kernels::Cast::backward_kernel(
-          managed_stream.stream,
+          managed_stream.raw_stream(),
           read_only_accessor_from_write_accessor(output_accessor),
           grad_input_accessor,
           DataType::DOUBLE,

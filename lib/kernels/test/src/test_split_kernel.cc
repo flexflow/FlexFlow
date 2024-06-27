@@ -29,7 +29,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         return output_accessor.get_float_ptr();
       });
 
-      Kernels::Split::forward_kernel(managed_stream.stream,
+      Kernels::Split::forward_kernel(managed_stream.raw_stream(),
                                      output_ptrs.data(),
                                      input_accessor.get_float_ptr(),
                                      out_blk_sizes,
@@ -49,7 +49,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           create_filled_accessor_w(input_shape, allocator, 0.0f);
 
-      Kernels::Split::backward_kernel(managed_stream.stream,
+      Kernels::Split::backward_kernel(managed_stream.raw_stream(),
                                       input_grad_accessor.get_float_ptr(),
                                       (float const **)output_grad_ptrs.data(),
                                       out_blk_sizes,

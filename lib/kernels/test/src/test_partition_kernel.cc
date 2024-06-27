@@ -12,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     RepartitionPerDeviceState state = Kernels::Repartition::init_kernel(
-        managed_handle.handle, DataType::FLOAT);
+        managed_handle.raw_handle(), DataType::FLOAT);
 
     TensorShape input_shape =
         make_float_tensor_shape_from_legion_dims({10, 10});
@@ -26,7 +26,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate_tensor(output_shape);
 
       Kernels::Repartition::forward_kernel(
-          managed_stream.stream, state, input_accessor, output_accessor);
+          managed_stream.raw_stream(), state, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
           load_data_to_host_from_device<float>(
@@ -44,7 +44,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           create_filled_accessor_w(input_shape, allocator, 2.0f);
 
-      Kernels::Repartition::backward_kernel(managed_stream.stream,
+      Kernels::Repartition::backward_kernel(managed_stream.raw_stream(),
                                             state,
                                             input_grad_accessor,
                                             output_grad_accessor);

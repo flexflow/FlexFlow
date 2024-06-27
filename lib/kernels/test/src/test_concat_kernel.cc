@@ -28,8 +28,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
-      Kernels::Concat::forward_kernel(
-          managed_stream.stream, output_accessor, input_accessors, concat_axis);
+      Kernels::Concat::forward_kernel(managed_stream.raw_stream(),
+                                      output_accessor,
+                                      input_accessors,
+                                      concat_axis);
 
       std::vector<float> host_output_data =
           load_data_to_host_from_device<float>(
@@ -45,7 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<GenericTensorAccessorW> input_grad_accessors = repeat(
           num_inputs, [&]() { return allocator.allocate_tensor(input_shape); });
 
-      Kernels::Concat::backward_kernel(managed_stream.stream,
+      Kernels::Concat::backward_kernel(managed_stream.raw_stream(),
                                        output_grad_accessor,
                                        input_grad_accessors,
                                        concat_axis);

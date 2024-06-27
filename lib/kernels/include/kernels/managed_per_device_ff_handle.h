@@ -6,27 +6,23 @@
 namespace FlexFlow {
 
 struct ManagedPerDeviceFFHandle {
-  PerDeviceFFHandle handle;
-
+public:
   ManagedPerDeviceFFHandle();
+
+  ManagedPerDeviceFFHandle(ManagedPerDeviceFFHandle const &) = delete;
+  ManagedPerDeviceFFHandle &
+      operator=(ManagedPerDeviceFFHandle const &) = delete;
+
+  ManagedPerDeviceFFHandle(ManagedPerDeviceFFHandle &&other) noexcept;
+  ManagedPerDeviceFFHandle &
+      operator=(ManagedPerDeviceFFHandle &&other) noexcept;
 
   ~ManagedPerDeviceFFHandle();
 
-  ManagedPerDeviceFFHandle(ManagedPerDeviceFFHandle &&other) noexcept
-      : handle(std::move(other.handle)) {}
+  PerDeviceFFHandle const &raw_handle();
 
-  ManagedPerDeviceFFHandle &
-      operator=(ManagedPerDeviceFFHandle &&other) noexcept {
-    if (this != &other) {
-      handle = std::move(other.handle);
-    }
-    return *this;
-  }
-
-  ManagedPerDeviceFFHandle(ManagedPerDeviceFFHandle const &) = delete;
-
-  ManagedPerDeviceFFHandle &
-      operator=(ManagedPerDeviceFFHandle const &) = delete;
+private:
+  PerDeviceFFHandle *handle;
 };
 
 } // namespace FlexFlow

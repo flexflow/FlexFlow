@@ -10,7 +10,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = create_local_cuda_memory_allocator();
 
-    GatherPerDeviceState state = {managed_handle.handle, legion_dim_t(2)};
+    GatherPerDeviceState state = {managed_handle.raw_handle(), legion_dim_t(2)};
 
     TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
     TensorShape output_shape = make_float_tensor_shape_from_legion_dims({50});
@@ -26,7 +26,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
-      Kernels::Gather::forward_kernel(managed_stream.stream,
+      Kernels::Gather::forward_kernel(managed_stream.raw_stream(),
                                       state,
                                       input_accessor,
                                       index_accessor,
@@ -45,7 +45,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           create_random_filled_accessor_w(input_shape, allocator);
 
-      Kernels::Gather::backward_kernel(managed_stream.stream,
+      Kernels::Gather::backward_kernel(managed_stream.raw_stream(),
                                        state,
                                        output_grad_accessor,
                                        index_accessor,

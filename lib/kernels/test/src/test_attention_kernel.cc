@@ -18,7 +18,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     MHAPerDeviceState state =
-        Kernels::MultiHeadAttention::init_kernel(managed_handle.handle,
+        Kernels::MultiHeadAttention::init_kernel(managed_handle.raw_handle(),
                                                  allocator,
                                                  num_samples,
                                                  num_heads,
@@ -58,7 +58,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate_tensor(output_shape);
 
       Kernels::MultiHeadAttention::forward_kernel(
-          managed_stream.stream,
+          managed_stream.raw_stream(),
           state,
           query_accessor.get_float_ptr(),
           key_accessor.get_float_ptr(),
@@ -84,7 +84,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           create_random_filled_accessor_w(output_shape, allocator);
 
       Kernels::MultiHeadAttention::backward_kernel(
-          managed_stream.stream,
+          managed_stream.raw_stream(),
           state,
           query_accessor.get_float_ptr(),
           query_grad_accessor.get_float_ptr(),

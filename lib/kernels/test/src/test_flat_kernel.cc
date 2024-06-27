@@ -21,7 +21,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
-      Kernels::Flat::forward_kernel(managed_stream.stream,
+      Kernels::Flat::forward_kernel(managed_stream.raw_stream(),
                                     input_accessor,
                                     output_accessor.get_float_ptr());
 
@@ -40,7 +40,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           create_filled_accessor_w(input_shape, allocator, 1.0f);
 
-      Kernels::Flat::backward_kernel(managed_stream.stream,
+      Kernels::Flat::backward_kernel(managed_stream.raw_stream(),
                                      input_accessor,
                                      input_grad_accessor.get_float_ptr(),
                                      output_grad_accessor.get_float_ptr());

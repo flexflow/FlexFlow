@@ -14,7 +14,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     BatchNormPerDeviceState state =
-        Kernels::BatchNorm::init_kernel(managed_handle.handle,
+        Kernels::BatchNorm::init_kernel(managed_handle.raw_handle(),
                                         allocator,
                                         nullptr,
                                         output_n,
@@ -43,7 +43,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW bias_accessor =
           create_filled_accessor_w(bias_shape, allocator, 0.0f);
 
-      Kernels::BatchNorm::forward_kernel(managed_stream.stream,
+      Kernels::BatchNorm::forward_kernel(managed_stream.raw_stream(),
                                          state,
                                          input_accessor.get_float_ptr(),
                                          output_accessor.get_float_ptr(),
@@ -66,7 +66,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW bias_grad_accessor =
           create_random_filled_accessor_w(bias_shape, allocator);
 
-      Kernels::BatchNorm::backward_kernel(managed_stream.stream,
+      Kernels::BatchNorm::backward_kernel(managed_stream.raw_stream(),
                                           state,
                                           input_accessor.get_float_ptr(),
                                           output_grad_accessor.get_float_ptr(),
@@ -98,6 +98,6 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        state.outputTensor,
                                        state.actiDesc,
                                        true,
-                                       nullptr);
+                                       state.runningMean);
   }
 }

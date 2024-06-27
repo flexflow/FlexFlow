@@ -18,7 +18,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     Pool2DPerDeviceState state =
-        Kernels::Pool2D::init_kernel(managed_handle.handle,
+        Kernels::Pool2D::init_kernel(managed_handle.raw_handle(),
                                      std::nullopt,
                                      input_w,
                                      input_h,
@@ -47,7 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
-      Kernels::Pool2D::forward_kernel(managed_stream.stream,
+      Kernels::Pool2D::forward_kernel(managed_stream.raw_stream(),
                                       state,
                                       input_accessor.ptr,
                                       output_accessor.ptr);
@@ -64,7 +64,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
-      Kernels::Pool2D::backward_kernel(managed_stream.stream,
+      Kernels::Pool2D::backward_kernel(managed_stream.raw_stream(),
                                        state,
                                        input_accessor.ptr,
                                        input_grad_accessor.ptr,

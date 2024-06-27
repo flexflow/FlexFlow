@@ -23,7 +23,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     LayerNormPerDeviceState state =
-        Kernels::LayerNorm::init_kernel(managed_handle.handle,
+        Kernels::LayerNorm::init_kernel(managed_handle.raw_handle(),
                                         allocator,
                                         elementwise_affine,
                                         batch_size,
@@ -42,7 +42,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW beta_accessor =
           create_filled_accessor_w(feature_shape, allocator, 0.0f);
 
-      Kernels::LayerNorm::forward_kernel(managed_stream.stream,
+      Kernels::LayerNorm::forward_kernel(managed_stream.raw_stream(),
                                          state,
                                          input_accessor,
                                          output_accessor,
@@ -62,7 +62,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           allocator.allocate_tensor(feature_shape);
 
       Kernels::LayerNorm::backward_kernel(
-          managed_stream.stream,
+          managed_stream.raw_stream(),
           state,
           output_grad_accessor,
           input_accessor,
