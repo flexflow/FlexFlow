@@ -319,6 +319,7 @@ std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &);
 Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &,
                                       DiGraphView const &);
 
+
 std::unordered_map<Node, int> get_longest_path_lengths(DiGraphView const& g);
 
 
