@@ -12,6 +12,7 @@ build_targets = [
   # "compiler",
   "substitution-generator",
   "local-execution",
+  "model",
 ]
 test_targets = [
   "utils-tests",

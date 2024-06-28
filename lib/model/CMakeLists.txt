@@ -1,0 +1,12 @@
+ff_add_library(
+  NAME
+    model
+  SRC_PATTERNS
+    src/*.cc
+  PUBLIC_INCLUDE
+    include/
+  PRIVATE_INCLUDE
+    src/
+  DEPS
+    pcg
+)
