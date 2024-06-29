@@ -154,7 +154,7 @@ public:
   int32_t *kv_indices;
   int32_t *kv_last_page_len;
   int32_t *qk_indptr;
-  float *custom_mask;
+  uint8_t *custom_mask;
   size_t workspace_size;
   void *workspace;
   void *batch_prefill_handler;

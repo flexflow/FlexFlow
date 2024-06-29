@@ -26,22 +26,6 @@
 #include <stdexcept>
 #include <vector>
 
-#define DISPATCH_GROUPSIZE(group_size, GROUP_SIZE, ...)                        \
-  if (group_size == 1) {                                                       \
-    constexpr size_t GROUP_SIZE = 1;                                           \
-    __VA_ARGS__                                                                \
-  } else if (group_size == 4) {                                                \
-    constexpr size_t GROUP_SIZE = 4;                                           \
-    __VA_ARGS__                                                                \
-  } else if (group_size == 8) {                                                \
-    constexpr size_t GROUP_SIZE = 8;                                           \
-    __VA_ARGS__                                                                \
-  } else {                                                                     \
-    std::ostringstream err_msg;                                                \
-    err_msg << "Unsupported group_size: " << group_size;                       \
-    throw std::invalid_argument(err_msg.str());                                \
-  }
-
 #define DISPATCH_HEADDIM(head_dim, HEAD_DIM, ...)                              \
   switch (head_dim) {                                                          \
     case 64: {                                                                 \
@@ -66,16 +50,6 @@
     }                                                                          \
   }
 
-#define DISPATCH_PAGESIZE(page_size, PAGE_SIZE, ...)                           \
-  if (page_size == kPagesize) {                                                \
-    constexpr size_t PAGE_SIZE = kPagesize;                                    \
-    __VA_ARGS__                                                                \
-  } else {                                                                     \
-    std::ostringstream err_msg;                                                \
-    err_msg << "Unsupported page_size: " << page_size;                         \
-    throw std::invalid_argument(err_msg.str());                                \
-  }
-
 namespace FlexFlow {
 
 // declare Legion names
@@ -91,6 +65,7 @@ namespace TreeIncMultiHeadAttention {
 
 using flashinfer::BatchPrefillHandler;
 using flashinfer::BatchPrefillWithPagedKVCacheWrapperDispatched;
+using flashinfer::LogitsPostHook;
 using flashinfer::MaskMode;
 using flashinfer::paged_kv_t;
 using flashinfer::PageStorage;
@@ -197,14 +172,14 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
 }
 
 __global__ void
-    update_custom_mask_kernel(float *custom_mask,
+    update_custom_mask_kernel(uint8_t *custom_mask,
+                              int32_t const *qk_indptr,
                               BatchConfig::BitMask *causalMask,
                               BatchConfig::PerRequestInfo *request_infos,
                               bool *request_available,
-                              int const num_requests,
-                              int const max_q_length,
-                              int const max_kv_length,
-                              float mask_value) {
+                              uint32_t const num_requests,
+                              uint32_t const max_q_length,
+                              uint32_t const max_kv_length) {
   // get thread idx in [0, num_requests * max_q_length)
   int const idx = blockIdx.x * blockDim.x + threadIdx.x;
   // get (request_idx, q_idx) from thread idx
@@ -213,18 +188,15 @@ __global__ void
   int const kv_idx = idx % max_kv_length;
 
   // request id in batch config
-  int requext_idx_in_batch = -1;
-  int cnt_1 = 0, mask_offset = 0, mask_lens = 0;
+  int requext_idx_in_batch = -1, cnt_1 = 0;
   while (cnt_1 < request_idx + 1) {
     requext_idx_in_batch++;
     if (request_available[requext_idx_in_batch]) {
       cnt_1++;
-      mask_offset = mask_lens;
       int q_len = request_infos[requext_idx_in_batch].num_tokens_in_batch,
           k_len =
               q_len +
               request_infos[requext_idx_in_batch].first_token_index_in_request;
-      mask_lens += q_len * k_len;
     }
   }
 
@@ -239,37 +211,19 @@ __global__ void
   }
   assert(q_start + q_length <= max_kv_length);
 
-  float *mask = custom_mask + mask_offset + q_idx * (q_start + q_length);
+  uint8_t *mask = custom_mask + qk_indptr[request_idx];
+  int const mask_idx = q_idx * (q_start + q_length) + kv_idx;
   if (kv_idx < q_start) {
-    mask[kv_idx] = 0.0f;
+    mask[mask_idx / 8] |= 1 << (mask_idx % 8);
   } else {
-    mask[kv_idx] = test_bit_orig(causalMask[requext_idx_in_batch].bit_mask,
-                                 q_idx,
-                                 kv_idx - q_start)
-                       ? 0.0f
-                       : mask_value;
+    if (test_bit_orig(causalMask[requext_idx_in_batch].bit_mask,
+                      q_idx,
+                      kv_idx - q_start)) {
+      mask[mask_idx / 8] |= 1 << (mask_idx % 8);
+    } else {
+      mask[mask_idx / 8] &= ~(1 << (mask_idx % 8));
+    }
   }
-}
-
-void update_custom_mask(TreeIncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        cudaStream_t stream) {
-  int const num_requests = bc->num_active_requests();
-  int const max_q_length = BatchConfig::max_spec_tree_token_num();
-  int const max_kv_length = BatchConfig::max_spec_tree_token_num() +
-                            BatchConfig::max_sequence_length();
-  int parallelism = num_requests * max_q_length * max_kv_length;
-  update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
-                              min(CUDA_NUM_THREADS, parallelism),
-                              0,
-                              stream>>>(m->custom_mask,
-                                        m->causalMask,
-                                        m->request_infos,
-                                        m->request_available,
-                                        num_requests,
-                                        max_q_length,
-                                        max_kv_length,
-                                        -5e4);
 }
 
 template <typename DT>
@@ -331,6 +285,7 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
                                       num_new_tokens);
 }
 
+// NOTE: qk_indptr is accumulative `ceil(qk_len / 8)`
 __global__ void
     prepare_inference_params_kernel(int const num_requests,
                                     BatchConfig::PerRequestInfo *request_infos,
@@ -348,7 +303,7 @@ __global__ void
 
   // request id in batch config
   int requext_idx_in_batch = -1;
-  int cnt_1 = 0, q_lens = 0, qk_len = 0;
+  int cnt_1 = 0, q_lens = 0, qk_lens = 0;
   int indices_offset = 0, indices_lens = 0, kv_len = 0;
   while (cnt_1 < request_idx + 1) {
     requext_idx_in_batch++;
@@ -358,7 +313,7 @@ __global__ void
       q_lens += q_len;
       kv_len = request_infos[requext_idx_in_batch].num_tokens_in_batch +
                request_infos[requext_idx_in_batch].first_token_index_in_request;
-      qk_len += q_len * kv_len;
+      qk_lens += (q_len * kv_len + 7) / 8;
       indices_offset = indices_lens;
       indices_lens += (kv_len + kPagesize - 1) / kPagesize;
     }
@@ -376,7 +331,7 @@ __global__ void
     kv_indices[i] = max_num_pages * requext_idx_in_batch + (i - indices_offset);
   }
   kv_last_page_len[request_idx] = (kv_len - 1) % kPagesize + 1;
-  qk_indptr[request_idx + 1] = qk_len;
+  qk_indptr[request_idx + 1] = qk_lens;
 }
 
 template <typename DT>
@@ -412,7 +367,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
       (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  std::vector<int32_t> q_indptr_h{0};
+  std::vector<int32_t> q_indptr_h{0}, kv_indptr_h{0};
 
   {
     int parallelism = batch_size;
@@ -431,9 +386,31 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
       if (bc->request_available[req_idx]) {
         int q_len = bc->requestsInfo[req_idx].num_tokens_in_batch;
+        int kv_len = bc->requestsInfo[req_idx].num_tokens_in_batch +
+                     bc->requestsInfo[req_idx].first_token_index_in_request;
         q_indptr_h.push_back(q_indptr_h.back() + q_len);
+        kv_indptr_h.push_back(kv_indptr_h.back() + (kv_len + kPagesize - 1) / kPagesize);
       }
     }
+  }
+
+  // Update gpu-side custom mask referring from CaualMask
+  if (!bc->prompt_phase) {
+    uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
+    uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() +
+                              BatchConfig::max_sequence_length();
+    int parallelism = batch_size * max_q_length * max_kv_length;
+    update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
+                                min(CUDA_NUM_THREADS, parallelism),
+                                0,
+                                stream>>>(m->custom_mask,
+                                          m->qk_indptr,
+                                          m->causalMask,
+                                          m->request_infos,
+                                          m->request_available,
+                                          batch_size,
+                                          max_q_length,
+                                          max_kv_length);
   }
 
   half *q = static_cast<half *>(m->queryTmp),
@@ -466,13 +443,15 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   BatchPrefillHandler *handler =
       static_cast<BatchPrefillHandler *>(m->batch_prefill_handler);
   handler->SetCUDAStream(stream);
-  handler->BeginForward(m->workspace,
-                        m->workspace_size,
-                        q_indptr_h.data(),
-                        batch_size,
-                        num_q_heads,
-                        num_kv_heads,
-                        head_dim);
+  handler->BeginForward<half, int32_t>(m->workspace,
+                                       m->workspace_size,
+                                       q_indptr_h.data(),
+                                       kv_indptr_h.data(),
+                                       batch_size,
+                                       num_q_heads,
+                                       num_kv_heads,
+                                       head_dim,
+                                       kPagesize);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -488,70 +467,69 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  DISPATCH_GROUPSIZE(
-      group_size,
-      GROUP_SIZE,
-      {DISPATCH_HEADDIM(
-          head_dim, HEAD_DIM, {DISPATCH_PAGESIZE(kPagesize, PAGE_SIZE, {
-            cudaError_t result;
-            if (bc->prompt_phase) {
-              result = BatchPrefillWithPagedKVCacheWrapperDispatched<
-                  PageStorage::kIndices,
-                  QKVLayout::kNHD,
-                  PAGE_SIZE,
-                  GROUP_SIZE,
-                  HEAD_DIM,
-                  PosEncodingMode::kNone,
-                  false,
-                  MaskMode::kCausal,
-                  half,
-                  half,
-                  int32_t>(handler,
-                           q,
-                           m->q_indptr,
-                           /*q_offset=*/nullptr,
-                           paged_kv,
-                           /*custom_mask=*/nullptr,
-                           /*qk_indptr=*/nullptr,
-                           o,
-                           /*lse=*/nullptr,
-                           sm_scale,
-                           /*rope_scale=*/1.f,
-                           /*rope_theta=*/static_cast<float>(1e4),
-                           stream);
-            } else {
-              result = BatchPrefillWithPagedKVCacheWrapperDispatched<
-                  PageStorage::kIndices,
-                  QKVLayout::kNHD,
-                  PAGE_SIZE,
-                  GROUP_SIZE,
-                  HEAD_DIM,
-                  PosEncodingMode::kNone,
-                  false,
-                  MaskMode::kCustom,
-                  half,
-                  half,
-                  int32_t>(handler,
-                           q,
-                           m->q_indptr,
-                           /*q_offset=*/nullptr,
-                           paged_kv,
-                           m->custom_mask,
-                           m->qk_indptr,
-                           o,
-                           /*lse=*/nullptr,
-                           sm_scale,
-                           /*rope_scale=*/1.f,
-                           /*rope_theta=*/static_cast<float>(1e4),
-                           stream);
-            }
-            if (result != cudaSuccess) {
-              throw std::runtime_error(
-                  "Failed to run "
-                  "BatchPrefillWithPagedKVCacheWrapperDispatched" +
-                  std::string(cudaGetErrorString(result)));
-            }
-          })})});
+  DISPATCH_HEADDIM(
+    head_dim, HEAD_DIM, {
+      cudaError_t result;
+      if (bc->prompt_phase) {
+        result = BatchPrefillWithPagedKVCacheWrapperDispatched<
+            PageStorage::kIndices,
+            HEAD_DIM,
+            LogitsPostHook::kNone,
+            QKVLayout::kNHD,
+            PosEncodingMode::kNone,
+            false,
+            MaskMode::kCausal,
+            half,
+            half,
+            int32_t>(handler,
+                      q,
+                      m->q_indptr,
+                      /*q_offset=*/nullptr,
+                      paged_kv,
+                      /*custom_mask=*/nullptr,
+                      /*qk_indptr=*/nullptr,
+                      o,
+                      /*lse=*/nullptr,
+                      num_q_heads,
+                      /*logits_soft_cap=*/0.f,
+                      sm_scale,
+                      /*rope_scale=*/1.f,
+                      /*rope_theta=*/static_cast<float>(1e4),
+                      stream);
+      } else {
+        result = BatchPrefillWithPagedKVCacheWrapperDispatched<
+            PageStorage::kIndices,
+            HEAD_DIM,
+            LogitsPostHook::kNone,
+            QKVLayout::kNHD,
+            PosEncodingMode::kNone,
+            false,
+            MaskMode::kCustom,
+            half,
+            half,
+            int32_t>(handler,
+                      q,
+                      m->q_indptr,
+                      /*q_offset=*/nullptr,
+                      paged_kv,
+                      m->custom_mask,
+                      m->qk_indptr,
+                      o,
+                      /*lse=*/nullptr,
+                      num_q_heads,
+                      /*logits_soft_cap=*/0.f,
+                      sm_scale,
+                      /*rope_scale=*/1.f,
+                      /*rope_theta=*/static_cast<float>(1e4),
+                      stream);
+      }
+    if (result != cudaSuccess) {
+      throw std::runtime_error(
+          "Failed to run "
+          "BatchPrefillWithPagedKVCacheWrapperDispatched" +
+          std::string(cudaGetErrorString(result)));
+    }
+  });
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -678,11 +656,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
-
-  // Update gpu-side custom mask referring from CaualMask
-  if (!bc->prompt_phase) {
-    update_custom_mask(m, bc, stream);
-  }
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -914,14 +887,14 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     size_t indices_size = std::max(
         (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
-                              BatchConfig::max_spec_tree_token_num() *
-                              (BatchConfig::max_spec_tree_token_num() +
-                               BatchConfig::max_sequence_length());
+                              ((BatchConfig::max_spec_tree_token_num() *
+                                (BatchConfig::max_spec_tree_token_num() +
+                                BatchConfig::max_sequence_length()) + 7) / 8);
     workspace_size = 32 * 1024 * 1024; // 32MB
 
     gpu_mem_allocator.create_legion_instance(
         flashinfer_reserve_inst,
-        sizeof(int32_t) * indices_size + sizeof(float) * custom_mask_size +
+        sizeof(int32_t) * indices_size + sizeof(uint8_t) * custom_mask_size +
             workspace_size);
 
     q_indptr = gpu_mem_allocator.allocate_instance<int32_t>(indices_size);
@@ -929,7 +902,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     kv_indices = kv_indptr + batch_size + 1;
     kv_last_page_len = kv_indices + max_num_pages * batch_size;
     qk_indptr = kv_last_page_len + batch_size + 1;
-    custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
+    custom_mask = gpu_mem_allocator.allocate_instance<uint8_t>(custom_mask_size);
     workspace = static_cast<void *>(
         gpu_mem_allocator.allocate_instance<char>(workspace_size));
     batch_prefill_handler =
