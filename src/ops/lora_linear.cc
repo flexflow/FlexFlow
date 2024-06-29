@@ -477,6 +477,7 @@ OpMeta *LoraLinear::init_task(Task const *task,
     assert(m->model_state.find(model_id) == m->model_state.end());
     m->model_state[model_id].weights = weight;
     m->model_state[model_id].optimizer_config = lora_config.optimizer_config;
+    m->model_state[model_id].lora_alpha = lora_config.lora_alpha;
   }
   return m;
 }
@@ -750,7 +751,7 @@ void LoraLinear::peft_bwd_task(Task const *task,
     base_filepath +=
         "_layers_" + std::to_string(m->layer_guid.transformer_layer_id) + "_" +
         lora_layername_substr + "_shard_" + std::to_string(shard_id);
-    
+
     // save batch config, if passed
     if (bc != nullptr) {
       bc->save_to_file(base_filepath + "_batch_config");

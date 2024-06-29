@@ -22,6 +22,7 @@ struct LoraLinearWeight {
 struct LoraLinearModelState {
   LoraLinearWeight weights;
   LoraOptimizerConfig const *optimizer_config;
+  double lora_alpha;
 };
 
 class LoraLinearMeta : public OpMeta {

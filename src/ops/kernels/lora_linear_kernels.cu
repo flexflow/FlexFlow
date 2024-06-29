@@ -244,13 +244,16 @@ void inference_kernel(LoraLinearMeta *m,
     // output = weight_second * buffer
     // Note that we use alpha in both places since we do
     // an in-place update for LoraLinear
+    double lora_alpha =
+        m->model_state[bc->requestsInfo[i].peft_model_id].lora_alpha;
+    DT scaling_constant = (DT)(lora_alpha / rank);
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_N,
                            out_dim,
                            num_peft_tokens,
                            rank,
-                           &alpha,
+                           &scaling_constant,
                            weight.w1_ptr,
                            weight_type,
                            rank,
@@ -458,11 +461,14 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                                 ncclSum,
                                 m->handle.ncclComm,
                                 stream));
+        double lora_alpha =
+            m->model_state[bc->requestsInfo[i].peft_model_id].lora_alpha;
+        double lr_with_scaling = sgd_config->lr / (lora_alpha / rank);
         sgd_update<<<GET_BLOCKS(w1_num_elements),
                      CUDA_NUM_THREADS,
                      0,
                      stream>>>(w1_num_elements,
-                               sgd_config->lr,
+                               lr_with_scaling,
                                sgd_config->weight_decay,
                                sgd_config->momentum,
                                sgd_config->nesterov,
