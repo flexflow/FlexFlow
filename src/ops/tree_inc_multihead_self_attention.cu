@@ -177,15 +177,8 @@ __global__ void
                               BatchConfig::BitMask *causalMask,
                               BatchConfig::PerRequestInfo *request_infos,
                               bool *request_available,
-                              uint32_t const num_requests,
-                              uint32_t const max_q_length,
-                              uint32_t const max_kv_length) {
-  // get thread idx in [0, num_requests * max_q_length)
-  int const idx = blockIdx.x * blockDim.x + threadIdx.x;
-  // get (request_idx, q_idx) from thread idx
-  int const request_idx = idx / max_q_length / max_kv_length;
-  int const q_idx = (idx % (max_q_length * max_kv_length)) / max_kv_length;
-  int const kv_idx = idx % max_kv_length;
+                              uint32_t const num_requests) {
+  int const request_idx = blockIdx.x * blockDim.x + threadIdx.x;
 
   // request id in batch config
   int requext_idx_in_batch = -1, cnt_1 = 0;
@@ -193,35 +186,28 @@ __global__ void
     requext_idx_in_batch++;
     if (request_available[requext_idx_in_batch]) {
       cnt_1++;
-      int q_len = request_infos[requext_idx_in_batch].num_tokens_in_batch,
-          k_len =
-              q_len +
-              request_infos[requext_idx_in_batch].first_token_index_in_request;
     }
   }
 
   int const q_length = request_infos[requext_idx_in_batch].num_tokens_in_batch;
   int const q_start =
       request_infos[requext_idx_in_batch].first_token_index_in_request;
-  if (q_idx >= q_length) {
-    return;
-  }
-  if (kv_idx >= q_start + q_length) {
-    return;
-  }
-  assert(q_start + q_length <= max_kv_length);
 
   uint8_t *mask = custom_mask + qk_indptr[request_idx];
-  int const mask_idx = q_idx * (q_start + q_length) + kv_idx;
-  if (kv_idx < q_start) {
-    mask[mask_idx / 8] |= 1 << (mask_idx % 8);
-  } else {
-    if (test_bit_orig(causalMask[requext_idx_in_batch].bit_mask,
-                      q_idx,
-                      kv_idx - q_start)) {
-      mask[mask_idx / 8] |= 1 << (mask_idx % 8);
-    } else {
-      mask[mask_idx / 8] &= ~(1 << (mask_idx % 8));
+  for (int q_idx = 0; q_idx < q_length; q_idx++) {
+    for (int kv_idx = 0; kv_idx < q_start + q_length; kv_idx++) {    
+      int const mask_idx = q_idx * (q_start + q_length) + kv_idx;
+      if (kv_idx < q_start) {
+        mask[mask_idx / 8] |= 1 << (mask_idx % 8);
+      } else {
+        if (test_bit_orig(causalMask[requext_idx_in_batch].bit_mask,
+                          q_idx,
+                          kv_idx - q_start)) {
+          mask[mask_idx / 8] |= 1 << (mask_idx % 8);
+        } else {
+          mask[mask_idx / 8] &= ~(1 << (mask_idx % 8));
+        }
+      }
     }
   }
 }
@@ -358,7 +344,6 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   // global constant parameters
   uint32_t const num_q_heads = m->num_q_heads;
   uint32_t const num_kv_heads = m->num_kv_heads;
-  uint32_t const group_size = num_q_heads / num_kv_heads;
   uint32_t const head_dim = m->qProjSize;
   uint32_t const max_num_pages =
       (BatchConfig::max_sequence_length() +
@@ -396,10 +381,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
 
   // Update gpu-side custom mask referring from CaualMask
   if (!bc->prompt_phase) {
-    uint32_t const max_q_length = BatchConfig::max_spec_tree_token_num();
-    uint32_t const max_kv_length = BatchConfig::max_spec_tree_token_num() +
-                              BatchConfig::max_sequence_length();
-    int parallelism = batch_size * max_q_length * max_kv_length;
+    int parallelism = batch_size;
     update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
                                 min(CUDA_NUM_THREADS, parallelism),
                                 0,
@@ -408,9 +390,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                                           m->causalMask,
                                           m->request_infos,
                                           m->request_available,
-                                          batch_size,
-                                          max_q_length,
-                                          max_kv_length);
+                                          batch_size);
   }
 
   half *q = static_cast<half *>(m->queryTmp),
