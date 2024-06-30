@@ -2,6 +2,7 @@ import numpy as np
 import os, torch, argparse
 from alignment.align_test_utils import *
 from transformers import AutoConfig
+from tqdm import tqdm
 
 def get_model_config(model_name):
     try:
@@ -42,6 +43,10 @@ class LllamaAlignmentTest(AlignmentTest):
         # down_proj: [intermediate_size, hidden_size]
         if self.tp_degree == 1:
             return -1
+        if "lora.weight_B" in ff_weight_name:
+            return -1
+        if "lm_head" in ff_weight_name or "norm" in ff_weight_name:
+            return 1
         if "gate_proj" in ff_weight_name or "up_proj" in ff_weight_name:
             return 1
         elif "down_proj" in ff_weight_name:
@@ -82,11 +87,10 @@ class LllamaAlignmentTest(AlignmentTest):
         hf_weights_folder = os.path.join(hf_path, "weights", "step_0")
         ff_weights_folder = os.path.join(ff_path, "weights", "step_0", "shard_0")
         files_list = os.listdir(hf_weights_folder)
-        for hf_weight_name in sorted(files_list):
+        for hf_weight_name in tqdm(sorted(files_list)):
             if hf_weight_name.endswith(".weight"):
                 ff_weight_name = self.convert_hf_filename_to_ff(hf_weight_name, step_idx=0)
-                print()
-                print(hf_weight_name, ff_weight_name)
+                # print(hf_weight_name, ff_weight_name)
                 hf_w_path = os.path.join(hf_weights_folder, hf_weight_name)
                 ff_w_path = os.path.join(ff_weights_folder, ff_weight_name)
                 if not os.path.isfile(hf_w_path):
@@ -97,17 +101,15 @@ class LllamaAlignmentTest(AlignmentTest):
                 assert(os.path.isfile(ff_w_path))
 
                 # 1. get shape of hf weight
-                hf_weight = torch.load(hf_w_path)
+                hf_weight = torch.load(hf_w_path, map_location='cpu')
                 hf_weigth_shape = hf_weight.shape
                 ff_partition_dim = self.get_tp_partition_dim(ff_weight_name)
                 ff_weigth_shape = list(hf_weigth_shape)[::-1]
                 if ff_partition_dim >= 0:
                     ff_weigth_shape[ff_partition_dim] //= self.tp_degree
-                print(hf_weigth_shape, ff_weigth_shape, ff_partition_dim)
+                
+                # 2. handle flexflow shards in case of tensor parallelism
                 ff_weights = [load_ff_tensor(ff_w_path.replace("shard_0", f"shard_{tp_idx}"), ff_weigth_shape) for tp_idx in range(self.tp_degree)]
-                for x in ff_weights:
-                    print(x.shape)
-                    print(x)
                 if self.tp_degree > 1:
                     if ff_partition_dim >= 0:
                         ff_weight = np.concatenate(ff_weights, axis=ff_partition_dim)
@@ -116,11 +118,9 @@ class LllamaAlignmentTest(AlignmentTest):
                         ff_weight = ff_weights[0]
                 else:
                     ff_weight = ff_weights[0]
-                print(ff_weight.shape)
                 ff_weight = torch.from_numpy(ff_weight).to(hf_weight.dtype)
+                
                 # check equivalence
-                print(ff_weight)
-                print(hf_weight.T)
                 try:
                     torch.testing.assert_close(ff_weight, hf_weight.T)
                 except Exception as e:

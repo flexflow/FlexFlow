@@ -16,7 +16,7 @@ struct LoraLinearWeight {
   void *w0_grad_ptr, *w1_grad_ptr;
   // v values for SGD optimizer (when using momentum)
   void *w0_v_values_ptr, *w1_v_values_ptr;
-  int in_dim, out_dim, rank;
+  int in_dim, out_dim, rank, num_shards;
 };
 
 struct LoraLinearModelState {

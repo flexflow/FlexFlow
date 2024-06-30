@@ -222,6 +222,7 @@ void inference_kernel(LoraLinearMeta *m,
       intermediate_result_ptr = m->handle.workSpace;
     }
     // buffer = weight_first * input
+    // [rank, num_peft_tokens] = [in_dim, rank].T * [in_dim, num_peft_tokens]
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_N,
@@ -242,6 +243,7 @@ void inference_kernel(LoraLinearMeta *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     // output = weight_second * buffer
+    // [out_dim, num_peft_tokens] = [rank, out_dim].T * [rank, num_peft_tokens]
     // Note that we use alpha in both places since we do
     // an in-place update for LoraLinear
     double lora_alpha =
