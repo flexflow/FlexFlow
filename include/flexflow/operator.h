@@ -8,6 +8,8 @@
 #include "flexflow/parallel_tensor.h"
 #include "flexflow/utils/dot/record_formatter.h"
 #include <vector>
+#include <filesystem>
+namespace fs = std::filesystem;
 
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -28,6 +30,8 @@ class CostMetrics;
 enum class MappingRecordType { INPUT_OUTPUT, INPUT_WEIGHT };
 
 enum class MappingOperation { PARTITION, REPLICATE };
+
+fs::path get_dst_folder(const std::string& subdir, int step_idx = 0, int shard_idx = 0, bool before_kernel=false);
 
 /** @brief  A class to keep track of a dimension relation between two tensors
  * used by an operator.
@@ -266,39 +270,36 @@ public:
       std::vector<GenericTensorAccessorR> output_tensors,
       bool fwd_pass = true,
       bool before_kernel = false) {
-    // Check if output directory exists, and create it if it does not
-    char const *folder_path = "./inference_tensors/";
-    struct stat st = {0};
-    if (stat(folder_path, &st) == -1) {
-      // Directory does not exist, create it
-      mkdir(folder_path, 0700);
-    }
-    // output base filepath, shared by all tensors from the same operator
+    // get operator name and print it
     std::string op_name_without_uid = get_op_name_without_uid(m);
     std::cout << (fwd_pass ? "INF " : "BWD ") << op_name_without_uid
               << std::endl;
-    std::string base_filepath = std::string(folder_path);
-    if (m->layer_guid.model_id > 0) {
-      base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
-    }
+    // build the path to save the tensor
+    fs::path dst_filepath;
     if (fwd_pass) {
-      base_filepath += "fwd_step_" + std::to_string(m->decoding_step);
+      dst_filepath = get_dst_folder("fwd", m->decoding_step, shard_id, before_kernel);
     } else {
-      base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
+      dst_filepath = get_dst_folder("bwd", m->bwd_step, shard_id, before_kernel);
     }
-    base_filepath += "_layers_" +
-                     std::to_string(m->layer_guid.transformer_layer_id) + "_" +
-                     op_name_without_uid + "_shard_" + std::to_string(shard_id);
-    if (before_kernel) {
-      base_filepath += "_pre";
+    if (m->layer_guid.model_id > 0) {
+      assert(false && "Model ID > 0 not supported yet");
     }
+    std::string layername = "layers." + std::to_string(m->layer_guid.transformer_layer_id) + "." + op_name_without_uid;
+    dst_filepath /= layername;
+
     // save batch config, if passed
     if (bc != nullptr) {
-      bc->save_to_file(base_filepath + "_batch_config");
+      bc->save_to_file(dst_filepath.string() + ".batch_config");
     }
+
     // save all inputs
     for (int i = 0; i < input_tensors.size(); i++) {
-      std::string filename = base_filepath + "_input_" + std::to_string(i);
+      std::string filename = dst_filepath.string() + ".input_";
+      if (fwd_pass) {
+        filename += std::to_string(i);
+      } else {
+        filename += "gradient_" + std::to_string(i);
+      }
       if (input_tensors[i].data_type == DT_FLOAT) {
         save_tensor(input_tensors[i].get_float_ptr(),
                     input_tensors[i].domain.get_volume(),
@@ -319,10 +320,13 @@ public:
         assert(false && "Tensor data type not supported");
       }
     }
-    // only dump the weights once (in fwd passes)
+    
+    // only dump the weights in the forward pass, at the first step
+    // note that we do not save the weight gradients, since we only support finetuning LoRA weights, which are not FF tensors.
     if (fwd_pass && m->decoding_step == 0) {
+      fs::path dst_filepath_weights = get_dst_folder("weights", m->decoding_step, shard_id, before_kernel) / layername;
       for (int i = 0; i < weight_tensors.size(); i++) {
-        std::string filename = base_filepath + "_weight_" + std::to_string(i);
+        std::string filename = dst_filepath_weights.string() + ".weight_" + std::to_string(i);
         if (weight_tensors[i].data_type == DT_FLOAT) {
           save_tensor(weight_tensors[i].get_float_ptr(),
                       weight_tensors[i].domain.get_volume(),
@@ -344,9 +348,15 @@ public:
         }
       }
     }
+    
     // save all outputs
     for (int i = 0; i < output_tensors.size(); i++) {
-      std::string filename = base_filepath + "_output_" + std::to_string(i);
+      std::string filename = dst_filepath.string() + ".output_";
+      if (fwd_pass) {
+        filename += std::to_string(i);
+      } else {
+        filename += "gradient_" + std::to_string(i);
+      }
       if (output_tensors[i].data_type == DT_FLOAT) {
         save_tensor(output_tensors[i].get_float_ptr(),
                     output_tensors[i].domain.get_volume(),

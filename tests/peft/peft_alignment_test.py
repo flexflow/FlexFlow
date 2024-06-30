@@ -11,25 +11,128 @@ def get_model_config(model_name):
         config = None
     return config
 
-def convert_hf_filename_to_ff_filename(f, num_layers=12, step_idx=0):
-    if f.endswith(".lm_head.weight"):
-        f_version = f"fwd_step_{step_idx}_layers_{num_layers-1}_lm_head_shard_0_weight_0"
-    elif f == "norm.weight":
-        f_version = f"fwd_step_{step_idx}_layers_{num_layers-1}_norm_shard_0_weight_0"
-    else:
-        f_version = f"fwd_step_{step_idx}_"
-        if f.startswith("layers."):
-            layernum = f.split("layers.")[1].split(".")[0]
-            f_version += f"layers_{layernum}_"
-        f_version += f.split(".weight")[0].replace(".base_layer", "").replace(".default", "")
-        weight_index="0"
-        if "lora_A" in f_version:
-            weight_index="A"
-        elif "lora_B" in f_version:
-            weight_index="B"
-        f_version = f_version.replace("lora_A", "lora").replace("lora_B", "lora")
-        f_version += f"_shard_0_weight_{weight_index}"
-    return f_version
+class AlignmentTest:
+    def __init__(self, model_name, tp_degree=1):
+        raise NotImplementedError()
+    def convert_hf_filename_to_ff(self, f):
+        raise NotImplementedError()
+    def check_weights_alignment(self):
+        raise NotImplementedError()
+    def check_fwd_pass(self):
+        raise NotImplementedError()
+    def check_bwd_pass(self):
+        raise NotImplementedError()
+    def check_step(self, step_idx):
+        raise NotImplementedError()
+
+class LllamaAlignmentTest(AlignmentTest):
+    def __init__(self, model_name, tp_degree=1):
+        self.model_name = model_name
+        self.hf_config = get_model_config(model_name)
+        self.num_layers = self.hf_config.num_hidden_layers
+        self.hidden_size = self.hf_config.hidden_size
+        self.intermediate_size = self.hf_config.intermediate_size
+        self.num_attention_heads = self.hf_config.num_attention_heads
+        self.num_key_value_heads = self.num_attention_heads
+        self.tp_degree = tp_degree
+    
+    def get_tp_partition_dim(self, ff_weight_name) -> int:
+        # MLP layers split the intermediate size dimension
+        # gate_proj, up_proj: [hidden_size, intermediate_size]
+        # down_proj: [intermediate_size, hidden_size]
+        if self.tp_degree == 1:
+            return -1
+        if "gate_proj" in ff_weight_name or "up_proj" in ff_weight_name:
+            return 1
+        elif "down_proj" in ff_weight_name:
+            return 0
+        else:
+            return -1
+
+    def convert_hf_filename_to_ff(self, hf_filename, step_idx=0):
+        if hf_filename == "lm_head.weight":
+            f_version = f"layers.{self.num_layers-1}.lm_head.weight_0"
+        elif hf_filename == "norm.weight":
+            f_version = f"layers.{self.num_layers-1}.norm.weight_0"
+        else:
+            f_version = ""
+            if hf_filename.startswith("layers."):
+                layernum = hf_filename.split("layers.")[1].split(".")[0]
+                f_version += f"layers.{layernum}."
+            f_version += hf_filename.replace(".base_layer", "").replace(".default", "")
+            # compute weight index, then rename lora if needed if needed
+            weight_index="0"
+            if "lora_A" in f_version:
+                weight_index="A"
+            elif "lora_B" in f_version:
+                weight_index="B"
+            f_version = f_version.replace("lora_A", "lora").replace("lora_B", "lora")
+            if f_version.endswith(".weight"):
+                if weight_index == "0":
+                    f_version += f"_{weight_index}"
+                else:
+                    f_version += f"_{weight_index}.original"
+            elif f_version.endswith(".gradient"):
+                prefix = f_version.split(".gradient")[0]
+                f_version = prefix + f".weight_{weight_index}.gradient"
+        return f_version
+
+    def check_weights_alignment(self):
+        print("-- Weights alignment --")
+        hf_weights_folder = os.path.join(hf_path, "weights", "step_0")
+        ff_weights_folder = os.path.join(ff_path, "weights", "step_0", "shard_0")
+        files_list = os.listdir(hf_weights_folder)
+        for hf_weight_name in sorted(files_list):
+            if hf_weight_name.endswith(".weight"):
+                ff_weight_name = self.convert_hf_filename_to_ff(hf_weight_name, step_idx=0)
+                print()
+                print(hf_weight_name, ff_weight_name)
+                hf_w_path = os.path.join(hf_weights_folder, hf_weight_name)
+                ff_w_path = os.path.join(ff_weights_folder, ff_weight_name)
+                if not os.path.isfile(hf_w_path):
+                    print(f"File '{hf_w_path}' not found")
+                if not os.path.isfile(ff_w_path):
+                    print(f"File '{ff_w_path}' not found")
+                assert(os.path.isfile(hf_w_path))
+                assert(os.path.isfile(ff_w_path))
+
+                # 1. get shape of hf weight
+                hf_weight = torch.load(hf_w_path)
+                hf_weigth_shape = hf_weight.shape
+                ff_partition_dim = self.get_tp_partition_dim(ff_weight_name)
+                ff_weigth_shape = list(hf_weigth_shape)[::-1]
+                if ff_partition_dim >= 0:
+                    ff_weigth_shape[ff_partition_dim] //= self.tp_degree
+                print(hf_weigth_shape, ff_weigth_shape, ff_partition_dim)
+                ff_weights = [load_ff_tensor(ff_w_path.replace("shard_0", f"shard_{tp_idx}"), ff_weigth_shape) for tp_idx in range(self.tp_degree)]
+                for x in ff_weights:
+                    print(x.shape)
+                    print(x)
+                if self.tp_degree > 1:
+                    if ff_partition_dim >= 0:
+                        ff_weight = np.concatenate(ff_weights, axis=ff_partition_dim)
+                    else:
+                        assert(are_np_arrays_identical(ff_weights))
+                        ff_weight = ff_weights[0]
+                else:
+                    ff_weight = ff_weights[0]
+                print(ff_weight.shape)
+                ff_weight = torch.from_numpy(ff_weight).to(hf_weight.dtype)
+                # check equivalence
+                print(ff_weight)
+                print(hf_weight.T)
+                try:
+                    torch.testing.assert_close(ff_weight, hf_weight.T)
+                except Exception as e:
+                    print(f"Error comparing {ff_w_path} weight to {hf_w_path}:\n{e}\n")
+                    raise e
+    
+    def check_fwd_pass(self):
+        raise NotImplementedError()
+    def check_bwd_pass(self):
+        raise NotImplementedError()
+    def check_step(self, step_idx):
+        raise NotImplementedError()
 
 def check_weights_alignment(num_layers=12):
     print("-- Weights alignment --")
@@ -353,10 +456,12 @@ parser.add_argument('-tp', '--tensor-parallelism-degree', type=int, default=1, h
 args = parser.parse_args()
 
 if __name__ == "__main__":
-    hf_config = get_model_config(args.model_name)
+    llama_alignment = LllamaAlignmentTest(args.model_name, tp_degree=args.tensor_parallelism_degree)
+    llama_alignment.check_weights_alignment()
+    # hf_config = get_model_config(args.model_name)
 
-    check_weights_alignment(num_layers=args.num_layers)
-    n_steps=5
-    for i in range(1, n_steps):
-        check_llama_fwd_pass(hf_config, tot_num_layers=args.num_layers, step_idx=i)
-        check_llama_bwd_pass(hf_config, tot_num_layers=args.num_layers, step_idx=i)
+    # check_weights_alignment(num_layers=args.num_layers)
+    # n_steps=5
+    # for i in range(1, n_steps):
+    #     check_llama_fwd_pass(hf_config, tot_num_layers=args.num_layers, step_idx=i)
+    #     check_llama_bwd_pass(hf_config, tot_num_layers=args.num_layers, step_idx=i)

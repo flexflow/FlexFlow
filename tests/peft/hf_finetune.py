@@ -64,8 +64,7 @@ def main():
 
     # Add hooks to save PEFT tensors, save any weights of interest before finetuning
     if args.save_peft_tensors:
-        shutil.rmtree("./hf_peft_tensors", ignore_errors=True)
-        os.makedirs("./hf_peft_tensors", exist_ok=True)
+        make_debug_dirs()
         register_peft_hooks(model)
         save_peft_weights(model, target_modules=["lora", "lm_head", "down_proj"])
         

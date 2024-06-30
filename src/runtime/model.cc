@@ -78,6 +78,7 @@
 #include <dirent.h>
 #include <queue>
 #include <unordered_set>
+#include <wordexp.h>
 
 namespace FlexFlow {
 
@@ -1562,6 +1563,25 @@ FFRuntime *ffruntime_singleton = nullptr;
 
 int FFModel::model_counter = 0;
 
+void make_debug_dirs() {
+  std::string debug_dir_ = "~/.cache/flexflow/debug/flexflow";
+  wordexp_t p;
+  wordexp(debug_dir_.c_str(), &p, 0);
+  debug_dir_ = p.we_wordv[0];
+  wordfree(&p);
+  fs::path debug_dir = debug_dir_;
+  if (fs::exists(debug_dir)) {
+    fs::remove_all(debug_dir);
+  }
+  fs::create_directories(debug_dir);
+  assert(fs::is_directory(debug_dir));
+  std::vector<std::string> debug_subdirs = {"fwd", "bwd", "optim", "weights"};
+  for (const auto& subdir : debug_subdirs) {
+    fs::path subdir_path = debug_dir / subdir;
+    fs::create_directory(subdir_path);
+  }
+}
+
 FFModel::FFModel(FFConfig &_config, bool cpu_offload)
     : op_global_guid(OP_GUID_FIRST_VALID),
       layer_global_guid(LAYER_GUID_FIRST_VALID),
@@ -1602,6 +1622,9 @@ FFModel::FFModel(FFConfig &_config, bool cpu_offload)
   //}
   for (int idx = 0; idx < config.workersPerNode * config.numNodes; idx++) {
     handlers[idx] = ffruntime_singleton->handlers[idx];
+  }
+  if (config.inference_debugging) {
+    make_debug_dirs();
   }
   model_id = model_counter++;
 }

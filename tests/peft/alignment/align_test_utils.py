@@ -2,8 +2,8 @@ import os, re, torch
 import numpy as np
 from typing import List
 abs_dirname = os.path.dirname(os.path.abspath(__file__))
-hf_path = os.path.join(os.path.dirname(abs_dirname), "hf_peft_tensors")
-ff_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(abs_dirname))), "build", "inference_tensors")
+hf_path = os.path.expanduser("~/.cache/flexflow/debug/huggingface")
+ff_path = os.path.expanduser("~/.cache/flexflow/debug/flexflow")
 def print_unique_files_list(dirname):
     files_list = os.listdir(dirname)
     for f in sorted(files_list):
@@ -361,3 +361,18 @@ def compare_loaded_tensors(hf_tensor, ff_tensor, tolerance=1e-2):
     len_hf_tensor = hf_tensor.flatten().shape[0]
     assert(len(mismatches) <= .05*len_hf_tensor)
     print("Ok!")
+def are_np_arrays_identical(*np_arrays):
+    if len(np_arrays) < 2:
+        return True
+    
+    first = np_arrays[0]
+    
+    # Check shapes and dtypes
+    if not all(t.shape == first.shape and t.dtype == first.dtype for t in np_arrays[1:]):
+        return False
+    
+    # Stack all tensors along a new axis
+    stacked = np.stack(np_arrays)
+    
+    # Check if all elements along the new axis are equal
+    return np.all(stacked == stacked[0])
