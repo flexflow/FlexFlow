@@ -96,4 +96,53 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(std::get<Serial>(result) ==
           expected); // currently cannot directly compare the 2.
   }
+
+  TEST_CASE("Dependency Invariant SP-ization algorithm - NASNET-A like") {
+    //From the TASO paper, pg 57
+    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+    auto root = add_nodes(g, 1)[0];
+    auto inputs = add_nodes(g, 2);
+    auto dwc = add_nodes(g, 5);
+    auto conv = add_nodes(g, 5);
+    auto avg = add_nodes(g, 3);
+    auto add = add_nodes(g, 2);
+    auto concat = add_nodes(g,1)[0];
+
+    g.add_edge({root, input[0]});
+    g.add_edge({root, input[1]});
+
+    g.add_edge({input[0], dwc[0]});
+    g.add_edge({input[0], dwc[1]});
+    g.add_edge({input[0], avg[0]});
+    g.add_edge({input[0], avg[1]});
+    g.add_edge({input[0], avg[2]});
+    g.add_edge({input[0], dwc[2]});
+    g.add_edge({input[1], add[2]});
+    g.add_edge({input[1], dwc[3]});
+    g.add_edge({input[1], dwc[4]});
+    g.add_edge({input[1], add[4]});
+
+    g.add_edge({dwc[0], conv[0]});
+    g.add_edge({dwc[1], conv[1]});
+    g.add_edge({dwc[2], conv[2]});
+    g.add_edge({dwc[3], conv[3]});
+    g.add_edge({dwc[4], conv[4]});
+
+    g.add_edge({conv[0], add[0]});
+    g.add_edge({conv[1], add[0]});
+    g.add_edge({avg[0], add[1]});
+    g.add_edge({avg[1], add[1]});
+    g.add_edge({avg[2], add[2]});
+    g.add_edge({conv[2], add[3]});
+    g.add_edge({conv[3], add[3]});
+    g.add_edge({conv[4], add[4]});
+
+    for (const auto& a : add) {
+      g.add_edge({a, concat});
+    }
+    DiGraphView gv = flipped(g);
+      SerialParallelDecomposition result =
+        naive_dependency_invariant_sp_ization(gv);
+    
+  }
 }
