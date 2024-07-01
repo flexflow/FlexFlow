@@ -160,6 +160,10 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
 std::unordered_map<Node, std::unordered_set<Node>>
     get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
+std::unordered_set<Node> get_successors(DiGraphView const &, Node const &);
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_successors(DiGraphView const &, std::unordered_set<Node> const &);
+
 Node get_src_node(MultiDiEdge const &);
 Node get_dst_node(MultiDiEdge const &);
 Node get_dst_node(InputMultiDiEdge const &);
@@ -312,6 +316,8 @@ OpenMultiDiGraphView get_subgraph(OpenMultiDiGraphView const &g,
 std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &);
 Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &,
                                       DiGraphView const &);
+
+std::unordered_map<Node, int> get_longest_path_lengths(DiGraphView const &g);
 
 MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);

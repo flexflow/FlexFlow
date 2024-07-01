@@ -8,6 +8,8 @@
 #include <vector>
 
 namespace FlexFlow {
+bool has_single_source(DiGraphView const &g);
+bool has_single_sink(DiGraphView const &g);
 
 Node find_source_node(DiGraphView const &);
 Node find_sink_node(DiGraphView const &);
@@ -44,6 +46,11 @@ MultiDiGraph serial_composition(MultiDiGraph const &g1, MultiDiGraph const &g2);
 
 MultiDiGraph parallel_composition(MultiDiGraph const &g1,
                                   MultiDiGraph const &g2);
+
+SerialParallelDecomposition parallel_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions);
+SerialParallelDecomposition serial_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions);
 
 MultiDiGraph multidigraph_from_sp_decomposition(
     SerialParallelDecomposition const &sp_decomposition);

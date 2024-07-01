@@ -4,8 +4,15 @@
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph.h"
-
 namespace FlexFlow {
+
+bool has_single_source(DiGraphView const &g) {
+  return get_sources(g).size() == 1;
+}
+
+bool has_single_sink(DiGraphView const &g) {
+  return get_sinks(g).size() == 1;
+}
 
 Node find_source_node(DiGraphView const &g) {
   std::unordered_set<Node> srcs = get_sources(g);
@@ -276,6 +283,54 @@ MultiDiGraph parallel_composition(MultiDiGraph const &g1,
   MultiDiGraph g = g1;
   parallel_extend(g, g2);
   return g;
+}
+
+SerialParallelDecomposition parallel_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions) {
+  if (sp_compositions.size() == 1) {
+    return sp_compositions[0];
+  }
+  Parallel composition;
+  for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
+    if (std::holds_alternative<Parallel>(sp_comp)) {
+      for (std::variant<Serial, Node> const &children :
+           std::get<Parallel>(sp_comp)
+               .children) { // unwrapping the parallel node, since a Parallel
+                            // cannot contain other Parallels
+        composition.children.push_back(children);
+      }
+    } else if (std::holds_alternative<Serial>(sp_comp)) {
+      composition.children.push_back(std::get<Serial>(sp_comp));
+    } else {
+      assert(std::holds_alternative<Node>(sp_comp));
+      composition.children.push_back(std::get<Node>(sp_comp));
+    }
+  }
+  return composition;
+}
+
+SerialParallelDecomposition serial_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions) {
+  if (sp_compositions.size() == 1) {
+    return sp_compositions[0];
+  }
+  Serial composition;
+  for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
+    if (std::holds_alternative<Serial>(sp_comp)) {
+      for (std::variant<Parallel, Node> const &subnode :
+           std::get<Serial>(sp_comp)
+               .children) { // unwrapping the serial node, since a Serial cannot
+                            // contain other Serials
+        composition.children.push_back(subnode);
+      }
+    } else if (std::holds_alternative<Parallel>(sp_comp)) {
+      composition.children.push_back(std::get<Parallel>(sp_comp));
+    } else {
+      assert(std::holds_alternative<Node>(sp_comp));
+      composition.children.push_back(std::get<Node>(sp_comp));
+    }
+  }
+  return composition;
 }
 
 struct MultiDiGraphFromSPDecompositionFunctor {
