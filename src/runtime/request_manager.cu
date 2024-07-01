@@ -156,8 +156,8 @@ void RequestManager::load_batch_config_task(
               sizeof(BatchConfig::CommittedTokensInfo),
           cudaMemcpyHostToDevice,
           stream));
-      total_copy_size += sizeof(BatchConfig::committed_tokens);
     }
+    total_copy_size += sizeof(BatchConfig::committed_tokens);
   }
 
   // add a size check
