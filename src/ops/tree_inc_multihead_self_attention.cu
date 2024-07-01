@@ -387,6 +387,10 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     }
   }
 
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+  
   // Update gpu-side custom mask referring from CaualMask
   if (!bc->prompt_phase) {
     int parallelism = 0;
@@ -408,6 +412,15 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                                           m->request_available,
                                           batch_size);
   }
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   if (device == 0) {
+  //     std::cout << "Update custom mask time: " << elapsed << " ms\n";
+  //   }
 
   half *q = static_cast<half *>(m->queryTmp),
        *kv = static_cast<half *>(m->keyCache),
@@ -647,20 +660,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventDestroy(t_end);
   //   if (device == 0) {
   //     std::cout << "Compute qkv time: " << elapsed << " ms\n";
-  //   }
-
-  //   cudaEventCreate(&t_start);
-  //   cudaEventCreate(&t_end);
-  //   cudaEventRecord(t_start, stream);
-
-  //   cudaEventRecord(t_end, stream);
-  //   checkCUDA(cudaEventSynchronize(t_end));
-  //   elapsed = 0;
-  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  //   cudaEventDestroy(t_start);
-  //   cudaEventDestroy(t_end);
-  //   if (device == 0) {
-  //     std::cout << "Update custom mask time: " << elapsed << " ms\n";
   //   }
 
   //   cudaEventCreate(&t_start);
