@@ -3,6 +3,9 @@ import os, torch, argparse
 from alignment.align_test_utils import *
 from transformers import AutoConfig
 from tqdm import tqdm
+from enum import Enum
+from dataclasses import dataclass
+
 
 def get_model_config(model_name):
     try:
@@ -14,8 +17,6 @@ def get_model_config(model_name):
 
 class AlignmentTest:
     def __init__(self, model_name, tp_degree=1):
-        raise NotImplementedError()
-    def convert_hf_filename_to_ff(self, f):
         raise NotImplementedError()
     def check_weights_alignment(self):
         raise NotImplementedError()
@@ -36,60 +37,62 @@ class LllamaAlignmentTest(AlignmentTest):
         self.num_attention_heads = self.hf_config.num_attention_heads
         self.num_key_value_heads = self.num_attention_heads
         self.tp_degree = tp_degree
-    
-    def get_tp_partition_dim(self, ff_weight_name) -> int:
-        # MLP layers split the intermediate size dimension
-        # gate_proj, up_proj: [hidden_size, intermediate_size]
-        # down_proj: [intermediate_size, hidden_size]
-        if self.tp_degree == 1:
-            return -1
-        if "lora.weight_B" in ff_weight_name:
-            return -1
-        if "lm_head" in ff_weight_name or "norm" in ff_weight_name:
-            return 1
-        if "gate_proj" in ff_weight_name or "up_proj" in ff_weight_name:
-            return 1
-        elif "down_proj" in ff_weight_name:
-            return 0
-        else:
-            return -1
 
-    def convert_hf_filename_to_ff(self, hf_filename, step_idx=0):
-        if hf_filename == "lm_head.weight":
-            f_version = f"layers.{self.num_layers-1}.lm_head.weight_0"
-        elif hf_filename == "norm.weight":
-            f_version = f"layers.{self.num_layers-1}.norm.weight_0"
-        else:
-            f_version = ""
-            if hf_filename.startswith("layers."):
-                layernum = hf_filename.split("layers.")[1].split(".")[0]
-                f_version += f"layers.{layernum}."
-            f_version += hf_filename.replace(".base_layer", "").replace(".default", "")
-            # compute weight index, then rename lora if needed if needed
-            weight_index="0"
-            if "lora_A" in f_version:
-                weight_index="A"
-            elif "lora_B" in f_version:
-                weight_index="B"
-            f_version = f_version.replace("lora_A", "lora").replace("lora_B", "lora")
-            if f_version.endswith(".weight"):
-                if weight_index == "0":
-                    f_version += f"_{weight_index}"
-                else:
-                    f_version += f"_{weight_index}.original"
-            elif f_version.endswith(".gradient"):
-                prefix = f_version.split(".gradient")[0]
-                f_version = prefix + f".weight_{weight_index}.gradient"
-        return f_version
+        self.num_tokens = None
+        self.ff_batch_size = None
+    
 
     def check_weights_alignment(self):
+        def convert_hf_filename_to_ff(hf_filename):
+            if hf_filename == "lm_head.weight":
+                f_version = f"layers.{self.num_layers-1}.lm_head.weight_0"
+            elif hf_filename == "norm.weight":
+                f_version = f"layers.{self.num_layers-1}.norm.weight_0"
+            else:
+                f_version = ""
+                if hf_filename.startswith("layers."):
+                    layernum = hf_filename.split("layers.")[1].split(".")[0]
+                    f_version += f"layers.{layernum}."
+                f_version += hf_filename.replace(".base_layer", "").replace(".default", "")
+                # compute weight index, then rename lora if needed if needed
+                weight_index="0"
+                if "lora_A" in f_version:
+                    weight_index="A"
+                elif "lora_B" in f_version:
+                    weight_index="B"
+                f_version = f_version.replace("lora_A", "lora").replace("lora_B", "lora")
+                if f_version.endswith(".weight"):
+                    if weight_index == "0":
+                        f_version += f"_{weight_index}"
+                    else:
+                        f_version += f"_{weight_index}.original"
+                elif f_version.endswith(".gradient"):
+                    prefix = f_version.split(".gradient")[0]
+                    f_version = prefix + f".weight_{weight_index}.gradient"
+            return f_version
+        def get_tp_partition_dim(ff_weight_name) -> int:
+            # MLP layers split the intermediate size dimension
+            # gate_proj, up_proj: [hidden_size, intermediate_size]
+            # down_proj: [intermediate_size, hidden_size]
+            if self.tp_degree == 1:
+                return -1
+            if "lora.weight_B" in ff_weight_name:
+                return -1
+            if "lm_head" in ff_weight_name or "norm" in ff_weight_name:
+                return 1
+            if "gate_proj" in ff_weight_name or "up_proj" in ff_weight_name:
+                return 1
+            elif "down_proj" in ff_weight_name:
+                return 0
+            else:
+                return -1
         print("-- Weights alignment --")
         hf_weights_folder = os.path.join(hf_path, "weights", "step_0")
         ff_weights_folder = os.path.join(ff_path, "weights", "step_0", "shard_0")
         files_list = os.listdir(hf_weights_folder)
         for hf_weight_name in tqdm(sorted(files_list)):
             if hf_weight_name.endswith(".weight"):
-                ff_weight_name = self.convert_hf_filename_to_ff(hf_weight_name, step_idx=0)
+                ff_weight_name = convert_hf_filename_to_ff(hf_weight_name)
                 # print(hf_weight_name, ff_weight_name)
                 hf_w_path = os.path.join(hf_weights_folder, hf_weight_name)
                 ff_w_path = os.path.join(ff_weights_folder, ff_weight_name)
@@ -103,7 +106,7 @@ class LllamaAlignmentTest(AlignmentTest):
                 # 1. get shape of hf weight
                 hf_weight = torch.load(hf_w_path, map_location='cpu')
                 hf_weigth_shape = hf_weight.shape
-                ff_partition_dim = self.get_tp_partition_dim(ff_weight_name)
+                ff_partition_dim = get_tp_partition_dim(ff_weight_name)
                 ff_weigth_shape = list(hf_weigth_shape)[::-1]
                 if ff_partition_dim >= 0:
                     ff_weigth_shape[ff_partition_dim] //= self.tp_degree
@@ -127,8 +130,254 @@ class LllamaAlignmentTest(AlignmentTest):
                     print(f"Error comparing {ff_w_path} weight to {hf_w_path}:\n{e}\n")
                     raise e
     
-    def check_fwd_pass(self):
-        raise NotImplementedError()
+    def check_fwd_pass(self, step_idx=0):
+        hf_fwd_folder = os.path.join(hf_path, "fwd", f"step_{step_idx}")
+        ff_fwd_folder = os.path.join(ff_path, "fwd", f"step_{step_idx}", "shard_0")
+        
+        def convert_hf_filename_to_ff(hf_filename):
+            if hf_filename == "embed_tokens":
+                f_version = f"layers.0.embed_tokens"
+            elif hf_filename == "lm_head" or hf_filename == "norm":
+                f_version = f"layers.{self.num_layers-1}.{hf_filename}"
+            else:
+                assert hf_filename.startswith("layers.")
+                layernum = hf_filename.split("layers.")[1].split(".")[0]
+                f_version = f"layers.{layernum}."
+                f_version += hf_filename.replace(".base_layer", "").replace(".default", "")
+                # right now, attention in flexflow is done with a single operator, so there is a single output file without the projection suffix
+                f_version = f_version.replace(".q_proj", "").replace(".k_proj", "").replace(".v_proj", "").replace(".o_proj", "")
+                # lora in HuggingFace is split into A and B operators, in FF we use a single operator.
+                f_version = f_version.replace("lora_A", "lora").replace("lora_B", "lora")
+            return f_version
+        
+        class TPType(Enum):
+            REPLICATE = 0
+            PARTITION = 1
+            TO_REDUCE = 2
+        
+        def replace_value(lst, old_value, new_value):
+            occurrences = lst.count(old_value)
+            if occurrences == 0:
+                raise ValueError(f"Value {old_value} not found in the list.")
+            elif occurrences > 1:
+                raise ValueError(f"Multiple instances of {old_value} found in the list.")
+            else:
+                index = lst.index(old_value)
+                lst[index] = new_value
+                return lst
+        
+        def truncate_dimension(tensor, old_dim, new_dim):
+            # Check if old_dim appears exactly once in the tensor's shape
+            shape = tensor.shape
+            dim_occurrences = shape.count(old_dim)
+            
+            if dim_occurrences == 0:
+                raise ValueError(f"Dimension {old_dim} not found in the tensor shape.")
+            elif dim_occurrences > 1:
+                raise ValueError(f"Multiple instances of dimension {old_dim} found in the tensor shape.")
+            
+            # Check if new_dim is less than or equal to old_dim
+            if new_dim > old_dim:
+                raise ValueError(f"New dimension ({new_dim}) must be less than or equal to old dimension ({old_dim}).")
+            
+            # Find the index of the dimension to truncate
+            dim_index = shape.index(old_dim)
+            
+            # Create a slice object for truncation
+            slices = [slice(None)] * len(shape)
+            slices[dim_index] = slice(0, new_dim)
+            
+            # Truncate the tensor
+            truncated_tensor = tensor[tuple(slices)]
+            
+            return truncated_tensor
+        
+        @dataclass
+        class TensorComparisonIdxs:
+            hf_tensor_type: str
+            ff_tensor_type: str
+            hf_tensor_idx: int
+            ff_tensor_idx: int
+        
+        def get_hf_tensor(hf_tensor_name, tensor_comparison_idx):
+            hf_tensor_filename = f"{hf_tensor_name}.{tensor_comparison_idx.hf_tensor_type}_{tensor_comparison_idx.hf_tensor_idx}"
+            hf_tensor_path = os.path.join(hf_fwd_folder, hf_tensor_filename)
+            print(hf_tensor_path)
+            if not os.path.isfile(hf_tensor_path):
+                raise FileNotFoundError(f"File '{hf_tensor_path}' not found")
+            hf_tensor = torch.load(hf_tensor_path, map_location='cpu')
+            if hf_tensor_name == "embed_tokens":
+                self.num_tokens = hf_tensor.shape[1]
+            return hf_tensor
+        
+        def get_ff_tensor(ff_tensor_name, tensor_comparison_idx, hf_shape, tp_type=TPType.REPLICATE):
+            ff_tensor_filename = f"{ff_tensor_name}.{tensor_comparison_idx.ff_tensor_type}_{tensor_comparison_idx.ff_tensor_idx}"
+            ff_tensor_path = os.path.join(ff_fwd_folder, ff_tensor_filename)
+            if not os.path.isfile(ff_tensor_path):
+                raise FileNotFoundError(f"File '{ff_tensor_path}' not found")
+
+            ff_shape = list(hf_shape)[::-1]
+            if tp_type == TPType.PARTITION:
+                ff_shape[0] //= self.tp_degree
+            
+            if "layers.0.embed_tokens.input_0" in ff_tensor_path:
+                # get number of tokens
+                ff_tensor = np.loadtxt(ff_tensor_path, delimiter=',')
+                self.ff_batch_size = ff_tensor.shape[0]
+            print(ff_tensor_path)
+            ff_shape = replace_value(ff_shape, self.num_tokens, self.ff_batch_size)
+            ff_tensors = [load_ff_tensor(ff_tensor_path.replace("shard_0", f"shard_{tp_idx}"), ff_shape) for tp_idx in range(self.tp_degree)]
+            if self.tp_degree > 1:
+                # if replicate, check that they are identical
+                if tp_type == TPType.REPLICATE:
+                    assert(are_np_arrays_identical(ff_tensors))
+                    ff_tensor = ff_tensors[0]
+                # if partition, concatenate along the partition dimension
+                elif tp_type == TPType.PARTITION:
+                    ff_tensor = np.concatenate(ff_tensors, axis=0)
+                # if to_reduce, sum along the partition dimension
+                elif tp_type == TPType.TO_REDUCE:
+                    ff_tensor = np.sum(ff_tensors, axis=0)
+            else:
+                ff_tensor = ff_tensors[0]
+            ff_tensor = torch.from_numpy(ff_tensor)
+            ff_tensor = truncate_dimension(ff_tensor, self.ff_batch_size, self.num_tokens)
+            return ff_tensor
+
+        def compare(hf_tensor, ff_tensor, label="", additional_ff_tensor=None, tolerance=1e-5):
+            ff_tensor = ff_tensor.to(hf_tensor.dtype)
+            hf_tensor = hf_tensor.T
+            if additional_ff_tensor is not None:
+                additional_ff_tensor = additional_ff_tensor.to(hf_tensor.dtype)
+                ff_tensor = ff_tensor - additional_ff_tensor
+            try:
+                torch.testing.assert_close(hf_tensor, ff_tensor, rtol=1.3e-6, atol=tolerance)
+            except Exception as e:
+                print(f"Error in comparison {label}:\n{e}\n")
+                print("HF tensor:")
+                print(hf_tensor.squeeze())
+                print("FF tensor:")
+                print(ff_tensor.squeeze())
+                raise e
+
+        print(f"-- FWD pass {step_idx}--")
+        
+        # Embedding layer
+        hf_tensor_name = "embed_tokens"
+        ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+        input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+        output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+        hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="Embedding input")
+        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="Embedding output")
+        
+        # Transformers blocks
+        for i in range(self.num_layers):
+            # Input laye norm
+            hf_tensor_name = f"layers.{i}.input_layernorm"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            if i == 0:
+                input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+                output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            else:
+                input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+                output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=1)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
+            compare(hf_tensor, ff_tensor, label=f"Input layernorm {i} input", tolerance=1e-4)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
+            compare(hf_tensor, ff_tensor, label=f"Input layernorm {i} output", tolerance=1e-4)
+
+            # Attention
+            hf_tensor_name = f"layers.{i}.self_attn.o_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_tensor, ff_tensor, label=f"Attention {i} output", tolerance=1e-4)
+            
+            # Post-attention layernorm
+            hf_tensor_name = f"layers.{i}.post_attention_layernorm"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=1)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
+            compare(hf_tensor, ff_tensor, label=f"Post-attention layernorm {i} output", tolerance=1e-4)
+
+            # W1 (gate_proj)
+            hf_tensor_name = f"layers.{i}.mlp.gate_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"W1 {i} output", tolerance=1e-4)
+
+            # W3 (up_proj)
+            hf_tensor_name = f"layers.{i}.mlp.up_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"W3 {i} output", tolerance=1e-4)
+
+            # W2 (down_proj)
+            hf_tensor_name = f"layers.{i}.mlp.down_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"W2 {i} input", tolerance=1e-4)
+
+            hf_down_proj_in = hf_tensor.clone()
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_down_proj_out = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+
+            # LoRA_A
+            hf_tensor_name = f"layers.{i}.mlp.down_proj.lora_A.default"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"LoRA_A {i} input", tolerance=1e-4)
+            torch.testing.assert_close(hf_down_proj_in, hf_tensor, rtol=1.3e-6, atol=1e-5)
+
+            # LoRA intermediate (HF only)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_lora_A_out = get_hf_tensor(hf_tensor_name, output_comparison)
+            hf_tensor_name = f"layers.{i}.mlp.down_proj.lora_B.default"
+            hf_lora_B_in = get_hf_tensor(hf_tensor_name, input_comparison)
+            torch.testing.assert_close(hf_lora_A_out, hf_lora_B_in, rtol=1.3e-6, atol=1e-5)
+
+            # LoRA_B
+            hf_tensor_name = f"layers.{i}.mlp.down_proj.lora_B.default"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_tensor, ff_tensor, additional_ff_tensor=ff_down_proj_out, label=f"LoRA_B {i} output", tolerance=1e-4)
+        
+        # Norm
+        hf_tensor_name = "norm"
+        ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+        output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=1)
+        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="Norm output", tolerance=1e-4)
+
+        # LM head
+        hf_tensor_name = "lm_head"
+        ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+        output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+        compare(hf_tensor, ff_tensor, label="LM head output", tolerance=1e-4)
+
+        
     def check_bwd_pass(self):
         raise NotImplementedError()
     def check_step(self, step_idx):
@@ -457,7 +706,8 @@ args = parser.parse_args()
 
 if __name__ == "__main__":
     llama_alignment = LllamaAlignmentTest(args.model_name, tp_degree=args.tensor_parallelism_degree)
-    llama_alignment.check_weights_alignment()
+    # llama_alignment.check_weights_alignment()
+    llama_alignment.check_fwd_pass()
     # hf_config = get_model_config(args.model_name)
 
     # check_weights_alignment(num_layers=args.num_layers)
