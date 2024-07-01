@@ -4,6 +4,7 @@
 #include "utils/graph/digraph.h"
 #include "utils/graph/serialparallel.h"
 #include "utils/graph/sp_ization.h"
+
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
@@ -98,15 +99,15 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Dependency Invariant SP-ization algorithm - NASNET-A like") {
-    //From the TASO paper, pg 57
+    // From the TASO paper, pg 57
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     auto root = add_nodes(g, 1)[0];
-    auto inputs = add_nodes(g, 2);
+    auto input = add_nodes(g, 2);
     auto dwc = add_nodes(g, 5);
     auto conv = add_nodes(g, 5);
     auto avg = add_nodes(g, 3);
-    auto add = add_nodes(g, 2);
-    auto concat = add_nodes(g,1)[0];
+    auto add = add_nodes(g, 5);
+    auto concat = add_nodes(g, 1)[0];
 
     g.add_edge({root, input[0]});
     g.add_edge({root, input[1]});
@@ -137,12 +138,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     g.add_edge({conv[3], add[3]});
     g.add_edge({conv[4], add[4]});
 
-    for (const auto& a : add) {
+    for (auto const &a : add) {
       g.add_edge({a, concat});
     }
-    DiGraphView gv = flipped(g);
-      SerialParallelDecomposition result =
-        naive_dependency_invariant_sp_ization(gv);
-    
+    // DiGraphView gv = flipped(g);
+    SerialParallelDecomposition result =
+        naive_dependency_invariant_sp_ization(g);
+
+    int extranodes =
+        get_nodes(multidigraph_from_sp_decomposition(result)).size() -
+        get_nodes(g).size();
+    CHECK(extranodes >= 0);
   }
 }
