@@ -4,6 +4,7 @@ ff_add_test_executable(
   SRC_PATTERNS
     src/test_cow_ptr.cc
     src/test_optional.cc
+    src/test_sp_ization.cc
   PRIVATE_INCLUDE
     src/
   DEPS
