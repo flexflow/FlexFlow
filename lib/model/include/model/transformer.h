@@ -3,14 +3,17 @@
 
 namespace FlexFlow {
 
+class Transformer {
+  public:
+  ComputationGraph create_computation_graph(Config &config);
+  ParallelComputationGraph create_parallel_computation_graph();
+}
+
+
 struct Config {
   Config(void);
   int hidden_size, embedding_size, num_heads, num_layers, sequence_length,
       batchSize;
 };
-
-ComputationGraph create_computation_graph(Config &config);
-
-ParallelComputationGraph create_parallel_computation_graph(Config &config);
 
 } // namespace FlexFlow

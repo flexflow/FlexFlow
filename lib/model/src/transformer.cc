@@ -11,7 +11,7 @@ Config::Config(void) {
   batchSize = 8;
 }
 
-ComputationGraph create_computation_graph(Config &config) {
+ComputationGraph Transformer::create_computation_graph(Config &config) {
   ComputationGraphBuilder builder;
   // Create the t tensor
   std::vector<size_t> dims = {
@@ -65,7 +65,7 @@ ComputationGraph create_computation_graph(Config &config) {
                                        "output_dense");
   return builder.computation_graph;
 }
-ParallelComputationGraph create_parallel_computation_graph(Config &config) {
+ParallelComputationGraph Transformer::create_parallel_computation_graph(Config &config) {
   ParallelComputationGraphBuilder builder;
   // Create the input tensor
 
