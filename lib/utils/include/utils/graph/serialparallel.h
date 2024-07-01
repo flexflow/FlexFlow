@@ -47,9 +47,10 @@ MultiDiGraph serial_composition(MultiDiGraph const &g1, MultiDiGraph const &g2);
 MultiDiGraph parallel_composition(MultiDiGraph const &g1,
                                   MultiDiGraph const &g2);
 
-SerialParallelDecomposition parallel_composition(const std::vector<SerialParallelDecomposition>& sp_compositions);
-SerialParallelDecomposition serial_composition(const std::vector<SerialParallelDecomposition>& sp_compositions);
-
+SerialParallelDecomposition parallel_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions);
+SerialParallelDecomposition serial_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions);
 
 MultiDiGraph multidigraph_from_sp_decomposition(
     SerialParallelDecomposition const &sp_decomposition);

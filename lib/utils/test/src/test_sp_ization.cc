@@ -67,13 +67,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     g.add_edge({n[0], n[1]});
     g.add_edge({n[1], n[2]});
     g.add_edge({n[2], n[3]});
-    auto gv = flipped(g); //flipped to account for the diedge bug
-    SerialParallelDecomposition result = naive_dependency_invariant_sp_ization(gv);
+    auto gv = flipped(g); // flipped to account for the diedge bug
+    SerialParallelDecomposition result =
+        naive_dependency_invariant_sp_ization(gv);
     SerialParallelDecomposition expected = Serial{{n[0], n[1], n[2], n[3]}};
-    CHECK(std::get<Serial>(result) == std::get<Serial>(expected)); //currently cannot directly compare the 2.
+    CHECK(
+        std::get<Serial>(result) ==
+        std::get<Serial>(expected)); // currently cannot directly compare the 2.
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - Diamong Pattern") {
+  TEST_CASE("Dependency Invariant SP-ization algorithm - Diamond Pattern") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> n = add_nodes(g, 5);
     g.add_edge({n[0], n[1]});
@@ -82,14 +85,15 @@ TEST_SUITE(FF_TEST_SUITE) {
     g.add_edge({n[2], n[3]});
     g.add_edge({n[2], n[4]});
     g.add_edge({n[3], n[4]});
-    auto gv = flipped(g); //flipped to account for the diedge bug
-    SerialParallelDecomposition result = naive_dependency_invariant_sp_ization(gv);
+    auto gv = flipped(g); // flipped to account for the diedge bug
+    SerialParallelDecomposition result =
+        naive_dependency_invariant_sp_ization(gv);
     Node sp0 = n[0];
     Serial sp1 = {{n[0], n[1]}};
     Serial sp2 = {{n[0], n[2]}};
     Serial sp3 = {{Parallel{{sp2, sp1}}, n[3]}};
     Serial expected = {{Parallel{{sp3, sp2}}, n[4]}};
-    CHECK(std::get<Serial>(result) == expected); //currently cannot directly compare the 2.
+    CHECK(std::get<Serial>(result) ==
+          expected); // currently cannot directly compare the 2.
   }
-
 }

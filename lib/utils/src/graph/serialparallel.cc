@@ -285,19 +285,23 @@ MultiDiGraph parallel_composition(MultiDiGraph const &g1,
   return g;
 }
 
-SerialParallelDecomposition parallel_composition(std::vector<SerialParallelDecomposition> const &sp_compositions) {
-  if (sp_compositions.size() == 1) {return sp_compositions[0];}
+SerialParallelDecomposition parallel_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions) {
+  if (sp_compositions.size() == 1) {
+    return sp_compositions[0];
+  }
   Parallel composition;
   for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
     if (std::holds_alternative<Parallel>(sp_comp)) {
-      for (std::variant<Serial, Node> const &children : std::get<Parallel>(sp_comp).children) { //unwrapping the parallel node, since a Parallel cannot contain other Parallels
+      for (std::variant<Serial, Node> const &children :
+           std::get<Parallel>(sp_comp)
+               .children) { // unwrapping the parallel node, since a Parallel
+                            // cannot contain other Parallels
         composition.children.push_back(children);
       }
-    }
-    else if (std::holds_alternative<Serial>(sp_comp)) {
+    } else if (std::holds_alternative<Serial>(sp_comp)) {
       composition.children.push_back(std::get<Serial>(sp_comp));
-    }
-    else {
+    } else {
       assert(std::holds_alternative<Node>(sp_comp));
       composition.children.push_back(std::get<Node>(sp_comp));
     }
@@ -305,27 +309,29 @@ SerialParallelDecomposition parallel_composition(std::vector<SerialParallelDecom
   return composition;
 }
 
-
-SerialParallelDecomposition serial_composition(std::vector<SerialParallelDecomposition> const &sp_compositions) {
-  if (sp_compositions.size() == 1) {return sp_compositions[0];}
+SerialParallelDecomposition serial_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions) {
+  if (sp_compositions.size() == 1) {
+    return sp_compositions[0];
+  }
   Serial composition;
   for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
     if (std::holds_alternative<Serial>(sp_comp)) {
-      for (std::variant<Parallel, Node> const &subnode : std::get<Serial>(sp_comp).children) { //unwrapping the serial node, since a Serial cannot contain other Serials
+      for (std::variant<Parallel, Node> const &subnode :
+           std::get<Serial>(sp_comp)
+               .children) { // unwrapping the serial node, since a Serial cannot
+                            // contain other Serials
         composition.children.push_back(subnode);
       }
-    }
-    else if (std::holds_alternative<Parallel>(sp_comp)) {
+    } else if (std::holds_alternative<Parallel>(sp_comp)) {
       composition.children.push_back(std::get<Parallel>(sp_comp));
-    }
-    else {
+    } else {
       assert(std::holds_alternative<Node>(sp_comp));
       composition.children.push_back(std::get<Node>(sp_comp));
     }
   }
   return composition;
 }
-
 
 struct MultiDiGraphFromSPDecompositionFunctor {
   template <typename T>
