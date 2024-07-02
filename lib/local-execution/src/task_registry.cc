@@ -30,10 +30,12 @@ void TaskRegistry::register_task(task_id_t const &task_id,
 
 bool TaskRegistry::operator==(TaskRegistry const &other) const {
   return this->tie() == other.tie();
+  //return true;
 }
 
 bool TaskRegistry::operator!=(TaskRegistry const &other) const {
   return this->tie() != other.tie();
+  //return true;
 }
 
 std::tuple<std::unordered_map<layer_guid_t, task_id_t> const &,

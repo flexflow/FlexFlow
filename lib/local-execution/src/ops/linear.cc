@@ -72,7 +72,7 @@ static DeviceSpecific<DeviceStates>
 
   float *one_ptr;
 
-  LinearPerDeviceState state = init_kernel(handle,
+  LinearPerDeviceState per_device_state = init_kernel(handle,
                                            one_ptr,
                                            attrs.activation,
                                            attrs.regularizer,
@@ -82,7 +82,7 @@ static DeviceSpecific<DeviceStates>
                                            output.data_type,
                                            batch_size,
                                            attrs.out_channels);
-  return DeviceSpecific<DeviceStates>::create(state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

@@ -223,14 +223,13 @@ __host__ void
 ffStatus_t
     cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
                                            ArrayShape const &shape) {
-  // -- TODO: legion/ff dim
   return cudnnSetTensor4dDescriptor(tensor,
                                     CUDNN_TENSOR_NCHW,
                                     CUDNN_DATA_FLOAT,
-                                    shape.at_maybe(0).value_or(1),
-                                    shape.at_maybe(1).value_or(1),
-                                    shape.at_maybe(2).value_or(1),
-                                    shape.at_maybe(3).value_or(1));
+                                    shape.at_maybe(legion_dim_t{0}).value_or(1),
+                                    shape.at_maybe(legion_dim_t{1}).value_or(1),
+                                    shape.at_maybe(legion_dim_t{2}).value_or(1),
+                                    shape.at_maybe(legion_dim_t{3}).value_or(1));
 }
 
 cudnnDataType_t ff_to_cudnn_datatype(DataType type) {

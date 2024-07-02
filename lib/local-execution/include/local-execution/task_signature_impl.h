@@ -16,6 +16,16 @@ using TaskImplFunction = std::variant<
 struct TaskSignatureAndImpl {
   TaskImplFunction impl_function;
   OpTaskSignature task_signature;
+
+  bool operator==(TaskSignatureAndImpl const & other) const {
+    return std::addressof(this->impl_function) == std::addressof(other.impl_function) && 
+            this->task_signature == other.task_signature;
+  }
+
+  bool operator!=(TaskSignatureAndImpl const & other) const {
+   return std::addressof(this->impl_function) != std::addressof(other.impl_function) || 
+            this->task_signature != other.task_signature;
+  }
 };
 
 TaskSignatureAndImpl get_task_sig_impl(task_id_t const &);

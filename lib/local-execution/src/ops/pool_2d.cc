@@ -64,7 +64,7 @@ static DeviceSpecific<DeviceStates>
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
   }
 
-  Pool2DPerDeviceState state = init_kernel(handle,
+  Pool2DPerDeviceState per_device_state = init_kernel(handle,
                                            attrs.activation,
                                            input_w,
                                            input_h,
@@ -82,7 +82,7 @@ static DeviceSpecific<DeviceStates>
                                            attrs.stride_w,
                                            attrs.pool_type);
 
-  return DeviceSpecific<DeviceStates>::create(state);
+  return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 
 OpTaskInvocation forward(Pool2DAttrs const &attrs) {

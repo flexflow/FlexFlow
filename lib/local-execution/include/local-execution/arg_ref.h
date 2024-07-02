@@ -32,6 +32,16 @@ public:
     return this->type_idx;
   }
 
+  bool operator==(ArgRefSpec const &other) const {
+    return this->get_ref_type() == other.get_ref_type() &&
+           this->get_type_index() == other.get_type_index();
+  }
+
+  bool operator!=(ArgRefSpec const &other) const {
+    return this->get_ref_type() != other.get_ref_type() ||
+           this->get_type_index() != other.get_type_index();
+  }
+
   template <typename T>
   static ArgRefSpec create(ArgRef<LABEL_TYPE, T> const &r) {
     // static_assert(is_serializable<T>::value, "Type must be serializeable");

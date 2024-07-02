@@ -9,10 +9,28 @@ namespace FlexFlow {
 
 enum class OpArgRefLabel { PER_DEVICE_OP_STATE, PARALLEL_TENSOR_SHAPE };
 
-struct PerDeviceOpStateRefType {};
+struct PerDeviceOpStateRefType {
+
+  bool operator==(PerDeviceOpStateRefType const & other) const {
+    return true;
+  }
+
+  bool operator!=(PerDeviceOpStateRefType const & other) const {
+    return false;
+  }
+
+};
 
 struct ParallelTensorShapeRefType {
   int idx;
+
+  bool operator==(ParallelTensorShapeRefType const & other) const {
+    return this->idx == other.idx;
+  }
+
+  bool operator!=(ParallelTensorShapeRefType const & other) const {
+    return this->idx != other.idx;
+  }
 };
 
 using OpArgRefType =

@@ -22,12 +22,20 @@ public:
     return this->type_idx;
   }
 
-  template <typename T>
-  bool operator==(ConcreteArgSpec const &other) {
+  // template <typename T>
+  bool operator==(ConcreteArgSpec const &other) const {
     if (this->get_type_index() == other.get_type_index()) {
-      return this->get<T>() == other.get<T>();
+      return this->ptr.get() == other.ptr.get();
     }
     return false;
+  }
+
+  // template <typename T>
+  bool operator!=(ConcreteArgSpec const &other) const {
+    if (this->get_type_index() != other.get_type_index()) {
+      return true;
+    }
+    return this->ptr.get() != other.ptr.get();
   }
 
   template <typename T>
