@@ -806,11 +806,12 @@ void TreeIncMultiHeadSelfAttention::inference_task(
     Runtime *runtime) {
   assert(task->regions.size() == regions.size());
 
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  // BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   log_tree_verify.debug("BatchConfig, num_tokens: %d, num_requests: %d",
-                        bc.num_tokens,
-                        bc.num_active_requests());
-  if (bc.num_tokens == 0) {
+                        bc->num_tokens,
+                        bc->num_active_requests());
+  if (bc->num_tokens == 0) {
     return;
   }
 
@@ -856,7 +857,7 @@ void TreeIncMultiHeadSelfAttention::inference_task(
   assert(task->index_point.get_dim() == 1);
 
   TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, &bc, task->index_point.point_data[0], input, weight, output, biases);
+      m, bc, task->index_point.point_data[0], input, weight, output, biases);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -867,7 +868,7 @@ void TreeIncMultiHeadSelfAttention::inference_task(
       weights_accessors.push_back(biases);
     }
     TreeIncMultiHeadSelfAttention::save_inference_tensors_to_file(
-        m, shard_id, &bc, {input}, weights_accessors, {output});
+        m, shard_id, bc, {input}, weights_accessors, {output});
   }
 }
 

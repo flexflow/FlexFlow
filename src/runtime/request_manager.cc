@@ -738,23 +738,6 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   bool prefill_completed = false;
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
 
-  if (decoding_mode == SPECULATIVE_DECODING) {
-    int committed_token_offset = prefill_request->llm_cache_size;
-    prefill_request->committed_tokens.clear();
-    // Modified the state because the last commitment completes
-    prefill_request->llm_committed = true;
-    assert(prefill_request->ssm_committed and prefill_request->llm_committed);
-
-    for (int i = 0; i < prefill_request->num_tokens_in_batch; i++) {
-      prefill_request->committed_tokens.push_back(Request::CommittedToken{
-          -1,
-          committed_token_offset + i,
-          prefill_request->tokens[i + committed_token_offset]});
-    }
-    // Modified the state because the new commitment is unfinished
-    prefill_request->llm_committed = false;
-  }
-
   if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
     // Indicates that the LLM prefilling phase finishes
     prefill_request->tokens.push_back(
@@ -767,13 +750,12 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
     if (decoding_mode == SPECULATIVE_DECODING) {
       // Add the last token to the token tree
+      assert(prefill_request->committed_tokens.empty() &&
+             "The committed tokens should be empty.");
       prefill_request->committed_tokens.push_back(
           Request::CommittedToken{-1,
                                   (int)prefill_request->tokens.size() - 1,
                                   prefill_request->tokens.back()});
-      // Modified the state because the ssm also need to commit the last token
-      prefill_request->ssm_committed = false;
-
       init_token_tree(prefill_request->guid);
       add_root_to_spec_token_tree(prefill_request->guid,
                                   prefill_request->tokens.back());
@@ -783,29 +765,6 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 
   profiling_requests[prefill_request->guid].llm_prefilling_steps++;
 
-  // Manages the committed states for other requests in the batch
-  for (int request_index = 0; request_index < get_max_requests_per_batch();
-       ++request_index) {
-    if (!request_available[request_index]) {
-      continue;
-    }
-    int guid = guid_of_requests[request_index];
-    Request &request = all_requests[guid];
-    assert(request.status == Request::RUNNING);
-
-    if (request_index == prefill_request->batch_index) {
-
-      continue;
-    }
-
-    if (!request.llm_committed) {
-      request.llm_committed = true;
-      if (request.ssm_committed and request.llm_committed) {
-        request.llm_cache_size = request.tokens.size() - 1;
-        request.committed_tokens.clear();
-      }
-    }
-  }
   return prefill_completed;
 }
 
@@ -919,68 +878,39 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     bc.inference_mode = InferenceMode::TREE_VERIFY_MODE;
   }
   bc.prompt_phase = true;
-  std::copy(std::begin(request_available),
-            std::end(request_available),
-            std::begin(bc.request_available));
-  bc.num_available_requests = num_available_requests;
+  bc.request_available[prefill_request->batch_index] = true;
+  bc.num_available_requests = 1;
 
-  for (int request_index = 0; request_index < get_max_requests_per_batch();
-       ++request_index) {
-    if (!request_available[request_index]) {
-      continue;
-    }
-    RequestGuid guid = guid_of_requests[request_index];
-    Request &request = all_requests[guid];
-    assert(request.status == Request::RUNNING);
+  int request_index = prefill_request->batch_index;
+  RequestGuid guid = guid_of_requests[request_index];
+  Request &request = all_requests[guid];
+  assert(request.status == Request::RUNNING);
 
-    if (request_index == prefill_request->batch_index) {
-      // Request Info
-      bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-      bc.requestsInfo[request_index].first_token_index_in_request =
-          prefill_request->llm_cache_size;
-      bc.requestsInfo[request_index].num_tokens_in_batch =
-          std::min(get_max_tokens_per_batch(),
-                   (int)prefill_request->tokens.size() -
-                       prefill_request->llm_cache_size);
+  // Request Info
+  bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
+  bc.requestsInfo[request_index].first_token_index_in_request =
+      prefill_request->llm_cache_size;
+  bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
+      get_max_tokens_per_batch(),
+      (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
 
-      prefill_request->first_token_offset_in_batch = 0;
-      prefill_request->num_tokens_in_batch =
-          bc.requestsInfo[request_index].num_tokens_in_batch;
+  prefill_request->first_token_offset_in_batch = 0;
+  prefill_request->num_tokens_in_batch =
+      bc.requestsInfo[request_index].num_tokens_in_batch;
 
-      // Token Info
-      for (int token_idx = 0;
-           token_idx < bc.requestsInfo[request_index].num_tokens_in_batch;
-           token_idx++) {
-        int abs_idx = prefill_request->llm_cache_size + token_idx;
-        assert(abs_idx < prefill_request->tokens.size());
+  // Token Info
+  for (int token_idx = 0;
+       token_idx < bc.requestsInfo[request_index].num_tokens_in_batch;
+       token_idx++) {
+    int abs_idx = prefill_request->llm_cache_size + token_idx;
+    assert(abs_idx < prefill_request->tokens.size());
 
-        bc.tokensInfo[token_idx].request_index = request_index;
-        bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
-        bc.tokensInfo[token_idx].abs_depth_in_request = abs_idx;
-        bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
+    bc.tokensInfo[token_idx].request_index = request_index;
+    bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
+    bc.tokensInfo[token_idx].abs_depth_in_request = abs_idx;
+    bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
-        bc.num_tokens++;
-      }
-
-    } else {
-      bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
-      bc.requestsInfo[request_index].first_token_index_in_request =
-          request.llm_cache_size;
-      bc.requestsInfo[request_index].num_tokens_in_batch = 0;
-
-      if (!request.llm_committed) {
-        // Committed tokens
-        for (int i = 0; i < request.committed_tokens.size() - 1; i++) {
-          bc.committed_tokens[bc.num_tokens_to_commit].token_index =
-              request.committed_tokens[i].from_index;
-          bc.committed_tokens[bc.num_tokens_to_commit].request_index =
-              request_index;
-          bc.committed_tokens[bc.num_tokens_to_commit].token_depth =
-              request.committed_tokens[i].to_index;
-          bc.num_tokens_to_commit++;
-        }
-      }
-    }
+    bc.num_tokens++;
   }
 
   if (verbose) {
@@ -1141,32 +1071,43 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
         new_bc.num_tokens;
     new_bc.requestsInfo[request_index].first_token_index_in_request =
         request.ssm_cache_size;
-    // We don't directly use committed_tokens.size() here because there is a
-    // case where committed_tokens.size() != request.tokens.size() -
-    // request.ssm_cache_size, that's when the LLM prefilling is just finished
-    new_bc.requestsInfo[request_index].num_tokens_in_batch =
-        request.tokens.size() - request.ssm_cache_size;
-
-    request.first_token_offset_in_batch = new_bc.num_tokens;
-    request.num_tokens_in_batch =
-        request.tokens.size() - request.ssm_cache_size;
 
     // Store committed tokens to tokensInfo
-    int start_offset = committed_tokens.size() - request.tokens.size() +
-                       request.ssm_cache_size;
-    assert(start_offset >= 0 && "Invalid start offset.");
-    for (int committed_token_index = start_offset;
-         committed_token_index < committed_tokens.size();
-         committed_token_index++) {
+    int num_committed_tokens = committed_tokens.size();
+    if (num_committed_tokens == 1) {
+      new_bc.requestsInfo[request_index].num_tokens_in_batch = 1;
+      // The case where the prefilling is just finished. Although the last
+      // token's kv cache is already there, the we need to decode the last token
+      // because it's the root of the token tree.
       new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
       new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
-          committed_tokens[committed_token_index].to_index;
+          committed_tokens[0].to_index;
       new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
-          committed_tokens[committed_token_index].to_index;
+          committed_tokens[0].to_index;
       new_bc.tokensInfo[new_bc.num_tokens].token_id =
-          committed_tokens[committed_token_index].token_id;
+          committed_tokens[0].token_id;
       new_bc.num_tokens++;
+    } else {
+      for (int committed_token_index = 1;
+           committed_token_index < committed_tokens.size();
+           committed_token_index++) {
+        new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
+            committed_tokens[committed_token_index].to_index;
+        new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
+            committed_tokens[committed_token_index].to_index;
+        new_bc.tokensInfo[new_bc.num_tokens].token_id =
+            committed_tokens[committed_token_index].token_id;
+        new_bc.num_tokens++;
+      }
+      new_bc.requestsInfo[request_index].num_tokens_in_batch =
+          num_committed_tokens - 1;
     }
+
+    request.first_token_offset_in_batch =
+        new_bc.requestsInfo[request_index].first_token_offset_in_batch;
+    request.num_tokens_in_batch =
+        new_bc.requestsInfo[request_index].num_tokens_in_batch;
 
     // Copy the causal mask, it should already been updated in
     // update_llm_verify_results
@@ -1319,22 +1260,20 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     // BatchConfig.committed_tokens.
     // Note here, we shouldn't put the last token in request.committed_tokens
     // into new_bc. Because the LLM don't have that token's KV cache.
-    if (!request.llm_committed) {
-      std::vector<Request::CommittedToken> &committed_tokens =
-          request.committed_tokens;
-      for (int committed_token_index = 0;
-           committed_token_index < committed_tokens.size() - 1;
-           committed_token_index++) {
-        Request::CommittedToken &committed_token =
-            committed_tokens.at(committed_token_index);
-        new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
-            request_index;
-        new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_index =
-            committed_token.from_index;
-        new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
-            committed_token.to_index;
-        new_bc.num_tokens_to_commit++;
-      }
+    std::vector<Request::CommittedToken> &committed_tokens =
+        request.committed_tokens;
+    for (int committed_token_index = 0;
+         committed_token_index < committed_tokens.size() - 1;
+         committed_token_index++) {
+      Request::CommittedToken &committed_token =
+          committed_tokens.at(committed_token_index);
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
+          request_index;
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache =
+          committed_token.from_index;
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
+          committed_token.to_index;
+      new_bc.num_tokens_to_commit++;
     }
 
     // Load the tokens on the token tree that are not yet pruned to
@@ -1403,20 +1342,8 @@ bool RequestManager::update_llm_verify_results(
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    if (!request.llm_committed) {
-      request.llm_committed = true;
-      request.llm_cache_size +=
-          request.committed_tokens.size() - 1; // Exclude the last token
-      // Check if both the KV cache of SSM and LLM are committed, because
-      // sometimes the LLM KV cache is committed by a verifying batch config,
-      // sometimes it is committed by a LLM prefilling batch config. We don't
-      // know when the tokens are committed, so we have to add these checks
-      // whenever the SSM or the LLM commits tokens. If the both caches are
-      // committed, we can clear the committed tokens.
-      if (request.ssm_committed and request.llm_committed) {
-        request.committed_tokens.clear();
-      }
-    }
+    request.llm_cache_size += request.committed_tokens.size() - 1;
+    request.committed_tokens.clear();
 
     profiling_requests[guid].llm_decoding_steps++;
     nb_requests_decoded++;
@@ -1515,16 +1442,6 @@ bool RequestManager::update_ssm_inference_results(
     assert(request.status == Request::RUNNING);
 
     if (current_ssm_step == 1) {
-      request.ssm_committed = true;
-      // Check if both the KV cache of SSM and LLM are committed, because
-      // sometimes the LLM KV cache is committed by a verifying batch config,
-      // sometimes it is committed by a LLM prefilling batch config. We don't
-      // know when the tokens are committed, so we have to add these checks
-      // whenever the SSM or the LLM commits tokens. If the both caches are
-      // committed, we can clear the committed tokens.
-      if (request.ssm_committed and request.llm_committed) {
-        request.committed_tokens.clear();
-      }
       request.ssm_cache_size = request.tokens.size();
     }
 
@@ -1537,15 +1454,14 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  if (all_request_last_layer_empty) {
+  if (all_request_last_layer_empty or current_ssm_step == get_max_tree_depth()) {
     // Update profiling statistics before returning
     profiling.ssm_step_times.push_back(
         (Realm::Clock::current_time_in_microseconds() -
          profiling.ssm_step_start) *
         1e-3);
-    return true;
   }
-  return false;
+  return all_request_last_layer_empty;
 }
 
 /* --------- Bitmask Related Functions --------- */
@@ -1894,9 +1810,6 @@ void RequestManager::get_verify_results_sample(
       request.tokens.push_back(token_id);
     }
 
-    request.llm_committed = false;
-    request.ssm_committed = false;
-
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
@@ -1925,12 +1838,13 @@ void RequestManager::get_verify_results_greedy(
     assert(request.status == Request::RUNNING);
 
     int llm_result_offset = request.first_token_offset_in_batch;
+    int llm_cache_size = request.tokens.size() - 1;
     int committed_token_index = request.tokens.size() - 1;
 
     TokenTree &token_tree = request.speculative_token_trees[0];
     // First add the root to the committed tokens
     request.committed_tokens.push_back(Request::CommittedToken(
-        llm_result_offset, committed_token_index, request.tokens.back()));
+        llm_cache_size, committed_token_index, request.tokens.back()));
     committed_token_index++;
     // Don't add it to request.tokens because it has already been added.
 
@@ -1976,7 +1890,7 @@ void RequestManager::get_verify_results_greedy(
             // pruned tokens)
             // to_index: the committed token index in the request
             request.committed_tokens.push_back(
-                Request::CommittedToken(llm_result_offset + current_token_index,
+                Request::CommittedToken(llm_cache_size + current_token_index,
                                         committed_token_index,
                                         node_ptr->id));
             request.tokens.push_back(node_ptr->id);
@@ -2008,9 +1922,6 @@ void RequestManager::get_verify_results_greedy(
     request.tokens.push_back(
         llm_verify_result
             .token_ids[llm_result_offset + last_accepted_token_index]);
-
-    request.llm_committed = false;
-    request.ssm_committed = false;
 
     total_nb_generated_tokens += request.committed_tokens.size() - 1;
     profiling_requests[guid].nb_tokens_decoded += request.committed_tokens.size() - 1;
@@ -2314,8 +2225,8 @@ void RequestManager::terminate_background_server() {
     req_per_step += ")";
     str += req_per_step;
     if (profiling.ssm_step_times.size() > 0) {
-      //   assert(profiling.ssm_step_times.size() ==
-      //   profiling.llm_step_times.size());
+      // assert(profiling.ssm_step_times.size() ==
+      //        profiling.llm_step_times.size());
       str += "\n ssm_step_times_ms(";
       std::string ssm_step_times_ms = " ";
       for (double time : profiling.ssm_step_times) {
@@ -2444,10 +2355,14 @@ bool RequestManager::add_tokens_to_spec_token_tree(
           int result_idx = child_start_idx + child_pos;
           if (!speculative_sampling) {
             // TODO: the argmax will return log prob instead of prob
-            child_probs[child_pos] = std::make_pair(
-                log(ssm_inference_result.probs[result_idx]), result_idx);
+            if (log(ssm_inference_result.probs[result_idx]) !=
+                -std::numeric_limits<float>::infinity()) {
+              child_probs[child_pos] = std::make_pair(
+                  log(ssm_inference_result.probs[result_idx]), result_idx);
+            }
           } else {
             // Use gumbel perturbed logits here
+            // TODO: handle the case when the child logit is -inf
             child_probs[child_pos] = std::make_pair(
                 ssm_inference_result.gumbel_logits[result_idx], result_idx);
           }

@@ -18,6 +18,10 @@
 #include <hip/hip_complex.h>
 #endif
 
+// kPagesize also defined in tree_inc_multihead_self_attention_impl.cu
+// for template instantiation
+constexpr uint32_t kPagesize = 64;
+
 namespace FlexFlow {
 
 class IncMultiHeadSelfAttentionMeta;
@@ -187,7 +191,8 @@ public:
   bool *position_bias;
   float scaling_factor;
   void *weight_ptr, *bias_ptr; // for weight offload
-  void *devQKVProjArray, *keyCache, *valueCache;
+  void *devQKVProjArray, *queryTmp, *keyCache, *valueCache;
+  half *outputTmp;
   void *qk_prods, *qk_prods_softmax;
   void *attn_heads;
   char *quantized_weight_ptr;
