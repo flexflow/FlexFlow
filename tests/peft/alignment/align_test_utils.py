@@ -1,9 +1,11 @@
 import os, re, torch
 import numpy as np
 from typing import List
+from enum import Enum
+from dataclasses import dataclass
 abs_dirname = os.path.dirname(os.path.abspath(__file__))
-hf_path = os.path.join(os.path.dirname(abs_dirname), "hf_peft_tensors")
-ff_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(abs_dirname))), "build", "inference_tensors")
+hf_path = os.path.expanduser("~/.cache/flexflow/debug/huggingface")
+ff_path = os.path.expanduser("~/.cache/flexflow/debug/flexflow")
 def print_unique_files_list(dirname):
     files_list = os.listdir(dirname)
     for f in sorted(files_list):
@@ -361,3 +363,67 @@ def compare_loaded_tensors(hf_tensor, ff_tensor, tolerance=1e-2):
     len_hf_tensor = hf_tensor.flatten().shape[0]
     assert(len(mismatches) <= .05*len_hf_tensor)
     print("Ok!")
+def are_np_arrays_identical(*np_arrays):
+    if len(np_arrays) < 2:
+        return True
+    
+    first = np_arrays[0]
+    
+    # Check shapes and dtypes
+    if not all(t.shape == first.shape and t.dtype == first.dtype for t in np_arrays[1:]):
+        return False
+    
+    # Stack all tensors along a new axis
+    stacked = np.stack(np_arrays)
+    
+    # Check if all elements along the new axis are equal
+    return np.all(stacked == stacked[0])
+
+class TPType(Enum):
+    REPLICATE = 0
+    PARTITION = 1
+    TO_REDUCE = 2
+
+@dataclass
+class TensorComparisonIdxs:
+    hf_tensor_type: str
+    ff_tensor_type: str
+    hf_tensor_idx: int
+    ff_tensor_idx: int
+
+def replace_value(lst, old_value, new_value):
+    occurrences = lst.count(old_value)
+    if occurrences == 0:
+        raise ValueError(f"Value {old_value} not found in the list.")
+    elif occurrences > 1:
+        raise ValueError(f"Multiple instances of {old_value} found in the list.")
+    else:
+        index = lst.index(old_value)
+        lst[index] = new_value
+        return lst
+            
+def truncate_dimension(tensor, old_dim, new_dim):
+    # Check if old_dim appears exactly once in the tensor's shape
+    shape = tensor.shape
+    dim_occurrences = shape.count(old_dim)
+    
+    if dim_occurrences == 0:
+        raise ValueError(f"Dimension {old_dim} not found in the tensor shape.")
+    elif dim_occurrences > 1:
+        raise ValueError(f"Multiple instances of dimension {old_dim} found in the tensor shape.")
+    
+    # Check if new_dim is less than or equal to old_dim
+    if new_dim > old_dim:
+        raise ValueError(f"New dimension ({new_dim}) must be less than or equal to old dimension ({old_dim}).")
+    
+    # Find the index of the dimension to truncate
+    dim_index = shape.index(old_dim)
+    
+    # Create a slice object for truncation
+    slices = [slice(None)] * len(shape)
+    slices[dim_index] = slice(0, new_dim)
+    
+    # Truncate the tensor
+    truncated_tensor = tensor[tuple(slices)]
+    
+    return truncated_tensor

@@ -258,4 +258,8 @@ class FlexFlowLLAMA(FlexFlowModel):
         os.makedirs(dst_folder, exist_ok=True)
         for name, params in model.named_parameters():
             name = FlexFlowLLAMA.convert_hf_weight_name(name)
+            if "lm_head" in name:
+                print("Encountered lm_head, shape", params.detach().cpu().numpy().shape)
+            if "embed_tokens" in name:
+                print("Encountered embed_tokens, shape", params.detach().cpu().numpy().shape)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
