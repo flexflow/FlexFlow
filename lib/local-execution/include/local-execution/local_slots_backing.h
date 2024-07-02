@@ -19,13 +19,18 @@ struct LocalSlotsBacking {
 public:
   void add_per_device_op_state(layer_guid_t const &,
                                DeviceSpecific<DeviceStates> const &);
-  bool is_tensor_allocated(tensor_guid_t const &) const;
-  GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
-                                                   IsGrad) const;
+  void allocate_new_tensors(layer_guid_t const &,
+                            ComputationGraph const &,
+                            Allocator &);
   TensorSlotsBacking construct_tensor_slots_backing(OpTaskBinding const &,
                                                     layer_guid_t const &) const;
   ArgSlotsBacking construct_arg_slots_backing(OpTaskBinding const &,
                                               layer_guid_t const &) const;
+
+private:
+  bool is_tensor_allocated(tensor_guid_t const &) const;
+  GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
+                                                   IsGrad) const;
   ConcreteArgSpec resolve_op_arg_ref_spec(OpArgRefSpec const &,
                                           layer_guid_t const &) const;
   ConcreteArgSpec resolve_runtime_arg_ref_spec(RuntimeArgRefSpec const &) const;
@@ -37,15 +42,16 @@ public:
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       input_tensor_slots;
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
-      weight_tensor_slots;
-  std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       output_tensor_slots;
 
   // arguments
-  std::unordered_map<layer_guid_t, std::optional<DeviceSpecific<DeviceStates>>>
+  std::unordered_map<layer_guid_t, DeviceSpecific<DeviceStates>>
       per_device_op_states;
   RuntimeArgConfig runtime_arg_config;
 };
+
+bool are_maps_virtually_equivalent(TensorBackingMap const &,
+                                   TensorBackingMap const &);
 
 } // namespace FlexFlow
 

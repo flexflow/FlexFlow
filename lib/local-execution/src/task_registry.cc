@@ -28,4 +28,23 @@ void TaskRegistry::register_task(task_id_t const &task_id,
   this->task_mapping.insert({task_id, task_signature_impl});
 }
 
+bool TaskRegistry::operator==(TaskRegistry const &other) const {
+  return this->tie() == other.tie();
+}
+
+bool TaskRegistry::operator!=(TaskRegistry const &other) const {
+  return this->tie() != other.tie();
+}
+
+std::tuple<std::unordered_map<layer_guid_t, task_id_t> const &,
+           std::unordered_map<layer_guid_t, task_id_t> const &,
+           std::unordered_map<layer_guid_t, task_id_t> const &,
+           std::unordered_map<task_id_t, TaskSignatureAndImpl> const &>
+    TaskRegistry::tie() const {
+  return std::tie(this->init_task_ids,
+                  this->forward_task_ids,
+                  this->backward_task_ids,
+                  this->task_mapping);
+}
+
 } // namespace FlexFlow

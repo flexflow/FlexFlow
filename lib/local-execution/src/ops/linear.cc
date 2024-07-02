@@ -74,6 +74,7 @@ static DeviceSpecific<DeviceStates>
 
   LinearPerDeviceState state = init_kernel(handle,
                                            one_ptr,
+                                           attrs.activation,
                                            attrs.regularizer,
                                            attrs.use_bias,
                                            input.data_type,

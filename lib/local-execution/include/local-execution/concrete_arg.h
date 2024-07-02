@@ -23,6 +23,14 @@ public:
   }
 
   template <typename T>
+  bool operator==(ConcreteArgSpec const &other) {
+    if (this->get_type_index() == other.get_type_index()) {
+      return this->get<T>() == other.get<T>();
+    }
+    return false;
+  }
+
+  template <typename T>
   static ConcreteArgSpec create(T const &t) {
     // static_assert(is_serializable<T>::value, "Type must be serializable");
 

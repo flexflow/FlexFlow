@@ -20,6 +20,16 @@ struct TaskRegistry {
   std::unordered_map<layer_guid_t, task_id_t> forward_task_ids;
   std::unordered_map<layer_guid_t, task_id_t> backward_task_ids;
   std::unordered_map<task_id_t, TaskSignatureAndImpl> task_mapping;
+
+  bool operator==(TaskRegistry const &other) const;
+  bool operator!=(TaskRegistry const &other) const;
+
+private:
+  std::tuple<decltype(init_task_ids) const &,
+             decltype(forward_task_ids) const &,
+             decltype(backward_task_ids) const &,
+             decltype(task_mapping) const &>
+      tie() const;
 };
 
 } // namespace FlexFlow

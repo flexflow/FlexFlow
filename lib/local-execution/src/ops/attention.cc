@@ -84,10 +84,10 @@ static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
-  int qProjSize = acc.get_argument<int>(QPROJSIZE);
-  int kProjSize = acc.get_argument<int>(KPROJSIZE);
-  int vProjSize = acc.get_argument<int>(VPROJSIZE);
-  int oProjSize = acc.get_argument<int>(OPROJSIZE);
+  size_t qProjSize = acc.get_argument<size_t>(QPROJSIZE);
+  size_t kProjSize = acc.get_argument<size_t>(KPROJSIZE);
+  size_t vProjSize = acc.get_argument<size_t>(VPROJSIZE);
+  size_t oProjSize = acc.get_argument<size_t>(OPROJSIZE);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   ParallelTensorShape query_parallel_tensor_shape =
       acc.get_argument<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);

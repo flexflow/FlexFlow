@@ -22,13 +22,13 @@ namespace Kernels {
 namespace Replicate {
 
 template <typename T>
-__global__ void replicate_backward_kernel(T const *input_ptr,
-                                          T *output_ptr,
+__global__ void replicate_backward_kernel(T *input_ptr,
+                                          T const *output_ptr,
                                           size_t num_elements,
                                           size_t num_replicas) {
   CUDA_KERNEL_LOOP(i, num_elements) {
     for (size_t j = 0; j < num_replicas; j++) {
-      output_ptr[i] += input_ptr[i + j * num_elements];
+      input_ptr[i] += output_ptr[i + j * num_elements];
     }
   }
 }
@@ -39,8 +39,8 @@ struct ForwardKernel {
                   GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
 
-    checkCUDA(cudaMemcpyAsync((void *)input.get<T>(),
-                              (void *)output.get<T>(),
+    checkCUDA(cudaMemcpyAsync((void *)output.get<T>(),
+                              (void *)input.get<T>(),
                               input.shape.num_elements() * size_of_datatype(T),
                               cudaMemcpyDeviceToDevice,
                               stream));
@@ -50,8 +50,8 @@ struct ForwardKernel {
 template <DataType T>
 struct BackwardKernel {
   void operator()(cudaStream_t stream,
-                  GenericTensorAccessorR const &input,
-                  GenericTensorAccessorW const &output,
+                  GenericTensorAccessorW const &input,
+                  GenericTensorAccessorR const &output,
                   size_t num_replicas) {
     size_t total_elements = input.shape.num_elements() * num_replicas;
     replicate_backward_kernel<real_type<T>>
@@ -70,8 +70,8 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     GenericTensorAccessorR const &input,
-                     GenericTensorAccessorW const &output,
+                     GenericTensorAccessorW const &input,
+                     GenericTensorAccessorR const &output,
                      size_t num_replicas) {
   DataTypeDispatch1<BackwardKernel>{}(
       input.data_type, stream, input, output, num_replicas);

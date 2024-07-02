@@ -46,7 +46,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  int padding_w,
                                  int stride_h,
                                  int stride_w,
-                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &input,
                                  GenericTensorAccessorW const &output,
                                  float const *filter_ptr,
                                  float *filter_grad_ptr);

@@ -16,6 +16,7 @@
 #include "device.h"
 #include "kernels/allocation.h"
 #include "kernels/linear_kernels.h"
+#include "utils/integer_conversions.h"
 
 namespace FlexFlow {
 
@@ -115,7 +116,7 @@ void forward_kernel(cudaStream_t stream,
                     int out_dim,
                     int batch_size) {
 
-  checkCUDA(cublasSetStream(m.handle.blas, stream));
+  checkCUBLAS(cublasSetStream(m.handle.blas, stream));
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0f, beta = 0.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m.input_type);
@@ -127,46 +128,46 @@ void forward_kernel(cudaStream_t stream,
 #else
   cudaDataType_t compute_type = CUDA_R_32F;
 #endif
-  checkCUDA(cublasGemmEx(m.handle.blas,
-                         CUBLAS_OP_T,
-                         CUBLAS_OP_N,
-                         out_dim,
-                         batch_size,
-                         in_dim,
-                         &alpha,
-                         weight_ptr,
-                         weight_type,
-                         in_dim,
-                         input_ptr,
-                         input_type,
-                         in_dim,
-                         &beta,
-                         output_ptr,
-                         output_type,
-                         out_dim,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // use_bias = True
-  if (bias_ptr != NULL) {
-    checkCUDA(cublasGemmEx(m.handle.blas,
+  checkCUBLAS(cublasGemmEx(m.handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_N,
                            out_dim,
                            batch_size,
-                           1,
+                           in_dim,
                            &alpha,
-                           bias_ptr,
+                           weight_ptr,
                            weight_type,
-                           1,
-                           m.one_ptr,
-                           CUDA_R_32F,
-                           1,
-                           &alpha,
+                           in_dim,
+                           input_ptr,
+                           input_type,
+                           in_dim,
+                           &beta,
                            output_ptr,
                            output_type,
                            out_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  // use_bias = True
+  if (bias_ptr != NULL) {
+    checkCUBLAS(cublasGemmEx(m.handle.blas,
+                             CUBLAS_OP_T,
+                             CUBLAS_OP_N,
+                             out_dim,
+                             batch_size,
+                             1,
+                             &alpha,
+                             bias_ptr,
+                             weight_type,
+                             1,
+                             m.one_ptr,
+                             CUDA_R_32F,
+                             1,
+                             &alpha,
+                             output_ptr,
+                             output_type,
+                             out_dim,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
   if (use_activation(m.activation)) {
     checkCUDNN(cudnnActivationForward(m.handle.dnn,
@@ -178,7 +179,7 @@ void forward_kernel(cudaStream_t stream,
                                       m.outputTensor,
                                       output_ptr));
   } else if (m.activation == Activation::GELU) {
-    size_t elements = (size_t)out_dim * (size_t)batch_size;
+    size_t elements = size_t_from_int(out_dim) * size_t_from_int(batch_size);
     constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
     gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(
@@ -200,10 +201,8 @@ void backward_kernel(cudaStream_t stream,
                      int in_dim,
                      int out_dim,
                      int batch_size) {
-
-  checkCUDA(cublasSetStream(m.handle.blas, stream));
+  checkCUBLAS(cublasSetStream(m.handle.blas, stream));
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
-
   float alpha = 1.0f;
   cudaDataType_t input_type = ff_to_cuda_datatype(m.input_type);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m.weight_type);
@@ -229,25 +228,25 @@ void backward_kernel(cudaStream_t stream,
   }
   // Compute weight gradiant
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
-  checkCUDA(cublasGemmEx(m.handle.blas,
-                         CUBLAS_OP_N,
-                         CUBLAS_OP_T,
-                         in_dim,
-                         out_dim,
-                         batch_size,
-                         &alpha,
-                         input_ptr,
-                         input_type,
-                         in_dim,
-                         output_grad_ptr,
-                         output_type,
-                         out_dim,
-                         &alpha,
-                         kernel_grad_ptr,
-                         weight_type,
-                         in_dim,
-                         compute_type,
-                         CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  checkCUBLAS(cublasGemmEx(m.handle.blas,
+                           CUBLAS_OP_N,
+                           CUBLAS_OP_T,
+                           in_dim,
+                           out_dim,
+                           batch_size,
+                           &alpha,
+                           input_ptr,
+                           input_type,
+                           in_dim,
+                           output_grad_ptr,
+                           output_type,
+                           out_dim,
+                           &alpha,
+                           kernel_grad_ptr,
+                           weight_type,
+                           in_dim,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
 
   if (m.regularizer == std::nullopt) {
     // do nothing
@@ -256,19 +255,19 @@ void backward_kernel(cudaStream_t stream,
     if (regularizer_attrs.has<L2RegularizerAttrs>()) {
       L2RegularizerAttrs l2_attrs = regularizer_attrs.get<L2RegularizerAttrs>();
       float lambda = l2_attrs.lambda;
-      checkCUDA(cublasSgeam(m.handle.blas,
-                            CUBLAS_OP_N,
-                            CUBLAS_OP_N,
-                            in_dim,
-                            out_dim,
-                            &alpha,
-                            (float *)kernel_grad_ptr,
-                            in_dim,
-                            &lambda,
-                            (float *)kernel_ptr,
-                            in_dim,
-                            (float *)kernel_grad_ptr,
-                            in_dim));
+      checkCUBLAS(cublasSgeam(m.handle.blas,
+                              CUBLAS_OP_N,
+                              CUBLAS_OP_N,
+                              in_dim,
+                              out_dim,
+                              &alpha,
+                              (float *)kernel_grad_ptr,
+                              in_dim,
+                              &lambda,
+                              (float *)kernel_ptr,
+                              in_dim,
+                              (float *)kernel_grad_ptr,
+                              in_dim));
     } else {
       assert(false && "Only L2 regularization is supported");
     }
@@ -278,48 +277,48 @@ void backward_kernel(cudaStream_t stream,
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
-    checkCUDA(cublasGemmEx(m.handle.blas,
-                           CUBLAS_OP_N,
-                           CUBLAS_OP_T,
-                           1,
-                           out_dim,
-                           batch_size,
-                           &alpha,
-                           m.one_ptr,
-                           CUDA_R_32F,
-                           1,
-                           output_grad_ptr,
-                           output_type,
-                           out_dim,
-                           &alpha,
-                           bias_grad_ptr,
-                           weight_type,
-                           1,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    checkCUBLAS(cublasGemmEx(m.handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_T,
+                             1,
+                             out_dim,
+                             batch_size,
+                             &alpha,
+                             m.one_ptr,
+                             CUDA_R_32F,
+                             1,
+                             output_grad_ptr,
+                             output_type,
+                             out_dim,
+                             &alpha,
+                             bias_grad_ptr,
+                             weight_type,
+                             1,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
   // Compute data gradiant
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
-    checkCUDA(cublasGemmEx(m.handle.blas,
-                           CUBLAS_OP_N,
-                           CUBLAS_OP_N,
-                           in_dim,
-                           batch_size,
-                           out_dim,
-                           &alpha,
-                           kernel_ptr,
-                           weight_type,
-                           in_dim,
-                           output_grad_ptr,
-                           output_type,
-                           out_dim,
-                           &alpha,
-                           input_grad_ptr,
-                           input_type,
-                           in_dim,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    checkCUBLAS(cublasGemmEx(m.handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_N,
+                             in_dim,
+                             batch_size,
+                             out_dim,
+                             &alpha,
+                             kernel_ptr,
+                             weight_type,
+                             in_dim,
+                             output_grad_ptr,
+                             output_type,
+                             out_dim,
+                             &alpha,
+                             input_grad_ptr,
+                             input_type,
+                             in_dim,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 }
 

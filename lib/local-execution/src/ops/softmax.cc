@@ -56,9 +56,17 @@ static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
+  auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto const &attrs = acc.get_argument<SoftmaxAttrs>(ATTRS);
 
-  SoftmaxPerDeviceState per_device_state = init_kernel(handle, attrs.dim.value);
+  int output_w = output.shape.at(legion_dim_t(0));
+  int output_h = output.shape.at(legion_dim_t(1));
+  int output_c = output.shape.at(legion_dim_t(2));
+  int output_n = output.shape.at(legion_dim_t(3));
+
+  SoftmaxPerDeviceState per_device_state = init_kernel(
+      handle, attrs.dim.value, output_n, output_c, output_h, output_w);
+
   return DeviceSpecific<DeviceStates>::create(per_device_state);
 }
 

@@ -21,29 +21,9 @@ LocalTrainingBacking::LocalTrainingBacking(
       this->task_registry.register_task(task_id, node, attrs);
     }
 
-    // insert pre-allocated tensors
-    this->local_slots_backing.input_tensor_slots.insert(
-        {node, get_incoming_tensors(computation_graph, node)});
-    this->local_slots_backing.output_tensor_slots.insert(
-        {node, get_outgoing_tensors(computation_graph, node)});
-
-    // allocate new tensors
-    for (tensor_guid_t const &edge :
-         get_outgoing_tensors(computation_graph, node)) {
-      if (!this->local_slots_backing.is_tensor_allocated(edge)) {
-        TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, edge);
-        GenericTensorAccessorW tensor_backing =
-            this->allocator.allocate_tensor(tensor_attrs.shape);
-        this->local_slots_backing.tensor_mapping.insert({edge, tensor_backing});
-
-        if (tensor_attrs.create_gradients == CreateGrad::YES) {
-          GenericTensorAccessorW gradient_tensor_backing =
-              this->allocator.allocate_tensor(tensor_attrs.shape);
-          this->local_slots_backing.gradient_tensor_mapping.insert(
-              {edge, gradient_tensor_backing});
-        }
-      }
-    }
+    // allocate outgoing tensors
+    this->local_slots_backing.allocate_new_tensors(
+        node, computation_graph, this->allocator);
   }
 }
 
@@ -71,15 +51,17 @@ std::optional<float>
 void LocalTrainingBacking::execute_init() {
   for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
-    ComputationGraphOpAttrs attrs =
-        get_layer_attrs(this->computation_graph, operator_node).attrs;
-    OpTaskInvocation invocation = init(attrs);
-    TaskArgumentAccessor accessor =
-        this->get_task_arg_accessor(invocation, operator_node);
-    DeviceSpecific<DeviceStates> device_state =
-        this->call_init_task_impl(invocation.task_id, accessor);
-    this->local_slots_backing.add_per_device_op_state(operator_node,
-                                                      device_state);
+    if (contains_key(this->task_registry.init_task_ids, operator_node)) {
+      ComputationGraphOpAttrs attrs =
+          get_layer_attrs(this->computation_graph, operator_node).attrs;
+      OpTaskInvocation invocation = init(attrs);
+      TaskArgumentAccessor accessor =
+          this->get_task_arg_accessor(invocation, operator_node);
+      DeviceSpecific<DeviceStates> device_state =
+          this->call_init_task_impl(invocation.task_id, accessor);
+      this->local_slots_backing.add_per_device_op_state(operator_node,
+                                                        device_state);
+    }
   }
 }
 
@@ -130,6 +112,14 @@ TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
 
   return TaskArgumentAccessor::create<LocalTaskArgumentAccessor>(
       this->allocator, tensor_slots_backing, arg_slots_backing);
+}
+
+TaskRegistry const &LocalTrainingBacking::get_task_registry() const {
+  return this->task_registry;
+}
+
+LocalSlotsBacking const &LocalTrainingBacking::get_local_slots_backing() const {
+  return this->local_slots_backing;
 }
 
 } // namespace FlexFlow
