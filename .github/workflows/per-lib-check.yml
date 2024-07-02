@@ -52,6 +52,10 @@ jobs:
       #     environment-file: packaging/conda/environment.yml
       #     auto-activate-base: false
 
+      - name: Regenerate all dtgen files
+        run: |
+          proj dtgen --force --delete-outdated
+
       - name: Run cmake
         run: |
           cmake_${{ matrix.gpu_backend }}.sh
