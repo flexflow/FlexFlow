@@ -32,7 +32,7 @@ void forward_kernel(cudaStream_t stream,
                     int a_seq_length_dim,
                     int b_seq_length_dim,
                     int seq_length) {
-  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUBLAS(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
   int lda = k;
   int ldb = m;
@@ -63,24 +63,24 @@ void forward_kernel(cudaStream_t stream,
   }
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDA(cublasSgemmStridedBatched(handle.blas,
-                                      CUBLAS_OP_N,
-                                      CUBLAS_OP_N,
-                                      m,
-                                      n,
-                                      k,
-                                      &alpha,
-                                      b_input_ptr,
-                                      ldb,
-                                      strideB,
-                                      a_input_ptr,
-                                      lda,
-                                      strideA,
-                                      &beta,
-                                      output_ptr,
-                                      ldo,
-                                      strideO,
-                                      batch));
+  checkCUBLAS(cublasSgemmStridedBatched(handle.blas,
+                                        CUBLAS_OP_N,
+                                        CUBLAS_OP_N,
+                                        m,
+                                        n,
+                                        k,
+                                        &alpha,
+                                        b_input_ptr,
+                                        ldb,
+                                        strideB,
+                                        a_input_ptr,
+                                        lda,
+                                        strideA,
+                                        &beta,
+                                        output_ptr,
+                                        ldo,
+                                        strideO,
+                                        batch));
 }
 
 void backward_kernel(cudaStream_t stream,
@@ -95,49 +95,49 @@ void backward_kernel(cudaStream_t stream,
                      int n,
                      int k,
                      int batch) {
-  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUBLAS(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
   int a_stride = n * k;
   int b_stride = m * k;
   int o_stride = n * m;
   float alpha = 1.0f;
-  checkCUDA(cublasSgemmStridedBatched(handle.blas,
-                                      CUBLAS_OP_T,
-                                      CUBLAS_OP_N,
-                                      k,
-                                      n,
-                                      m,
-                                      &alpha,
-                                      b_ptr,
-                                      m,
-                                      b_stride,
-                                      o_grad_ptr,
-                                      m,
-                                      o_stride,
-                                      &alpha,
-                                      a_grad_ptr,
-                                      k,
-                                      a_stride,
-                                      batch));
-  checkCUDA(cublasSgemmStridedBatched(handle.blas,
-                                      CUBLAS_OP_N,
-                                      CUBLAS_OP_T,
-                                      m,
-                                      k,
-                                      n,
-                                      &alpha,
-                                      o_grad_ptr,
-                                      m,
-                                      o_stride,
-                                      a_ptr,
-                                      k,
-                                      a_stride,
-                                      &alpha,
-                                      b_grad_ptr,
-                                      m,
-                                      b_stride,
-                                      batch));
+  checkCUBLAS(cublasSgemmStridedBatched(handle.blas,
+                                        CUBLAS_OP_T,
+                                        CUBLAS_OP_N,
+                                        k,
+                                        n,
+                                        m,
+                                        &alpha,
+                                        b_ptr,
+                                        m,
+                                        b_stride,
+                                        o_grad_ptr,
+                                        m,
+                                        o_stride,
+                                        &alpha,
+                                        a_grad_ptr,
+                                        k,
+                                        a_stride,
+                                        batch));
+  checkCUBLAS(cublasSgemmStridedBatched(handle.blas,
+                                        CUBLAS_OP_N,
+                                        CUBLAS_OP_T,
+                                        m,
+                                        k,
+                                        n,
+                                        &alpha,
+                                        o_grad_ptr,
+                                        m,
+                                        o_stride,
+                                        a_ptr,
+                                        k,
+                                        a_stride,
+                                        &alpha,
+                                        b_grad_ptr,
+                                        m,
+                                        b_stride,
+                                        batch));
 }
 
 } // namespace BatchMatmul
