@@ -6,7 +6,8 @@ namespace FlexFlow {
 StridedRectangleSide strided_side_from_size_and_stride(side_size_t side_size,
                                                        int stride) {
   assert((side_size.unwrapped % stride) == 0);
-  return StridedRectangleSide{num_points_t{side_size.unwrapped / stride}, stride};
+  return StridedRectangleSide{num_points_t{side_size.unwrapped / stride},
+                              stride};
 }
 
 side_size_t get_side_size(StridedRectangleSide const &s) {

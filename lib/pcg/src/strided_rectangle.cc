@@ -21,13 +21,14 @@ size_t get_num_dims(StridedRectangle const &rect) {
 
 num_points_t get_num_points(StridedRectangle const &rect) {
   int num = 1;
-  for (const StridedRectangleSide& side : rect.sides) {
+  for (StridedRectangleSide const &side : rect.sides) {
     num *= side.num_points.unwrapped;
   }
   return num_points_t{num};
 }
 
-StridedRectangleSide get_side_at_idx(StridedRectangle const &rect, ff_dim_t const &idx) {
+StridedRectangleSide get_side_at_idx(StridedRectangle const &rect,
+                                     ff_dim_t const &idx) {
   return rect.sides.at(idx);
 }
 
