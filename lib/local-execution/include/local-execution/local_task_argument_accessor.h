@@ -40,6 +40,10 @@ private:
   TensorSlotsBacking tensor_slots_backing;
   ArgSlotsBacking arg_slots_backing;
 };
+
+bool are_slots_backings_virtually_equivalent(TensorSlotsBacking const &slots_1,
+                                             TensorSlotsBacking const &slots_2);
+
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
 
 } // namespace FlexFlow

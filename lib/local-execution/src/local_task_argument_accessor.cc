@@ -46,4 +46,44 @@ Allocator LocalTaskArgumentAccessor::get_allocator() const {
   return this->allocator;
 }
 
+bool are_slots_backings_virtually_equivalent(
+    TensorSlotsBacking const &slots_1, TensorSlotsBacking const &slots_2) {
+  if (slots_1.size() != slots_2.size()) {
+    return false;
+  }
+
+  for (auto const &pairing : slots_1) {
+    if (!contains_key(slots_2, pairing.first)) {
+      return false;
+    }
+    auto acc2_variant = slots_2.at(pairing.first);
+    if (acc2_variant.index() != pairing.second.index()) {
+      return false;
+    }
+    if (std::holds_alternative<GenericTensorAccessorW>(acc2_variant)) {
+      GenericTensorAccessorW acc1 =
+          std::get<GenericTensorAccessorW>(pairing.second);
+      GenericTensorAccessorW acc2 =
+          std::get<GenericTensorAccessorW>(acc2_variant);
+      if (!is_shape_and_dtype_equal(acc1, acc2)) {
+        return false;
+      }
+    } else {
+      std::vector<GenericTensorAccessorW> acc1 =
+          std::get<std::vector<GenericTensorAccessorW>>(pairing.second);
+      std::vector<GenericTensorAccessorW> acc2 =
+          std::get<std::vector<GenericTensorAccessorW>>(acc2_variant);
+      if (acc1.size() != acc2.size()) {
+        return false;
+      }
+      for (int i = 0; i < acc1.size(); ++i) {
+        if (!is_shape_and_dtype_equal(acc1.at(i), acc2.at(i))) {
+          return false;
+        }
+      }
+    }
+  }
+  return true;
+}
+
 } // namespace FlexFlow

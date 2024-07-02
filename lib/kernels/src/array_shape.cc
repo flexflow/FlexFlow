@@ -39,7 +39,15 @@ std::size_t ArrayShape::num_elements() const {
 }
 
 std::size_t ArrayShape::operator[](legion_dim_t idx) const {
-  return dims[idx.value];
+  return dims.at(idx);
+}
+
+std::size_t ArrayShape::at(legion_dim_t idx) const {
+  return dims.at(idx);
+}
+
+std::size_t ArrayShape::at(ff_dim_t idx) const {
+  return dims.at(legion_dim_from_ff_dim(idx, num_dims()));
 }
 
 ArrayShape ArrayShape::sub_shape(
@@ -48,12 +56,16 @@ ArrayShape ArrayShape::sub_shape(
   NOT_IMPLEMENTED();
 }
 
-std::optional<std::size_t> ArrayShape::at_maybe(std::size_t index) const {
-  if (index < dims.size()) {
-    return dims.at(legion_dim_t(index));
+std::optional<std::size_t> ArrayShape::at_maybe(legion_dim_t index) const {
+  if (index.value < dims.size()) {
+    return dims.at(index);
   } else {
     return std::nullopt;
   }
+}
+
+std::optional<std::size_t> ArrayShape::at_maybe(ff_dim_t index) const {
+  return this->at_maybe(legion_dim_from_ff_dim(index, num_dims()));
 }
 
 size_t get_volume(ArrayShape const &shape) {

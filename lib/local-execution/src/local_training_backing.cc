@@ -21,29 +21,9 @@ LocalTrainingBacking::LocalTrainingBacking(
       this->task_registry.register_task(task_id, node, attrs);
     }
 
-    // insert pre-allocated tensors
-    this->local_slots_backing.input_tensor_slots.insert(
-        {node, get_incoming_tensors(computation_graph, node)});
-    this->local_slots_backing.output_tensor_slots.insert(
-        {node, get_outgoing_tensors(computation_graph, node)});
-
-    // allocate new tensors
-    for (tensor_guid_t const &edge :
-         get_outgoing_tensors(computation_graph, node)) {
-      if (!this->local_slots_backing.is_tensor_allocated(edge)) {
-        TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, edge);
-        GenericTensorAccessorW tensor_backing =
-            this->allocator.allocate_tensor(tensor_attrs.shape);
-        this->local_slots_backing.tensor_mapping.insert({edge, tensor_backing});
-
-        if (tensor_attrs.create_gradients == CreateGrad::YES) {
-          GenericTensorAccessorW gradient_tensor_backing =
-              this->allocator.allocate_tensor(tensor_attrs.shape);
-          this->local_slots_backing.gradient_tensor_mapping.insert(
-              {edge, gradient_tensor_backing});
-        }
-      }
-    }
+    // allocate outgoing tensors
+    this->local_slots_backing.allocate_new_tensors(
+        node, computation_graph, this->allocator);
   }
 }
 
@@ -121,7 +101,7 @@ void LocalTrainingBacking::execute_update() {
   NOT_IMPLEMENTED();
 }
 
-TaskArgumentAccessor const LocalTrainingBacking::get_task_arg_accessor(
+TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
     OpTaskInvocation const &invocation, layer_guid_t const &op_guid) const {
   TensorSlotsBacking tensor_slots_backing =
       this->local_slots_backing.construct_tensor_slots_backing(

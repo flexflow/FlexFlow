@@ -68,9 +68,11 @@ struct OpTaskBinding {
   void bind_from_forward(OpTaskBinding const &fwd);
 
 private:
-  void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
   std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
   std::unordered_map<slot_id, OpArgSpec> arg_bindings;
+
+private:
+  void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
   std::tuple<decltype(tensor_bindings) const &, decltype(arg_bindings) const &>
       tie() const;
 };

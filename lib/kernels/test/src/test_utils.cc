@@ -75,6 +75,10 @@ PerDeviceFFHandle get_per_device_ff_handle() {
   return handle;
 }
 
+PerDeviceFFHandle get_mock_per_device_ff_handle() {
+  return {nullptr, nullptr, nullptr, 0, false};
+}
+
 ffStream_t create_ff_stream() {
   ffStream_t stream;
   checkCUDA(cudaStreamCreate(&stream));

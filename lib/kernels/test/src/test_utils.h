@@ -27,6 +27,7 @@ TensorShape make_double_tensor_shape_from_legion_dims(FFOrdered<size_t> dims);
 void setPerDeviceFFHandle(PerDeviceFFHandle *handle);
 
 PerDeviceFFHandle get_per_device_ff_handle();
+PerDeviceFFHandle get_mock_per_device_ff_handle();
 
 ffStream_t create_ff_stream();
 

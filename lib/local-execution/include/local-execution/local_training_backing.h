@@ -24,8 +24,8 @@ struct LocalTrainingBacking {
   TaskRegistry const &get_task_registry() const;
   LocalSlotsBacking const &get_local_slots_backing() const;
 
-  TaskArgumentAccessor const get_task_arg_accessor(OpTaskInvocation const &,
-                                                   layer_guid_t const &) const;
+  TaskArgumentAccessor get_task_arg_accessor(OpTaskInvocation const &,
+                                             layer_guid_t const &) const;
 
 private:
   DeviceSpecific<DeviceStates>

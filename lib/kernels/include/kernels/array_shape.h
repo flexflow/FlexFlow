@@ -39,7 +39,8 @@ public:
   legion_dim_t last_idx() const;
   legion_dim_t neg_idx(int) const;
 
-  std::optional<std::size_t> at_maybe(std::size_t) const;
+  std::optional<std::size_t> at_maybe(legion_dim_t) const;
+  std::optional<std::size_t> at_maybe(ff_dim_t) const;
 
   ArrayShape
       sub_shape(std::optional<std::variant<ff_dim_t, legion_dim_t>> start,

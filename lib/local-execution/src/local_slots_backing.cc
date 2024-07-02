@@ -13,6 +13,33 @@ void LocalSlotsBacking::add_per_device_op_state(
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
+void LocalSlotsBacking::allocate_new_tensors(
+    layer_guid_t const &layer_guid,
+    ComputationGraph const &computation_graph,
+    Allocator &allocator) {
+  std::vector<tensor_guid_t> incoming_tensors =
+      get_incoming_tensors(computation_graph, layer_guid);
+  std::vector<tensor_guid_t> outgoing_tensors =
+      get_outgoing_tensors(computation_graph, layer_guid);
+  for (tensor_guid_t const &edge : outgoing_tensors) {
+    if (!is_tensor_allocated(edge)) {
+      TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, edge);
+      GenericTensorAccessorW tensor_backing =
+          allocator.allocate_tensor(tensor_attrs.shape);
+      this->tensor_mapping.insert({edge, tensor_backing});
+
+      if (tensor_attrs.create_gradients == CreateGrad::YES) {
+        GenericTensorAccessorW gradient_tensor_backing =
+            allocator.allocate_tensor(tensor_attrs.shape);
+        this->gradient_tensor_mapping.insert({edge, gradient_tensor_backing});
+      }
+    }
+  }
+
+  this->input_tensor_slots.insert({layer_guid, incoming_tensors});
+  this->output_tensor_slots.insert({layer_guid, outgoing_tensors});
+}
+
 bool LocalSlotsBacking::is_tensor_allocated(
     tensor_guid_t const &tensor_id) const {
   return contains_key(this->tensor_mapping, tensor_id);
@@ -106,13 +133,29 @@ ConcreteArgSpec LocalSlotsBacking::resolve_runtime_arg_ref_spec(
     RuntimeArgRefSpec const &runtime_arg_ref_spec) const {
   if (runtime_arg_ref_spec.holds<DeviceSpecific<PerDeviceFFHandle>>()) {
     return ConcreteArgSpec::create(this->runtime_arg_config.ff_handle);
-  } else if (runtime_arg_ref_spec.holds<EnableProfiling>()) {
-    return ConcreteArgSpec::create(this->runtime_arg_config.enable_profiling);
   } else if (runtime_arg_ref_spec.holds<ProfilingSettings>()) {
     return ConcreteArgSpec::create(this->runtime_arg_config.profiling_settings);
   } else {
     throw mk_runtime_error("Unhandled runtime arg ref type");
   }
+}
+
+bool are_maps_virtually_equivalent(TensorBackingMap const &map1,
+                                   TensorBackingMap const &map2) {
+  if (map1.size() != map2.size()) {
+    return false;
+  }
+
+  for (std::pair<tensor_guid_t, GenericTensorAccessorW> const &pairing : map1) {
+    if (!contains_key(map2, pairing.first)) {
+      return false;
+    }
+    GenericTensorAccessorW acc2 = map2.at(pairing.first);
+    if (!is_shape_and_dtype_equal(pairing.second, acc2)) {
+      return false;
+    }
+  }
+  return true;
 }
 
 } // namespace FlexFlow
