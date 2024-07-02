@@ -37,10 +37,10 @@ struct DeviceSpecific {
   // TODO: can modify ptr
 
 private:
-  DeviceSpecific(T* ptr, size_t device_idx = 0)
+  DeviceSpecific(T *ptr, size_t device_idx = 0)
       : ptr(ptr), device_idx(device_idx) {}
 
-  T* ptr;
+  T *ptr;
   size_t device_idx;
 };
 

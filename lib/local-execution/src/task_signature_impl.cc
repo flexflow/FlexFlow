@@ -1,5 +1,5 @@
 #include "local-execution/task_signature_impl.h"
-#include "ops/attention.h"
+#include "local-execution/ops/attention.h"
 #include "ops/batch_matmul.h"
 #include "ops/batch_norm.h"
 #include "ops/cast.h"
@@ -25,6 +25,7 @@
 #include "ops/split.h"
 #include "ops/topk.h"
 #include "ops/transpose.h"
+#include "utils/overload.h"
 
 namespace FlexFlow {
 
@@ -60,16 +61,16 @@ TaskSignatureAndImpl get_task_sig_impl(task_id_t const &task_id) {
       return {get_dropout_fwd_task_impl(), get_dropout_fwd_signature()};
     case DROPOUT_BWD_TASK_ID:
       return {get_dropout_bwd_task_impl(), get_dropout_bwd_signature()};
-    case EMBED_FWD_TASK_ID:
-      return {get_embedding_fwd_task_impl(), get_embedding_fwd_signature()};
-    case EMBED_BWD_TASK_ID:
-      return {get_embedding_bwd_task_impl(), get_embedding_bwd_signature()};
+    // case EMBED_FWD_TASK_ID:
+    //   return {get_embedding_fwd_task_impl(), get_embedding_fwd_signature()};
+    // case EMBED_BWD_TASK_ID:
+    //   return {get_embedding_bwd_task_impl(), get_embedding_bwd_signature()};
     case GATHER_INIT_TASK_ID:
       return {get_gather_init_task_impl(), get_gather_init_signature()};
     case GATHER_FWD_TASK_ID:
-      return {get_gather_fwd_task_impl(), get_embedding_fwd_signature()};
+      return {get_gather_fwd_task_impl(), get_gather_fwd_signature()};
     case GATHER_BWD_TASK_ID:
-      return {get_gather_bwd_task_impl(), get_embedding_bwd_signature()};
+      return {get_gather_bwd_task_impl(), get_gather_bwd_signature()};
     case CAST_FWD_TASK_ID:
       return {get_cast_fwd_task_impl(), get_cast_fwd_signature()};
     case CAST_BWD_TASK_ID:
@@ -181,4 +182,125 @@ TaskSignatureAndImpl get_task_sig_impl(task_id_t const &task_id) {
                                            // "type_is_unformattable" error
   }
 }
+
+std::vector<task_id_t> get_task_ids(ComputationGraphOpAttrs const &op) {
+  return op.visit<std::vector<task_id_t>>(overload{
+      [](BatchMatmulAttrs const &attrs) { return get_task_ids(attrs); },
+      [](BatchNormAttrs const &attrs) { return get_task_ids(attrs); },
+      [](CastAttrs const &attrs) { return get_task_ids(attrs); },
+      [](ConcatAttrs const &attrs) { return get_task_ids(attrs); },
+      [](Conv2DAttrs const &attrs) { return get_task_ids(attrs); },
+      [](DropoutAttrs const &attrs) { return get_task_ids(attrs); },
+      [](ElementBinaryAttrs const &attrs) { return get_task_ids(attrs); },
+      [](ElementUnaryAttrs const &attrs) { return get_task_ids(attrs); },
+      // [](EmbeddingAttrs const & attrs) {
+      //   return get_task_ids(attrs);
+      // },
+      [](FlatAttrs const &attrs) { return get_task_ids(attrs); },
+      [](GatherAttrs const &attrs) { return get_task_ids(attrs); },
+      [](LayerNormAttrs const &attrs) { return get_task_ids(attrs); },
+      [](LinearAttrs const &attrs) { return get_task_ids(attrs); },
+      [](MultiHeadAttentionAttrs const &attrs) { return get_task_ids(attrs); },
+      [](Pool2DAttrs const &attrs) { return get_task_ids(attrs); },
+      [](ReduceAttrs const &attrs) { return get_task_ids(attrs); },
+      [](ReverseAttrs const &attrs) { return get_task_ids(attrs); },
+      [](ReshapeAttrs const &attrs) { return get_task_ids(attrs); },
+      [](SplitAttrs const &attrs) { return get_task_ids(attrs); },
+      [](SoftmaxAttrs const &attrs) { return get_task_ids(attrs); },
+      [](TopKAttrs const &attrs) { return get_task_ids(attrs); },
+      [](TransposeAttrs const &attrs) { return get_task_ids(attrs); },
+      [](auto const &attrs) -> std::vector<task_id_t> {
+        throw mk_runtime_error(fmt::format("No task IDs for {}", attrs));
+      },
+  });
+}
+
+OpTaskInvocation init(ComputationGraphOpAttrs const &op) {
+  return op.visit<OpTaskInvocation>(overload{
+      [](BatchNormAttrs const &attrs) { return init(attrs); },
+      [](Conv2DAttrs const &attrs) { return init(attrs); },
+      [](DropoutAttrs const &attrs) { return init(attrs); },
+      [](ElementBinaryAttrs const &attrs) { return init(attrs); },
+      [](ElementUnaryAttrs const &attrs) { return init(attrs); },
+      [](GatherAttrs const &attrs) { return init(attrs); },
+      [](LayerNormAttrs const &attrs) { return init(attrs); },
+      [](LinearAttrs const &attrs) { return init(attrs); },
+      [](MultiHeadAttentionAttrs const &attrs) { return init(attrs); },
+      [](Pool2DAttrs const &attrs) { return init(attrs); },
+      [](ReduceAttrs const &attrs) { return init(attrs); },
+      [](ReshapeAttrs const &attrs) { return init(attrs); },
+      [](SoftmaxAttrs const &attrs) { return init(attrs); },
+      [](TopKAttrs const &attrs) { return init(attrs); },
+      [](TransposeAttrs const &attrs) { return init(attrs); },
+      [](auto const &attrs) -> OpTaskInvocation {
+        throw mk_runtime_error(fmt::format("No init function for {}", attrs));
+      },
+  });
+}
+
+OpTaskInvocation forward(ComputationGraphOpAttrs const &op) {
+  return op.visit<OpTaskInvocation>(overload{
+      [](BatchMatmulAttrs const &attrs) { return forward(attrs); },
+      [](BatchNormAttrs const &attrs) { return forward(attrs); },
+      [](CastAttrs const &attrs) { return forward(attrs); },
+      [](ConcatAttrs const &attrs) { return forward(attrs); },
+      [](Conv2DAttrs const &attrs) { return forward(attrs); },
+      [](DropoutAttrs const &attrs) { return forward(attrs); },
+      [](ElementBinaryAttrs const &attrs) { return forward(attrs); },
+      [](ElementUnaryAttrs const &attrs) { return forward(attrs); },
+      // [](EmbeddingAttrs const & attrs) {
+      //   return forward(attrs);
+      // },
+      [](FlatAttrs const &attrs) { return forward(attrs); },
+      [](GatherAttrs const &attrs) { return forward(attrs); },
+      [](LayerNormAttrs const &attrs) { return forward(attrs); },
+      [](LinearAttrs const &attrs) { return forward(attrs); },
+      [](MultiHeadAttentionAttrs const &attrs) { return forward(attrs); },
+      [](Pool2DAttrs const &attrs) { return forward(attrs); },
+      [](ReduceAttrs const &attrs) { return forward(attrs); },
+      [](ReverseAttrs const &attrs) { return forward(attrs); },
+      [](ReshapeAttrs const &attrs) { return forward(attrs); },
+      [](SplitAttrs const &attrs) { return forward(attrs); },
+      [](SoftmaxAttrs const &attrs) { return forward(attrs); },
+      [](TopKAttrs const &attrs) { return forward(attrs); },
+      [](TransposeAttrs const &attrs) { return forward(attrs); },
+      [](auto const &attrs) -> OpTaskInvocation {
+        throw mk_runtime_error(fmt::format("No forward support for {}", attrs));
+      },
+  });
+}
+
+OpTaskInvocation backward(ComputationGraphOpAttrs const &op) {
+  return op.visit<OpTaskInvocation>(overload{
+      [](BatchMatmulAttrs const &attrs) { return backward(attrs); },
+      [](BatchNormAttrs const &attrs) { return backward(attrs); },
+      [](CastAttrs const &attrs) { return backward(attrs); },
+      [](ConcatAttrs const &attrs) { return backward(attrs); },
+      [](Conv2DAttrs const &attrs) { return backward(attrs); },
+      [](DropoutAttrs const &attrs) { return backward(attrs); },
+      [](ElementBinaryAttrs const &attrs) { return backward(attrs); },
+      [](ElementUnaryAttrs const &attrs) { return backward(attrs); },
+      // [](EmbeddingAttrs const & attrs) {
+      //   return backward(attrs);
+      // },
+      [](FlatAttrs const &attrs) { return backward(attrs); },
+      [](GatherAttrs const &attrs) { return backward(attrs); },
+      [](LayerNormAttrs const &attrs) { return backward(attrs); },
+      [](LinearAttrs const &attrs) { return backward(attrs); },
+      [](MultiHeadAttentionAttrs const &attrs) { return backward(attrs); },
+      [](Pool2DAttrs const &attrs) { return backward(attrs); },
+      [](ReduceAttrs const &attrs) { return backward(attrs); },
+      [](ReverseAttrs const &attrs) { return backward(attrs); },
+      [](ReshapeAttrs const &attrs) { return backward(attrs); },
+      [](SplitAttrs const &attrs) { return backward(attrs); },
+      [](SoftmaxAttrs const &attrs) { return backward(attrs); },
+      [](TopKAttrs const &attrs) { return backward(attrs); },
+      [](TransposeAttrs const &attrs) { return backward(attrs); },
+      [](auto const &attrs) -> OpTaskInvocation {
+        throw mk_runtime_error(
+            fmt::format("No backward support for {}", attrs));
+      },
+  });
+}
+
 } // namespace FlexFlow

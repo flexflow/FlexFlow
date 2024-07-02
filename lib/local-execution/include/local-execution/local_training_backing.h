@@ -38,8 +38,6 @@ private:
   LocalSlotsBacking local_slots_backing;
 };
 
-std::vector<task_id_t> get_task_ids(ComputationGraphOpAttrs const &);
-
 } // namespace FlexFlow
 
 #endif

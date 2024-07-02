@@ -8,7 +8,7 @@ namespace FlexFlow {
 struct slot_id : public strong_typedef<slot_id, int> {
   using strong_typedef::strong_typedef;
 
-  slot_id(int);
+  slot_id(int value) : strong_typedef(value){};
 };
 
 } // namespace FlexFlow

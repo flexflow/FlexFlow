@@ -10,6 +10,5 @@ ff_add_test_executable(
     utils-test-common
     local-execution
     kernels
-    kernels-tests
     op-attrs
 )

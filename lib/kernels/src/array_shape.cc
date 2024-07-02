@@ -72,4 +72,11 @@ size_t get_volume(ArrayShape const &shape) {
   return shape.get_volume();
 }
 
+TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
+  std::vector<size_t> sizes(shape.dims.size());
+  std::reverse_copy(shape.dims.begin(), shape.dims.end(), sizes.begin());
+  return TensorShape{TensorDims{FFOrdered<size_t>(sizes.begin(), sizes.end())},
+                     dtype};
+}
+
 } // namespace FlexFlow

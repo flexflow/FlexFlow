@@ -65,22 +65,22 @@ static DeviceSpecific<DeviceStates>
   }
 
   Pool2DPerDeviceState per_device_state = init_kernel(handle,
-                                           attrs.activation,
-                                           input_w,
-                                           input_h,
-                                           input_c,
-                                           input_n,
-                                           output_w,
-                                           output_h,
-                                           output_c,
-                                           output_n,
-                                           pad_h,
-                                           pad_w,
-                                           attrs.kernel_h,
-                                           attrs.kernel_w,
-                                           attrs.stride_h,
-                                           attrs.stride_w,
-                                           attrs.pool_type);
+                                                      attrs.activation,
+                                                      input_w,
+                                                      input_h,
+                                                      input_c,
+                                                      input_n,
+                                                      output_w,
+                                                      output_h,
+                                                      output_c,
+                                                      output_n,
+                                                      pad_h,
+                                                      pad_w,
+                                                      attrs.kernel_h,
+                                                      attrs.kernel_w,
+                                                      attrs.stride_h,
+                                                      attrs.stride_w,
+                                                      attrs.pool_type);
 
   return DeviceSpecific<DeviceStates>::create(per_device_state);
 }

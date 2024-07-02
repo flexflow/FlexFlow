@@ -28,8 +28,6 @@ TensorShape make_float_tensor_shape_from_legion_dims(FFOrdered<size_t> dims);
 
 TensorShape make_double_tensor_shape_from_legion_dims(FFOrdered<size_t> dims);
 
-PerDeviceFFHandle get_mock_per_device_ff_handle();
-
 template <typename T>
 std::vector<T> load_data_to_host_from_device(GenericTensorAccessorR accessor) {
   int volume = accessor.shape.get_volume();

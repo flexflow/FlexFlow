@@ -78,4 +78,18 @@ void OpTaskSignature::add_from_slot_spec(OpTensorSlotSpec const &spec) {
   this->op_tensor_slots.insert(spec);
 }
 
+OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd) {
+  // TODO
+  return fwd;
+}
+
+std::unordered_set<OpTensorSlotSpec> OpTaskSignature::get_tensor_slots() const {
+  return this->op_tensor_slots;
+}
+
+std::unordered_map<slot_id, std::type_index>
+    OpTaskSignature::get_arg_types() const {
+  return this->task_arg_types;
+}
+
 } // namespace FlexFlow

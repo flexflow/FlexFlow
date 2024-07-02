@@ -94,27 +94,7 @@ struct OpTaskSignature {
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
     OpTaskSignature, type, return_value, task_arg_types, op_tensor_slots);
 
-template <typename F>
-void register_task(task_id_t,
-                   std::string const &name,
-                   OpTaskSignature const &,
-                   F const &func);
-
-template <typename F>
-void register_task(task_id_t,
-                   std::string const &name,
-                   OpTaskSignature const &,
-                   F const &func,
-                   F const &cpu_func);
-
-template <task_id_t>
-OpTaskSignature init_signature();
-
-template <task_id_t>
-OpTaskSignature fwd_signature();
-
-template <task_id_t>
-OpTaskSignature bwd_signature();
+OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 
 } // namespace FlexFlow
 

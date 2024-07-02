@@ -1,19 +1,20 @@
 #include "doctest/doctest.h"
-#include "kernels/local_allocator.h"
-#include "kernels/test/src/test_utils.h"
+#include "kernels/local_cuda_allocator.h"
 #include "local-execution/local_cost_estimator.h"
 #include "pcg/computation_graph_builder.h"
+#include "test_utils.h"
 
 namespace FlexFlow {
 
 TEST_SUITE(FF_CUDA_TEST_SUITE) {
   TEST_CASE("Local Cost Estimator") {
     // local backing initialization
-    RuntimeArgConfig runtime_arg_config = RuntimeArgConfig{
-        DeviceSpecific<PerDeviceFFHandle>::create(get_per_device_ff_handle()),
-        EnableProfiling::YES,
-        ProfilingSettings{/*warmup_iters=*/0,
-                          /*measure_iters=*/1}};
+    RuntimeArgConfig runtime_arg_config =
+        RuntimeArgConfig{DeviceSpecific<PerDeviceFFHandle>::create(
+                             get_mock_per_device_ff_handle()),
+                         EnableProfiling::YES,
+                         ProfilingSettings{/*warmup_iters=*/0,
+                                           /*measure_iters=*/1}};
 
     LocalCostEstimator cost_estimator = LocalCostEstimator{runtime_arg_config};
 

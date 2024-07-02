@@ -173,8 +173,7 @@ OpTaskSignature get_batch_matmul_fwd_signature() {
 }
 
 OpTaskSignature get_batch_matmul_bwd_signature() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<BATCHMATMUL_FWD_TASK_ID>());
+  OpTaskSignature bwd = infer_bwd_signature(get_batch_matmul_fwd_signature());
 
   return bwd;
 }

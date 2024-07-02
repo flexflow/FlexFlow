@@ -1,8 +1,8 @@
 #include "doctest/doctest.h"
-#include "kernels/local_allocator.h"
-#include "kernels/test/src/test_utils.h"
+#include "kernels/local_cuda_allocator.h"
+
 #include "local-execution/local_cost_estimator.h"
-#include "local-execution/src/ops/attention.h"
+#include "local-execution/ops/attention.h"
 #include "local-execution/task_signature_impl.h"
 #include "pcg/computation_graph_builder.h"
 
@@ -43,6 +43,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           CHECK(correct == task_registry.task_mapping);
         }
       }
+
       SUBCASE("Fwd task") {
         task_registry.register_task(
             ATTENTION_FWD_TASK_ID, mock_layer_guid, attrs);
@@ -166,6 +167,5 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
   }
-}
 
 } // namespace FlexFlow

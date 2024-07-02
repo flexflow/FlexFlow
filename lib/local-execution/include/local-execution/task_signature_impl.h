@@ -3,7 +3,9 @@
 
 #include "local-execution/device_specific.h"
 #include "local-execution/device_states.h"
+#include "local-execution/op_task_invocation.h"
 #include "local-execution/tasks.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 #include "task_argument_accessor.h"
 #include "utils/variant.h"
 
@@ -17,18 +19,25 @@ struct TaskSignatureAndImpl {
   TaskImplFunction impl_function;
   OpTaskSignature task_signature;
 
-  bool operator==(TaskSignatureAndImpl const & other) const {
-    return std::addressof(this->impl_function) == std::addressof(other.impl_function) && 
-            this->task_signature == other.task_signature;
+  bool operator==(TaskSignatureAndImpl const &other) const {
+    return std::addressof(this->impl_function) ==
+               std::addressof(other.impl_function) &&
+           this->task_signature == other.task_signature;
   }
 
-  bool operator!=(TaskSignatureAndImpl const & other) const {
-   return std::addressof(this->impl_function) != std::addressof(other.impl_function) || 
-            this->task_signature != other.task_signature;
+  bool operator!=(TaskSignatureAndImpl const &other) const {
+    return std::addressof(this->impl_function) !=
+               std::addressof(other.impl_function) ||
+           this->task_signature != other.task_signature;
   }
 };
 
 TaskSignatureAndImpl get_task_sig_impl(task_id_t const &);
+std::vector<task_id_t> get_task_ids(ComputationGraphOpAttrs const &);
+
+OpTaskInvocation init(ComputationGraphOpAttrs const &);
+OpTaskInvocation forward(ComputationGraphOpAttrs const &);
+OpTaskInvocation backward(ComputationGraphOpAttrs const &);
 
 } // namespace FlexFlow
 

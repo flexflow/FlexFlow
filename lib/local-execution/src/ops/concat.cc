@@ -97,8 +97,7 @@ OpTaskSignature get_concat_fwd_signature() {
 }
 
 OpTaskSignature get_concat_bwd_signature() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<CONCAT_FWD_TASK_ID>());
+  OpTaskSignature bwd = infer_bwd_signature(get_concat_fwd_signature());
 
   return bwd;
 }

@@ -88,11 +88,6 @@ public:
   OpTaskBinding binding;
 };
 
-OpTaskInvocation init(ComputationGraphOpAttrs const &);
-OpTaskInvocation forward(ComputationGraphOpAttrs const &);
-OpTaskInvocation backward(ComputationGraphOpAttrs const &);
-
-OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd);
 
 bool is_invocation_valid(OpTaskSignature const &sig,

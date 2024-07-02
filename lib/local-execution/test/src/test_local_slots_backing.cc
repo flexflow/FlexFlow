@@ -1,16 +1,16 @@
 #include "doctest/doctest.h"
-#include "kernels/local_allocator.h"
-#include "kernels/test/src/test_utils.h"
 #include "local-execution/local_cost_estimator.h"
+#include "local-execution/local_cpu_allocator.h"
 #include "local-execution/local_slots_backing.h"
 #include "pcg/computation_graph_builder.h"
+#include "test_utils.h"
 
 namespace FlexFlow {
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Local Slots Backing -- Attention Op") {
     // allocate input memory
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = create_local_cpu_memory_allocator();
     int embed_dim = 32;
     int num_heads = 10;
 

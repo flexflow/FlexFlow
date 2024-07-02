@@ -1,15 +1,14 @@
 #include "doctest/doctest.h"
-#include "kernels/local_allocator.h"
-#include "kernels/test/src/test_utils.h"
+#include "local-execution/local_cpu_allocator.h"
 #include "local-execution/local_task_argument_accessor.h"
-#include "local-execution/src/ops/attention.h"
+#include "local-execution/ops/attention.h"
 #include "local-execution/task_signature_impl.h"
 
 namespace FlexFlow {
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Local Task Argument Accessor") {
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = create_local_cpu_memory_allocator();
     int embed_dim = 32;
     int num_heads = 10;
 

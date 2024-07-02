@@ -67,6 +67,30 @@ int get_vSize(MultiHeadAttentionInputs const &) {
   NOT_IMPLEMENTED();
 }
 
+int get_kvSeqLength(MultiHeadAttentionParallelInputs const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_kvSeqLength(MultiHeadAttentionInputs const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_qoSeqLength(MultiHeadAttentionParallelInputs const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_qoSeqLength(MultiHeadAttentionInputs const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_num_samples(MultiHeadAttentionParallelInputs const &) {
+  NOT_IMPLEMENTED();
+}
+
+int get_num_samples(MultiHeadAttentionInputs const &) {
+  NOT_IMPLEMENTED();
+}
+
 tl::expected<TensorShape, std::string>
     get_output_shape(MultiHeadAttentionAttrs const &attrs,
                      TensorShape const &input_q,
