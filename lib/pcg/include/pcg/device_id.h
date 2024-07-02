@@ -10,7 +10,7 @@ namespace FlexFlow {
 
 device_id_t operator+(device_id_t, size_t);
 
-DeviceType get_device_type(device_id_t);
+DeviceType get_device_type(device_id_t const &device_id);
 gpu_id_t unwrap_gpu(device_id_t);
 cpu_id_t unwrap_cpu(device_id_t);
 

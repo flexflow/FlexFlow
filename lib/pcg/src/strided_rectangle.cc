@@ -15,12 +15,20 @@ namespace FlexFlow {
 /*   return idx; */
 /* } */
 
-size_t get_num_dims(StridedRectangle const &) {
-  NOT_IMPLEMENTED();
+size_t get_num_dims(StridedRectangle const &rect) {
+  return rect.sides.size();
 }
 
-size_t get_side_at_idx(StridedRectangle const &) {
-  NOT_IMPLEMENTED();
+num_points_t get_num_points(StridedRectangle const &rect) {
+  int num = 1;
+  for (const StridedRectangleSide& side : rect.sides) {
+    num *= side.num_points.unwrapped;
+  }
+  return num_points_t{num};
+}
+
+StridedRectangleSide get_side_at_idx(StridedRectangle const &rect, ff_dim_t const &idx) {
+  return rect.sides.at(idx);
 }
 
 } // namespace FlexFlow
