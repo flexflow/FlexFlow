@@ -3,8 +3,6 @@ import os, torch, argparse
 from alignment.align_test_utils import *
 from transformers import AutoConfig
 from tqdm import tqdm
-from enum import Enum
-from dataclasses import dataclass
 
 
 def get_model_config(model_name):
@@ -36,6 +34,7 @@ class LllamaAlignmentTest(AlignmentTest):
         self.intermediate_size = self.hf_config.intermediate_size
         self.num_attention_heads = self.hf_config.num_attention_heads
         self.num_key_value_heads = self.num_attention_heads
+        self.projsize = self.hidden_size // self.num_attention_heads
         self.tp_degree = tp_degree
 
         self.num_tokens = None
@@ -150,59 +149,10 @@ class LllamaAlignmentTest(AlignmentTest):
                 f_version = f_version.replace("lora_A", "lora").replace("lora_B", "lora")
             return f_version
         
-        class TPType(Enum):
-            REPLICATE = 0
-            PARTITION = 1
-            TO_REDUCE = 2
-        
-        def replace_value(lst, old_value, new_value):
-            occurrences = lst.count(old_value)
-            if occurrences == 0:
-                raise ValueError(f"Value {old_value} not found in the list.")
-            elif occurrences > 1:
-                raise ValueError(f"Multiple instances of {old_value} found in the list.")
-            else:
-                index = lst.index(old_value)
-                lst[index] = new_value
-                return lst
-        
-        def truncate_dimension(tensor, old_dim, new_dim):
-            # Check if old_dim appears exactly once in the tensor's shape
-            shape = tensor.shape
-            dim_occurrences = shape.count(old_dim)
-            
-            if dim_occurrences == 0:
-                raise ValueError(f"Dimension {old_dim} not found in the tensor shape.")
-            elif dim_occurrences > 1:
-                raise ValueError(f"Multiple instances of dimension {old_dim} found in the tensor shape.")
-            
-            # Check if new_dim is less than or equal to old_dim
-            if new_dim > old_dim:
-                raise ValueError(f"New dimension ({new_dim}) must be less than or equal to old dimension ({old_dim}).")
-            
-            # Find the index of the dimension to truncate
-            dim_index = shape.index(old_dim)
-            
-            # Create a slice object for truncation
-            slices = [slice(None)] * len(shape)
-            slices[dim_index] = slice(0, new_dim)
-            
-            # Truncate the tensor
-            truncated_tensor = tensor[tuple(slices)]
-            
-            return truncated_tensor
-        
-        @dataclass
-        class TensorComparisonIdxs:
-            hf_tensor_type: str
-            ff_tensor_type: str
-            hf_tensor_idx: int
-            ff_tensor_idx: int
-        
         def get_hf_tensor(hf_tensor_name, tensor_comparison_idx):
             hf_tensor_filename = f"{hf_tensor_name}.{tensor_comparison_idx.hf_tensor_type}_{tensor_comparison_idx.hf_tensor_idx}"
             hf_tensor_path = os.path.join(hf_fwd_folder, hf_tensor_filename)
-            print(hf_tensor_path)
+
             if not os.path.isfile(hf_tensor_path):
                 raise FileNotFoundError(f"File '{hf_tensor_path}' not found")
             hf_tensor = torch.load(hf_tensor_path, map_location='cpu')
@@ -224,7 +174,7 @@ class LllamaAlignmentTest(AlignmentTest):
                 # get number of tokens
                 ff_tensor = np.loadtxt(ff_tensor_path, delimiter=',')
                 self.ff_batch_size = ff_tensor.shape[0]
-            print(ff_tensor_path)
+
             ff_shape = replace_value(ff_shape, self.num_tokens, self.ff_batch_size)
             ff_tensors = [load_ff_tensor(ff_tensor_path.replace("shard_0", f"shard_{tp_idx}"), ff_shape) for tp_idx in range(self.tp_degree)]
             if self.tp_degree > 1:
@@ -261,7 +211,7 @@ class LllamaAlignmentTest(AlignmentTest):
                 raise e
 
         print(f"-- FWD pass {step_idx}--")
-        
+
         # Embedding layer
         hf_tensor_name = "embed_tokens"
         ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
@@ -377,9 +327,273 @@ class LllamaAlignmentTest(AlignmentTest):
         ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
         compare(hf_tensor, ff_tensor, label="LM head output", tolerance=1e-4)
 
+    def check_bwd_pass(self, step_idx=0):
+        if not self.num_tokens or not self.ff_batch_size:
+            raise ValueError("Number of tokens and batch size must be set before running backward pass check")
+        hf_bwd_folder = os.path.join(hf_path, "bwd", f"step_{step_idx}")
+        ff_bwd_folder = os.path.join(ff_path, "bwd", f"step_{step_idx}", "shard_0")
         
-    def check_bwd_pass(self):
-        raise NotImplementedError()
+        def convert_hf_filename_to_ff(hf_filename):
+            if hf_filename == "embed_tokens":
+                f_version = f"layers.0.embed_tokens"
+            elif hf_filename == "lm_head" or hf_filename == "norm":
+                f_version = f"layers.{self.num_layers-1}.{hf_filename}"
+            else:
+                assert hf_filename.startswith("layers.")
+                layernum = hf_filename.split("layers.")[1].split(".")[0]
+                f_version = f"layers.{layernum}."
+                f_version += hf_filename.replace(".base_layer", "").replace(".default", "")
+                # right now, attention in flexflow is done with a single operator, so there is a single output file without the projection suffix
+                # f_version = f_version.replace(".q_proj", "").replace(".k_proj", "").replace(".v_proj", "").replace(".o_proj", "")
+                # lora in HuggingFace is split into A and B operators, in FF we use a single operator.
+                f_version = f_version.replace("lora_A", "lora").replace("lora_B", "lora")
+            return f_version
+        
+        def get_hf_tensor(hf_tensor_name, tensor_comparison_idx):
+            hf_tensor_filename = f"{hf_tensor_name}.{tensor_comparison_idx.hf_tensor_type}_{tensor_comparison_idx.hf_tensor_idx}"
+            hf_tensor_path = os.path.join(hf_bwd_folder, hf_tensor_filename)
+
+            if not os.path.isfile(hf_tensor_path):
+                raise FileNotFoundError(f"File '{hf_tensor_path}' not found")
+            hf_tensor = torch.load(hf_tensor_path, map_location='cpu')
+            return hf_tensor
+        
+        def get_ff_tensor(ff_tensor_name, tensor_comparison_idx, hf_shape, tp_type=TPType.REPLICATE, pre=False):
+            ff_tensor_suffix = f".{tensor_comparison_idx.ff_tensor_type}" if len(tensor_comparison_idx.ff_tensor_type) > 0 else ""
+            ff_tensor_idx_suffix = f"_{tensor_comparison_idx.ff_tensor_idx}" if tensor_comparison_idx.ff_tensor_idx is not None else ""
+            ff_tensor_filename = f"{ff_tensor_name}{ff_tensor_suffix}{ff_tensor_idx_suffix}"
+            
+            ff_tensor_path = os.path.join(ff_bwd_folder, ff_tensor_filename)
+            if pre:
+                ff_tensor_path = ff_tensor_path.replace(f"step_{step_idx}", f"step_{step_idx}_pre")
+            if not os.path.isfile(ff_tensor_path):
+                raise FileNotFoundError(f"File '{ff_tensor_path}' not found")
+
+            ff_shape = list(hf_shape)[::-1]
+            if tp_type == TPType.PARTITION:
+                ff_shape[0] //= self.tp_degree
+
+            # exception: intermediate attention tensors
+            intermediate_attention_tensor = (
+                "self_attn" in ff_tensor_name and 
+                not (
+                    ff_tensor_name.endswith(".self_attn") and
+                    (
+                        tensor_comparison_idx.ff_tensor_type == "output_gradient" or
+                        tensor_comparison_idx.ff_tensor_type == "input_gradient"
+                    )
+                )
+            )
+            if not intermediate_attention_tensor:
+                ff_shape = replace_value(ff_shape, self.num_tokens, self.ff_batch_size)
+            
+            ff_tensors = [load_ff_tensor(ff_tensor_path.replace("shard_0", f"shard_{tp_idx}"), ff_shape) for tp_idx in range(self.tp_degree)]
+            if self.tp_degree > 1:
+                # if replicate, check that they are identical
+                if tp_type == TPType.REPLICATE:
+                    assert(are_np_arrays_identical(ff_tensors))
+                    ff_tensor = ff_tensors[0]
+                # if partition, concatenate along the partition dimension
+                elif tp_type == TPType.PARTITION:
+                    ff_tensor = np.concatenate(ff_tensors, axis=0)
+                # if to_reduce, sum along the partition dimension
+                elif tp_type == TPType.TO_REDUCE:
+                    ff_tensor = np.sum(ff_tensors, axis=0)
+            else:
+                ff_tensor = ff_tensors[0]
+            ff_tensor = torch.from_numpy(ff_tensor)
+            if not intermediate_attention_tensor:
+                ff_tensor = truncate_dimension(ff_tensor, self.ff_batch_size, self.num_tokens)
+            return ff_tensor
+
+        def compare(hf_tensor, ff_tensor, label="", additional_ff_tensor=None, tolerance=1e-5):
+            ff_tensor = ff_tensor.to(hf_tensor.dtype)
+            hf_tensor = hf_tensor.T
+            if additional_ff_tensor is not None:
+                additional_ff_tensor = additional_ff_tensor.to(hf_tensor.dtype)
+                ff_tensor = ff_tensor - additional_ff_tensor
+            try:
+                # torch.testing.assert_close(hf_tensor, ff_tensor, rtol=rtol, atol=tolerance)
+                if not np.allclose(hf_tensor.numpy(), ff_tensor.numpy(), atol=tolerance):
+                    mismatches = np.where(~np.isclose(hf_tensor, ff_tensor, atol=tolerance))[0]
+                    print(f"Pct mismatch {label}: {100.0*(np.prod(mismatches.shape) / ff_tensor.numel()):.3f}%")
+                    assert(np.prod(mismatches.shape) <= .05 * ff_tensor.numel())
+            except Exception as e:
+                print(f"Error in comparison {label}:\n{e}\n")
+                print("HF tensor:")
+                print(hf_tensor.squeeze())
+                print("FF tensor:")
+                print(ff_tensor.squeeze())
+                raise e
+        
+        print(f"-- BWD pass {step_idx}--")
+        
+        # LM head
+        hf_tensor_name = "lm_head"
+        ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+        input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="LM head gradient output")
+        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="LM head gradient input")
+
+        # Norm
+        hf_tensor_name = "norm"
+        ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+        input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="Norm gradient output")
+        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="LM head gradient input")
+
+        # Transformers blocks
+        for i in range(self.num_layers-1, -1, -1):
+            # W2 (down_proj) output
+            hf_tensor_name = f"layers.{i}.mlp.down_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_tensor, ff_tensor, label=f"W2 {i} gradient output", tolerance=1e-5)
+
+            # LoRA_B
+            hf_tensor_name = f"layers.{i}.mlp.down_proj.lora_B.default"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_tensor, ff_tensor, label=f"LoRA_B {i} gradient output", tolerance=1e-5)
+
+            # LoRA_A
+            hf_tensor_name = f"layers.{i}.mlp.down_proj.lora_A.default"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"LoRA_A {i} gradient input", tolerance=1e-5)
+
+            # W2 (down_proj) input
+            hf_tensor_name = f"layers.{i}.mlp.down_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"W2 {i} gradient input", tolerance=1e-5)
+            
+            # W2 input (HF) and SigmoidSiluMulti output (FF)
+            hf_w2_input = hf_tensor.clone()
+            ff_tensor_name = f"layers.{i}.SigmoidSiluMulti"
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_w2_input, ff_tensor, label=f"HF W2 {i} output and FF SSM output", tolerance=1e-5)
+
+            # W1 (gate_proj) output
+            hf_tensor_name = f"layers.{i}.mlp.gate_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"W1 {i} gradient output", tolerance=1e-5)
+            # HF W1 in = FF W1 in - HF W1 in (pre)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            ff_tensor_pre = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION, pre=True)
+            compare(hf_tensor, ff_tensor, additional_ff_tensor=ff_tensor_pre, label=f"W1 {i} gradient input", tolerance=1e-5)
+
+            # W3 (up_proj)
+            hf_tensor_name = f"layers.{i}.mlp.up_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"W3 {i} gradient output", tolerance=1e-5)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"W3 {i} gradient input", tolerance=1e-5)
+
+            # Attn O-proj
+            hf_tensor_name = f"layers.{i}.self_attn.o_proj"
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn"
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_tensor, ff_tensor, label=f"Attn O-proj {i} gradient output", tolerance=1e-5)
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn.o_proj"
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"Attn O-proj {i} gradient input", tolerance=1e-5)
+
+            # V-proj grads
+            # FF shape: [num_tokens, qProjSize*num_heads]
+            hf_tensor_name = f"layers.{i}.self_attn.v_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            mixed_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, mixed_comparison)
+            hf_tensor = hf_tensor.squeeze().T
+            ff_tensor = get_ff_tensor(ff_tensor_name, mixed_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"V-proj {i} gradient input", tolerance=1e-5)
+
+            # K-proj grads
+            # FF shape: (num_tokens, qProjSize, num_heads)
+            hf_tensor_name = f"layers.{i}.self_attn.k_proj"
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn"
+            k_proj_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="devkproj", hf_tensor_idx=0, ff_tensor_idx=None)
+            hf_tensor = get_hf_tensor(hf_tensor_name, k_proj_comparison)
+            hf_tensor = hf_tensor.squeeze().view(self.num_tokens, self.num_attention_heads, self.projsize).transpose(1, 2).contiguous()
+            hf_tensor = hf_tensor.T
+            ff_tensor = get_ff_tensor(ff_tensor_name, k_proj_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"K-proj {i} gradient input", tolerance=1e-5)
+            
+            # Q-proj grads
+            # FF shape (devQKVPRojArray): (num_tokens, qProjSize, num_heads, 3)
+            # Q-proj out grad: devQKVPRojArray[:,:,:,0]
+            hf_tensor_name = f"layers.{i}.self_attn.q_proj"
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn.devQKVPRojArray"
+            q_proj_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="", hf_tensor_idx=0, ff_tensor_idx=None)
+            hf_tensor = get_hf_tensor(hf_tensor_name, q_proj_comparison)
+            hf_tensor = hf_tensor.view(self.num_tokens, self.num_attention_heads, self.projsize).transpose(1, 2).contiguous().T
+            augmented_hf_tensor_shape = torch.Size([3]+list(hf_tensor.size()))
+            ff_tensor = get_ff_tensor(ff_tensor_name, q_proj_comparison, augmented_hf_tensor_shape, tp_type=TPType.PARTITION)[:,:,:,0]
+            compare(hf_tensor, ff_tensor, label=f"Q-proj {i} gradient input", tolerance=1e-5)
+            
+            # FF Attn input with HF layernorm out
+            hf_tensor_name = f"layers.{i}.input_layernorm"
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn"
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            compare(hf_tensor, ff_tensor, label=f"Attn input {i} gradient input", tolerance=1e-5)
+
+            if i > 0:
+                # FF attn input with FF layernorm out 1
+                attn_input = ff_tensor.clone()
+                ff_tensor_name = f"layers.{i}.layers.{i}.input_layernorm"
+                _output_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
+                input_layernorm_out1 = get_ff_tensor(ff_tensor_name, _output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+                torch.testing.assert_close(attn_input, input_layernorm_out1, rtol=1.3e-6, atol=1e-5)
+
+                # Input layernorm
+                
+                hf_tensor_name = f"layers.{i}.input_layernorm"
+                ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+                input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+                ff_in1_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
+                input_layernorm0 = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+                input_layernorm1 = get_ff_tensor(ff_tensor_name, ff_in1_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+                torch.testing.assert_close(input_layernorm0, input_layernorm1, rtol=1.3e-6, atol=1e-5)
+                hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+                # if i > 1:
+                #     compare(hf_tensor, input_layernorm1, label=f"Input layernorm {i} gradient input", tolerance=1e-5)
+
     def check_step(self, step_idx):
         raise NotImplementedError()
 
@@ -621,7 +835,7 @@ def check_llama_bwd_pass(hf_config, tot_num_layers = 12, step_idx=0):
         compare_tensors_difference(hf_BWD_w1_in, ff_BWD_w1_in, ff_BWD_w1_in_pre)
         compare_tensors(hf_BWD_w3_out, ff_BWD_w3_out)
         compare_tensors(hf_BWD_w3_in, ff_BWD_w3_in)
-        compare_tensors(hf_BWD_w1_out, ff_BWD_w1_out)
+        # compare_tensors(hf_BWD_w1_out, ff_BWD_w1_out)
         
         print("-- Attention --")
         num_tokens = 24
@@ -708,6 +922,7 @@ if __name__ == "__main__":
     llama_alignment = LllamaAlignmentTest(args.model_name, tp_degree=args.tensor_parallelism_degree)
     # llama_alignment.check_weights_alignment()
     llama_alignment.check_fwd_pass()
+    llama_alignment.check_bwd_pass()
     # hf_config = get_model_config(args.model_name)
 
     # check_weights_alignment(num_layers=args.num_layers)

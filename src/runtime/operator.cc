@@ -18,9 +18,13 @@ size_t Op::get_params_hash() const {
       get_operator_type_name(this->op_type));
 }
 
-fs::path get_dst_folder(const std::string& subdir, int step_idx, int shard_idx, bool before_kernel) {
+fs::path get_dst_folder(std::string const &subdir,
+                        int step_idx,
+                        int shard_idx,
+                        bool before_kernel) {
   std::vector<std::string> debug_subdirs = {"fwd", "bwd", "optim", "weights"};
-  assert(std::find(debug_subdirs.begin(), debug_subdirs.end(), subdir) != debug_subdirs.end());
+  assert(std::find(debug_subdirs.begin(), debug_subdirs.end(), subdir) !=
+         debug_subdirs.end());
   std::string step_substr = "step_" + std::to_string(step_idx);
   if (before_kernel) {
     step_substr += "_pre";
@@ -32,7 +36,8 @@ fs::path get_dst_folder(const std::string& subdir, int step_idx, int shard_idx, 
   wordfree(&p);
   fs::path debug_dir = debug_dir_;
   assert(fs::is_directory(debug_dir));
-  fs::path dst_folder = debug_dir / subdir / step_substr / ("shard_" + std::to_string(shard_idx));
+  fs::path dst_folder =
+      debug_dir / subdir / step_substr / ("shard_" + std::to_string(shard_idx));
   fs::create_directories(dst_folder);
   return dst_folder;
 }

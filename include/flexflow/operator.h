@@ -7,8 +7,8 @@
 #include "flexflow/machine_view.h"
 #include "flexflow/parallel_tensor.h"
 #include "flexflow/utils/dot/record_formatter.h"
-#include <vector>
 #include <filesystem>
+#include <vector>
 namespace fs = std::filesystem;
 
 #include <sys/stat.h>
@@ -31,7 +31,10 @@ enum class MappingRecordType { INPUT_OUTPUT, INPUT_WEIGHT };
 
 enum class MappingOperation { PARTITION, REPLICATE };
 
-fs::path get_dst_folder(const std::string& subdir, int step_idx = 0, int shard_idx = 0, bool before_kernel=false);
+fs::path get_dst_folder(std::string const &subdir,
+                        int step_idx = 0,
+                        int shard_idx = 0,
+                        bool before_kernel = false);
 
 /** @brief  A class to keep track of a dimension relation between two tensors
  * used by an operator.
@@ -277,14 +280,18 @@ public:
     // build the path to save the tensor
     fs::path dst_filepath;
     if (fwd_pass) {
-      dst_filepath = get_dst_folder("fwd", m->decoding_step, shard_id, before_kernel);
+      dst_filepath =
+          get_dst_folder("fwd", m->decoding_step, shard_id, before_kernel);
     } else {
-      dst_filepath = get_dst_folder("bwd", m->bwd_step, shard_id, before_kernel);
+      dst_filepath =
+          get_dst_folder("bwd", m->bwd_step, shard_id, before_kernel);
     }
     if (m->layer_guid.model_id > 0) {
       assert(false && "Model ID > 0 not supported yet");
     }
-    std::string layername = "layers." + std::to_string(m->layer_guid.transformer_layer_id) + "." + op_name_without_uid;
+    std::string layername = "layers." +
+                            std::to_string(m->layer_guid.transformer_layer_id) +
+                            "." + op_name_without_uid;
     dst_filepath /= layername;
 
     // save batch config, if passed
@@ -320,13 +327,17 @@ public:
         assert(false && "Tensor data type not supported");
       }
     }
-    
+
     // only dump the weights in the forward pass, at the first step
-    // note that we do not save the weight gradients, since we only support finetuning LoRA weights, which are not FF tensors.
+    // note that we do not save the weight gradients, since we only support
+    // finetuning LoRA weights, which are not FF tensors.
     if (fwd_pass && m->decoding_step == 0) {
-      fs::path dst_filepath_weights = get_dst_folder("weights", m->decoding_step, shard_id, before_kernel) / layername;
+      fs::path dst_filepath_weights =
+          get_dst_folder("weights", m->decoding_step, shard_id, before_kernel) /
+          layername;
       for (int i = 0; i < weight_tensors.size(); i++) {
-        std::string filename = dst_filepath_weights.string() + ".weight_" + std::to_string(i);
+        std::string filename =
+            dst_filepath_weights.string() + ".weight_" + std::to_string(i);
         if (weight_tensors[i].data_type == DT_FLOAT) {
           save_tensor(weight_tensors[i].get_float_ptr(),
                       weight_tensors[i].domain.get_volume(),
@@ -348,7 +359,7 @@ public:
         }
       }
     }
-    
+
     // save all outputs
     for (int i = 0; i < output_tensors.size(); i++) {
       std::string filename = dst_filepath.string() + ".output_";

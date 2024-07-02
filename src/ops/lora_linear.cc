@@ -275,7 +275,12 @@ void LoraLinear::init_inference(
 }
 
 template <typename DT>
-void load_peft_from_file(DT *ptr, size_t num_rows, size_t num_columns, int num_shards, int shard_id, std::string filepath) {
+void load_peft_from_file(DT *ptr,
+                         size_t num_rows,
+                         size_t num_columns,
+                         int num_shards,
+                         int shard_id,
+                         std::string filepath) {
   std::ifstream in(filepath, std::ios::in | std::ios::binary);
   if (!in.good()) {
     printf("Could not open file: %s\n", filepath.c_str());
@@ -299,13 +304,15 @@ void load_peft_from_file(DT *ptr, size_t num_rows, size_t num_columns, int num_s
   size_t total_size_read = 0;
   for (int i = 0; i < num_columns; ++i) {
     in.seekg((i * num_rows + offset) * sizeof(DT));
-    in.read(reinterpret_cast<char *>(host_array.data() + i * chunk_size), chunk_size * sizeof(DT));
+    in.read(reinterpret_cast<char *>(host_array.data() + i * chunk_size),
+            chunk_size * sizeof(DT));
     total_size_read += in.gcount();
   }
   // Check weight shard size
   size_t expected_data_size = chunk_size * num_columns * sizeof(DT);
   if (total_size_read != expected_data_size) {
-    printf("load weight data error: expected %lu bytes, got: %lu bytes, data size: %lu\n",
+    printf("load weight data error: expected %lu bytes, got: %lu bytes, data "
+           "size: %lu\n",
            expected_data_size,
            total_size_read,
            sizeof(DT));
@@ -357,7 +364,8 @@ OpMeta *LoraLinear::init_task(Task const *task,
   int shard_id = task->index_point.point_data[0];
   int num_dims = lora->inputs[0]->num_dims;
   assert(in_dim == lora->inputs[0]->dims[0].size / num_shards);
-  assert(out_dim == lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree);
+  assert(out_dim ==
+         lora->inputs[1]->dims[0].size / lora->inputs[1]->dims[0].degree);
 
   DataType dt = m->input_type[0];
   assert(dt == m->input_type[1]);
@@ -389,7 +397,8 @@ OpMeta *LoraLinear::init_task(Task const *task,
 
     int w0_num_elements = rank * in_dim;
     int w1_num_elements = rank * out_dim;
-    // values below represent total weight sizes before sharding. Lora B is not sharded.
+    // values below represent total weight sizes before sharding. Lora B is not
+    // sharded.
     int lora_A_num_rows = in_dim * num_shards;
     int lora_A_num_cols = rank;
     int lora_B_num_rows = rank;
@@ -421,30 +430,50 @@ OpMeta *LoraLinear::init_task(Task const *task,
         {weights_folder_filepath, lora_layername_substr + "_B.weight"});
     if (dt == DT_FLOAT) {
       std::cout << "Loading LORA weight " << lora_layername_substr + "_A.weight"
-                << ", num_rows: " << lora_A_num_rows << ", num_cols: " << lora_A_num_cols 
-                << ", num_shards: " << lora_A_num_shards << ", shard_id: " << shard_id
-                << std::endl;
-      load_peft_from_file((float *)weight.w0_ptr, lora_A_num_rows, lora_A_num_cols, lora_A_num_shards, shard_id, w0_filepath);
+                << ", num_rows: " << lora_A_num_rows
+                << ", num_cols: " << lora_A_num_cols
+                << ", num_shards: " << lora_A_num_shards
+                << ", shard_id: " << shard_id << std::endl;
+      load_peft_from_file((float *)weight.w0_ptr,
+                          lora_A_num_rows,
+                          lora_A_num_cols,
+                          lora_A_num_shards,
+                          shard_id,
+                          w0_filepath);
       std::cout << "Loading LORA weight " << lora_layername_substr + "_B.weight"
-                << ", num_rows: " << lora_B_num_rows << ", num_cols: " << lora_B_num_cols 
-                << ", num_shards: " << lora_B_num_shards << ", shard_id: " << shard_id
-                << std::endl;
+                << ", num_rows: " << lora_B_num_rows
+                << ", num_cols: " << lora_B_num_cols
+                << ", num_shards: " << lora_B_num_shards
+                << ", shard_id: " << shard_id << std::endl;
       load_peft_from_file((float *)weight.w1_ptr,
-                          lora_B_num_rows, lora_B_num_cols, lora_B_num_shards, shard_id, 
+                          lora_B_num_rows,
+                          lora_B_num_cols,
+                          lora_B_num_shards,
+                          shard_id,
                           w1_filepath);
     } else if (dt == DT_HALF) {
       std::cout << "Loading LORA weight " << lora_layername_substr + "_A.weight"
-                << ", num_rows: " << lora_A_num_rows << ", num_cols: " << lora_A_num_cols 
-                << ", num_shards: " << lora_A_num_shards << ", shard_id: " << shard_id
-                << std::endl;
-      load_peft_from_file(
-          (half *)weight.w0_ptr, lora_A_num_rows, lora_A_num_cols, lora_A_num_shards, shard_id, w0_filepath);
+                << ", num_rows: " << lora_A_num_rows
+                << ", num_cols: " << lora_A_num_cols
+                << ", num_shards: " << lora_A_num_shards
+                << ", shard_id: " << shard_id << std::endl;
+      load_peft_from_file((half *)weight.w0_ptr,
+                          lora_A_num_rows,
+                          lora_A_num_cols,
+                          lora_A_num_shards,
+                          shard_id,
+                          w0_filepath);
       std::cout << "Loading LORA weight " << lora_layername_substr + "_B.weight"
-                << ", num_rows: " << lora_B_num_rows << ", num_cols: " << lora_B_num_cols 
-                << ", num_shards: " << lora_B_num_shards << ", shard_id: " << shard_id
-                << std::endl;
-      load_peft_from_file(
-          (half *)weight.w1_ptr, lora_B_num_rows, lora_B_num_cols, lora_B_num_shards, shard_id, w1_filepath);
+                << ", num_rows: " << lora_B_num_rows
+                << ", num_cols: " << lora_B_num_cols
+                << ", num_shards: " << lora_B_num_shards
+                << ", shard_id: " << shard_id << std::endl;
+      load_peft_from_file((half *)weight.w1_ptr,
+                          lora_B_num_rows,
+                          lora_B_num_cols,
+                          lora_B_num_shards,
+                          shard_id,
+                          w1_filepath);
     } else {
       assert(false && "Data type not supported");
     }
@@ -606,7 +635,9 @@ void LoraLinear::inference_task(Task const *task,
     if (m->layer_guid.model_id > 0) {
       assert(false && "Model ID > 0 not supported yet");
     }
-    std::string layername = "layers." + std::to_string(m->layer_guid.transformer_layer_id) + "." + lora_layername_substr;
+    std::string layername = "layers." +
+                            std::to_string(m->layer_guid.transformer_layer_id) +
+                            "." + lora_layername_substr;
     dst_filepath /= layername;
 
     // save batch config, if passed
@@ -628,9 +659,12 @@ void LoraLinear::inference_task(Task const *task,
     for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
       PEFTModelID peft_model_id = it->first;
       LoraLinearWeight weight = m->model_state[peft_model_id].weights;
-      fs::path dst_filepath_weights = get_dst_folder("weights", m->decoding_step, shard_id) / layername;
-      std::string filenameA = dst_filepath_weights.string() + ".weight_A.original";
-      std::string filenameB = dst_filepath_weights.string() + ".weight_B.original";
+      fs::path dst_filepath_weights =
+          get_dst_folder("weights", m->decoding_step, shard_id) / layername;
+      std::string filenameA =
+          dst_filepath_weights.string() + ".weight_A.original";
+      std::string filenameB =
+          dst_filepath_weights.string() + ".weight_B.original";
       if (m->input_type[0] == DT_FLOAT) {
         save_tensor((float *)weight.w0_ptr,
                     weight.rank * weight.in_dim,
@@ -759,7 +793,9 @@ void LoraLinear::peft_bwd_task(Task const *task,
     if (m->layer_guid.model_id > 0) {
       assert(false && "Model ID > 0 not supported yet");
     }
-    std::string layername = "layers." + std::to_string(m->layer_guid.transformer_layer_id) + "." + lora_layername_substr;
+    std::string layername = "layers." +
+                            std::to_string(m->layer_guid.transformer_layer_id) +
+                            "." + lora_layername_substr;
     dst_filepath /= layername;
 
     // save batch config, if passed
@@ -768,14 +804,19 @@ void LoraLinear::peft_bwd_task(Task const *task,
     }
 
     // weights, weights gradients
-    fs::path dst_filepath_weights = get_dst_folder("weights", m->bwd_step, shard_id) / layername;
+    fs::path dst_filepath_weights =
+        get_dst_folder("weights", m->bwd_step, shard_id) / layername;
     for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
       PEFTModelID peft_model_id = it->first;
       LoraLinearWeight weight = m->model_state[peft_model_id].weights;
-      std::string filename_weight_A = dst_filepath_weights.string() + ".weight_A.finetuned";
-      std::string filename_weight_B = dst_filepath_weights.string() + ".weight_B.finetuned";
-      std::string filename_grad_A = dst_filepath_weights.string() + ".weight_A.gradient";
-      std::string filename_grad_B = dst_filepath_weights.string() + ".weight_B.gradient";
+      std::string filename_weight_A =
+          dst_filepath_weights.string() + ".weight_A.finetuned";
+      std::string filename_weight_B =
+          dst_filepath_weights.string() + ".weight_B.finetuned";
+      std::string filename_grad_A =
+          dst_filepath_weights.string() + ".weight_A.gradient";
+      std::string filename_grad_B =
+          dst_filepath_weights.string() + ".weight_B.gradient";
       if (m->input_type[0] == DT_FLOAT) {
         // weight A
         save_tensor((float *)weight.w0_ptr,

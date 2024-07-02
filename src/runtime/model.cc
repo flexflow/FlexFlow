@@ -1576,7 +1576,7 @@ void make_debug_dirs() {
   fs::create_directories(debug_dir);
   assert(fs::is_directory(debug_dir));
   std::vector<std::string> debug_subdirs = {"fwd", "bwd", "optim", "weights"};
-  for (const auto& subdir : debug_subdirs) {
+  for (auto const &subdir : debug_subdirs) {
     fs::path subdir_path = debug_dir / subdir;
     fs::create_directory(subdir_path);
   }
