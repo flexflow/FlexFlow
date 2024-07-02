@@ -14,9 +14,9 @@ std::size_t num_dims(MachineView const &mv) {
   return get_num_dims(mv.rect);
 }
 
-// std::size_t num_devices(MachineView const &mv) {
-//   // return get_num_points(mv.rect);
-// }
+size_t num_devices(MachineView const &mv) {
+  return get_num_points(mv.rect).unwrapped;
+}
 
 DeviceType get_device_type(MachineView const &mv) {
   return get_device_type(mv.start);
@@ -68,6 +68,7 @@ MachineView
   StridedRectangle rect = make_1d_rect(start.gpu_index, num_points, stride);
   return MachineView{device_id_t{start}, rect};
 }
+
 MachineView make_1d_machine_view(device_id_t start,
                                  num_points_t num_points,
                                  int stride) {
