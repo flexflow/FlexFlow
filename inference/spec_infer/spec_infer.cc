@@ -21,6 +21,7 @@
 #include <filesystem>
 #include <nlohmann/json.hpp>
 #include <wordexp.h>
+#include <optional>
 
 using namespace FlexFlow;
 using namespace Legion;
@@ -467,7 +468,7 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
 
-    std::vector<std::pair<std::string, double>> prompts;
+    std::vector<std::pair<std::string, std::optional<double>>> prompts;
     int i = 1;
     for (auto &prompt : prompt_json) {
       double tpot_slo_ms = 1.2*i;

@@ -18,6 +18,7 @@
 #include "flexflow/mapper.h"
 #include "flexflow/request_manager.h"
 #include "flexflow/utils/file_loader.h"
+#include <optional>
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -1591,7 +1592,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
                              int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   double tpot_slo_ms = 10; // TODO: generalize tpot SLO
-  std::vector<std::pair<std::string, double>> prompts;
+  std::vector<std::pair<std::string, std::optional<double>>> prompts;
   for (int i = 0; i < num_requests; i++) {
     std::string const text_str(input_texts[i]);
     prompts.emplace_back(text_str, tpot_slo_ms);

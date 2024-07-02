@@ -25,6 +25,7 @@
 #include <random>
 #include <stack>
 #include <stdexcept>
+#include <optional>
 
 namespace FlexFlow {
 
@@ -285,7 +286,9 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.target_tpot_slo_ms = tpot_slo;
+  if (tpot_slo >= 0) {
+    request.target_tpot_slo_ms = tpot_slo;
+  }
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -340,7 +343,9 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.target_tpot_slo_ms = tpot_slo;
+  if (tpot_slo >= 0) {
+    request.target_tpot_slo_ms = tpot_slo;
+  }
 
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
@@ -1883,11 +1888,16 @@ void RequestManager::get_verify_results_greedy(
 
 // TODO: the max_seq_length is not used in the current implementation
 std::vector<GenerationResult>
-    FFModel::generate(std::vector<std::pair<std::string, double>> &prompts, int max_seq_length) {
+    FFModel::generate(std::vector<std::pair<std::string, std::optional<double>>> &prompts, int max_seq_length) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i).first, prompts.at(i).second);
+    RequestManager::RequestGuid guid = RequestManager::INVALID_GUID;
+    if (prompts.at(i).second) {
+      guid = rm->register_new_request(prompts.at(i).first, *prompts.at(i).second);
+    } else {
+      guid = rm->register_new_request(prompts.at(i).first);
+    }
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }

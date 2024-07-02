@@ -247,6 +247,7 @@ public:
   using TokenId = BatchConfig::TokenId;
 
   inline static RequestGuid const INVALID_GUID = 0;
+  inline static double const NO_SLO = -1.0;
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
@@ -284,8 +285,8 @@ public:
   void serve_spec_infer_sync(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt, double tpot_slo);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt, double tpot_slo);
+  RequestGuid register_new_request(std::string const &prompt, double tpot_slo=NO_SLO);
+  RequestGuid register_new_request(std::vector<TokenId> const &prompt, double tpot_slo=NO_SLO);
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();

@@ -21,6 +21,7 @@
 #include "models/opt.h"
 #include "models/starcoder.h"
 #include <wordexp.h>
+#include <optional>
 
 #include <nlohmann/json.hpp>
 
@@ -288,7 +289,7 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
     double tpot_slo_ms = 10; // TODO: generalize tpot SLO
-    std::vector<std::pair<std::string, double>> prompts;
+    std::vector<std::pair<std::string, std::optional<double>>> prompts;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
