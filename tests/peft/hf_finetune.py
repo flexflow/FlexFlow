@@ -83,6 +83,7 @@ def main():
         args=transformers.TrainingArguments(
             per_device_train_batch_size = 1,
             gradient_accumulation_steps = 1,
+            max_grad_norm = None, # Disable gradient clipping
             warmup_steps = 0,
             max_steps=args.max_steps,
             learning_rate=args.learning_rate,
