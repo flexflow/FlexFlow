@@ -22,7 +22,6 @@
 #include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
-#include <limits>
 
 namespace FlexFlow {
 
@@ -79,7 +78,7 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   // Required average time-per-output-token service-level objective of this request, in milliseconds
-  double target_slo_ms = 1000.0; // Default SLO is 1 second.
+  double target_tpot_slo_ms = 1000.0; // Default Time-Per-Output-Token SLO is 1 second.
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
   // Node pool of each TokenTree, ordered in ascending order of probabilities
@@ -271,7 +270,7 @@ public:
   int get_max_tree_width();
   void set_max_tree_width(int max_tree_width);
   void set_speculative_sampling(bool speculative_sampling);
-  void set_use_slo(bool use_slo);
+  void use_tpot_slo(bool tpot_slo);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -285,8 +284,8 @@ public:
   void serve_spec_infer_sync(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt, double slo);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt, double slo);
+  RequestGuid register_new_request(std::string const &prompt, double tpot_slo);
+  RequestGuid register_new_request(std::vector<TokenId> const &prompt, double tpot_slo);
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();
@@ -346,7 +345,7 @@ private:
   DecodingMode decoding_mode;
   PrefillModel prefill_model;
   bool speculative_sampling = false;
-  bool use_slo = false;
+  bool tpot_slo = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -464,9 +463,9 @@ private:
                                    BatchConfig::TokenId token_id);
   bool add_tokens_to_spec_token_tree(
       InferenceResult const &ssm_inference_result);
-  bool add_tokens_to_spec_token_tree_slo(
+  bool add_tokens_to_spec_token_tree_tpot_slo(
       InferenceResult const &ssm_inference_result);
-  void select_subtrees_on_slo_constraints(double const L, double const eps);
+  void select_subtrees_on_tpot_slo_constraints(double const L, double const eps);
   /* ---------- Spec Decoding Helper Functions ---------- */
   void renormalize(std::vector<std::pair<TokenId, float>> &D,
                    std::unordered_map<TokenId, float> &R,

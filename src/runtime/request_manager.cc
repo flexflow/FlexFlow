@@ -206,8 +206,8 @@ void RequestManager::set_speculative_sampling(bool speculative_sampling_) {
   speculative_sampling = speculative_sampling_;
 }
 
-void RequestManager::set_use_slo(bool use_slo) {
-  this->use_slo = use_slo;
+void RequestManager::use_tpot_slo(bool tpot_slo) {
+  this->tpot_slo = tpot_slo;
 }
 
 void RequestManager::register_tokenizer(ModelType type,
@@ -278,14 +278,14 @@ size_t RequestManager::get_num_ssms() {
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt, double slo) {
+    RequestManager::register_new_request(std::vector<TokenId> const &prompt, double tpot_slo) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.target_slo_ms = slo;
+  request.target_tpot_slo_ms = tpot_slo;
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -334,13 +334,13 @@ RequestManager::RequestGuid
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::string const &prompt, double slo) {
+    RequestManager::register_new_request(std::string const &prompt, double tpot_slo) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.target_slo_ms = slo;
+  request.target_tpot_slo_ms = tpot_slo;
 
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
@@ -383,7 +383,7 @@ RequestManager::RequestGuid
       output = output + " " + std::to_string(request.tokens[i]);
     }
     log_req_mgr.print("%s", output.c_str());
-    write_to_output_file("", output);
+    write_to_output_file(output_filepath, output);
   }
 
   GenerationResult gr;
@@ -515,65 +515,6 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
-  // Find the sos and eos in the sequence
-  auto bos_it = std::find(
-      request.tokens.begin(), request.tokens.end(), this->bos_token_id);
-  auto eos_rit = std::find(
-      request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
-  std::vector<int>::iterator eos_it;
-  if (eos_rit != request.tokens.rend()) {
-    eos_it = eos_rit.base();
-  } else {
-    eos_it = request.tokens.end();
-  }
-  std::string output =
-      this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
-
-  std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
-  std::cout << "<bos>" << output;
-  if (eos_rit != request.tokens.rend()) {
-    std::cout << "<eos>";
-  }
-  std::cout << std::endl << std::endl;
-  {
-    RequestProfileInfo profile_info = profiling_requests[guid];
-
-    std::ostream *os = &std::cout;
-    std::ofstream output_file;
-    if (!output_filepath.empty()) {
-      output_file.open(output_filepath, std::ios::app);
-      if (output_file.is_open()) {
-        os = &output_file;
-      } else {
-        std::cout << "Unable to open the output file: " << output_filepath
-                  << std::endl;
-        assert(false);
-      }
-    }
-    *os << "Request " << guid << " profiling: " << std::endl;
-    if (profile_info.start_decoding_time != 0) {
-      *os << "Decoding time: "
-          << (profile_info.finish_time - profile_info.start_decoding_time) *
-                 1e-3
-          << " ms" << std::endl;
-    } else {
-      *os << "Decoding time: 0 ms" << std::endl;
-    }
-    *os << "Total time: "
-        << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
-        << std::endl;
-    *os << "LLM decoding steps: " << profile_info.llm_decoding_steps
-        << std::endl;
-    if (decoding_mode == SPECULATIVE_DECODING) {
-      *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
-          << std::endl;
-    }
-    *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
-
-    if (!output_filepath.empty()) {
-      output_file.close();
-    }
-  }
   RequestProfileInfo profile_info = profiling_requests[guid];
   std::string str =
       "[" + std::to_string(guid) +
@@ -596,7 +537,8 @@ void RequestManager::request_complete_clean_up(int batch_index) {
           + ")";
 
   }
-  write_to_output_file("", str);
+  write_to_output_file(output_filepath, str);
+  std::cout << str << std::endl;
 
   trigger_request_completion_future(guid);
 }
@@ -2242,7 +2184,7 @@ void RequestManager::terminate_background_server() {
     }
     generated_tokens_per_step += ")";
     str += generated_tokens_per_step;
-    write_to_output_file("", str);
+    write_to_output_file(output_filepath, str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
@@ -2529,7 +2471,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
   return all_request_last_layer_empty;
 }
 
-bool RequestManager::add_tokens_to_spec_token_tree_slo(
+bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
     InferenceResult const &ssm_inference_result) {
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
@@ -2713,7 +2655,7 @@ bool RequestManager::add_tokens_to_spec_token_tree_slo(
   return all_request_last_layer_empty;
 }
 
-void RequestManager::select_subtrees_on_slo_constraints(double const L, double const eps) {
+void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, double const eps) {
   
   const int N = get_max_tokens_per_batch();
   std::vector<std::shared_ptr<TokenTreeNode>> linked_list_heads(get_max_requests_per_batch(), nullptr);
@@ -2765,8 +2707,8 @@ void RequestManager::select_subtrees_on_slo_constraints(double const L, double c
       assert(request.status == Request::RUNNING);
     
       double score = -1.0;
-      if (expected_decoded_num[request_index] * request.target_slo_ms - L - eps < 0) {
-        score = 1-(expected_decoded_num[request_index] * request.target_slo_ms - L - eps);
+      if (expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps < 0) {
+        score = 1-(expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps);
       } else {
         score = exp(linked_list_heads[request_index]->log_accumulated_prob);
       }

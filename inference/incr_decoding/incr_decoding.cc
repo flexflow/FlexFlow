@@ -48,7 +48,8 @@ void parse_input_args(char **argv,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
-                      int &sampling_seed) {
+                      int &sampling_seed,
+                      bool &tpot_slo) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -110,6 +111,10 @@ void parse_input_args(char **argv,
       sampling_seed = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--tpot-slo")) {
+      tpot_slo = true;
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
     char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
@@ -144,6 +149,7 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager::DecodingMode decoding_mode =
       RequestManager::INCREMENTAL_DECODING;
   int sampling_seed = 0;
+  bool tpot_slo = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -160,7 +166,8 @@ void FlexFlow::top_level_task(Task const *task,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_sequence_length,
-                   sampling_seed);
+                   sampling_seed,
+                   tpot_slo);
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -229,6 +236,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->register_tokenizer(
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
+  rm->use_tpot_slo(tpot_slo);
 
   FFModel model(ffconfig, ffconfig.cpu_offload);
   if (model_type == ModelType::LLAMA) {
@@ -279,13 +287,13 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    double slo_ms = 10; // TODO: generalize SLO
+    double tpot_slo_ms = 10; // TODO: generalize tpot SLO
     std::vector<std::pair<std::string, double>> prompts;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      prompts.emplace_back(text, slo_ms);
+      prompts.emplace_back(text, tpot_slo_ms);
     }
     std::vector<GenerationResult> result =
         model.generate(prompts, 128 /*max_sequence_length*/);

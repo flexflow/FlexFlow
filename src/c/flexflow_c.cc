@@ -1590,11 +1590,11 @@ void flexflow_model_generate(flexflow_model_t handle_,
                              int max_seq_length,
                              int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  double slo_ms = 10; // TODO: generalize SLO
+  double tpot_slo_ms = 10; // TODO: generalize tpot SLO
   std::vector<std::pair<std::string, double>> prompts;
   for (int i = 0; i < num_requests; i++) {
     std::string const text_str(input_texts[i]);
-    prompts.emplace_back(text_str, slo_ms);
+    prompts.emplace_back(text_str, tpot_slo_ms);
     DEBUG_PRINT("[Model] generate[%d] %p %s %i",
                 i,
                 handle,
@@ -2596,6 +2596,13 @@ void flexflow_request_manager_set_max_sequence_length(
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
   handle->set_max_sequence_length(max_seq_length);
   DEBUG_PRINT("[RequestManager] set max_sequence_length %d", max_seq_length);
+}
+
+void flexflow_request_manager_use_tpot_slo(
+    flexflow_request_manager_t handle_, bool tpot_slo) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->use_tpot_slo(tpot_slo);
+  DEBUG_PRINT("[RequestManager] use tpot_slo %d", tpot_slo);
 }
 
 void flexflow_request_manager_register_tokenizer(

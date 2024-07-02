@@ -69,7 +69,8 @@ void parse_input_args(char **argv,
                       int &expansion_degree,
                       bool &spec_sampling,
                       bool &do_sample,
-                      int &sampling_seed) {
+                      int &sampling_seed,
+                      bool &tpot_slo) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -151,6 +152,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--do-sample")) {
       do_sample = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--tpot-slo")) {
+      tpot_slo = true;
       continue;
     }
   }
@@ -317,6 +322,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool spec_sampling = false;
   bool do_sample = false;
   int sampling_seed = 0;
+  bool tpot_slo = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -336,7 +342,8 @@ void FlexFlow::top_level_task(Task const *task,
                    expansion_degree,
                    spec_sampling,
                    do_sample,
-                   sampling_seed);
+                   sampling_seed,
+                   tpot_slo);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -362,6 +369,7 @@ void FlexFlow::top_level_task(Task const *task,
                          model_metadata.llm_tokenizer_path);
   rm->set_decoding_mode(decoding_mode);
   rm->register_output_filepath(file_paths.output_file_path);
+  rm->use_tpot_slo(tpot_slo);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
@@ -462,12 +470,12 @@ void FlexFlow::top_level_task(Task const *task,
     std::vector<std::pair<std::string, double>> prompts;
     int i = 1;
     for (auto &prompt : prompt_json) {
-      double slo_ms = 1.2*i;
+      double tpot_slo_ms = 1.2*i;
       i += 1;
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      prompts.emplace_back(text, slo_ms);
+      prompts.emplace_back(text, tpot_slo_ms);
       // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
     tree_model.generate(prompts, 128 /*max_sequence_length*/);
