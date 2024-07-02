@@ -656,9 +656,12 @@ void LoraLinear::inference_task(Task const *task,
       assert(false);
     }
 
+    int rank, num_tokens;
     for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
       PEFTModelID peft_model_id = it->first;
       LoraLinearWeight weight = m->model_state[peft_model_id].weights;
+      rank = weight.rank;
+      num_tokens = input.domain.get_volume() / weight.in_dim;
       fs::path dst_filepath_weights =
           get_dst_folder("weights", m->decoding_step, shard_id) / layername;
       std::string filenameA =
@@ -691,6 +694,16 @@ void LoraLinear::inference_task(Task const *task,
     } else if (output.data_type == DT_HALF) {
       save_tensor(
           output.get_half_ptr(), output.domain.get_volume(), filename.c_str());
+    } else {
+      assert(false);
+    }
+    // input activation (intermediate)
+    filename = dst_filepath.string() + ".low_rank_activation";
+    assert(num_tokens == 128);
+    if (output.data_type == DT_FLOAT) {
+      save_tensor((float*)m->low_rank_activation, rank*num_tokens, filename.c_str());
+    } else if (output.data_type == DT_HALF) {
+      save_tensor((half*)m->low_rank_activation, rank*num_tokens, filename.c_str());
     } else {
       assert(false);
     }
