@@ -5,11 +5,13 @@
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Reshape Forward and Backward") {
-    TensorShape shape = make_float_tensor_shape_from_legion_dims({100});
+    ManagedPerDeviceFFHandle managed_handle{};
+    ManagedFFStream managed_stream{};
 
-    ffStream_t stream = create_ff_stream();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
-    Allocator allocator = get_local_memory_allocator();
+    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
+    TensorShape output_shape = input_shape;
 
     ReshapePerDeviceState state =
         Kernels::Reshape::init_kernel(DataType::FLOAT);
@@ -17,11 +19,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_filled_accessor_w(shape, allocator, 1.0f));
-      GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
+              create_filled_accessor_w(input_shape, allocator, 1.0f));
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
 
       Kernels::Reshape::forward_kernel(
-          stream, state, input_accessor, output_accessor);
+          managed_stream.raw_stream(), state, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
           load_data_to_host_from_device<float>(
@@ -33,23 +36,24 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW output_accessor =
-          create_filled_accessor_w(shape, allocator, 1.0f);
-      Kernels::Reshape::backward_kernel(
-          stream,
-          state,
-          output_accessor,
-          read_only_accessor_from_write_accessor(output_accessor));
+      GenericTensorAccessorR output_grad_accessor =
+          read_only_accessor_from_write_accessor(
+              create_filled_accessor_w(output_shape, allocator, 1.0f));
+      GenericTensorAccessorW input_grad_accessor =
+          create_filled_accessor_w(input_shape, allocator, 2.0f);
+
+      Kernels::Reshape::backward_kernel(managed_stream.raw_stream(),
+                                        state,
+                                        input_grad_accessor,
+                                        output_grad_accessor);
 
       std::vector<float> host_grad_input_data =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_accessor));
+              read_only_accessor_from_write_accessor(input_grad_accessor));
 
       std::vector<float> expected_grad_input_data(
-          output_accessor.shape.num_elements(), 2.0f);
+          input_grad_accessor.shape.num_elements(), 3.0f);
       CHECK(host_grad_input_data == expected_grad_input_data);
     }
-
-    checkCUDA(cudaStreamDestroy(stream));
   }
 }

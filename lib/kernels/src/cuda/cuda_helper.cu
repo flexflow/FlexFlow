@@ -1,4 +1,5 @@
 #include "device.h"
+#include "kernels/datatype_dispatch.h"
 
 namespace FlexFlow {
 

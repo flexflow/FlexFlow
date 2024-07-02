@@ -14,10 +14,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     size_t b_seq_length_dim = -1;
     size_t seq_length = -1;
 
-    ffStream_t stream = create_ff_stream();
-    PerDeviceFFHandle handle = get_per_device_ff_handle();
+    ManagedFFStream managed_stream{};
+    ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape_a =
         make_float_tensor_shape_from_legion_dims({m, k, batch});
@@ -26,19 +26,19 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape output_shape =
         make_float_tensor_shape_from_legion_dims({m, n, batch});
 
-    GenericTensorAccessorW accessor_a =
+    GenericTensorAccessorW a_accessor =
         create_random_filled_accessor_w(input_shape_a, allocator);
-    GenericTensorAccessorW accessor_b =
+    GenericTensorAccessorW b_accessor =
         create_random_filled_accessor_w(input_shape_b, allocator);
+    GenericTensorAccessorW output_accessor =
+        create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorW accessor_output =
-          allocator.allocate_tensor(output_shape);
-      Kernels::BatchMatmul::forward_kernel(stream,
-                                           handle,
-                                           accessor_output.get_float_ptr(),
-                                           accessor_a.get_float_ptr(),
-                                           accessor_b.get_float_ptr(),
+      Kernels::BatchMatmul::forward_kernel(managed_stream.raw_stream(),
+                                           managed_handle.raw_handle(),
+                                           output_accessor.get_float_ptr(),
+                                           a_accessor.get_float_ptr(),
+                                           b_accessor.get_float_ptr(),
                                            m,
                                            n,
                                            k,
@@ -49,8 +49,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW accessor_output =
-          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW o_grad_accessor =
           create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW a_grad_accessor =
@@ -58,20 +56,18 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericTensorAccessorW b_grad_accessor =
           allocator.allocate_tensor(input_shape_b);
 
-      Kernels::BatchMatmul::backward_kernel(stream,
-                                            handle,
-                                            accessor_output.get_float_ptr(),
+      Kernels::BatchMatmul::backward_kernel(managed_stream.raw_stream(),
+                                            managed_handle.raw_handle(),
+                                            output_accessor.get_float_ptr(),
                                             o_grad_accessor.get_float_ptr(),
-                                            accessor_a.get_float_ptr(),
+                                            a_accessor.get_float_ptr(),
                                             a_grad_accessor.get_float_ptr(),
-                                            accessor_b.get_float_ptr(),
+                                            b_accessor.get_float_ptr(),
                                             b_grad_accessor.get_float_ptr(),
                                             m,
                                             n,
                                             k,
                                             batch);
     }
-
-    cleanup_test(stream, handle);
   }
 }

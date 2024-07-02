@@ -1,8 +1,6 @@
 #include "doctest/doctest.h"
 #include "kernels/softmax_kernels.h"
 #include "test_utils.h"
-#include <cmath>
-#include <numeric>
 
 using namespace ::FlexFlow;
 
@@ -10,22 +8,25 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Softmax Kernel Operations") {
     int input_n = 1, input_c = 1, input_h = 1, input_w = 100, channels = 100;
 
-    ffStream_t stream = create_ff_stream();
-    PerDeviceFFHandle handle = get_per_device_ff_handle();
+    ManagedPerDeviceFFHandle managed_handle{};
+    ManagedFFStream managed_stream{};
 
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
-    TensorShape shape = make_float_tensor_shape_from_legion_dims({100});
+    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
+    TensorShape output_shape = input_shape;
 
     SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
-        handle, 0, input_n, channels, input_h, input_w);
+        managed_handle.raw_handle(), 0, input_n, channels, input_h, input_w);
+
+    GenericTensorAccessorW output_accessor =
+        create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW input_accessor =
-          create_random_filled_accessor_w(shape, allocator);
-      GenericTensorAccessorW output_accessor = allocator.allocate_tensor(shape);
+          create_random_filled_accessor_w(input_shape, allocator);
 
-      Kernels::Softmax::forward_kernel(stream,
+      Kernels::Softmax::forward_kernel(managed_stream.raw_stream(),
                                        state,
                                        input_accessor.get_float_ptr(),
                                        output_accessor.get_float_ptr());
@@ -34,45 +35,26 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_data_to_host_from_device<float>(
               read_only_accessor_from_write_accessor(output_accessor));
       CHECK(contains_non_zero(host_output_data));
-
-      // Will add this back once CPU tests are finished
-      // std::vector<float> host_input_data =
-      // load_data_to_host_from_device<float>(
-      //     read_only_accessor_from_write_accessor(input_accessor));
-
-      // float max_input = maximum(host_input_data);
-      // std::vector<float> exp_values =
-      //     transform(host_input_data,
-      //               [max_input](float x) { return std::exp(x - max_input);
-      //               });
-      // float sum_exp = sum(exp_values);
-      //
-      // for (std::size_t i = 0; i < input_accessor.shape.num_elements(); ++i) {
-      //   float expected_value =
-      //       std::exp(host_input_data[i] - max_input) / sum_exp;
-      //   CHECK(doctest::Approx(host_output_data[i]).epsilon(0.01) ==
-      //         expected_value);
-      // }
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW output_accessor =
-          create_random_filled_accessor_w(shape, allocator);
-      GenericTensorAccessorW grad_input_accessor =
-          allocator.allocate_tensor(shape);
+      GenericTensorAccessorW output_grad_accessor =
+          create_filled_accessor_w(output_shape, allocator, 1.0f);
+      GenericTensorAccessorW input_grad_accessor =
+          allocator.allocate_tensor(input_shape);
 
-      Kernels::Softmax::backward_kernel(stream,
-                                        grad_input_accessor.get_float_ptr(),
-                                        output_accessor.get_float_ptr(),
-                                        output_accessor.shape.num_elements());
+      Kernels::Softmax::backward_kernel(
+          managed_stream.raw_stream(),
+          input_grad_accessor.get_float_ptr(),
+          output_grad_accessor.get_float_ptr(),
+          output_grad_accessor.shape.num_elements());
 
-      std::vector<float> check_output_data =
+      std::vector<float> expected_input_grad_data =
+          std::vector<float>(input_grad_accessor.shape.num_elements(), 1.0f);
+      std::vector<float> host_input_grad_data =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_accessor));
-
-      CHECK(contains_non_zero(check_output_data));
+              read_only_accessor_from_write_accessor(input_grad_accessor));
+      CHECK(host_input_grad_data == expected_input_grad_data);
     }
-
-    cleanup_test(stream, handle);
   }
 }

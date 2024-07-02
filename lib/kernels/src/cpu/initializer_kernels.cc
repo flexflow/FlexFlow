@@ -2,7 +2,6 @@
 #include "kernels/accessor.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/device.h"
-#include "kernels/local_allocator.h"
 
 namespace FlexFlow {
 

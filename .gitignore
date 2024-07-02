@@ -1,3 +1,7 @@
+# dtgen files
+*.dtg.cc
+*.dtg.h
+
 # ctest-created files
 Testing/
 

@@ -89,8 +89,7 @@ void backward_kernel(cudaStream_t stream,
                                              m.saveVar));
 }
 
-BatchNormPerDeviceState init_kernel(cudaStream_t stream,
-                                    PerDeviceFFHandle handle,
+BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                     Allocator allocator,
                                     float *runningMean,
                                     int output_n,
@@ -132,6 +131,8 @@ BatchNormPerDeviceState init_kernel(cudaStream_t stream,
   float *runningVar = (float *)runningMean + output_c;
   float *saveMean = (float *)runningVar + output_c;
   float *saveVar = (float *)saveMean + output_c;
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
 
   assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
       runningMean, size_t_from_int(output_c), 0.0f);
@@ -159,6 +160,8 @@ BatchNormPerDeviceState init_kernel(cudaStream_t stream,
                                               output_h,
                                               output_w,
                                               relu};
+
+  checkCUDA(cudaStreamDestroy(stream));
   return per_device_state;
 }
 

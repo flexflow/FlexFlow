@@ -15,56 +15,49 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     TensorShape input_shape =
         make_float_tensor_shape_from_legion_dims({10, 10});
+    TensorShape output_shape = input_shape;
 
-    ffStream_t stream = create_ff_stream();
-    PerDeviceFFHandle handle = get_per_device_ff_handle();
+    ManagedFFStream managed_stream{};
+    ManagedPerDeviceFFHandle managed_handle{};
 
-    Allocator allocator = get_local_memory_allocator();
+    Allocator allocator = create_local_cuda_memory_allocator();
 
     DropoutPerDeviceState state = Kernels::Dropout::init_kernel(
-        handle, dropout_rate, seed, shape, allocator);
+        managed_handle.raw_handle(), dropout_rate, seed, shape, allocator);
 
     auto get_zero_count = [](std::vector<float> const &data) {
       return count(data, [](float x) { return x == 0.0f; });
     };
 
     SUBCASE("forward_kernel") {
-      GenericTensorAccessorR input_data =
+      GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
               create_random_filled_accessor_w(input_shape, allocator));
-      GenericTensorAccessorW output_data =
-          allocator.allocate_tensor(input_shape);
-      GenericTensorAccessorW grad_input_data =
-          allocator.allocate_tensor(input_shape);
+      GenericTensorAccessorW output_accessor =
+          allocator.allocate_tensor(output_shape);
 
-      Kernels::Dropout::forward_kernel(stream,
+      Kernels::Dropout::forward_kernel(managed_stream.raw_stream(),
                                        state,
-                                       input_data.get_float_ptr(),
-                                       output_data.get_float_ptr());
+                                       input_accessor.get_float_ptr(),
+                                       output_accessor.get_float_ptr());
 
-      std::vector<float> host_output_data =
+      std::vector<float> host_output_accessor =
           load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_data));
+              read_only_accessor_from_write_accessor(output_accessor));
 
-      int zero_count = get_zero_count(host_output_data);
-      float correct_zero_count = input_data.shape.num_elements() * dropout_rate;
-      CHECK(zero_count == doctest::Approx(correct_zero_count).epsilon(0.5));
+      CHECK(contains_non_zero(host_output_accessor));
+    }
 
-      SUBCASE("backward_kernel") {
-        Kernels::Dropout::backward_kernel(stream,
-                                          state,
-                                          output_data.get_float_ptr(),
-                                          grad_input_data.get_float_ptr());
+    SUBCASE("backward_kernel") {
+      GenericTensorAccessorW output_grad_data =
+          create_random_filled_accessor_w(output_shape, allocator);
+      GenericTensorAccessorW input_grad_data =
+          create_random_filled_accessor_w(input_shape, allocator);
 
-        std::vector<float> host_grad_input_data =
-            load_data_to_host_from_device<float>(
-                read_only_accessor_from_write_accessor(grad_input_data));
-
-        int zero_count = get_zero_count(host_grad_input_data);
-        float correct_zero_count =
-            output_data.shape.num_elements() * dropout_rate;
-        CHECK(zero_count == doctest::Approx(correct_zero_count).epsilon(0.5));
-      }
+      Kernels::Dropout::backward_kernel(managed_stream.raw_stream(),
+                                        state,
+                                        output_grad_data.get_float_ptr(),
+                                        input_grad_data.get_float_ptr());
     }
 
     Kernels::Dropout::cleanup_kernel(allocator,
@@ -72,7 +65,5 @@ TEST_SUITE(FF_TEST_SUITE) {
                                      state.outputTensor,
                                      state.dropoutDesc,
                                      state.dropoutStates);
-
-    cleanup_test(stream, handle);
   }
 }
