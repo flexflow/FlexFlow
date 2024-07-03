@@ -71,7 +71,8 @@ void parse_input_args(char **argv,
                       bool &spec_sampling,
                       bool &do_sample,
                       int &sampling_seed,
-                      bool &tpot_slo) {
+                      bool &tpot_slo,
+                      bool &alignment_test) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -157,6 +158,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--tpot-slo")) {
       tpot_slo = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--alignment-test")) {
+      alignment_test = true;
       continue;
     }
   }
@@ -324,6 +329,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool do_sample = false;
   int sampling_seed = 0;
   bool tpot_slo = false;
+  bool alignment_test = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -344,7 +350,8 @@ void FlexFlow::top_level_task(Task const *task,
                    spec_sampling,
                    do_sample,
                    sampling_seed,
-                   tpot_slo);
+                   tpot_slo,
+                   alignment_test);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -371,6 +378,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_decoding_mode(decoding_mode);
   rm->register_output_filepath(file_paths.output_file_path);
   rm->use_tpot_slo(tpot_slo);
+  rm->set_alignment_test(alignment_test);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);

@@ -264,6 +264,7 @@ public:
   int get_max_sequence_length();
   void set_decoding_mode(DecodingMode mode);
   void set_verbose(bool verbose_);
+  void set_alignment_test(bool is_alignment_test);
   int get_k();
   void set_k(int k);
   int get_max_tree_depth();
@@ -347,6 +348,7 @@ private:
   PrefillModel prefill_model;
   bool speculative_sampling = false;
   bool tpot_slo = false;
+  bool alignment_test = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;

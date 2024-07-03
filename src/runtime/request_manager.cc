@@ -165,6 +165,10 @@ void RequestManager::set_verbose(bool verbose_) {
   verbose = verbose_;
 }
 
+void RequestManager::set_alignment_test(bool is_alignment_test) {
+  alignment_test = is_alignment_test;
+}
+
 int RequestManager::get_k() {
   assert(k > 0 and k <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM and "Invalid k");
   return k;
@@ -388,7 +392,7 @@ RequestManager::RequestGuid
       output = output + " " + std::to_string(request.tokens[i]);
     }
     log_req_mgr.print("%s", output.c_str());
-    write_to_output_file(output_filepath, output);
+    write_to_output_file(alignment_test ? "" : output_filepath, output);
   }
 
   GenerationResult gr;
@@ -520,6 +524,68 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
+  if (alignment_test) {
+    // Find the sos and eos in the sequence
+    auto bos_it = std::find(
+        request.tokens.begin(), request.tokens.end(), this->bos_token_id);
+    auto eos_rit = std::find(
+        request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
+    std::vector<int>::iterator eos_it;
+    if (eos_rit != request.tokens.rend()) {
+      eos_it = eos_rit.base();
+    } else {
+      eos_it = request.tokens.end();
+    }
+    std::string output =
+        this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
+
+    std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
+    std::cout << "<bos>" << output;
+    if (eos_rit != request.tokens.rend()) {
+      std::cout << "<eos>";
+    }
+    std::cout << std::endl << std::endl;
+    {
+      RequestProfileInfo profile_info = profiling_requests[guid];
+
+      std::ostream *os = &std::cout;
+      std::ofstream output_file;
+      if (!output_filepath.empty()) {
+        output_file.open(output_filepath, std::ios::app);
+        if (output_file.is_open()) {
+          os = &output_file;
+        } else {
+          std::cout << "Unable to open the output file: " << output_filepath
+                    << std::endl;
+          assert(false);
+        }
+      }
+      *os << "Request " << guid << " profiling: " << std::endl;
+      if (profile_info.start_decoding_time != 0) {
+        *os << "Decoding time: "
+            << (profile_info.finish_time - profile_info.start_decoding_time) *
+                  1e-3
+            << " ms" << std::endl;
+      } else {
+        *os << "Decoding time: 0 ms" << std::endl;
+      }
+      *os << "Total time: "
+          << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
+          << std::endl;
+      *os << "LLM decoding steps: " << profile_info.llm_decoding_steps
+          << std::endl;
+      if (decoding_mode == SPECULATIVE_DECODING) {
+        *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+            << std::endl;
+      }
+      *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
+
+      if (!output_filepath.empty()) {
+        output_file.close();
+      }
+    }
+  }
+
   RequestProfileInfo profile_info = profiling_requests[guid];
   std::string str =
       "[" + std::to_string(guid) +
@@ -542,8 +608,10 @@ void RequestManager::request_complete_clean_up(int batch_index) {
           + ")";
 
   }
-  write_to_output_file(output_filepath, str);
-  std::cout << str << std::endl;
+  write_to_output_file(alignment_test ? "" : output_filepath, str);
+  if (!alignment_test) {
+    std::cout << str << std::endl;
+  }
 
   trigger_request_completion_future(guid);
 }
@@ -2194,7 +2262,7 @@ void RequestManager::terminate_background_server() {
     }
     generated_tokens_per_step += ")";
     str += generated_tokens_per_step;
-    write_to_output_file(output_filepath, str);
+    write_to_output_file(alignment_test ? "" : output_filepath, str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
