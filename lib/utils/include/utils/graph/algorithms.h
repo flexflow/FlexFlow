@@ -271,6 +271,11 @@ NodePort get_dst_idx(std::variant<Args...> const &t) {
 
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &,
                                        Node const &);
+
+/**
+ * @brief returns all neighboring nodes to the given node. 
+ * @details When fetching the neighbors, the graph is treated as undirected. So a,b are neighbors if edge (a,b) or (b,a) is present.
+*/
 std::unordered_set<Node> get_neighbors(DiGraphView const &, Node const &);
 std::unordered_set<Node> get_neighbors(MultiDiGraphView const &, Node const &);
 
@@ -285,41 +290,81 @@ std::unordered_set<Node> get_closed_sinks(OpenMultiDiGraphView const &g);
 std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
 std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
 
-bool is_acyclic(MultiDiGraphView const &, std::unordered_set<Node> const &);
-std::optional<bool> is_acyclic(DiGraphView const &);
-std::optional<bool> is_acyclic(MultiDiGraphView const &);
+bool is_acyclic(MultiDiGraphView const &g, std::unordered_set<Node> const &nodes);
 
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_dominators(DiGraphView const &);
-std::unordered_set<Node> get_dominators(DiGraphView const &, Node const &);
-std::unordered_set<Node> get_dominators(DiGraphView const &,
-                                        std::unordered_set<Node> const &);
+/**
+ * @brief If the graph has no nodes, std::nullopt is returned.
+*/
+std::optional<bool> is_acyclic(DiGraphView const &g);
+std::optional<bool> is_acyclic(MultiDiGraphView const &g);
 
+/**
+ * @brief Computes the dominators for all nodes in a directed graph.
+ * @details A node "d" dominates a node "n" if every path from all sources to "n" must go through "d". Note that every node dominates itself.
+*/
 std::unordered_map<Node, std::unordered_set<Node>>
-    get_post_dominators(DiGraphView const &);
+    get_dominators(DiGraphView const &g);
+
+/**
+ * @brief Computes the dominators for a specific node in a directed graph.
+ * @details A node "d" dominates a node "n" if every path from all sources to "n" must go through "d". Note that every node dominates itself.
+*/
+std::unordered_set<Node> get_dominators(DiGraphView const &g, Node const &nodes);
+
+/**
+ * @brief Computes the intersection of dominators for a set of nodes in a directed graph.
+ * @details A node "d" dominates a node "n" if every path from all sources to "n" must go through "d". Note that every node dominates itself.
+*/
+std::unordered_set<Node> get_dominators(DiGraphView const &g,
+                                        std::unordered_set<Node> const &nodes);
+
+/**
+ * @brief Computes all post-dominators in a directed graph.
+ * @details A node "d" post-dominates a node "n" if every path from "n" to all sinks must go through "d". Note that every node post-dominates itself.
+*/
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_post_dominators(DiGraphView const &g);
+
+/**
+ * @brief Computes the immediate dominator for all nodes in a directed graph
+ * @details An immediate dominator is the unique node that strictly dominates "n" but does not strictly dominate any other node that strictly dominates "n". Every node, except the source node(s), has an immediate dominator.
+ *          Thus, the sources will have a std::nullopt as the associated dominator.
+*/
 std::unordered_map<Node, std::optional<Node>>
-    get_imm_dominators(DiGraphView const &);
+    get_imm_dominators(DiGraphView const &g);
+
+/**
+ * @brief Computes the immediate post-dominator for all nodes in a directed graph
+ * @details An immediate post-dominator is the unique node that strictly post-dominates "n" but does not post-dominate any other post-dominator of "n". Every node, except the sink node(s), has an immediate dominator.
+ *          Thus, the sinks will have a std::nullopt as the associated dominator.
+*/
 std::unordered_map<Node, std::optional<Node>>
-    get_imm_post_dominators(DiGraphView const &);
-std::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &);
-std::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
-                                           Node const &);
-std::optional<Node> get_imm_post_dominator(DiGraphView const &,
-                                           std::unordered_set<Node> const &);
+    get_imm_post_dominators(DiGraphView const &g);
+
+/**
+ * @brief Computes the immediate post-dominator for the given node in a directed graph
+ * @details An immediate post-dominator is the unique node that strictly post-dominates "n" but does not post-dominate any other post-dominator of "n". Every node, except the sink node(s), has an immediate dominator.
+ *          Thus, the sinks will have a std::nullopt as the associated dominator.
+*/
+std::optional<Node> get_imm_post_dominator(DiGraphView const &g, Node const &node);
+std::optional<Node> get_imm_post_dominator(MultiDiGraphView const &g,
+                                           Node const &node);
+std::optional<Node> get_imm_post_dominator(DiGraphView const &g,
+                                           std::unordered_set<Node> const &nodes);
 
 std::vector<Node>
-    get_dfs_ordering(DiGraphView const &,
+    get_dfs_ordering(DiGraphView const &g,
                      std::unordered_set<Node> const &starting_points);
 std::vector<Node>
-    get_unchecked_dfs_ordering(DiGraphView const &,
+    get_unchecked_dfs_ordering(DiGraphView const &g,
                                std::unordered_set<Node> const &starting_points);
 std::vector<Node>
-    get_bfs_ordering(DiGraphView const &,
+    get_bfs_ordering(DiGraphView const &g,
                      std::unordered_set<Node> const &starting_points);
-std::vector<Node> get_topological_ordering(DiGraphView const &);
+std::vector<Node> get_topological_ordering(DiGraphView const &g);
 // std::vector<Node> get_topological_ordering(MultiDiGraphView const &);
 // std::vector<Node> get_topological_ordering(OpenMultiDiGraphView const &);
-std::vector<Node> get_unchecked_topological_ordering(DiGraphView const &);
+std::vector<Node> get_unchecked_topological_ordering(DiGraphView const &g);
 
 std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &);
 std::vector<MultiDiEdge>

@@ -616,7 +616,7 @@ std::unordered_map<Node, std::optional<Node>>
   return get_imm_dominators(flipped(g));
 }
 
-std::optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
+std::optional<Node> get_imm_post_dominator(DiGraphView const &g, Node const &n) {
   return get_imm_post_dominators(g).at(n);
 }
 
