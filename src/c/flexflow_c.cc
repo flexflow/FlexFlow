@@ -1591,11 +1591,10 @@ void flexflow_model_generate(flexflow_model_t handle_,
                              int max_seq_length,
                              int **output_length_and_tokens) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
-  double tpot_slo_ms = 10; // TODO: generalize tpot SLO
   std::vector<std::pair<std::string, std::optional<double>>> prompts;
   for (int i = 0; i < num_requests; i++) {
     std::string const text_str(input_texts[i]);
-    prompts.emplace_back(text_str, tpot_slo_ms);
+    prompts.emplace_back(text_str, RequestManager::NO_SLO);
     DEBUG_PRINT("[Model] generate[%d] %p %s %i",
                 i,
                 handle,

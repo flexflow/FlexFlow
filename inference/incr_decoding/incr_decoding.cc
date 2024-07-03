@@ -50,7 +50,7 @@ void parse_input_args(char **argv,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
                       int &sampling_seed,
-                      bool &tpot_slo
+                      bool &tpot_slo,
                       bool &alignment_test) {
   for (int i = 1; i < argc; i++) {
     // llm model type
@@ -296,13 +296,23 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    double tpot_slo_ms = 10; // TODO: generalize tpot SLO
     std::vector<std::pair<std::string, std::optional<double>>> prompts;
+    // The json should be a list of elements, where an element is 
+    // either a string, or a tuple [string, float]. 
+    // The string is the prompt, and the float is an optional tpot SLO.
     for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      if (prompt.is_string()) { // The element doesn't contain an SLO
+        std::string text = prompt.get<std::string>();
+        printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+        prompts.emplace_back(text, std::nullopt);
+      } else { // The element contains an SLO
+        std::string text = prompt[0].get<std::string>();
+        double tpot_slo_ms = prompt[1].get<double>();
+        printf("Prompt[%d]: tpot_SLO_ms(%f) | %s\n", 
+            total_num_requests, tpot_slo_ms, text.c_str());
+        prompts.emplace_back(text, tpot_slo_ms);
+      }
       total_num_requests++;
-      prompts.emplace_back(text, tpot_slo_ms);
     }
     std::vector<GenerationResult> result =
         model.generate(prompts, 128 /*max_sequence_length*/);

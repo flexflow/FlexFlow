@@ -477,15 +477,22 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*ignore_comments */ true);
 
     std::vector<std::pair<std::string, std::optional<double>>> prompts;
-    int i = 1;
+    // The json should be a list of elements, where an element is 
+    // either a string, or a tuple [string, float]. 
+    // The string is the prompt, and the float is an optional tpot SLO.
     for (auto &prompt : prompt_json) {
-      double tpot_slo_ms = 1.2*i;
-      i += 1;
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      if (prompt.is_string()) { // The element doesn't contain an SLO
+        std::string text = prompt.get<std::string>();
+        printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+        prompts.emplace_back(text, std::nullopt);
+      } else { // The element contains an SLO
+        std::string text = prompt[0].get<std::string>();
+        double tpot_slo_ms = prompt[1].get<double>();
+        printf("Prompt[%d]: tpot_SLO_ms(%f) | %s\n", 
+            total_num_requests, tpot_slo_ms, text.c_str());
+        prompts.emplace_back(text, tpot_slo_ms);
+      }
       total_num_requests++;
-      prompts.emplace_back(text, tpot_slo_ms);
-      // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
     tree_model.generate(prompts, 128 /*max_sequence_length*/);
   }
