@@ -66,6 +66,88 @@ constexpr ParameterSyncType CHOSEN_SYNC_TYPE = ParameterSyncType::PS;
 
 class FFConfig;
 
+constexpr uint32_t kPagesize = 64;
+class AttentionMetaData {
+public:
+  AttentionMetaData() {
+    q_indptr = nullptr;
+    kv_indptr = nullptr;
+    kv_indices = nullptr;
+    kv_last_page_len = nullptr;
+    qk_indptr = nullptr;
+    custom_mask = nullptr;
+    mem_size_ = 0;
+  }
+  AttentionMetaData(const AttentionMetaData &rhs) {
+    q_indptr = rhs.q_indptr;
+    kv_indptr = rhs.kv_indptr;
+    kv_indices = rhs.kv_indices;
+    kv_last_page_len = rhs.kv_last_page_len;
+    qk_indptr = rhs.qk_indptr;
+    custom_mask = rhs.custom_mask;
+    mem_size_ = rhs.mem_size_;
+  }
+
+  size_t mem_size() {
+    if (mem_size_ > 0) {
+      return mem_size_;
+    }
+    size_t batch_size = BatchConfig::max_requests_per_batch();
+    size_t max_num_pages =
+        (BatchConfig::max_spec_tree_token_num() +
+         BatchConfig::max_sequence_length() + kPagesize - 1) /
+        kPagesize;
+    size_t indices_size = std::max(
+        (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
+    size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
+                              ((BatchConfig::max_spec_tree_token_num() *
+                                (BatchConfig::max_spec_tree_token_num() +
+                                BatchConfig::max_sequence_length()) + 7) / 8);
+
+    mem_size_ = sizeof(int32_t) * indices_size + sizeof(uint8_t) * custom_mask_size;
+    return mem_size_;
+  }
+
+  void assign_address(void* ptr, int size) {
+    if (ptr == nullptr) {
+      q_indptr = nullptr;
+      kv_indptr = nullptr;
+      kv_indices = nullptr;
+      kv_last_page_len = nullptr;
+      qk_indptr = nullptr;
+      custom_mask = nullptr;
+      return;
+    }
+    assert(size >= mem_size() && "Insufficient memory size for attention metadata");
+    size_t batch_size = BatchConfig::max_requests_per_batch();
+    size_t max_num_pages =
+        (BatchConfig::max_spec_tree_token_num() +
+         BatchConfig::max_sequence_length() + kPagesize - 1) /
+        kPagesize;
+    size_t indices_size = std::max(
+        (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
+    size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
+                              ((BatchConfig::max_spec_tree_token_num() *
+                                (BatchConfig::max_spec_tree_token_num() +
+                                BatchConfig::max_sequence_length()) + 7) / 8);
+
+    q_indptr = static_cast<int32_t*>(ptr);
+    kv_indptr = q_indptr + batch_size + 1;
+    kv_indices = kv_indptr + batch_size + 1;
+    kv_last_page_len = kv_indices + max_num_pages * batch_size;
+    qk_indptr = kv_last_page_len + batch_size + 1;
+    custom_mask = static_cast<uint8_t*>(ptr) + sizeof(int32_t) * indices_size;
+  }
+
+  int32_t *q_indptr;
+  int32_t *kv_indptr;
+  int32_t *kv_indices;
+  int32_t *kv_last_page_len;
+  int32_t *qk_indptr;
+  uint8_t *custom_mask;
+  size_t mem_size_;
+};
+
 struct FFHandler {
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   cudnnHandle_t dnn;
@@ -77,13 +159,12 @@ struct FFHandler {
   void *workSpace;
   size_t workSpaceSize;
   void *batch_config_metadata;
-  void *attention_metadata;
+  AttentionMetaData attention_metadata;
 
   size_t batch_config_metadata_size =
       sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
       sizeof(BatchConfig::request_available) + sizeof(BatchConfig::causalMask) +
       sizeof(BatchConfig::committed_tokens);
-  size_t attention_metadata_size = 0;
 
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
