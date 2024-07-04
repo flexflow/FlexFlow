@@ -262,15 +262,18 @@ void RequestManager::load_batch_config_task(
 
     // calculate the attention meta data
     {
-      BatchConfig::PerRequestInfo *request_infos = static_cast<BatchConfig::PerRequestInfo *>(handle.batch_config_metadata +
-                                      sizeof(BatchConfig::tokensInfo));
-      bool *request_available = static_cast<bool *>(handle.batch_config_metadata +
-                               sizeof(BatchConfig::tokensInfo) +
-                               sizeof(BatchConfig::requestsInfo));
-      BatchConfig::BitMask *causalMask = static_cast<BatchConfig::BitMask *>(handle.batch_config_metadata +
-                            sizeof(BatchConfig::tokensInfo) +
-                            sizeof(BatchConfig::requestsInfo) +
-                            sizeof(BatchConfig::request_available));
+      BatchConfig::PerRequestInfo *request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
+        static_cast<char *>(handle.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo));
+      bool *request_available = reinterpret_cast<bool *>(
+        static_cast<char *>(handle.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) +
+        sizeof(BatchConfig::requestsInfo));
+      BatchConfig::BitMask *causalMask = reinterpret_cast<BatchConfig::BitMask *>(
+        static_cast<char *>(handle.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) +
+        sizeof(BatchConfig::requestsInfo) +
+        sizeof(BatchConfig::request_available));
       int batch_size = batch_config->num_active_requests();
       uint32_t const max_num_pages = (BatchConfig::max_sequence_length() +
         BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;

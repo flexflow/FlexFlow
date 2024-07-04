@@ -24,7 +24,6 @@
 
 #include <sstream>
 #include <stdexcept>
-#include <vector>
 
 #define DISPATCH_HEADDIM(head_dim, HEAD_DIM, ...)                              \
   switch (head_dim) {                                                          \
@@ -240,7 +239,7 @@ __global__ void produce_output_kernel(half const *input_ptr,
 }
 
 template <typename DT>
-void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
+void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
                            BatchConfig const *bc,
                            DT *output_ptr,
                            cudaStream_t stream) {
@@ -258,14 +257,17 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
       (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  std::vector<int32_t> q_indptr_h{0}, kv_indptr_h{0};
-  for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
+  int32_t q_indptr_h[bc->max_requests_per_batch() + 1], kv_indptr_h[bc->max_requests_per_batch() + 1];
+  q_indptr_h[0] = 0;
+  kv_indptr_h[0] = 0;
+  for (int req_idx = 0, indptr_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
     if (bc->request_available[req_idx]) {
       int q_len = bc->requestsInfo[req_idx].num_tokens_in_batch;
       int kv_len = bc->requestsInfo[req_idx].num_tokens_in_batch +
                   bc->requestsInfo[req_idx].first_token_index_in_request;
-      q_indptr_h.push_back(q_indptr_h.back() + q_len);
-      kv_indptr_h.push_back(kv_indptr_h.back() + (kv_len + kPagesize - 1) / kPagesize);
+      q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
+      kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+      indptr_idx++;
     }
   }
 
@@ -315,8 +317,8 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   handler->SetCUDAStream(stream);
   handler->BeginForward<half, int32_t>(m->workspace,
                                        m->workspace_size,
-                                       q_indptr_h.data(),
-                                       kv_indptr_h.data(),
+                                       static_cast<int32_t *>(q_indptr_h),
+                                       static_cast<int32_t *>(kv_indptr_h),
                                        batch_size,
                                        num_q_heads,
                                        num_kv_heads,
