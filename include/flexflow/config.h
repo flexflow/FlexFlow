@@ -77,11 +77,14 @@ struct FFHandler {
   void *workSpace;
   size_t workSpaceSize;
   void *batch_config_metadata;
+  void *attention_metadata;
 
   size_t batch_config_metadata_size =
       sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
       sizeof(BatchConfig::request_available) + sizeof(BatchConfig::causalMask) +
       sizeof(BatchConfig::committed_tokens);
+  size_t attention_metadata_size = 0;
+
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   DataType quantization_type;

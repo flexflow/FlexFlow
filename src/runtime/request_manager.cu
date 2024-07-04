@@ -161,7 +161,7 @@ void RequestManager::load_batch_config_task(
   }
 
   // add a size check
-  assert(total_copy_size <= handle.batch_config_metadata_size);
+  assert(total_copy_size <= handle.batch_config_metadata_size + handle.attention_metadata_size);
 }
 
 void RequestManager::load_positions_task(
