@@ -371,11 +371,11 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
                                                 m->request_infos,
                                                 m->request_available,
                                                 max_num_pages,
-                                                m->q_indptr,
-                                                m->kv_indptr,
-                                                m->kv_indices,
-                                                m->kv_last_page_len,
-                                                m->qk_indptr);
+                                                m->handle.attention_metadata.q_indptr,
+                                                m->handle.attention_metadata.kv_indptr,
+                                                m->handle.attention_metadata.kv_indices,
+                                                m->handle.attention_metadata.kv_last_page_len,
+                                                m->handle.attention_metadata.qk_indptr);
     for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
       if (bc->request_available[req_idx]) {
         int q_len = bc->requestsInfo[req_idx].num_tokens_in_batch;
@@ -405,8 +405,8 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
     update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
                                 min(CUDA_NUM_THREADS, parallelism),
                                 0,
-                                stream>>>(m->custom_mask,
-                                          m->qk_indptr,
+                                stream>>>(m->handle.attention_metadata.custom_mask,
+                                          m->handle.attention_metadata.qk_indptr,
                                           m->causalMask,
                                           m->request_infos,
                                           m->request_available,
@@ -431,9 +431,9 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
       head_dim,
       batch_size,
       kv,
-      m->kv_indices,
-      m->kv_indptr,
-      m->kv_last_page_len);
+      m->handle.attention_metadata.kv_indices,
+      m->handle.attention_metadata.kv_indptr,
+      m->handle.attention_metadata.kv_last_page_len);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -492,7 +492,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
             half,
             int32_t>(handler,
                       q,
-                      m->q_indptr,
+                      m->handle.attention_metadata.q_indptr,
                       /*q_offset=*/nullptr,
                       paged_kv,
                       /*custom_mask=*/nullptr,
@@ -518,11 +518,11 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
             half,
             int32_t>(handler,
                       q,
-                      m->q_indptr,
+                      m->handle.attention_metadata.q_indptr,
                       /*q_offset=*/nullptr,
                       paged_kv,
-                      m->custom_mask,
-                      m->qk_indptr,
+                      m->handle.attention_metadata.custom_mask,
+                      m->handle.attention_metadata.qk_indptr,
                       o,
                       /*lse=*/nullptr,
                       num_q_heads,
@@ -874,30 +874,9 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   {
-    size_t batch_size = BatchConfig::max_requests_per_batch();
-    size_t max_num_pages =
-        (BatchConfig::max_spec_tree_token_num() +
-         BatchConfig::max_sequence_length() + kPagesize - 1) /
-        kPagesize;
-    size_t indices_size = std::max(
-        (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
-    size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
-                              ((BatchConfig::max_spec_tree_token_num() *
-                                (BatchConfig::max_spec_tree_token_num() +
-                                BatchConfig::max_sequence_length()) + 7) / 8);
     workspace_size = 32 * 1024 * 1024; // 32MB
-
     gpu_mem_allocator.create_legion_instance(
-        flashinfer_reserve_inst,
-        sizeof(int32_t) * indices_size + sizeof(uint8_t) * custom_mask_size +
-            workspace_size);
-
-    q_indptr = gpu_mem_allocator.allocate_instance<int32_t>(indices_size);
-    kv_indptr = q_indptr + batch_size + 1;
-    kv_indices = kv_indptr + batch_size + 1;
-    kv_last_page_len = kv_indices + max_num_pages * batch_size;
-    qk_indptr = kv_last_page_len + batch_size + 1;
-    custom_mask = gpu_mem_allocator.allocate_instance<uint8_t>(custom_mask_size);
+        flashinfer_reserve_inst, workspace_size);
     workspace = static_cast<void *>(
         gpu_mem_allocator.allocate_instance<char>(workspace_size));
     batch_prefill_handler =
