@@ -523,8 +523,5 @@ struct threads_per_value_t {
 #define test_bit(bit_mask, idx, pos)                                           \
   (((bit_mask)[idx][(pos) / 64] & (1ULL << ((pos) % 64))) != 0)
 
-#define test_bit_orig(bit_mask, idx, pos)                                           \
-  (((bit_mask)[idx].bits[(pos) / 64] & (1ULL << ((pos) % 64))) != 0)
-
 } // namespace FlexFlow
 #endif // _FLEXFLOW_OPS_KERNELS_INC_MULTIHEAD_SELF_UTILS_H
