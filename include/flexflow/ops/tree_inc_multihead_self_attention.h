@@ -146,7 +146,6 @@ public:
 public:
   int num_active_tokens;
   BatchConfig::CommittedTokensInfo *committed_token_infos;
-  BatchConfig::BitMask *causalMask;
   // For flashinfer attention
   Realm::RegionInstance flashinfer_reserve_inst;
   size_t workspace_size;

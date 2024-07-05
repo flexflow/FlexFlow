@@ -748,10 +748,6 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    causalMask = reinterpret_cast<BatchConfig::BitMask *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BatchConfig::request_available));
     committed_token_infos =
         reinterpret_cast<BatchConfig::CommittedTokensInfo *>(
             reinterpret_cast<char *>(handler.batch_config_metadata) +
