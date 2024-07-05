@@ -1453,18 +1453,17 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         break;
       }
       case TREE_SEARCH_MODE: {
+        query_tmp_size =
+            num_q_heads * qProjSize * BatchConfig::max_tokens_per_batch();
+        // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_q_heads * kProjSize *
-                         BatchConfig::max_requests_per_batch() *
-                         (BatchConfig::max_sequence_length() +
-                          BatchConfig::max_spec_tree_token_num());
+                         BatchConfig::max_requests_per_batch() * max_num_pages *
+                         kPagesize;
         value_cache_size = num_q_heads * vProjSize *
                            BatchConfig::max_requests_per_batch() *
-                           (BatchConfig::max_sequence_length() +
-                            BatchConfig::max_spec_tree_token_num());
-        qk_prod_size = BatchConfig::max_sequence_length() *
-                       (BatchConfig::max_sequence_length() +
-                        BatchConfig::max_spec_tree_token_num()) *
-                       num_q_heads;
+                           max_num_pages * kPagesize;
+        qk_prod_size = BatchConfig::max_sequence_length() * max_num_pages *
+                       kPagesize * num_q_heads;
         break;
       }
       case TREE_VERIFY_MODE: {

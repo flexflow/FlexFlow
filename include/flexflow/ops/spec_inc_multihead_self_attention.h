@@ -108,7 +108,7 @@ public:
                              CostMetrics &cost_metrics) const override;
 
   static void
-      inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta const *m,
+      inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta *m,
                                BatchConfig const *bc,
                                int shard_id,
                                GenericTensorAccessorR const &input,
@@ -139,8 +139,11 @@ public:
   ~SpecIncMultiHeadSelfAttentionMeta(void);
 
 public:
-  Realm::RegionInstance tree_search_reserve_inst;
-  BatchConfig::BitMask *causalMask;
+  // For flashinfer attention
+  Realm::RegionInstance flashinfer_reserve_inst;
+  size_t workspace_size;
+  void *workspace;
+  void *batch_prefill_handler;
 };
 
 }; // namespace FlexFlow
