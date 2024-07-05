@@ -612,7 +612,8 @@ __host__ void
   //graph_params.Print();
   // int shard_id = task->index_point.point_data[0];
 
-  bool use_cuda_graph = (bc->prompt_phase == false && bc->get_mode() == TREE_SEARCH_MODE);
+  // bool use_cuda_graph = (bc->prompt_phase == false && bc->get_mode() == TREE_SEARCH_MODE);
+  bool use_cuda_graph = false;
   bool captured = false;
 
   if(use_cuda_graph && metas->graph_collections.count(graph_params)  != 0) {
@@ -961,7 +962,7 @@ __host__ void
           case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
             assert(fused->op_num_inputs[op] == 1);
             assert(fused->op_num_outputs[op] == 1);
-            SpecIncMultiHeadSelfAttentionMeta const *m =
+            SpecIncMultiHeadSelfAttentionMeta *m =
                 (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
             // TreeSearchBatchConfig const *search_bc =
             //     (TreeSearchBatchConfig *)task->args;
