@@ -601,7 +601,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   if (decoding_mode == SPECULATIVE_DECODING) {
     str = str + " SSM_decoding_steps(" +
           std::to_string(profile_info.ssm_decoding_steps) + ")" +
-          " tpot(" + std::to_string(
+          " tpot_ms(" + std::to_string(
           (profile_info.finish_time-
             profile_info.start_time)
             * 1e-3 / profile_info.nb_tokens_decoded)
@@ -1443,8 +1443,17 @@ bool RequestManager::update_ssm_inference_results(
   // Here we assume that the order of the tokens in the last
   // BatchConfig and hence the last InferenceResult is equal to
   // the order of the request in the last BatchConfig
-  bool all_request_last_layer_empty =
+  bool all_request_last_layer_empty = false;
+  if (tpot_slo) {
+    all_request_last_layer_empty =
+      add_tokens_to_spec_token_tree_tpot_slo(ssm_inference_result);
+    if (all_request_last_layer_empty or current_ssm_step == get_max_tree_depth()) {
+      select_subtrees_on_tpot_slo_constraints(0.0, 0.0); // TODO: latency and eps
+    }
+  } else {
+    all_request_last_layer_empty =
       add_tokens_to_spec_token_tree(ssm_inference_result);
+  }
 
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
@@ -2473,8 +2482,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
             if (tokens.size() == empty_slots_in_layer and
                 *tokens.begin() < node_ptr) {
               // The token tree is full, and the new token has a higher compare
-              // value than the minimum node in the pool, we need to remove the
-              // minimum node from the pool and add the new token to the tree
+              // value than the minimum node in the last layer, we need to remove the
+              // minimum node from the last layer and add the new token to the tree
               tokens.erase(tokens.begin());
             }
             tokens.insert(node_ptr);
@@ -2582,7 +2591,7 @@ bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
     std::priority_queue<
       std::shared_ptr<TokenTreeNode>,
       std::vector<std::shared_ptr<TokenTreeNode>>,
-      CompareSharedTokenTreeNodePtr> ordered_nodes = request.ordered_nodes_per_tree[0];
+      CompareSharedTokenTreeNodePtr> &ordered_nodes = request.ordered_nodes_per_tree[0];
     std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
         spec_token_tree.tree_layers.back();
     std::set<std::shared_ptr<TokenTreeNode>, CompareSharedTokenTreeNodePtr>
@@ -2606,8 +2615,11 @@ bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
           int result_idx = child_start_idx + child_pos;
           if (!speculative_sampling) {
             // TODO: the argmax will return log prob instead of prob
-            child_probs[child_pos] = std::make_pair(
-                log(ssm_inference_result.probs[result_idx]), result_idx);
+            if (log(ssm_inference_result.probs[result_idx]) !=
+                -std::numeric_limits<float>::infinity()) {
+              child_probs[child_pos] = std::make_pair(
+                  log(ssm_inference_result.probs[result_idx]), result_idx);
+            }
           } else {
             // Use gumbel perturbed logits here
             child_probs[child_pos] = std::make_pair(
@@ -2644,12 +2656,13 @@ bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
           bool child_leq_tree = (cmp_value <= (speculative_sampling
                                 ? ordered_nodes.top()->gumbel_logit
                                 : ordered_nodes.top()->log_accumulated_prob));
-          bool child_leq_layer = (cmp_value <= (speculative_sampling
+          bool child_leq_layer = (tokens.size() > 0 && (cmp_value <= (speculative_sampling
                                 ? (*tokens.begin())->gumbel_logit
-                                : (*tokens.begin())->log_accumulated_prob));
+                                : (*tokens.begin())->log_accumulated_prob)));
 
           if (layer_full and child_leq_layer) {
             // The layer is full, and that child node (and all subsequent children nodes) have smaller acc prob than nodes in layer
+            // Note that when the tree is full, the layer is full. 
             break;
           } else if (tree_full and child_leq_tree and child_leq_layer) {
             // The layer is not full, but the tree is full, and all nodes from the tree and from the layer have higher acc prob than that child node (and all subsequent children nodes)
@@ -2735,7 +2748,7 @@ bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
 
 void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, double const eps) {
   
-  const int N = get_max_tokens_per_batch();
+  const int N = get_max_spec_tree_token_num();
   std::vector<std::shared_ptr<TokenTreeNode>> linked_list_heads(get_max_requests_per_batch(), nullptr);
   std::vector<double> expected_decoded_num(get_max_requests_per_batch());
 
@@ -2754,7 +2767,7 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
       std::shared_ptr<TokenTreeNode>,
       std::vector<std::shared_ptr<TokenTreeNode>>,
       CompareSharedTokenTreeNodePtr> ordered_nodes = request.ordered_nodes_per_tree[0];
-    
+
     // From the ordered_nodes, create the linked-list
     std::shared_ptr<TokenTreeNode> head = ordered_nodes.top();
     std::shared_ptr<TokenTreeNode> tail = ordered_nodes.top();
@@ -2767,7 +2780,12 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
     tail->next = nullptr;
     head->in_subtree = true;
     linked_list_heads[request_index] = head->next;
-    expected_decoded_num[request_index] = exp(head->log_accumulated_prob);
+    if (!speculative_sampling) {
+      expected_decoded_num[request_index] = exp(head->log_accumulated_prob);
+    } else {
+      // TODO: support gumbel logits
+      assert(false && "Gumbel logits not yet supported here.");
+    }
     B++;
   }
 
@@ -2783,12 +2801,16 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
       RequestGuid guid = guid_of_requests[request_index];
       Request &request = all_requests[guid];
       assert(request.status == Request::RUNNING);
-    
       double score = -1.0;
       if (expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps < 0) {
         score = 1-(expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps);
       } else {
-        score = exp(linked_list_heads[request_index]->log_accumulated_prob);
+        if (!speculative_sampling) {
+          score = exp(linked_list_heads[request_index]->log_accumulated_prob);
+        } else {
+          // TODO: support gumbel logits
+          assert(false && "Gumbel logits not yet supported here.");
+        }
       }
       if (score > chosen_request_score) {
         chosen_request_index = request_index;
@@ -2798,11 +2820,40 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
     assert(chosen_request_index >= 0);
 
     std::shared_ptr<TokenTreeNode> v = linked_list_heads[chosen_request_index];
-    expected_decoded_num[chosen_request_index] += exp(v->log_accumulated_prob);
+    if (!speculative_sampling) {
+      expected_decoded_num[chosen_request_index] += exp(v->log_accumulated_prob);
+    } else {
+      // TODO: support gumbel logits
+      assert(false && "Gumbel logits not yet supported here.");
+    }
     v->in_subtree = true;
     linked_list_heads[chosen_request_index] = v->next;
   }
+
   // At this point, nodes with 'in_subtree' set to true are nodes belonging to the subtrees
+  // Prune all nodes that do not belong to the subtree
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    TokenTree &token_tree = request.speculative_token_trees[0];
+    for (auto const &tree_layer : token_tree.tree_layers) {
+      for (auto const &tree_node : tree_layer) {
+        if (!tree_node->in_subtree) {
+          tree_node->pruned = true;
+          token_tree.tree_size--;
+        } else {
+          assert(tree_node->pruned == false && "Tree node in the subtree cannot be pruned");
+        }
+      }
+    }
+  }
 }
 
 std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
