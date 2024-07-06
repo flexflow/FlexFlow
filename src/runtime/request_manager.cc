@@ -2748,9 +2748,11 @@ bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
 
 void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, double const eps) {
   
-  const int N = get_max_spec_tree_token_num();
   std::vector<std::shared_ptr<TokenTreeNode>> linked_list_heads(get_max_requests_per_batch(), nullptr);
   std::vector<double> expected_decoded_num(get_max_requests_per_batch());
+  std::vector<size_t> tree_sizes(get_max_requests_per_batch(), 0);
+  std::vector<size_t> subtree_sizes(get_max_requests_per_batch(), 0);
+  size_t sum_tree_sizes = 0;
 
   int B = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
@@ -2766,7 +2768,9 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
     std::priority_queue<
       std::shared_ptr<TokenTreeNode>,
       std::vector<std::shared_ptr<TokenTreeNode>>,
-      CompareSharedTokenTreeNodePtr> ordered_nodes = request.ordered_nodes_per_tree[0];
+      CompareSharedTokenTreeNodePtr> &ordered_nodes = request.ordered_nodes_per_tree[0];
+    tree_sizes[request_index] = ordered_nodes.size();
+    sum_tree_sizes += ordered_nodes.size();
 
     // From the ordered_nodes, create the linked-list
     std::shared_ptr<TokenTreeNode> head = ordered_nodes.top();
@@ -2789,6 +2793,8 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
     B++;
   }
 
+  const int N = min(sum_tree_sizes, get_max_requests_per_batch());
+
   for (int iter = 0; iter < N - B; ++iter) {
     int chosen_request_index = -1;
     double chosen_request_score = -1.0;
@@ -2802,14 +2808,16 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
       Request &request = all_requests[guid];
       assert(request.status == Request::RUNNING);
       double score = -1.0;
-      if (expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps < 0) {
-        score = 1-(expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps);
-      } else {
-        if (!speculative_sampling) {
-          score = exp(linked_list_heads[request_index]->log_accumulated_prob);
+      if (subtree_sizes[request_index] < tree_sizes[request_index]) {
+        if (expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps < 0) {
+          score = 1-(expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps);
         } else {
-          // TODO: support gumbel logits
-          assert(false && "Gumbel logits not yet supported here.");
+          if (!speculative_sampling) {
+            score = exp(linked_list_heads[request_index]->log_accumulated_prob);
+          } else {
+            // TODO: support gumbel logits
+            assert(false && "Gumbel logits not yet supported here.");
+          }
         }
       }
       if (score > chosen_request_score) {
@@ -2827,6 +2835,7 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
       assert(false && "Gumbel logits not yet supported here.");
     }
     v->in_subtree = true;
+    subtree_sizes[chosen_request_index] += 1;
     linked_list_heads[chosen_request_index] = v->next;
   }
 
