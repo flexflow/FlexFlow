@@ -3,7 +3,7 @@
 
 #include "sub_parallel_computation_graph.dtg.h"
 #include "substitutions/substitution.dtg.h"
-#include "substitutions/unlabelled/multidigraph_pattern_match.dtg.h"
+#include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 
 namespace FlexFlow {
 
@@ -12,7 +12,7 @@ bool is_valid_substitution(Substitution const &);
 SubParallelComputationGraph
     apply_substitution(SubParallelComputationGraph const &,
                        Substitution const &,
-                       MultiDiGraphPatternMatch const &);
+                       UnlabelledDataflowGraphPatternMatch const &);
 
 } // namespace FlexFlow
 

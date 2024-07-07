@@ -5,12 +5,14 @@ namespace FlexFlow {
 UnorderedSetOpenDataflowGraph::UnorderedSetOpenDataflowGraph() {}
 
 UnorderedSetOpenDataflowGraph::UnorderedSetOpenDataflowGraph(NodeSource const &node_source,
+                                                             DataflowGraphInputSource const &input_source,
                                                              std::unordered_set<Node> const &nodes,
                                                              std::unordered_set<DataflowEdge> const &standard_edges,
                                                              std::unordered_set<DataflowInputEdge> const &input_edges,
                                                              std::unordered_set<DataflowOutput> const &outputs,
-                                                             std::vector<DataflowGraphInput> const &graph_inputs) 
+                                                             std::unordered_set<DataflowGraphInput> const &graph_inputs) 
   : node_source(node_source), 
+    input_source(input_source),
     nodes(nodes),
     standard_edges(standard_edges),
     input_edges(input_edges),
@@ -54,20 +56,20 @@ std::unordered_set<DataflowOutput> UnorderedSetOpenDataflowGraph::query_outputs(
   });
 }
 
-std::vector<DataflowGraphInput> UnorderedSetOpenDataflowGraph::get_inputs() const {
+std::unordered_set<DataflowGraphInput> UnorderedSetOpenDataflowGraph::get_inputs() const {
   return this->graph_inputs;
 }
 
 DataflowGraphInput UnorderedSetOpenDataflowGraph::add_input() {
-  int idx = this->graph_inputs.size();
-  DataflowGraphInput result = DataflowGraphInput{idx};
-  this->graph_inputs.push_back(result);
-  return result;
+  DataflowGraphInput new_input = this->input_source.new_dataflow_graph_input();
+  this->graph_inputs.insert(new_input);
+  return new_input;
 }
 
 UnorderedSetOpenDataflowGraph *UnorderedSetOpenDataflowGraph::clone() const {
   return new UnorderedSetOpenDataflowGraph{
     this->node_source,
+    this->input_source,
     this->nodes,
     this->standard_edges,
     this->input_edges,

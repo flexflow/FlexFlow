@@ -20,6 +20,10 @@ public:
                            std::vector<ValueLabel> const &output_labels) {
     return this->get_interface().add_node(node_label, inputs, output_labels); 
   }
+
+  DataflowGraphInput add_input(ValueLabel const &value_label) {
+    return this->get_interface().add_input(value_label);
+  }
 protected:
   using LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>::LabelledOpenDataflowGraphView;
 private:

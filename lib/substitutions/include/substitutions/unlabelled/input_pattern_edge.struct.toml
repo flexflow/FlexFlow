@@ -7,9 +7,9 @@ features = [
 ]
 
 includes = [
-  "utils/graph.h"
+  "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h"
 ]
 
 [[fields]]
 name = "raw_edge"
-type = "::FlexFlow::InputMultiDiEdge"
+type = "::FlexFlow::OpenDataflowEdge"

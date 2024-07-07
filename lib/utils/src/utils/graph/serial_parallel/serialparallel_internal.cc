@@ -7,6 +7,40 @@
 
 namespace FlexFlow {
 
+Node find_source_node(DiGraphView const &g) {
+  std::unordered_set<Node> srcs = get_sources(g);
+  return get_only(srcs);
+}
+
+Node find_sink_node(DiGraphView const &g) {
+  std::unordered_set<Node> sinks = get_sinks(g);
+  return get_only(sinks);
+}
+
+std::optional<Node> find_bottleneck_node(DiGraphView const &g) {
+  std::unordered_set<Node> sources = get_sources(g);
+  std::unordered_set<Node> sinks = get_sinks(g);
+
+  std::optional<Node> maybe_bottleneck = get_imm_post_dominator(g, sources);
+  if (maybe_bottleneck.has_value()) {
+    assert(contains(get_dominators(g, sinks), maybe_bottleneck.value()));
+  }
+  return maybe_bottleneck;
+}
+
+std::unordered_set<Node> from_source_to_sink(DiGraphView const &g,
+                                             Node const &src,
+                                             Node const &sink) {
+  assert(contains(get_dominators(g, sink), src));
+
+  std::vector<Node> bfs = get_bfs_ordering(g, {src});
+  auto end = find(bfs, sink);
+  assert(end != bfs.end());
+
+  std::unordered_set<Node> result(bfs.cbegin(), ++end);
+  return result;
+}
+
 std::unordered_set<Node>
     from_source_to_sink(DiGraphView const &g,
                         std::unordered_set<Node> const &srcs,
@@ -128,25 +162,25 @@ std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(std::variant<Int
 }
 
 struct ToFinalAST {
-  std::variant<Serial, Parallel, Node> operator()(IntermediateSpDecompositionTree const &node) {
+  std::variant<SerialSplit, ParallelSplit, Node> operator()(IntermediateSpDecompositionTree const &node) {
     if (node.type == SplitType::SERIAL) {
-      return Serial{transform(node.children, [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
-        return narrow<std::variant<Parallel, Node>>(internal_to_final_ast(s)).value();
+      return SerialSplit{transform(node.children, [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
+        return narrow<std::variant<ParallelSplit, Node>>(internal_to_final_ast(s)).value();
       })};
     } else {
-      return Parallel{transform(node.children, [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
-        return narrow<std::variant<Serial, Node>>(internal_to_final_ast(s)).value();
+      return ParallelSplit{transform(node.children, [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
+        return narrow<std::variant<SerialSplit, Node>>(internal_to_final_ast(s)).value();
       })};
     }
   }
 
-  std::variant<Serial, Parallel, Node> operator()(Node const &node) {
+  std::variant<SerialSplit, ParallelSplit, Node> operator()(Node const &node) {
     return node;
   }
 };
 
-std::variant<Serial, Parallel, Node> internal_to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
-  return visit(ToFinalAST{}, ast);
+std::variant<SerialSplit, ParallelSplit, Node> internal_to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
+  return std::visit(ToFinalAST{}, ast);
 }
 
 SerialParallelDecomposition to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast) {

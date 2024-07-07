@@ -8,8 +8,7 @@
 namespace FlexFlow {
 
 OpenDataflowSubgraphResult get_subgraph(OpenDataflowGraphView const &,
-                                   std::unordered_set<Node> const &,
-                                   std::vector<OpenDataflowValue> const &);
+                                   std::unordered_set<Node> const &);
 
 } // namespace FlexFlow
 

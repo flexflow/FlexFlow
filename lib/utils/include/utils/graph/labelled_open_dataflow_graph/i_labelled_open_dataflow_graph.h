@@ -14,6 +14,8 @@ struct ILabelledOpenDataflowGraph : virtual public ILabelledOpenDataflowGraphVie
                                    std::vector<OpenDataflowValue> const &inputs,
                                    std::vector<ValueLabel> const &output_labels) = 0;
 
+  virtual DataflowGraphInput add_input(ValueLabel const &value_label) = 0;
+
   NodeAddedResult add_node(NodeLabel const &node_label,
                            std::vector<DataflowOutput> const &inputs,
                            std::vector<ValueLabel> const &output_labels) override final {

@@ -2,6 +2,7 @@
 #include "substitutions/operator_pattern/satisfies_pattern.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "substitutions/tensor_pattern/satisfies_pattern.h"
+#include "substitutions/unlabelled/pattern_value.h"
 
 namespace FlexFlow {
 
@@ -10,8 +11,8 @@ UnlabelledGraphPattern get_unlabelled_pattern(PCGPattern const &p) {
 }
 
 TensorAttributePattern get_tensor_pattern(PCGPattern const &p,
-                                          PatternEdge const &e) {
-  return p.raw_graph.at(e.raw_edge);
+                                          PatternValue const &v) {
+  return p.raw_graph.at(raw_dataflow_value_from_pattern_value(v));
 }
 
 OperatorAttributePattern get_operator_pattern(PCGPattern const &p,
@@ -21,7 +22,7 @@ OperatorAttributePattern get_operator_pattern(PCGPattern const &p,
 
 bool assignment_satisfies(SubParallelComputationGraph const &pcg,
                           PCGPattern const &pattern,
-                          MultiDiGraphPatternMatch const &patternMatch) {
+                          UnlabelledDataflowGraphPatternMatch const &patternMatch) {
   return unlabelled_pattern_does_match(
       get_unlabelled_pattern(pattern),
       pcg.raw_graph,
@@ -32,10 +33,10 @@ bool assignment_satisfies(SubParallelComputationGraph const &pcg,
                 get_operator_attrs(pcg, pcgNode),
                 get_operator_pattern(pattern, patternNode));
           },
-          [&](PatternEdge const &patternEdge, OpenMultiDiEdge const &pcgEdge) {
+          [&](PatternValue const &patternValue, OpenDataflowValue const &pcgValue) {
             return parallel_tensor_satisfies_pattern(
-                get_parallel_tensor_attrs(pcg, pcgEdge),
-                get_tensor_pattern(pattern, patternEdge));
+                get_parallel_tensor_attrs(pcg, pcgValue),
+                get_tensor_pattern(pattern, patternValue));
           }});
 }
 

@@ -11,6 +11,7 @@ template <typename NodeLabel, typename ValueLabel>
 struct ILabelledOpenDataflowGraphView : virtual public ILabelledDataflowGraphView<NodeLabel, ValueLabel>,
                                         virtual public IOpenDataflowGraphView {
 public:
+  virtual NodeLabel const &at(Node const &) const override = 0;
   virtual ValueLabel const &at(OpenDataflowValue const &) const = 0;
 
   ValueLabel const &at(DataflowOutput const &o) const override final {

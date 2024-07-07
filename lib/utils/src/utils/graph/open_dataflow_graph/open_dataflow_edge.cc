@@ -3,6 +3,13 @@
 
 namespace FlexFlow {
 
+Node get_open_dataflow_edge_dst_node(OpenDataflowEdge const &e) {
+  return e.visit<Node>(overload {
+    [](DataflowEdge const &e) { return e.dst.node; },
+    [](DataflowInputEdge const &e) { return e.dst.node; },
+  });
+}
+
 int get_open_dataflow_edge_dst_idx(OpenDataflowEdge const &e) {
   return e.visit<int>(overload {
     [](DataflowEdge const &e) { return e.dst.idx; },
@@ -10,7 +17,7 @@ int get_open_dataflow_edge_dst_idx(OpenDataflowEdge const &e) {
   });
 }
 
-OpenDataflowValue get_open_dataflow_edge_source_value(OpenDataflowEdge const &open_e) {
+OpenDataflowValue get_open_dataflow_edge_source(OpenDataflowEdge const &open_e) {
   return open_e.visit<OpenDataflowValue>(overload {
     [](DataflowEdge const &e) { return OpenDataflowValue{e.src}; },
     [](DataflowInputEdge const &e) { return OpenDataflowValue{e.src}; },

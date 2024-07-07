@@ -2,6 +2,8 @@
 #include "doctest/doctest.h"
 #include "utils/integer_conversions.h"
 
+using namespace ::FlexFlow;
+
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Conv2D shape inference") {
     int out_channels = 4;

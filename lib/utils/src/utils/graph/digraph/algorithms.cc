@@ -20,10 +20,16 @@ std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g, Node c
 }
 
 std::unordered_map<Node, std::unordered_set<DirectedEdge>> get_incoming_edges(DiGraphView const &g, std::unordered_set<Node> const &ns) {
-  return group_by(g.query_edges(DirectedEdgeQuery{
+  std::unordered_map<Node, std::unordered_set<DirectedEdge>> result = group_by(g.query_edges(DirectedEdgeQuery{
     query_set<Node>::matchall(),
     query_set<Node>{ns},
   }), [](DirectedEdge const &e) { return e.dst; });
+
+  for (Node const &n : ns) {
+    result[n];
+  }
+
+  return result;
 }
 
 std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g, Node const &n) {
@@ -34,10 +40,16 @@ std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g, Node c
 }
 
 std::unordered_map<Node, std::unordered_set<DirectedEdge>> get_outgoing_edges(DiGraphView const &g, std::unordered_set<Node> const &ns) {
-  return group_by(g.query_edges(DirectedEdgeQuery{
+  std::unordered_map<Node, std::unordered_set<DirectedEdge>> result = group_by(g.query_edges(DirectedEdgeQuery{
     query_set<Node>::matchall(),
     query_set<Node>{ns},
   }), [](DirectedEdge const &e) { return e.src; });
+
+  for (Node const &n : ns) {
+    result[n];
+  }
+
+  return result;
 }
 
 std::unordered_set<Node> get_sources(DiGraphView const &g) {

@@ -4,6 +4,7 @@
 #include "substitutions/unlabelled/edge_splits.dtg.h"
 #include "substitutions/unlabelled/pattern_split.dtg.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
+#include "substitutions/unlabelled/pattern_split_result.dtg.h"
 
 namespace FlexFlow {
 
@@ -15,7 +16,7 @@ UnlabelledPatternEdgeSplits
     get_edge_splits(UnlabelledGraphPattern const &pattern,
                     PatternSplit const &split);
 
-std::pair<UnlabelledGraphPattern, UnlabelledGraphPattern>
+PatternSplitResult
     apply_split(UnlabelledGraphPattern const &, PatternSplit const &);
 
 } // namespace FlexFlow

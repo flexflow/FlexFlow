@@ -16,18 +16,24 @@ public:
   LabelledOpenDataflowGraphView(LabelledOpenDataflowGraphView const &) = default;
   LabelledOpenDataflowGraphView &operator=(LabelledOpenDataflowGraphView const &) = default;
 
+  NodeLabel const &at(Node const &n) const {
+    return this->get_interface().at(n);
+  }
+
   ValueLabel const &at(OpenDataflowValue const &v) const {
     return this->get_interface().at(v);
   }
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<Interface, T>::value,
-                                 LabelledOpenDataflowGraphView>::type
+                                 LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>>::type
       create(Args &&... args) {
-    return LabelledOpenDataflowGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
+    return LabelledOpenDataflowGraphView(
+      static_cast<cow_ptr_t<IGraphView>>(make_cow_ptr<T>(std::forward<Args>(args)...)));
   }
 protected:
-  using LabelledDataflowGraphView<NodeLabel, ValueLabel>::LabelledDataflowGraphView;
+  using OpenDataflowGraphView::OpenDataflowGraphView;
+  // using LabelledDataflowGraphView<NodeLabel, ValueLabel>::LabelledDataflowGraphView;
 private:
   Interface const &get_interface() const {
     return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());

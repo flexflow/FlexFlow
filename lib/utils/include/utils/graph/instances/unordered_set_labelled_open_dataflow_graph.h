@@ -10,6 +10,7 @@
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
 #include "utils/containers/zip_vectors.h"
 #include "utils/containers/without_nullopts.h"
+#include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 
 namespace FlexFlow {
 
@@ -41,6 +42,12 @@ public:
       new_outputs,
     };
   }
+
+  DataflowGraphInput add_input(ValueLabel const &value_label) override {
+    DataflowGraphInput new_input = this->input_source.new_dataflow_graph_input();
+    this->values.insert({OpenDataflowValue{new_input}, value_label});
+    return new_input;
+  }
   
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
     return filter(keys(this->nodes),
@@ -66,7 +73,7 @@ public:
                                       }));
   }
 
-  std::vector<DataflowGraphInput> get_inputs() const override {
+  std::unordered_set<DataflowGraphInput> get_inputs() const override {
     return this->inputs;
   }
 
@@ -81,6 +88,7 @@ public:
   UnorderedSetLabelledOpenDataflowGraph *clone() const override {
     return new UnorderedSetLabelledOpenDataflowGraph{
       this->node_source,
+      this->input_source,
       this->inputs,
       this->nodes,
       this->edges,
@@ -89,11 +97,13 @@ public:
   }
 private:
   UnorderedSetLabelledOpenDataflowGraph(NodeSource const &node_source,
-                                        std::vector<DataflowGraphInput> const &inputs,
+                                        DataflowGraphInputSource const &input_source,
+                                        std::unordered_set<DataflowGraphInput> const &inputs,
                                         std::unordered_map<Node, NodeLabel> const &nodes,
                                         std::unordered_set<OpenDataflowEdge> const &edges,
                                         std::unordered_map<OpenDataflowValue, ValueLabel> const &values)
     : node_source(node_source),
+      input_source(input_source),
       inputs(inputs),
       nodes(nodes),
       edges(edges),
@@ -102,7 +112,8 @@ private:
       
 private:
   NodeSource node_source;
-  std::vector<DataflowGraphInput> inputs;
+  DataflowGraphInputSource input_source;
+  std::unordered_set<DataflowGraphInput> inputs;
   std::unordered_map<Node, NodeLabel> nodes;
   std::unordered_set<OpenDataflowEdge> edges;
   std::unordered_map<OpenDataflowValue, ValueLabel> values;

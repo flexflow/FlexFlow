@@ -10,7 +10,7 @@ ParallelLayerAttrs
 
 PCGOperatorAttrs get_operator_attrs(SubParallelComputationGraph const &spcg,
                                     Node const &n) {
-  return get_parallel_layer_attrs(spcg, n).attrs;
+  return get_parallel_layer_attrs(spcg, n).op_attrs;
 }
 
 ParallelTensorAttrs

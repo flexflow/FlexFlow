@@ -9,7 +9,7 @@ std::unordered_set<OpenDataflowEdge> get_edges(OpenDataflowGraphView const &g) {
   return g.query_edges(open_dataflow_edge_query_all());
 }
 
-std::vector<DataflowGraphInput> get_inputs(OpenDataflowGraphView const &g) {
+std::unordered_set<DataflowGraphInput> get_inputs(OpenDataflowGraphView const &g) {
   return g.get_inputs();
 }
 

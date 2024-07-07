@@ -21,11 +21,11 @@ public:
     return this->get_interface().at(o);
   }
 
-  template <typename T>
+  template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<Interface, T>::value,
                                  LabelledDataflowGraphView>::type
-      create() {
-    return LabelledDataflowGraphView(make_cow_ptr<T>());
+      create(Args &&... args) {
+    return LabelledDataflowGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 protected:
   using DataflowGraphView::DataflowGraphView;

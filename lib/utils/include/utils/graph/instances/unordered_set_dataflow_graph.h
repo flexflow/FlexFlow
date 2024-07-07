@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct UnorderedSetDataflowGraph : public IDataflowGraph {
+struct UnorderedSetDataflowGraph final : public IDataflowGraph {
 public:
   UnorderedSetDataflowGraph();
 
@@ -16,6 +16,12 @@ public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
   std::unordered_set<DataflowEdge> query_edges(DataflowEdgeQuery const &) const override;
   std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &) const override;
+
+  void add_node_unsafe(Node const &node,
+                       std::vector<DataflowOutput> const &inputs,
+                       std::vector<DataflowOutput> const &outputs) override;
+
+  void inplace_materialize_from(DataflowGraphView const &view) override;
 
   UnorderedSetDataflowGraph *clone() const override;
 private:

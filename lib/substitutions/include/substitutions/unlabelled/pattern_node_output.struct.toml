@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "PatternNodeOutput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/dataflow_graph/dataflow_output.dtg.h",
+]
+
+[[fields]]
+name = "raw_dataflow_output"
+type = "::FlexFlow::DataflowOutput"

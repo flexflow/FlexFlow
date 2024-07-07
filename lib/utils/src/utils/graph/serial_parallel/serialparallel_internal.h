@@ -7,18 +7,33 @@
 #include "utils/visitable.h"
 #include <variant>
 #include <vector>
+#include "./source_settings.dtg.h"
+#include "./sink_settings.dtg.h"
 
 namespace FlexFlow {
 
-struct ParallelInternal;
+Node find_source_node(DiGraphView const &);
+Node find_sink_node(DiGraphView const &);
+std::optional<Node> find_bottleneck_node(DiGraphView const &);
 
 std::variant<IntermediateSpDecompositionTree, Node> sp_decomposition(DiGraphView const &g);
 IntermediateSpDecompositionTree parallel_decomposition(DiGraphView const &g);
 
 std::unordered_set<Node>
     from_source_to_sink(DiGraphView const &, Node const &src, Node const &sink);
+std::unordered_set<Node>
+    from_source_to_sink(DiGraphView const &g,
+                        std::unordered_set<Node> const &srcs,
+                        std::unordered_set<Node> const &sinks,
+                        SourceSettings include_src,
+                        SinkSettings include_sink);
+DiGraphView source_to_sink_subgraph(DiGraphView const &g,
+                                    std::unordered_set<Node> const &srcs,
+                                    std::unordered_set<Node> const &sinks,
+                                    SourceSettings include_src,
+                                    SinkSettings include_sink);
 
-std::variant<Serial, Parallel, Node> internal_to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &);
+std::variant<SerialSplit, ParallelSplit, Node> internal_to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast);
 SerialParallelDecomposition to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &);
 std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast);
 

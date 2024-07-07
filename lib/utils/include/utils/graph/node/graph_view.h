@@ -19,7 +19,7 @@ struct GraphView {
   }
 
 protected:
-  GraphView() : ptr(nullptr) {}
+  GraphView();
   cow_ptr_t<IGraphView> ptr;
   GraphView(cow_ptr_t<IGraphView> ptr);
 

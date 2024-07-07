@@ -9,6 +9,8 @@
 
 namespace FlexFlow {
 
+PatternNode get_dst_node(PatternEdge const &);
+
 std::unordered_set<PatternNode> get_nodes(PatternEdge const &);
 bool is_closed_edge(PatternEdge const &);
 bool is_input_edge(PatternEdge const &);

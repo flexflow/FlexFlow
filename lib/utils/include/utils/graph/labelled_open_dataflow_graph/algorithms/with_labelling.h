@@ -30,7 +30,7 @@ public:
     return this->unlabelled.query_outputs(q);
   }
 
-  std::vector<DataflowGraphInput> get_inputs() const override {
+  std::unordered_set<DataflowGraphInput> get_inputs() const override {
     return this->unlabelled.get_inputs();
   }
 

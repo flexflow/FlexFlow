@@ -8,16 +8,15 @@ features = [
 ]
 
 includes = [
-  "utils/graph/serial_parallel/serial.dtg.h",
-  "utils/graph/serial_parallel/parallel.dtg.h",
+  "utils/graph/serial_parallel/serial_parallel_splits.h",
   "utils/graph/node/node.dtg.h",
 ]
 
 [[values]]
-type = "::FlexFlow::Serial"
+type = "::FlexFlow::SerialSplit"
 
 [[values]]
-type = "::FlexFlow::Parallel"
+type = "::FlexFlow::ParallelSplit"
 
 [[values]]
 type = "::FlexFlow::Node"

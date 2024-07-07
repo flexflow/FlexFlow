@@ -11,6 +11,10 @@ struct DataflowGraph : virtual DataflowGraphView {
 public:
   NodeAddedResult add_node(std::vector<DataflowOutput> const &inputs,
                            int num_outputs);
+
+  void add_node_unsafe(Node const &node,
+                       std::vector<DataflowOutput> const &inputs,
+                       std::vector<DataflowOutput> const &outputs);
   
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<DataflowEdge> query_edges(DataflowEdgeQuery const &) const;
@@ -21,6 +25,15 @@ public:
                                  DataflowGraph>::type
       create() {
     return DataflowGraph(make_cow_ptr<T>());
+  }
+
+  template <typename T>
+  static typename std::enable_if<std::is_base_of<IDataflowGraph, T>::value,
+                                 DataflowGraph>::type
+      create_copy_of(DataflowGraphView const &view) {
+    cow_ptr_t<T> impl = make_cow_ptr<T>();
+    impl.get_mutable()->inplace_materialize_from(view);
+    return DataflowGraph(std::move(impl));
   }
 
 protected:

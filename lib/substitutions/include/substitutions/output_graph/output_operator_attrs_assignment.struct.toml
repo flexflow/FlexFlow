@@ -12,6 +12,7 @@ includes = [
   "substitutions/operator_pattern/operator_attribute_key.dtg.h",
   "substitutions/output_graph/output_operator_attribute_expr.dtg.h",
   "<unordered_map>",
+  "utils/hash/unordered_map.h",
 ]
 
 # NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
