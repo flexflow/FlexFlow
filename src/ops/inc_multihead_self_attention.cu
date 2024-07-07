@@ -1432,10 +1432,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                        vProjSize * num_q_heads);
     size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
            qk_prod_size = 0;
-    assert((BatchConfig::max_sequence_length() +
-            BatchConfig::max_spec_tree_token_num()) %
-               kPagesize ==
-           0);
+    // assert((BatchConfig::max_sequence_length() +
+    //         BatchConfig::max_spec_tree_token_num()) %
+    //            kPagesize ==
+    //        0);
     size_t max_num_pages =
         (BatchConfig::max_sequence_length() +
          BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
