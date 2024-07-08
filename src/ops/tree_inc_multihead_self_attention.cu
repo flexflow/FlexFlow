@@ -312,12 +312,22 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  if (m->batch_prefill_handler_collections.count(batch_size) == 0) {
-    m->batch_prefill_handler_collections[batch_size] =
-        static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+  BatchPrefillHandler *handler = nullptr;
+
+  if (!bc->prompt_phase) {
+    if (m->decode_handler_collections.count(batch_size) == 0) {
+      m->decode_handler_collections[batch_size] =
+          static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+    }
+    handler = static_cast<BatchPrefillHandler *>(m->decode_handler_collections[batch_size]);
+  } else {
+    if (m->prompt_handler_collections.count(batch_size) == 0) {
+      m->prompt_handler_collections[batch_size] =
+          static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+    }
+    handler = static_cast<BatchPrefillHandler *>(m->prompt_handler_collections[batch_size]);
   }
-  BatchPrefillHandler *handler =
-      static_cast<BatchPrefillHandler *>(m->batch_prefill_handler_collections[batch_size]);
+  assert(handler != nullptr && "Handler is not initialized");
   handler->SetCUDAStream(stream);
   handler->BeginForward<half, int32_t>(m->workspace,
                                        m->workspace_size,
@@ -766,8 +776,11 @@ TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
   if (flashinfer_reserve_inst != Realm::RegionInstance::NO_INST) {
     flashinfer_reserve_inst.destroy();
   }
-  for (auto &handler: batch_prefill_handler_collections) {
-    delete static_cast<flashinfer::BatchPrefillHandler *>(handler.second);
+  for (auto &decode_handler: decode_handler_collections) {
+    delete static_cast<flashinfer::BatchPrefillHandler *>(decode_handler.second);
+  }
+  for (auto &prompt_handler: prompt_handler_collections) {
+    delete static_cast<flashinfer::BatchPrefillHandler *>(prompt_handler.second);
   }
 }
 
