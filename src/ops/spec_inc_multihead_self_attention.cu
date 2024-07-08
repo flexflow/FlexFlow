@@ -228,8 +228,12 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
+  if (m->batch_prefill_handler_collections.count(batch_size) == 0) {
+    m->batch_prefill_handler_collections[batch_size] =
+        static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+  }
   BatchPrefillHandler *handler =
-      static_cast<BatchPrefillHandler *>(m->batch_prefill_handler);
+      static_cast<BatchPrefillHandler *>(m->batch_prefill_handler_collections[batch_size]);
   handler->SetCUDAStream(stream);
   handler->BeginForward<half, int32_t>(m->workspace,
                                        m->workspace_size,
@@ -524,8 +528,6 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
         flashinfer_reserve_inst, workspace_size);
     workspace = static_cast<void *>(
         gpu_mem_allocator.allocate_instance<char>(workspace_size));
-    batch_prefill_handler =
-        static_cast<void *>(new flashinfer::BatchPrefillHandler);
   }
 
   cudaStreamSynchronize(stream);
@@ -535,7 +537,9 @@ SpecIncMultiHeadSelfAttentionMeta::~SpecIncMultiHeadSelfAttentionMeta(void) {
   if (flashinfer_reserve_inst != Realm::RegionInstance::NO_INST) {
     flashinfer_reserve_inst.destroy();
   }
-  delete static_cast<flashinfer::BatchPrefillHandler *>(batch_prefill_handler);
+  for (auto &handler: batch_prefill_handler_collections) {
+    delete static_cast<flashinfer::BatchPrefillHandler *>(handler.second);
+  }
 }
 
 }; // namespace FlexFlow

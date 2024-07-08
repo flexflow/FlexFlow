@@ -150,7 +150,8 @@ public:
   Realm::RegionInstance flashinfer_reserve_inst;
   size_t workspace_size;
   void *workspace;
-  void *batch_prefill_handler;
+  // batchsize -> handler
+  std::unordered_map<int, void*> batch_prefill_handler_collections;
 };
 
 }; // namespace FlexFlow
