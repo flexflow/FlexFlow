@@ -104,6 +104,9 @@ endif()
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
 
+# option for tensorrt: TODO: set it in config.linux
+option(FF_USE_TENSORRT "Run FlexFlow with TensorRT" ON)
+
 # option for avx2
 option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
 
@@ -167,6 +170,9 @@ endif()
 if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cudnn)
 endif()
+
+# tensorrt-llm
+include(tensorrt)
 
 # Legion
 include(legion)
@@ -381,6 +387,11 @@ if(NOT BUILD_LEGION_ONLY)
 
   if(FF_USE_NCCL AND (FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "cuda"))
     add_dependencies(flexflow ${NCCL_NAME})
+  endif()
+
+  if(FF_USE_TENSORRT)
+    add_dependencies(flexflow ${TENSORRT_NAME})
+    message(STATUS "Add TensorRT successfully")
   endif()
 
   target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
