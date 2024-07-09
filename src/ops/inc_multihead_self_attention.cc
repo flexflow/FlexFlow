@@ -142,7 +142,7 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
     for (int i = 0; i < numdims; i++) {
       dims[i] = input->dims[i];
     }
-    dims[0] = embed_dim;
+    dims[0] = vdim * num_kv_heads; // we now output o_proj_dim * o_heads
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, data_type, li, 0, true /*create_grad*/);
   }

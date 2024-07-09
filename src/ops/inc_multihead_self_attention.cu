@@ -638,6 +638,139 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                      m->hidden_size);
   }
 
+
+  // Step 3: apply rotary embedding if needed
+  if (*m->apply_rotary_embedding) {
+    /*q&k*/
+    parallelism = num_tokens * m->hidden_size;
+    apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
+                                min(CUDA_NUM_THREADS, parallelism),
+                                0,
+                                stream>>>(output_ptr,
+                                          m->complex_input,
+                                          m->token_infos,
+                                          m->qProjSize,
+                                          m->kProjSize,
+                                          num_tokens,
+                                          q_array_size,
+                                          m->hidden_size);
+  }
+}
+
+template <typename DT>
+void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        int shard_id,
+                        // DT const *input_ptr, we no longer use the raw input
+                        DT const *weight_ptr,
+                        DT *output_ptr,
+                        DT const *bias_ptr,
+                        cudaStream_t stream) {
+
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  assert(m->qSize == m->vSize && m->qSize == m->kSize);
+  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
+#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  cudaDataType_t compute_type = cublas_data_type;
+#else
+  // For best performance, set the default cublas compute type to
+  // CUBLAS_COMPUTE_16F for half precision and to
+  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  if (m->output_type[0] == DT_FLOAT) {
+    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  }
+#endif
+
+  // this block is deleted so that dense operator are done in  model,
+  // which allows for peft on qkv projection
+  // // Step 1: Compute QKV projections
+  // {
+  //   DT alpha = 1.0f, beta = 0.0f;
+  //   // after transpositions
+  //   int m_q = m->qProjSize * m->num_q_heads;
+  //   int m_k = m->kProjSize * m->num_q_heads;
+  //   int m_v = m->vProjSize * m->num_q_heads;
+  //   assert(m_q == m_k && m_k == m_v); // keep things simple for now
+  //   int n = bc->num_active_tokens();
+  //   int k = m->qSize;
+  //   int m_ = m_q * QKV_WEIGHT_NUM;
+  //   // before transpositions
+  //   int lda = k, ldb = k, ldc = m_;
+  //   // matrix A: QKV weights
+  //   // matrix A's layout: [qSize (hidden_dim), qProjSize, num_heads, 3]
+  //   // matrix B: input
+  //   // matrix B's layout: [qSize (hidden_dim), num_new_tokens]
+  //   // matrix C: devQKVProjArray
+  //   // matrix B's layout: [qProjSize, num_heads, 3, num_new_tokens]
+  //   checkCUDA(cublasGemmEx(m->handle.blas,
+  //                          CUBLAS_OP_T,
+  //                          CUBLAS_OP_N,
+  //                          m_,
+  //                          n,
+  //                          k,
+  //                          &alpha,
+  //                          weight_ptr,
+  //                          cublas_data_type,
+  //                          lda,
+  //                          input_ptr,
+  //                          cublas_data_type,
+  //                          ldb,
+  //                          &beta,
+  //                          output_ptr,
+  //                          cublas_data_type,
+  //                          ldc,
+  //                          compute_type,
+  //                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  // }
+
+  int num_tokens = bc->num_active_tokens();
+  int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
+  size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
+
+  // Step 2: apply bias for QKV, or scale the query
+  // this are handled in the dense layer with bias, but we still need to handle scaling
+  // if (*m->qkv_bias) {
+  //   apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
+  //                         min(CUDA_NUM_THREADS, parallelism),
+  //                         0,
+  //                         stream>>>(output_ptr,
+  //                                   bias_ptr,
+  //                                   shard_id,
+  //                                   num_tokens,
+  //                                   m->qProjSize,
+  //                                   m->kProjSize,
+  //                                   m->vProjSize,
+  //                                   m->global_num_q_heads,
+  //                                   m->num_q_heads,
+  //                                   *m->scaling_query,
+  //                                   m->scaling_factor,
+  //                                   m->hidden_size);
+  // } else if (m->scaling_query) {
+  //   scaling_query_kernel<<<GET_BLOCKS(parallelism),
+  //                          min(CUDA_NUM_THREADS, parallelism),
+  //                          0,
+  //                          stream>>>(output_ptr,
+  //                                    num_tokens,
+  //                                    m->num_q_heads,
+  //                                    m->qProjSize,
+  //                                    m->scaling_factor,
+  //                                    m->hidden_size);
+  // }
+
+  if (m->scaling_query) {
+    scaling_query_kernel<<<GET_BLOCKS(parallelism),
+                           min(CUDA_NUM_THREADS, parallelism),
+                           0,
+                           stream>>>(output_ptr,
+                                     num_tokens,
+                                     m->num_q_heads,
+                                     m->qProjSize,
+                                     m->scaling_factor,
+                                     m->hidden_size);
+  }
+
   // Step 3: apply rotary embedding if needed
   if (*m->apply_rotary_embedding) {
     /*q&k*/
@@ -858,7 +991,7 @@ template <typename DT>
 void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       BatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
+                      DT const *qkv_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
                       DT const *bias_ptr,
@@ -870,11 +1003,23 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  cudaMemcpyAsync(m->devQKVProjArray,
+                  qkv_ptr,
+                  qkv_proj_size * sizeof(DT), // is this right, do we need layers etc here
+                  cudaMemcpyDeviceToDevice,
+                  stream);
+
   // phase 1: Implement kernel to compute KQV for input tokens
+  
+
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     input_ptr,
+                    //  input_ptr,
                      weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
@@ -895,8 +1040,18 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
 
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
-  compute_o_prod_bias(
-      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+
+  // this dense layer (with bias) is done in the model by seperate dense layer
+  // compute_o_prod_bias(
+  //     m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+
+  // simply copy the result to output_ptr
+  // TODO: change the meta for output, maybe transpose here?
+  cudaMemcpyAsync(output_ptr,
+                  m->attn_heads,
+                  m->oProjSize * num_tokens * sizeof(DT),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,

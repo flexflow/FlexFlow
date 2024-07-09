@@ -92,11 +92,26 @@ void LLAMA::create_llama_model(FFModel &ff,
       att_norm = token_att_norm[1];
     }
 
+    Tensor qkv_proj = ff.dense(
+      att_norm,
+      llama_config.hidden_size * 3, // q, k, v. need to change if want to remove replication. (q_heads + 2 * kv_heads) * proj_size
+      AC_MODE_NONE,
+      false, // seems like llama does not use bias
+      DT_NONE, // what is this
+      nullptr, // ?
+      nullptr, // ?
+      nullptr, // ?
+      REG_MODE_NONE, // no regularization
+      0.0f, // no dropout
+      std::string("layers_" + std::to_string(i) + "_attn_qkv_proj")
+                     .c_str()
+    );
+
     Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
         mha = ff.spec_inc_multiquery_self_attention(
-            att_norm,
+            qkv_proj,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
             llama_config.num_key_value_heads,
@@ -120,7 +135,7 @@ void LLAMA::create_llama_model(FFModel &ff,
       }
       case TREE_VERIFY_MODE: {
         mha = ff.inc_multiquery_self_attention_verify(
-            att_norm,
+            qkv_proj,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
             llama_config.num_key_value_heads,
@@ -144,7 +159,7 @@ void LLAMA::create_llama_model(FFModel &ff,
       }
       case INC_DECODING_MODE: {
         mha = ff.inc_multiquery_self_attention(
-            att_norm,
+            qkv_proj,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
             llama_config.num_key_value_heads,
@@ -170,6 +185,20 @@ void LLAMA::create_llama_model(FFModel &ff,
         assert(false);
       }
     }
+
+    Tensor mha_input = mha;
+    mha = ff.dense(mha_input,
+                   llama_config.hidden_size,
+                   AC_MODE_NONE,
+                   false,
+                   DT_NONE,
+                   nullptr,
+                   nullptr,
+                   nullptr,
+                   REG_MODE_NONE,
+                   0.0f,
+                   std::string("layers_" + std::to_string(i) + "_attn_o_proj")
+                       .c_str());
 
     // step 2: SILU activaion
     Tensor token_ff_norm[2] = {nullptr, nullptr};
