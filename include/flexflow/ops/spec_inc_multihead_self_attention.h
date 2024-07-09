@@ -137,15 +137,6 @@ public:
                                     int _num_q_heads,
                                     int _num_kv_heads);
   ~SpecIncMultiHeadSelfAttentionMeta(void);
-
-public:
-  // For flashinfer attention
-  Realm::RegionInstance flashinfer_reserve_inst;
-  size_t workspace_size;
-  void *workspace;
-  // batchsize -> handler
-  std::unordered_map<int, void*> decode_handler_collections;
-  std::unordered_map<int, void*> prompt_handler_collections;
 };
 
 }; // namespace FlexFlow

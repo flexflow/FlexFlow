@@ -530,8 +530,7 @@ __host__ void
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
-  /* Reserved: BatchConfig Updated */ BatchConfig const *bc =
-      BatchConfig::from_future(task->futures[0]);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   // Return if no active tokens
   if (bc->num_tokens == 0) {
     return;

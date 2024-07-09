@@ -13,12 +13,15 @@
  * limitations under the License.
  */
 
+#include "flashinfer/prefill_attention_decl.cuh"
 #include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
 using namespace Legion;
+
+using flashinfer::BatchPrefillHandler;
 
 void RequestManager::load_tokens_task(
     Task const *task,
@@ -301,6 +304,55 @@ void RequestManager::load_batch_config_task(
       }
       total_copy_size += sizeof(BatchConfig::committed_tokens);
     }
+  }
+
+  // prepare attention forward
+  if (batch_config->get_mode() == TREE_SEARCH_MODE) {
+    int batch_size = batch_config->num_active_requests();
+    BatchPrefillHandler *handler = nullptr;
+
+    if (!batch_config->prompt_phase) {
+      if (handle.attention_metadata.decode_handler_collections.count(batch_size) == 0) {
+        handle.attention_metadata.decode_handler_collections[batch_size] =
+            static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+      }
+      handler = static_cast<BatchPrefillHandler *>(
+        handle.attention_metadata.decode_handler_collections[batch_size]);
+    } else {
+      if (handle.attention_metadata.prompt_handler_collections.count(batch_size) == 0) {
+        handle.attention_metadata.prompt_handler_collections[batch_size] =
+            static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+      }
+      handler = static_cast<BatchPrefillHandler *>(
+        handle.attention_metadata.prompt_handler_collections[batch_size]);
+    }
+
+    static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+    q_indptr_h[0] = 0;
+    kv_indptr_h[0] = 0;
+    for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
+      if (batch_config->request_available[req_idx]) {
+        int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
+        int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
+                    batch_config->requestsInfo[req_idx].first_token_index_in_request;
+        q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
+        kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+        indptr_idx++;
+      }
+    }
+
+    handler->SetCUDAStream(stream);
+    handler->BeginForward<half, int32_t>(static_cast<void*>(
+                                          static_cast<char*>(handle.attention_metadata.workspace) +
+                                          handle.attention_metadata.workspace_block * batch_size),
+                                        handle.attention_metadata.workspace_block,
+                                        static_cast<int32_t *>(q_indptr_h),
+                                        static_cast<int32_t *>(kv_indptr_h),
+                                        batch_size,
+                                        handle.attention_metadata.num_q_heads(),
+                                        handle.attention_metadata.num_kv_heads(),
+                                        handle.attention_metadata.head_dim(),
+                                        kPagesize);
   }
 
   // add a size check
