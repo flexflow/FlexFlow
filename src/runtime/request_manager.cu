@@ -263,11 +263,11 @@ void RequestManager::load_batch_config_task(
                                                   request_infos,
                                                   request_available,
                                                   max_num_pages,
-                                                  handle.attention_metadata.q_indptr,
-                                                  handle.attention_metadata.kv_indptr,
-                                                  handle.attention_metadata.kv_indices,
-                                                  handle.attention_metadata.kv_last_page_len,
-                                                  handle.attention_metadata.qk_indptr);
+                                                  handle.attention_metadata->q_indptr,
+                                                  handle.attention_metadata->kv_indptr,
+                                                  handle.attention_metadata->kv_indices,
+                                                  handle.attention_metadata->kv_last_page_len,
+                                                  handle.attention_metadata->qk_indptr);
 
       // Update gpu-side custom mask referring from CaualMask
       if (!batch_config->prompt_phase) {
@@ -283,8 +283,8 @@ void RequestManager::load_batch_config_task(
         update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
                                     min(CUDA_NUM_THREADS, parallelism),
                                     0,
-                                    stream>>>(handle.attention_metadata.custom_mask,
-                                              handle.attention_metadata.qk_indptr,
+                                    stream>>>(handle.attention_metadata->custom_mask,
+                                              handle.attention_metadata->qk_indptr,
                                               causalMask,
                                               request_infos,
                                               request_available,
@@ -312,19 +312,19 @@ void RequestManager::load_batch_config_task(
     BatchPrefillHandler *handler = nullptr;
 
     if (!batch_config->prompt_phase) {
-      if (handle.attention_metadata.decode_handler_collections.count(batch_size) == 0) {
-        handle.attention_metadata.decode_handler_collections[batch_size] =
+      if (handle.attention_metadata->decode_handler_collections.count(batch_size) == 0) {
+        handle.attention_metadata->decode_handler_collections[batch_size] =
             static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
       }
       handler = static_cast<BatchPrefillHandler *>(
-        handle.attention_metadata.decode_handler_collections[batch_size]);
+        handle.attention_metadata->decode_handler_collections[batch_size]);
     } else {
-      if (handle.attention_metadata.prompt_handler_collections.count(batch_size) == 0) {
-        handle.attention_metadata.prompt_handler_collections[batch_size] =
+      if (handle.attention_metadata->prompt_handler_collections.count(batch_size) == 0) {
+        handle.attention_metadata->prompt_handler_collections[batch_size] =
             static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
       }
       handler = static_cast<BatchPrefillHandler *>(
-        handle.attention_metadata.prompt_handler_collections[batch_size]);
+        handle.attention_metadata->prompt_handler_collections[batch_size]);
     }
 
     static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
@@ -343,15 +343,15 @@ void RequestManager::load_batch_config_task(
 
     handler->SetCUDAStream(stream);
     handler->BeginForward<half, int32_t>(static_cast<void*>(
-                                          static_cast<char*>(handle.attention_metadata.workspace) +
-                                          handle.attention_metadata.workspace_block * batch_size),
-                                        handle.attention_metadata.workspace_block,
+                                          static_cast<char*>(handle.attention_metadata->workspace) +
+                                          handle.attention_metadata->workspace_block * batch_size),
+                                        handle.attention_metadata->workspace_block,
                                         static_cast<int32_t *>(q_indptr_h),
                                         static_cast<int32_t *>(kv_indptr_h),
                                         batch_size,
-                                        handle.attention_metadata.num_q_heads(),
-                                        handle.attention_metadata.num_kv_heads(),
-                                        handle.attention_metadata.head_dim(),
+                                        handle.attention_metadata->num_q_heads(),
+                                        handle.attention_metadata->num_kv_heads(),
+                                        handle.attention_metadata->head_dim(),
                                         kPagesize);
   }
 

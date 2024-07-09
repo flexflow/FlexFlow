@@ -197,9 +197,9 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
       head_dim,
       batch_size,
       kv,
-      m->handle.attention_metadata.kv_indices,
-      m->handle.attention_metadata.kv_indptr,
-      m->handle.attention_metadata.kv_last_page_len);
+      m->handle.attention_metadata->kv_indices,
+      m->handle.attention_metadata->kv_indptr,
+      m->handle.attention_metadata->kv_last_page_len);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -218,13 +218,13 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
   BatchPrefillHandler *handler = nullptr;
 
   if (!bc->prompt_phase) {
-    assert(m->handle.attention_metadata.decode_handler_collections.count(batch_size) != 0 &&
+    assert(m->handle.attention_metadata->decode_handler_collections.count(batch_size) != 0 &&
            "Handler is not initialized");
-    handler = static_cast<BatchPrefillHandler *>(m->handle.attention_metadata.decode_handler_collections[batch_size]);
+    handler = static_cast<BatchPrefillHandler *>(m->handle.attention_metadata->decode_handler_collections[batch_size]);
   } else {
-    assert(m->handle.attention_metadata.prompt_handler_collections.count(batch_size) != 0 &&
+    assert(m->handle.attention_metadata->prompt_handler_collections.count(batch_size) != 0 &&
            "Handler is not initialized");
-    handler = static_cast<BatchPrefillHandler *>(m->handle.attention_metadata.prompt_handler_collections[batch_size]);
+    handler = static_cast<BatchPrefillHandler *>(m->handle.attention_metadata->prompt_handler_collections[batch_size]);
   }
 
   //   cudaEventRecord(t_end, stream);
@@ -257,7 +257,7 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
             half,
             int32_t>(handler,
                       q,
-                      m->handle.attention_metadata.q_indptr,
+                      m->handle.attention_metadata->q_indptr,
                       /*q_offset=*/nullptr,
                       paged_kv,
                       /*custom_mask=*/nullptr,
@@ -283,11 +283,11 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
             half,
             int32_t>(handler,
                       q,
-                      m->handle.attention_metadata.q_indptr,
+                      m->handle.attention_metadata->q_indptr,
                       /*q_offset=*/nullptr,
                       paged_kv,
-                      m->handle.attention_metadata.custom_mask,
-                      m->handle.attention_metadata.qk_indptr,
+                      m->handle.attention_metadata->custom_mask,
+                      m->handle.attention_metadata->qk_indptr,
                       o,
                       /*lse=*/nullptr,
                       num_q_heads,
@@ -505,9 +505,9 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   // set attention constants
-  handler.attention_metadata.set_num_q_heads(num_q_heads);
-  handler.attention_metadata.set_num_kv_heads(num_kv_heads);
-  handler.attention_metadata.set_head_dim(qProjSize);
+  handler.attention_metadata->set_num_q_heads(num_q_heads);
+  handler.attention_metadata->set_num_kv_heads(num_kv_heads);
+  handler.attention_metadata->set_head_dim(qProjSize);
 
   cudaStreamSynchronize(stream);
 }

@@ -191,7 +191,7 @@ struct FFHandler {
   void *workSpace;
   size_t workSpaceSize;
   void *batch_config_metadata;
-  AttentionMetaData attention_metadata;
+  AttentionMetaData* attention_metadata;
 
   size_t batch_config_metadata_size =
       sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
@@ -212,6 +212,7 @@ struct FFInitInfo {
   size_t offload_reserve_space_size;
   DataType quantization_type;
   bool allowTensorOpMathConversion;
+  AttentionMetaData* attention_metadata;
   // int myRank, allRanks;
 };
 

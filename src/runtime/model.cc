@@ -1514,6 +1514,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
   Domain domain = runtime->get_index_space_domain(ctx, config.all_gpu_task_is);
   Rect<1> task_rect = domain;
   // int rank = 0;
+  AttentionMetaData* attention_metadata = new AttentionMetaData();
   for (PointInRectIterator<1> it(task_rect); it(); it++) {
     FFInitInfo info;
     // info.myRank = rank++;
@@ -1523,6 +1524,7 @@ FFRuntime::FFRuntime(FFConfig &config) {
         config.cpu_offload ? config.offload_reserve_space_size : 0;
     info.quantization_type = config.quantization_type;
     info.allowTensorOpMathConversion = config.allow_tensor_op_math_conversion;
+    info.attention_metadata = attention_metadata;
     argmap.set_point(*it, TaskArgument(&info, sizeof(FFInitInfo)));
   }
 
