@@ -17,7 +17,7 @@ public:
 
   ~ManagedFFStream();
 
-  ffStream_t const &raw_stream();
+  ffStream_t const &raw_stream() const;
 
 private:
   ffStream_t *stream;

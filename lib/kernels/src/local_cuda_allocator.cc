@@ -20,10 +20,8 @@ void LocalCudaAllocator::deallocate(void *ptr) {
 }
 
 LocalCudaAllocator::~LocalCudaAllocator() {
-  while (!ptrs.empty()) {
-    auto it = ptrs.begin();
-    void *ptr = *it;
-    this->deallocate(ptr);
+  for (auto ptr : ptrs) {
+    checkCUDA(cudaFree(ptr));
   }
 }
 

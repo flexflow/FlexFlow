@@ -21,7 +21,7 @@ ManagedFFStream::~ManagedFFStream() {
   }
 }
 
-ffStream_t const &ManagedFFStream::raw_stream() {
+ffStream_t const &ManagedFFStream::raw_stream() const {
   return *stream;
 }
 
