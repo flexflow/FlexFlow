@@ -331,9 +331,12 @@ class LLM:
             )
             # Download tokenizer from HuggingFace, or load it from the local folder
             if self.model_type == ModelType.LLAMA:
-                hf_tokenizer = LlamaTokenizer.from_pretrained(
-                    self.model_name, use_fast=True
-                )
+                if "3-" in self.model_name:
+                    hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+                else:
+                    hf_tokenizer = LlamaTokenizer.from_pretrained(
+                        self.model_name, use_fast=True
+                    )
             else:
                 hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
             # Save tokenizer
