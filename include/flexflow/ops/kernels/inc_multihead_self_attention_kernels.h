@@ -101,6 +101,16 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         ffStream_t stream);
 
 template <typename DT>
+void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        int shard_id,
+                        // DT const *input_ptr,
+                        DT const *weight_ptr,
+                        DT *output_ptr,
+                        DT const *bias_ptr,
+                        ffStream_t stream);
+
+template <typename DT>
 void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              GenericTensorAccessorR const weight,
                              DataType data_type,

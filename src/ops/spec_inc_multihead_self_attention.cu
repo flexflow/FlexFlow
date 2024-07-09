@@ -698,17 +698,27 @@ template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       BeamSearchBatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
+                      DT const *qkv_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
+
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  cudaMemcpyAsync(m->devQKVProjArray,
+                  qkv_ptr,
+                  qkv_proj_size * sizeof(DT), // is this right, do we need layers etc here
+                  cudaMemcpyDeviceToDevice,
+                  stream);
   // phase 1: Implement kernel to compute KQV for input tokens
 
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     input_ptr,
+                    //  input_ptr,
                      weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
@@ -728,8 +738,13 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
 
-  compute_o_prod_bias(
-      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+  // compute_o_prod_bias(
+  //     m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+  cudaMemcpyAsync(output_ptr,
+                  m->attn_heads,
+                  m->oProjSize * num_tokens * sizeof(DT),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 } // namespace SpecIncMultiHeadSelfAttention
