@@ -391,47 +391,52 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       C = static_cast<DT *>(output_ptr) +
           processed_tokens_in_batch * m->oProjSize;
 
-      checkCUDA(hipblasGemmEx(m->handle.blas,
-                              HIPBLAS_OP_T,
-                              HIPBLAS_OP_T,
-                              m_,
-                              n,
-                              k,
-                              &alpha,
-                              A,
-                              hipblas_data_type,
-                              lda,
-                              B,
-                              hipblas_data_type,
-                              ldb,
-                              &beta,
-                              C,
-                              hipblas_data_type,
-                              ldc,
-                              compute_type,
-                              HIPBLAS_GEMM_DEFAULT));
+      // checkCUDA(hipblasGemmEx(m->handle.blas,
+      //                         HIPBLAS_OP_T,
+      //                         HIPBLAS_OP_T,
+      //                         m_,
+      //                         n,
+      //                         k,
+      //                         &alpha,
+      //                         A,
+      //                         hipblas_data_type,
+      //                         lda,
+      //                         B,
+      //                         hipblas_data_type,
+      //                         ldb,
+      //                         &beta,
+      //                         C,
+      //                         hipblas_data_type,
+      //                         ldc,
+      //                         compute_type,
+      //                         HIPBLAS_GEMM_DEFAULT));
       processed_tokens_in_batch += num_new_tokens;
     }
     // Before moving to the next request
     // check that we have finished all tokens of the request
     assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
   }
-  if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * processed_tokens_in_batch;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_w<DT>),
-                       GET_BLOCKS(parallelism),
-                       min(CUDA_NUM_THREADS, parallelism),
-                       0,
-                       stream,
-                       output_ptr,
-                       bias_ptr,
-                       processed_tokens_in_batch,
-                       qkv_weight_size,
-                       m->oProjSize);
-  }
+  cudaMemcpyAsync(output_ptr,
+                  m->attn_heads,
+                  m->oProjSize * processed_tokens_in_batch * sizeof(DT),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
+  // if (*m->final_bias && shard_id == 0) {
+  //   int parallelism = m->oProjSize * processed_tokens_in_batch;
+  //   int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
+  //                         m->kProjSize * m->global_num_q_heads +
+  //                         m->vProjSize * m->global_num_q_heads;
+  //   hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_w<DT>),
+  //                      GET_BLOCKS(parallelism),
+  //                      min(CUDA_NUM_THREADS, parallelism),
+  //                      0,
+  //                      stream,
+  //                      output_ptr,
+  //                      bias_ptr,
+  //                      processed_tokens_in_batch,
+  //                      qkv_weight_size,
+  //                      m->oProjSize);
+  // }
 
   assert(processed_tokens_in_batch == bc->num_active_infr_tokens());
 }
@@ -440,7 +445,7 @@ template <typename DT>
 void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       TreeVerifyBatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
+                      DT const *qkv_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
                       DT const *bias_ptr,
@@ -490,11 +495,21 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                                sizeof(TreeVerifyBatchConfig::PerTokenInfo),
                            hipMemcpyHostToDevice,
                            stream));
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  cudaMemcpyAsync(m->devQKVProjArray,
+                  qkv_ptr,
+                  qkv_proj_size * sizeof(DT), // is this right, do we need layers etc here
+                  cudaMemcpyDeviceToDevice,
+                  stream);
+
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     input_ptr,
+                    //  input_ptr,
                      weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
