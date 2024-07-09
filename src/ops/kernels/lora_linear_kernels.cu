@@ -341,7 +341,10 @@ void peft_bwd_kernel(LoraLinearMeta *m,
     LoraLinearWeight weight =
         m->model_state[bc->requestsInfo[i].peft_model_id].weights;
     int rank = weight.rank;
-    // Compute w1's gradient
+    double lora_alpha =
+        m->model_state[bc->requestsInfo[i].peft_model_id].lora_alpha;
+    DT scaling_constant = (DT)(lora_alpha / rank);
+    // Compute LORA_B weight's gradient
     DT alpha = 1.0f, beta = 0.0f;
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
@@ -349,7 +352,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            rank,
                            out_dim,
                            num_peft_tokens,
-                           &alpha,
+                           &scaling_constant,
                            m->low_rank_activation,
                            lr_actv_type,
                            rank,
@@ -362,15 +365,15 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            rank,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // Compute gradients w.r.t. low_rank activation
-    // and save the results to low_rank_activation
+    // Compute LORA_B input's (and LORA_A output's) gradient inplace in
+    // low_rank_activation
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_N,
                            rank,
                            num_peft_tokens,
                            out_dim,
-                           &alpha,
+                           &scaling_constant,
                            weight.w1_ptr,
                            weight_type,
                            rank,
@@ -383,7 +386,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                            rank,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // Compute w0's gradient
+    // Compute LORA_A weight's gradient
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_N,
                            CUBLAS_OP_T,
@@ -463,14 +466,11 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                                 ncclSum,
                                 m->handle.ncclComm,
                                 stream));
-        double lora_alpha =
-            m->model_state[bc->requestsInfo[i].peft_model_id].lora_alpha;
-        double lr_with_scaling = sgd_config->lr / (lora_alpha / rank);
         sgd_update<<<GET_BLOCKS(w1_num_elements),
                      CUDA_NUM_THREADS,
                      0,
                      stream>>>(w1_num_elements,
-                               lr_with_scaling,
+                               sgd_config->lr,
                                sgd_config->weight_decay,
                                sgd_config->momentum,
                                sgd_config->nesterov,

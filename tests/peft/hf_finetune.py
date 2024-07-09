@@ -23,16 +23,27 @@ from datasets import load_dataset
 
 from hf_utils import *
 
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--peft-model-id", type=str, default="goliaro/llama-160m-lora")
     parser.add_argument(
-        "--peft-model-id", type=str, default="goliaro/llama-160m-lora"
+        "--lora-alpha",
+        type=int,
+        default=-1,
+        help="The scaling coefficient for LoRA. Leave it set to -1 to use the original value from the HF config",
     )
-    parser.add_argument("--lora-alpha", type=int, default=16)
-    parser.add_argument("--lora-dropout", type=float, default=0.0)
+    parser.add_argument(
+        "--lora-dropout",
+        type=float,
+        default=0.0,
+        help="The dropout rate for LoRA. Set it to -1 to use the original value from the HF config",
+    )
     parser.add_argument("-lr", "--learning-rate", type=float, default=1.0)
     parser.add_argument("-n", "--max-steps", type=int, default=2)
-    parser.add_argument("--optimizer", type=str, choices=["sgs", "adam", "adamw"], default="sgd")
+    parser.add_argument(
+        "--optimizer", type=str, choices=["sgs", "adam", "adamw"], default="sgd"
+    )
     parser.add_argument(
         "--use-full-precision", action="store_true", help="Use full precision"
     )
@@ -67,7 +78,7 @@ def main():
         make_debug_dirs()
         register_peft_hooks(model)
         save_peft_weights(model, target_modules=["lora", "lm_head", "down_proj"])
-        
+
     # Load fine-tuning dataset
     data = load_dataset("Abirate/english_quotes")
     # TODO: remove using of a single row
@@ -81,16 +92,17 @@ def main():
         model=model,
         train_dataset=data["train"],
         args=transformers.TrainingArguments(
-            per_device_train_batch_size = 1,
-            gradient_accumulation_steps = 1,
-            max_grad_norm = None, # Disable gradient clipping
-            warmup_steps = 0,
+            per_device_train_batch_size=1,
+            gradient_accumulation_steps=1,
+            max_grad_norm=None,  # Disable gradient clipping
+            warmup_steps=0,
             max_steps=args.max_steps,
             learning_rate=args.learning_rate,
-            fp16 = True if not args.use_full_precision else False,
-            logging_steps = 1,
+            fp16=True if not args.use_full_precision else False,
+            logging_steps=1,
             output_dir=os.path.join(
-                args.output_dir if len(args.output_dir) > 0 else "./", "lora_training_logs"
+                args.output_dir if len(args.output_dir) > 0 else "./",
+                "lora_training_logs",
             ),
             optim=optim_type,
             lr_scheduler_type=transformers.training_args.SchedulerType.CONSTANT,
@@ -111,6 +123,7 @@ def main():
     trainer.train()
 
     save_finetuned_model(model, args)
+
 
 if __name__ == "__main__":
     main()

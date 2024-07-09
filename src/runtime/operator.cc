@@ -29,7 +29,10 @@ fs::path get_dst_folder(std::string const &subdir,
   if (before_kernel) {
     step_substr += "_pre";
   }
-  std::string debug_dir_ = "~/.cache/flexflow/debug/flexflow";
+  char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
+  std::string debug_dir_ =
+      ff_cache_path ? std::string(ff_cache_path) + "/debug/flexflow"
+                    : std::string("~/.cache/flexflow/debug/flexflow");
   wordexp_t p;
   wordexp(debug_dir_.c_str(), &p, 0);
   debug_dir_ = p.we_wordv[0];

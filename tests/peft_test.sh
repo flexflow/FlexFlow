@@ -43,7 +43,6 @@ python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora --base_
 # python ../inference/python/ff_peft.py
 
 cd ../build
-rm -rf inference_tensors || true
 ./inference/peft/peft \
     -ll:gpu 1 -ll:cpu 4 -ll:util 4 \
     -tensor-parallelism-degree 1 \
@@ -56,15 +55,9 @@ rm -rf inference_tensors || true
     --inference-debugging
 
 cd ../tests/peft
-rm -rf hf_peft_tensors || true
 python hf_finetune.py --peft-model-id goliaro/llama-160m-lora --save-peft-tensors --use-full-precision
 
-
 python peft_alignment_test.py
-
-# Cleanup after test
-rm -rf inference_tensors || true
-rm -rf hf_peft_tensors || true
 
 # Print succeess message
 echo ""
