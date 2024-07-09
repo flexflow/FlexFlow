@@ -307,7 +307,7 @@ void RequestManager::load_batch_config_task(
   }
 
   // prepare attention forward
-  if (batch_config->get_mode() == TREE_SEARCH_MODE) {
+  if (batch_config->get_mode() == TREE_SEARCH_MODE && task->index_point.point_data[0] == 0) {
     int batch_size = batch_config->num_active_requests();
     BatchPrefillHandler *handler = nullptr;
 
