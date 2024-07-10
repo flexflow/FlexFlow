@@ -314,7 +314,7 @@ void RequestManager::load_batch_config_task(
             handle.tree_search_attention_metadata->prompt_handler_collections[batch_size]);
         }
 
-        int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+        static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
         q_indptr_h[0] = 0;
         kv_indptr_h[0] = 0;
         for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
@@ -446,7 +446,7 @@ void RequestManager::load_batch_config_task(
             handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
         }
 
-        int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+        static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
         q_indptr_h[0] = 0;
         kv_indptr_h[0] = 0;
         for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
