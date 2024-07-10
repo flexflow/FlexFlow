@@ -1128,36 +1128,45 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       float alpha = 1.0f, beta = 0.0f;
       // matrix A: output projection weight
       // matrix A's layout: [vProjSize * num_heads, oProjSize]
-      DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                             m->kProjSize * m->num_q_heads +
-                                             m->vProjSize * m->num_q_heads);
-      // matrix B: output gradients
-      // matrix B's layout: [oProjSize, num_new_tokens]
-      DT const *B =
-          output_grad_ptr +
-          bc->requestsInfo[i].first_token_offset_in_batch * m->oProjSize;
-      // matrix C: attn_heads gradients
-      // matrix C's layout: [vProjSize * num_heads, num_new_tokens]
+      // DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+      //                                        m->kProjSize * m->num_q_heads +
+      //                                        m->vProjSize * m->num_q_heads);
+      // // matrix B: output gradients
+      // // matrix B's layout: [oProjSize, num_new_tokens]
+      // DT const *B =
+      //     output_grad_ptr +
+      //     bc->requestsInfo[i].first_token_offset_in_batch * m->oProjSize;
+      // // matrix C: attn_heads gradients
+      // // matrix C's layout: [vProjSize * num_heads, num_new_tokens]
+      // DT *C = static_cast<DT *>(m->handle.workSpace);
+      // checkCUDA(cublasGemmEx(m->handle.blas,
+      //                        CUBLAS_OP_N,
+      //                        CUBLAS_OP_N,
+      //                        m_,
+      //                        n_,
+      //                        k_,
+      //                        &alpha,
+      //                        A,
+      //                        cublas_data_type,
+      //                        lda,
+      //                        B,
+      //                        cublas_data_type,
+      //                        ldb,
+      //                        &beta,
+      //                        C,
+      //                        cublas_data_type,
+      //                        ldc,
+      //                        compute_type,
+      //                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      // here we copy gradient from o_proj directly into C
       DT *C = static_cast<DT *>(m->handle.workSpace);
-      checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_N,
-                             CUBLAS_OP_N,
-                             m_,
-                             n_,
-                             k_,
-                             &alpha,
-                             A,
-                             cublas_data_type,
-                             lda,
-                             B,
-                             cublas_data_type,
-                             ldb,
-                             &beta,
-                             C,
-                             cublas_data_type,
-                             ldc,
-                             compute_type,
-                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      cudaMemcpyAsync(C,
+                      output_grad_ptr +
+                          bc->requestsInfo[i].first_token_offset_in_batch *
+                              m->oProjSize,
+                      m_ * n_ * sizeof(DT),
+                      cudaMemcpyDeviceToDevice,
+                      stream);
       if (m->inference_debugging) {
         // save result to file for checking
         std::string filename =
@@ -1524,25 +1533,30 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int lda = m_;
       int ldb = n_;
       int ldc = m_;
-      checkCUDA(cublasGemmEx(m->handle.blas,
-                             CUBLAS_OP_N,
-                             CUBLAS_OP_T,
-                             m_,
-                             n_,
-                             k_,
-                             &alpha,
-                             A,
-                             cublas_data_type,
-                             lda,
-                             B,
-                             cublas_data_type,
-                             ldb,
-                             &beta,
-                             C,
-                             cublas_data_type,
-                             ldc,
-                             compute_type,
-                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      // checkCUDA(cublasGemmEx(m->handle.blas,
+      //                        CUBLAS_OP_N,
+      //                        CUBLAS_OP_T,
+      //                        m_,
+      //                        n_,
+      //                        k_,
+      //                        &alpha,
+      //                        A,
+      //                        cublas_data_type,
+      //                        lda,
+      //                        B,
+      //                        cublas_data_type,
+      //                        ldb,
+      //                        &beta,
+      //                        C,
+      //                        cublas_data_type,
+      //                        ldc,
+      //                        compute_type,
+      //                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      cudaMemcpyAsync(C,
+                      B,
+                      n_ * k_ * sizeof(DT),
+                      cudaMemcpyDeviceToDevice,
+                      stream);
       if (m->inference_debugging) {
         std::string filename =
             get_peft_dbg_folder(m, shard_id) + ".self_attn.input_gradient_0";
