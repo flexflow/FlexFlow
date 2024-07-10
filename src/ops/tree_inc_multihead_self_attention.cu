@@ -294,9 +294,9 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
       head_dim,
       batch_size,
       kv,
-      m->handle.attention_metadata->kv_indices,
-      m->handle.attention_metadata->kv_indptr,
-      m->handle.attention_metadata->kv_last_page_len);
+      m->handle.tree_verify_attention_metadata->kv_indices,
+      m->handle.tree_verify_attention_metadata->kv_indptr,
+      m->handle.tree_verify_attention_metadata->kv_last_page_len);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -355,7 +355,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
             half,
             int32_t>(handler,
                       q,
-                      m->handle.attention_metadata->q_indptr,
+                      m->handle.tree_verify_attention_metadata->q_indptr,
                       /*q_offset=*/nullptr,
                       paged_kv,
                       /*custom_mask=*/nullptr,
@@ -381,11 +381,11 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
             half,
             int32_t>(handler,
                       q,
-                      m->handle.attention_metadata->q_indptr,
+                      m->handle.tree_verify_attention_metadata->q_indptr,
                       /*q_offset=*/nullptr,
                       paged_kv,
-                      m->handle.attention_metadata->custom_mask,
-                      m->handle.attention_metadata->qk_indptr,
+                      m->handle.tree_verify_attention_metadata->custom_mask,
+                      m->handle.tree_verify_attention_metadata->qk_indptr,
                       o,
                       /*lse=*/nullptr,
                       num_q_heads,
@@ -737,7 +737,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   {
-    workspace_size = 32 * 1024 * 1024; // 32MB
+    workspace_size = 16 * 1024 * 1024; // 16MB
     gpu_mem_allocator.create_legion_instance(
         flashinfer_reserve_inst, workspace_size);
     workspace = static_cast<void *>(
