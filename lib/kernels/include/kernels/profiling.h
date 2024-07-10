@@ -9,7 +9,8 @@ namespace FlexFlow {
 struct ProfilingSettings : public use_visitable_cmp<ProfilingSettings> {
 public:
   ProfilingSettings() = delete;
-  ProfilingSettings(int warmup_iters, int measure_iters);
+  ProfilingSettings(int warmup_iters, int measure_iters) 
+    : warmup_iters(warmup_iters), measure_iters(measure_iters) {};
 
 public:
   int warmup_iters;

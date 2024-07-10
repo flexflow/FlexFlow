@@ -24,18 +24,12 @@ public:
 
   // template <typename T>
   bool operator==(ConcreteArgSpec const &other) const {
-    if (this->get_type_index() == other.get_type_index()) {
-      return this->ptr.get() == other.ptr.get();
-    }
-    return false;
+    return this->get_type_index() == other.get_type_index();
   }
 
   // template <typename T>
   bool operator!=(ConcreteArgSpec const &other) const {
-    if (this->get_type_index() != other.get_type_index()) {
-      return true;
-    }
-    return this->ptr.get() != other.ptr.get();
+    return this->get_type_index() != other.get_type_index();
   }
 
   template <typename T>

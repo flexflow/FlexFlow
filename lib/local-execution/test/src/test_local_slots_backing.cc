@@ -7,6 +7,16 @@
 
 namespace FlexFlow {
 
+layer_guid_t get_only_attention_layer_guid(ComputationGraph const & computation_graph) {
+    for (layer_guid_t const & layer_guid: topological_ordering(computation_graph)) {
+        ComputationGraphOpAttrs attrs = get_layer_attrs(computation_graph, layer_guid).attrs;
+        if (attrs.has<MultiHeadAttentionAttrs>()) {
+            return layer_guid;
+        }
+    }
+    throw mk_runtime_error("Attention operator does not exist in graph");
+}
+
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Local Slots Backing -- Attention Op") {
     // allocate input memory
@@ -45,9 +55,10 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        num_heads,
                                        /*kdim=*/embed_dim,
                                        /*vdim=*/embed_dim);
+    cg_builder.relu(output_guid);   
+
     // TODO: @lockshaw replace with named layers
-    layer_guid_t layer_guid =
-        get_only(topological_ordering(cg_builder.computation_graph));
+    layer_guid_t layer_guid = get_only_attention_layer_guid(cg_builder.computation_graph);
 
     TensorBackingMap tensor_backing_map = {
         {query_guid, query}, {key_guid, key}, {value_guid, value}};
@@ -63,14 +74,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     LocalSlotsBacking local_slots_backing = {tensor_backing_map,
                                              runtime_arg_config};
-
-    SUBCASE("Allocate and insert new tensors into slots") {
-      for (layer_guid_t const &node :
-           topological_ordering(cg_builder.computation_graph)) {
+    for (layer_guid_t const &node :
+        topological_ordering(cg_builder.computation_graph)) {
         local_slots_backing.allocate_new_tensors(
             node, cg_builder.computation_graph, allocator);
-      }
-
+    }
+    SUBCASE("Allocate and insert new tensors into slots") {
       SUBCASE("Tensor allocation") {
         SUBCASE("Query grad") {
           GenericTensorAccessorW query_grad =
@@ -161,7 +170,6 @@ TEST_SUITE(FF_TEST_SUITE) {
         TensorSlotsBacking result =
             local_slots_backing.construct_tensor_slots_backing(binding,
                                                                layer_guid);
-
         TensorShape weights_shape = throw_if_unexpected(get_weights_shape(
             attrs, input_tensor_shape, input_tensor_shape, input_tensor_shape));
         GenericTensorAccessorW weights =
@@ -172,8 +180,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         GenericTensorAccessorW output =
             allocator.allocate_tensor(output_attrs.shape);
         TensorSlotsBacking correct = {{{QUERY, IsGrad::NO}, query},
-                                      {{KEY, IsGrad::NO}, weights},
-                                      {{VALUE, IsGrad::NO}, weights},
+                                      {{KEY, IsGrad::NO}, key},
+                                      {{VALUE, IsGrad::NO}, value},
                                       {{WEIGHTS, IsGrad::NO}, weights},
                                       {{OUTPUT, IsGrad::NO}, output},
                                       {{QUERY, IsGrad::YES}, query}};

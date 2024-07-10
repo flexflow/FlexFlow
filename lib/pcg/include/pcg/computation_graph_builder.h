@@ -224,7 +224,7 @@ public:
       bool add_bias_kv = false,
       bool add_zero_attn = false,
       std::optional<InitializerAttrs> initializer = std::nullopt,
-      std::optional<std::string> const &name = std::nullopt);
+      std::optional<std::string> const &maybe_name = std::nullopt);
   tensor_guid_t create_tensor(TensorShape const &, CreateGrad);
   tensor_guid_t create_weight(
       TensorShape const &,

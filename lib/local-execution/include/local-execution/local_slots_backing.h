@@ -29,6 +29,7 @@ public:
 
 private:
   bool is_tensor_allocated(tensor_guid_t const &) const;
+  bool is_gradient_tensor_allocated(tensor_guid_t const &) const;
   GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
                                                    IsGrad) const;
   ConcreteArgSpec resolve_op_arg_ref_spec(OpArgRefSpec const &,

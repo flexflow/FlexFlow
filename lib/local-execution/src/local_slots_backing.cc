@@ -22,17 +22,19 @@ void LocalSlotsBacking::allocate_new_tensors(
   std::vector<tensor_guid_t> outgoing_tensors =
       get_outgoing_tensors(computation_graph, layer_guid);
   for (tensor_guid_t const &edge : outgoing_tensors) {
+    TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, edge);
+    // tensor allocation
     if (!is_tensor_allocated(edge)) {
-      TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, edge);
       GenericTensorAccessorW tensor_backing =
           allocator.allocate_tensor(tensor_attrs.shape);
       this->tensor_mapping.insert({edge, tensor_backing});
+    }
 
-      if (tensor_attrs.create_gradients == CreateGrad::YES) {
-        GenericTensorAccessorW gradient_tensor_backing =
-            allocator.allocate_tensor(tensor_attrs.shape);
-        this->gradient_tensor_mapping.insert({edge, gradient_tensor_backing});
-      }
+    // gradient tensor allocation
+    if (tensor_attrs.create_gradients == CreateGrad::YES && !is_gradient_tensor_allocated(edge)) {
+      GenericTensorAccessorW gradient_tensor_backing =
+          allocator.allocate_tensor(tensor_attrs.shape);
+      this->gradient_tensor_mapping.insert({edge, gradient_tensor_backing});
     }
   }
 
@@ -43,6 +45,11 @@ void LocalSlotsBacking::allocate_new_tensors(
 bool LocalSlotsBacking::is_tensor_allocated(
     tensor_guid_t const &tensor_id) const {
   return contains_key(this->tensor_mapping, tensor_id);
+}
+
+bool LocalSlotsBacking::is_gradient_tensor_allocated(
+    tensor_guid_t const &tensor_id) const {
+  return contains_key(this->gradient_tensor_mapping, tensor_id);
 }
 
 GenericTensorAccessorW const &
@@ -71,7 +78,7 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
       case TensorRole::WEIGHT:
         tensor_guids = this->input_tensor_slots.at(op_guid);
         break;
-      case TensorRole::OUTPUT:
+      case TensorRole::OUTPUT: 
         tensor_guids = this->output_tensor_slots.at(op_guid);
         break;
       default:
@@ -80,6 +87,7 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
                                                 // "type_is_unformattable" error
     }
     IsGrad is_grad = slot_grad_id.second;
+    
     GenericTensorAccessorW tensor_backing =
         this->get_tensor_backing(tensor_guids.at(tensor_spec.idx), is_grad);
     mapping.insert({slot_grad_id, tensor_backing});
