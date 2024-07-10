@@ -59,7 +59,7 @@ SerialParallelDecomposition
       continue;
     } else if (std::holds_alternative<Node>(predecessor.children[0])) {
       Node n = std::get<Node>(predecessor.children[0]);
-      coalescable[n].push_back(predecessor); // TODO: apply the cut
+      coalescable[n].push_back(predecessor);
     } else if (std::holds_alternative<Parallel>(predecessor.children[0])) {
       non_coalescable.push_back(predecessor);
     }
@@ -69,8 +69,7 @@ SerialParallelDecomposition
     Node head = item.first;
     std::vector<Serial> sp_branches = item.second;
     std::vector<Serial> cut_off = transform(sp_branches, cut_off_head);
-    auto p_comp = parallel_composition(transform(
-        cut_off, [](Serial s) -> SerialParallelDecomposition { return s; }));
+    auto p_comp = parallel_composition_with_coalescing(cut_off);
     sp.push_back(serial_composition({head, p_comp}));
   }
   for (Serial const &nc : non_coalescable) {

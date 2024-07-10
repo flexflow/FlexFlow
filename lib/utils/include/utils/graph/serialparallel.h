@@ -57,6 +57,9 @@ MultiDiGraph multidigraph_from_sp_decomposition(
 
 bool isempty(SerialParallelDecomposition const &sp);
 SerialParallelDecomposition normalize(SerialParallelDecomposition sp);
+std::unordered_map<Node, size_t>
+    node_counter(SerialParallelDecomposition const &sp);
+size_t node_count(SerialParallelDecomposition const &sp);
 
 } // namespace FlexFlow
 

@@ -93,7 +93,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     auto gv = flipped(g); // flipped to account for the diedge bug
     SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
     SerialParallelDecomposition expected =
-        Serial{{n[0], Parallel{{n[2], n[1]}}, n[3]}};
+        Serial{{n[0], Parallel{{n[1], n[2]}}, n[3]}};
 
     result = dependency_invariant_sp_ization_with_coalescing(gv);
     CHECK(
@@ -122,7 +122,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("Node coalescing") {
       Node s0 = n[0];
-      Parallel p = {{Serial{{Parallel{{n[2], n[1]}}, n[3]}}, n[2]}};
+      Parallel p = {{n[2], Serial{{Parallel{{n[1], n[2]}}, n[3]}}}};
       Node s1 = n[4];
 
       Serial expected = {{s0, p, s1}};
@@ -131,6 +131,78 @@ TEST_SUITE(FF_TEST_SUITE) {
           std::get<Serial>(dependency_invariant_sp_ization_with_coalescing(gv));
       CHECK(result == expected);
     }
+  }
+
+  TEST_CASE("Dependency Invariant SP-ization algorithm - More Complex Graph") {
+    // Taken by "A New Algorithm for Mapping DAGs to Series-Parallel Form,
+    // Escribano et Al, 2002"
+    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+    auto n = add_nodes(g, 18);
+    g.add_edge({n[0], n[1]});
+    g.add_edge({n[0], n[2]});
+
+    g.add_edge({n[1], n[3]});
+    g.add_edge({n[1], n[4]});
+
+    g.add_edge({n[2], n[10]});
+    g.add_edge({n[2], n[11]});
+    g.add_edge({n[2], n[12]});
+
+    g.add_edge({n[3], n[5]});
+    g.add_edge({n[3], n[6]});
+
+    g.add_edge({n[4], n[6]});
+    g.add_edge({n[4], n[7]});
+    g.add_edge({n[4], n[10]});
+
+    g.add_edge({n[5], n[8]});
+
+    g.add_edge({n[6], n[8]});
+    g.add_edge({n[6], n[9]});
+
+    g.add_edge({n[7], n[8]});
+
+    g.add_edge({n[8], n[17]});
+
+    g.add_edge({n[9], n[17]});
+
+    g.add_edge({n[10], n[16]});
+
+    g.add_edge({n[11], n[16]});
+
+    g.add_edge({n[12], n[13]});
+    g.add_edge({n[12], n[14]});
+
+    g.add_edge({n[13], n[15]});
+    g.add_edge({n[14], n[15]});
+
+    g.add_edge({n[15], n[16]});
+
+    g.add_edge({n[16], n[17]});
+
+    DiGraphView gv = flipped(g);
+    SerialParallelDecomposition result =
+        dependency_invariant_sp_ization_with_coalescing(gv);
+    auto counter = node_counter(result);
+    CHECK(counter[n[0]] == 1);
+    CHECK(counter[n[1]] == 2);
+    CHECK(counter[n[2]] == 2);
+    CHECK(counter[n[3]] == 3);
+    CHECK(counter[n[4]] == 4);
+    CHECK(counter[n[5]] == 1);
+    CHECK(counter[n[6]] == 2);
+    CHECK(counter[n[7]] == 1);
+    CHECK(counter[n[8]] == 1);
+    CHECK(counter[n[9]] == 1);
+    CHECK(counter[n[10]] == 1);
+    CHECK(counter[n[11]] == 1);
+    CHECK(counter[n[12]] == 1);
+    CHECK(counter[n[13]] == 1);
+    CHECK(counter[n[14]] == 1);
+    CHECK(counter[n[15]] == 1);
+    CHECK(counter[n[16]] == 1);
+    CHECK(counter[n[17]] == 1);
+    CHECK(node_count(result) == 26);
   }
 
   TEST_CASE("Dependency Invariant SP-ization algorithm - NASNET-A like") {

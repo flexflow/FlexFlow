@@ -472,6 +472,42 @@ SerialParallelDecomposition normalize(SerialParallelDecomposition sp) {
   }
 }
 
+std::unordered_map<Node, size_t>
+    node_counter(SerialParallelDecomposition const &sp) {
+  std::unordered_map<Node, size_t> counter;
+
+  if (std::holds_alternative<Node>(sp)) {
+    Node node = std::get<Node>(sp);
+    counter[node]++;
+  } else if (std::holds_alternative<Serial>(sp)) {
+    Serial const &serial = std::get<Serial>(sp);
+    for (auto const &child : serial.children) {
+      auto child_counter = node_counter(get_only(to_sp_decomp({child})));
+      for (auto const &[node, count] : child_counter) {
+        counter[node] += count;
+      }
+    }
+  } else if (std::holds_alternative<Parallel>(sp)) {
+    Parallel const &parallel = std::get<Parallel>(sp);
+    for (auto const &child : parallel.children) {
+      auto child_counter = node_counter(get_only(to_sp_decomp({child})));
+      for (auto const &[node, count] : child_counter) {
+        counter[node] += count;
+      }
+    }
+  }
+
+  return counter;
+}
+
+size_t node_count(SerialParallelDecomposition const &sp) {
+  size_t tot = 0;
+  for (std::pair<Node, size_t> const &entry : node_counter(sp)) {
+    tot += entry.second;
+  }
+  return tot;
+}
+
 struct MultiDiGraphFromSPDecompositionFunctor {
   template <typename T>
   MultiDiGraph operator()(T const &t) {
