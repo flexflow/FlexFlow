@@ -10,9 +10,19 @@
 namespace FlexFlow {
 
 struct LoraLinearWeight {
-  void *w0_ptr, *w1_ptr, *w0_grad_ptr, *w1_grad_ptr;
-  void *w0_state_ptr, *w1_state_ptr;
-  int in_dim, out_dim, rank;
+  // weights
+  void *w0_ptr, *w1_ptr;
+  // gradients
+  void *w0_grad_ptr, *w1_grad_ptr;
+  // v values for SGD optimizer (when using momentum)
+  void *w0_v_values_ptr, *w1_v_values_ptr;
+  int in_dim, out_dim, rank, num_shards;
+};
+
+struct LoraLinearModelState {
+  LoraLinearWeight weights;
+  LoraOptimizerConfig const *optimizer_config;
+  double lora_alpha;
 };
 
 class LoraLinearMeta : public OpMeta {
@@ -22,7 +32,7 @@ public:
   // PEFT related fields
   void *low_rank_activation;
   void *input_activation;
-  std::unordered_map<PEFTModelID, LoraLinearWeight> model_weights;
+  std::unordered_map<PEFTModelID, LoraLinearModelState> model_state;
   size_t allocated_peft_buffer_size1 = 0, allocated_peft_buffer_size2 = 0;
 };
 

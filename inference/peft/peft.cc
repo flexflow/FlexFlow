@@ -126,7 +126,9 @@ void parse_input_args(char **argv,
     }
   }
   if (paths.cache_folder_path.empty()) {
-    paths.cache_folder_path = "~/.cache/flexflow";
+    char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
+    paths.cache_folder_path = ff_cache_path ? std::string(ff_cache_path)
+                                            : std::string("~/.cache/flexflow");
   }
   // Expand ~ to the home directory if needed
   wordexp_t p;
@@ -240,6 +242,19 @@ void FlexFlow::top_level_task(Task const *task,
           ? LoraLinearConfig::EmptyConfig
           : LoraLinearConfig(file_paths.cache_folder_path, peft_model_name);
 
+  LoraOptimizerConfig *optim_config = nullptr;
+  if (enable_peft_finetuning) {
+    // float sgd_learning_rate = 2e-1;
+    float sgd_learning_rate = 1.0f;
+    optim_config = new LoraSGDOptimizerConfig(sgd_learning_rate);
+  }
+  LoraLinearConfig peft_config_finetuning =
+      peft_model_name.empty() ? LoraLinearConfig::EmptyConfig
+                              : LoraLinearConfig(file_paths.cache_folder_path,
+                                                 peft_model_name,
+                                                 true /*trainable*/,
+                                                 optim_config);
+
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(
@@ -291,9 +306,12 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Add PEFT layer
-  PEFTModelID *peft_model_id = nullptr;
+  PEFTModelID *peft_model_id = nullptr, *peft_model_id_finetuning = nullptr;
   if (!peft_model_name.empty()) {
     peft_model_id = model.add_lora_layer(peft_config);
+    if (enable_peft_finetuning) {
+      peft_model_id_finetuning = model.add_lora_layer(peft_config_finetuning);
+    }
   }
 
   // Start background server
@@ -334,10 +352,11 @@ void FlexFlow::top_level_task(Task const *task,
              file_paths.dataset_file_path.c_str());
       Request fine_tuning_req;
       fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-      fine_tuning_req.peft_model_id =
-          (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
+      fine_tuning_req.peft_model_id = (peft_model_id_finetuning != nullptr)
+                                          ? *peft_model_id_finetuning
+                                          : PEFTModelID::NO_ID;
       fine_tuning_req.dataset_filepath = file_paths.dataset_file_path;
-      fine_tuning_req.max_training_steps = 1;
+      fine_tuning_req.max_training_steps = 2;
       requests.push_back(fine_tuning_req);
     }
     std::vector<GenerationResult> result = model.generate(requests);

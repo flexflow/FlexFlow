@@ -1,5 +1,5 @@
 #! /usr/bin/env bash
-set -x
+# set -x
 set -e
 
 # Cd into directory holding this script
@@ -21,7 +21,7 @@ echo '["“Two things are infinite: the universe and human stupidity; and I'\''m
 mkdir -p ../inference/output
 
 # Enable backtrace in case we run into a segfault or assertion failure
-# export LEGION_BACKTRACE=1
+export LEGION_BACKTRACE=1
 
 # Download test model
 python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora --base_model_name JackFram/llama-160m 
@@ -43,7 +43,6 @@ python ../inference/utils/download_peft_model.py goliaro/llama-160m-lora --base_
 # python ../inference/python/ff_peft.py
 
 cd ../build
-rm -rf inference_tensors || true
 ./inference/peft/peft \
     -ll:gpu 1 -ll:cpu 4 -ll:util 4 \
     -tensor-parallelism-degree 1 \
@@ -54,12 +53,13 @@ rm -rf inference_tensors || true
     -enable-peft \
     --use-full-precision \
     --inference-debugging
-# rm -rf inference_tensors/bwd_*
 
 cd ../tests/peft
-rm -rf hf_peft_tensors || true
 python hf_finetune.py --peft-model-id goliaro/llama-160m-lora --save-peft-tensors --use-full-precision
-# rm -rf hf_peft_tensors/bwd_*
-
 
 python peft_alignment_test.py
+
+# Print succeess message
+echo ""
+echo "PEFT tests passed!"
+echo ""

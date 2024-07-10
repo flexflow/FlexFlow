@@ -10,15 +10,60 @@
 
 namespace FlexFlow {
 
+class LoraOptimizerConfig {
+public:
+  LoraOptimizerConfig();
+  virtual ~LoraOptimizerConfig() {}
+};
+
+class LoraSGDOptimizerConfig : public LoraOptimizerConfig {
+public:
+  LoraSGDOptimizerConfig();
+  LoraSGDOptimizerConfig(double lr_,
+                         double momentum_ = 0.0f,
+                         bool nesterov_ = false,
+                         bool weight_decay_ = 0.0f);
+  friend std::ostream &operator<<(std::ostream &os,
+                                  LoraSGDOptimizerConfig const &llc);
+
+public:
+  double lr = 0.001f;
+  double momentum = 0.0f;
+  bool nesterov = false;
+  double weight_decay = 0.0f;
+};
+
+class LoraAdamOptimizerConfig : public LoraOptimizerConfig {
+public:
+  LoraAdamOptimizerConfig();
+  LoraAdamOptimizerConfig(double alpha_,
+                          double beta1_ = 0.9f,
+                          double beta2_ = 0.999f,
+                          double weight_decay_ = 0.0f,
+                          double epsilon_ = 1e-8);
+  friend std::ostream &operator<<(std::ostream &os,
+                                  LoraAdamOptimizerConfig const &llc);
+
+public:
+  // Adam
+  double alpha = 0.001f;
+  double beta1 = 0.9f;
+  double beta2 = 0.999f;
+  double weight_decay = 0.0f;
+  double epsilon = 1e-8;
+};
+
 class LoraLinearConfig {
 public:
   static const LoraLinearConfig EmptyConfig;
   LoraLinearConfig();
-  LoraLinearConfig(int rank,
-                   OptimizerType type = OPTIMIZER_TYPE_SGD,
-                   float learning_rate = 1e-4);
+  LoraLinearConfig(int _rank,
+                   bool _trainable = false,
+                   LoraOptimizerConfig *_optimizer_config = nullptr);
   LoraLinearConfig(std::string const &cache_folder_,
-                   std::string const &peft_model_id_);
+                   std::string const &peft_model_id_,
+                   bool trainable_ = false,
+                   LoraOptimizerConfig *optimizer_config_ = nullptr);
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
@@ -26,8 +71,10 @@ public:
 
 public:
   int rank;
-  OptimizerType optimizer_type;
-  float learning_rate;
+  // whether the weights are trainable (fine-tuning scenario) or not
+  // (inference-only). If set to true, allocate space for the gradients
+  bool trainable = false;
+  LoraOptimizerConfig *optimizer_config;
   std::string cache_folder;
   // Huggingface
   std::string peft_model_id;
