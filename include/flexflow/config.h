@@ -82,6 +82,7 @@ public:
     workspace = nullptr;
     workspace_block = 0;
     mem_size_ = 0;
+    enabled_ = false;
   }
   AttentionMetaData(const AttentionMetaData &rhs) {
     num_q_heads_ = rhs.num_q_heads_;
@@ -96,6 +97,7 @@ public:
     workspace = rhs.workspace;
     workspace_block = rhs.workspace_block;
     mem_size_ = rhs.mem_size_;
+    enabled_ = rhs.enabled_;
     decode_handler_collections = rhs.decode_handler_collections;
     prompt_handler_collections = rhs.prompt_handler_collections;
   }
@@ -161,6 +163,9 @@ public:
   uint32_t num_kv_heads() const { return num_kv_heads_; }
   uint32_t head_dim() const { return head_dim_; }
 
+  void set_enabled(bool const enabled) { enabled_ = enabled; }
+  bool enabled() const { return enabled_; }
+
   uint32_t num_q_heads_;
   uint32_t num_kv_heads_;
   uint32_t head_dim_;
@@ -175,7 +180,9 @@ public:
   size_t workspace_block;
 
   size_t mem_size_;
+  
   // batchsize -> handler
+  bool enabled_;
   std::unordered_map<int, void*> decode_handler_collections;
   std::unordered_map<int, void*> prompt_handler_collections;
 };
@@ -213,8 +220,6 @@ struct FFInitInfo {
   size_t offload_reserve_space_size;
   DataType quantization_type;
   bool allowTensorOpMathConversion;
-  AttentionMetaData* tree_search_attention_metadata;
-  AttentionMetaData* tree_verify_attention_metadata;
   // int myRank, allRanks;
 };
 

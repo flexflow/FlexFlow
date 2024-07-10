@@ -505,6 +505,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
   // set attention constants
+  handler.tree_search_attention_metadata->set_enabled(true);
   handler.tree_search_attention_metadata->set_num_q_heads(num_q_heads);
   handler.tree_search_attention_metadata->set_num_kv_heads(num_kv_heads);
   handler.tree_search_attention_metadata->set_head_dim(qProjSize);
