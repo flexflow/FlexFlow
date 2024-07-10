@@ -32,7 +32,7 @@ ManagedPerDeviceFFHandle::~ManagedPerDeviceFFHandle() {
   }
 }
 
-PerDeviceFFHandle const &ManagedPerDeviceFFHandle::raw_handle() {
+PerDeviceFFHandle const &ManagedPerDeviceFFHandle::raw_handle() const {
   return *handle;
 }
 
