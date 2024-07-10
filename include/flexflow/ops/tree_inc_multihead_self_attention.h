@@ -146,11 +146,6 @@ public:
 public:
   int num_active_tokens;
   BatchConfig::CommittedTokensInfo *committed_token_infos;
-  // For flashinfer attention
-  Realm::RegionInstance flashinfer_reserve_inst;
-  size_t workspace_size;
-  void *workspace;
-  void *batch_prefill_handler;
 };
 
 }; // namespace FlexFlow

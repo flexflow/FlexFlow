@@ -291,6 +291,55 @@ void RequestManager::load_batch_config_task(
                                               batch_size);
       }
     }
+
+    // prepare attention forward handler
+    if (handle.tree_search_attention_metadata->enabled()) {
+      int batch_size = batch_config->num_active_requests();
+      BatchPrefillHandler *handler = nullptr;
+
+      if (!batch_config->prompt_phase) {
+        if (handle.tree_search_attention_metadata->decode_handler_collections.count(batch_size) == 0) {
+          handle.tree_search_attention_metadata->decode_handler_collections[batch_size] =
+              static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+        }
+        handler = static_cast<BatchPrefillHandler *>(
+          handle.tree_search_attention_metadata->decode_handler_collections[batch_size]);
+      } else {
+        if (handle.tree_search_attention_metadata->prompt_handler_collections.count(batch_size) == 0) {
+          handle.tree_search_attention_metadata->prompt_handler_collections[batch_size] =
+              static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+        }
+        handler = static_cast<BatchPrefillHandler *>(
+          handle.tree_search_attention_metadata->prompt_handler_collections[batch_size]);
+      }
+
+      int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+      q_indptr_h[0] = 0;
+      kv_indptr_h[0] = 0;
+      for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
+        if (batch_config->request_available[req_idx]) {
+          int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
+          int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
+                      batch_config->requestsInfo[req_idx].first_token_index_in_request;
+          q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
+          kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+          indptr_idx++;
+        }
+      }
+
+      handler->SetCUDAStream(stream);
+      handler->BeginForward<half, int32_t>(static_cast<void*>(
+                                            static_cast<char*>(handle.tree_search_attention_metadata->workspace) +
+                                            handle.tree_search_attention_metadata->workspace_block * batch_size),
+                                          handle.tree_search_attention_metadata->workspace_block,
+                                          static_cast<int32_t *>(q_indptr_h),
+                                          static_cast<int32_t *>(kv_indptr_h),
+                                          batch_size,
+                                          handle.tree_search_attention_metadata->num_q_heads(),
+                                          handle.tree_search_attention_metadata->num_kv_heads(),
+                                          handle.tree_search_attention_metadata->head_dim(),
+                                          kPagesize);
+    }
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     for (int request_idx = 0;
          request_idx < BatchConfig::max_requests_per_batch();
@@ -372,31 +421,29 @@ void RequestManager::load_batch_config_task(
                                               batch_size);
       }
     }
-  }
 
-  // prepare attention forward
-  if (task->index_point.point_data[0] == 0) {
-    if (batch_config->get_mode() == TREE_SEARCH_MODE) {
+    // prepare attention forward handler
+    if (handle.tree_verify_attention_metadata->enabled()) {
       int batch_size = batch_config->num_active_requests();
       BatchPrefillHandler *handler = nullptr;
 
       if (!batch_config->prompt_phase) {
-        if (handle.tree_search_attention_metadata->decode_handler_collections.count(batch_size) == 0) {
-          handle.tree_search_attention_metadata->decode_handler_collections[batch_size] =
+        if (handle.tree_verify_attention_metadata->decode_handler_collections.count(batch_size) == 0) {
+          handle.tree_verify_attention_metadata->decode_handler_collections[batch_size] =
               static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
         }
         handler = static_cast<BatchPrefillHandler *>(
-          handle.tree_search_attention_metadata->decode_handler_collections[batch_size]);
+          handle.tree_verify_attention_metadata->decode_handler_collections[batch_size]);
       } else {
-        if (handle.tree_search_attention_metadata->prompt_handler_collections.count(batch_size) == 0) {
-          handle.tree_search_attention_metadata->prompt_handler_collections[batch_size] =
+        if (handle.tree_verify_attention_metadata->prompt_handler_collections.count(batch_size) == 0) {
+          handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size] =
               static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
         }
         handler = static_cast<BatchPrefillHandler *>(
-          handle.tree_search_attention_metadata->prompt_handler_collections[batch_size]);
+          handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
       }
 
-      static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+      int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
       q_indptr_h[0] = 0;
       kv_indptr_h[0] = 0;
       for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
@@ -412,15 +459,15 @@ void RequestManager::load_batch_config_task(
 
       handler->SetCUDAStream(stream);
       handler->BeginForward<half, int32_t>(static_cast<void*>(
-                                            static_cast<char*>(handle.tree_search_attention_metadata->workspace) +
-                                            handle.tree_search_attention_metadata->workspace_block * batch_size),
-                                          handle.tree_search_attention_metadata->workspace_block,
+                                            static_cast<char*>(handle.tree_verify_attention_metadata->workspace) +
+                                            handle.tree_verify_attention_metadata->workspace_block * batch_size),
+                                          handle.tree_verify_attention_metadata->workspace_block,
                                           static_cast<int32_t *>(q_indptr_h),
                                           static_cast<int32_t *>(kv_indptr_h),
                                           batch_size,
-                                          handle.tree_search_attention_metadata->num_q_heads(),
-                                          handle.tree_search_attention_metadata->num_kv_heads(),
-                                          handle.tree_search_attention_metadata->head_dim(),
+                                          handle.tree_verify_attention_metadata->num_q_heads(),
+                                          handle.tree_verify_attention_metadata->num_kv_heads(),
+                                          handle.tree_verify_attention_metadata->head_dim(),
                                           kPagesize);
     }
   }

@@ -257,19 +257,6 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
       (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  int32_t q_indptr_h[bc->max_requests_per_batch() + 1], kv_indptr_h[bc->max_requests_per_batch() + 1];
-  q_indptr_h[0] = 0;
-  kv_indptr_h[0] = 0;
-  for (int req_idx = 0, indptr_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
-    if (bc->request_available[req_idx]) {
-      int q_len = bc->requestsInfo[req_idx].num_tokens_in_batch;
-      int kv_len = bc->requestsInfo[req_idx].num_tokens_in_batch +
-                  bc->requestsInfo[req_idx].first_token_index_in_request;
-      q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
-      kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
-      indptr_idx++;
-    }
-  }
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -312,18 +299,17 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  BatchPrefillHandler *handler =
-      static_cast<BatchPrefillHandler *>(m->batch_prefill_handler);
-  handler->SetCUDAStream(stream);
-  handler->BeginForward<half, int32_t>(m->workspace,
-                                       m->workspace_size,
-                                       static_cast<int32_t *>(q_indptr_h),
-                                       static_cast<int32_t *>(kv_indptr_h),
-                                       batch_size,
-                                       num_q_heads,
-                                       num_kv_heads,
-                                       head_dim,
-                                       kPagesize);
+  BatchPrefillHandler *handler = nullptr;
+
+  if (!bc->prompt_phase) {
+    assert(m->handle.tree_verify_attention_metadata->decode_handler_collections.count(batch_size) != 0 &&
+           "Handler is not initialized");
+    handler = static_cast<BatchPrefillHandler *>(m->handle.tree_verify_attention_metadata->decode_handler_collections[batch_size]);
+  } else {
+    assert(m->handle.tree_verify_attention_metadata->prompt_handler_collections.count(batch_size) != 0 &&
+           "Handler is not initialized");
+    handler = static_cast<BatchPrefillHandler *>(m->handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
+  }
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -736,15 +722,11 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
-  {
-    workspace_size = 16 * 1024 * 1024; // 16MB
-    gpu_mem_allocator.create_legion_instance(
-        flashinfer_reserve_inst, workspace_size);
-    workspace = static_cast<void *>(
-        gpu_mem_allocator.allocate_instance<char>(workspace_size));
-    batch_prefill_handler =
-        static_cast<void *>(new flashinfer::BatchPrefillHandler);
-  }
+  // set attention constants
+  handler.tree_verify_attention_metadata->set_enabled(true);
+  handler.tree_verify_attention_metadata->set_num_q_heads(num_q_heads);
+  handler.tree_verify_attention_metadata->set_num_kv_heads(num_kv_heads);
+  handler.tree_verify_attention_metadata->set_head_dim(qProjSize);
 
   // allocate memory for the seqArray and reserve space
   {
@@ -761,10 +743,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
-  if (flashinfer_reserve_inst != Realm::RegionInstance::NO_INST) {
-    flashinfer_reserve_inst.destroy();
-  }
-  delete static_cast<flashinfer::BatchPrefillHandler *>(batch_prefill_handler);
+  // delete static_cast<flashinfer::BatchPrefillHandler *>(batch_prefill_handler);
 }
 
 }; // namespace FlexFlow
