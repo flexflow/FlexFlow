@@ -7,6 +7,7 @@ file(GLOB_RECURSE SRC
      CONFIGURE_DEPENDS
      LIST_DIRECTORIES False
      src/*.cc
+     src/cuda/cuda_helper.cu
      src/cuda/ops/*.cu
      )
 
@@ -28,6 +29,7 @@ target_link_libraries(
   cuda
   cudnn
   nccl
+  utils
 )
 
 define_ff_vars(${project_target})
@@ -37,3 +39,5 @@ set_target_properties(
   PROPERTIES 
   CUDA_STANDARD 17
 )
+
+add_subdirectory(test)

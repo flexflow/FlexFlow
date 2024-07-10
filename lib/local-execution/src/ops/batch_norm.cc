@@ -71,6 +71,7 @@ static DeviceSpecific<DeviceStates>
   Allocator allocator = acc.get_allocator();
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto const &attrs = acc.get_argument<BatchNormAttrs>(ATTRS);
 

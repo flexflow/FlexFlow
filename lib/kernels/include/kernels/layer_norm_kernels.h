@@ -34,8 +34,8 @@ namespace Kernels {
 namespace LayerNorm {
 
 // todo: this may have some problem.
-LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &,
-                                    Allocator const &,
+LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
+                                    Allocator &allocator,
                                     bool elementwise_affine,
                                     int64_t effective_batch_size,
                                     int64_t effective_num_elements,
