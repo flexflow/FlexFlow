@@ -135,7 +135,7 @@ void load_attention_o_proj_bias_to_dense_v2(DT *ptr,
                             size_t qkv_inner_dim,
                             std::string layer_name,
                             std::string weights_folder) {
-  std::string filename = layer_name + "_wo_bias";
+  std::string filename = layer_name + ".o_proj.bias";
 
   int file_index = 0;
 
@@ -273,10 +273,10 @@ void load_attention_weights_to_dense_v2(DT *ptr,
                                bool load_o_proj) {
   // layers_0_attention_wq_weight
   // layers_0_self_attn_q_proj_weight
-  std::string q_file = layer_name + "_wq_weight";
-  std::string k_file = layer_name + "_wk_weight";
-  std::string v_file = layer_name + "_wv_weight";
-  std::string o_file = layer_name + "_wo_weight";
+  std::string q_file = layer_name + ".q_proj.weight";
+  std::string k_file = layer_name + ".k_proj.weight";
+  std::string v_file = layer_name + ".v_proj.weight";
+  std::string o_file = layer_name + ".o_proj.weight";
   std::vector<std::string> weight_filenames = {q_file, k_file, v_file};
   int file_index = 0;
 
@@ -909,15 +909,18 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
   bool is_attn_proj = false, is_o_proj = false;
 
-  if (weight_filename.find("_proj") != std::string::npos) {
-    size_t pos = weight_filename.find("_attn_o_proj");
+  if (weight_filename.find("attn_") != std::string::npos) {
+    size_t pos = weight_filename.find(".attn_o_proj");
     if (pos != std::string::npos) {
-        weight_filename.replace(pos, std::string("_attn_o_proj").length(), "_attention");
+        weight_filename.replace(pos, std::string(".attn_o_proj").length(), ".self_attn");
         is_o_proj = true;
     } else {
-      pos = weight_filename.find("_attn_qkv_proj");
+      pos = weight_filename.find(".attn_qkv_proj");
+      if(pos == std::string::npos) {
+        cout<<weight_filename<<endl;
+      }
       assert(pos != std::string::npos);
-      weight_filename.replace(pos, std::string("_attn_qkv_proj").length(), "_attention");
+      weight_filename.replace(pos, std::string(".attn_qkv_proj").length(), ".self_attn");
     }
     is_attn_proj = true;
   }

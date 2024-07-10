@@ -103,7 +103,7 @@ void LLAMA::create_llama_model(FFModel &ff,
       nullptr, // ?
       REG_MODE_NONE, // no regularization
       0.0f, // no dropout
-      std::string("layers_" + std::to_string(i) + "_attn_qkv_proj")
+      std::string("layers." + std::to_string(i) + ".attn_qkv_proj")
                      .c_str()
     );
 
@@ -197,7 +197,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                    nullptr,
                    REG_MODE_NONE,
                    0.0f,
-                   std::string("layers_" + std::to_string(i) + "_attn_o_proj")
+                   std::string("layers." + std::to_string(i) + ".attn_o_proj")
                        .c_str());
 
     // step 2: SILU activaion
