@@ -611,7 +611,7 @@ __host__ void
   //graph_params.Print();
   // int shard_id = task->index_point.point_data[0];
 
-  bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE);
+  bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE or bc->get_mode() == TREE_VERIFY_MODE);
   bool captured = false;
 
   if(use_cuda_graph && metas->graph_collections.count(graph_params)  != 0) {
