@@ -12,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Task Registry") {
     TaskRegistry task_registry;
 
-    layer_guid_t mock_layer_guid = layer_guid_t{Node{0}};
+    layer_guid_t layer_guid = layer_guid_t{Node{0}};
     int embed_dim = 32;
     int num_heads = 10;
     ComputationGraphOpAttrs attrs =
@@ -28,11 +28,10 @@ TEST_SUITE(FF_TEST_SUITE) {
         }};
     SUBCASE("register single task") {
       SUBCASE("Init task") {
-        task_registry.register_task(
-            ATTENTION_INIT_TASK_ID, mock_layer_guid, attrs);
+        task_registry.register_task(ATTENTION_INIT_TASK_ID, layer_guid, attrs);
         SUBCASE("Init task ids") {
           std::unordered_map<layer_guid_t, task_id_t> correct = {
-              {mock_layer_guid, ATTENTION_INIT_TASK_ID}};
+              {layer_guid, ATTENTION_INIT_TASK_ID}};
           CHECK(correct == task_registry.init_task_ids);
         }
         SUBCASE("Init task signature impl") {
@@ -45,11 +44,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("Fwd task") {
-        task_registry.register_task(
-            ATTENTION_FWD_TASK_ID, mock_layer_guid, attrs);
+        task_registry.register_task(ATTENTION_FWD_TASK_ID, layer_guid, attrs);
         SUBCASE("Fwd task ids") {
           std::unordered_map<layer_guid_t, task_id_t> correct = {
-              {mock_layer_guid, ATTENTION_FWD_TASK_ID}};
+              {layer_guid, ATTENTION_FWD_TASK_ID}};
           CHECK(correct == task_registry.forward_task_ids);
         }
         SUBCASE("Fwd task signature impl") {
@@ -61,11 +59,10 @@ TEST_SUITE(FF_TEST_SUITE) {
         }
       }
       SUBCASE("Bwd task") {
-        task_registry.register_task(
-            ATTENTION_BWD_TASK_ID, mock_layer_guid, attrs);
+        task_registry.register_task(ATTENTION_BWD_TASK_ID, layer_guid, attrs);
         SUBCASE("Bwd task ids") {
           std::unordered_map<layer_guid_t, task_id_t> correct = {
-              {mock_layer_guid, ATTENTION_BWD_TASK_ID}};
+              {layer_guid, ATTENTION_BWD_TASK_ID}};
           CHECK(correct == task_registry.backward_task_ids);
         }
         SUBCASE("Bwd task signature impl") {
@@ -81,14 +78,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("multiple layers same task") {
       layer_guid_t layer_1 = layer_guid_t{Node{1}};
       layer_guid_t layer_2 = layer_guid_t{Node{2}};
-      task_registry.register_task(
-          ATTENTION_INIT_TASK_ID, mock_layer_guid, attrs);
+      task_registry.register_task(ATTENTION_INIT_TASK_ID, layer_guid, attrs);
       task_registry.register_task(ATTENTION_INIT_TASK_ID, layer_1, attrs);
       task_registry.register_task(ATTENTION_INIT_TASK_ID, layer_2, attrs);
 
       SUBCASE("layer to task mapping") {
         std::unordered_map<layer_guid_t, task_id_t> correct = {
-            {mock_layer_guid, ATTENTION_INIT_TASK_ID},
+            {layer_guid, ATTENTION_INIT_TASK_ID},
             {layer_1, ATTENTION_INIT_TASK_ID},
             {layer_2, ATTENTION_INIT_TASK_ID},
         };
@@ -139,17 +135,15 @@ TEST_SUITE(FF_TEST_SUITE) {
                 /*add_zero_attn=*/false,
             }};
 
-        task_registry.register_task(
-            ATTENTION_INIT_TASK_ID, mock_layer_guid, attrs);
+        task_registry.register_task(ATTENTION_INIT_TASK_ID, layer_guid, attrs);
         other_task_registry.register_task(
-            ATTENTION_INIT_TASK_ID, mock_layer_guid, other_attrs);
+            ATTENTION_INIT_TASK_ID, layer_guid, other_attrs);
 
         CHECK(task_registry == other_task_registry);
       }
 
       SUBCASE("different layer_guid is not equal") {
-        task_registry.register_task(
-            ATTENTION_INIT_TASK_ID, mock_layer_guid, attrs);
+        task_registry.register_task(ATTENTION_INIT_TASK_ID, layer_guid, attrs);
         layer_guid_t other_layer_guid = layer_guid_t{Node{1}};
         other_task_registry.register_task(
             ATTENTION_INIT_TASK_ID, other_layer_guid, attrs);
@@ -158,10 +152,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("different task_id is not equal") {
-        task_registry.register_task(
-            ATTENTION_FWD_TASK_ID, mock_layer_guid, attrs);
+        task_registry.register_task(ATTENTION_FWD_TASK_ID, layer_guid, attrs);
         other_task_registry.register_task(
-            ATTENTION_BWD_TASK_ID, mock_layer_guid, attrs);
+            ATTENTION_BWD_TASK_ID, layer_guid, attrs);
 
         CHECK(task_registry != other_task_registry);
       }

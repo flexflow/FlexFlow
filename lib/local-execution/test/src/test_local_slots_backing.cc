@@ -123,7 +123,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    SUBCASE("Construct Slots Backings -- Mock Binding") {
+    SUBCASE("Construct Slots Backings") {
       enum Slots {
         QUERY,
         KEY,
@@ -139,8 +139,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       MultiHeadAttentionAttrs attrs =
           get_layer_attrs(cg_builder.computation_graph, layer_guid)
               .attrs.get<MultiHeadAttentionAttrs>();
-      OpTaskBinding mock_binding = [&] {
-        // mock binding to avoid running any kernels
+      OpTaskBinding binding = [&] {
         OpTaskBinding b;
         b.bind(QUERY, input_tensor(0));
         b.bind(KEY, input_tensor(1));
@@ -160,7 +159,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("Tensor Slots Backing") {
         TensorSlotsBacking result =
-            local_slots_backing.construct_tensor_slots_backing(mock_binding,
+            local_slots_backing.construct_tensor_slots_backing(binding,
                                                                layer_guid);
 
         TensorShape weights_shape = throw_if_unexpected(get_weights_shape(
@@ -183,7 +182,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
       SUBCASE("Arg Slots Backing") {
         ArgSlotsBacking result =
-            local_slots_backing.construct_arg_slots_backing(mock_binding,
+            local_slots_backing.construct_arg_slots_backing(binding,
                                                             layer_guid);
 
         ParallelTensorShape query_parallel_tensor_shape =

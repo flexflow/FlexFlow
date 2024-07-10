@@ -1,7 +1,6 @@
 #include "doctest/doctest.h"
 #include "local-execution/local_cpu_allocator.h"
 #include "local-execution/local_task_argument_accessor.h"
-#include "local-execution/ops/attention.h"
 #include "local-execution/task_signature_impl.h"
 
 namespace FlexFlow {
@@ -22,117 +21,115 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    GenericTensorAccessorW query =
+    GenericTensorAccessorW input =
         allocator.allocate_tensor(input_tensor_shape);
-    GenericTensorAccessorW query_grad =
+    GenericTensorAccessorW input_grad =
         allocator.allocate_tensor(input_tensor_shape);
 
-    std::vector<GenericTensorAccessorW> mock_variadic_tensors = {query, query};
-    std::vector<GenericTensorAccessorW> mock_variadic_tensors_grad = {
-        query_grad, query_grad};
+    std::vector<GenericTensorAccessorW> variadic_tensors = {input, input};
+    std::vector<GenericTensorAccessorW> variadic_tensors_grad = {input_grad,
+                                                                 input_grad};
 
-    enum MockSlots {
-      QUERY,
-      MOCK_VARIADIC_TENSORS,
+    enum Slots {
+      INPUT,
+      VARIADIC_TENSORS,
     };
 
-    TensorSlotsBacking mock_tensor_slots_backing = {
-        {{QUERY, IsGrad::NO}, query},
-        {{QUERY, IsGrad::YES}, query_grad},
-        {{MOCK_VARIADIC_TENSORS, IsGrad::NO}, mock_variadic_tensors},
-        {{MOCK_VARIADIC_TENSORS, IsGrad::YES}, mock_variadic_tensors_grad},
+    TensorSlotsBacking tensor_slots_backing = {
+        {{INPUT, IsGrad::NO}, input},
+        {{INPUT, IsGrad::YES}, input_grad},
+        {{VARIADIC_TENSORS, IsGrad::NO}, variadic_tensors},
+        {{VARIADIC_TENSORS, IsGrad::YES}, variadic_tensors_grad},
     };
 
-    LocalTaskArgumentAccessor acc = {allocator, mock_tensor_slots_backing, {}};
+    LocalTaskArgumentAccessor acc = {allocator, tensor_slots_backing, {}};
 
     SUBCASE("get_tensor") {
-      SUBCASE("Read-only query tensor") {
+      SUBCASE("Read-only input tensor") {
         GenericTensorAccessorR correct =
-            read_only_accessor_from_write_accessor(query);
+            read_only_accessor_from_write_accessor(input);
         GenericTensorAccessorR result = std::get<GenericTensorAccessorR>(
-            acc.get_tensor(QUERY, Permissions::RO, IsGrad::NO));
+            acc.get_tensor(INPUT, Permissions::RO, IsGrad::NO));
         CHECK(correct == result);
       }
-      SUBCASE("Read-only query grad tensor") {
+      SUBCASE("Read-only input grad tensor") {
         GenericTensorAccessorR correct =
-            read_only_accessor_from_write_accessor(query_grad);
+            read_only_accessor_from_write_accessor(input_grad);
         GenericTensorAccessorR result = std::get<GenericTensorAccessorR>(
-            acc.get_tensor(QUERY, Permissions::RO, IsGrad::YES));
+            acc.get_tensor(INPUT, Permissions::RO, IsGrad::YES));
         CHECK(correct == result);
       }
-      SUBCASE("Write-only query tensor") {
+      SUBCASE("Write-only input tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(QUERY, Permissions::WO, IsGrad::NO));
-        CHECK(query == result);
+            acc.get_tensor(INPUT, Permissions::WO, IsGrad::NO));
+        CHECK(input == result);
       }
-      SUBCASE("Write-only query grad tensor") {
+      SUBCASE("Write-only input grad tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(QUERY, Permissions::WO, IsGrad::YES));
-        CHECK(query_grad == result);
+            acc.get_tensor(INPUT, Permissions::WO, IsGrad::YES));
+        CHECK(input_grad == result);
       }
-      SUBCASE("Read-write query tensor") {
+      SUBCASE("Read-write input tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(QUERY, Permissions::RW, IsGrad::NO));
-        CHECK(query == result);
+            acc.get_tensor(INPUT, Permissions::RW, IsGrad::NO));
+        CHECK(input == result);
       }
-      SUBCASE("Read-write query grad tensor") {
+      SUBCASE("Read-write input grad tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(QUERY, Permissions::RW, IsGrad::YES));
-        CHECK(query_grad == result);
+            acc.get_tensor(INPUT, Permissions::RW, IsGrad::YES));
+        CHECK(input_grad == result);
       }
     }
 
-    SUBCASE("get_tensor") {
-      SUBCASE("Read-only mock tensors") {
+    SUBCASE("get_variadic_tensor") {
+      SUBCASE("Read-only tensors") {
         std::vector<GenericTensorAccessorR> correct = {
-            read_only_accessor_from_write_accessor(mock_variadic_tensors.at(0)),
-            read_only_accessor_from_write_accessor(
-                mock_variadic_tensors.at(1))};
+            read_only_accessor_from_write_accessor(variadic_tensors.at(0)),
+            read_only_accessor_from_write_accessor(variadic_tensors.at(1))};
         std::vector<GenericTensorAccessorR> result =
             std::get<std::vector<GenericTensorAccessorR>>(
                 acc.get_variadic_tensor(
-                    MOCK_VARIADIC_TENSORS, Permissions::RO, IsGrad::NO));
+                    VARIADIC_TENSORS, Permissions::RO, IsGrad::NO));
         CHECK(correct == result);
       }
-      SUBCASE("Read-only mock grad tensors") {
+      SUBCASE("Read-only grad tensors") {
         std::vector<GenericTensorAccessorR> correct = {
+            read_only_accessor_from_write_accessor(variadic_tensors_grad.at(0)),
             read_only_accessor_from_write_accessor(
-                mock_variadic_tensors_grad.at(0)),
-            read_only_accessor_from_write_accessor(
-                mock_variadic_tensors_grad.at(1))};
+                variadic_tensors_grad.at(1))};
         std::vector<GenericTensorAccessorR> result =
             std::get<std::vector<GenericTensorAccessorR>>(
                 acc.get_variadic_tensor(
-                    MOCK_VARIADIC_TENSORS, Permissions::RO, IsGrad::YES));
+                    VARIADIC_TENSORS, Permissions::RO, IsGrad::YES));
         CHECK(correct == result);
       }
-      SUBCASE("Write-only mock tensors") {
+      SUBCASE("Write-only tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    MOCK_VARIADIC_TENSORS, Permissions::WO, IsGrad::NO));
-        CHECK(mock_variadic_tensors == result);
+                    VARIADIC_TENSORS, Permissions::WO, IsGrad::NO));
+        CHECK(variadic_tensors == result);
       }
-      SUBCASE("Write-only mock grad tensors") {
+      SUBCASE("Write-only grad tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    MOCK_VARIADIC_TENSORS, Permissions::WO, IsGrad::YES));
-        CHECK(mock_variadic_tensors_grad == result);
+                    VARIADIC_TENSORS, Permissions::WO, IsGrad::YES));
+        CHECK(variadic_tensors_grad == result);
       }
-      SUBCASE("Read-write mock tensors") {
+      SUBCASE("Read-write tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    MOCK_VARIADIC_TENSORS, Permissions::RW, IsGrad::NO));
-        CHECK(mock_variadic_tensors == result);
+                    VARIADIC_TENSORS, Permissions::RW, IsGrad::NO));
+        CHECK(variadic_tensors == result);
       }
-      SUBCASE("Read-write mock grad tensors") {
+      SUBCASE("Read-write grad tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    MOCK_VARIADIC_TENSORS, Permissions::RW, IsGrad::YES));
-        CHECK(mock_variadic_tensors_grad == result);
+                    VARIADIC_TENSORS, Permissions::RW, IsGrad::YES));
+        CHECK(variadic_tensors_grad == result);
       }
     }
   }
