@@ -55,6 +55,9 @@ SerialParallelDecomposition serial_composition(
 MultiDiGraph multidigraph_from_sp_decomposition(
     SerialParallelDecomposition const &sp_decomposition);
 
+bool isempty(SerialParallelDecomposition const &sp);
+SerialParallelDecomposition normalize(SerialParallelDecomposition sp);
+
 } // namespace FlexFlow
 
 #endif

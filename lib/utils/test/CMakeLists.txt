@@ -5,6 +5,7 @@ ff_add_test_executable(
     src/test_cow_ptr.cc
     src/test_optional.cc
     src/test_sp_ization.cc
+    src/test_serialparallel.cc
   PRIVATE_INCLUDE
     src/
   DEPS
