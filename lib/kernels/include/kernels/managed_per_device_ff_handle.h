@@ -19,7 +19,7 @@ public:
 
   ~ManagedPerDeviceFFHandle();
 
-  PerDeviceFFHandle const &raw_handle();
+  PerDeviceFFHandle const &raw_handle() const;
 
 private:
   PerDeviceFFHandle *handle;
