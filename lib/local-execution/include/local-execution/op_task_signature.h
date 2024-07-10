@@ -56,13 +56,14 @@ struct OpTaskSignature {
       slot_id, SlotType slot_type = SlotType::TENSOR);
 
   void add_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
-  void add_bwd_necessary_output_slot(slot_id,
+  void add_bwd_optional_output_slot(slot_id,
                                      SlotType slot_type = SlotType::TENSOR);
 
   void add_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_optional_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
 
   void add_from_slot_spec(OpTensorSlotSpec const &spec);
+  void add_grad_slot_from_slot_spec(OpTensorSlotSpec const & spec);
 
   template <typename T>
   void add_arg_slot(slot_id name) {
@@ -85,6 +86,7 @@ struct OpTaskSignature {
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots() const;
   void set_arg_types(std::unordered_map<slot_id, std::type_index> const &);
   std::unordered_map<slot_id, std::type_index> get_arg_types() const;
+  void infer_from_forward(OpTaskSignature const &);
 
   OpTaskType type;
   std::optional<std::type_index> return_value;

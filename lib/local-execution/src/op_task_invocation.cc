@@ -81,6 +81,8 @@ bool is_tensor_invocation_valid(OpTaskSignature const &sig,
       return false;
     }
   }
+
+  // FIXME -- make sure invocation doesn't contain MORE than signature
   return true;
 }
 

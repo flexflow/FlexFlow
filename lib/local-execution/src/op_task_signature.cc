@@ -39,17 +39,17 @@ void OpTaskSignature::add_optional_untrainable_input_slot(slot_id name,
 
 void OpTaskSignature::add_output_slot(slot_id name, SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {
-      name, slot_type, TensorRole::OUTPUT, IsGrad::NO, OpSlotOptions::OPTIONAL};
+      name, slot_type, TensorRole::OUTPUT, IsGrad::NO, OpSlotOptions::NECESSARY};
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
-void OpTaskSignature::add_bwd_necessary_output_slot(slot_id name,
+void OpTaskSignature::add_bwd_optional_output_slot(slot_id name,
                                                     SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {name,
                                           slot_type,
                                           TensorRole::OUTPUT,
                                           IsGrad::NO,
-                                          OpSlotOptions::NECESSARY};
+                                          OpSlotOptions::OPTIONAL};
   this->op_tensor_slots.insert(op_tensor_slot_spec);
 }
 
@@ -78,9 +78,30 @@ void OpTaskSignature::add_from_slot_spec(OpTensorSlotSpec const &spec) {
   this->op_tensor_slots.insert(spec);
 }
 
+void OpTaskSignature::add_grad_slot_from_slot_spec(OpTensorSlotSpec const & spec) {
+  OpTensorSlotSpec grad_spec = {
+    spec.name, spec.slot_type, spec.tensor_role, IsGrad::YES, spec.slot_option
+  };
+  this->op_tensor_slots.insert(grad_spec);
+}
+
+void OpTaskSignature::infer_from_forward(OpTaskSignature const & fwd) {
+  this->return_value = fwd.return_value;
+  this->task_arg_types = fwd.task_arg_types;
+  this->op_tensor_slots = fwd.op_tensor_slots;
+}
+
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd) {
-  // TODO
-  return fwd;
+  OpTaskSignature bwd(OpTaskType::BWD);
+  bwd.infer_from_forward(fwd);
+  for (auto const & op_tensor_slot_spec : fwd.get_tensor_slots()) {
+    OpSlotOptions slot_option = op_tensor_slot_spec.slot_option;
+    if (slot_option != OpSlotOptions::UNTRAINABLE || slot_option != OpSlotOptions::OPTIONAL_UNTRAINABLE) {
+      bwd.add_grad_slot_from_slot_spec(op_tensor_slot_spec);
+    }
+  }
+
+  return bwd;
 }
 
 std::unordered_set<OpTensorSlotSpec> OpTaskSignature::get_tensor_slots() const {

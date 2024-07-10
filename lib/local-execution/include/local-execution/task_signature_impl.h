@@ -20,15 +20,11 @@ struct TaskSignatureAndImpl {
   OpTaskSignature task_signature;
 
   bool operator==(TaskSignatureAndImpl const &other) const {
-    return std::addressof(this->impl_function) ==
-               std::addressof(other.impl_function) &&
-           this->task_signature == other.task_signature;
+    return this->task_signature == other.task_signature;
   }
 
   bool operator!=(TaskSignatureAndImpl const &other) const {
-    return std::addressof(this->impl_function) !=
-               std::addressof(other.impl_function) ||
-           this->task_signature != other.task_signature;
+    return this->task_signature != other.task_signature;
   }
 };
 
