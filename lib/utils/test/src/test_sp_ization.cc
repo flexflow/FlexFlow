@@ -70,15 +70,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     g.add_edge({n[2], n[3]});
 
     auto gv = flipped(g); // flipped to account for the diedge bug
-    SerialParallelDecomposition result =
-        dependency_invariant_sp_ization(gv);
+    SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
     SerialParallelDecomposition expected = Serial{{n[0], n[1], n[2], n[3]}};
     CHECK(
         std::get<Serial>(result) ==
         std::get<Serial>(expected)); // currently cannot directly compare the 2.
 
-    result =
-        dependency_invariant_sp_ization_with_coalescing(gv);
+    result = dependency_invariant_sp_ization_with_coalescing(gv);
     CHECK(
         std::get<Serial>(result) ==
         std::get<Serial>(expected)); // currently cannot directly compare the 2.
@@ -93,12 +91,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     g.add_edge({n[2], n[3]});
 
     auto gv = flipped(g); // flipped to account for the diedge bug
-    SerialParallelDecomposition result =
-        dependency_invariant_sp_ization(gv);
-    SerialParallelDecomposition expected = Serial{{n[0], Parallel{{n[2], n[1]}}, n[3]}};
+    SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
+    SerialParallelDecomposition expected =
+        Serial{{n[0], Parallel{{n[2], n[1]}}, n[3]}};
 
-    result =
-        dependency_invariant_sp_ization_with_coalescing(gv);
+    result = dependency_invariant_sp_ization_with_coalescing(gv);
     CHECK(
         std::get<Serial>(result) ==
         std::get<Serial>(expected)); // currently cannot directly compare the 2.
@@ -115,23 +112,23 @@ TEST_SUITE(FF_TEST_SUITE) {
     g.add_edge({n[3], n[4]});
     auto gv = flipped(g); // flipped to account for the diedge bug
     SUBCASE("Naive Version") {
-        Serial result =
-            std::get<Serial>(dependency_invariant_sp_ization(gv));
-        Serial sp0 = {{n[0]}};
-        Serial sp1 = {{n[0], n[1]}};
-        Serial sp2 = {{n[0], n[2]}};
-        Serial sp3 = {{Parallel{{sp2, sp1}}, n[3]}};
-        Serial expected = {{Parallel{{sp3, sp2}}, n[4]}};
-        CHECK(result == expected);
+      Serial result = std::get<Serial>(dependency_invariant_sp_ization(gv));
+      Serial sp0 = {{n[0]}};
+      Serial sp1 = {{n[0], n[1]}};
+      Serial sp2 = {{n[0], n[2]}};
+      Serial sp3 = {{Parallel{{sp2, sp1}}, n[3]}};
+      Serial expected = {{Parallel{{sp3, sp2}}, n[4]}};
+      CHECK(result == expected);
     }
     SUBCASE("Node coalescing") {
       Node s0 = n[0];
-      Parallel p = {{ Serial{{ Parallel{{n[2],n[1]}}, n[3]}},  n[2]}};
+      Parallel p = {{Serial{{Parallel{{n[2], n[1]}}, n[3]}}, n[2]}};
       Node s1 = n[4];
 
       Serial expected = {{s0, p, s1}};
 
-      Serial result = std::get<Serial>(dependency_invariant_sp_ization_with_coalescing(gv));
+      Serial result =
+          std::get<Serial>(dependency_invariant_sp_ization_with_coalescing(gv));
       CHECK(result == expected);
     }
   }
@@ -180,24 +177,23 @@ TEST_SUITE(FF_TEST_SUITE) {
       g.add_edge({a, concat});
     }
     SUBCASE("No coalescing") {
-    DiGraphView gv = flipped(g);
-    SerialParallelDecomposition result =
-        dependency_invariant_sp_ization(gv);
+      DiGraphView gv = flipped(g);
+      SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
 
-    int extranodes =
-        get_nodes(multidigraph_from_sp_decomposition(result)).size() -
-        get_nodes(gv).size();
-    CHECK(extranodes >= 0);
+      int extranodes =
+          get_nodes(multidigraph_from_sp_decomposition(result)).size() -
+          get_nodes(gv).size();
+      CHECK(extranodes >= 0);
     }
     SUBCASE("coalescing") {
-          DiGraphView gv = flipped(g);
-    SerialParallelDecomposition result =
-        dependency_invariant_sp_ization_with_coalescing(gv);
+      DiGraphView gv = flipped(g);
+      SerialParallelDecomposition result =
+          dependency_invariant_sp_ization_with_coalescing(gv);
 
-    int extranodes =
-        get_nodes(multidigraph_from_sp_decomposition(result)).size() -
-        get_nodes(g).size();
-    CHECK(extranodes >= 0);
-    } 
+      int extranodes =
+          get_nodes(multidigraph_from_sp_decomposition(result)).size() -
+          get_nodes(g).size();
+      CHECK(extranodes >= 0);
+    }
   }
 }

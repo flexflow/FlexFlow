@@ -333,20 +333,28 @@ SerialParallelDecomposition serial_composition(
   return composition;
 }
 
-std::vector<SerialParallelDecomposition> to_sp_decomp(std::vector<std::variant<Serial, Node>> const &children) {
-  return transform(children, [](std::variant<Serial, Node> const &child) -> SerialParallelDecomposition {
-    return std::holds_alternative<Node>(child)
-               ? SerialParallelDecomposition{std::get<Node>(child)}
-               : SerialParallelDecomposition{std::get<Serial>(child)};
-  });
+std::vector<SerialParallelDecomposition>
+    to_sp_decomp(std::vector<std::variant<Serial, Node>> const &children) {
+  return transform(
+      children,
+      [](std::variant<Serial, Node> const &child)
+          -> SerialParallelDecomposition {
+        return std::holds_alternative<Node>(child)
+                   ? SerialParallelDecomposition{std::get<Node>(child)}
+                   : SerialParallelDecomposition{std::get<Serial>(child)};
+      });
 }
 
-std::vector<SerialParallelDecomposition> to_sp_decomp(std::vector<std::variant<Parallel, Node>> const &children) {
-  return transform(children, [](std::variant<Parallel, Node> const &child) -> SerialParallelDecomposition {
-    return std::holds_alternative<Node>(child)
-               ? SerialParallelDecomposition{std::get<Node>(child)}
-               : SerialParallelDecomposition{std::get<Parallel>(child)};
-  });
+std::vector<SerialParallelDecomposition>
+    to_sp_decomp(std::vector<std::variant<Parallel, Node>> const &children) {
+  return transform(
+      children,
+      [](std::variant<Parallel, Node> const &child)
+          -> SerialParallelDecomposition {
+        return std::holds_alternative<Node>(child)
+                   ? SerialParallelDecomposition{std::get<Node>(child)}
+                   : SerialParallelDecomposition{std::get<Parallel>(child)};
+      });
 }
 
 bool isempty(SerialParallelDecomposition const &sp) {
@@ -362,9 +370,11 @@ bool isempty(SerialParallelDecomposition const &sp) {
 
 std::vector<std::variant<Parallel, Node>> filter_empty(Serial serial) {
   std::vector<std::variant<Parallel, Node>> filtered;
-  for (const auto& child : serial.children) {
-    if (std::holds_alternative<Parallel>(child) && !isempty(std::get<Parallel>(child))) {
-      filtered.push_back(std::get<Parallel>(child));;
+  for (auto const &child : serial.children) {
+    if (std::holds_alternative<Parallel>(child) &&
+        !isempty(std::get<Parallel>(child))) {
+      filtered.push_back(std::get<Parallel>(child));
+      ;
     } else if (std::holds_alternative<Node>(child)) {
       filtered.push_back(std::get<Node>(child));
     }
@@ -374,9 +384,11 @@ std::vector<std::variant<Parallel, Node>> filter_empty(Serial serial) {
 
 std::vector<std::variant<Serial, Node>> filter_empty(Parallel parallel) {
   std::vector<std::variant<Serial, Node>> filtered;
-  for (const auto& child : parallel.children) {
-    if (std::holds_alternative<Serial>(child) && !isempty(std::get<Serial>(child))) {
-      filtered.push_back(std::get<Serial>(child));;
+  for (auto const &child : parallel.children) {
+    if (std::holds_alternative<Serial>(child) &&
+        !isempty(std::get<Serial>(child))) {
+      filtered.push_back(std::get<Serial>(child));
+      ;
     } else if (std::holds_alternative<Node>(child)) {
       filtered.push_back(std::get<Node>(child));
     }
@@ -385,75 +397,80 @@ std::vector<std::variant<Serial, Node>> filter_empty(Parallel parallel) {
 }
 
 SerialParallelDecomposition normalize(SerialParallelDecomposition sp) {
-    if (std::holds_alternative<Node>(sp)) {
-        return sp;
-    } else if (std::holds_alternative<Serial>(sp)) {
-        Serial serial = std::get<Serial>(sp);
-        if (serial.children.empty()) {
-            throw std::invalid_argument("Empty Serial composition");
-        }
-        // Exclude empty children.
-        auto filtered_children = filter_empty(serial);
-
-        std::vector<SerialParallelDecomposition> normalized_children;
-        for (std::variant<Parallel, Node>& child : filtered_children) {
-            if (std::holds_alternative<Parallel>(child)) {
-                normalized_children.push_back(normalize(SerialParallelDecomposition{std::get<Parallel>(child)}));
-            } else {
-                normalized_children.push_back(std::get<Node>(child));
-            }
-        }
-
-        SerialParallelDecomposition normalized = serial_composition(normalized_children);
-
-        if (std::holds_alternative<Node>(normalized)) {
-            return normalized;
-        } else if (std::holds_alternative<Serial>(normalized) && std::get<Serial>(normalized).children.size() == 1) {
-            auto single_child = get_only(std::get<Serial>(normalized).children);
-            if (std::holds_alternative<Node>(single_child)) {
-                return std::get<Node>(single_child);
-            } else if (std::holds_alternative<Parallel>(single_child)) {
-                return std::get<Parallel>(single_child);
-            }
-        } else {
-            return normalized;
-        }
-    } else {
-        assert(std::holds_alternative<Parallel>(sp));
-        Parallel parallel = std::get<Parallel>(sp);
-        if (parallel.children.empty()) {
-            throw std::invalid_argument("Empty Parallel composition");
-        }
-        
-        // Exclude empty children.
-        auto filtered_children = filter_empty(parallel);
-
-        std::vector<SerialParallelDecomposition> normalized_children;
-        for (std::variant<Serial, Node>& child : filtered_children) {
-            if (std::holds_alternative<Serial>(child)) {
-                normalized_children.push_back(normalize(SerialParallelDecomposition{std::get<Serial>(child)}));
-            } else {
-                normalized_children.push_back(std::get<Node>(child));
-            }
-        }
-
-        SerialParallelDecomposition normalized = parallel_composition(normalized_children);
-
-        if (std::holds_alternative<Node>(normalized)) {
-            return std::get<Node>(normalized);
-        } else if (std::holds_alternative<Parallel>(normalized) && std::get<Parallel>(normalized).children.size() == 1) {
-            auto single_child = get_only(std::get<Parallel>(normalized).children);
-            if (std::holds_alternative<Node>(single_child)) {
-                return std::get<Node>(single_child);
-            } else if (std::holds_alternative<Serial>(single_child)) {
-                return std::get<Serial>(single_child);
-            }
-        } else {
-            return normalized;
-        }
+  if (std::holds_alternative<Node>(sp)) {
+    return sp;
+  } else if (std::holds_alternative<Serial>(sp)) {
+    Serial serial = std::get<Serial>(sp);
+    if (serial.children.empty()) {
+      throw std::invalid_argument("Empty Serial composition");
     }
-}
+    // Exclude empty children.
+    auto filtered_children = filter_empty(serial);
 
+    std::vector<SerialParallelDecomposition> normalized_children;
+    for (std::variant<Parallel, Node> &child : filtered_children) {
+      if (std::holds_alternative<Parallel>(child)) {
+        normalized_children.push_back(
+            normalize(SerialParallelDecomposition{std::get<Parallel>(child)}));
+      } else {
+        normalized_children.push_back(std::get<Node>(child));
+      }
+    }
+
+    SerialParallelDecomposition normalized =
+        serial_composition(normalized_children);
+
+    if (std::holds_alternative<Node>(normalized)) {
+      return normalized;
+    } else if (std::holds_alternative<Serial>(normalized) &&
+               std::get<Serial>(normalized).children.size() == 1) {
+      auto single_child = get_only(std::get<Serial>(normalized).children);
+      if (std::holds_alternative<Node>(single_child)) {
+        return std::get<Node>(single_child);
+      } else if (std::holds_alternative<Parallel>(single_child)) {
+        return std::get<Parallel>(single_child);
+      }
+    } else {
+      return normalized;
+    }
+  } else {
+    assert(std::holds_alternative<Parallel>(sp));
+    Parallel parallel = std::get<Parallel>(sp);
+    if (parallel.children.empty()) {
+      throw std::invalid_argument("Empty Parallel composition");
+    }
+
+    // Exclude empty children.
+    auto filtered_children = filter_empty(parallel);
+
+    std::vector<SerialParallelDecomposition> normalized_children;
+    for (std::variant<Serial, Node> &child : filtered_children) {
+      if (std::holds_alternative<Serial>(child)) {
+        normalized_children.push_back(
+            normalize(SerialParallelDecomposition{std::get<Serial>(child)}));
+      } else {
+        normalized_children.push_back(std::get<Node>(child));
+      }
+    }
+
+    SerialParallelDecomposition normalized =
+        parallel_composition(normalized_children);
+
+    if (std::holds_alternative<Node>(normalized)) {
+      return std::get<Node>(normalized);
+    } else if (std::holds_alternative<Parallel>(normalized) &&
+               std::get<Parallel>(normalized).children.size() == 1) {
+      auto single_child = get_only(std::get<Parallel>(normalized).children);
+      if (std::holds_alternative<Node>(single_child)) {
+        return std::get<Node>(single_child);
+      } else if (std::holds_alternative<Serial>(single_child)) {
+        return std::get<Serial>(single_child);
+      }
+    } else {
+      return normalized;
+    }
+  }
+}
 
 struct MultiDiGraphFromSPDecompositionFunctor {
   template <typename T>

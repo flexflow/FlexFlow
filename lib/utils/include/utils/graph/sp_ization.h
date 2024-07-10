@@ -10,7 +10,8 @@ namespace FlexFlow {
 SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g);
 SerialParallelDecomposition
     dependency_invariant_sp_ization(DiGraphView const &g);
-SerialParallelDecomposition dependency_invariant_sp_ization_with_coalescing(DiGraphView const &g);
+SerialParallelDecomposition
+    dependency_invariant_sp_ization_with_coalescing(DiGraphView const &g);
 
 } // namespace FlexFlow
 
