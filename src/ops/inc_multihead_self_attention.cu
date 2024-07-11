@@ -1069,6 +1069,41 @@ std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,
   return dst_filepath.string();
 }
 
+__global__ void transpose_half_kernel(half *out, const half *in, int width, int height) {
+    int t_id = blockIdx.x * blockDim.x + threadIdx.x;
+    int num_threads = blockDim.x * gridDim.x;
+    for(int i = t_id; i < width * height; i += num_threads) {
+        int row = i / width;
+        int col = i % width;
+        out[col * height + row] = in[row * width + col];
+    }
+}
+
+__global__ void transpose_float_kernel(float *out, const float *in, int width, int height) {
+    int t_id = blockIdx.x * blockDim.x + threadIdx.x;
+    int num_threads = blockDim.x * gridDim.x;
+    for(int i = t_id; i < width * height; i += num_threads) {
+        int row = i / width;
+        int col = i % width;
+        out[col * height + row] = in[row * width + col];
+    }
+}
+
+template <typename DT>
+void transpose(DT *out, const DT *in, int width, int height, cudaStream_t stream) {
+    assert(false && "Unsupported data type");
+}
+
+template<>
+void transpose<float>(float *out, const float *in, int width, int height, cudaStream_t stream) {
+    transpose_float_kernel<<<4, 1024, 0, stream>>>(out, in, width, height);
+}
+
+template<>
+void transpose<half>(half *out, const half *in, int width, int height, cudaStream_t stream) {
+    transpose_half_kernel<<<4, 1024, 0, stream>>>(out, in, width, height);
+}
+
 template <typename DT>
 void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      BatchConfig const *bc,
@@ -1533,6 +1568,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int lda = m_;
       int ldb = n_;
       int ldc = m_;
+      
       // checkCUDA(cublasGemmEx(m->handle.blas,
       //                        CUBLAS_OP_N,
       //                        CUBLAS_OP_T,
@@ -1552,11 +1588,15 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       //                        ldc,
       //                        compute_type,
       //                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      cudaMemcpyAsync(C,
-                      B,
-                      n_ * k_ * sizeof(DT),
-                      cudaMemcpyDeviceToDevice,
-                      stream);
+      // cudaMemcpyAsync(C,
+      //                 B,
+      //                 n_ * k_ * sizeof(DT),
+      //                 cudaMemcpyDeviceToDevice,
+      //                 stream);
+
+      transpose(C, B, n_, k_, stream);
+      
+      printf("backward of raw attn grad: %d, %d, with redudant dimension %d\n", k_, n_, m_);
       if (m->inference_debugging) {
         std::string filename =
             get_peft_dbg_folder(m, shard_id) + ".self_attn.input_gradient_0";

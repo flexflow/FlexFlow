@@ -149,6 +149,7 @@ class LllamaAlignmentTest(AlignmentTest):
 
             if not os.path.isfile(hf_tensor_path):
                 raise FileNotFoundError(f"File '{hf_tensor_path}' not found")
+            print("loading hf tensor: ", hf_tensor_filename)
             hf_tensor = torch.load(hf_tensor_path, map_location='cpu')
             if hf_tensor_name == "embed_tokens":
                 self.num_tokens = hf_tensor.shape[1]
@@ -162,6 +163,7 @@ class LllamaAlignmentTest(AlignmentTest):
             if not os.path.isfile(ff_tensor_path):
                 raise FileNotFoundError(f"File '{ff_tensor_path}' not found")
 
+            print("loading ff tensor: ", ff_tensor_filename)
             ff_shape = list(hf_shape)[::-1]
             if tp_type == TPType.PARTITION:
                 ff_shape[0] //= self.tp_degree
@@ -206,8 +208,10 @@ class LllamaAlignmentTest(AlignmentTest):
                 print(f"Error in comparison {label}:\n{e}\n")
                 print("HF tensor:")
                 print(hf_tensor.squeeze())
+                print(hf_tensor.shape)
                 print("FF tensor:")
                 print(ff_tensor.squeeze())
+                print(ff_tensor.shape)
                 raise e
 
         print(f"-- FWD pass {step_idx}--")
@@ -245,9 +249,11 @@ class LllamaAlignmentTest(AlignmentTest):
             # Attention
             hf_tensor_name = f"layers.{i}.self_attn.o_proj"
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
-            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            # the raw attention result, w/o o_proj. This is the output of senf_attn of FF and the input of o_proj in HF
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
             ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            print("comparing attention tensor: ", hf_tensor_name, " and ", ff_tensor_name)
             compare(hf_tensor, ff_tensor, label=f"Attention {i} output")
             
             # Post-attention layernorm
@@ -365,6 +371,7 @@ class LllamaAlignmentTest(AlignmentTest):
 
             if not os.path.isfile(hf_tensor_path):
                 raise FileNotFoundError(f"File '{hf_tensor_path}' not found")
+            print("loading hf tensor: ", hf_tensor_filename)
             hf_tensor = torch.load(hf_tensor_path, map_location='cpu')
             return hf_tensor
         
@@ -378,6 +385,7 @@ class LllamaAlignmentTest(AlignmentTest):
                 ff_tensor_path = ff_tensor_path.replace(f"step_{step_idx}", f"step_{step_idx}_pre")
             if not os.path.isfile(ff_tensor_path):
                 raise FileNotFoundError(f"File '{ff_tensor_path}' not found")
+            print("loading ff tensor: ", ff_tensor_filename)
 
             ff_shape = list(hf_shape)[::-1]
             if tp_type == TPType.PARTITION:
@@ -392,8 +400,10 @@ class LllamaAlignmentTest(AlignmentTest):
                         tensor_comparison_idx.ff_tensor_type == "output_gradient" or
                         tensor_comparison_idx.ff_tensor_type == "input_gradient"
                     )
-                )
+                ) and
+                not ff_tensor_name.endswith(".self_attn.qkv_proj")
             )
+            print(ff_tensor_filename + (" is not truncated" if intermediate_attention_tensor else " is truncated"))
             if not intermediate_attention_tensor:
                 ff_shape = replace_value(ff_shape, self.num_tokens, self.ff_batch_size)
             
@@ -432,8 +442,10 @@ class LllamaAlignmentTest(AlignmentTest):
                 print(f"Error in comparison {label}:\n{e}\n")
                 print("HF tensor:")
                 print(hf_tensor.squeeze())
+                print(hf_tensor.shape)
                 print("FF tensor:")
                 print(ff_tensor.squeeze())
+                print(ff_tensor.shape)
                 raise e
         
         print(f"-- BWD pass {step_idx}--")
@@ -533,7 +545,8 @@ class LllamaAlignmentTest(AlignmentTest):
 
             # Attn O-proj
             hf_tensor_name = f"layers.{i}.self_attn.o_proj"
-            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn"
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn.o_proj"
+            # ff_tensor_name = f"layers.{i}.layers.{i}.self_attn"
             output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
             ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
@@ -579,7 +592,7 @@ class LllamaAlignmentTest(AlignmentTest):
             
             # FF Attn input with HF layernorm out
             hf_tensor_name = f"layers.{i}.input_layernorm"
-            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn"
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn.qkv_proj"
             input_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
             ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
