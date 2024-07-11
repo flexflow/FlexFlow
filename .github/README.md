@@ -4,12 +4,6 @@
 
 ---
 
-## News🔥:
-
-* [09/02/2023] Adding AMD GPU support, released Docker images for ROCM 5.3->5.6
-* [08/16/2023] Adding Starcoder model support
-* [08/14/2023] Released Docker images for different CUDA versions
-
 ## What is FlexFlow Serve
   
 The high computational and memory requirements of generative large language
