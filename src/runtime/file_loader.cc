@@ -909,18 +909,18 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
   bool is_attn_proj = false, is_o_proj = false;
 
-  if (weight_filename.find("attn_") != std::string::npos) {
-    size_t pos = weight_filename.find(".attn_o_proj");
+  if (weight_filename.find("self_attn.") != std::string::npos) {
+    size_t pos = weight_filename.find(".o_proj");
     if (pos != std::string::npos) {
-        weight_filename.replace(pos, std::string(".attn_o_proj").length(), ".self_attn");
+        weight_filename.replace(pos, std::string(".o_proj").length(), "");
         is_o_proj = true;
     } else {
-      pos = weight_filename.find(".attn_qkv_proj");
+      pos = weight_filename.find(".qkv_proj");
       if(pos == std::string::npos) {
         cout<<weight_filename<<endl;
       }
       assert(pos != std::string::npos);
-      weight_filename.replace(pos, std::string(".attn_qkv_proj").length(), ".self_attn");
+      weight_filename.replace(pos, std::string(".qkv_proj").length(), "");
     }
     is_attn_proj = true;
   }
