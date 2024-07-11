@@ -13,18 +13,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = create_local_cuda_memory_allocator();
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({100});
     TensorShape output_shape = input_shape;
 
     SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
         managed_handle.raw_handle(), 0, input_n, channels, input_h, input_w);
 
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
+        create_random_filled_accessor_w<float>(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW input_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<float>(input_shape, allocator);
 
       Kernels::Softmax::forward_kernel(managed_stream.raw_stream(),
                                        state,
@@ -39,7 +40,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_accessor =
-          create_filled_accessor_w(output_shape, allocator, 1.0f);
+          create_filled_accessor_w<float>(output_shape, allocator, 1.0f);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 

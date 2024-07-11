@@ -12,17 +12,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape =
-        make_float_tensor_shape_from_legion_dims({100, 100});
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({100, 100});
     TensorShape output_shape =
-        make_double_tensor_shape_from_legion_dims({100, 100});
+        make_tensor_shape_from_legion_dims<DataType::DOUBLE>({100, 100});
 
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
+        create_random_filled_accessor_w<float>(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(input_shape, allocator));
+              create_random_filled_accessor_w<float>(input_shape, allocator));
 
       Kernels::Cast::forward_kernel(managed_stream.raw_stream(),
                                     input_accessor,

@@ -10,7 +10,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = create_local_cuda_memory_allocator();
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({100});
     TensorShape output_shape = input_shape;
 
     ReshapePerDeviceState state =
@@ -19,7 +20,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_filled_accessor_w(input_shape, allocator, 1.0f));
+              create_filled_accessor_w<float>(input_shape, allocator, 1.0f));
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -38,9 +39,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
           read_only_accessor_from_write_accessor(
-              create_filled_accessor_w(output_shape, allocator, 1.0f));
+              create_filled_accessor_w<float>(output_shape, allocator, 1.0f));
       GenericTensorAccessorW input_grad_accessor =
-          create_filled_accessor_w(input_shape, allocator, 2.0f);
+          create_filled_accessor_w<float>(input_shape, allocator, 2.0f);
 
       Kernels::Reshape::backward_kernel(managed_stream.raw_stream(),
                                         state,

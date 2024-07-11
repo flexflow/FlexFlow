@@ -2,40 +2,102 @@
 #define _FLEXFLOW_KERNELS_TEST_UTILS
 
 #include "kernels/device.h"
+#include "kernels/local_cpu_allocator.h"
 #include "kernels/local_cuda_allocator.h"
 #include "kernels/managed_ff_stream.h"
 #include "kernels/managed_per_device_ff_handle.h"
 #include <random>
 
+template <typename DT>
 GenericTensorAccessorW create_random_filled_accessor_w(TensorShape const &shape,
                                                        Allocator &allocator,
-                                                       bool cpu_fill = false);
+                                                       bool cpu_fill = false) {
+  GenericTensorAccessorW accessor = allocator.allocate_tensor(shape);
+  size_t volume = accessor.shape.num_elements();
+  std::vector<DT> host_data(volume);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_real_distribution<DT> dist(-1.0f, 1.0f);
 
+  for (auto &val : host_data) {
+    val = dist(gen);
+  }
+
+  if (cpu_fill) {
+    memcpy(accessor.ptr, host_data.data(), host_data.size() * sizeof(DT));
+  } else {
+    checkCUDA(cudaMemcpy(accessor.ptr,
+                         host_data.data(),
+                         host_data.size() * sizeof(DT),
+                         cudaMemcpyHostToDevice));
+  }
+
+  return accessor;
+}
+
+template <typename DT>
 GenericTensorAccessorW create_filled_accessor_w(TensorShape const &shape,
                                                 Allocator &allocator,
-                                                float val,
-                                                bool cpu_fill = false);
+                                                DT val,
+                                                bool cpu_fill = false) {
+  GenericTensorAccessorW accessor = allocator.allocate_tensor(shape);
+  size_t volume = accessor.shape.num_elements();
+  std::vector<DT> host_data(volume, val);
 
+  if (cpu_fill) {
+    memcpy(accessor.ptr, host_data.data(), host_data.size() * sizeof(DT));
+  } else {
+    checkCUDA(cudaMemcpy(accessor.ptr,
+                         host_data.data(),
+                         host_data.size() * sizeof(DT),
+                         cudaMemcpyHostToDevice));
+  }
+
+  return accessor;
+}
+
+template <typename DT>
 GenericTensorAccessorW create_iota_filled_accessor_w(TensorShape const &shape,
                                                      Allocator &allocator,
-                                                     bool cpu_fill = false);
+                                                     bool cpu_fill = false) {
+  GenericTensorAccessorW accessor = allocator.allocate_tensor(shape);
+  size_t volume = accessor.shape.num_elements();
+  std::vector<DT> host_data(volume);
 
-void fill_tensor_accessor_w(GenericTensorAccessorW accessor,
-                            float val,
-                            bool cpu_fill = false);
+  for (size_t i = 0; i < volume; i++) {
+    host_data[i] = i;
+  }
 
-TensorShape make_float_tensor_shape_from_legion_dims(FFOrdered<size_t> dims);
+  if (cpu_fill) {
+    memcpy(accessor.ptr, host_data.data(), host_data.size() * sizeof(DT));
+  } else {
+    checkCUDA(cudaMemcpy(accessor.ptr,
+                         host_data.data(),
+                         host_data.size() * sizeof(DT),
+                         cudaMemcpyHostToDevice));
+  }
 
-TensorShape make_double_tensor_shape_from_legion_dims(FFOrdered<size_t> dims);
+  return accessor;
+}
 
-template <typename T>
-std::vector<T> load_data_to_host_from_device(GenericTensorAccessorR accessor) {
+template <DataType DT>
+TensorShape make_tensor_shape_from_legion_dims(FFOrdered<size_t> dims) {
+  return TensorShape{
+      TensorDims{
+          dims,
+      },
+      DT,
+  };
+}
+
+template <typename DT>
+std::vector<DT> load_data_to_host_from_device(GenericTensorAccessorR accessor) {
   int volume = accessor.shape.get_volume();
 
-  std::vector<T> local_data(volume);
+  std::vector<DT> local_data(volume);
   checkCUDA(cudaMemcpy(local_data.data(),
                        accessor.ptr,
-                       local_data.size() * sizeof(T),
+                       local_data.size() * sizeof(DT),
                        cudaMemcpyDeviceToHost));
   return local_data;
 }

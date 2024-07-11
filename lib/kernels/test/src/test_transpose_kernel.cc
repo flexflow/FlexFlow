@@ -18,13 +18,13 @@ TEST_SUITE(FF_TEST_SUITE) {
         Kernels::Transpose::init_kernel(num_dims, perm);
 
     TensorShape input_shape =
-        make_float_tensor_shape_from_legion_dims({10, 10});
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({10, 10});
     TensorShape output_shape = input_shape;
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(input_shape, allocator));
+              create_random_filled_accessor_w<float>(input_shape, allocator));
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -40,9 +40,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(output_shape, allocator));
+              create_random_filled_accessor_w<float>(output_shape, allocator));
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<float>(input_shape, allocator);
 
       Kernels::Transpose::backward_kernel(managed_stream.raw_stream(),
                                           state,

@@ -36,15 +36,17 @@ TEST_SUITE(FF_TEST_SUITE) {
                                      stride_w,
                                      pool_type);
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims(
-        {input_w, input_h, input_c, input_n});
-    TensorShape output_shape = make_float_tensor_shape_from_legion_dims(
-        {output_w, output_h, output_c, output_n});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
+            {input_w, input_h, input_c, input_n});
+    TensorShape output_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
+            {output_w, output_h, output_c, output_n});
 
     GenericTensorAccessorW input_accessor =
-        create_random_filled_accessor_w(input_shape, allocator);
+        create_random_filled_accessor_w<float>(input_shape, allocator);
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
+        create_random_filled_accessor_w<float>(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
       Kernels::Pool2D::forward_kernel(managed_stream.raw_stream(),
@@ -60,7 +62,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_accessor =
-          create_filled_accessor_w(output_shape, allocator, 1.0f);
+          create_filled_accessor_w<float>(output_shape, allocator, 1.0f);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 

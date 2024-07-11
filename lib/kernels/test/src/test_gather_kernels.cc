@@ -12,17 +12,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     GatherPerDeviceState state = {managed_handle.raw_handle(), legion_dim_t(2)};
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
-    TensorShape output_shape = make_float_tensor_shape_from_legion_dims({50});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({100});
+    TensorShape output_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({50});
 
     GenericTensorAccessorR index_accessor =
         read_only_accessor_from_write_accessor(
-            create_random_filled_accessor_w(output_shape, allocator));
+            create_random_filled_accessor_w<float>(output_shape, allocator));
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(input_shape, allocator));
+              create_random_filled_accessor_w<float>(input_shape, allocator));
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -41,9 +43,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(output_shape, allocator));
+              create_random_filled_accessor_w<float>(output_shape, allocator));
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<float>(input_shape, allocator);
 
       Kernels::Gather::backward_kernel(managed_stream.raw_stream(),
                                        state,

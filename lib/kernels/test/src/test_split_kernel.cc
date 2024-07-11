@@ -16,12 +16,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = create_local_cuda_memory_allocator();
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
-    TensorShape output_shape = make_float_tensor_shape_from_legion_dims({50});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({100});
+    TensorShape output_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({50});
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW input_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<float>(input_shape, allocator);
 
       std::vector<float *> output_ptrs = repeat(num_outputs, [&]() {
         GenericTensorAccessorW output_accessor =
@@ -42,12 +44,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float *> output_grad_ptrs(num_outputs);
       for (int i = 0; i < num_outputs; i++) {
         GenericTensorAccessorW output_grad_accessor =
-            create_random_filled_accessor_w(output_shape, allocator);
+            create_random_filled_accessor_w<float>(output_shape, allocator);
         output_grad_ptrs[i] = output_grad_accessor.get_float_ptr();
       }
 
       GenericTensorAccessorW input_grad_accessor =
-          create_filled_accessor_w(input_shape, allocator, 0.0f);
+          create_filled_accessor_w<float>(input_shape, allocator, 0.0f);
 
       Kernels::Split::backward_kernel(managed_stream.raw_stream(),
                                       input_grad_accessor.get_float_ptr(),

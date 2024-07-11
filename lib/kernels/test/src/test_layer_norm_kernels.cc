@@ -12,10 +12,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     bool elementwise_affine = true;
 
     TensorShape input_shape =
-        make_float_tensor_shape_from_legion_dims({batch_size, feature_size});
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
+            {batch_size, feature_size});
     TensorShape output_shape = input_shape;
     TensorShape feature_shape =
-        make_float_tensor_shape_from_legion_dims({feature_size});
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>({feature_size});
 
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
@@ -32,15 +33,15 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     GenericTensorAccessorR input_accessor =
         read_only_accessor_from_write_accessor(
-            create_random_filled_accessor_w(input_shape, allocator));
+            create_random_filled_accessor_w<float>(input_shape, allocator));
     GenericTensorAccessorW gamma_accessor =
-        create_filled_accessor_w(feature_shape, allocator, 1.0f);
+        create_filled_accessor_w<float>(feature_shape, allocator, 1.0f);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
       GenericTensorAccessorW beta_accessor =
-          create_filled_accessor_w(feature_shape, allocator, 0.0f);
+          create_filled_accessor_w<float>(feature_shape, allocator, 0.0f);
 
       Kernels::LayerNorm::forward_kernel(managed_stream.raw_stream(),
                                          state,
@@ -53,9 +54,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(output_shape, allocator));
+              create_random_filled_accessor_w<float>(output_shape, allocator));
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<float>(input_shape, allocator);
       GenericTensorAccessorW gamma_grad_accessor =
           allocator.allocate_tensor(feature_shape);
       GenericTensorAccessorW beta_grad_accessor =

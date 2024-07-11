@@ -23,25 +23,29 @@ TEST_SUITE(FF_TEST_SUITE) {
                                         output_w,
                                         true);
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
-    TensorShape output_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
-    TensorShape scale_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
-    TensorShape bias_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
+            {output_n, output_c, output_h, output_w});
+    TensorShape output_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
+            {output_n, output_c, output_h, output_w});
+    TensorShape scale_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
+            {output_n, output_c, output_h, output_w});
+    TensorShape bias_shape =
+        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
+            {output_n, output_c, output_h, output_w});
 
     GenericTensorAccessorW input_accessor =
-        create_random_filled_accessor_w(input_shape, allocator);
+        create_random_filled_accessor_w<float>(input_shape, allocator);
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
+        create_random_filled_accessor_w<float>(output_shape, allocator);
     GenericTensorAccessorW scale_accessor =
-        create_filled_accessor_w(scale_shape, allocator, 1.0f);
+        create_filled_accessor_w<float>(scale_shape, allocator, 1.0f);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW bias_accessor =
-          create_filled_accessor_w(bias_shape, allocator, 0.0f);
+          create_filled_accessor_w<float>(bias_shape, allocator, 0.0f);
 
       Kernels::BatchNorm::forward_kernel(managed_stream.raw_stream(),
                                          state,
@@ -58,13 +62,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_accessor =
-          create_random_filled_accessor_w(output_shape, allocator);
+          create_random_filled_accessor_w<float>(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<float>(input_shape, allocator);
       GenericTensorAccessorW scale_grad_accessor =
-          create_random_filled_accessor_w(scale_shape, allocator);
+          create_random_filled_accessor_w<float>(scale_shape, allocator);
       GenericTensorAccessorW bias_grad_accessor =
-          create_random_filled_accessor_w(bias_shape, allocator);
+          create_random_filled_accessor_w<float>(bias_shape, allocator);
 
       Kernels::BatchNorm::backward_kernel(managed_stream.raw_stream(),
                                           state,
