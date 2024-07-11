@@ -538,130 +538,11 @@ __global__ void fill_entries_above_diagonal(DT *matrix,
   }
 }
 
-template <typename DT>
-void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        int shard_id,
-                        DT const *input_ptr,
-                        DT const *weight_ptr,
-                        DT *output_ptr,
-                        DT const *bias_ptr,
-                        cudaStream_t stream) {
-
-  checkCUDA(cublasSetStream(m->handle.blas, stream));
-  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  assert(m->qSize == m->vSize && m->qSize == m->kSize);
-  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-  cudaDataType_t compute_type = cublas_data_type;
-  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  //   cudaDataType_t compute_type = cublas_data_type;
-  // #else
-  //   // For best performance, set the default cublas compute type to
-  //   // CUBLAS_COMPUTE_16F for half precision and to
-  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  //   if (m->output_type[0] == DT_FLOAT) {
-  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  //   }
-  // #endif
-
-  // Step 1: Compute QKV projections
-  {
-    DT alpha = 1.0f, beta = 0.0f;
-    // after transpositions
-    int m_q = m->qProjSize * m->num_q_heads;
-    int m_k = m->kProjSize * m->num_q_heads;
-    int m_v = m->vProjSize * m->num_q_heads;
-    assert(m_q == m_k && m_k == m_v); // keep things simple for now
-    int n = bc->num_active_infr_tokens();
-    int k = m->qSize;
-    int m_ = m_q * QKV_WEIGHT_NUM;
-    // before transpositions
-    int lda = k, ldb = k, ldc = m_;
-    // matrix A: QKV weights
-    // matrix A's layout: [qSize (hidden_dim), qProjSize, num_heads, 3]
-    // matrix B: input
-    // matrix B's layout: [qSize (hidden_dim), num_new_tokens]
-    // matrix C: devQKVProjArray
-    // matrix B's layout: [qProjSize, num_heads, 3, num_new_tokens]
-    checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_T,
-                           CUBLAS_OP_N,
-                           m_,
-                           n,
-                           k,
-                           &alpha,
-                           weight_ptr,
-                           cublas_data_type,
-                           lda,
-                           input_ptr,
-                           cublas_data_type,
-                           ldb,
-                           &beta,
-                           output_ptr,
-                           cublas_data_type,
-                           ldc,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  }
-
-  int num_tokens = bc->num_active_tokens();
-  int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
-  size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
-
-  // Step 2: apply bias for QKV, or scale the query
-  if (*m->qkv_bias) {
-    apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
-                          min(CUDA_NUM_THREADS, parallelism),
-                          0,
-                          stream>>>(output_ptr,
-                                    bias_ptr,
-                                    shard_id,
-                                    num_tokens,
-                                    m->qProjSize,
-                                    m->kProjSize,
-                                    m->vProjSize,
-                                    m->global_num_q_heads,
-                                    m->num_q_heads,
-                                    *m->scaling_query,
-                                    m->scaling_factor,
-                                    m->hidden_size);
-  } else if (m->scaling_query) {
-    scaling_query_kernel<<<GET_BLOCKS(parallelism),
-                           min(CUDA_NUM_THREADS, parallelism),
-                           0,
-                           stream>>>(output_ptr,
-                                     num_tokens,
-                                     m->num_q_heads,
-                                     m->qProjSize,
-                                     m->scaling_factor,
-                                     m->hidden_size);
-  }
-
-
-  // Step 3: apply rotary embedding if needed
-  if (*m->apply_rotary_embedding) {
-    /*q&k*/
-    parallelism = num_tokens * m->hidden_size;
-    apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
-                                min(CUDA_NUM_THREADS, parallelism),
-                                0,
-                                stream>>>(output_ptr,
-                                          m->complex_input,
-                                          m->token_infos,
-                                          m->qProjSize,
-                                          m->kProjSize,
-                                          num_tokens,
-                                          q_array_size,
-                                          m->hidden_size);
-  }
-}
 
 template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
-                        // DT const *input_ptr, we no longer use the raw input
                         DT const *weight_ptr,
                         DT *output_ptr,
                         DT const *bias_ptr,
@@ -683,81 +564,10 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 #endif
 
-  // this block is deleted so that dense operator are done in  model,
-  // which allows for peft on qkv projection
-  // // Step 1: Compute QKV projections
-  // {
-  //   DT alpha = 1.0f, beta = 0.0f;
-  //   // after transpositions
-  //   int m_q = m->qProjSize * m->num_q_heads;
-  //   int m_k = m->kProjSize * m->num_q_heads;
-  //   int m_v = m->vProjSize * m->num_q_heads;
-  //   assert(m_q == m_k && m_k == m_v); // keep things simple for now
-  //   int n = bc->num_active_tokens();
-  //   int k = m->qSize;
-  //   int m_ = m_q * QKV_WEIGHT_NUM;
-  //   // before transpositions
-  //   int lda = k, ldb = k, ldc = m_;
-  //   // matrix A: QKV weights
-  //   // matrix A's layout: [qSize (hidden_dim), qProjSize, num_heads, 3]
-  //   // matrix B: input
-  //   // matrix B's layout: [qSize (hidden_dim), num_new_tokens]
-  //   // matrix C: devQKVProjArray
-  //   // matrix B's layout: [qProjSize, num_heads, 3, num_new_tokens]
-  //   checkCUDA(cublasGemmEx(m->handle.blas,
-  //                          CUBLAS_OP_T,
-  //                          CUBLAS_OP_N,
-  //                          m_,
-  //                          n,
-  //                          k,
-  //                          &alpha,
-  //                          weight_ptr,
-  //                          cublas_data_type,
-  //                          lda,
-  //                          input_ptr,
-  //                          cublas_data_type,
-  //                          ldb,
-  //                          &beta,
-  //                          output_ptr,
-  //                          cublas_data_type,
-  //                          ldc,
-  //                          compute_type,
-  //                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-  // }
 
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
-
-  // Step 2: apply bias for QKV, or scale the query
-  // this are handled in the dense layer with bias, but we still need to handle scaling
-  // if (*m->qkv_bias) {
-  //   apply_proj_bias_qkv<<<GET_BLOCKS(parallelism),
-  //                         min(CUDA_NUM_THREADS, parallelism),
-  //                         0,
-  //                         stream>>>(output_ptr,
-  //                                   bias_ptr,
-  //                                   shard_id,
-  //                                   num_tokens,
-  //                                   m->qProjSize,
-  //                                   m->kProjSize,
-  //                                   m->vProjSize,
-  //                                   m->global_num_q_heads,
-  //                                   m->num_q_heads,
-  //                                   *m->scaling_query,
-  //                                   m->scaling_factor,
-  //                                   m->hidden_size);
-  // } else if (m->scaling_query) {
-  //   scaling_query_kernel<<<GET_BLOCKS(parallelism),
-  //                          min(CUDA_NUM_THREADS, parallelism),
-  //                          0,
-  //                          stream>>>(output_ptr,
-  //                                    num_tokens,
-  //                                    m->num_q_heads,
-  //                                    m->qProjSize,
-  //                                    m->scaling_factor,
-  //                                    m->hidden_size);
-  // }
 
   if (m->scaling_query) {
     scaling_query_kernel<<<GET_BLOCKS(parallelism),
@@ -809,6 +619,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
+// this function is no longer used, it is kept for potential future use
 template <typename DT>
 void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
@@ -927,6 +738,9 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
+// this kernel is no longer used by the attention operator because 
+// there's no more weights
+// TODO: check if this is needed by the projection layers?
 template <typename DT>
 void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              GenericTensorAccessorR const weight,
@@ -1013,7 +827,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                   cudaMemcpyDeviceToDevice,
                   stream);
 
-  // phase 1: Implement kernel to compute KQV for input tokens
+  // phase 1: Implement kernel to apply rotary embedding and scaling
   
 
   compute_qkv_kernel(m,
@@ -1041,12 +855,9 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
 
-  // this dense layer (with bias) is done in the model by seperate dense layer
-  // compute_o_prod_bias(
-  //     m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
 
   // simply copy the result to output_ptr
-  // TODO: change the meta for output, maybe transpose here?
+  // TODO: maybe let previous kernel write directly to output_ptr?
   cudaMemcpyAsync(output_ptr,
                   m->attn_heads,
                   m->oProjSize * num_tokens * sizeof(DT),
@@ -1069,39 +880,39 @@ std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,
   return dst_filepath.string();
 }
 
-__global__ void transpose_half_kernel(half *out, const half *in, int width, int height) {
+__global__ void transposeAdd_half_kernel(half *out, const half *in, int width, int height, half alpha, half beta) {
     int t_id = blockIdx.x * blockDim.x + threadIdx.x;
     int num_threads = blockDim.x * gridDim.x;
     for(int i = t_id; i < width * height; i += num_threads) {
         int row = i / width;
         int col = i % width;
-        out[col * height + row] = in[row * width + col];
+        out[col * height + row] = alpha * in[row * width + col] + beta * out[col * height + row];
     }
 }
 
-__global__ void transpose_float_kernel(float *out, const float *in, int width, int height) {
+__global__ void transposeAdd_float_kernel(float *out, const float *in, int width, int height, float alpha, float beta) {
     int t_id = blockIdx.x * blockDim.x + threadIdx.x;
     int num_threads = blockDim.x * gridDim.x;
     for(int i = t_id; i < width * height; i += num_threads) {
         int row = i / width;
         int col = i % width;
-        out[col * height + row] = in[row * width + col];
+        out[col * height + row] = alpha * in[row * width + col] + beta * out[col * height + row];
     }
 }
 
 template <typename DT>
-void transpose(DT *out, const DT *in, int width, int height, cudaStream_t stream) {
+void transposeAdd(DT *out, const DT *in, int width, int height, float alpha, float beta, cudaStream_t stream) {
     assert(false && "Unsupported data type");
 }
 
 template<>
-void transpose<float>(float *out, const float *in, int width, int height, cudaStream_t stream) {
-    transpose_float_kernel<<<4, 1024, 0, stream>>>(out, in, width, height);
+void transposeAdd<float>(float *out, const float *in, int width, int height, float alpha, float beta, cudaStream_t stream) {
+    transposeAdd_float_kernel<<<4, 1024, 0, stream>>>(out, in, width, height, alpha, beta);
 }
 
 template<>
-void transpose<half>(half *out, const half *in, int width, int height, cudaStream_t stream) {
-    transpose_half_kernel<<<4, 1024, 0, stream>>>(out, in, width, height);
+void transposeAdd<half>(half *out, const half *in, int width, int height, float alpha, float beta, cudaStream_t stream) {
+    transposeAdd_half_kernel<<<4, 1024, 0, stream>>>(out, in, width, height, __float2half(alpha), __float2half(beta));
 }
 
 template <typename DT>
@@ -1109,7 +920,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      BatchConfig const *bc,
                      int shard_id,
                      DT *input_grad_ptr,
-                     DT const *weight_ptr,
+                     DT const *weight_ptr, // this is unused, kept for consistency
                      DT const *output_grad_ptr,
                      DT const *bias_ptr,
                      cudaStream_t stream) {
@@ -1152,48 +963,10 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
     int vt_req_block_size =
         vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
     assert(m->qProjSize == m->kProjSize && m->kProjSize == m->vProjSize);
-    // Step 1: compute gradients before final projection
+    // Step 1: copy gradient before final projection into workspace
     {
       int m_ = m->vProjSize * m->num_q_heads;
       int n_ = num_tokens;
-      int k_ = m->oProjSize;
-      int lda = m_;
-      int ldb = k_;
-      int ldc = m_;
-      float alpha = 1.0f, beta = 0.0f;
-      // matrix A: output projection weight
-      // matrix A's layout: [vProjSize * num_heads, oProjSize]
-      // DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-      //                                        m->kProjSize * m->num_q_heads +
-      //                                        m->vProjSize * m->num_q_heads);
-      // // matrix B: output gradients
-      // // matrix B's layout: [oProjSize, num_new_tokens]
-      // DT const *B =
-      //     output_grad_ptr +
-      //     bc->requestsInfo[i].first_token_offset_in_batch * m->oProjSize;
-      // // matrix C: attn_heads gradients
-      // // matrix C's layout: [vProjSize * num_heads, num_new_tokens]
-      // DT *C = static_cast<DT *>(m->handle.workSpace);
-      // checkCUDA(cublasGemmEx(m->handle.blas,
-      //                        CUBLAS_OP_N,
-      //                        CUBLAS_OP_N,
-      //                        m_,
-      //                        n_,
-      //                        k_,
-      //                        &alpha,
-      //                        A,
-      //                        cublas_data_type,
-      //                        lda,
-      //                        B,
-      //                        cublas_data_type,
-      //                        ldb,
-      //                        &beta,
-      //                        C,
-      //                        cublas_data_type,
-      //                        ldc,
-      //                        compute_type,
-      //                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      // here we copy gradient from o_proj directly into C
       DT *C = static_cast<DT *>(m->handle.workSpace);
       cudaMemcpyAsync(C,
                       output_grad_ptr +
@@ -1552,9 +1325,6 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       if (!m->reset_input_grads[0]) {
         beta = 1.0f;
       }
-      // matrix A: QKV projection weights
-      // matrix A's layout: [qSize, qProjSize * num_q_heads, 3]
-      DT const *A = weight_ptr;
       // matrix B: gradients w.r.t. QKV (concatenated in devQKVArray)
       // matrix B's layout: [num_tokens, qProjsize * num_heads, 3]
       DT const *B = static_cast<DT *>(m->devQKVProjArray);
@@ -1565,36 +1335,11 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int m_ = m->qSize;
       int n_ = num_tokens;
       int k_ = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
-      int lda = m_;
-      int ldb = n_;
-      int ldc = m_;
-      
-      // checkCUDA(cublasGemmEx(m->handle.blas,
-      //                        CUBLAS_OP_N,
-      //                        CUBLAS_OP_T,
-      //                        m_,
-      //                        n_,
-      //                        k_,
-      //                        &alpha,
-      //                        A,
-      //                        cublas_data_type,
-      //                        lda,
-      //                        B,
-      //                        cublas_data_type,
-      //                        ldb,
-      //                        &beta,
-      //                        C,
-      //                        cublas_data_type,
-      //                        ldc,
-      //                        compute_type,
-      //                        CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-      // cudaMemcpyAsync(C,
-      //                 B,
-      //                 n_ * k_ * sizeof(DT),
-      //                 cudaMemcpyDeviceToDevice,
-      //                 stream);
 
-      transpose(C, B, n_, k_, stream);
+      // TODO: checkout if the input grad ptr has some relation with m->devQKVProjArray
+      // so we may potentially skip this transpose and copy
+      // TODO: check if this transposeAdd can correctly implement gradient accumulation
+      transposeAdd(C, B, n_, k_, alpha, beta, stream);
       
       printf("backward of raw attn grad: %d, %d, with redudant dimension %d\n", k_, n_, m_);
       if (m->inference_debugging) {
@@ -1967,35 +1712,24 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   }
 
   if (input.data_type == DT_HALF) {
-    if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
-    }
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(
         m,
         bc,
         shard_id,
         input.get_half_ptr(),
-        m->offload ? static_cast<half *>(m->weight_ptr) : weight.get_half_ptr(),
+        static_cast<half const *>(nullptr), //weight_ptr is no longer used
         output.get_half_ptr(),
-        bias_ptr,
+        static_cast<half const *>(nullptr), // bias_ptr is no longer used
         stream);
   } else if (input.data_type == DT_FLOAT) {
-    if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
-    }
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(
         m,
         bc,
         shard_id,
         input.get_float_ptr(),
-        m->offload ? static_cast<float *>(m->weight_ptr)
-                   : weight.get_float_ptr(),
+        static_cast<float const *>(nullptr), //weight_ptr is no longer used
         output.get_float_ptr(),
-        bias_ptr,
+        static_cast<float const *>(nullptr), // bias_ptr is no longer used
         stream);
   } else {
     assert(false && "Unspported data type");

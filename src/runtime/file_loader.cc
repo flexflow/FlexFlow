@@ -909,6 +909,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
   bool is_attn_proj = false, is_o_proj = false;
 
+  // dense layers for attention projection is named as
+  // self_attn.qkv_proj or self_attn.o_proj
+  // so looking for self_attn. in the name can determine if it is an attention projection
   if (weight_filename.find("self_attn.") != std::string::npos) {
     size_t pos = weight_filename.find(".o_proj");
     if (pos != std::string::npos) {
