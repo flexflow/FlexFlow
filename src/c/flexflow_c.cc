@@ -67,6 +67,8 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_generation_result_t, GenerationResult *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_lora_sgd_optimizer_config_t, LoraSGDOptimizerConfig *);
+  FF_NEW_OPAQUE_WRAPPER(flexflow_lora_adam_optimizer_config_t, LoraAdamOptimizerConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_lora_linear_config_t, LoraLinearConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_peft_model_id_t, PEFTModelID *);
 };
@@ -2803,6 +2805,49 @@ void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
   FFModel *model = FFCObjectWrapper::unwrap(model_handle_);
   handle->load_weights(model);
 }
+
+// -----------------------------------------------------------------------
+// LoraSGDOptimizerConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_sgd_optimizer_config_t 
+    flexflow_lora_sgd_optimizer_config_create(double lr,
+                                              double momentum,
+                                              bool nesterov,
+                                              bool weight_decay) {
+  LoraSGDOptimizerConfig *handle = new LoraSGDOptimizerConfig(lr, momentum, nesterov, weight_decay);
+  DEBUG_PRINT("[LoraSGDOptimizerConfig] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_lora_sgd_optimizer_config_destroy(flexflow_lora_sgd_optimizer_config_t handle_) {
+  LoraSGDOptimizerConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[LoraSGDOptimizerConfig] delete %p", handle);
+  delete handle;
+}
+
+
+// -----------------------------------------------------------------------
+// LoraAdamOptimizerConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_adam_optimizer_config_t
+    flexflow_lora_adam_optimizer_config_create(double alpha,
+                                               double beta1,
+                                               double beta2,
+                                               double weight_decay,
+                                               double epsilon) {
+  LoraAdamOptimizerConfig *handle = new LoraAdamOptimizerConfig(alpha, beta1, beta2, weight_decay, epsilon);
+  DEBUG_PRINT("[LoraAdamOptimizerConfig] new %p", handle);
+  return FFCObjectWrapper::wrap(handle);
+}
+
+void flexflow_lora_adam_optimizer_config_destroy(flexflow_lora_adam_optimizer_config_t handle_) {
+  LoraAdamOptimizerConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  DEBUG_PRINT("[LoraAdamOptimizerConfig] delete %p", handle);
+  delete handle;
+}
+
 
 // -----------------------------------------------------------------------
 // LoraLinearConfig

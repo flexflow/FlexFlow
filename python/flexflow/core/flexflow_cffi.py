@@ -29,6 +29,7 @@ from flexflow.type import (
     MetricsType,
     InferenceMode,
     RequestType,
+    OptimizerType,
     ModelType,
     OpType,
     ParameterSyncType,
@@ -1735,6 +1736,29 @@ class GenerationResult(object):
         self.output_text = text
         self.output_tokens = tokens
 
+# -----------------------------------------------------------------------
+# LoraSGDOptimizerConfig
+# -----------------------------------------------------------------------
+
+
+class LoraSGDOptimizerConfig(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self, lr=0.001, momentum=0.0, nesterov=False, weight_decay=0.0):
+        self.handle = ffc().flexflow_lora_sgd_optimizer_config_create(lr, momentum, nesterov, weight_decay)
+        self._handle = ffi.gc(self.handle, ffc().flexflow_lora_sgd_optimizer_config_destroy)
+
+# -----------------------------------------------------------------------
+# LoraAdamOptimizerConfig
+# -----------------------------------------------------------------------
+
+
+class LoraAdamOptimizerConfig(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
+        self.handle = ffc().flexflow_lora_adam_optimizer_config_create(alpha, beta1, beta2, weight_decay, epsilon)
+        self._handle = ffi.gc(self.handle, ffc().flexflow_lora_adam_optimizer_config_destroy)
 
 # -----------------------------------------------------------------------
 # LoraLinearConfig
@@ -1746,17 +1770,35 @@ class LoraLinearConfig(object):
 
     def __init__(
         self,
-        cache_folder,
-        peft_model_id,
+        cache_folder: str,
+        peft_model_id: str,
+        trainable: bool = False,
+        optimizer_type: OptimizerType = OptimizerType.OPT_NONE,
+        optimizer_kwargs: dict = None
     ):
         c_cache_folder = get_c_name(cache_folder)
         peft_model_id = get_c_name(peft_model_id)
+        optimizer_config = ffi.NULL
+        if optimizer_type == OptimizerType.OPT_SGD:
+            learning_rate = optimizer_kwargs.get('learning_rate', 0.001)
+            momentum = optimizer_kwargs.get('momentum', 0.0)
+            nesterov = optimizer_kwargs.get('nesterov', False)
+            weight_decay = optimizer_kwargs.get('weight_decay', 0.0)
+            optimizer_config = LoraSGDOptimizerConfig(learning_rate, momentum, nesterov, weight_decay).handle
+        elif optimizer_type == OptimizerType.OPT_ADAM:
+            alpha = optimizer_kwargs.get('alpha', 0.001)
+            beta1 = optimizer_kwargs.get('beta1', 0.9)
+            beta2 = optimizer_kwargs.get('beta2', 0.999)
+            weight_decay = optimizer_kwargs.get('weight_decay', 0.0)
+            epsilon = optimizer_kwargs.get('epsilon', 1e-8)
+            optimizer_config = LoraAdamOptimizerConfig(alpha, beta1, beta2, weight_decay, epsilon).handle
         self.handle = ffc().flexflow_lora_linear_config_create(
             c_cache_folder,
             peft_model_id,
+            trainable,
+            optimizer_config
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_linear_config_destroy)
-
 
 # -----------------------------------------------------------------------
 # PEFTModelID

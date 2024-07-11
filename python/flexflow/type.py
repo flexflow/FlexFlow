@@ -156,6 +156,11 @@ class RequestType(Enum):
     REQ_INFERENCE = 4001
     REQ_FINETUNING = 4002
 
+class OptimizerType(Enum):
+    OPT_NONE = 5000
+    OPT_SGD = 5001
+    OPT_ADAM = 5002
+
 def enum_to_int(enum, enum_item):
     for item in enum:
         if enum_item == item:

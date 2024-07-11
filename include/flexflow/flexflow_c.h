@@ -55,6 +55,8 @@ FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_file_data_loader_t);
 FF_NEW_OPAQUE_TYPE(flexflow_generation_result_t);
+FF_NEW_OPAQUE_TYPE(flexflow_lora_sgd_optimizer_config_t);
+FF_NEW_OPAQUE_TYPE(flexflow_lora_adam_optimizer_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_lora_linear_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_peft_model_id_t);
 
@@ -1049,6 +1051,33 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_);
+
+// -----------------------------------------------------------------------
+// LoraSGDOptimizerConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_sgd_optimizer_config_t 
+    flexflow_lora_sgd_optimizer_config_create(double lr,
+                                              double momentum,
+                                              bool nesterov,
+                                              bool weight_decay);
+
+void flexflow_lora_sgd_optimizer_config_destroy(flexflow_lora_sgd_optimizer_config_t handle_);
+
+
+// -----------------------------------------------------------------------
+// LoraAdamOptimizerConfig
+// -----------------------------------------------------------------------
+
+flexflow_lora_adam_optimizer_config_t
+    flexflow_lora_adam_optimizer_config_create(double alpha,
+                                               double beta1,
+                                               double beta2,
+                                               double weight_decay,
+                                               double epsilon);
+
+void flexflow_lora_adam_optimizer_config_destroy(flexflow_lora_adam_optimizer_config_t handle_);
+
 
 // -----------------------------------------------------------------------
 // LoraLinearConfig
