@@ -37,6 +37,7 @@ RUN MINICONDA_SCRIPT_NAME=Miniconda3-py311_23.5.2-0-Linux-x86_64.sh; \
         chmod +x ~/${MINICONDA_SCRIPT_NAME} && \
         bash ~/${MINICONDA_SCRIPT_NAME} -b -p /opt/conda && \
         rm ~/${MINICONDA_SCRIPT_NAME} && \
+	/opt/conda/bin/conda config --set solver classic && \
         /opt/conda/bin/conda upgrade --all && \
         /opt/conda/bin/conda install conda-build conda-verify && \
         /opt/conda/bin/conda clean -ya
