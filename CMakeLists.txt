@@ -104,8 +104,11 @@ endif()
 # option for nccl
 option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
 
-# option for tensorrt: TODO: set it in config.linux
+# option for tensorrt
 option(FF_USE_TENSORRT "Run FlexFlow with TensorRT" ON)
+if(FF_USE_TENSORRT)
+  message(STATUS "FF_USE_TENSORRT is defined")
+endif()
 
 # option for avx2
 option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
@@ -171,9 +174,6 @@ if (FF_GPU_BACKEND STREQUAL "cuda" OR FF_GPU_BACKEND STREQUAL "hip_cuda")
   include(cudnn)
 endif()
 
-# tensorrt-llm
-include(tensorrt)
-
 # Legion
 include(legion)
 
@@ -188,6 +188,15 @@ if(NOT BUILD_LEGION_ONLY)
       -DFF_USE_NCCL)
     list(APPEND FF_NVCC_FLAGS
       -DFF_USE_NCCL)
+  endif()
+
+  # TensorRT, TensorRT-LLM
+  if(FF_USE_TENSORRT)
+    include(tensorrt) 
+    list(APPEND FF_CC_FLAGS
+      -DFF_USE_TENSORRT)
+    list(APPEND FF_NVCC_FLAGS
+      -DFF_USE_TENSORRT)
   endif()
 
   # Inference tests

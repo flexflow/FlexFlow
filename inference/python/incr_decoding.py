@@ -48,8 +48,8 @@ def get_configs():
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
-            "tensor_parallelism_degree": 1,
-            "pipeline_parallelism_degree": 2,
+            "tensor_parallelism_degree": 2,
+            "pipeline_parallelism_degree": 1,
             "offload": False,
             "offload_reserve_space_size": 1024**2,
             "use_4bit_quantization": False,
@@ -61,7 +61,7 @@ def get_configs():
         }
         llm_configs = {
             # required parameters
-            "llm_model": "tiiuae/falcon-7b",
+            "llm_model": "meta-llama/Llama-2-7b-hf",
             # optional parameters
             "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
