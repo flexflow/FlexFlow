@@ -246,7 +246,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(get_weakly_connected_components(g) == expected_components);
   }
 
-  TEST_CASE("get_longest_path_lengths - linear graph") {
+  TEST_CASE("get_longest_path_lengths_from_source_node - linear graph") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> n = add_nodes(g, 5);
     std::vector<DirectedEdge> edges = {
@@ -266,10 +266,10 @@ TEST_SUITE(FF_TEST_SUITE) {
         {n[4], 4},
     };
 
-    CHECK(get_longest_path_lengths(g) == expected_lengths);
+    CHECK(get_longest_path_lengths_from_source_node(g) == expected_lengths);
   }
 
-  TEST_CASE("get_longest_path_lengths - more complex graph") {
+  TEST_CASE("get_longest_path_lengths_from_source_node - more complex graph") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> n = add_nodes(g, 7);
     std::vector<DirectedEdge> edges = {{n[0], n[1]},
@@ -294,6 +294,6 @@ TEST_SUITE(FF_TEST_SUITE) {
         {n[6], 5},
     };
 
-    CHECK(get_longest_path_lengths(g) == expected_lengths);
+    CHECK(get_longest_path_lengths_from_source_node(g) == expected_lengths);
   }
 }

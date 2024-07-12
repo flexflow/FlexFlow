@@ -10,34 +10,27 @@
 
 namespace FlexFlow {
 
-bool is_sp_compliant(DiGraphView const &g) {
+bool is_2_terminal_sp_compliant(DiGraphView const &g) {
   return (is_acyclic(g) && has_single_source(g) && has_single_sink(g));
 }
 
-SerialParallelDecomposition
-    barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
+  SerialParallelDecomposition
+      barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
 
-  std::unordered_map<Node, int> layer_map = get_longest_path_lengths(g);
-  std::map<int, std::unordered_set<Node>> layers;
-  for (Node const &node : get_nodes(g)) {
-    int layer_num = layer_map[node];
-    layers[layer_num].insert(node);
-  }
+    std::unordered_map<Node, int> node_to_sp_layer = get_longest_path_lengths_from_source_node(g);
+    std::unordered_map<int, std::unordered_set<Node>> unordered_layer_to_node = invert_map(node_to_sp_layer);
+    std::map<int, std::unordered_set<Node>> layer_to_node(unordered_layer_to_node.begin(), unordered_layer_to_node.end());
 
-  Serial sp;
-
-  for (auto const &[_, nodes] : layers) {
-    Parallel layer;
-    for (Node const &node : nodes) {
-      layer.children.push_back({node});
+    Serial sp;
+    for (auto const &[_, nodes] : layer_to_node) {
+      Parallel layer{std::vector<std::variant<Serial, Node>>{nodes.begin(), nodes.end()}};
+      sp.children.push_back(layer);
     }
-    sp.children.push_back(layer);
+    return sp;
   }
-  return sp;
-}
 
 SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g) {
-  assert(is_sp_compliant(g));
+  assert(is_2_terminal_sp_compliant(g));
   return barrier_sync_sp_ization_unchecked(g);
 }
 
@@ -52,28 +45,23 @@ SerialParallelDecomposition
   if (sp_predecessors.size() == 1) {
     return get_only(sp_predecessors);
   }
-  std::unordered_map<Node, std::vector<Serial>> coalescable;
-  std::vector<Serial> non_coalescable;
+  std::unordered_map<std::variant<Parallel, Node>, std::vector<Serial>>
+      coalescable;
   for (Serial predecessor : sp_predecessors) {
     if (predecessor.children.size() == 0) {
       continue;
-    } else if (std::holds_alternative<Node>(predecessor.children[0])) {
-      Node n = std::get<Node>(predecessor.children[0]);
-      coalescable[n].push_back(predecessor);
-    } else if (std::holds_alternative<Parallel>(predecessor.children[0])) {
-      non_coalescable.push_back(predecessor);
+    } else {
+      coalescable[predecessor.children[0]].push_back(predecessor);
     }
   }
+
   std::vector<SerialParallelDecomposition> sp;
   for (auto const &item : coalescable) {
-    Node head = item.first;
+    std::variant<Parallel, Node> head = item.first;
     std::vector<Serial> sp_branches = item.second;
     std::vector<Serial> cut_off = transform(sp_branches, cut_off_head);
     auto p_comp = parallel_composition_with_coalescing(cut_off);
-    sp.push_back(serial_composition({head, p_comp}));
-  }
-  for (Serial const &nc : non_coalescable) {
-    sp.push_back(nc);
+    sp.push_back(serial_composition({get_only(to_sp_decomp({head})), p_comp}));
   }
   return parallel_composition(sp);
 }
@@ -81,13 +69,12 @@ SerialParallelDecomposition
 SerialParallelDecomposition
     dependency_invariant_sp_ization_unchecked_with_coalescing(
         DiGraphView const &g) {
-  std::vector<Node> topo_sorted_nodes = get_topological_ordering(g);
   std::unordered_map<Node, Serial> node_to_sp;
 
   Node source = find_source_node(g);
   node_to_sp[source] = {{source}}; // base-case
 
-  for (Node const &node : topo_sorted_nodes) {
+  for (Node const &node : get_topological_ordering(g)) {
     if (node == source) {
       continue;
     }
@@ -109,40 +96,38 @@ SerialParallelDecomposition
 
 SerialParallelDecomposition
     dependency_invariant_sp_ization_with_coalescing(DiGraphView const &g) {
-  assert(is_sp_compliant(g));
+  assert(is_2_terminal_sp_compliant(g));
   return dependency_invariant_sp_ization_unchecked_with_coalescing(g);
 }
 
 SerialParallelDecomposition
     dependency_invariant_sp_ization_unchecked(DiGraphView const &g) {
-  std::vector<Node> topo_sorted_nodes = get_topological_ordering(g);
   std::unordered_map<Node, SerialParallelDecomposition> node_to_sp;
 
   Node source = find_source_node(g);
   node_to_sp[source] = source; // base-case
 
-  for (Node const &node : topo_sorted_nodes) {
+  for (Node const &node : get_topological_ordering(g)) {
     if (node == source) {
       continue;
     }
+    //change to transform, which watching out for the order.
     std::vector<SerialParallelDecomposition> sp_predecessors;
     for (Node const &p : get_predecessors(g, node)) {
       sp_predecessors.push_back(node_to_sp[p]);
     }
-    SerialParallelDecomposition parallel_composed_predecessors =
-        parallel_composition(sp_predecessors);
     SerialParallelDecomposition sp_decomp =
-        serial_composition({parallel_composed_predecessors, node});
+        serial_composition({parallel_composition(sp_predecessors), node});
     node_to_sp[node] = sp_decomp;
   }
 
   Node sink = find_sink_node(g);
-  return node_to_sp[sink];
+  return node_to_sp.at(sink);
 }
 
 SerialParallelDecomposition
     dependency_invariant_sp_ization(DiGraphView const &g) {
-  assert(is_sp_compliant(g));
+  assert(is_2_terminal_sp_compliant(g));
   return dependency_invariant_sp_ization_unchecked(g);
 }
 

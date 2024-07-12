@@ -292,6 +292,15 @@ bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
   return result;
 }
 
+template <typename C>
+auto invert_map(C const &m) {
+  std::unordered_map<typename C::mapped_type, std::unordered_set<typename C::key_type>> m_inv;
+  for (auto const &[key, value] : m) {
+    m_inv[value].insert(key);
+  }
+  return m_inv;
+}
+
 template <typename F, typename C, typename K, typename V>
 std::unordered_map<K, V> generate_map(C const &c, F const &f) {
   static_assert(is_hashable<K>::value,
