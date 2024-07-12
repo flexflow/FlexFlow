@@ -56,33 +56,39 @@ public:
 class LoraLinearConfig {
 public:
   static const LoraLinearConfig EmptyConfig;
-  LoraLinearConfig();
-  LoraLinearConfig(int _rank,
-                   bool _trainable = false,
-                   LoraOptimizerConfig *_optimizer_config = nullptr);
   LoraLinearConfig(std::string const &cache_folder_,
                    std::string const &peft_model_id_,
                    bool trainable_ = false,
-                   LoraOptimizerConfig *optimizer_config_ = nullptr);
+                   LoraOptimizerConfig *optimizer_config_ = nullptr,
+                   bool init_lora_weights_ = false,
+                   int rank_ = 8,
+                   float lora_alpha_ = 8.0f,
+                   float lora_dropout_ = 0.0f,
+                   std::vector<std::string> const &target_modules_ = {});
+  // constructor used to support std::unordered_map
+  LoraLinearConfig();
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraLinearConfig const &llc);
 
 public:
+  std::string cache_folder;
+  // Huggingface model ID (for download and/or upload)
+  std::string peft_model_id;
+  // Lora parameters
   int rank;
+  float lora_alpha;
+  float lora_dropout;
+  std::vector<std::string> target_modules;
+  // Training parameters
   // whether the weights are trainable (fine-tuning scenario) or not
   // (inference-only). If set to true, allocate space for the gradients
   bool trainable = false;
   LoraOptimizerConfig *optimizer_config;
-  std::string cache_folder;
-  // Huggingface
-  std::string peft_model_id;
-  int lora_alpha;
-  float lora_dropout;
-  std::vector<std::string> target_modules;
-  // whether to load weights from file, instead of initializing them randomly
-  bool load_weights_from_file;
+  // whether to initialize weights randomly (instead of attempting to load them
+  // from file)
+  bool init_lora_weights;
 };
 
 class LoraLinearParams {

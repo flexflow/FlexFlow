@@ -246,7 +246,7 @@ void inference_kernel(LoraLinearMeta *m,
     // [out_dim, num_peft_tokens] = [rank, out_dim].T * [rank, num_peft_tokens]
     // Note that we use alpha in both places since we do
     // an in-place update for LoraLinear
-    double lora_alpha =
+    float lora_alpha =
         m->model_state[bc->requestsInfo[i].peft_model_id].lora_alpha;
     DT scaling_constant = (DT)(lora_alpha / rank);
     checkCUDA(cublasGemmEx(m->handle.blas,
@@ -341,7 +341,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
     LoraLinearWeight weight =
         m->model_state[bc->requestsInfo[i].peft_model_id].weights;
     int rank = weight.rank;
-    double lora_alpha =
+    float lora_alpha =
         m->model_state[bc->requestsInfo[i].peft_model_id].lora_alpha;
     DT scaling_constant = (DT)(lora_alpha / rank);
     // Compute LORA_B weight's gradient

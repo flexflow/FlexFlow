@@ -984,6 +984,7 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
         assert(false && "Optimizer type not yet supported");
       }
     }
+    sez.serialize(kv.second.init_lora_weights);
   }
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
@@ -1058,8 +1059,13 @@ Node LoraLinear::deserialize(FFModel &ff,
         assert(false && "Optimizer type not yet supported");
       }
     }
-    LoraLinearConfig lora_linear_config(
-        cache_folder, peft_model_name, trainable, optimizer_config_);
+    bool init_lora_weights;
+    dez.deserialize(init_lora_weights);
+    LoraLinearConfig lora_linear_config(cache_folder,
+                                        peft_model_name,
+                                        trainable,
+                                        optimizer_config_,
+                                        init_lora_weights);
     params.peft_configs.emplace(
         std::make_pair(peft_model_id, lora_linear_config));
   }
@@ -1115,7 +1121,7 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
     hash_combine(key, kv.second.lora_alpha);
     hash_combine(key, kv.second.lora_dropout);
     hash_combine(key, kv.second.target_modules);
-    hash_combine(key, kv.second.load_weights_from_file);
+    hash_combine(key, kv.second.init_lora_weights);
   }
   return key;
 }

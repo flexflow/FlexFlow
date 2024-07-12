@@ -1056,14 +1056,11 @@ void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
 // LoraSGDOptimizerConfig
 // -----------------------------------------------------------------------
 
-flexflow_lora_sgd_optimizer_config_t 
-    flexflow_lora_sgd_optimizer_config_create(double lr,
-                                              double momentum,
-                                              bool nesterov,
-                                              bool weight_decay);
+flexflow_lora_sgd_optimizer_config_t flexflow_lora_sgd_optimizer_config_create(
+    double lr, double momentum, bool nesterov, bool weight_decay);
 
-void flexflow_lora_sgd_optimizer_config_destroy(flexflow_lora_sgd_optimizer_config_t handle_);
-
+void flexflow_lora_sgd_optimizer_config_destroy(
+    flexflow_lora_sgd_optimizer_config_t handle_);
 
 // -----------------------------------------------------------------------
 // LoraAdamOptimizerConfig
@@ -1076,8 +1073,8 @@ flexflow_lora_adam_optimizer_config_t
                                                double weight_decay,
                                                double epsilon);
 
-void flexflow_lora_adam_optimizer_config_destroy(flexflow_lora_adam_optimizer_config_t handle_);
-
+void flexflow_lora_adam_optimizer_config_destroy(
+    flexflow_lora_adam_optimizer_config_t handle_);
 
 // -----------------------------------------------------------------------
 // LoraLinearConfig

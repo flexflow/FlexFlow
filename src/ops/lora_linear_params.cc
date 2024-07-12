@@ -52,60 +52,78 @@ std::ostream &operator<<(std::ostream &os, LoraAdamOptimizerConfig const &llc) {
 
 // ------------------ LoRA configs -------------------
 // ---------------------------------------------------
-const LoraLinearConfig LoraLinearConfig::EmptyConfig = LoraLinearConfig();
+const LoraLinearConfig LoraLinearConfig::EmptyConfig = LoraLinearConfig("", "");
 
-LoraLinearConfig::LoraLinearConfig()
-    : rank(0), trainable(false), optimizer_config(nullptr), cache_folder(""),
-      peft_model_id(""), lora_alpha(0), lora_dropout(0.0f),
-      load_weights_from_file(false) {}
-
-LoraLinearConfig::LoraLinearConfig(int _rank,
-                                   bool _trainable,
-                                   LoraOptimizerConfig *_optimizer_config)
-    : rank(_rank), trainable(_trainable), optimizer_config(_optimizer_config),
-      cache_folder(""), peft_model_id(""), lora_alpha(0), lora_dropout(0.0f),
-      load_weights_from_file(false) {}
-
-LoraLinearConfig::LoraLinearConfig(std::string const &cache_folder_,
-                                   std::string const &peft_model_id_,
-                                   bool trainable_,
-                                   LoraOptimizerConfig *optimizer_config_)
-    : cache_folder(cache_folder_), peft_model_id(peft_model_id_),
+LoraLinearConfig::LoraLinearConfig(
+    std::string const &cache_folder_,
+    std::string const &peft_model_id_,
+    bool trainable_,
+    LoraOptimizerConfig *optimizer_config_,
+    bool init_lora_weights_,
+    int rank_,
+    float lora_alpha_,
+    float lora_dropout_,
+    std::vector<std::string> const &target_modules_)
+    : cache_folder(cache_folder_), peft_model_id(peft_model_id_), rank(rank_),
+      lora_alpha(lora_alpha_), lora_dropout(lora_dropout_),
       trainable(trainable_), optimizer_config(optimizer_config_),
-      load_weights_from_file(true) {
-  std::string peft_inference_config_file_path =
-      join_path({cache_folder, "configs", peft_model_id, "config.json"});
-  std::ifstream config_file(peft_inference_config_file_path);
-  if (config_file.is_open()) {
-    try {
-      json model_config;
-      config_file >> model_config;
-      rank = model_config["r"];
-      lora_alpha = model_config["lora_alpha"];
-      lora_dropout = model_config["lora_dropout"];
-      for (auto &s : model_config["target_modules"]) {
-        target_modules.push_back(s);
-      }
-    } catch (json::exception const &e) {
-      std::cerr << "Error parsing PEFT config from JSON file: " << e.what()
-                << std::endl;
-      assert(false);
+      init_lora_weights(init_lora_weights_) {
+  if (!peft_model_id.empty()) {
+    assert(!cache_folder.empty() &&
+           "cache_folder must be provided when using PEFT");
+    if (trainable) {
+      assert(optimizer_config != nullptr &&
+             "optimizer_config must be provided when using PEFT");
+    } else {
+      assert(init_lora_weights == false &&
+             "init_lora_weights must be false when LORA not trainable");
+      assert(optimizer_config == nullptr &&
+             "optimizer_config must be nullptr when not trainable");
     }
-  } else {
-    std::cerr << "Error opening JSON file " << peft_inference_config_file_path
-              << std::endl;
-    assert(false);
+    if (init_lora_weights) {
+      std::string peft_inference_config_file_path =
+          join_path({cache_folder, "configs", peft_model_id, "config.json"});
+      std::ifstream config_file(peft_inference_config_file_path);
+      if (config_file.is_open()) {
+        try {
+          json model_config;
+          config_file >> model_config;
+          rank = model_config["r"];
+          lora_alpha = float(model_config["lora_alpha"]);
+          lora_dropout = model_config["lora_dropout"];
+          for (auto &s : model_config["target_modules"]) {
+            target_modules.push_back(s);
+          }
+        } catch (json::exception const &e) {
+          std::cerr << "Error parsing PEFT config from JSON file: " << e.what()
+                    << std::endl;
+          assert(false);
+        }
+      } else {
+        std::cerr << "Error opening JSON file "
+                  << peft_inference_config_file_path << std::endl;
+        assert(false);
+      }
+    }
+    assert(rank > 0 && "rank must be greater than 0");
+    assert(lora_alpha > 0.0f && "lora_alpha must be greater than 0.0");
+    assert(lora_dropout >= 0.0f && lora_dropout <= 1.0f &&
+           "lora_dropout must be in [0.0, 1.0]");
   }
 }
 
+// constructor used to support unordered_map
+LoraLinearConfig::LoraLinearConfig() : LoraLinearConfig("", "") {}
+
 bool operator==(LoraLinearConfig const &lhs, LoraLinearConfig const &rhs) {
-  if (lhs.rank == rhs.rank && lhs.optimizer_config == rhs.optimizer_config &&
-      lhs.cache_folder == rhs.cache_folder &&
-      lhs.peft_model_id == rhs.peft_model_id &&
+  if (lhs.cache_folder == rhs.cache_folder &&
+      lhs.peft_model_id == rhs.peft_model_id && lhs.rank == rhs.rank &&
       lhs.lora_alpha == rhs.lora_alpha &&
       lhs.lora_dropout == rhs.lora_dropout &&
       lhs.target_modules.size() == rhs.target_modules.size() &&
-      lhs.load_weights_from_file == rhs.load_weights_from_file) {
+      lhs.trainable == rhs.trainable &&
+      lhs.init_lora_weights == rhs.init_lora_weights &&
+      lhs.optimizer_config == rhs.optimizer_config) {
     for (int i = 0; i < lhs.target_modules.size(); i++) {
       if (lhs.target_modules[i] != rhs.target_modules[i]) {
         return false;
@@ -118,8 +136,20 @@ bool operator==(LoraLinearConfig const &lhs, LoraLinearConfig const &rhs) {
 
 std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
   os << "LoraLinearConfig: ";
-  os << "trainable: " << llc.trainable << ", ";
+  os << "cache_folder: " << llc.cache_folder << ", ";
+  os << "peft_model_id: " << llc.peft_model_id << ", ";
   os << "rank: " << llc.rank << ", ";
+  os << "lora_alpha: " << llc.lora_alpha << ", ";
+  os << "lora_dropout: " << llc.lora_dropout << ", ";
+  os << "target_modules: [";
+  for (int i = 0; i < llc.target_modules.size(); i++) {
+    os << llc.target_modules[i];
+    if (i < llc.target_modules.size() - 1) {
+      os << ", ";
+    }
+  }
+  os << "], ";
+  os << "trainable: " << llc.trainable << ", ";
   if (llc.optimizer_config != nullptr) {
     os << "optimizer_config: ";
     if (typeid(*llc.optimizer_config) == typeid(LoraSGDOptimizerConfig)) {
@@ -132,19 +162,7 @@ std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
     }
     std::cout << std::endl;
   }
-  os << "cache_folder: " << llc.cache_folder << ", ";
-  os << "peft_model_id: " << llc.peft_model_id << ", ";
-  os << "lora_alpha: " << llc.lora_alpha << ", ";
-  os << "lora_dropout: " << llc.lora_dropout << ", ";
-  os << "target_modules: [";
-  for (int i = 0; i < llc.target_modules.size(); i++) {
-    os << llc.target_modules[i];
-    if (i < llc.target_modules.size() - 1) {
-      os << ", ";
-    }
-  }
-  os << "], ";
-  os << "load_weights_from_file: " << llc.load_weights_from_file << std::endl;
+  os << "init_lora_weights: " << llc.init_lora_weights << std::endl;
   return os;
 }
 
