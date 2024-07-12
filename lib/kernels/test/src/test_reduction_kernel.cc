@@ -22,7 +22,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       GenericTensorAccessorR input_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w<float>(input_shape, allocator));
+              create_random_filled_accessor_w(input_shape, allocator));
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -31,9 +31,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                                          output_accessor,
                                          num_replicas);
 
-      std::vector<float> host_output_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_accessor));
+      std::vector<float> host_output_data = load_accessor_data<DataType::FLOAT>(
+          read_only_accessor_from_write_accessor(output_accessor));
       CHECK(contains_non_zero(host_output_data));
     }
 
@@ -52,7 +51,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<float> expected_grad_input_data(
           input_grad_accessor.shape.num_elements(), 1.0f);
-      std::vector<float> host_grad_data = load_data_to_host_from_device<float>(
+      std::vector<float> host_grad_data = load_accessor_data<DataType::FLOAT>(
           read_only_accessor_from_write_accessor(input_grad_accessor));
       CHECK(host_grad_data == expected_grad_input_data);
     }

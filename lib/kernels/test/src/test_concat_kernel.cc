@@ -24,7 +24,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<GenericTensorAccessorR> input_accessors =
           repeat(num_inputs, [&]() {
             return read_only_accessor_from_write_accessor(
-                create_random_filled_accessor_w<float>(input_shape, allocator));
+                create_random_filled_accessor_w(input_shape, allocator));
           });
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
@@ -34,9 +34,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       input_accessors,
                                       concat_axis);
 
-      std::vector<float> host_output_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_accessor));
+      std::vector<float> host_output_data = load_accessor_data<DataType::FLOAT>(
+          read_only_accessor_from_write_accessor(output_accessor));
 
       CHECK(contains_non_zero(host_output_data));
     }
@@ -44,7 +43,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w<float>(output_shape, allocator));
+              create_random_filled_accessor_w(output_shape, allocator));
       std::vector<GenericTensorAccessorW> input_grad_accessors = repeat(
           num_inputs, [&]() { return allocator.allocate_tensor(input_shape); });
 

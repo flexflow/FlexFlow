@@ -28,7 +28,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           managed_stream.raw_stream(), state, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
-          load_data_to_host_from_device<float>(
+          load_accessor_data<DataType::FLOAT>(
               read_only_accessor_from_write_accessor(output_accessor));
 
       std::vector<float> expected_output_data(
@@ -49,7 +49,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                         output_grad_accessor);
 
       std::vector<float> host_grad_input_data =
-          load_data_to_host_from_device<float>(
+          load_accessor_data<DataType::FLOAT>(
               read_only_accessor_from_write_accessor(input_grad_accessor));
 
       std::vector<float> expected_grad_input_data(

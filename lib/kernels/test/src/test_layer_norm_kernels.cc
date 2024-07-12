@@ -33,7 +33,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     GenericTensorAccessorR input_accessor =
         read_only_accessor_from_write_accessor(
-            create_random_filled_accessor_w<float>(input_shape, allocator));
+            create_random_filled_accessor_w(input_shape, allocator));
     GenericTensorAccessorW gamma_accessor =
         create_filled_accessor_w<float>(feature_shape, allocator, 1.0f);
 
@@ -54,9 +54,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
           read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w<float>(output_shape, allocator));
+              create_random_filled_accessor_w(output_shape, allocator));
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w<float>(input_shape, allocator);
+          create_random_filled_accessor_w(input_shape, allocator);
       GenericTensorAccessorW gamma_grad_accessor =
           allocator.allocate_tensor(feature_shape);
       GenericTensorAccessorW beta_grad_accessor =

@@ -27,7 +27,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                     output_accessor.get_float_ptr());
 
       std::vector<float> check_output_data =
-          load_data_to_host_from_device<float>(
+          load_accessor_data<DataType::FLOAT>(
               read_only_accessor_from_write_accessor(output_accessor));
 
       std::vector<float> expected_output_data(
@@ -47,7 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                      output_grad_accessor.get_float_ptr());
 
       std::vector<float> backward_output_data =
-          load_data_to_host_from_device<float>(
+          load_accessor_data<DataType::FLOAT>(
               read_only_accessor_from_write_accessor(input_grad_accessor));
 
       std::vector<float> expected_output_data(
