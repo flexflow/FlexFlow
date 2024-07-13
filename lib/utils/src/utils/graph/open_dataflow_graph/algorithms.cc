@@ -1,4 +1,5 @@
 #include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/containers/group_by.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
@@ -35,8 +36,8 @@ std::vector<OpenDataflowEdge> get_incoming_edges(OpenDataflowGraphView const &g,
   }), [](OpenDataflowEdge const &l, OpenDataflowEdge const &r) { return get_open_dataflow_edge_dst_idx(l) < get_open_dataflow_edge_dst_idx(r); });
 }
 
-std::unordered_map<Node, std::vector<OpenDataflowEdge>> get_incoming_edges(OpenDataflowGraphView const &, std::unordered_set<Node> const &) {
-  NOT_IMPLEMENTED();
+std::unordered_map<Node, std::vector<OpenDataflowEdge>> get_incoming_edges(OpenDataflowGraphView const &g, std::unordered_set<Node> const &ns) {
+  return generate_map(ns, [&](Node const &n) { return get_incoming_edges(g, n); });
 }
 
 std::unordered_set<OpenDataflowValue> get_open_dataflow_values(OpenDataflowGraphView const &g) {

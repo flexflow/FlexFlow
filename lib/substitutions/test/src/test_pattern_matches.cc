@@ -3,44 +3,47 @@
 #include "substitutions/unlabelled/find_pattern_matches.h"
 #include "test/utils/all.h"
 #include "substitutions/unlabelled/match_additional_criterion.h"
+#include "utils/graph/open_dataflow_graph/open_dataflow_graph.h"
+#include "utils/graph/instances/unordered_set_dataflow_graph.h"
+#include "substitutions/unlabelled/pattern_matching.h"
 
 using namespace FlexFlow;
 
 namespace rc {
 
-template <>
-struct Arbitrary<MultiDiGraph> {
-  static int const MAX_GRAPH_SIZE = 200;
-  static int const MAX_EDGE_SIZE = 1000;
-
-  static Gen<MultiDiGraph> arbitrary() {
-    return gen::exec([&] {
-      int num_nodes = *gen::inRange(1, MAX_GRAPH_SIZE + 1);
-      MultiDiGraph g = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
-
-      std::vector<Node> nodes;
-      for (int i = 0; i < num_nodes; ++i) {
-        nodes.push_back(g.add_node());
-      }
-
-      int num_edges = *gen::inRange(1, MAX_GRAPH_SIZE + 1);
-      for (int i = 0; i < num_edges; ++i) {
-        int src_id = *gen::inRange(0, num_nodes);
-        int dst_id = *gen::inRange(0, num_nodes);
-        if (src_id > dst_id) {
-          std::swap(src_id, dst_id);
-        }
-
-        g.add_edge(MultiDiEdge{nodes[dst_id],
-                               g.add_node_port(),
-                               nodes[src_id],
-                               g.add_node_port()});
-      }
-
-      return g;
-    });
-  }
-};
+// template <>
+// struct Arbitrary<MultiDiGraph> {
+//   static int const MAX_GRAPH_SIZE = 200;
+//   static int const MAX_EDGE_SIZE = 1000;
+//
+//   static Gen<MultiDiGraph> arbitrary() {
+//     return gen::exec([&] {
+//       int num_nodes = *gen::inRange(1, MAX_GRAPH_SIZE + 1);
+//       MultiDiGraph g = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
+//
+//       std::vector<Node> nodes;
+//       for (int i = 0; i < num_nodes; ++i) {
+//         nodes.push_back(g.add_node());
+//       }
+//
+//       int num_edges = *gen::inRange(1, MAX_GRAPH_SIZE + 1);
+//       for (int i = 0; i < num_edges; ++i) {
+//         int src_id = *gen::inRange(0, num_nodes);
+//         int dst_id = *gen::inRange(0, num_nodes);
+//         if (src_id > dst_id) {
+//           std::swap(src_id, dst_id);
+//         }
+//
+//         g.add_edge(MultiDiEdge{nodes[dst_id],
+//                                g.add_node_port(),
+//                                nodes[src_id],
+//                                g.add_node_port()});
+//       }
+//
+//       return g;
+//     });
+//   }
+// };
 
 } // namespace rc
 
@@ -65,46 +68,52 @@ struct Arbitrary<MultiDiGraph> {
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("find_pattern_matches_small") {
-    MultiDiGraph g = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
+    UnlabelledGraphPattern pattern = [] {
+      OpenDataflowGraph g = OpenDataflowGraph::create<UnorderedSetDataflowGraph>();
 
-    {
-      Node n0 = g.add_node();
-      Node n1 = g.add_node();
-      Node n2 = g.add_node();
-      Node n3 = g.add_node();
+      NodeAddedResult n0_added = g.add_node({}, 1);
+      Node n0 = n0_added.node;
+      OpenDataflowValue v0 = OpenDataflowValue{get_only(n0_added.outputs)};
 
-      MultiDiEdge e0{n1, g.add_node_port(), n0, g.add_node_port()};
-      MultiDiEdge e1{n2, g.add_node_port(), n1, g.add_node_port()};
-      MultiDiEdge e2{n3, g.add_node_port(), n2, g.add_node_port()};
+      NodeAddedResult n1_added = g.add_node({v0}, 1);
+      Node n1 = n1_added.node;
+      OpenDataflowValue v1 = OpenDataflowValue{get_only(n1_added.outputs)};
 
-      g.add_edge(e0);
-      g.add_edge(e1);
-      g.add_edge(e2);
-    }
+      return UnlabelledGraphPattern{g};
+    }();
 
-    MultiDiGraph sg0 = MultiDiGraph::template create<AdjacencyMultiDiGraph>();
+    OpenDataflowGraph graph = [] {
+      OpenDataflowGraph g = OpenDataflowGraph::create<UnorderedSetDataflowGraph>();
+      
+      NodeAddedResult n0_added = g.add_node({}, 1);
+      Node n0 = n0_added.node;
+      OpenDataflowValue v0 = OpenDataflowValue{get_only(n0_added.outputs)};
 
-    {
-      Node n0 = sg0.add_node();
-      Node n1 = sg0.add_node();
+      NodeAddedResult n1_added = g.add_node({v0}, 1);
+      Node n1 = n1_added.node;
+      OpenDataflowValue v1 = OpenDataflowValue{get_only(n1_added.outputs)};
 
-      MultiDiEdge e0{n1, sg0.add_node_port(), n0, sg0.add_node_port()};
+      NodeAddedResult n2_added = g.add_node({v1}, 1);
+      Node n2 = n2_added.node;
+      OpenDataflowValue v2 = OpenDataflowValue{get_only(n2_added.outputs)};
 
-      sg0.add_edge(e0);
-    }
+      NodeAddedResult n3_added = g.add_node({v2}, 1);
+      Node n3 = n3_added.node;
+      OpenDataflowValue v3 = OpenDataflowValue{get_only(n3_added.outputs)};
 
-    MatchAdditionalCriterion always_true = match_additional_crition_always_true();
+      return g;
+    }();
 
-    std::vector<MultiDiGraphPatternMatch> matches = find_pattern_matches(
-        as_openmultidigraph(sg0), as_openmultidigraph(g), always_true);
+    std::vector<UnlabelledDataflowGraphPatternMatch> matches = find_pattern_matches(
+        pattern, graph, match_additional_crition_always_true());
 
-    RC_ASSERT(matches.size() == 3);
+    CHECK(matches.size() == 3);
 
-    for (MultiDiGraphPatternMatch const &match : matches) {
-      RC_ASSERT(pattern_matches(as_openmultidigraph(sg0),
-                                as_openmultidigraph(g),
-                                match,
-                                always_true));
+    for (UnlabelledDataflowGraphPatternMatch const &match : matches) {
+      CHECK(unlabelled_pattern_does_match(pattern,
+                                          graph,
+                                          match,
+                                          match_additional_crition_always_true()));
     }
   }
 }

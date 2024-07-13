@@ -15,7 +15,7 @@ public:
   void add_node_unsafe(Node const &node,
                        std::vector<DataflowOutput> const &inputs,
                        std::vector<DataflowOutput> const &outputs);
-  
+
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<DataflowEdge> query_edges(DataflowEdgeQuery const &) const;
   std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &) const;

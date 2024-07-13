@@ -17,7 +17,7 @@ test_targets = [
   "utils-tests",
   "op-attrs-tests",
   "pcg-tests",
-  # "substitutions-tests",
+  "substitutions-tests",
   # "compiler-tests",
   # "substitution-generator-tests",
 ]

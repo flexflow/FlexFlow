@@ -46,4 +46,11 @@ PatternEdge pattern_edge_from_standard_edge(StandardPatternEdge const &e) {
   return PatternEdge{e};
 }
 
+PatternEdge pattern_edge_from_raw_open_dataflow_edge(OpenDataflowEdge const &e) {
+  return e.visit<PatternEdge>(overload {
+    [](DataflowInputEdge const &ee) { return PatternEdge{InputPatternEdge{ee}}; },
+    [](DataflowEdge const &ee) { return PatternEdge{StandardPatternEdge{ee}}; },
+  });
+}
+
 } // namespace FlexFlow

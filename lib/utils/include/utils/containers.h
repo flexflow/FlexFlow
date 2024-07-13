@@ -298,7 +298,7 @@ std::unordered_map<K, V> generate_map(C const &c, F const &f) {
   static_assert(is_hashable<K>::value,
                 "Key type should be hashable (but is not)");
 
-  auto transformed = transform(c, [&](K const &k) -> std::pair<K, V> {
+  auto transformed = transform(as_vector(c), [&](K const &k) -> std::pair<K, V> {
     return {k, f(k)};
   });
   return {transformed.cbegin(), transformed.cend()};

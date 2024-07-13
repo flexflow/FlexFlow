@@ -5,6 +5,7 @@
 #include "substitutions/unlabelled/standard_pattern_edge.dtg.h"
 #include "substitutions/unlabelled/pattern_edge.dtg.h"
 #include "substitutions/unlabelled/pattern_node.dtg.h"
+#include "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h"
 #include <unordered_set>
 
 namespace FlexFlow {
@@ -20,6 +21,8 @@ InputPatternEdge require_input_edge(PatternEdge const &);
 
 PatternEdge pattern_edge_from_input_edge(InputPatternEdge const &);
 PatternEdge pattern_edge_from_standard_edge(StandardPatternEdge const &);
+
+PatternEdge pattern_edge_from_raw_open_dataflow_edge(OpenDataflowEdge const &);
 
 } // namespace FlexFlow
 
