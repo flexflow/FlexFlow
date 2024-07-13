@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_UNLABELLED_PATTERN_MATCHING_H
 
 #include "substitutions/unlabelled/match_additional_criterion.dtg.h"
-#include "substitutions/unlabelled/match_split.dtg.h"
 #include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 #include "utils/graph.h"

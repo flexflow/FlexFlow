@@ -2,6 +2,7 @@
 #include "utils/containers/enumerate_vector.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 

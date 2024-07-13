@@ -187,6 +187,14 @@ std::unordered_map<L, R> format_as(bidict<L, R> const &b) {
   return b;
 }
 
+template <typename L, typename R>
+std::ostream &operator<<(std::ostream &s, bidict<L, R> const &b) {
+  CHECK_FMTABLE(L);
+  CHECK_FMTABLE(R);
+
+  return s << fmt::to_string(b);
+}
+
 } // namespace FlexFlow
 
 namespace std {

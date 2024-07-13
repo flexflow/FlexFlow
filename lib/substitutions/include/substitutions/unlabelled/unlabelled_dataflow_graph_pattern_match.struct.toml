@@ -10,11 +10,15 @@ features = [
 includes = [
   "utils/bidict.h",
   "utils/graph/node/node.dtg.h",
-  "utils/graph/open_dataflow_graph/dataflow_graph_input.dtg.h",
+  "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
   "substitutions/unlabelled/pattern_input.dtg.h",
   "substitutions/unlabelled/pattern_node.dtg.h",
   "<unordered_map>",
+]
+
+src_includes = [
   "utils/fmt/unordered_map.h",
+  "utils/hash/unordered_map.h",
 ]
 
 [[fields]]
@@ -23,4 +27,4 @@ type = "::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::Node>"
 
 [[fields]]
 name = "input_assignment"
-type = "std::unordered_map<::FlexFlow::PatternInput, ::FlexFlow::DataflowGraphInput>"
+type = "std::unordered_map<::FlexFlow::PatternInput, ::FlexFlow::OpenDataflowValue>"

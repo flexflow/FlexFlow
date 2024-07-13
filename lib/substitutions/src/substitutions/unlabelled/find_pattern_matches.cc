@@ -51,7 +51,7 @@ static std::optional<UnlabelledDataflowGraphPatternMatch>
 
     match.input_assignment.insert({
       pattern_node_input.get<PatternInput>(),
-      graph_node_input.get<DataflowGraphInput>(),
+      graph_node_input,
     });
   }
 
@@ -83,7 +83,6 @@ std::vector<UnlabelledDataflowGraphPatternMatch>
     std::vector<UnlabelledDataflowGraphPatternMatch> postfix_matches =
         find_pattern_matches(subpatterns.subpattern_2, graph, additional_criterion);
 
-    auto edge_splits = get_edge_splits(pattern, split);
     for (UnlabelledDataflowGraphPatternMatch const &prefix_match : prefix_matches) {
       for (UnlabelledDataflowGraphPatternMatch const &postfix_match : postfix_matches) {
         std::optional<UnlabelledDataflowGraphPatternMatch> unsplit =

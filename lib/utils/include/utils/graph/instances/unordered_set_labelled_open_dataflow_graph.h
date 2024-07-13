@@ -11,6 +11,7 @@
 #include "utils/containers/zip_vectors.h"
 #include "utils/containers/without_nullopts.h"
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 

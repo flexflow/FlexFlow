@@ -3,12 +3,12 @@
 
 namespace FlexFlow {
 
-PatternInput get_src_input(InputPatternEdge const &) {
-  NOT_IMPLEMENTED();
+PatternInput get_src_input(InputPatternEdge const &e) {
+  return PatternInput{e.raw_edge.src};
 }
 
 PatternNode get_dst_node(InputPatternEdge const &e) {
-  return PatternNode{get_open_dataflow_edge_dst_node(e.raw_edge)};
+  return PatternNode{e.raw_edge.dst.node};
 }
 
 } // namespace FlexFlow

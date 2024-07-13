@@ -21,6 +21,11 @@ includes = [
   "op-attrs/tensor_shape.dtg.h",
   "op-attrs/datatype.dtg.h",
   "<cstddef>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/fmt/vector.h",
   "utils/hash/vector.h",
 ]
 

@@ -12,7 +12,7 @@ UnlabelledGraphPattern get_unlabelled_pattern(PCGPattern const &p) {
 
 TensorAttributePattern get_tensor_pattern(PCGPattern const &p,
                                           PatternValue const &v) {
-  return p.raw_graph.at(raw_dataflow_value_from_pattern_value(v));
+  return p.raw_graph.at(raw_open_dataflow_value_from_pattern_value(v));
 }
 
 OperatorAttributePattern get_operator_pattern(PCGPattern const &p,

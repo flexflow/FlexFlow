@@ -13,8 +13,8 @@ includes = [
 
 [[fields]]
 name = "prefix_submatch"
-type = "UnlabelledDataflowGraphPatternMatch"
+type = "::FlexFlow::UnlabelledDataflowGraphPatternMatch"
 
 [[fields]]
 name = "postfix_submatch"
-type = "UnlabelledDataflowGraphPatternMatch"
+type = "::FlexFlow::UnlabelledDataflowGraphPatternMatch"

@@ -3,6 +3,7 @@
 
 #include "utils/hash-utils.h"
 #include <unordered_map>
+#include "utils/hash/pair.h"
 
 namespace std {
 

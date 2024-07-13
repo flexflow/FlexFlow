@@ -24,15 +24,4 @@ typename std::enable_if<delegate_ostream_operator<std::decay_t<T>>::value,
 
 } // namespace FlexFlow
 
-namespace fmt {
-
-template <typename... Ts>
-struct formatter<::std::variant<Ts...>> : formatter<::std::string> {
-  template <typename FormatContext>
-  auto format(::std::variant<Ts...> const &m, FormatContext &ctx)
-      -> decltype(ctx.out());
-};
-
-} // namespace fmt
-
 #endif

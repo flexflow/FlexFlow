@@ -10,12 +10,12 @@ namespace FlexFlow {
 
 PatternSplit find_even_split(UnlabelledGraphPattern const &);
 
-GraphSplit get_raw_split(PatternSplit const &);
+// GraphSplit get_raw_split(PatternSplit const &);
 
-UnlabelledPatternEdgeSplits
-    get_edge_splits(UnlabelledGraphPattern const &pattern,
-                    PatternSplit const &split);
-
+// UnlabelledPatternEdgeSplits
+//     get_edge_splits(UnlabelledGraphPattern const &pattern,
+//                     PatternSplit const &split);
+//
 PatternSplitResult
     apply_split(UnlabelledGraphPattern const &, PatternSplit const &);
 

@@ -1,6 +1,7 @@
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/dataflow_graph/dataflow_edge_query.h"
 #include "utils/graph/dataflow_graph/dataflow_output_query.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 

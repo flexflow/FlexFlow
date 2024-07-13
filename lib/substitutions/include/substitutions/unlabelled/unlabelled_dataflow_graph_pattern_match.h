@@ -3,6 +3,8 @@
 
 #include "substitutions/unlabelled/pattern_value.dtg.h"
 #include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
+#include <unordered_set>
+#include <optional>
 
 namespace FlexFlow {
 

@@ -5,6 +5,7 @@
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/traversal.h"
 #include "utils/graph/views/views.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 

@@ -9,6 +9,7 @@
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/overload.h"
 #include "substitutions/unlabelled/pattern_edge.dtg.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h"
@@ -67,27 +68,25 @@ struct ConcreteFromPattern {
 
   UnlabelledDataflowGraphPatternMatch const &match;
 
-  
-
   Node operator()(PatternNode const &n) const {
     return match.node_assignment.at_l(n);
   }
 
-  DataflowGraphInput operator()(PatternInput const &i) {
+  OpenDataflowValue operator()(PatternInput const &i) const {
     return match.input_assignment.at(i);
   }
 
-  DataflowInputEdge operator()(InputPatternEdge const &e) {
-    return DataflowInputEdge{
+  OpenDataflowEdge operator()(InputPatternEdge const &e) const {
+    return open_dataflow_edge_from_src_and_dst( 
       this->operator()(get_src_input(e)),
       DataflowInput{
         this->operator()(get_dst_node(e)),
         get_dst_idx(e),
-      },
-    };
+      }
+    );
   }
 
-  DataflowEdge operator()(StandardPatternEdge const &e) {
+  DataflowEdge operator()(StandardPatternEdge const &e) const {
     return DataflowEdge{
       DataflowOutput{
         this->operator()(get_src_node(e)),
@@ -100,15 +99,15 @@ struct ConcreteFromPattern {
     };
   }
 
-  OpenDataflowEdge operator()(PatternEdge const &pattern_e) {
+  OpenDataflowEdge operator()(PatternEdge const &pattern_e) const {
     return pattern_e.visit<OpenDataflowEdge>([&](auto const &e) { return OpenDataflowEdge{this->operator()(e)}; });
   }
 
-  OpenDataflowValue operator()(PatternValue const &pattern_v) {
+  OpenDataflowValue operator()(PatternValue const &pattern_v) const {
     return pattern_v.visit<OpenDataflowValue>([&](auto const &v) { return OpenDataflowValue{this->operator()(v)}; });
   }
 
-  DataflowOutput operator()(PatternNodeOutput const &o) {
+  DataflowOutput operator()(PatternNodeOutput const &o) const {
     return DataflowOutput{
       this->operator()(get_src_node(o)),
       get_idx(o),

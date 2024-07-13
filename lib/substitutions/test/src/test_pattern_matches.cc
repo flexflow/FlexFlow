@@ -1,7 +1,8 @@
 #include "doctest/doctest.h"
 #include "rapidcheck.h"
-#include "substitutions/graph_pattern_match.h"
+#include "substitutions/unlabelled/find_pattern_matches.h"
 #include "test/utils/all.h"
+#include "substitutions/unlabelled/match_additional_criterion.h"
 
 using namespace FlexFlow;
 
@@ -92,9 +93,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       sg0.add_edge(e0);
     }
 
-    MatchAdditionalCriterion always_true{
-        [](Node const &, Node const &) { return true; },
-        [](OpenMultiDiEdge const &, OpenMultiDiEdge const &) { return true; }};
+    MatchAdditionalCriterion always_true = match_additional_crition_always_true();
 
     std::vector<MultiDiGraphPatternMatch> matches = find_pattern_matches(
         as_openmultidigraph(sg0), as_openmultidigraph(g), always_true);

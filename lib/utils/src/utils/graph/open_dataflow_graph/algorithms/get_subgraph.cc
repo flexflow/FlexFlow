@@ -5,6 +5,7 @@
 #include "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
 #include "utils/overload.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 

@@ -2,6 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_UNDIRECTED_I_GRAPH_VIEW_H
 
 #include "utils/graph/node/node_query.dtg.h"
+#include "utils/type_traits.h"
+
 namespace FlexFlow {
 
 struct IGraphView {

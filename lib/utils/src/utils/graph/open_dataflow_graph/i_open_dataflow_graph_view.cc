@@ -1,5 +1,6 @@
 #include "utils/graph/open_dataflow_graph/i_open_dataflow_graph_view.h"
 #include "utils/graph/open_dataflow_graph/dataflow_input_edge_query.h"
+#include "utils/containers.h"
 
 namespace FlexFlow {
 
