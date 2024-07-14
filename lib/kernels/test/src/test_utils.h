@@ -113,21 +113,15 @@ TensorShape make_tensor_shape_from_legion_dims(FFOrdered<size_t> dims) {
 
 template <DataType DT>
 std::vector<real_type<DT>> load_accessor_data(GenericTensorAccessorR accessor,
-                                              bool on_device = true) {
+                                              bool on_host = false) {
   int volume = accessor.shape.get_volume();
 
   using T = real_type<DT>;
   std::vector<T> local_data(volume);
   T const *src_ptr = accessor.get<DT>();
 
-  if (on_device) {
-    checkCUDA(cudaMemcpy(local_data.data(),
-                         src_ptr,
-                         volume * sizeof(T),
-                         cudaMemcpyDeviceToHost));
-  } else {
-    std::memcpy(local_data.data(), src_ptr, volume * sizeof(T));
-  }
+  transfer_memory(
+      local_data.data(), src_ptr, volume, GpuDirection::DeviceToHost, on_host);
 
   return local_data;
 }

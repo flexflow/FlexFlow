@@ -3,12 +3,14 @@
 
 namespace FlexFlow {
 void *LocalCPUAllocator::allocate(size_t requested_memory_size) {
-  void *ptr = malloc(requested_memory_size);
+  void *ptr = calloc(1, requested_memory_size);
+
   if (ptr != nullptr) {
     this->ptrs.insert(ptr);
   } else {
     throw std::bad_alloc();
   }
+
   return ptr;
 }
 

@@ -102,7 +102,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        input_accessor_gpu.shape.num_elements());
 
       std::vector<float> result_data_gpu = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor_gpu), true);
+          read_only_accessor_from_write_accessor(output_accessor_gpu), false);
 
       // Run CPU Cast Forward Kernel
       GenericTensorAccessorW input_accessor_cpu =
@@ -120,7 +120,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           input_accessor_cpu.shape.num_elements());
 
       std::vector<float> result_data_cpu = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor_cpu), false);
+          read_only_accessor_from_write_accessor(output_accessor_cpu), true);
 
       CHECK(result_data_gpu == result_data_cpu);
     }
@@ -143,7 +143,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<float> result_data_gpu = load_accessor_data<DataType::FLOAT>(
           read_only_accessor_from_write_accessor(input_grad_accessor_gpu),
-          true);
+          false);
 
       // Run CPU Cast Backward Kernel
       GenericTensorAccessorW output_grad_accessor_cpu =
@@ -164,7 +164,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<float> result_data_cpu = load_accessor_data<DataType::FLOAT>(
           read_only_accessor_from_write_accessor(input_grad_accessor_cpu),
-          false);
+          true);
 
       CHECK(result_data_gpu == result_data_cpu);
     }

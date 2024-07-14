@@ -3,8 +3,6 @@
 
 #include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/ff_handle.h"
-#include "op-attrs/activation.dtg.h"
 
 namespace FlexFlow {
 namespace Kernels {

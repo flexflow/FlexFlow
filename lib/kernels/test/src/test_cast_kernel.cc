@@ -91,7 +91,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<int32_t> result_data_gpu =
           load_accessor_data<DataType::INT32>(
               read_only_accessor_from_write_accessor(output_accessor_gpu),
-              true);
+              false);
 
       // Run CPU Forward Kernel
       GenericTensorAccessorW input_accessor_cpu =
@@ -105,7 +105,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<int32_t> result_data_cpu =
           load_accessor_data<DataType::INT32>(
               read_only_accessor_from_write_accessor(output_accessor_cpu),
-              false);
+              true);
 
       CHECK(result_data_gpu == result_data_cpu);
     }

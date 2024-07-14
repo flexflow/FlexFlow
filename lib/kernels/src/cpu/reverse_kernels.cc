@@ -1,5 +1,4 @@
 #include "kernels/reverse_kernels_cpu.h"
-#include <iostream>
 
 namespace FlexFlow {
 namespace Kernels {

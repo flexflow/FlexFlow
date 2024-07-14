@@ -14,7 +14,7 @@ void replicate_backward_kernel(T *input,
   for (size_t i = 0; i < num_elements; ++i) {
     T sum = 0;
     for (size_t j = 0; j < num_replicas; ++j) {
-      sum += output[j * num_elements + i];
+      sum += output[i + j * num_elements];
     }
     input[i] = sum;
   }
