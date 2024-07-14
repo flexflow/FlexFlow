@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-struct OpenDataflowGraphView : virtual DataflowGraphView {
+struct OpenDataflowGraphView : virtual public DataflowGraphView {
 public:
   OpenDataflowGraphView(OpenDataflowGraphView const &) = default;
   OpenDataflowGraphView &operator=(OpenDataflowGraphView const &) = default;
@@ -27,6 +27,7 @@ protected:
 private:
   IOpenDataflowGraphView const &get_interface() const;
 };
+CHECK_WELL_BEHAVED_VALUE_TYPE_NO_EQ(OpenDataflowGraphView);
 
 } // namespace FlexFlow
 

@@ -5,6 +5,7 @@
 #include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 #include "utils/graph.h"
+#include "utils/graph/open_dataflow_graph/algorithms/open_dataflow_subgraph_result.dtg.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h"
 
 namespace FlexFlow {
@@ -12,8 +13,12 @@ namespace FlexFlow {
 // OpenDataflowGraphView apply_match(UnlabelledGraphPattern const &pattern,
 //                                   UnlabelledDataflowGraphPatternMatch const &match);
 
-OpenDataflowGraphView subgraph_matched(UnlabelledGraphPattern const &pattern,
-                                       UnlabelledDataflowGraphPatternMatch const &match);
+OpenDataflowSubgraphResult subgraph_matched(OpenDataflowGraphView const &graph,
+                                            UnlabelledDataflowGraphPatternMatch const &match);
+bool pattern_matches_subgraph_under(UnlabelledGraphPattern const &pattern,
+                                    OpenDataflowGraphView const &subgraph,
+                                    UnlabelledDataflowGraphPatternMatch const &match,
+                                    MatchAdditionalCriterion const &additional_criterion);
 
 bool unlabelled_pattern_does_match(
     UnlabelledGraphPattern const &pattern,

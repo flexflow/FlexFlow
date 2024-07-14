@@ -5,6 +5,8 @@ ff_add_test_executable(
     src/test_cow_ptr.cc
     src/utils/graph/dataflow_graph/unordered_set_dataflow_graph.cc
     src/test_optional.cc
+    src/utils/containers/filter.cc
+    src/utils/containers/inplace_filter.cc
   PRIVATE_INCLUDE
     src/
   DEPS

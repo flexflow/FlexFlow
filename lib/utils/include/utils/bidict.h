@@ -11,6 +11,10 @@ template <typename L, typename R>
 struct bidict {
   bidict() : fwd_map{}, bwd_map{} {}
 
+  bidict(std::initializer_list<std::pair<L, R>> init)
+    : bidict(init.begin(), init.end())
+  { }
+
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {
     for (auto it = first; it != last; it++) {

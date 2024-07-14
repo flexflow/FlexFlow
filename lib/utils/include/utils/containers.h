@@ -21,6 +21,7 @@
 #include <unordered_set>
 #include <vector>
 #include "utils/hash/pair.h"
+#include "utils/containers/filter.h"
 
 namespace FlexFlow {
 
@@ -613,29 +614,6 @@ std::vector<Elem> sorted_by(C const &c, F const &f) {
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
-}
-
-template <typename C, typename F>
-C filter(C const &v, F const &f) {
-  C result(v);
-  inplace_filter(result, f);
-  return result;
-}
-
-template <typename T, typename F>
-std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f) {
-  std::unordered_set<T> result;
-  for (T const &t : v) {
-    if (f(t)) {
-      result.insert(t);
-    }
-  }
-  return result;
-}
-
-template <typename C, typename F, typename Elem>
-void inplace_filter(C &v, F const &f) {
-  std::remove_if(v.begin(), v.end(), [&](Elem const &e) { return !f(e); });
 }
 
 template <typename T>

@@ -262,15 +262,6 @@ std::vector<Elem> sorted_by(C const &c, F const &f);
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);
 
-template <typename C, typename F>
-C filter(C const &v, F const &f);
-
-template <typename T, typename F>
-std::unordered_set<T> filter(std::unordered_set<T> const &v, F const &f);
-
-template <typename C, typename F, typename Elem = typename C::value_type>
-void inplace_filter(C &v, F const &f);
-
 template <typename T>
 std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
                                                        std::size_t idx);

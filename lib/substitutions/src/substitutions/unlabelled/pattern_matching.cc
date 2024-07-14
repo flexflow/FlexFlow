@@ -115,7 +115,7 @@ struct ConcreteFromPattern {
   }
 };
 
-static bool pattern_matches_subgraph_under(UnlabelledGraphPattern const &pattern,
+bool pattern_matches_subgraph_under(UnlabelledGraphPattern const &pattern,
                                     OpenDataflowGraphView const &subgraph,
                                     UnlabelledDataflowGraphPatternMatch const &match,
                                     MatchAdditionalCriterion const &additional_criterion) {
@@ -163,7 +163,7 @@ bool unlabelled_pattern_does_match(
     UnlabelledDataflowGraphPatternMatch const &match,
     MatchAdditionalCriterion const &additional_criterion) {
 
-  OpenDataflowGraphView matched_subgraph = subgraph_matched(matched_subgraph, match).graph;
+  OpenDataflowGraphView matched_subgraph = subgraph_matched(graph, match).graph;
 
   assert (keys(match.node_assignment) == get_nodes(pattern));
   assert (keys(match.node_assignment.reversed()) == get_nodes(matched_subgraph));

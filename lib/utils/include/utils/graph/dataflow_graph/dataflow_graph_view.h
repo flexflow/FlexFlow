@@ -8,7 +8,7 @@
 
 namespace FlexFlow {
 
-struct DataflowGraphView : virtual DiGraphView {
+struct DataflowGraphView : virtual public DiGraphView {
   DataflowGraphView(DataflowGraphView const &) = default;
   DataflowGraphView &operator=(DataflowGraphView const &) = default;
 
