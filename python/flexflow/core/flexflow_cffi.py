@@ -1600,23 +1600,28 @@ class RequestManager(object):
 
     def set_max_requests_per_batch(self, max_requests):
         return ffc().flexflow_request_manager_set_max_requests_per_batch(
-            self.handle, max_requests)
-    
+            self.handle, max_requests
+        )
+
     def set_max_tokens_per_batch(self, max_tokens):
         return ffc().flexflow_request_manager_set_max_tokens_per_batch(
-            self.handle, max_tokens)
-    
+            self.handle, max_tokens
+        )
+
     def set_max_spec_tree_token_num(self, max_tokens):
         return ffc().flexflow_request_manager_set_max_spec_tree_token_num(
-            self.handle, max_tokens)
-    
+            self.handle, max_tokens
+        )
+
     def set_max_sequence_length(self, max_length):
         return ffc().flexflow_request_manager_set_max_sequence_length(
-            self.handle, max_length)
-    
+            self.handle, max_length
+        )
+
     def set_enable_peft_finetuning(self, enable_peft_finetuning):
         return ffc().flexflow_request_manager_set_enable_peft_finetuning(
-            self.handle, enable_peft_finetuning)
+            self.handle, enable_peft_finetuning
+        )
 
     def start_server(self, model):
         return ffc().flexflow_request_manager_start_background_server(
@@ -1736,29 +1741,30 @@ class GenerationResult(object):
         self.output_text = text
         self.output_tokens = tokens
 
-# -----------------------------------------------------------------------
-# LoraSGDOptimizerConfig
-# -----------------------------------------------------------------------
+
+# # -----------------------------------------------------------------------
+# # LoraSGDOptimizerConfig
+# # -----------------------------------------------------------------------
 
 
-class LoraSGDOptimizerConfig(object):
-    __slots__ = ["handle", "_handle"]
+# class LoraSGDOptimizerConfig(object):
+#     __slots__ = ["handle", "_handle"]
 
-    def __init__(self, lr=0.001, momentum=0.0, nesterov=False, weight_decay=0.0):
-        self.handle = ffc().flexflow_lora_sgd_optimizer_config_create(lr, momentum, nesterov, weight_decay)
-        self._handle = ffi.gc(self.handle, ffc().flexflow_lora_sgd_optimizer_config_destroy)
+#     def __init__(self, lr=0.001, momentum=0.0, nesterov=False, weight_decay=0.0):
+#         self.handle = ffc().flexflow_lora_sgd_optimizer_config_create(lr, momentum, nesterov, weight_decay)
+#         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_sgd_optimizer_config_destroy)
 
-# -----------------------------------------------------------------------
-# LoraAdamOptimizerConfig
-# -----------------------------------------------------------------------
+# # -----------------------------------------------------------------------
+# # LoraAdamOptimizerConfig
+# # -----------------------------------------------------------------------
 
 
-class LoraAdamOptimizerConfig(object):
-    __slots__ = ["handle", "_handle"]
+# class LoraAdamOptimizerConfig(object):
+#     __slots__ = ["handle", "_handle"]
 
-    def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
-        self.handle = ffc().flexflow_lora_adam_optimizer_config_create(alpha, beta1, beta2, weight_decay, epsilon)
-        self._handle = ffi.gc(self.handle, ffc().flexflow_lora_adam_optimizer_config_destroy)
+#     def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
+#         self.handle = ffc().flexflow_lora_adam_optimizer_config_create(alpha, beta1, beta2, weight_decay, epsilon)
+#         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_adam_optimizer_config_destroy)
 
 # -----------------------------------------------------------------------
 # LoraLinearConfig
@@ -1773,32 +1779,134 @@ class LoraLinearConfig(object):
         cache_folder: str,
         peft_model_id: str,
         trainable: bool = False,
-        optimizer_type: OptimizerType = OptimizerType.OPT_NONE,
-        optimizer_kwargs: dict = None
+        init_lora_weights: bool = False,
+        rank: int = 8,
+        lora_alpha: float = 8.0,
+        lora_dropout: float = 0.0,
+        target_modules: List[str] = [],
+        optimizer_type: OptimizerType = OptimizerType.OPTIMIZER_TYPE_NONE,
+        optimizer_kwargs: dict = {},
     ):
-        c_cache_folder = get_c_name(cache_folder)
+        c_cache_folder = get_c_name(os.path.expanduser(cache_folder))
         peft_model_id = get_c_name(peft_model_id)
-        optimizer_config = ffi.NULL
-        if optimizer_type == OptimizerType.OPT_SGD:
-            learning_rate = optimizer_kwargs.get('learning_rate', 0.001)
-            momentum = optimizer_kwargs.get('momentum', 0.0)
-            nesterov = optimizer_kwargs.get('nesterov', False)
-            weight_decay = optimizer_kwargs.get('weight_decay', 0.0)
-            optimizer_config = LoraSGDOptimizerConfig(learning_rate, momentum, nesterov, weight_decay).handle
-        elif optimizer_type == OptimizerType.OPT_ADAM:
-            alpha = optimizer_kwargs.get('alpha', 0.001)
-            beta1 = optimizer_kwargs.get('beta1', 0.9)
-            beta2 = optimizer_kwargs.get('beta2', 0.999)
-            weight_decay = optimizer_kwargs.get('weight_decay', 0.0)
-            epsilon = optimizer_kwargs.get('epsilon', 1e-8)
-            optimizer_config = LoraAdamOptimizerConfig(alpha, beta1, beta2, weight_decay, epsilon).handle
+        c_target_modules = [
+            get_c_name(target_module) for target_module in target_modules
+        ]
+        c_optimizer_type = enum_to_int(OptimizerType, optimizer_type)
+
+        if trainable:
+            if (
+                optimizer_type != OptimizerType.OPTIMIZER_TYPE_SGD
+                and optimizer_type != OptimizerType.OPTIMIZER_TYPE_ADAM
+            ):
+                raise ValueError(
+                    "Please specify optimizer to be used to train LoRA module. Supported optimizers: SGD and Adam"
+                )
+        else:
+            if init_lora_weights:
+                raise ValueError(
+                    "LORA weights initialization from scratch not supported in inference model"
+                )
+
+        if rank < 1 or lora_alpha <= 0 or lora_dropout > 1 or lora_dropout < 0.0:
+            raise ValueError(
+                "Rank must be >= 1, lora_alpha must be > 0, lora_dropout in interval: [0.0, 1.0]"
+            )
+
+        # SGD optional optimizer args
+        sgd_learning_rate = optimizer_kwargs.get("learning_rate", 0.001)
+        sgd_momentum = optimizer_kwargs.get("momentum", 0.0)
+        sgd_nesterov = optimizer_kwargs.get("nesterov", False)
+        sgd_weight_decay = optimizer_kwargs.get("weight_decay", 0.0)
+        # Adam optional optimizer args
+        adam_alpha = optimizer_kwargs.get("alpha", 0.001)
+        adam_beta1 = optimizer_kwargs.get("beta1", 0.9)
+        adam_beta2 = optimizer_kwargs.get("beta2", 0.999)
+        adam_weight_decay = optimizer_kwargs.get("weight_decay", 0.0)
+        adam_epsilon = optimizer_kwargs.get("epsilon", 1e-8)
+
         self.handle = ffc().flexflow_lora_linear_config_create(
             c_cache_folder,
             peft_model_id,
             trainable,
-            optimizer_config
+            init_lora_weights,
+            rank,
+            lora_alpha,
+            lora_dropout,
+            len(target_modules),
+            c_target_modules,
+            c_optimizer_type,
+            sgd_learning_rate,
+            sgd_momentum,
+            sgd_nesterov,
+            sgd_weight_decay,
+            adam_alpha,
+            adam_beta1,
+            adam_beta2,
+            adam_weight_decay,
+            adam_epsilon,
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_linear_config_destroy)
+
+    @property
+    def cache_folder(self):
+        c_cache_folder = ffc().flexflow_lora_linear_config_get_cache_folder(self.handle)
+        return ffi.string(c_cache_folder).decode("utf-8")
+
+    @property
+    def peft_model_id(self):
+        c_peft_model_id = ffc().flexflow_lora_linear_config_get_peft_model_id(
+            self.handle
+        )
+        return ffi.string(c_peft_model_id).decode("utf-8")
+
+    @property
+    def rank(self):
+        return ffc().flexflow_lora_linear_config_get_rank(self.handle)
+
+    @property
+    def lora_alpha(self):
+        return ffc().flexflow_lora_linear_config_get_lora_alpha(self.handle)
+
+    @property
+    def lora_dropout(self):
+        return ffc().flexflow_lora_linear_config_get_lora_dropout(self.handle)
+
+    @property
+    def trainable(self):
+        return ffc().flexflow_lora_linear_config_get_trainable(self.handle)
+
+    @property
+    def init_lora_weights(self):
+        return ffc().flexflow_lora_linear_config_get_init_lora_weights(self.handle)
+
+    @property
+    def target_modules(self):
+        num_target_modules = ffi.new("int *")
+        c_target_modules = ffc().flexflow_lora_linear_config_get_target_modules(
+            self.handle, num_target_modules
+        )
+        target_modules = []
+        for i in range(num_target_modules[0]):
+            target_modules.append(ffi.string(c_target_modules[i]).decode("utf-8"))
+        return target_modules
+
+    @lora_alpha.setter
+    def lora_alpha(self, value: float):
+        ffc().flexflow_lora_linear_config_set_lora_alpha(self.handle, value)
+
+    @lora_dropout.setter
+    def lora_dropout(self, value: float):
+        ffc().flexflow_lora_linear_config_set_lora_dropout(self.handle, value)
+
+    @trainable.setter
+    def trainable(self, value: bool):
+        ffc().flexflow_lora_linear_config_set_trainable(self.handle, value)
+
+    @init_lora_weights.setter
+    def init_lora_weights(self, value: bool):
+        ffc().flexflow_lora_linear_config_set_init_lora_weights(self.handle, value)
+
 
 # -----------------------------------------------------------------------
 # PEFTModelID
@@ -1823,6 +1931,7 @@ class PEFTModelID(object):
             PEFTModelID.__no_id_h = ffc().flexflow_peft_model_id_no_id()
         return PEFTModelID.__no_id_h
 
+
 # -----------------------------------------------------------------------
 # Request
 # -----------------------------------------------------------------------
@@ -1836,14 +1945,14 @@ class Request:
         req_type: RequestType,
         prompt: str = None,
         max_sequence_length: int = 128,
-        peft_model_id: PEFTModelID = None,
+        lora_config: LoraLinearConfig = None,
         dataset_filepath: str = None,
         max_training_steps: int = 1,
     ):
         self.req_type = req_type
         self.prompt = prompt
         self.max_sequence_length = max_sequence_length
-        self.peft_model_id = peft_model_id
+        self.lora_config = lora_config
         self.dataset_filepath = dataset_filepath
         self.max_training_steps = max_training_steps
 
@@ -2603,9 +2712,10 @@ class FFModel(object):
             c_name,
         )
         self.add_layer(OpType.RESIDUAL_LAYERNORM, name)
-        return Tensor(
-            handles_array[0], owner_op_type=OpType.RESIDUAL_LAYERNORM
-        ), Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYERNORM)
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_LAYERNORM),
+            Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYERNORM),
+        )
 
     def add_bias_residual_layer_norm(
         self,
@@ -2656,9 +2766,10 @@ class FFModel(object):
             c_name,
         )
         self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)
-        return Tensor(
-            handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM
-        ), Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM),
+            Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM),
+        )
 
     def sigmoid_silu_multi(self, input1, input2, name=None):
         c_name = get_c_name(name)
@@ -3970,8 +4081,9 @@ class FFModel(object):
             c_name,
         )
         self.add_layer(OpType.RESIDUAL_RMS_NORM, name)
-        return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM), Tensor(
-            handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM),
+            Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM),
         )
 
     def arg_top_k(self, input, k, sorted, speculative_decoding, name=None):
@@ -4501,9 +4613,13 @@ class FFModel(object):
             request.max_sequence_length for request in requests_list
         ]
         peft_model_ids = [
-            (request.peft_model_id 
-             if request.peft_model_id is not None else PEFTModelID.no_id_handle()) 
-             for request in requests_list]
+            (
+                request.peft_model_id
+                if request.peft_model_id is not None
+                else PEFTModelID.no_id_handle()
+            )
+            for request in requests_list
+        ]
         dataset_filepaths = [
             get_c_name(request.dataset_filepath) for request in requests_list
         ]

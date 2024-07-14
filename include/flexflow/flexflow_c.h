@@ -55,8 +55,9 @@ FF_NEW_OPAQUE_TYPE(flexflow_inference_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_request_manager_t);
 FF_NEW_OPAQUE_TYPE(flexflow_file_data_loader_t);
 FF_NEW_OPAQUE_TYPE(flexflow_generation_result_t);
-FF_NEW_OPAQUE_TYPE(flexflow_lora_sgd_optimizer_config_t);
-FF_NEW_OPAQUE_TYPE(flexflow_lora_adam_optimizer_config_t);
+// FF_NEW_OPAQUE_TYPE(flexflow_lora_optimizer_config_t);
+// FF_NEW_OPAQUE_TYPE(flexflow_lora_sgd_optimizer_config_t);
+// FF_NEW_OPAQUE_TYPE(flexflow_lora_adam_optimizer_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_lora_linear_config_t);
 FF_NEW_OPAQUE_TYPE(flexflow_peft_model_id_t);
 
@@ -1052,29 +1053,30 @@ void flexflow_file_data_loader_destroy(flexflow_file_data_loader_t handle_);
 void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
                                             flexflow_model_t model_handle_);
 
-// -----------------------------------------------------------------------
-// LoraSGDOptimizerConfig
-// -----------------------------------------------------------------------
+// // -----------------------------------------------------------------------
+// // LoraSGDOptimizerConfig
+// // -----------------------------------------------------------------------
 
-flexflow_lora_sgd_optimizer_config_t flexflow_lora_sgd_optimizer_config_create(
-    double lr, double momentum, bool nesterov, bool weight_decay);
+// flexflow_lora_sgd_optimizer_config_t
+// flexflow_lora_sgd_optimizer_config_create(
+//     double lr, double momentum, bool nesterov, bool weight_decay);
 
-void flexflow_lora_sgd_optimizer_config_destroy(
-    flexflow_lora_sgd_optimizer_config_t handle_);
+// void flexflow_lora_sgd_optimizer_config_destroy(
+//     flexflow_lora_sgd_optimizer_config_t handle_);
 
-// -----------------------------------------------------------------------
-// LoraAdamOptimizerConfig
-// -----------------------------------------------------------------------
+// // -----------------------------------------------------------------------
+// // LoraAdamOptimizerConfig
+// // -----------------------------------------------------------------------
 
-flexflow_lora_adam_optimizer_config_t
-    flexflow_lora_adam_optimizer_config_create(double alpha,
-                                               double beta1,
-                                               double beta2,
-                                               double weight_decay,
-                                               double epsilon);
+// flexflow_lora_adam_optimizer_config_t
+//     flexflow_lora_adam_optimizer_config_create(double alpha,
+//                                                double beta1,
+//                                                double beta2,
+//                                                double weight_decay,
+//                                                double epsilon);
 
-void flexflow_lora_adam_optimizer_config_destroy(
-    flexflow_lora_adam_optimizer_config_t handle_);
+// void flexflow_lora_adam_optimizer_config_destroy(
+//     flexflow_lora_adam_optimizer_config_t handle_);
 
 // -----------------------------------------------------------------------
 // LoraLinearConfig
@@ -1082,9 +1084,61 @@ void flexflow_lora_adam_optimizer_config_destroy(
 
 flexflow_lora_linear_config_t
     flexflow_lora_linear_config_create(char const *cache_folder_,
-                                       char const *peft_model_id_);
+                                       char const *peft_model_id_,
+                                       bool trainable,
+                                       bool init_lora_weights,
+                                       int rank,
+                                       float lora_alpha,
+                                       float lora_dropout,
+                                       int num_target_modules,
+                                       char const **target_modules_,
+                                       enum OptimizerType optimizer_type,
+                                       float sgd_learning_rate,
+                                       float sgd_momentum,
+                                       bool sgd_nesterov,
+                                       float sgd_weight_decay,
+                                       float adam_alpha,
+                                       float adam_beta1,
+                                       float adam_beta2,
+                                       float adam_weight_decay,
+                                       float adam_epsilon);
 
 void flexflow_lora_linear_config_destroy(flexflow_lora_linear_config_t handle_);
+
+char const *flexflow_lora_linear_config_get_cache_folder(
+    flexflow_lora_linear_config_t handle_);
+
+char const *flexflow_lora_linear_config_get_peft_model_id(
+    flexflow_lora_linear_config_t handle_);
+
+int flexflow_lora_linear_config_get_rank(flexflow_lora_linear_config_t handle_);
+
+float flexflow_lora_linear_config_get_lora_alpha(
+    flexflow_lora_linear_config_t handle_);
+
+float flexflow_lora_linear_config_get_lora_dropout(
+    flexflow_lora_linear_config_t handle_);
+
+bool flexflow_lora_linear_config_get_trainable(
+    flexflow_lora_linear_config_t handle_);
+
+bool flexflow_lora_linear_config_get_init_lora_weights(
+    flexflow_lora_linear_config_t handle_);
+
+char const **flexflow_lora_linear_config_get_target_modules(
+    flexflow_lora_linear_config_t handle_, int *num_target_modules);
+
+void flexflow_lora_linear_config_set_lora_alpha(
+    flexflow_lora_linear_config_t handle_, float value);
+
+void flexflow_lora_linear_config_set_lora_dropout(
+    flexflow_lora_linear_config_t handle_, float value);
+
+void flexflow_lora_linear_config_set_trainable(
+    flexflow_lora_linear_config_t handle_, bool value);
+
+void flexflow_lora_linear_config_set_init_lora_weights(
+    flexflow_lora_linear_config_t handle_, bool value);
 
 // -----------------------------------------------------------------------
 // PEFTModelID

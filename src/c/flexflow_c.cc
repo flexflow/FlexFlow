@@ -67,10 +67,11 @@ public:
   FF_NEW_OPAQUE_WRAPPER(flexflow_request_manager_t, RequestManager *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_file_data_loader_t, FileDataLoader *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_generation_result_t, GenerationResult *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_lora_sgd_optimizer_config_t,
-                        LoraSGDOptimizerConfig *);
-  FF_NEW_OPAQUE_WRAPPER(flexflow_lora_adam_optimizer_config_t,
-                        LoraAdamOptimizerConfig *);
+  // FF_NEW_OPAQUE_WRAPPER(flexflow_lora_optimizer_config_t, LoraOptimizerConfig
+  // *); FF_NEW_OPAQUE_WRAPPER(flexflow_lora_sgd_optimizer_config_t,
+  //                       LoraSGDOptimizerConfig *);
+  // FF_NEW_OPAQUE_WRAPPER(flexflow_lora_adam_optimizer_config_t,
+  //                       LoraAdamOptimizerConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_lora_linear_config_t, LoraLinearConfig *);
   FF_NEW_OPAQUE_WRAPPER(flexflow_peft_model_id_t, PEFTModelID *);
 };
@@ -2808,47 +2809,49 @@ void flexflow_file_data_loader_load_weights(flexflow_file_data_loader_t handle_,
   handle->load_weights(model);
 }
 
-// -----------------------------------------------------------------------
-// LoraSGDOptimizerConfig
-// -----------------------------------------------------------------------
+// // -----------------------------------------------------------------------
+// // LoraSGDOptimizerConfig
+// // -----------------------------------------------------------------------
 
-flexflow_lora_sgd_optimizer_config_t flexflow_lora_sgd_optimizer_config_create(
-    double lr, double momentum, bool nesterov, bool weight_decay) {
-  LoraSGDOptimizerConfig *handle =
-      new LoraSGDOptimizerConfig(lr, momentum, nesterov, weight_decay);
-  DEBUG_PRINT("[LoraSGDOptimizerConfig] new %p", handle);
-  return FFCObjectWrapper::wrap(handle);
-}
+// flexflow_lora_sgd_optimizer_config_t
+// flexflow_lora_sgd_optimizer_config_create(
+//     double lr, double momentum, bool nesterov, bool weight_decay) {
+//   LoraSGDOptimizerConfig *handle =
+//       new LoraSGDOptimizerConfig(lr, momentum, nesterov, weight_decay);
+//   DEBUG_PRINT("[LoraSGDOptimizerConfig] new %p", handle);
+//   return FFCObjectWrapper::wrap(handle);
+// }
 
-void flexflow_lora_sgd_optimizer_config_destroy(
-    flexflow_lora_sgd_optimizer_config_t handle_) {
-  LoraSGDOptimizerConfig *handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[LoraSGDOptimizerConfig] delete %p", handle);
-  delete handle;
-}
+// void flexflow_lora_sgd_optimizer_config_destroy(
+//     flexflow_lora_sgd_optimizer_config_t handle_) {
+//   LoraSGDOptimizerConfig *handle = FFCObjectWrapper::unwrap(handle_);
+//   DEBUG_PRINT("[LoraSGDOptimizerConfig] delete %p", handle);
+//   delete handle;
+// }
 
-// -----------------------------------------------------------------------
-// LoraAdamOptimizerConfig
-// -----------------------------------------------------------------------
+// // -----------------------------------------------------------------------
+// // LoraAdamOptimizerConfig
+// // -----------------------------------------------------------------------
 
-flexflow_lora_adam_optimizer_config_t
-    flexflow_lora_adam_optimizer_config_create(double alpha,
-                                               double beta1,
-                                               double beta2,
-                                               double weight_decay,
-                                               double epsilon) {
-  LoraAdamOptimizerConfig *handle =
-      new LoraAdamOptimizerConfig(alpha, beta1, beta2, weight_decay, epsilon);
-  DEBUG_PRINT("[LoraAdamOptimizerConfig] new %p", handle);
-  return FFCObjectWrapper::wrap(handle);
-}
+// flexflow_lora_adam_optimizer_config_t
+//     flexflow_lora_adam_optimizer_config_create(double alpha,
+//                                                double beta1,
+//                                                double beta2,
+//                                                double weight_decay,
+//                                                double epsilon) {
+//   LoraAdamOptimizerConfig *handle =
+//       new LoraAdamOptimizerConfig(alpha, beta1, beta2, weight_decay,
+//       epsilon);
+//   DEBUG_PRINT("[LoraAdamOptimizerConfig] new %p", handle);
+//   return FFCObjectWrapper::wrap(handle);
+// }
 
-void flexflow_lora_adam_optimizer_config_destroy(
-    flexflow_lora_adam_optimizer_config_t handle_) {
-  LoraAdamOptimizerConfig *handle = FFCObjectWrapper::unwrap(handle_);
-  DEBUG_PRINT("[LoraAdamOptimizerConfig] delete %p", handle);
-  delete handle;
-}
+// void flexflow_lora_adam_optimizer_config_destroy(
+//     flexflow_lora_adam_optimizer_config_t handle_) {
+//   LoraAdamOptimizerConfig *handle = FFCObjectWrapper::unwrap(handle_);
+//   DEBUG_PRINT("[LoraAdamOptimizerConfig] delete %p", handle);
+//   delete handle;
+// }
 
 // -----------------------------------------------------------------------
 // LoraLinearConfig
@@ -2856,14 +2859,52 @@ void flexflow_lora_adam_optimizer_config_destroy(
 
 flexflow_lora_linear_config_t
     flexflow_lora_linear_config_create(char const *cache_folder_,
-                                       char const *peft_model_id_) {
+                                       char const *peft_model_id_,
+                                       bool trainable,
+                                       bool init_lora_weights,
+                                       int rank,
+                                       float lora_alpha,
+                                       float lora_dropout,
+                                       int num_target_modules,
+                                       char const **target_modules_,
+                                       enum OptimizerType optimizer_type,
+                                       float sgd_learning_rate,
+                                       float sgd_momentum,
+                                       bool sgd_nesterov,
+                                       float sgd_weight_decay,
+                                       float adam_alpha,
+                                       float adam_beta1,
+                                       float adam_beta2,
+                                       float adam_weight_decay,
+                                       float adam_epsilon) {
   assert(cache_folder_ != nullptr &&
          "Cannot convert nullptr char * to std::string");
   assert(peft_model_id_ != nullptr &&
          "Cannot convert nullptr char * to std::string");
   std::string const cache_folder(cache_folder_);
   std::string const peft_model_id(peft_model_id_);
-  LoraLinearConfig *handle = new LoraLinearConfig(cache_folder, peft_model_id);
+  LoraOptimizerConfig *optim_config = nullptr;
+  if (optimizer_type == OptimizerType::OPTIMIZER_TYPE_SGD) {
+    optim_config = new LoraSGDOptimizerConfig(
+        sgd_learning_rate, sgd_momentum, sgd_nesterov, sgd_weight_decay);
+  } else if (optimizer_type == OptimizerType::OPTIMIZER_TYPE_ADAM) {
+    optim_config = new LoraAdamOptimizerConfig(
+        adam_alpha, adam_beta1, adam_beta2, adam_weight_decay, adam_epsilon);
+  }
+  std::vector<std::string> target_modules;
+  for (int i = 0; i < num_target_modules; i++) {
+    std::string const target_module(target_modules_[i]);
+    target_modules.push_back(target_module);
+  }
+  LoraLinearConfig *handle = new LoraLinearConfig(cache_folder,
+                                                  peft_model_id,
+                                                  trainable,
+                                                  optim_config,
+                                                  init_lora_weights,
+                                                  rank,
+                                                  lora_alpha,
+                                                  lora_dropout,
+                                                  target_modules);
   DEBUG_PRINT("[LoraLinearConfig] new %p", handle);
   return FFCObjectWrapper::wrap(handle);
 }
@@ -2873,6 +2914,84 @@ void flexflow_lora_linear_config_destroy(
   LoraLinearConfig *peft_config = FFCObjectWrapper::unwrap(handle_);
   DEBUG_PRINT("[LoraLinearConfig] delete %p", peft_config);
   delete peft_config;
+}
+
+char const *flexflow_lora_linear_config_get_cache_folder(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->cache_folder.c_str();
+}
+
+char const *flexflow_lora_linear_config_get_peft_model_id(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->peft_model_id.c_str();
+}
+
+int flexflow_lora_linear_config_get_rank(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->rank;
+}
+
+float flexflow_lora_linear_config_get_lora_alpha(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->lora_alpha;
+}
+
+float flexflow_lora_linear_config_get_lora_dropout(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->lora_dropout;
+}
+
+bool flexflow_lora_linear_config_get_trainable(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->trainable;
+}
+
+bool flexflow_lora_linear_config_get_init_lora_weights(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->init_lora_weights;
+}
+
+char const **flexflow_lora_linear_config_get_target_modules(
+    flexflow_lora_linear_config_t handle_, int *num_target_modules) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  *num_target_modules = handle->target_modules.size();
+  static std::vector<char const *> target_modules_;
+  target_modules_.clear();
+  for (auto const &target_module : handle->target_modules) {
+    target_modules_.push_back(target_module.c_str());
+  }
+  return target_modules_.data();
+}
+
+void flexflow_lora_linear_config_set_lora_alpha(
+    flexflow_lora_linear_config_t handle_, float value) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->lora_alpha = value;
+}
+
+void flexflow_lora_linear_config_set_lora_dropout(
+    flexflow_lora_linear_config_t handle_, float value) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->lora_dropout = value;
+}
+
+void flexflow_lora_linear_config_set_trainable(
+    flexflow_lora_linear_config_t handle_, bool value) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->trainable = value;
+}
+
+void flexflow_lora_linear_config_set_init_lora_weights(
+    flexflow_lora_linear_config_t handle_, bool value) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->init_lora_weights = value;
 }
 
 // -----------------------------------------------------------------------

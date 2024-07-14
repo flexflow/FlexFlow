@@ -64,9 +64,8 @@ def get_configs():
         model_configs = {
             # required parameters
             "base_model": "JackFram/llama-160m",
-            "peft_model_ids": [
-                "goliaro/llama-160m-lora",
-            ],
+            "inference_peft_model_id": "goliaro/llama-160m-lora",
+            "finetuning_peft_model_id": "goliaro/llama-160m-lora",
             # optional parameters
             "cache_path": "",
             "refresh_cache": False,
@@ -100,8 +99,19 @@ def main():
         refresh_cache=configs.refresh_cache,
         output_file=configs.output_file,
     )
-    for peft_model_id in configs.peft_model_ids:
-        llm.add_peft(peft_model_id)
+    # Add inference and/or finetuning lora
+    lora_inference_config = ff.LoraLinearConfig(
+        llm.cache_path, configs.inference_peft_model_id
+    )
+    lora_finetuning_config = ff.LoraLinearConfig(
+        llm.cache_path,
+        configs.finetuning_peft_model_id,
+        trainable=True,
+        init_lora_weights=True,
+        optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
+    )
+    llm.add_peft(lora_inference_config)
+    llm.add_peft(lora_finetuning_config)
 
     # Compile the LLM for inference and load the weights into memory
     generation_config = ff.GenerationConfig(
@@ -109,7 +119,7 @@ def main():
     )
     llm.compile(
         generation_config,
-        enable_peft_finetuning = (len(configs.finetuning_dataset) > 0),
+        enable_peft_finetuning=(len(configs.finetuning_dataset) > 0),
         max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
@@ -134,7 +144,7 @@ def main():
             finetuning_request = ff.Request(
                 ff.RequestType.REQ_FINETUNING,
                 max_sequence_length=128,
-                peft_model_id=llm.get_ff_peft_id(peft_model_id),
+                peft_model_id=llm.get_ff_peft_id(lora_finetuning_config),
                 dataset_filepath=configs.finetuning_dataset,
             )
             requests.append(finetuning_request)
