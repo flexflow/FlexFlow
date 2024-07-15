@@ -1742,38 +1742,12 @@ class GenerationResult(object):
         self.output_tokens = tokens
 
 
-# # -----------------------------------------------------------------------
-# # LoraSGDOptimizerConfig
-# # -----------------------------------------------------------------------
-
-
-# class LoraSGDOptimizerConfig(object):
-#     __slots__ = ["handle", "_handle"]
-
-#     def __init__(self, lr=0.001, momentum=0.0, nesterov=False, weight_decay=0.0):
-#         self.handle = ffc().flexflow_lora_sgd_optimizer_config_create(lr, momentum, nesterov, weight_decay)
-#         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_sgd_optimizer_config_destroy)
-
-# # -----------------------------------------------------------------------
-# # LoraAdamOptimizerConfig
-# # -----------------------------------------------------------------------
-
-
-# class LoraAdamOptimizerConfig(object):
-#     __slots__ = ["handle", "_handle"]
-
-#     def __init__(self, alpha=0.001, beta1=0.9, beta2=0.999, weight_decay=0.0, epsilon=1e-8):
-#         self.handle = ffc().flexflow_lora_adam_optimizer_config_create(alpha, beta1, beta2, weight_decay, epsilon)
-#         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_adam_optimizer_config_destroy)
-
 # -----------------------------------------------------------------------
 # LoraLinearConfig
 # -----------------------------------------------------------------------
 
 
 class LoraLinearConfig(object):
-    __slots__ = ["handle", "_handle"]
-
     def __init__(
         self,
         cache_folder: str,
@@ -1787,12 +1761,17 @@ class LoraLinearConfig(object):
         optimizer_type: OptimizerType = OptimizerType.OPTIMIZER_TYPE_NONE,
         optimizer_kwargs: dict = {},
     ):
-        c_cache_folder = get_c_name(os.path.expanduser(cache_folder))
-        peft_model_id = get_c_name(peft_model_id)
-        c_target_modules = [
-            get_c_name(target_module) for target_module in target_modules
-        ]
-        c_optimizer_type = enum_to_int(OptimizerType, optimizer_type)
+        self.ff_initialized = False
+        self._cache_folder = cache_folder
+        self._peft_model_id = peft_model_id
+        self._trainable = trainable
+        self._init_lora_weights = init_lora_weights
+        self._rank = rank
+        self._lora_alpha = lora_alpha
+        self._lora_dropout = lora_dropout
+        self._target_modules = target_modules
+        self._optimizer_type = optimizer_type
+        self._optimizer_kwargs = optimizer_kwargs
 
         if trainable:
             if (
@@ -1803,7 +1782,9 @@ class LoraLinearConfig(object):
                     "Please specify optimizer to be used to train LoRA module. Supported optimizers: SGD and Adam"
                 )
             if init_lora_weights and len(target_modules) == 0:
-                raise ValueError("Please specify target modules to be used to train LoRA module")
+                raise ValueError(
+                    "Please specify target modules to be used to train LoRA module"
+                )
         else:
             if init_lora_weights:
                 raise ValueError(
@@ -1815,27 +1796,33 @@ class LoraLinearConfig(object):
                 "Rank must be >= 1, lora_alpha must be > 0, lora_dropout in interval: [0.0, 1.0]"
             )
 
+    def ff_compile(self):
+        c_cache_folder = get_c_name(os.path.expanduser(self.cache_folder))
+        peft_model_id = get_c_name(self.peft_model_id)
+        c_target_modules = [
+            get_c_name(target_module) for target_module in self.target_modules
+        ]
+        c_optimizer_type = enum_to_int(OptimizerType, self.optimizer_type)
         # SGD optional optimizer args
-        sgd_learning_rate = optimizer_kwargs.get("learning_rate", 0.001)
-        sgd_momentum = optimizer_kwargs.get("momentum", 0.0)
-        sgd_nesterov = optimizer_kwargs.get("nesterov", False)
-        sgd_weight_decay = optimizer_kwargs.get("weight_decay", 0.0)
+        sgd_learning_rate = self.optimizer_kwargs.get("learning_rate", 0.001)
+        sgd_momentum = self.optimizer_kwargs.get("momentum", 0.0)
+        sgd_nesterov = self.optimizer_kwargs.get("nesterov", False)
+        sgd_weight_decay = self.optimizer_kwargs.get("weight_decay", 0.0)
         # Adam optional optimizer args
-        adam_alpha = optimizer_kwargs.get("alpha", 0.001)
-        adam_beta1 = optimizer_kwargs.get("beta1", 0.9)
-        adam_beta2 = optimizer_kwargs.get("beta2", 0.999)
-        adam_weight_decay = optimizer_kwargs.get("weight_decay", 0.0)
-        adam_epsilon = optimizer_kwargs.get("epsilon", 1e-8)
-
+        adam_alpha = self.optimizer_kwargs.get("alpha", 0.001)
+        adam_beta1 = self.optimizer_kwargs.get("beta1", 0.9)
+        adam_beta2 = self.optimizer_kwargs.get("beta2", 0.999)
+        adam_weight_decay = self.optimizer_kwargs.get("weight_decay", 0.0)
+        adam_epsilon = self.optimizer_kwargs.get("epsilon", 1e-8)
         self.handle = ffc().flexflow_lora_linear_config_create(
             c_cache_folder,
             peft_model_id,
-            trainable,
-            init_lora_weights,
-            rank,
-            lora_alpha,
-            lora_dropout,
-            len(target_modules),
+            self.trainable,
+            self.init_lora_weights,
+            self.rank,
+            self.lora_alpha,
+            self.lora_dropout,
+            len(self.target_modules),
             c_target_modules,
             c_optimizer_type,
             sgd_learning_rate,
@@ -1849,65 +1836,118 @@ class LoraLinearConfig(object):
             adam_epsilon,
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_linear_config_destroy)
+        self.ff_initialized = True
 
     @property
     def cache_folder(self):
-        c_cache_folder = ffc().flexflow_lora_linear_config_get_cache_folder(self.handle)
-        return ffi.string(c_cache_folder).decode("utf-8")
+        if self.ff_initialized:
+            c_cache_folder = ffc().flexflow_lora_linear_config_get_cache_folder(
+                self.handle
+            )
+            return ffi.string(c_cache_folder).decode("utf-8")
+        else:
+            return self._cache_folder
 
     @property
     def peft_model_id(self):
-        c_peft_model_id = ffc().flexflow_lora_linear_config_get_peft_model_id(
-            self.handle
-        )
-        return ffi.string(c_peft_model_id).decode("utf-8")
+        if self.ff_initialized:
+            c_peft_model_id = ffc().flexflow_lora_linear_config_get_peft_model_id(
+                self.handle
+            )
+            return ffi.string(c_peft_model_id).decode("utf-8")
+        else:
+            return self._peft_model_id
 
     @property
     def rank(self):
-        return ffc().flexflow_lora_linear_config_get_rank(self.handle)
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_rank(self.handle)
+        else:
+            return self._rank
 
     @property
     def lora_alpha(self):
-        return ffc().flexflow_lora_linear_config_get_lora_alpha(self.handle)
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_lora_alpha(self.handle)
+        else:
+            return self._lora_alpha
 
     @property
     def lora_dropout(self):
-        return ffc().flexflow_lora_linear_config_get_lora_dropout(self.handle)
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_lora_dropout(self.handle)
+        else:
+            return self._lora_dropout
 
     @property
     def trainable(self):
-        return ffc().flexflow_lora_linear_config_get_trainable(self.handle)
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_trainable(self.handle)
+        else:
+            return self._trainable
 
     @property
     def init_lora_weights(self):
-        return ffc().flexflow_lora_linear_config_get_init_lora_weights(self.handle)
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_init_lora_weights(self.handle)
+        else:
+            return self._init_lora_weights
 
     @property
     def target_modules(self):
-        num_target_modules = ffi.new("int *")
-        c_target_modules = ffc().flexflow_lora_linear_config_get_target_modules(
-            self.handle, num_target_modules
-        )
-        target_modules = []
-        for i in range(num_target_modules[0]):
-            target_modules.append(ffi.string(c_target_modules[i]).decode("utf-8"))
-        return target_modules
+        if self.ff_initialized:
+            num_target_modules = ffi.new("int *")
+            c_target_modules = ffc().flexflow_lora_linear_config_get_target_modules(
+                self.handle, num_target_modules
+            )
+            target_modules = []
+            for i in range(num_target_modules[0]):
+                target_modules.append(ffi.string(c_target_modules[i]).decode("utf-8"))
+            return target_modules
+        else:
+            return self._target_modules
+
+    @cache_folder.setter
+    def cache_folder(self, value: str):
+        self._cache_folder = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_cache_folder(self.handle, value)
+
+    @peft_model_id.setter
+    def peft_model_id(self, value: str):
+        self._peft_model_id = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_peft_model_id(self.handle, value)
+
+    @rank.setter
+    def rank(self, value: int):
+        self._rank = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_rank(self.handle, value)
 
     @lora_alpha.setter
     def lora_alpha(self, value: float):
-        ffc().flexflow_lora_linear_config_set_lora_alpha(self.handle, value)
+        self._lora_alpha = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_lora_alpha(self.handle, value)
 
     @lora_dropout.setter
     def lora_dropout(self, value: float):
-        ffc().flexflow_lora_linear_config_set_lora_dropout(self.handle, value)
+        self._lora_dropout = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_lora_dropout(self.handle, value)
 
     @trainable.setter
     def trainable(self, value: bool):
-        ffc().flexflow_lora_linear_config_set_trainable(self.handle, value)
+        self._trainable = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_trainable(self.handle, value)
 
     @init_lora_weights.setter
     def init_lora_weights(self, value: bool):
-        ffc().flexflow_lora_linear_config_set_init_lora_weights(self.handle, value)
+        self._init_lora_weights = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_init_lora_weights(self.handle, value)
 
 
 # -----------------------------------------------------------------------
@@ -4182,9 +4222,7 @@ class FFModel(object):
         return Tensor(handle, owner_op_type=OpType.ARGMAX)
 
     def add_lora_layer(self, peft_config):
-        handle = ffc().flexflow_model_add_lora_layer(self.handle, peft_config.handle)
-        return handle
-        # self.add_layer(OpType.LORA, name)
+        return ffc().flexflow_model_add_lora_layer(self.handle, peft_config.handle)
 
     def reset_metrics(self):
         """Reset performance metrics.

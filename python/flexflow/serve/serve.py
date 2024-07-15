@@ -443,6 +443,7 @@ class LLM:
 
         # Add PEFT layer if registered
         for ff_peft_config, peft_dict in self.pefts.items():
+            ff_peft_config.ff_compile()
             ff_peft_model_id = self.model.ffmodel.add_lora_layer(ff_peft_config)
             peft_dict["ff_peft_model_id"] = ff_peft_model_id
 
