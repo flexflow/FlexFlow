@@ -1770,8 +1770,8 @@ class LoraLinearConfig(object):
         self._lora_alpha = lora_alpha
         self._lora_dropout = lora_dropout
         self._target_modules = target_modules
-        self._optimizer_type = optimizer_type
-        self._optimizer_kwargs = optimizer_kwargs
+        self.optimizer_type = optimizer_type
+        self.optimizer_kwargs = optimizer_kwargs
 
         if trainable:
             if (
