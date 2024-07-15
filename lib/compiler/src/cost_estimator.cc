@@ -38,6 +38,21 @@ struct TimeComparison {
   }
 };
 
+bool predecessors_have_been_processed(std::unordered_set<Node> const &predecessors, std::unordered_set<TimedNode> processed) {
+  std::unordered_set<Node> simple_processed = transform(processed, [](TimedNode const &tn){return tn.node;});
+
+  return all_of(predecessors,
+                  [&simple_processed](Node p) {
+                    return simple_processed.find(p) !=
+                            simple_processed.end();
+                  });
+}
+
+
+std::vector<device_id_t> get_devices(Node const& node, MachineMapping const& device_mapping) {
+  return device_mapping.machine_views.at(node).device_ids();
+}
+
 float parallel_estimate_cost(
     SubParallelComputationGraphView const &g,
     CostEstimator const &estimator,
@@ -57,57 +72,53 @@ float parallel_estimate_cost(
 
   // Filling the frontier
   for (auto const &[edge, _] : frontier_machine_views) {
-    auto node = get_dst_node(edge);
+    Node node = get_dst_node(edge);
     frontier.insert(node);
   }
 
-  while (!frontier.empty() || !processing.empty()) {
-    // Processing new nodes
-    std::unordered_set<Node> copy(frontier);
-    for (Node const &node : copy) {
-      auto views = device_mapping.machine_views.at(node);
-      std::vector<device_id_t> devices = views.device_ids();
-      if (std::all_of(
-              devices.begin(), devices.end(), [&occupied](device_id_t d) {
-                return occupied[d] == false;
-              })) {
+  auto start_node_processing = [&](Node const &node, std::vector<device_id_t> const &devices) {
         float cost = node_estimate_cost(node, g, estimator, device_mapping);
         processing.push({node, current_time + cost});
         for (device_id_t d : devices) {
           occupied[d] = true;
         }
         frontier.erase(node);
-      }
+      };
+
+  auto finish_node_processing = [&](TimedNode const &finished) {
+    std::vector<device_id_t> devices = get_devices(finished.node, device_mapping);
+    for (device_id_t d : devices) { // free devices
+      occupied[d] = false;
     }
+    processed.insert(finished);
+    current_time = finished.endtime;
+  };
+  
+  while (!frontier.empty() || !processing.empty()) {
+    // Processing new nodes
+    std::unordered_set<Node> frontier_copy(frontier);
+    for (Node const &node : frontier_copy) {
+      std::vector<device_id_t> devices = get_devices(node, device_mapping);
+      if (all_of(
+              devices, [&occupied](device_id_t d) {
+                return occupied[d] == false;
+              })) {
+      start_node_processing(node, devices);}
+    }
+
 
     // Finish processing all nodes
     while (!processing.empty()) {
       TimedNode finished = processing.top();
       processing.pop();
-      std::vector<device_id_t> devices =
-          device_mapping.machine_views.at(finished.node).device_ids();
-      for (device_id_t d : devices) { // free devices
-        occupied[d] = false;
-      }
-      processed.insert(finished);
-      current_time = finished.endtime;
+      finish_node_processing(finished);
 
       // Adding candidates to the frontier
       for (Node const &successor : get_successors(g, finished.node)) {
+      std::unordered_set<Node> predecessors = get_predecessors(g, successor);
 
-        std::unordered_set<Node> predecessors = get_predecessors(g, successor);
+      if (predecessors_have_been_processed(predecessors, processed)) {
 
-        std::unordered_set<Node> simple_processed;
-        for (auto const &tn : processed) {
-          simple_processed.insert(tn.node);
-        }
-
-        if (std::all_of(predecessors.begin(),
-                        predecessors.end(),
-                        [&simple_processed](Node p) {
-                          return simple_processed.find(p) !=
-                                 simple_processed.end();
-                        })) {
           frontier.insert(successor);
         }
       }

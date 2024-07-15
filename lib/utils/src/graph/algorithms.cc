@@ -379,15 +379,7 @@ std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
 std::unordered_map<Node, std::unordered_set<Node>>
     get_successors(DiGraphView const &g,
                    std::unordered_set<Node> const &nodes) {
-
-  std::unordered_map<Node, std::unordered_set<Node>> successors;
-  for (Node const &n : nodes) {
-    successors[n];
-  }
-  for (DirectedEdge const &e : get_outgoing_edges(g, nodes)) {
-    successors.at(e.src).insert(e.dst);
-  }
-  return successors;
+  return get_predecessors(flipped(g), nodes);
 }
 
 std::unordered_set<Node> get_successors(DiGraphView const &g, Node const &n) {

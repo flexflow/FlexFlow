@@ -10,4 +10,5 @@ ff_add_test_executable(
     compiler
     doctest
     utils-test-common
+    pcg
 )
