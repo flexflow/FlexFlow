@@ -100,21 +100,24 @@ def main():
         output_file=configs.output_file,
     )
     # Add inference and/or finetuning lora
-    lora_inference_config = ff.LoraLinearConfig(
-        llm.cache_path, configs.inference_peft_model_id
-    )
-    lora_finetuning_config = ff.LoraLinearConfig(
-        llm.cache_path,
-        configs.finetuning_peft_model_id,
-        target_modules=["down_proj"],
-        rank=16,
-        lora_alpha=16,
-        trainable=True,
-        init_lora_weights=True,
-        optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
-    )
-    llm.add_peft(lora_inference_config)
-    llm.add_peft(lora_finetuning_config)
+    lora_inference_config = None; lora_finetuning_config=None
+    if len(configs.prompt) > 0:
+        lora_inference_config = ff.LoraLinearConfig(
+            llm.cache_path, configs.inference_peft_model_id
+        )
+        llm.add_peft(lora_inference_config)
+    if len(configs.finetuning_dataset) > 0:
+        lora_finetuning_config = ff.LoraLinearConfig(
+            llm.cache_path,
+            configs.finetuning_peft_model_id,
+            target_modules=["down_proj"],
+            rank=16,
+            lora_alpha=16,
+            trainable=True,
+            init_lora_weights=True,
+            optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
+        )
+        llm.add_peft(lora_finetuning_config)
 
     # Compile the LLM for inference and load the weights into memory
     generation_config = ff.GenerationConfig(
