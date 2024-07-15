@@ -822,6 +822,7 @@ void LoraLinear::peft_bwd_task(Task const *task,
     // weights, weights gradients
     fs::path dst_filepath_weights =
         get_dst_folder("weights", m->bwd_step, shard_id) / layername;
+    assert(m->model_state.size() >= 1 && "Model state empty!");
     for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
       PEFTModelID peft_model_id = it->first;
       LoraLinearWeight weight = m->model_state[peft_model_id].weights;

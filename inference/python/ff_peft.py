@@ -59,7 +59,7 @@ def get_configs():
             "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
             "inference_debugging": True,
-            "fusion": True,
+            "fusion": False,
         }
         model_configs = {
             # required parameters
@@ -69,7 +69,7 @@ def get_configs():
             # optional parameters
             "cache_path": "",
             "refresh_cache": False,
-            "full_precision": False,
+            "full_precision": True,
             "prompt": "",
             "finetuning_dataset": os.path.join(
                 os.path.dirname(os.path.abspath(__file__)), "../prompt/peft.json"
@@ -100,7 +100,8 @@ def main():
         output_file=configs.output_file,
     )
     # Add inference and/or finetuning lora
-    lora_inference_config = None; lora_finetuning_config=None
+    lora_inference_config = None
+    lora_finetuning_config = None
     if len(configs.prompt) > 0:
         lora_inference_config = ff.LoraLinearConfig(
             llm.cache_path, configs.inference_peft_model_id
@@ -139,7 +140,10 @@ def main():
         prompts = [s for s in json.load(open(configs.prompt))]
         inference_requests = [
             ff.Request(
-                ff.RequestType.REQ_INFERENCE, prompt=prompt, max_sequence_length=128, peft_model_id=llm.get_ff_peft_id(lora_inference_config),
+                ff.RequestType.REQ_INFERENCE,
+                prompt=prompt,
+                max_sequence_length=128,
+                peft_model_id=llm.get_ff_peft_id(lora_inference_config),
             )
             for prompt in prompts
         ]
@@ -151,6 +155,7 @@ def main():
             max_sequence_length=128,
             peft_model_id=llm.get_ff_peft_id(lora_finetuning_config),
             dataset_filepath=configs.finetuning_dataset,
+            max_training_steps=2,
         )
         requests.append(finetuning_request)
 
