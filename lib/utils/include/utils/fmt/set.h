@@ -5,6 +5,8 @@
 #include "utils/join_strings.h"
 #include <fmt/format.h>
 #include <set>
+#include <vector>
+#include "utils/containers/sorted.h"
 
 namespace fmt {
 
@@ -19,8 +21,9 @@ struct formatter<
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(T);
 
+    std::vector<T> items = ::FlexFlow::sorted(m);
     std::string result =
-        ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
+        ::FlexFlow::join_strings(items.cbegin(), items.cend(), ", ", [](T const &t) {
           return fmt::to_string(t);
         });
     return formatter<std::string>::format("{" + result + "}", ctx);

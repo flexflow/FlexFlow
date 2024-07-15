@@ -47,7 +47,6 @@ static std::optional<UnlabelledDataflowGraphPatternMatch>
 
   for (auto const &[pattern_node_input, graph_node_input] : zip(pattern_node_inputs, graph_node_inputs)) {
     assert (pattern_node_input.has<PatternInput>());
-    assert (graph_node_input.has<DataflowGraphInput>());
 
     match.input_assignment.insert({
       pattern_node_input.get<PatternInput>(),
@@ -56,7 +55,7 @@ static std::optional<UnlabelledDataflowGraphPatternMatch>
   }
 
   assert (unlabelled_pattern_does_match(pattern, graph, match, match_additional_crition_always_true()));
-  
+
   return match;
 }
 

@@ -115,6 +115,14 @@ TEST_SUITE(FF_TEST_SUITE) {
       bidict<PatternInput, OpenDataflowValue>{}
     };
 
+    UnlabelledDataflowGraphPatternMatch invalid_match = UnlabelledDataflowGraphPatternMatch{
+      bidict<PatternNode, Node>{
+        {p0, n1},
+        {p1, n2},
+      },
+      bidict<PatternInput, OpenDataflowValue>{}
+    };
+
     std::vector<OpenDataflowEdge> n1_incoming = {OpenDataflowEdge{
       DataflowEdge{
         DataflowOutput{n0, 0},
@@ -149,24 +157,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    // {
-    //   std::unordered_set<Node> xs = {n0, n1};
-    //   REQUIRE(contains(xs, n0));
-    //   REQUIRE(contains(xs, n1));
-    //   std::vector<OpenDataflowEdge> es = {OpenDataflowEdge{DataflowEdge{DataflowOutput{n0, 0}, DataflowInput{n1, 0}}}};
-    //   auto myfilter = [&](OpenDataflowEdge const &e) {
-    //     return e.visit<bool>(overload {
-    //       [](DataflowInputEdge const &) { return true; },
-    //       [&](DataflowEdge const &ee) { return !contains(xs, ee.src.node); },
-    //     });
-    //   };
-    //   std::vector<OpenDataflowEdge> result = filter(es, myfilter);
-    //   auto myrealfilter = [&](OpenDataflowEdge const &e) { return true; };
-    //   // REQUIRE(myfilter(es.at(0)) == false);
-    //   REQUIRE(result.size() == 0);
-    // }
-
-
     SUBCASE("get_subgraph_inputs") {
       std::unordered_set<OpenDataflowValue> result = get_subgraph_inputs(graph, {n0, n1});
       std::unordered_set<OpenDataflowValue> correct = {};
@@ -200,12 +190,40 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("unlabelled_pattern_does_match") {
       CHECK(unlabelled_pattern_does_match(pattern, graph, match, match_additional_crition_always_true()));
+      CHECK_FALSE(unlabelled_pattern_does_match(pattern, graph, invalid_match, match_additional_crition_always_true()));
     }
 
-    // std::vector<UnlabelledDataflowGraphPatternMatch> matches = find_pattern_matches(
-    //     pattern, graph, match_additional_crition_always_true());
+    SUBCASE("unlabelled_pattern_does_match (open)") {
+      OpenDataflowGraph g = OpenDataflowGraph::create<UnorderedSetDataflowGraph>();
+      DataflowGraphInput i0 = g.add_input();
 
-    // CHECK(matches.size() == 3);
+      NodeAddedResult g_n0_added = g.add_node({OpenDataflowValue{i0}}, 1);
+      Node g_n0 = g_n0_added.node;
+      OpenDataflowValue g_v0 = OpenDataflowValue{get_only(g_n0_added.outputs)};
+      PatternNode g_p0 = PatternNode{g_n0};
+      PatternInput g_pi0 = PatternInput{i0};
+      
+      UnlabelledGraphPattern open_pattern = UnlabelledGraphPattern{g};
+
+      UnlabelledDataflowGraphPatternMatch open_match = UnlabelledDataflowGraphPatternMatch{
+        bidict<PatternNode, Node>{
+          {g_p0, n1},
+        },
+        bidict<PatternInput, OpenDataflowValue>{
+          {g_pi0, v0},
+        }
+      };
+      CHECK(unlabelled_pattern_does_match(open_pattern, graph, open_match, match_additional_crition_always_true()));
+    }
+
+    SUBCASE("find_pattern_matches") {
+      std::vector<UnlabelledDataflowGraphPatternMatch> matches = find_pattern_matches(
+          pattern, graph, match_additional_crition_always_true());
+      std::vector<UnlabelledDataflowGraphPatternMatch> correct = {match};
+
+      CHECK(matches == correct);
+    }
+
     //
     // for (UnlabelledDataflowGraphPatternMatch const &match : matches) {
     //   CHECK(unlabelled_pattern_does_match(pattern,

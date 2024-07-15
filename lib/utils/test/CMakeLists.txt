@@ -7,6 +7,7 @@ ff_add_test_executable(
     src/test_optional.cc
     src/utils/containers/filter.cc
     src/utils/containers/inplace_filter.cc
+    src/utils/fmt/*.cc
   PRIVATE_INCLUDE
     src/
   DEPS

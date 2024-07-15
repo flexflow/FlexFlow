@@ -7,6 +7,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include "utils/containers/sorted.h"
 
 namespace FlexFlow {
 
@@ -249,15 +250,6 @@ std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f);
 template <typename Out, typename In>
 std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
                                    std::unordered_set<Out> (*f)(In const &));
-
-template <typename C, typename F, typename Elem = typename C::value_type>
-void inplace_sorted_by(C &c, F const &f);
-
-template <typename C, typename Elem = typename C::value_type>
-std::vector<Elem> sorted(C const &c);
-
-template <typename C, typename F, typename Elem = typename C::value_type>
-std::vector<Elem> sorted_by(C const &c, F const &f);
 
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);

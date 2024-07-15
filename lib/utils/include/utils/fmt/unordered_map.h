@@ -1,10 +1,14 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_UNORDERED_MAP_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_UNORDERED_MAP_H
 
-#include "fmt/format.h"
+#include <algorithm>
+#include <fmt/format.h>
 #include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
 #include <unordered_map>
+#include "utils/fmt/pair.h"
+#include <vector>
+#include "utils/containers/sorted.h"
 
 namespace fmt {
 
@@ -17,14 +21,15 @@ struct formatter<
   template <typename FormatContext>
   auto format(::std::unordered_map<K, V> const &m, FormatContext &ctx)
       -> decltype(ctx.out()) {
-    /* CHECK_FMTABLE(K); */
-    /* CHECK_FMTABLE(V); */
+    CHECK_FMTABLE(K);
+    CHECK_FMTABLE(V);
 
-    /*   std::string result = ::FlexFlow::join_strings( */
-    /*       m.cbegin(), m.cend(), ", ", [](std::pair<K, V> const &p) { return
-     * fmt::to_string(p); }); */
-    std::string result = "";
-    return formatter<std::string>::format(result, ctx);
+    std::vector<std::pair<K, V>> items = ::FlexFlow::sorted(m);
+
+    std::string result = ::FlexFlow::join_strings(
+          items.cbegin(), items.cend(), ", ", [](std::pair<K, V> const &p) { return fmt::to_string(p); });
+
+    return formatter<std::string>::format("{" + result + "}", ctx);
   }
 };
 

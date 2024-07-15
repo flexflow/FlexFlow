@@ -587,30 +587,6 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
-template <typename C, typename F, typename Elem>
-void inplace_sorted_by(C &c, F const &f) {
-  CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);
-
-  auto custom_comparator = [&](Elem const &lhs, Elem const &rhs) -> bool {
-    return f(lhs, rhs);
-  };
-  std::sort(c.begin(), c.end(), custom_comparator);
-}
-
-template <typename C, typename Elem>
-std::vector<Elem> sorted(C const &c) {
-  std::vector<Elem> result(c.begin(), c.end());
-  inplace_sorted_by(result, [](Elem const &l, Elem const &r) { return l < r; });
-  return result;
-}
-
-template <typename C, typename F, typename Elem>
-std::vector<Elem> sorted_by(C const &c, F const &f) {
-  std::vector<Elem> result(c.begin(), c.end());
-  inplace_sorted_by(result, f);
-  return result;
-}
-
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
