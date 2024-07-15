@@ -88,7 +88,7 @@ std::vector<UnlabelledDataflowGraphPatternMatch>
           merge_unlabelled_dataflow_graph_pattern_matches(prefix_match,
                                                           postfix_match,
                                                           subpatterns.subpattern_1_outputs_to_subpattern_2_inputs);
-        if (unsplit.has_value()) {
+        if (unsplit.has_value() && unlabelled_pattern_does_match(pattern, graph, unsplit.value(), additional_criterion)) {
           matches.push_back(unsplit.value());
         }
       }

@@ -93,7 +93,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     NodeAddedResult n0_added = graph.add_node({}, 1);
     Node n0 = n0_added.node;
     OpenDataflowValue v0 = OpenDataflowValue{get_only(n0_added.outputs)};
-    // CHECK(v0 == OpenDataflowValue{DataflowOutput{n0, 0}});
 
     NodeAddedResult n1_added = graph.add_node({v0}, 1);
     Node n1 = n1_added.node;
@@ -223,13 +222,5 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       CHECK(matches == correct);
     }
-
-    //
-    // for (UnlabelledDataflowGraphPatternMatch const &match : matches) {
-    //   CHECK(unlabelled_pattern_does_match(pattern,
-    //                                       graph,
-    //                                       match,
-    //                                       match_additional_crition_always_true()));
-    // }
   }
 }
