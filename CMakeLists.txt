@@ -399,8 +399,11 @@ if(NOT BUILD_LEGION_ONLY)
   endif()
 
   if(FF_USE_TENSORRT)
-    add_dependencies(flexflow ${TENSORRT_NAME})
-    message(STATUS "Add TensorRT successfully")
+    # add_dependencies(flexflow ${TENSORRT_NAME})
+    # message(STATUS "Add TensorRT dependencies")
+    add_dependencies(flexflow tensorrt_llm)
+    message(STATUS "Add TensorRT-LLM dependencies")
+    # target_link_libraries(flexflow tensorrt_llm)
   endif()
 
   target_include_directories(flexflow PUBLIC ${FLEXFLOW_INCLUDE_DIRS})

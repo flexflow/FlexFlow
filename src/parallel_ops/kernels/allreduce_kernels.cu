@@ -15,6 +15,7 @@
 
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
+#include "flexflow/utils/tensorrt_helper.h"
 
 namespace FlexFlow {
 
@@ -34,7 +35,13 @@ void inference_kernel_wrapper(AllReduceMeta const *m,
   assert(input.domain == output.domain);
   size_t hidden_dim_size = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   size_t num_elements = bc->num_tokens * hidden_dim_size;
-#ifdef FF_USE_NCCL
+  std::cout << "dummy message from AllReduce" << std::endl;  
+#if defined(FF_USE_TENSORRT)
+  std::cout << "Use TENSORRT" << std::endl;
+  assert(false && "Use TENSORRT to use AllReduce operators");
+#elif defined(FF_USE_NCCL)
+// #ifdef FF_USE_NCCL
+  std::cout << "Use NCCL" << std::endl;
   ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
   checkNCCL(ncclAllReduce(input.ptr,
                           output.ptr,
