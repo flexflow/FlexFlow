@@ -20,12 +20,22 @@ public:
     return this->get_interface().add_node(node_label, inputs, output_labels);
   }
 
+  template <typename T, typename... Args>
+  static typename std::enable_if<std::is_base_of<Interface, T>::value,
+                                 LabelledDataflowGraph>::type
+      create(Args && ...args) {
+    return LabelledDataflowGraph(make_cow_ptr<T>(std::forward<Args>(args)...));
+  }
+
   template <typename T>
   static typename std::enable_if<std::is_base_of<Interface, T>::value,
                                  LabelledDataflowGraph>::type
-      create() {
-    return LabelledDataflowGraph(make_cow_ptr<T>());
+      create_copy_of(LabelledDataflowGraphView<NodeLabel, OutputLabel> const &view) {
+    cow_ptr_t<T> impl = make_cow_ptr<T>();
+    impl.get_mutable()->inplace_materialize_from(view);
+    return LabelledDataflowGraph(std::move(impl));
   }
+
 protected:
   using LabelledDataflowGraphView<NodeLabel, OutputLabel>::LabelledDataflowGraphView;
 

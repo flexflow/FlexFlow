@@ -6,6 +6,29 @@
 
 namespace FlexFlow {
 
+static MatchAdditionalCriterion pcg_pattern_criteria(PCGPattern const &pattern,
+                                                     SubParallelComputationGraph const &pcg) {
+  return MatchAdditionalCriterion{
+          [&](PatternNode const &patternNode, Node const &pcgNode) {
+            return operator_satisfies_pattern(
+                get_operator_attrs(pcg, pcgNode),
+                get_operator_pattern(pattern, patternNode));
+          },
+          [&](PatternValue const &patternValue, OpenDataflowValue const &pcgValue) {
+            return parallel_tensor_satisfies_pattern(
+                get_parallel_tensor_attrs(pcg, pcgValue),
+                get_tensor_pattern(pattern, patternValue));
+          }};
+}
+
+std::vector<UnlabelledDataflowGraphPatternMatch>
+  find_pattern_matches(PCGPattern const &pattern,
+                       SubParallelComputationGraph const &pcg) {
+  return find_pattern_matches(get_unlabelled_pattern(pattern),
+                              pcg.raw_graph,
+                              pcg_pattern_criteria(pattern, pcg));
+}
+
 UnlabelledGraphPattern get_unlabelled_pattern(PCGPattern const &p) {
   return UnlabelledGraphPattern{p.raw_graph};
 }
@@ -27,17 +50,7 @@ bool assignment_satisfies(SubParallelComputationGraph const &pcg,
       get_unlabelled_pattern(pattern),
       pcg.raw_graph,
       patternMatch,
-      MatchAdditionalCriterion{
-          [&](PatternNode const &patternNode, Node const &pcgNode) {
-            return operator_satisfies_pattern(
-                get_operator_attrs(pcg, pcgNode),
-                get_operator_pattern(pattern, patternNode));
-          },
-          [&](PatternValue const &patternValue, OpenDataflowValue const &pcgValue) {
-            return parallel_tensor_satisfies_pattern(
-                get_parallel_tensor_attrs(pcg, pcgValue),
-                get_tensor_pattern(pattern, patternValue));
-          }});
+      pcg_pattern_criteria(pattern, pcg)); 
 }
 
 } // namespace FlexFlow

@@ -6,6 +6,7 @@
 #include <fmt/format.h>
 #include <unordered_set>
 #include "utils/containers/sorted.h"
+#include "utils/type_traits_core.h"
 
 namespace fmt {
 
@@ -20,11 +21,19 @@ struct formatter<
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(T);
 
-    std::vector<T> in_order = ::FlexFlow::sorted(m);
-    std::string result =
-        ::FlexFlow::join_strings(in_order.cbegin(), in_order.cend(), ", ", [](T const &t) {
-          return fmt::to_string(t);
-        });
+    std::string result;
+    if constexpr (::FlexFlow::is_sortable_v<std::unordered_set<T>>) {
+      std::vector<T> in_order = ::FlexFlow::sorted(m);
+      result =
+          ::FlexFlow::join_strings(in_order.cbegin(), in_order.cend(), ", ", [](T const &t) {
+            return fmt::to_string(t);
+          });
+    } else {
+      result =
+          ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
+            return fmt::to_string(t);
+          });
+    }
     return formatter<std::string>::format("{" + result + "}", ctx);
   }
 };

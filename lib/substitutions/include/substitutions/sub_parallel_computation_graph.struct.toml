@@ -10,4 +10,4 @@ includes = [
 
 [[fields]]
 name = "raw_graph"
-type = "::FlexFlow::LabelledOpenDataflowGraph<::FlexFlow::ParallelLayerAttrs, ::FlexFlow::ParallelTensorAttrs>"
+type = "::FlexFlow::LabelledOpenDataflowGraphView<::FlexFlow::ParallelLayerAttrs, ::FlexFlow::ParallelTensorAttrs>"

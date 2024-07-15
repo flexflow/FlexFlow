@@ -163,6 +163,16 @@ struct is_neq_comparable<
     : std::true_type {};
 
 template <typename T, typename Enable = void>
+struct is_lt_comparable : std::false_type {};
+
+template <typename T>
+struct is_lt_comparable<
+    T,
+    void_t<decltype((bool)(std::declval<T>() < std::declval<T>()))>>
+    : std::true_type {};
+
+
+template <typename T, typename Enable = void>
 struct is_hashable : std::false_type {};
 
 template <typename T>

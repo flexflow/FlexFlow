@@ -3,6 +3,7 @@
 
 #include "utils/graph/dataflow_graph/node_added_result.dtg.h"
 #include "utils/graph/labelled_dataflow_graph/i_labelled_dataflow_graph_view.h"
+#include "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph_view.h"
 
 namespace FlexFlow {
 
@@ -12,6 +13,8 @@ public:
   virtual NodeAddedResult add_node(NodeLabel const &node_label,
                            std::vector<DataflowOutput> const &inputs,
                            std::vector<OutputLabel> const &output_labels) = 0;
+
+  virtual void inplace_materialize_from(LabelledDataflowGraphView<NodeLabel, OutputLabel> const &) = 0;
 
   virtual ~ILabelledDataflowGraph() = default;
 };

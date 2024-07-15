@@ -24,6 +24,13 @@ public:
   DataflowGraphInput add_input(ValueLabel const &value_label) {
     return this->get_interface().add_input(value_label);
   }
+
+  template <typename T>
+  static typename std::enable_if<std::is_base_of<Interface, T>::value,
+                                 LabelledOpenDataflowGraph>::type
+      create() {
+    return LabelledOpenDataflowGraph(make_cow_ptr<T>());
+  }
 protected:
   using LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>::LabelledOpenDataflowGraphView;
 private:

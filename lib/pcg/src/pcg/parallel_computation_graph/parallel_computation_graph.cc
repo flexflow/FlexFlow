@@ -72,4 +72,12 @@ std::vector<parallel_layer_guid_t> topological_ordering(ParallelComputationGraph
                    [](Node const &n) { return parallel_layer_guid_t{n}; });
 }
 
+parallel_layer_guid_t get_parallel_layer_by_name(ParallelComputationGraph const &pcg,
+                                                   std::string const &name) {
+  std::unordered_set<parallel_layer_guid_t> found = filter(get_parallel_layers(pcg), [&](parallel_layer_guid_t const &l) {
+                                                             return get_parallel_layer_attrs(pcg, l).name == name;
+                                                           });
+  return get_only(found);
+}
+
 } // namespace FlexFlow

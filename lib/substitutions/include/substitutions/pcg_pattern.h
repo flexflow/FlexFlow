@@ -10,6 +10,10 @@
 
 namespace FlexFlow {
 
+std::vector<UnlabelledDataflowGraphPatternMatch> 
+  find_pattern_matches(PCGPattern const &pattern,
+                       SubParallelComputationGraph const &pcg);
+
 UnlabelledGraphPattern get_unlabelled_pattern(PCGPattern const &);
 
 TensorAttributePattern get_tensor_pattern(PCGPattern const &,

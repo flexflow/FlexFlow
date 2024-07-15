@@ -6,6 +6,15 @@
 using namespace FlexFlow;
 
 // TEST_SUITE(FF_TEST_SUITE) {
+//   TEST_CASE("substitution") {
+    // PCGPattern pattern;
+    // OutputGraphExpr output_expr;
+    // bidict<DataflowGraphInput
+    // Substitution s;
+//   }
+// }
+
+// TEST_SUITE(FF_TEST_SUITE) {
 //   TEST_CASE("apply_substitution") {
 //     OperatorPattern operator_pattern_n0{
 //         std::vector<OperatorAttributeConstraint>{

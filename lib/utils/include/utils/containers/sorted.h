@@ -24,6 +24,13 @@ struct sort_value_type<std::map<K, V>> :
 template <typename T>
 using sort_value_type_t = typename sort_value_type<T>::type;
 
+template <typename C>
+struct is_sortable : 
+  is_lt_comparable<sort_value_type_t<C>> {};
+
+template <typename T>
+inline constexpr bool is_sortable_v = is_sortable<T>::value;
+
 template <typename C, typename F, typename Elem = sort_value_type_t<C>>
 void inplace_sorted_by(C &c, F const &f) {
   CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);

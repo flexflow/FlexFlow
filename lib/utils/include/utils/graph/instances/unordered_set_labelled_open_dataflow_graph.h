@@ -12,13 +12,24 @@
 #include "utils/containers/without_nullopts.h"
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/containers.h"
+#include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
-struct UnorderedSetLabelledOpenDataflowGraph final : public ILabelledOpenDataflowGraph<NodeLabel, ValueLabel> {
+struct UnorderedSetLabelledOpenDataflowGraph final : public ILabelledOpenDataflowGraph<NodeLabel, ValueLabel>,
+                                                     public ILabelledDataflowGraph<NodeLabel, ValueLabel> {
 public:
   UnorderedSetLabelledOpenDataflowGraph() = default;
+
+  NodeAddedResult add_node(NodeLabel const &node_label,
+                           std::vector<DataflowOutput> const &inputs,
+                           std::vector<ValueLabel> const &output_labels) override {
+    return this->add_node(node_label,
+                          transform(inputs, [](DataflowOutput const &o) { return OpenDataflowValue{o}; }),
+                          output_labels);
+  }
 
   NodeAddedResult add_node(NodeLabel const &node_label,
                            std::vector<OpenDataflowValue> const &inputs,
@@ -65,6 +76,10 @@ public:
   std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &q) const override {
     return without_nullopts(transform(keys(this->values), 
                                       [&](OpenDataflowValue const &v) -> std::optional<DataflowOutput> {
+                                        if (!v.has<DataflowOutput>()) {
+                                          return std::nullopt;
+                                        }
+
                                         DataflowOutput o = v.get<DataflowOutput>(); 
                                         if (dataflow_output_query_includes_dataflow_output(q, o)) {
                                           return o;
@@ -84,6 +99,18 @@ public:
 
   ValueLabel const &at(OpenDataflowValue const &v) const override {
     return this->values.at(v);
+  }
+
+  virtual void inplace_materialize_from(LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view) override {
+    std::unordered_set<Node> nodes = get_nodes(view);
+    std::unordered_set<DataflowOutput> outputs = get_all_dataflow_outputs(view);
+    std::unordered_set<DataflowEdge> edges = get_edges(view);
+    std::unordered_map<DataflowOutput, ValueLabel> labelled_outputs = generate_map(outputs, [&](DataflowOutput const &o) { return view.at(o); });
+
+    this->inputs.clear();
+    this->nodes = generate_map(nodes, [&](Node const &n) { return view.at(n); });
+    this->edges = transform(edges, [](DataflowEdge const &e) { return OpenDataflowEdge{e}; });
+    this->values = map_keys(labelled_outputs, [](DataflowOutput const &o) { return OpenDataflowValue{o}; });
   }
 
   UnorderedSetLabelledOpenDataflowGraph *clone() const override {
