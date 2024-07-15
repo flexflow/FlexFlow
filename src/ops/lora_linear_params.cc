@@ -50,6 +50,38 @@ std::ostream &operator<<(std::ostream &os, LoraAdamOptimizerConfig const &llc) {
   return os;
 }
 
+// Serialization helpers
+template <typename T>
+void serialize_to_json_file(T const &obj, fs::path const &filepath) {
+  json j = obj;
+  std::ofstream file(filepath);
+  file << j.dump(4);
+}
+
+template <typename T>
+std::unique_ptr<T> deserialize_from_json_file(fs::path const &filepath) {
+  std::ifstream file(filepath);
+  json j;
+  file >> j;
+  return std::make_unique<T>(j.get<T>());
+}
+
+template void
+    serialize_to_json_file<LoraLinearConfig>(LoraLinearConfig const &obj,
+                                             fs::path const &filepath);
+template void serialize_to_json_file<LoraSGDOptimizerConfig>(
+    LoraSGDOptimizerConfig const &obj, fs::path const &filepath);
+template void serialize_to_json_file<LoraAdamOptimizerConfig>(
+    LoraAdamOptimizerConfig const &obj, fs::path const &filepath);
+template std::unique_ptr<LoraLinearConfig>
+    deserialize_from_json_file<LoraLinearConfig>(fs::path const &filepath);
+template std::unique_ptr<LoraSGDOptimizerConfig>
+    deserialize_from_json_file<LoraSGDOptimizerConfig>(
+        fs::path const &filepath);
+template std::unique_ptr<LoraAdamOptimizerConfig>
+    deserialize_from_json_file<LoraAdamOptimizerConfig>(
+        fs::path const &filepath);
+
 // ------------------ LoRA configs -------------------
 // ---------------------------------------------------
 const LoraLinearConfig LoraLinearConfig::EmptyConfig = LoraLinearConfig("", "");
@@ -67,49 +99,54 @@ LoraLinearConfig::LoraLinearConfig(
     : cache_folder(cache_folder_), peft_model_id(peft_model_id_), rank(rank_),
       lora_alpha(lora_alpha_), lora_dropout(lora_dropout_),
       trainable(trainable_), optimizer_config(optimizer_config_),
-      init_lora_weights(init_lora_weights_) {
-  if (!peft_model_id.empty()) {
-    assert(!cache_folder.empty() &&
-           "cache_folder must be provided when using PEFT");
-    if (trainable) {
-      assert(optimizer_config != nullptr &&
-             "optimizer_config must be provided when using PEFT");
-    } else {
-      assert(init_lora_weights == false &&
-             "init_lora_weights must be false when LORA not trainable");
-      assert(optimizer_config == nullptr &&
-             "optimizer_config must be nullptr when not trainable");
-    }
-    if (init_lora_weights) {
-      std::string peft_inference_config_file_path =
-          join_path({cache_folder, "configs", peft_model_id, "config.json"});
-      std::ifstream config_file(peft_inference_config_file_path);
-      if (config_file.is_open()) {
-        try {
-          json model_config;
-          config_file >> model_config;
-          rank = model_config["r"];
-          lora_alpha = float(model_config["lora_alpha"]);
-          lora_dropout = model_config["lora_dropout"];
-          for (auto &s : model_config["target_modules"]) {
-            target_modules.push_back(s);
-          }
-        } catch (json::exception const &e) {
-          std::cerr << "Error parsing PEFT config from JSON file: " << e.what()
-                    << std::endl;
-          assert(false);
+      init_lora_weights(init_lora_weights_), target_modules(target_modules_) {
+
+  if (peft_model_id.empty()) {
+    return;
+  }
+  assert(!cache_folder.empty() &&
+         "cache_folder must be provided when using PEFT");
+  if (trainable) {
+    assert(optimizer_config != nullptr &&
+           "optimizer_config must be provided when using PEFT");
+  } else {
+    assert(init_lora_weights == false &&
+           "init_lora_weights must be false when LORA not trainable");
+    assert(optimizer_config == nullptr &&
+           "optimizer_config must be nullptr when not trainable");
+  }
+  // if we are not initializing LORA from scratch, load the configs from
+  // existing repository
+  if (!init_lora_weights) {
+    std::string peft_inference_config_file_path =
+        join_path({cache_folder, "configs", peft_model_id, "config.json"});
+    std::ifstream config_file(peft_inference_config_file_path);
+    if (config_file.is_open()) {
+      try {
+        json model_config;
+        config_file >> model_config;
+        rank = model_config["r"];
+        lora_alpha = float(model_config["lora_alpha"]);
+        lora_dropout = model_config["lora_dropout"];
+        for (auto &s : model_config["target_modules"]) {
+          target_modules.push_back(s);
         }
-      } else {
-        std::cerr << "Error opening JSON file "
-                  << peft_inference_config_file_path << std::endl;
+      } catch (json::exception const &e) {
+        std::cerr << "Error parsing PEFT config from JSON file: " << e.what()
+                  << std::endl;
         assert(false);
       }
+    } else {
+      std::cerr << "Error opening JSON file " << peft_inference_config_file_path
+                << std::endl;
+      assert(false);
     }
-    assert(rank > 0 && "rank must be greater than 0");
-    assert(lora_alpha > 0.0f && "lora_alpha must be greater than 0.0");
-    assert(lora_dropout >= 0.0f && lora_dropout <= 1.0f &&
-           "lora_dropout must be in [0.0, 1.0]");
   }
+  assert(rank > 0 && "rank must be greater than 0");
+  assert(lora_alpha > 0.0f && "lora_alpha must be greater than 0.0");
+  assert(lora_dropout >= 0.0f && lora_dropout <= 1.0f &&
+         "lora_dropout must be in [0.0, 1.0]");
+  assert(target_modules.size() > 0 && "target_modules must not be left empty");
 }
 
 // constructor used to support unordered_map

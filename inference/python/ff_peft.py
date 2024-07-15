@@ -106,6 +106,9 @@ def main():
     lora_finetuning_config = ff.LoraLinearConfig(
         llm.cache_path,
         configs.finetuning_peft_model_id,
+        target_modules=["down_proj"],
+        rank=16,
+        lora_alpha=16,
         trainable=True,
         init_lora_weights=True,
         optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
@@ -133,21 +136,20 @@ def main():
         prompts = [s for s in json.load(open(configs.prompt))]
         inference_requests = [
             ff.Request(
-                ff.RequestType.REQ_INFERENCE, prompt=prompt, max_sequence_length=128
+                ff.RequestType.REQ_INFERENCE, prompt=prompt, max_sequence_length=128, peft_model_id=llm.get_ff_peft_id(lora_inference_config),
             )
             for prompt in prompts
         ]
         requests += inference_requests
     # Finetuning
     if len(configs.finetuning_dataset) > 0:
-        for peft_model_id in configs.peft_model_ids:
-            finetuning_request = ff.Request(
-                ff.RequestType.REQ_FINETUNING,
-                max_sequence_length=128,
-                peft_model_id=llm.get_ff_peft_id(lora_finetuning_config),
-                dataset_filepath=configs.finetuning_dataset,
-            )
-            requests.append(finetuning_request)
+        finetuning_request = ff.Request(
+            ff.RequestType.REQ_FINETUNING,
+            max_sequence_length=128,
+            peft_model_id=llm.get_ff_peft_id(lora_finetuning_config),
+            dataset_filepath=configs.finetuning_dataset,
+        )
+        requests.append(finetuning_request)
 
     llm.generate(requests)
 

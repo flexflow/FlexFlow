@@ -7,6 +7,10 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/parallel_tensor.h"
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace FlexFlow {
 
@@ -26,6 +30,9 @@ public:
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraSGDOptimizerConfig const &llc);
 
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+      LoraSGDOptimizerConfig, lr, momentum, nesterov, weight_decay)
+
 public:
   double lr = 0.001f;
   double momentum = 0.0f;
@@ -44,6 +51,9 @@ public:
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraAdamOptimizerConfig const &llc);
 
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+      LoraAdamOptimizerConfig, alpha, beta1, beta2, weight_decay, epsilon)
+
 public:
   // Adam
   double alpha = 0.001f;
@@ -52,6 +62,14 @@ public:
   double weight_decay = 0.0f;
   double epsilon = 1e-8;
 };
+
+// Serialization helpers
+template <typename T>
+void serialize_to_json_file(T const &obj, fs::path const &filepath);
+
+// Function to deserialize JSON from file and create object
+template <typename T>
+std::unique_ptr<T> deserialize_from_json_file(fs::path const &filepath);
 
 class LoraLinearConfig {
 public:
@@ -72,7 +90,16 @@ public:
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraLinearConfig const &llc);
 
-public:
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(LoraLinearConfig,
+                                 cache_folder,
+                                 peft_model_id,
+                                 rank,
+                                 lora_alpha,
+                                 lora_dropout,
+                                 target_modules,
+                                 trainable,
+                                 init_lora_weights)
+
   std::string cache_folder;
   // Huggingface model ID (for download and/or upload)
   std::string peft_model_id;

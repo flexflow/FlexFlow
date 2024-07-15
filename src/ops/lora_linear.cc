@@ -56,7 +56,8 @@ PEFTModelID *FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
          "Cannot add a LoRA layer if PEFT mode is not enabled");
   if (peft_config.target_modules.size() == 0) {
     printf("PEFT config does not contain any target module\n");
-    return nullptr;
+    std::cout << peft_config << std::endl;
+    assert(false);
   }
   PEFTModelID *peft_model_id = new PEFTModelID(peft_model_global_guid++);
   peft_configs[*peft_model_id] = peft_config;
@@ -937,6 +938,35 @@ bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs) {
   return false;
 }
 
+fs::path create_unique_temp_directory() {
+  std::srand(static_cast<unsigned int>(std::time(nullptr)));
+
+  fs::path temp_dir = fs::temp_directory_path();
+  fs::path unique_path;
+
+  do {
+    std::string unique_name = "flexflow_tmp_" + std::to_string(std::rand());
+    unique_path = temp_dir / unique_name;
+  } while (fs::exists(unique_path));
+
+  fs::create_directory(unique_path);
+  return unique_path;
+}
+
+void serialize_string(Legion::Serializer &sez,
+                      std::string string_to_serialize) {
+  sez.serialize(string_to_serialize.length());
+  sez.serialize(string_to_serialize.c_str(), string_to_serialize.length());
+}
+
+std::string deserialize_string(Legion::Deserializer &dez) {
+  size_t string_size;
+  char buffer[4096] = {0};
+  dez.deserialize(string_size);
+  dez.deserialize(buffer, string_size);
+  return std::string(buffer);
+}
+
 void LoraLinear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
@@ -946,45 +976,42 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
   for (auto const &kv : this->peft_configs) {
     // Serialize PEFTModelID
     sez.serialize(kv.first.id);
-    // Serialize LoraConfig's cache folder
-    sez.serialize(kv.second.cache_folder.length());
-    sez.serialize(kv.second.cache_folder.c_str(),
-                  kv.second.cache_folder.length());
-    // Serialize LoraConfig's peft model id
-    sez.serialize(kv.second.peft_model_id.length());
-    sez.serialize(kv.second.peft_model_id.c_str(),
-                  kv.second.peft_model_id.length());
-    // serialize whether we should expect an optimizer or not
-    sez.serialize(kv.second.trainable);
+
+    // Serialize LoraLinearConfig and OptimizerConfig to tmp folder
+    // 1. Create tmp dir and serialize it
+    fs::path unique_temp_dir = create_unique_temp_directory();
+    serialize_string(sez, unique_temp_dir.string());
+    // 2. Dump LoraLinearConfig to json file in tmp dir
+    std::string lora_config_filename = std::string("lora_linear_config_") +
+                                       std::to_string(kv.first.id) +
+                                       std::string(".json");
+    fs::path lora_config_json_filepath = unique_temp_dir / lora_config_filename;
+    serialize_to_json_file(kv.second, lora_config_json_filepath);
+    // 3. Dump optimizer to json file in tmp dir, and serialize optimizer type
+    std::string optimizer_filename = std::string("optimizer_config_") +
+                                     std::to_string(kv.first.id) +
+                                     std::string(".json");
+    fs::path optim_config_filepath = unique_temp_dir / optimizer_filename;
     assert((kv.second.trainable) == (kv.second.optimizer_config != nullptr));
     if (kv.second.trainable) {
-      // Serialize LoraConfig's optimizer config
       if (typeid(*kv.second.optimizer_config) ==
           typeid(LoraSGDOptimizerConfig)) {
         sez.serialize(OPTIMIZER_TYPE_SGD);
         LoraSGDOptimizerConfig const *sgd_config =
             static_cast<LoraSGDOptimizerConfig const *>(
                 kv.second.optimizer_config);
-        sez.serialize(sgd_config->lr);
-        sez.serialize(sgd_config->momentum);
-        sez.serialize(sgd_config->nesterov);
-        sez.serialize(sgd_config->weight_decay);
+        serialize_to_json_file(*sgd_config, optim_config_filepath);
       } else if (typeid(*kv.second.optimizer_config) ==
                  typeid(LoraAdamOptimizerConfig)) {
         sez.serialize(OPTIMIZER_TYPE_ADAM);
         LoraAdamOptimizerConfig const *adam_config =
             static_cast<LoraAdamOptimizerConfig const *>(
                 kv.second.optimizer_config);
-        sez.serialize(adam_config->alpha);
-        sez.serialize(adam_config->beta1);
-        sez.serialize(adam_config->beta2);
-        sez.serialize(adam_config->weight_decay);
-        sez.serialize(adam_config->epsilon);
+        serialize_to_json_file(*adam_config, optim_config_filepath);
       } else {
         assert(false && "Optimizer type not yet supported");
       }
     }
-    sez.serialize(kv.second.init_lora_weights);
   }
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
@@ -1015,59 +1042,48 @@ Node LoraLinear::deserialize(FFModel &ff,
     size_t pid;
     dez.deserialize(pid);
     PEFTModelID peft_model_id(pid);
-
-    // Deserialize LoraConfig's cache folder
-    size_t string_size;
-    char buffer[4096] = {0};
-    dez.deserialize(string_size);
-    dez.deserialize(buffer, string_size);
-    std::string cache_folder = std::string(buffer);
-
-    // Deserialize LoraConfig's peft model id
-    string_size = 0;
-    memset(buffer, 0, 4096);
-    dez.deserialize(string_size);
-    dez.deserialize(buffer, string_size);
-    std::string peft_model_name = std::string(buffer);
-
-    bool trainable;
-    LoraOptimizerConfig *optimizer_config_ = nullptr;
-    OptimizerType type_;
-    dez.deserialize(trainable);
-    if (trainable) {
+    // Deserialize tmp folder containing LoraLinearConfig and optimizer config
+    fs::path unique_temp_dir = fs::path(deserialize_string(dez));
+    // 1. Deserialize LoraLinearConfig
+    std::string lora_config_filename = std::string("lora_linear_config_") +
+                                       std::to_string(pid) +
+                                       std::string(".json");
+    fs::path lora_config_json_filepath = unique_temp_dir / lora_config_filename;
+    std::unique_ptr<LoraLinearConfig> lora_linear_config =
+        deserialize_from_json_file<LoraLinearConfig>(lora_config_json_filepath);
+    // 2. Deserialize optimizer if needed
+    if (lora_linear_config->trainable) {
+      std::string optimizer_filename = std::string("optimizer_config_") +
+                                       std::to_string(pid) +
+                                       std::string(".json");
+      fs::path optim_config_filepath = unique_temp_dir / optimizer_filename;
+      OptimizerType type_;
       dez.deserialize(type_);
       if (type_ == OPTIMIZER_TYPE_SGD) {
-        double lr, momentum, weight_decay;
-        bool nesterov;
-        dez.deserialize(lr);
-        dez.deserialize(momentum);
-        dez.deserialize(nesterov);
-        dez.deserialize(weight_decay);
-        optimizer_config_ =
-            new LoraSGDOptimizerConfig(lr, momentum, nesterov, weight_decay);
+        std::unique_ptr<LoraSGDOptimizerConfig> sgd_optimizer_config =
+            deserialize_from_json_file<LoraSGDOptimizerConfig>(
+                optim_config_filepath);
+        lora_linear_config->optimizer_config =
+            dynamic_cast<LoraOptimizerConfig *>(sgd_optimizer_config.release());
       } else if (type_ == OPTIMIZER_TYPE_ADAM) {
-        double alpha, beta1, beta2, weight_decay, epsilon;
-        dez.deserialize(alpha);
-        dez.deserialize(beta1);
-        dez.deserialize(beta2);
-        dez.deserialize(weight_decay);
-        dez.deserialize(epsilon);
-        optimizer_config_ = new LoraAdamOptimizerConfig(
-            alpha, beta1, beta2, weight_decay, epsilon);
+        std::unique_ptr<LoraAdamOptimizerConfig> adam_optimizer_config =
+            deserialize_from_json_file<LoraAdamOptimizerConfig>(
+                optim_config_filepath);
+        lora_linear_config->optimizer_config =
+            dynamic_cast<LoraOptimizerConfig *>(
+                adam_optimizer_config.release());
       } else {
         printf("Optimizer type: %d\n", type_);
         assert(false && "Optimizer type not yet supported");
       }
     }
-    bool init_lora_weights;
-    dez.deserialize(init_lora_weights);
-    LoraLinearConfig lora_linear_config(cache_folder,
-                                        peft_model_name,
-                                        trainable,
-                                        optimizer_config_,
-                                        init_lora_weights);
+    try {
+      fs::remove_all(unique_temp_dir);
+    } catch (fs::filesystem_error const &e) {
+      std::cerr << "Error removing tmp directory: " << e.what() << std::endl;
+    }
     params.peft_configs.emplace(
-        std::make_pair(peft_model_id, lora_linear_config));
+        std::make_pair(peft_model_id, *lora_linear_config));
   }
   dez.deserialize(name_len);
   dez.deserialize(name, name_len);

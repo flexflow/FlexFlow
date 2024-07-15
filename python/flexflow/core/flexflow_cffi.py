@@ -1802,6 +1802,8 @@ class LoraLinearConfig(object):
                 raise ValueError(
                     "Please specify optimizer to be used to train LoRA module. Supported optimizers: SGD and Adam"
                 )
+            if init_lora_weights and len(target_modules) == 0:
+                raise ValueError("Please specify target modules to be used to train LoRA module")
         else:
             if init_lora_weights:
                 raise ValueError(
@@ -1945,14 +1947,14 @@ class Request:
         req_type: RequestType,
         prompt: str = None,
         max_sequence_length: int = 128,
-        lora_config: LoraLinearConfig = None,
+        peft_model_id: PEFTModelID = None,
         dataset_filepath: str = None,
         max_training_steps: int = 1,
     ):
         self.req_type = req_type
         self.prompt = prompt
         self.max_sequence_length = max_sequence_length
-        self.lora_config = lora_config
+        self.peft_model_id = peft_model_id
         self.dataset_filepath = dataset_filepath
         self.max_training_steps = max_training_steps
 
