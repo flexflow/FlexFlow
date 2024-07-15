@@ -7,6 +7,10 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/operator.h"
 #include "flexflow/parallel_tensor.h"
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
 
 namespace FlexFlow {
 
@@ -26,6 +30,9 @@ public:
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraSGDOptimizerConfig const &llc);
 
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+      LoraSGDOptimizerConfig, lr, momentum, nesterov, weight_decay)
+
 public:
   double lr = 0.001f;
   double momentum = 0.0f;
@@ -44,6 +51,9 @@ public:
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraAdamOptimizerConfig const &llc);
 
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(
+      LoraAdamOptimizerConfig, alpha, beta1, beta2, weight_decay, epsilon)
+
 public:
   // Adam
   double alpha = 0.001f;
@@ -53,36 +63,59 @@ public:
   double epsilon = 1e-8;
 };
 
+// Serialization helpers
+template <typename T>
+void serialize_to_json_file(T const &obj, fs::path const &filepath);
+
+// Function to deserialize JSON from file and create object
+template <typename T>
+std::unique_ptr<T> deserialize_from_json_file(fs::path const &filepath);
+
 class LoraLinearConfig {
 public:
   static const LoraLinearConfig EmptyConfig;
-  LoraLinearConfig();
-  LoraLinearConfig(int _rank,
-                   bool _trainable = false,
-                   LoraOptimizerConfig *_optimizer_config = nullptr);
   LoraLinearConfig(std::string const &cache_folder_,
                    std::string const &peft_model_id_,
                    bool trainable_ = false,
-                   LoraOptimizerConfig *optimizer_config_ = nullptr);
+                   LoraOptimizerConfig *optimizer_config_ = nullptr,
+                   bool init_lora_weights_ = false,
+                   int rank_ = 8,
+                   float lora_alpha_ = 8.0f,
+                   float lora_dropout_ = 0.0f,
+                   std::vector<std::string> const &target_modules_ = {});
+  // constructor used to support std::unordered_map
+  LoraLinearConfig();
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraLinearConfig const &llc);
 
-public:
+  NLOHMANN_DEFINE_TYPE_INTRUSIVE(LoraLinearConfig,
+                                 cache_folder,
+                                 peft_model_id,
+                                 rank,
+                                 lora_alpha,
+                                 lora_dropout,
+                                 target_modules,
+                                 trainable,
+                                 init_lora_weights)
+
+  std::string cache_folder;
+  // Huggingface model ID (for download and/or upload)
+  std::string peft_model_id;
+  // Lora parameters
   int rank;
+  float lora_alpha;
+  float lora_dropout;
+  std::vector<std::string> target_modules;
+  // Training parameters
   // whether the weights are trainable (fine-tuning scenario) or not
   // (inference-only). If set to true, allocate space for the gradients
   bool trainable = false;
   LoraOptimizerConfig *optimizer_config;
-  std::string cache_folder;
-  // Huggingface
-  std::string peft_model_id;
-  int lora_alpha;
-  float lora_dropout;
-  std::vector<std::string> target_modules;
-  // whether to load weights from file, instead of initializing them randomly
-  bool load_weights_from_file;
+  // whether to initialize weights randomly (instead of attempting to load them
+  // from file)
+  bool init_lora_weights;
 };
 
 class LoraLinearParams {

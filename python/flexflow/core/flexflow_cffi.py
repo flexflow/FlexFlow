@@ -29,6 +29,7 @@ from flexflow.type import (
     MetricsType,
     InferenceMode,
     RequestType,
+    OptimizerType,
     ModelType,
     OpType,
     ParameterSyncType,
@@ -1599,23 +1600,28 @@ class RequestManager(object):
 
     def set_max_requests_per_batch(self, max_requests):
         return ffc().flexflow_request_manager_set_max_requests_per_batch(
-            self.handle, max_requests)
-    
+            self.handle, max_requests
+        )
+
     def set_max_tokens_per_batch(self, max_tokens):
         return ffc().flexflow_request_manager_set_max_tokens_per_batch(
-            self.handle, max_tokens)
-    
+            self.handle, max_tokens
+        )
+
     def set_max_spec_tree_token_num(self, max_tokens):
         return ffc().flexflow_request_manager_set_max_spec_tree_token_num(
-            self.handle, max_tokens)
-    
+            self.handle, max_tokens
+        )
+
     def set_max_sequence_length(self, max_length):
         return ffc().flexflow_request_manager_set_max_sequence_length(
-            self.handle, max_length)
-    
+            self.handle, max_length
+        )
+
     def set_enable_peft_finetuning(self, enable_peft_finetuning):
         return ffc().flexflow_request_manager_set_enable_peft_finetuning(
-            self.handle, enable_peft_finetuning)
+            self.handle, enable_peft_finetuning
+        )
 
     def start_server(self, model):
         return ffc().flexflow_request_manager_start_background_server(
@@ -1742,20 +1748,206 @@ class GenerationResult(object):
 
 
 class LoraLinearConfig(object):
-    __slots__ = ["handle", "_handle"]
-
     def __init__(
         self,
-        cache_folder,
-        peft_model_id,
+        cache_folder: str,
+        peft_model_id: str,
+        trainable: bool = False,
+        init_lora_weights: bool = False,
+        rank: int = 8,
+        lora_alpha: float = 8.0,
+        lora_dropout: float = 0.0,
+        target_modules: List[str] = [],
+        optimizer_type: OptimizerType = OptimizerType.OPTIMIZER_TYPE_NONE,
+        optimizer_kwargs: dict = {},
     ):
-        c_cache_folder = get_c_name(cache_folder)
-        peft_model_id = get_c_name(peft_model_id)
+        self.ff_initialized = False
+        self._cache_folder = cache_folder
+        self._peft_model_id = peft_model_id
+        self._trainable = trainable
+        self._init_lora_weights = init_lora_weights
+        self._rank = rank
+        self._lora_alpha = lora_alpha
+        self._lora_dropout = lora_dropout
+        self._target_modules = target_modules
+        self.optimizer_type = optimizer_type
+        self.optimizer_kwargs = optimizer_kwargs
+
+        if trainable:
+            if (
+                optimizer_type != OptimizerType.OPTIMIZER_TYPE_SGD
+                and optimizer_type != OptimizerType.OPTIMIZER_TYPE_ADAM
+            ):
+                raise ValueError(
+                    "Please specify optimizer to be used to train LoRA module. Supported optimizers: SGD and Adam"
+                )
+            if init_lora_weights and len(target_modules) == 0:
+                raise ValueError(
+                    "Please specify target modules to be used to train LoRA module"
+                )
+        else:
+            if init_lora_weights:
+                raise ValueError(
+                    "LORA weights initialization from scratch not supported in inference model"
+                )
+
+        if rank < 1 or lora_alpha <= 0 or lora_dropout > 1 or lora_dropout < 0.0:
+            raise ValueError(
+                "Rank must be >= 1, lora_alpha must be > 0, lora_dropout in interval: [0.0, 1.0]"
+            )
+
+    def ff_compile(self):
+        c_cache_folder = get_c_name(os.path.expanduser(self.cache_folder))
+        peft_model_id = get_c_name(self.peft_model_id)
+        c_target_modules = [
+            get_c_name(target_module) for target_module in self.target_modules
+        ]
+        c_optimizer_type = enum_to_int(OptimizerType, self.optimizer_type)
+        # SGD optional optimizer args
+        sgd_learning_rate = self.optimizer_kwargs.get("learning_rate", 0.001)
+        sgd_momentum = self.optimizer_kwargs.get("momentum", 0.0)
+        sgd_nesterov = self.optimizer_kwargs.get("nesterov", False)
+        sgd_weight_decay = self.optimizer_kwargs.get("weight_decay", 0.0)
+        # Adam optional optimizer args
+        adam_alpha = self.optimizer_kwargs.get("alpha", 0.001)
+        adam_beta1 = self.optimizer_kwargs.get("beta1", 0.9)
+        adam_beta2 = self.optimizer_kwargs.get("beta2", 0.999)
+        adam_weight_decay = self.optimizer_kwargs.get("weight_decay", 0.0)
+        adam_epsilon = self.optimizer_kwargs.get("epsilon", 1e-8)
         self.handle = ffc().flexflow_lora_linear_config_create(
             c_cache_folder,
             peft_model_id,
+            self.trainable,
+            self.init_lora_weights,
+            self.rank,
+            self.lora_alpha,
+            self.lora_dropout,
+            len(self.target_modules),
+            c_target_modules,
+            c_optimizer_type,
+            sgd_learning_rate,
+            sgd_momentum,
+            sgd_nesterov,
+            sgd_weight_decay,
+            adam_alpha,
+            adam_beta1,
+            adam_beta2,
+            adam_weight_decay,
+            adam_epsilon,
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_linear_config_destroy)
+        self.ff_initialized = True
+
+    @property
+    def cache_folder(self):
+        if self.ff_initialized:
+            c_cache_folder = ffc().flexflow_lora_linear_config_get_cache_folder(
+                self.handle
+            )
+            return ffi.string(c_cache_folder).decode("utf-8")
+        else:
+            return self._cache_folder
+
+    @property
+    def peft_model_id(self):
+        if self.ff_initialized:
+            c_peft_model_id = ffc().flexflow_lora_linear_config_get_peft_model_id(
+                self.handle
+            )
+            return ffi.string(c_peft_model_id).decode("utf-8")
+        else:
+            return self._peft_model_id
+
+    @property
+    def rank(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_rank(self.handle)
+        else:
+            return self._rank
+
+    @property
+    def lora_alpha(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_lora_alpha(self.handle)
+        else:
+            return self._lora_alpha
+
+    @property
+    def lora_dropout(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_lora_dropout(self.handle)
+        else:
+            return self._lora_dropout
+
+    @property
+    def trainable(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_trainable(self.handle)
+        else:
+            return self._trainable
+
+    @property
+    def init_lora_weights(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_init_lora_weights(self.handle)
+        else:
+            return self._init_lora_weights
+
+    @property
+    def target_modules(self):
+        if self.ff_initialized:
+            num_target_modules = ffi.new("int *")
+            c_target_modules = ffc().flexflow_lora_linear_config_get_target_modules(
+                self.handle, num_target_modules
+            )
+            target_modules = []
+            for i in range(num_target_modules[0]):
+                target_modules.append(ffi.string(c_target_modules[i]).decode("utf-8"))
+            return target_modules
+        else:
+            return self._target_modules
+
+    @cache_folder.setter
+    def cache_folder(self, value: str):
+        self._cache_folder = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_cache_folder(self.handle, value)
+
+    @peft_model_id.setter
+    def peft_model_id(self, value: str):
+        self._peft_model_id = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_peft_model_id(self.handle, value)
+
+    @rank.setter
+    def rank(self, value: int):
+        self._rank = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_rank(self.handle, value)
+
+    @lora_alpha.setter
+    def lora_alpha(self, value: float):
+        self._lora_alpha = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_lora_alpha(self.handle, value)
+
+    @lora_dropout.setter
+    def lora_dropout(self, value: float):
+        self._lora_dropout = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_lora_dropout(self.handle, value)
+
+    @trainable.setter
+    def trainable(self, value: bool):
+        self._trainable = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_trainable(self.handle, value)
+
+    @init_lora_weights.setter
+    def init_lora_weights(self, value: bool):
+        self._init_lora_weights = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_init_lora_weights(self.handle, value)
 
 
 # -----------------------------------------------------------------------
@@ -1780,6 +1972,7 @@ class PEFTModelID(object):
         if PEFTModelID.__no_id_h is None:
             PEFTModelID.__no_id_h = ffc().flexflow_peft_model_id_no_id()
         return PEFTModelID.__no_id_h
+
 
 # -----------------------------------------------------------------------
 # Request
@@ -2561,9 +2754,10 @@ class FFModel(object):
             c_name,
         )
         self.add_layer(OpType.RESIDUAL_LAYERNORM, name)
-        return Tensor(
-            handles_array[0], owner_op_type=OpType.RESIDUAL_LAYERNORM
-        ), Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYERNORM)
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_LAYERNORM),
+            Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYERNORM),
+        )
 
     def add_bias_residual_layer_norm(
         self,
@@ -2614,9 +2808,10 @@ class FFModel(object):
             c_name,
         )
         self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)
-        return Tensor(
-            handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM
-        ), Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM),
+            Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM),
+        )
 
     def sigmoid_silu_multi(self, input1, input2, name=None):
         c_name = get_c_name(name)
@@ -3928,8 +4123,9 @@ class FFModel(object):
             c_name,
         )
         self.add_layer(OpType.RESIDUAL_RMS_NORM, name)
-        return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM), Tensor(
-            handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM),
+            Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM),
         )
 
     def arg_top_k(self, input, k, sorted, speculative_decoding, name=None):
@@ -4026,9 +4222,7 @@ class FFModel(object):
         return Tensor(handle, owner_op_type=OpType.ARGMAX)
 
     def add_lora_layer(self, peft_config):
-        handle = ffc().flexflow_model_add_lora_layer(self.handle, peft_config.handle)
-        return handle
-        # self.add_layer(OpType.LORA, name)
+        return ffc().flexflow_model_add_lora_layer(self.handle, peft_config.handle)
 
     def reset_metrics(self):
         """Reset performance metrics.
@@ -4459,9 +4653,13 @@ class FFModel(object):
             request.max_sequence_length for request in requests_list
         ]
         peft_model_ids = [
-            (request.peft_model_id 
-             if request.peft_model_id is not None else PEFTModelID.no_id_handle()) 
-             for request in requests_list]
+            (
+                request.peft_model_id
+                if request.peft_model_id is not None
+                else PEFTModelID.no_id_handle()
+            )
+            for request in requests_list
+        ]
         dataset_filepaths = [
             get_c_name(request.dataset_filepath) for request in requests_list
         ]

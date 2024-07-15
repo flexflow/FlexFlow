@@ -59,21 +59,21 @@ def get_configs():
             "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
             "inference_debugging": True,
-            "fusion": True,
+            "fusion": False,
         }
         model_configs = {
             # required parameters
             "base_model": "JackFram/llama-160m",
-            "peft_model_ids": [
-                "goliaro/llama-160m-lora",
-            ],
+            "inference_peft_model_id": "goliaro/llama-160m-lora",
+            "finetuning_peft_model_id": "goliaro/llama-160m-lora",
             # optional parameters
             "cache_path": "",
             "refresh_cache": False,
-            "full_precision": False,
+            "full_precision": True,
             "prompt": "",
             "finetuning_dataset": os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "../prompt/peft.json"
+                os.path.dirname(os.path.abspath(__file__)),
+                "../prompt/peft_dataset.json",
             ),
             "output_file": "",
         }
@@ -100,8 +100,38 @@ def main():
         refresh_cache=configs.refresh_cache,
         output_file=configs.output_file,
     )
-    for peft_model_id in configs.peft_model_ids:
-        llm.add_peft(peft_model_id)
+    # Add inference and/or finetuning lora
+    lora_inference_config = None
+    lora_finetuning_config = None
+    if len(configs.prompt) > 0:
+        lora_inference_config = ff.LoraLinearConfig(
+            llm.cache_path, configs.inference_peft_model_id
+        )
+        llm.add_peft(lora_inference_config)
+    if len(configs.finetuning_dataset) > 0:
+        # lora_finetuning_config = ff.LoraLinearConfig(
+        #     llm.cache_path,
+        #     configs.finetuning_peft_model_id,
+        #     target_modules=["down_proj"],
+        #     rank=16,
+        #     lora_alpha=16,
+        #     trainable=True,
+        #     init_lora_weights=True,
+        #     optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
+        # )
+        lora_finetuning_config = ff.LoraLinearConfig(
+            llm.cache_path,
+            configs.inference_peft_model_id,
+            trainable=True,
+            optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
+            optimizer_kwargs={
+                "learning_rate": 1.0,
+                "momentum": 0.0,
+                "weight_decay": 0.0,
+                "nesterov": False,
+            },
+        )
+        llm.add_peft(lora_finetuning_config)
 
     # Compile the LLM for inference and load the weights into memory
     generation_config = ff.GenerationConfig(
@@ -109,10 +139,10 @@ def main():
     )
     llm.compile(
         generation_config,
-        enable_peft_finetuning = (len(configs.finetuning_dataset) > 0),
+        enable_peft_finetuning=(len(configs.finetuning_dataset) > 0),
         max_requests_per_batch=1,
         max_seq_length=256,
-        max_tokens_per_batch=64,
+        max_tokens_per_batch=128,
     )
 
     llm.start_server()
@@ -123,21 +153,24 @@ def main():
         prompts = [s for s in json.load(open(configs.prompt))]
         inference_requests = [
             ff.Request(
-                ff.RequestType.REQ_INFERENCE, prompt=prompt, max_sequence_length=128
+                ff.RequestType.REQ_INFERENCE,
+                prompt=prompt,
+                max_sequence_length=128,
+                peft_model_id=llm.get_ff_peft_id(lora_inference_config),
             )
             for prompt in prompts
         ]
         requests += inference_requests
     # Finetuning
     if len(configs.finetuning_dataset) > 0:
-        for peft_model_id in configs.peft_model_ids:
-            finetuning_request = ff.Request(
-                ff.RequestType.REQ_FINETUNING,
-                max_sequence_length=128,
-                peft_model_id=llm.get_ff_peft_id(peft_model_id),
-                dataset_filepath=configs.finetuning_dataset,
-            )
-            requests.append(finetuning_request)
+        finetuning_request = ff.Request(
+            ff.RequestType.REQ_FINETUNING,
+            max_sequence_length=128,
+            peft_model_id=llm.get_ff_peft_id(lora_finetuning_config),
+            dataset_filepath=configs.finetuning_dataset,
+            max_training_steps=2,
+        )
+        requests.append(finetuning_request)
 
     llm.generate(requests)
 

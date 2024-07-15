@@ -28,16 +28,14 @@ from flexflow.serve.models import (
 )
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
-from peft import PeftModel, PeftConfig
+from peft import PeftModel, PeftConfig, LoraConfig
 from huggingface_hub import HfApi
 import torch, shutil, hashlib, json, gc
 from typing import Union, List
 
 
 class _SupportedModels:
-    def __init__(
-        self,
-    ):
+    def __init__(self,):
         self.supported_models = {
             "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
@@ -109,37 +107,60 @@ class LLM:
         if type(self) == LLM and self.rm is not None:
             self.rm.stop_server()
 
-    def add_peft(self, peft_model_id: str):
-        """Add a previously created PEFT adapter to the LLM. The PEFT model should already exist locally or be available on HuggingFace"""
-        peft_config = PeftConfig.from_pretrained(peft_model_id)
-        peft_type = peft_config.peft_type
-        if peft_type != "LORA":
-            raise RuntimeError(f"PEFT type {peft_type} not yet supported in FlexFlow")
+    def add_peft(self, lora_config: LoraLinearConfig):
+        """Add a PEFT adapter to the LLM"""
+        if lora_config is None:
+            raise ValueError("lora_config cannot be None")
+        if len(lora_config.peft_model_id or "") == 0:
+            raise ValueError("PEFT model id cannot be empty")
+        # Inference (trainable=False): LoRA model should already exist in huggingface. Any changes of parameters from original model are ignored
+        # Training (trainable=True): Either an existing model (init_lora_weights=False) or a new one (init_lora_weights=True)
+
+        if lora_config.trainable == False or not lora_config.init_lora_weights:
+            peft_config = PeftConfig.from_pretrained(lora_config.peft_model_id)
+        else:
+            peft_config = LoraConfig(
+                peft_type="LORA",
+                base_model_name_or_path=self.model_name,
+                r=lora_config.rank,
+                target_modules=lora_config.target_modules,
+                lora_alpha=lora_config.lora_alpha,
+                lora_dropout=lora_config.lora_dropout,
+                init_lora_weights=lora_config.init_lora_weights,
+            )
+        if peft_config.peft_type != "LORA":
+            raise RuntimeError(
+                f"PEFT type {peft_config.peft_type} not yet supported in FlexFlow"
+            )
         if "base_model_name_or_path" not in peft_config.to_dict():
             raise ValueError(
-                f"PEFT model {peft_model_id} does not have an associated base model"
+                f"PEFT model {lora_config.peft_model_id} does not have an associated base model"
             )
         if peft_config.base_model_name_or_path != self.model_name:
             raise RuntimeError(
                 f"Attempting to add PEFT with base model name {peft_config.base_model_name_or_path} to LLM {self.model_name}"
             )
-        peft_dict = {
-            "peft_config": peft_config,
-            "peft_type": peft_type,
-        }
-        self.pefts[peft_model_id] = peft_dict
 
-    def get_ff_peft_id(self, peft_model_id: str) -> PEFTModelID:
-        if peft_model_id not in self.pefts:
+        self.pefts[lora_config] = {
+            "peft_config": peft_config,
+            "peft_type": peft_config.peft_type,
+        }
+
+    def get_ff_peft_id(self, lora_config: LoraLinearConfig) -> PEFTModelID:
+        if lora_config is None:
+            raise ValueError("lora_config cannot be None")
+        if len(lora_config.peft_model_id or "") == 0:
+            raise ValueError("PEFT model id cannot be empty")
+        if lora_config not in self.pefts:
             raise ValueError(
-                f"PEFT {peft_model_id} not registered with LLM {self.model_name}"
+                f"PEFT {lora_config} not registered with LLM {self.model_name}"
             )
-        peft_dict = self.pefts[peft_model_id]
-        if "ff_peft_model_id" not in peft_dict:
+        if "ff_peft_model_id" not in self.pefts[lora_config]:
             raise RuntimeError(
-                f"Attempting to run PEFT {peft_model_id} before compiling LLM {self.model_name}"
+                f"Attempting to run PEFT {lora_config} before compiling LLM {self.model_name}"
             )
-        return peft_dict["ff_peft_model_id"]
+
+        return self.pefts[lora_config]["ff_peft_model_id"]
 
     def download_hf_config(self):
         """Save the HuggingFace model configs to a json file. Useful mainly to run the C++ inference code."""
@@ -153,12 +174,11 @@ class LLM:
         self.hf_config.to_json_file(config_path)
 
         # Save PEFT configs if the LLM has any registered PEFTs
-        for peft_model_id, peft_dict in self.pefts.items():
+        for ff_peft_config, peft_dict in self.pefts.items():
             peft_config = peft_dict["peft_config"]
+            peft_model_id = ff_peft_config.peft_model_id
             peft_config_dir = os.path.join(
-                os.path.expanduser(self.cache_path),
-                "configs",
-                peft_model_id.lower(),
+                os.path.expanduser(self.cache_path), "configs", peft_model_id.lower()
             )
             os.makedirs(peft_config_dir, exist_ok=True)
             peft_config_path = os.path.join(peft_config_dir, "config.json")
@@ -264,14 +284,15 @@ class LLM:
                     params.detach().cpu().numpy().tofile(f"{weights_path}/{name}")
 
         def download_peft_weights():
-            for peft_model_id, peft_dict in self.pefts.items():
+            for ff_peft_config, peft_dict in self.pefts.items():
                 peft_config = peft_dict["peft_config"]
                 peft_type = peft_dict["peft_type"]
+                peft_model_id = ff_peft_config.peft_model_id
 
                 weights_path = get_weights_path(peft_model_id)
                 refresh_cache_if_needed(peft_model_id)
-                ff_revision, ff_revision_file, latest_revision = (
-                    self.__get_revision_hashes(peft_model_id, weights_path)
+                ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+                    peft_model_id, weights_path
                 )
 
                 if ff_revision != latest_revision:
@@ -306,9 +327,7 @@ class LLM:
 
         # Use local cache, or download new version
         self.tokenizer_path = os.path.join(
-            os.path.expanduser(self.cache_path),
-            "tokenizers",
-            self.model_name.lower(),
+            os.path.expanduser(self.cache_path), "tokenizers", self.model_name.lower()
         )
         if self.refresh_cache:
             print(
@@ -423,11 +442,8 @@ class LLM:
         )
 
         # Add PEFT layer if registered
-        for peft_model_id, peft_dict in self.pefts.items():
-            # ff_peft_config = peft_dict["ff_peft_config"]
-            ff_peft_config = LoraLinearConfig(
-                os.path.expanduser(self.cache_path), peft_model_id
-            )
+        for ff_peft_config, peft_dict in self.pefts.items():
+            ff_peft_config.ff_compile()
             ff_peft_model_id = self.model.ffmodel.add_lora_layer(ff_peft_config)
             peft_dict["ff_peft_model_id"] = ff_peft_model_id
 
@@ -439,8 +455,7 @@ class LLM:
 
         self.rm.set_max_spec_tree_token_num(
             model_configs.max_spec_tree_token_num
-            if "max_spec_tree_token_num"
-            in model_configs.__dict__
+            if "max_spec_tree_token_num" in model_configs.__dict__
             else 20
         )
 
@@ -550,13 +565,7 @@ class SSM(LLM):
         :param output_file: Path to the output file. If left blank, the output will not be written to file, defaults to ""
         :type output_file: str, optional
         """
-        super().__init__(
-            model_name,
-            data_type,
-            cache_path,
-            refresh_cache,
-            output_file,
-        )
+        super().__init__(model_name, data_type, cache_path, refresh_cache, output_file)
 
     def compile(
         self,

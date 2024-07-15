@@ -253,7 +253,8 @@ void FlexFlow::top_level_task(Task const *task,
                               : LoraLinearConfig(file_paths.cache_folder_path,
                                                  peft_model_name,
                                                  true /*trainable*/,
-                                                 optim_config);
+                                                 optim_config,
+                                                 false /*init_lora_weights*/);
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();
