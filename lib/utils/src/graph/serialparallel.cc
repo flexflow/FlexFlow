@@ -239,6 +239,30 @@ std::unordered_set<Node> get_nodes(Node const &node) {
   return {node};
 }
 
+std::unordered_map<Node, Node> parallel_extend(DiGraph &g,
+                                               DiGraphView const &ext) {
+  std::unordered_map<Node, Node> node_map;
+  for (Node const &node : get_nodes(DiGraphView(ext))) {
+    node_map.emplace(node, g.add_node());
+  }
+  for (auto const &edge : get_edges(ext)) {
+    g.add_edge({node_map.at(edge.src), node_map.at(edge.dst)});
+  }
+  return node_map;
+}
+
+std::unordered_map<Node, Node> serial_extend(DiGraph &g,
+                                             DiGraphView const &ext) {
+  std::unordered_set<Node> original_sinks = get_sinks(g);
+  std::unordered_map<Node, Node> node_map = parallel_extend(g, ext);
+  for (Node const &node1 : original_sinks) {
+    for (Node const &node2 : get_sources(ext)) {
+      g.add_edge({node_map.at(node1), node2});
+    }
+  }
+  return node_map;
+}
+
 std::unordered_map<Node, Node> parallel_extend(MultiDiGraph &g,
                                                MultiDiGraph const &ext) {
   std::unordered_map<Node, Node> node_map;
@@ -288,7 +312,7 @@ MultiDiGraph parallel_composition(MultiDiGraph const &g1,
 SerialParallelDecomposition parallel_composition(
     std::vector<SerialParallelDecomposition> const &sp_compositions) {
   if (sp_compositions.size() == 1) {
-    return sp_compositions[0];
+    return sp_compositions.at(0);
   }
   Parallel composition;
   for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
@@ -312,7 +336,7 @@ SerialParallelDecomposition parallel_composition(
 SerialParallelDecomposition serial_composition(
     std::vector<SerialParallelDecomposition> const &sp_compositions) {
   if (sp_compositions.size() == 1) {
-    return sp_compositions[0];
+    return sp_compositions.at(0);
   }
   Serial composition;
   for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
@@ -550,6 +574,14 @@ MultiDiGraph multidigraph_from_sp_decomposition(Node const &Node) {
   MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
   g.add_node();
   return g;
+}
+
+bool Parallel::operator==(Parallel const &other) const {
+  return as_set(children) == as_set(other.children);
+}
+
+bool Parallel::operator!=(Parallel const &other) const {
+  return !(*this == other);
 }
 
 } // namespace FlexFlow

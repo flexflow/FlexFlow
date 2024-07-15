@@ -24,6 +24,8 @@ struct Serial {
 
 struct Parallel {
   std::vector<std::variant<Serial, Node>> children;
+  bool operator==(Parallel const &other) const;
+  bool operator!=(Parallel const &other) const;
 };
 
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Parallel, children);

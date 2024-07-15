@@ -663,14 +663,20 @@ std::unordered_map<Node, int>
   std::unordered_map<Node, int> longest_path_lengths;
 
   for (Node const &n : topo_order) {
-    std::unordered_set<int> predecessor_path_lengths = transform(get_predecessors(g, n), [&](Node const &pred) { return longest_path_lengths.at(pred); });
-    longest_path_lengths[n] = (predecessor_path_lengths.size() == 0) ? 0 : maximum(predecessor_path_lengths) + 1;
+    std::unordered_set<int> predecessor_path_lengths =
+        transform(get_predecessors(g, n), [&](Node const &pred) {
+          return longest_path_lengths.at(pred);
+        });
+    longest_path_lengths[n] = (predecessor_path_lengths.size() == 0)
+                                  ? 0
+                                  : maximum(predecessor_path_lengths) + 1;
   }
 
   return longest_path_lengths;
 }
 
-std::unordered_map<Node, int> get_longest_path_lengths_from_source_node(DiGraphView const &g) {
+std::unordered_map<Node, int>
+    get_longest_path_lengths_from_source_node(DiGraphView const &g) {
   assert(is_acyclic(g));
   return get_unchecked_longest_path_lengths_from_source_node(g);
 }

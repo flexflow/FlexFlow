@@ -15,6 +15,7 @@
 #include <iostream>
 #include <map>
 #include <numeric>
+#include <set>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -294,7 +295,9 @@ bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
 
 template <typename C>
 auto invert_map(C const &m) {
-  std::unordered_map<typename C::mapped_type, std::unordered_set<typename C::key_type>> m_inv;
+  std::unordered_map<typename C::mapped_type,
+                     std::unordered_set<typename C::key_type>>
+      m_inv;
   for (auto const &[key, value] : m) {
     m_inv[value].insert(key);
   }
@@ -501,6 +504,13 @@ std::vector<E> as_vector(C const &c) {
   return result;
 }
 
+template <typename C>
+auto as_set(C const &c) {
+  using E = typename C::value_type;
+  std::set<E> result(c.cbegin(), c.cend());
+  return result;
+}
+
 template <typename F, typename In, typename Out>
 std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
@@ -560,6 +570,19 @@ std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
     extend(result, f(elem));
   }
   return result;
+}
+
+
+template <typename C>
+auto pairs(C const &c) {
+  using E = typename C::value_type;
+  std::vector<std::pair<E, E>> pairs;
+  for (auto it1 = c.begin(); it1 != c.end(); ++it1) {
+    for (auto it2 = std::next(it1); it2 != c.end(); ++it2) {
+      pairs.emplace_back(*it1, *it2);
+    }
+  }
+  return pairs;
 }
 
 template <typename C, typename Enable>

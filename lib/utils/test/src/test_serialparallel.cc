@@ -3,6 +3,66 @@
 
 TEST_SUITE(FF_TEST_SUITE) {
 
+  TEST_CASE("Parallel::operator== - base testing") {
+    std::vector<Node> n = {
+        Node(0), Node(1), Node(2), Node(3), Node(4), Node(5)};
+
+    // The following definitions are equivalent
+    Parallel p1 = {{n[0],
+                    Serial{{n[1], n[2]}},
+                    Serial{{n[3], Parallel{{n[4], n[5], n[0]}}}}}};
+    Parallel p2 = {{Serial{{n[1], n[2]}},
+                    n[0],
+                    Serial{{n[3], Parallel{{n[4], n[5], n[0]}}}}}};
+    Parallel p3 = {{n[0],
+                    Serial{{n[1], n[2]}},
+                    Serial{{n[3], Parallel{{n[0], n[5], n[4]}}}}}};
+    Parallel p4 = {{Serial{{n[3], Parallel{{n[5], n[4], n[0]}}}},
+                    Serial{{n[1], n[2]}},
+                    n[0]}};
+    std::vector p = {p1, p2, p3, p4};
+
+    SUBCASE("Checking for reciprocal equality") {
+      for (auto const &[pa, pb] : pairs(p)) {
+        CHECK(pa == pb);
+        CHECK(pb == pa);
+        CHECK_FALSE(pa != pb);
+        CHECK_FALSE(pb != pa);
+      }
+    }
+    SUBCASE("Checking for not-equality") {
+      // Not equivalent to the previous: serial order differs
+      Parallel p5 = {{n[0],
+                      Serial{{n[2], n[1]}},
+                      Serial{{n[3], Parallel{{n[4], n[5], n[0]}}}}}};
+      Parallel p6 = {{n[0],
+                      Serial{{n[1], n[2]}},
+                      Serial{{Parallel{{n[4], n[5], n[0]}}, n[3]}}}};
+
+      for (auto const &pi : p) {
+        CHECK(pi != p5);
+        CHECK(pi != p6);
+      }
+    }
+  }
+  TEST_CASE("Parallel::operator== - nested SP") {
+    std::vector<Node> n = {Node(0), Node(1), Node(2), Node(3)};
+
+    // All definitions are equivalent
+    Parallel p1 = {{n[3], Serial{{Parallel{{n[2], n[1]}}, n[2]}}}};
+    Parallel p2 = {{n[3], Serial{{Parallel{{n[1], n[2]}}, n[2]}}}};
+    Parallel p3 = {{Serial{{Parallel{{n[1], n[2]}}, n[2]}}, n[3]}};
+    Parallel p4 = {{Serial{{Parallel{{n[2], n[1]}}, n[2]}}, n[3]}};
+    std::vector p = {p1, p2, p3, p4};
+
+    for (auto const &[pa, pb] : pairs(p)) {
+      CHECK(pa == pb);
+      CHECK(pb == pa);
+      CHECK_FALSE(pa != pb);
+      CHECK_FALSE(pb != pa);
+    }
+  }
+
   TEST_CASE("isempty function") {
     Node n1{1};
     Node n2{2};

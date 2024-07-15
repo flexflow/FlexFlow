@@ -14,20 +14,24 @@ bool is_2_terminal_sp_compliant(DiGraphView const &g) {
   return (is_acyclic(g) && has_single_source(g) && has_single_sink(g));
 }
 
-  SerialParallelDecomposition
-      barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
+SerialParallelDecomposition
+    barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
 
-    std::unordered_map<Node, int> node_to_sp_layer = get_longest_path_lengths_from_source_node(g);
-    std::unordered_map<int, std::unordered_set<Node>> unordered_layer_to_node = invert_map(node_to_sp_layer);
-    std::map<int, std::unordered_set<Node>> layer_to_node(unordered_layer_to_node.begin(), unordered_layer_to_node.end());
+  std::unordered_map<Node, int> node_to_sp_layer =
+      get_longest_path_lengths_from_source_node(g);
+  std::unordered_map<int, std::unordered_set<Node>> unordered_layer_to_node =
+      invert_map(node_to_sp_layer);
+  std::map<int, std::unordered_set<Node>> layer_to_node(
+      unordered_layer_to_node.begin(), unordered_layer_to_node.end());
 
-    Serial sp;
-    for (auto const &[_, nodes] : layer_to_node) {
-      Parallel layer{std::vector<std::variant<Serial, Node>>{nodes.begin(), nodes.end()}};
-      sp.children.push_back(layer);
-    }
-    return sp;
+  Serial sp;
+  for (auto const &[_, nodes] : layer_to_node) {
+    Parallel layer{
+        std::vector<std::variant<Serial, Node>>{nodes.begin(), nodes.end()}};
+    sp.children.push_back(layer);
   }
+  return sp;
+}
 
 SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g) {
   assert(is_2_terminal_sp_compliant(g));
@@ -91,7 +95,7 @@ SerialParallelDecomposition
   }
 
   Node sink = find_sink_node(g);
-  return normalize(node_to_sp[sink]);
+  return normalize(node_to_sp.at(sink));
 }
 
 SerialParallelDecomposition
@@ -111,7 +115,10 @@ SerialParallelDecomposition
     if (node == source) {
       continue;
     }
-    //change to transform, which watching out for the order.
+    // std::unordered_set<SerialParallelDecomposition> unordered_sp_predecessors
+    // = transform(get_predecessors(g, node), [&](Node const &p) {return
+    // node_to_sp[p];}); std::vector<SerialParallelDecomposition>
+    // sp_predecessors(unordered_sp_predecessors.begin(),unordered_sp_predecessors.end());
     std::vector<SerialParallelDecomposition> sp_predecessors;
     for (Node const &p : get_predecessors(g, node)) {
       sp_predecessors.push_back(node_to_sp[p]);
