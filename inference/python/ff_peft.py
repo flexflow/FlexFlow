@@ -72,7 +72,8 @@ def get_configs():
             "full_precision": True,
             "prompt": "",
             "finetuning_dataset": os.path.join(
-                os.path.dirname(os.path.abspath(__file__)), "../prompt/peft.json"
+                os.path.dirname(os.path.abspath(__file__)),
+                "../prompt/peft_dataset.json",
             ),
             "output_file": "",
         }
@@ -108,15 +109,27 @@ def main():
         )
         llm.add_peft(lora_inference_config)
     if len(configs.finetuning_dataset) > 0:
+        # lora_finetuning_config = ff.LoraLinearConfig(
+        #     llm.cache_path,
+        #     configs.finetuning_peft_model_id,
+        #     target_modules=["down_proj"],
+        #     rank=16,
+        #     lora_alpha=16,
+        #     trainable=True,
+        #     init_lora_weights=True,
+        #     optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
+        # )
         lora_finetuning_config = ff.LoraLinearConfig(
             llm.cache_path,
-            configs.finetuning_peft_model_id,
-            target_modules=["down_proj"],
-            rank=16,
-            lora_alpha=16,
+            configs.inference_peft_model_id,
             trainable=True,
-            init_lora_weights=True,
             optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
+            optimizer_kwargs={
+                "learning_rate": 1.0,
+                "momentum": 0.0,
+                "weight_decay": 0.0,
+                "nesterov": False,
+            },
         )
         llm.add_peft(lora_finetuning_config)
 
