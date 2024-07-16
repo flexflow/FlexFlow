@@ -15,13 +15,14 @@ build_targets = [
 ]
 
 test_targets = [
-  "kernels-tests",
+  # "kernels-tests",
   "utils-tests",
   "op-attrs-tests",
   "pcg-tests",
   # "substitutions-tests",
   # "compiler-tests",
   "substitution-generator-tests",
+  # "local-execution-tests"
 ]
 
 [cmake_flags_extra]

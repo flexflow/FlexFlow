@@ -35,8 +35,10 @@ static std::vector<tensor_guid_t>
 
 std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n) {
-  return sort_edge_set(
-      get_outgoing_edges(cg.raw_graph.get_raw_graph(), n.raw_node));
+  return transform(cg.raw_graph.get_output_map().at(n.raw_node),
+                   [&](MultiDiOutput const &o) -> tensor_guid_t {
+                     return tensor_guid_t{o};
+                   });
 }
 
 std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,

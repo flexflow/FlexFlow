@@ -57,13 +57,13 @@ struct OpTaskSignature {
 
   void add_output_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_bwd_optional_output_slot(slot_id,
-                                     SlotType slot_type = SlotType::TENSOR);
+                                    SlotType slot_type = SlotType::TENSOR);
 
   void add_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
   void add_optional_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
 
   void add_from_slot_spec(OpTensorSlotSpec const &spec);
-  void add_grad_slot_from_slot_spec(OpTensorSlotSpec const & spec);
+  void add_grad_slot_from_slot_spec(OpTensorSlotSpec const &spec);
 
   template <typename T>
   void add_arg_slot(slot_id name) {

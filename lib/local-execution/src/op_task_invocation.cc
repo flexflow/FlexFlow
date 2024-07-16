@@ -1,5 +1,4 @@
 #include "local-execution/op_task_invocation.h"
-#include "utils/overload.h"
 
 namespace FlexFlow {
 
@@ -83,6 +82,7 @@ bool is_tensor_invocation_valid(OpTaskSignature const &sig,
   }
 
   // FIXME -- make sure invocation doesn't contain MORE than signature
+  // https://github.com/flexflow/FlexFlow/issues/1442
   return true;
 }
 
@@ -97,6 +97,7 @@ bool is_arg_type_invalid(std::type_index expected_arg_type,
 bool is_arg_invocation_valid(OpTaskSignature const &sig,
                              OpTaskInvocation const &inv) {
   // FIXME -- arg signature/invocation checking
+  // https://github.com/flexflow/FlexFlow/issues/1442
   // auto sig_arg_types = sig.get_arg_types();
   // for (auto arg_binding : inv.binding.get_arg_bindings()) {
   //   std::type_index arg_type = sig_arg_types.at(arg_binding.first);

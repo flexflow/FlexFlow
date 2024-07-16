@@ -29,6 +29,14 @@
 
 namespace FlexFlow {
 
+bool TaskSignatureAndImpl::operator==(TaskSignatureAndImpl const &other) const {
+  return this->task_signature == other.task_signature;
+}
+
+bool TaskSignatureAndImpl::operator!=(TaskSignatureAndImpl const &other) const {
+  return this->task_signature != other.task_signature;
+}
+
 TaskSignatureAndImpl get_task_sig_impl(task_id_t const &task_id) {
   switch (task_id) {
     case ELEMENTBINARY_INIT_TASK_ID:
@@ -210,7 +218,7 @@ std::vector<task_id_t> get_task_ids(ComputationGraphOpAttrs const &op) {
       [](TopKAttrs const &attrs) { return get_task_ids(attrs); },
       [](TransposeAttrs const &attrs) { return get_task_ids(attrs); },
       [](auto const &attrs) -> std::vector<task_id_t> {
-        throw mk_runtime_error(fmt::format("No task IDs for {}", attrs));
+        throw mk_runtime_error(fmt::format("Unhandled attr type: {}", attrs));
       },
   });
 }
@@ -233,7 +241,7 @@ OpTaskInvocation init(ComputationGraphOpAttrs const &op) {
       [](TopKAttrs const &attrs) { return init(attrs); },
       [](TransposeAttrs const &attrs) { return init(attrs); },
       [](auto const &attrs) -> OpTaskInvocation {
-        throw mk_runtime_error(fmt::format("No init function for {}", attrs));
+        throw mk_runtime_error(fmt::format("Unhandled attr type {}", attrs));
       },
   });
 }
@@ -265,7 +273,7 @@ OpTaskInvocation forward(ComputationGraphOpAttrs const &op) {
       [](TopKAttrs const &attrs) { return forward(attrs); },
       [](TransposeAttrs const &attrs) { return forward(attrs); },
       [](auto const &attrs) -> OpTaskInvocation {
-        throw mk_runtime_error(fmt::format("No forward support for {}", attrs));
+        throw mk_runtime_error(fmt::format("Unhandled attr type {}", attrs));
       },
   });
 }
@@ -297,8 +305,7 @@ OpTaskInvocation backward(ComputationGraphOpAttrs const &op) {
       [](TopKAttrs const &attrs) { return backward(attrs); },
       [](TransposeAttrs const &attrs) { return backward(attrs); },
       [](auto const &attrs) -> OpTaskInvocation {
-        throw mk_runtime_error(
-            fmt::format("No backward support for {}", attrs));
+        throw mk_runtime_error(fmt::format("Unhandled attr type {}", attrs));
       },
   });
 }

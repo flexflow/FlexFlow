@@ -46,41 +46,58 @@ Allocator LocalTaskArgumentAccessor::get_allocator() const {
   return this->allocator;
 }
 
-bool are_slots_backings_virtually_equivalent(
+bool are_slots_backings_equivalent_up_to_allocation_addresses(
     TensorSlotsBacking const &slots_1, TensorSlotsBacking const &slots_2) {
   if (slots_1.size() != slots_2.size()) {
     return false;
   }
 
-  for (auto const &pairing : slots_1) {
-    if (!contains_key(slots_2, pairing.first)) {
+  auto check_tensors = [](auto acc1_variant, auto acc2_variant) {
+    GenericTensorAccessorW acc1 =
+        std::get<GenericTensorAccessorW>(acc1_variant);
+    GenericTensorAccessorW acc2 =
+        std::get<GenericTensorAccessorW>(acc2_variant);
+    return is_shape_and_dtype_equal(acc1, acc2);
+  };
+
+  auto check_variadic_tensors = [](auto acc1_variant, auto acc2_variant) {
+    std::vector<GenericTensorAccessorW> acc1 =
+        std::get<std::vector<GenericTensorAccessorW>>(acc1_variant);
+    std::vector<GenericTensorAccessorW> acc2 =
+        std::get<std::vector<GenericTensorAccessorW>>(acc2_variant);
+    if (acc1.size() != acc2.size()) {
       return false;
     }
-    auto acc2_variant = slots_2.at(pairing.first);
-    if (acc2_variant.index() != pairing.second.index()) {
+    for (int i = 0; i < acc1.size(); ++i) {
+      if (!is_shape_and_dtype_equal(acc1.at(i), acc2.at(i))) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  for (auto const &slot_tensor : slots_1) {
+    if (!contains_key(slots_2, slot_tensor.first)) {
       return false;
     }
-    if (std::holds_alternative<GenericTensorAccessorW>(acc2_variant)) {
-      GenericTensorAccessorW acc1 =
-          std::get<GenericTensorAccessorW>(pairing.second);
-      GenericTensorAccessorW acc2 =
-          std::get<GenericTensorAccessorW>(acc2_variant);
-      if (!is_shape_and_dtype_equal(acc1, acc2)) {
+    auto accessor1_variant = slot_tensor.second;
+    auto accessor2_variant = slots_2.at(slot_tensor.first);
+
+    // first check if they hold the same variant type
+    if (accessor1_variant.index() != accessor2_variant.index()) {
+      return false;
+    }
+    if (std::holds_alternative<GenericTensorAccessorW>(accessor2_variant)) {
+      if (!check_tensors(accessor1_variant, accessor2_variant)) {
+        return false;
+      }
+    } else if (std::holds_alternative<std::vector<GenericTensorAccessorW>>(
+                   accessor2_variant)) {
+      if (!check_variadic_tensors(accessor1_variant, accessor2_variant)) {
         return false;
       }
     } else {
-      std::vector<GenericTensorAccessorW> acc1 =
-          std::get<std::vector<GenericTensorAccessorW>>(pairing.second);
-      std::vector<GenericTensorAccessorW> acc2 =
-          std::get<std::vector<GenericTensorAccessorW>>(acc2_variant);
-      if (acc1.size() != acc2.size()) {
-        return false;
-      }
-      for (int i = 0; i < acc1.size(); ++i) {
-        if (!is_shape_and_dtype_equal(acc1.at(i), acc2.at(i))) {
-          return false;
-        }
-      }
+      throw mk_runtime_error("Unhandled variant type");
     }
   }
   return true;

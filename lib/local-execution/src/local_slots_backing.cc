@@ -13,7 +13,7 @@ void LocalSlotsBacking::add_per_device_op_state(
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
-void LocalSlotsBacking::allocate_new_tensors(
+void LocalSlotsBacking::allocate_tensors(
     layer_guid_t const &layer_guid,
     ComputationGraph const &computation_graph,
     Allocator &allocator) {
@@ -21,20 +21,23 @@ void LocalSlotsBacking::allocate_new_tensors(
       get_incoming_tensors(computation_graph, layer_guid);
   std::vector<tensor_guid_t> outgoing_tensors =
       get_outgoing_tensors(computation_graph, layer_guid);
-  for (tensor_guid_t const &edge : outgoing_tensors) {
-    TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, edge);
+  for (tensor_guid_t const &output_tensor : outgoing_tensors) {
+    TensorAttrs tensor_attrs =
+        get_tensor_attrs(computation_graph, output_tensor);
     // tensor allocation
-    if (!is_tensor_allocated(edge)) {
+    if (!is_tensor_allocated(output_tensor)) {
       GenericTensorAccessorW tensor_backing =
           allocator.allocate_tensor(tensor_attrs.shape);
-      this->tensor_mapping.insert({edge, tensor_backing});
+      this->tensor_mapping.insert({output_tensor, tensor_backing});
     }
 
     // gradient tensor allocation
-    if (tensor_attrs.create_gradients == CreateGrad::YES && !is_gradient_tensor_allocated(edge)) {
+    if (tensor_attrs.create_gradients == CreateGrad::YES &&
+        !is_gradient_tensor_allocated(output_tensor)) {
       GenericTensorAccessorW gradient_tensor_backing =
           allocator.allocate_tensor(tensor_attrs.shape);
-      this->gradient_tensor_mapping.insert({edge, gradient_tensor_backing});
+      this->gradient_tensor_mapping.insert(
+          {output_tensor, gradient_tensor_backing});
     }
   }
 
@@ -57,8 +60,10 @@ GenericTensorAccessorW const &
                                           IsGrad is_grad) const {
   switch (is_grad) {
     case IsGrad::NO:
+      assert(contains_key(this->tensor_mapping, tensor_id));
       return this->tensor_mapping.at(tensor_id);
     case IsGrad::YES:
+      assert(contains_key(this->gradient_tensor_mapping, tensor_id));
       return this->gradient_tensor_mapping.at(tensor_id);
     default:
       throw mk_runtime_error(fmt::format(
@@ -76,9 +81,12 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     switch (tensor_spec.role) {
       case TensorRole::INPUT:
       case TensorRole::WEIGHT:
+
+        assert(contains_key(this->input_tensor_slots, op_guid));
         tensor_guids = this->input_tensor_slots.at(op_guid);
         break;
-      case TensorRole::OUTPUT: 
+      case TensorRole::OUTPUT:
+        assert(contains_key(this->output_tensor_slots, op_guid));
         tensor_guids = this->output_tensor_slots.at(op_guid);
         break;
       default:
@@ -87,9 +95,11 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
                                                 // "type_is_unformattable" error
     }
     IsGrad is_grad = slot_grad_id.second;
-    
+
+    assert(tensor_guids.size() > tensor_spec.idx);
     GenericTensorAccessorW tensor_backing =
         this->get_tensor_backing(tensor_guids.at(tensor_spec.idx), is_grad);
+
     mapping.insert({slot_grad_id, tensor_backing});
   }
   return mapping;
@@ -121,12 +131,17 @@ ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
 ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
     OpArgRefSpec const &op_arg_ref_spec, layer_guid_t const &op_guid) const {
   if (op_arg_ref_spec.holds<DeviceSpecific<DeviceStates>>()) {
+    assert(contains_key(per_device_op_states, op_guid));
     return ConcreteArgSpec::create(per_device_op_states.at(op_guid));
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {
     ParallelTensorShapeRefType index_op_arg_ref =
         std::get<ParallelTensorShapeRefType>(op_arg_ref_spec.get_ref_type());
+
+    assert(contains_key(this->input_tensor_slots, op_guid));
     std::vector<tensor_guid_t> input_tensor_guids =
         this->input_tensor_slots.at(op_guid);
+
+    assert(input_tensor_guids.size() > index_op_arg_ref.idx);
     GenericTensorAccessorW tensor_backing = this->get_tensor_backing(
         input_tensor_guids.at(index_op_arg_ref.idx), IsGrad::NO);
     ParallelTensorShape shape = lift_to_parallel(
@@ -139,31 +154,13 @@ ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
 
 ConcreteArgSpec LocalSlotsBacking::resolve_runtime_arg_ref_spec(
     RuntimeArgRefSpec const &runtime_arg_ref_spec) const {
-  if (runtime_arg_ref_spec.holds<DeviceSpecific<PerDeviceFFHandle>>()) {
+  if (runtime_arg_ref_spec.holds<PerDeviceFFHandle>()) {
     return ConcreteArgSpec::create(this->runtime_arg_config.ff_handle);
   } else if (runtime_arg_ref_spec.holds<ProfilingSettings>()) {
     return ConcreteArgSpec::create(this->runtime_arg_config.profiling_settings);
   } else {
     throw mk_runtime_error("Unhandled runtime arg ref type");
   }
-}
-
-bool are_maps_virtually_equivalent(TensorBackingMap const &map1,
-                                   TensorBackingMap const &map2) {
-  if (map1.size() != map2.size()) {
-    return false;
-  }
-
-  for (std::pair<tensor_guid_t, GenericTensorAccessorW> const &pairing : map1) {
-    if (!contains_key(map2, pairing.first)) {
-      return false;
-    }
-    GenericTensorAccessorW acc2 = map2.at(pairing.first);
-    if (!is_shape_and_dtype_equal(pairing.second, acc2)) {
-      return false;
-    }
-  }
-  return true;
 }
 
 } // namespace FlexFlow

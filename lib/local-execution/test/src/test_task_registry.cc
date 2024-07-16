@@ -160,5 +160,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
   }
+}
 
 } // namespace FlexFlow

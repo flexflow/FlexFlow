@@ -19,13 +19,8 @@ struct TaskSignatureAndImpl {
   TaskImplFunction impl_function;
   OpTaskSignature task_signature;
 
-  bool operator==(TaskSignatureAndImpl const &other) const {
-    return this->task_signature == other.task_signature;
-  }
-
-  bool operator!=(TaskSignatureAndImpl const &other) const {
-    return this->task_signature != other.task_signature;
-  }
+  bool operator==(TaskSignatureAndImpl const &other) const;
+  bool operator!=(TaskSignatureAndImpl const &other) const;
 };
 
 TaskSignatureAndImpl get_task_sig_impl(task_id_t const &);

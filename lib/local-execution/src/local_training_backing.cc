@@ -10,20 +10,22 @@ LocalTrainingBacking::LocalTrainingBacking(
     RuntimeArgConfig const &runtime_arg_config)
     : allocator(allocator), computation_graph(computation_graph),
       local_slots_backing(tensor_backing_mapping, runtime_arg_config) {
-  std::vector<layer_guid_t> layers = topological_ordering(computation_graph);
-  for (layer_guid_t const &node : layers) {
+  for (layer_guid_t const &node : topological_ordering(computation_graph)) {
     ComputationGraphOpAttrs attrs =
         get_layer_attrs(computation_graph, node).attrs;
 
-    // register tasks
-    std::vector<task_id_t> task_ids = get_task_ids(attrs);
-    for (task_id_t task_id : task_ids) {
-      this->task_registry.register_task(task_id, node, attrs);
-    }
-
     // allocate outgoing tensors
-    this->local_slots_backing.allocate_new_tensors(
+    this->local_slots_backing.allocate_tensors(
         node, computation_graph, this->allocator);
+
+    if (!(attrs.has<WeightAttrs>() || attrs.has<InputAttrs>() ||
+          attrs.has<NoopAttrs>())) {
+      // register tasks
+      std::vector<task_id_t> task_ids = get_task_ids(attrs);
+      for (task_id_t task_id : task_ids) {
+        this->task_registry.register_task(task_id, node, attrs);
+      }
+    }
   }
 }
 
@@ -54,6 +56,8 @@ void LocalTrainingBacking::execute_init() {
     if (contains_key(this->task_registry.init_task_ids, operator_node)) {
       ComputationGraphOpAttrs attrs =
           get_layer_attrs(this->computation_graph, operator_node).attrs;
+
+      // if (!(attrs.has<MultiHeadAttentionAttrs>())) { continue; }
       OpTaskInvocation invocation = init(attrs);
       TaskArgumentAccessor accessor =
           this->get_task_arg_accessor(invocation, operator_node);
@@ -69,14 +73,17 @@ PerLayerElapsedTime LocalTrainingBacking::execute_forward() {
   PerLayerElapsedTime per_op_elapsed_time;
   for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
-    ComputationGraphOpAttrs attrs =
-        get_layer_attrs(this->computation_graph, operator_node).attrs;
-    OpTaskInvocation invocation = forward(attrs);
-    TaskArgumentAccessor accessor =
-        this->get_task_arg_accessor(invocation, operator_node);
-    std::optional<float> elapsed_time =
-        this->call_task_impl(invocation.task_id, accessor);
-    per_op_elapsed_time.insert({operator_node, elapsed_time});
+    if (contains_key(this->task_registry.forward_task_ids, operator_node)) {
+      ComputationGraphOpAttrs attrs =
+          get_layer_attrs(this->computation_graph, operator_node).attrs;
+
+      OpTaskInvocation invocation = forward(attrs);
+      TaskArgumentAccessor accessor =
+          this->get_task_arg_accessor(invocation, operator_node);
+      std::optional<float> elapsed_time =
+          this->call_task_impl(invocation.task_id, accessor);
+      per_op_elapsed_time.insert({operator_node, elapsed_time});
+    }
   }
   return per_op_elapsed_time;
 }
@@ -85,14 +92,17 @@ PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
   PerLayerElapsedTime per_op_elapsed_time;
   for (layer_guid_t const &operator_node :
        reversed(topological_ordering(this->computation_graph))) {
-    ComputationGraphOpAttrs attrs =
-        get_layer_attrs(this->computation_graph, operator_node).attrs;
-    OpTaskInvocation invocation = backward(attrs);
-    TaskArgumentAccessor accessor =
-        this->get_task_arg_accessor(invocation, operator_node);
-    std::optional<float> elapsed_time =
-        this->call_task_impl(invocation.task_id, accessor);
-    per_op_elapsed_time.insert({operator_node, elapsed_time});
+    if (contains_key(this->task_registry.backward_task_ids, operator_node)) {
+      ComputationGraphOpAttrs attrs =
+          get_layer_attrs(this->computation_graph, operator_node).attrs;
+
+      OpTaskInvocation invocation = backward(attrs);
+      TaskArgumentAccessor accessor =
+          this->get_task_arg_accessor(invocation, operator_node);
+      std::optional<float> elapsed_time =
+          this->call_task_impl(invocation.task_id, accessor);
+      per_op_elapsed_time.insert({operator_node, elapsed_time});
+    }
   }
   return per_op_elapsed_time;
 }

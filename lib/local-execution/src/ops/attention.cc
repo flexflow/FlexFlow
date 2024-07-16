@@ -85,10 +85,10 @@ static DeviceSpecific<DeviceStates>
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<MultiHeadAttentionAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
-  size_t qProjSize = acc.get_argument<size_t>(QPROJSIZE);
-  size_t kProjSize = acc.get_argument<size_t>(KPROJSIZE);
-  size_t vProjSize = acc.get_argument<size_t>(VPROJSIZE);
-  size_t oProjSize = acc.get_argument<size_t>(OPROJSIZE);
+  size_t qProjSize = acc.get_argument<int>(QPROJSIZE);
+  size_t kProjSize = acc.get_argument<int>(KPROJSIZE);
+  size_t vProjSize = acc.get_argument<int>(VPROJSIZE);
+  size_t oProjSize = acc.get_argument<int>(OPROJSIZE);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   ParallelTensorShape query_parallel_tensor_shape =
       acc.get_argument<ParallelTensorShape>(QUERY_PARALLEL_TENSOR_SHAPE);
@@ -141,12 +141,17 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
 
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
-  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
+  auto device_specific_per_device_state =
+      acc.get_argument<DeviceSpecific<DeviceStates>>(PER_DEVICE_STATE);
+
+  auto per_device_state = device_specific_per_device_state.get(0);
+  MHAPerDeviceState mha_per_device_state =
+      std::get<MHAPerDeviceState>(per_device_state);
 
   return profile(forward_kernel,
                  profiling,
                  "[MultiHeadAttention] forward_time = {:.2lf}ms\n",
-                 per_device_state,
+                 mha_per_device_state,
                  query.get_float_ptr(),
                  key.get_float_ptr(),
                  value.get_float_ptr(),
@@ -167,7 +172,13 @@ static std::optional<float>
   auto key_grad = acc.get_tensor_grad<Permissions::RW>(KEY);
   auto value_grad = acc.get_tensor_grad<Permissions::RW>(VALUE);
 
-  auto per_device_state = acc.get_argument<MHAPerDeviceState>(PER_DEVICE_STATE);
+  auto device_specific_per_device_state =
+      acc.get_argument<DeviceSpecific<DeviceStates>>(PER_DEVICE_STATE);
+
+  auto per_device_state = device_specific_per_device_state.get(0);
+
+  MHAPerDeviceState mha_per_device_state =
+      std::get<MHAPerDeviceState>(per_device_state);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   float *key_grad_ptr =
@@ -185,7 +196,7 @@ static std::optional<float>
   return profile(backward_kernel,
                  profiling,
                  "[MultiHeadAttention] backward_time = {:.2lf}ms\n",
-                 per_device_state,
+                 mha_per_device_state,
                  query.get_float_ptr(),
                  query_grad.get_float_ptr(),
                  key.get_float_ptr(),

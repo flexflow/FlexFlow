@@ -29,7 +29,7 @@ CostDetails LocalCostEstimator::estimate_cost(
     std::vector<ParallelTensorShape> const &inputs,
     std::vector<ParallelTensorAttrs> const &weights,
     std::vector<ParallelTensorAttrs> const &outputs,
-    MachineView const &mv) const {
+    std::optional<MachineView> const &mv) const {
 
   if (is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>()) {
     return CostDetails{0, 0};

@@ -41,8 +41,8 @@ private:
   ArgSlotsBacking arg_slots_backing;
 };
 
-bool are_slots_backings_virtually_equivalent(TensorSlotsBacking const &slots_1,
-                                             TensorSlotsBacking const &slots_2);
+bool are_slots_backings_equivalent_up_to_allocation_addresses(
+    TensorSlotsBacking const &slots_1, TensorSlotsBacking const &slots_2);
 
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
 

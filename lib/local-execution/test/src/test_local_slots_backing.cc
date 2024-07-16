@@ -7,14 +7,17 @@
 
 namespace FlexFlow {
 
-layer_guid_t get_only_attention_layer_guid(ComputationGraph const & computation_graph) {
-    for (layer_guid_t const & layer_guid: topological_ordering(computation_graph)) {
-        ComputationGraphOpAttrs attrs = get_layer_attrs(computation_graph, layer_guid).attrs;
-        if (attrs.has<MultiHeadAttentionAttrs>()) {
-            return layer_guid;
-        }
+layer_guid_t
+    get_only_attention_layer_guid(ComputationGraph const &computation_graph) {
+  for (layer_guid_t const &layer_guid :
+       topological_ordering(computation_graph)) {
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(computation_graph, layer_guid).attrs;
+    if (attrs.has<MultiHeadAttentionAttrs>()) {
+      return layer_guid;
     }
-    throw mk_runtime_error("Attention operator does not exist in graph");
+  }
+  throw mk_runtime_error("Attention operator does not exist in graph");
 }
 
 TEST_SUITE(FF_TEST_SUITE) {
@@ -55,10 +58,10 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        num_heads,
                                        /*kdim=*/embed_dim,
                                        /*vdim=*/embed_dim);
-    cg_builder.relu(output_guid);   
 
     // TODO: @lockshaw replace with named layers
-    layer_guid_t layer_guid = get_only_attention_layer_guid(cg_builder.computation_graph);
+    layer_guid_t layer_guid =
+        get_only_attention_layer_guid(cg_builder.computation_graph);
 
     TensorBackingMap tensor_backing_map = {
         {query_guid, query}, {key_guid, key}, {value_guid, value}};
@@ -66,37 +69,34 @@ TEST_SUITE(FF_TEST_SUITE) {
     // runtime arg config
     ProfilingSettings settings = ProfilingSettings{/*warmup_iters=*/0,
                                                    /*measure_iters=*/0};
-    RuntimeArgConfig runtime_arg_config =
-        RuntimeArgConfig{DeviceSpecific<PerDeviceFFHandle>::create(
-                             get_mock_per_device_ff_handle()),
-                         EnableProfiling::NO,
-                         settings};
+    RuntimeArgConfig runtime_arg_config = RuntimeArgConfig{
+        get_mock_per_device_ff_handle(), EnableProfiling::NO, settings};
 
     LocalSlotsBacking local_slots_backing = {tensor_backing_map,
                                              runtime_arg_config};
     for (layer_guid_t const &node :
-        topological_ordering(cg_builder.computation_graph)) {
-        local_slots_backing.allocate_new_tensors(
-            node, cg_builder.computation_graph, allocator);
+         topological_ordering(cg_builder.computation_graph)) {
+      local_slots_backing.allocate_tensors(
+          node, cg_builder.computation_graph, allocator);
     }
     SUBCASE("Allocate and insert new tensors into slots") {
       SUBCASE("Tensor allocation") {
         SUBCASE("Query grad") {
           GenericTensorAccessorW query_grad =
               local_slots_backing.gradient_tensor_mapping.at(query_guid);
-          CHECK(is_shape_and_dtype_correct(
+          CHECK(shape_and_dtype_matches(
               query_grad, ArrayShape{input_tensor_shape}, dtype));
         }
         SUBCASE("Key grad") {
           GenericTensorAccessorW key_grad =
               local_slots_backing.gradient_tensor_mapping.at(key_guid);
-          CHECK(is_shape_and_dtype_correct(
+          CHECK(shape_and_dtype_matches(
               key_grad, ArrayShape{input_tensor_shape}, dtype));
         }
         SUBCASE("Value grad") {
           GenericTensorAccessorW value_grad =
               local_slots_backing.gradient_tensor_mapping.at(value_guid);
-          CHECK(is_shape_and_dtype_correct(
+          CHECK(shape_and_dtype_matches(
               value_grad, ArrayShape{input_tensor_shape}, dtype));
         }
 
@@ -105,13 +105,13 @@ TEST_SUITE(FF_TEST_SUITE) {
         SUBCASE("Output") {
           GenericTensorAccessorW output =
               local_slots_backing.tensor_mapping.at(output_guid);
-          CHECK(is_shape_and_dtype_correct(
+          CHECK(shape_and_dtype_matches(
               output, ArrayShape{output_attrs.shape}, dtype));
         }
         SUBCASE("Output grad") {
           GenericTensorAccessorW output_grad =
               local_slots_backing.tensor_mapping.at(output_guid);
-          CHECK(is_shape_and_dtype_correct(
+          CHECK(shape_and_dtype_matches(
               output_grad, ArrayShape{output_attrs.shape}, dtype));
         }
       }
@@ -186,7 +186,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       {{OUTPUT, IsGrad::NO}, output},
                                       {{QUERY, IsGrad::YES}, query}};
 
-        CHECK(are_slots_backings_virtually_equivalent(correct, result));
+        CHECK(are_slots_backings_equivalent_up_to_allocation_addresses(correct,
+                                                                       result));
       }
       SUBCASE("Arg Slots Backing") {
         ArgSlotsBacking result =

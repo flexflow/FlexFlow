@@ -33,13 +33,11 @@ public:
   }
 
   bool operator==(ArgRefSpec const &other) const {
-    return this->get_ref_type() == other.get_ref_type() &&
-           this->get_type_index() == other.get_type_index();
+    return this->tie() == other.tie();
   }
 
   bool operator!=(ArgRefSpec const &other) const {
-    return this->get_ref_type() != other.get_ref_type() ||
-           this->get_type_index() != other.get_type_index();
+    return this->tie() != other.tie();
   }
 
   template <typename T>
@@ -55,6 +53,11 @@ private:
 
   std::type_index type_idx;
   LABEL_TYPE ref_type;
+
+  std::tuple<decltype(type_idx) const &, decltype(ref_type) const &>
+      tie() const {
+    return std::tie(this->type_idx, this->ref_type);
+  }
 };
 
 } // namespace FlexFlow

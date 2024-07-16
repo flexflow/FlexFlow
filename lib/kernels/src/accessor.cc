@@ -143,16 +143,16 @@ bool is_shape_and_dtype_equal(GenericTensorAccessorW const &acc1,
   return acc1.shape == acc2.shape && acc1.data_type == acc2.data_type;
 }
 
-bool is_shape_and_dtype_correct(GenericTensorAccessorW const &accessor,
-                                ArrayShape const &expected_shape,
-                                DataType const &expected_dtype) {
+bool shape_and_dtype_matches(GenericTensorAccessorW const &accessor,
+                             ArrayShape const &expected_shape,
+                             DataType const &expected_dtype) {
   return accessor.shape == expected_shape &&
          accessor.data_type == expected_dtype;
 }
 
-bool is_shape_and_dtype_correct(GenericTensorAccessorR const &accessor,
-                                ArrayShape const &expected_shape,
-                                DataType const &expected_dtype) {
+bool shape_and_dtype_matches(GenericTensorAccessorR const &accessor,
+                             ArrayShape const &expected_shape,
+                             DataType const &expected_dtype) {
   return accessor.shape == expected_shape &&
          accessor.data_type == expected_dtype;
 }

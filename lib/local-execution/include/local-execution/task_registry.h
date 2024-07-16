@@ -25,10 +25,10 @@ struct TaskRegistry {
   bool operator!=(TaskRegistry const &other) const;
 
 private:
-  std::tuple<std::unordered_map<layer_guid_t, task_id_t> const &,
-             std::unordered_map<layer_guid_t, task_id_t> const &,
-             std::unordered_map<layer_guid_t, task_id_t> const &,
-             std::unordered_map<task_id_t, TaskSignatureAndImpl> const &>
+  std::tuple<decltype(init_task_ids) const &,
+             decltype(forward_task_ids) const &,
+             decltype(backward_task_ids) const &,
+             decltype(task_mapping) const &>
       tie() const;
 };
 

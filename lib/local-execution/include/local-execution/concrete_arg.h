@@ -22,15 +22,8 @@ public:
     return this->type_idx;
   }
 
-  // template <typename T>
-  bool operator==(ConcreteArgSpec const &other) const {
-    return this->get_type_index() == other.get_type_index();
-  }
-
-  // template <typename T>
-  bool operator!=(ConcreteArgSpec const &other) const {
-    return this->get_type_index() != other.get_type_index();
-  }
+  bool operator==(ConcreteArgSpec const &other) const;
+  bool operator!=(ConcreteArgSpec const &other) const;
 
   template <typename T>
   static ConcreteArgSpec create(T const &t) {
@@ -50,6 +43,8 @@ private:
 
   std::type_index type_idx;
   std::shared_ptr<void const> ptr;
+
+  std::tuple<decltype(type_idx) const &> tie() const;
 };
 
 } // namespace FlexFlow

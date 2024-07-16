@@ -103,7 +103,3 @@ TensorShape make_double_tensor_shape_from_legion_dims(FFOrdered<size_t> dims) {
       DataType::DOUBLE,
   };
 }
-
-PerDeviceFFHandle get_mock_per_device_ff_handle() {
-  return {nullptr, nullptr, nullptr, 0, false};
-}

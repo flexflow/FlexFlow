@@ -1,5 +1,6 @@
 #include "doctest/doctest.h"
 #include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_per_device_ff_handle.h"
 #include "local-execution/local_cost_estimator.h"
 #include "pcg/computation_graph_builder.h"
 #include "test_utils.h"
@@ -9,9 +10,10 @@ namespace FlexFlow {
 TEST_SUITE(FF_CUDA_TEST_SUITE) {
   TEST_CASE("Local Cost Estimator") {
     // local backing initialization
+    ManagedPerDeviceFFHandle managed_handle{};
+
     RuntimeArgConfig runtime_arg_config =
-        RuntimeArgConfig{DeviceSpecific<PerDeviceFFHandle>::create(
-                             get_mock_per_device_ff_handle()),
+        RuntimeArgConfig{managed_handle.raw_handle(),
                          EnableProfiling::YES,
                          ProfilingSettings{/*warmup_iters=*/0,
                                            /*measure_iters=*/1}};
@@ -64,7 +66,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
               inputs_shape, inputs_shape, inputs_shape},
           std::vector<ParallelTensorAttrs>{weight_attrs},
           std::vector<ParallelTensorAttrs>{output_attrs},
-          make_1d_machine_view(gpu_id_t{0}, gpu_id_t{1}, 1));
+          std::nullopt);
 
       CHECK(result.total_elapsed_time > 0);
       CHECK(result.total_mem_usage > 0);

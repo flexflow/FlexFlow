@@ -47,7 +47,7 @@ std::size_t ArrayShape::at(legion_dim_t idx) const {
 }
 
 std::size_t ArrayShape::at(ff_dim_t idx) const {
-  return dims.at(legion_dim_from_ff_dim(idx, num_dims()));
+  return dims.at(legion_dim_from_ff_dim(idx, this->num_dims()));
 }
 
 ArrayShape ArrayShape::sub_shape(
@@ -65,7 +65,7 @@ std::optional<std::size_t> ArrayShape::at_maybe(legion_dim_t index) const {
 }
 
 std::optional<std::size_t> ArrayShape::at_maybe(ff_dim_t index) const {
-  return this->at_maybe(legion_dim_from_ff_dim(index, num_dims()));
+  return this->at_maybe(legion_dim_from_ff_dim(index, this->num_dims()));
 }
 
 size_t get_volume(ArrayShape const &shape) {
@@ -73,10 +73,9 @@ size_t get_volume(ArrayShape const &shape) {
 }
 
 TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
-  std::vector<size_t> sizes(shape.dims.size());
-  std::reverse_copy(shape.dims.begin(), shape.dims.end(), sizes.begin());
-  return TensorShape{TensorDims{FFOrdered<size_t>(sizes.begin(), sizes.end())},
-                     dtype};
+  return TensorShape{
+      TensorDims{FFOrdered<size_t>(shape.dims.rbegin(), shape.dims.rend())},
+      dtype};
 }
 
 } // namespace FlexFlow
