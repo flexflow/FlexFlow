@@ -140,6 +140,6 @@ if __name__ == "__main__":
             dataset_filepath=os.path.join(os.getcwd(), configs.finetuning_dataset),
             max_training_steps=100,
         )
-        llm.generate(finetuning_request)
+        llm.generate([finetuning_request])
 
     llm.stop_server()
