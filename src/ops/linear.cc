@@ -635,6 +635,9 @@ void Linear::inference_task(Task const *task,
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+  assert((weight.domain.hi()[0] - weight.domain.lo()[0] + 1) == in_dim);
+  assert((weight.domain.hi()[1] - weight.domain.lo()[1] + 1) == out_dim);
+  assert(weight.domain.get_volume() == in_dim * out_dim);
 
   int batch_size = bc->num_active_infr_tokens();
   GenericTensorAccessorR bias;

@@ -70,6 +70,8 @@ std::ostream &operator<<(std::ostream &os, Request const &req) {
   // os << "]\n";
   os << "  req_type: " << static_cast<int>(req.req_type) << "\n";
   os << "  completed_training_steps: " << req.completed_training_steps << "\n";
+  os << "  gradient_accumulation_steps: " << req.gradient_accumulation_steps
+     << "\n";
   os << "  max_training_steps: " << req.max_training_steps << "\n";
   os << "  dataset_filepath: " << req.dataset_filepath << "\n";
   os << "  dataset: [";
@@ -328,6 +330,7 @@ RequestManager::RequestGuid
   request.peft_model_id = request_.peft_model_id;
   request.req_type = RequestType::REQ_FINETUNING;
   request.completed_training_steps = 0;
+  request.gradient_accumulation_steps = request_.gradient_accumulation_steps;
   request.max_training_steps = request_.max_training_steps;
   request.dataset_filepath = request_.dataset_filepath;
   request.warmup = request_.warmup;
@@ -376,6 +379,15 @@ RequestManager::RequestGuid
       }
     }
   }
+
+  if (request.gradient_accumulation_steps == -1) {
+    request.gradient_accumulation_steps = request.dataset.size();
+  }
+  assert(request.gradient_accumulation_steps > 0 &&
+         "Invalid gradient accumulation steps");
+  assert(request.gradient_accumulation_steps <= request.max_training_steps &&
+         "Gradient accumulation steps should be less than or equal to max "
+         "training steps");
 
   // Currently don't support speculative inference for PEFT
   assert(get_num_ssms() == 0);
@@ -577,7 +589,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   int inference_batch_size =
       BatchConfig::max_requests_per_batch() - (int)enable_peft_finetuning;
 
-  // Step 2: prepare the next batch for existing requests
+  // Step 2: prepare the next batch for existing inference requests
   BatchConfig new_bc;
   for (int i = 0; i < inference_batch_size; i++) {
     if (old_bc.request_completed[i]) {
@@ -711,7 +723,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
   new_bc.num_generation_tokens = num_generation_tokens;
 
-  // Step 3: add new requests to the next batch if there is space
+  // Step 3: add new inference requests to the next batch if there is space
   for (int i = 0; i < inference_batch_size; i++) {
     if (new_bc.request_completed[i]) {
       if (!pending_infr_request_queue.empty() &&
@@ -864,6 +876,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         request.completed_training_steps % request.dataset.size();
     request.dataset_entry_processed_tokens =
         all_req_handle.dataset_entry_processed_tokens;
+    request.gradient_accumulation_steps =
+        all_req_handle.gradient_accumulation_steps;
 
     assert(request.status != Request::COMPLETED);
     assert(request.max_training_steps > 0 &&
@@ -894,6 +908,15 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       new_bc.requestsInfo[inference_batch_size].peft_model_id =
           request.peft_model_id;
       new_bc.requestsInfo[inference_batch_size].peft_bwd = true;
+      if (request.completed_training_steps %
+              request.gradient_accumulation_steps ==
+          0) {
+        new_bc.requestsInfo[inference_batch_size].gradients_update_mode =
+            GradientsUpdateMode::UPDATE_WEIGHTS;
+      } else {
+        new_bc.requestsInfo[inference_batch_size].gradients_update_mode =
+            GradientsUpdateMode::ACCUMULATE_ONLY;
+      }
       // tokens info
       for (size_t i = request.dataset_entry_processed_tokens;
            i < request.dataset_entry_processed_tokens + num_peft_tokens;

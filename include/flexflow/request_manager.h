@@ -85,6 +85,9 @@ struct Request {
   int completed_training_steps = 0;
   int dataset_entry_processed_tokens = 0;
   int max_training_steps = 1;
+  // how many gradient accumulation steps to do before updating the weights. if
+  // left as -1, it will be set to the number of entries in the dataset
+  int gradient_accumulation_steps = -1;
   int benchmarking_tokens = -1;
   std::vector<int> finetuning_tokens_per_batch;
   bool warmup = false;

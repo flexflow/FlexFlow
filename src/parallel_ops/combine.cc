@@ -476,7 +476,11 @@ void Combine::peft_bwd_task(Task const *task,
       data_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(input_grad.data_type == data_type);
   assert(output_grad.domain == input_grad.domain);
-  if (data_type == DT_FLOAT) {
+  if (data_type == DT_HALF) {
+    backward_kernel<half>(output_grad.get_half_ptr(),
+                          input_grad.get_half_ptr(),
+                          output_grad.domain.get_volume());
+  } else if (data_type == DT_FLOAT) {
     backward_kernel<float>(output_grad.get_float_ptr(),
                            input_grad.get_float_ptr(),
                            output_grad.domain.get_volume());

@@ -9,7 +9,10 @@ def parse_args():
         "--base_model_name", type=str, required=True, help="Name of the model to download"
     )
     parser.add_argument(
-        "peft_model_ids", type=str, nargs="+", help="Name of the PEFT model(s) to download"
+        "peft_model_ids",
+        type=str,
+        nargs="+",
+        help="Name of the PEFT model(s) to download",
     )
     parser.add_argument(
         "--cache-folder",
@@ -45,7 +48,6 @@ def main(args):
     else:
         data_types = (ff.DataType.DT_FLOAT, ff.DataType.DT_HALF)
 
-    
     for data_type in data_types:
         llm = ff.LLM(
             args.base_model_name,
@@ -54,7 +56,8 @@ def main(args):
             refresh_cache=args.refresh_cache,
         )
         for peft_model_id in args.peft_model_ids:
-            llm.add_peft(peft_model_id)
+            lora_config = ff.LoraLinearConfig(llm.cache_path, peft_model_id)
+            llm.add_peft(lora_config)
         llm.download_hf_weights_if_needed()
         llm.download_hf_config()
         llm.download_hf_tokenizer_if_needed()

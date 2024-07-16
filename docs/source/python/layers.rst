@@ -3,7 +3,7 @@ Layers API
 **********
 
 Layers are the basic building blocks of neural networks in FlexFlow. The inputs of a layer consists of a tensor or a list of tensors and some state variables,
-and the outputs of a layer is a tensor or a list of tensors.
+and the outputs of a layer is a tensor or a list of tensors. See https://github.com/flexflow/FlexFlow/examples/python/native/ops for an example for every layer
 
 .. automodule:: flexflow.core.flexflow_cffi
    :noindex:

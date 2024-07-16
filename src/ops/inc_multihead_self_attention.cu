@@ -905,16 +905,15 @@ std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,
                                 int shard_id) {
   std::string op_name_without_uid =
       IncMultiHeadSelfAttention::get_op_name_without_uid(m);
-  char const *folder_path = "./inference_tensors/";
-  std::string base_filepath = std::string(folder_path);
+  fs::path dst_filepath = get_dst_folder("bwd", m->bwd_step, shard_id);
   if (m->layer_guid.model_id > 0) {
-    base_filepath += "model_" + std::to_string(m->layer_guid.model_id) + "_";
+    assert(false && "Model ID > 0 not supported yet");
   }
-  base_filepath += "bwd_step_" + std::to_string(m->bwd_step);
-  base_filepath += "_layers_" +
-                   std::to_string(m->layer_guid.transformer_layer_id) + "_" +
-                   op_name_without_uid + "_shard_" + std::to_string(shard_id);
-  return base_filepath;
+  std::string layername = "layers." +
+                          std::to_string(m->layer_guid.transformer_layer_id) +
+                          "." + op_name_without_uid;
+  dst_filepath /= layername;
+  return dst_filepath.string();
 }
 
 template <typename DT>
@@ -1009,7 +1008,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       if (m->inference_debugging) {
         // save result to file for checking
         std::string filename =
-            get_peft_dbg_folder(m, shard_id) + "_o_proj_in_grad";
+            get_peft_dbg_folder(m, shard_id) + ".o_proj.input_gradient_0";
         save_tensor(C, m_ * n_, filename.c_str());
       }
     }
@@ -1066,10 +1065,10 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       // save result to file for checking
       if (m->inference_debugging) {
         std::string filename =
-            get_peft_dbg_folder(m, shard_id) + "_v_proj_in_grad";
+            get_peft_dbg_folder(m, shard_id) + ".v_proj.input_gradient_0";
         save_tensor(C, m_ * n_ * m->num_q_heads, filename.c_str());
         std::string filename2 =
-            get_peft_dbg_folder(m, shard_id) + "_qk_prods_softmax";
+            get_peft_dbg_folder(m, shard_id) + ".qk_prods.softmax";
         save_tensor(A, m_ * k_ * m->num_q_heads, filename2.c_str());
       }
     }
@@ -1122,10 +1121,10 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       if (m->inference_debugging) {
         std::string filename =
-            get_peft_dbg_folder(m, shard_id) + "_qk_prods_softmax_grad";
+            get_peft_dbg_folder(m, shard_id) + ".qk_prods.softmax_grad";
         save_tensor(
             C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
-        std::string filename2 = get_peft_dbg_folder(m, shard_id) + "_vcache";
+        std::string filename2 = get_peft_dbg_folder(m, shard_id) + ".vcache";
         save_tensor(
             B, m->vProjSize * m->num_q_heads * num_tokens, filename2.c_str());
       }
@@ -1159,7 +1158,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       if (m->inference_debugging) {
         DT *C = static_cast<DT *>(m->qk_prods);
         std::string filename =
-            get_peft_dbg_folder(m, shard_id) + "_qk_prods_softmax_grad_in";
+            get_peft_dbg_folder(m, shard_id) + ".qk_prods.softmax_grad_in";
         save_tensor(
             C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
       }
@@ -1182,7 +1181,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       if (m->inference_debugging) {
         DT *C = static_cast<DT *>(m->qk_prods);
         std::string filename = get_peft_dbg_folder(m, shard_id) +
-                               "_qk_prods_softmax_grad_in_masked";
+                               ".qk_prods.softmax_grad_in.masked";
         save_tensor(
             C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
       }
@@ -1242,11 +1241,11 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       if (m->inference_debugging) {
         std::string filename =
-            get_peft_dbg_folder(m, shard_id) + "_query_activation";
+            get_peft_dbg_folder(m, shard_id) + ".query_activation";
         save_tensor(
             B, m->qProjSize * m->num_q_heads * num_tokens, filename.c_str());
         std::string filename2 =
-            get_peft_dbg_folder(m, shard_id) + "_devkproj_pre";
+            get_peft_dbg_folder(m, shard_id) + ".devkproj_pre";
         save_tensor(
             C, num_tokens * (m->qProjSize * m->num_q_heads), filename2.c_str());
       }
@@ -1302,7 +1301,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       if (m->inference_debugging) {
         std::string filename =
-            get_peft_dbg_folder(m, shard_id) + "_devQKVPRojArray_pre";
+            get_peft_dbg_folder(m, shard_id) + ".devQKVPRojArray_pre";
         save_tensor(C,
                     num_tokens * m->qProjSize * m->num_q_heads * 3,
                     filename.c_str());
@@ -1329,7 +1328,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
         DT *C = static_cast<DT *>(m->devQKVProjArray);
         if (m->inference_debugging) {
           std::string filename =
-              get_peft_dbg_folder(m, shard_id) + "_devQKVPRojArray";
+              get_peft_dbg_folder(m, shard_id) + ".devQKVPRojArray";
           save_tensor(C,
                       num_tokens * m->qProjSize * m->num_q_heads * 3,
                       filename.c_str());
@@ -1344,7 +1343,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
               (m->qProjSize *
                m->num_q_heads); // skip over regions reserved for Q gradients
       if (m->inference_debugging) {
-        std::string filename = get_peft_dbg_folder(m, shard_id) + "_devkproj";
+        std::string filename = get_peft_dbg_folder(m, shard_id) + ".devkproj";
         save_tensor(
             C, num_tokens * (m->qProjSize * m->num_q_heads), filename.c_str());
       }
@@ -1393,7 +1392,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
       if (m->inference_debugging) {
         std::string filename =
-            get_peft_dbg_folder(m, shard_id) + "_attn_final_grad_in";
+            get_peft_dbg_folder(m, shard_id) + ".self_attn.input_gradient_0";
         save_tensor(C, num_tokens * m->qSize, filename.c_str());
       }
     }
@@ -2088,11 +2087,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
                                                              size_of_dt);
 
-    token_infos =
-        static_cast<BatchConfig::PerTokenInfo *>(handler.batch_config_metadata);
-    request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo));
+    token_infos = static_cast<BatchConfig::PerTokenInfo *>(
+        handler.batch_config_metadata->tokens_info);
+    request_infos = static_cast<BatchConfig::PerRequestInfo *>(
+        handler.batch_config_metadata->requestsInfo);
 
     if (offload) {
       // token_infos =

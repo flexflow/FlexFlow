@@ -66,7 +66,7 @@ class FlexFlowLLAMA(FlexFlowModel):
         # self.llama_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
-        self.maxint = 2**31 - 1
+        self.maxint = 2 ** 31 - 1
         max_verify_tokens_per_batch = (
             max_tokens_per_batch + self.llama_config.max_spec_tree_token_num
         )
