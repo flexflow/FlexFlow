@@ -57,7 +57,6 @@ void LocalTrainingBacking::execute_init() {
       ComputationGraphOpAttrs attrs =
           get_layer_attrs(this->computation_graph, operator_node).attrs;
 
-      // if (!(attrs.has<MultiHeadAttentionAttrs>())) { continue; }
       OpTaskInvocation invocation = init(attrs);
       TaskArgumentAccessor accessor =
           this->get_task_arg_accessor(invocation, operator_node);
