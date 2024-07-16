@@ -38,6 +38,7 @@ public:
 
 namespace Kernels {
 namespace LoraLinear {
+void init_kernel_wrapper(LoraLinearMeta *m, int seed);
 void inference_kernel_wrapper(LoraLinearMeta *m,
                               BatchConfig const *bc,
                               GenericTensorAccessorR const &input,
@@ -48,6 +49,8 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
                              GenericTensorAccessorR const &output_grad);
 
 namespace Internal {
+template <typename DT>
+void init_kernel(LoraLinearMeta *m, int seed, cudaStream_t stream);
 template <typename DT>
 void inference_kernel(LoraLinearMeta *m,
                       BatchConfig const *bc,

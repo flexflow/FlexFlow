@@ -418,65 +418,75 @@ OpMeta *LoraLinear::init_task(Task const *task,
     weight.w1_ptr = allocator->allocate_local_weights_untyped(
         model_id, w1_num_elements * data_type_size(dt));
 
-    // load weights from file
-    std::string weights_folder_filepath = join_path({
-        lora_config.cache_folder,
-        "weights",
-        lora_config.peft_model_id,
-        dt == DT_FLOAT ? "full-precision" : "half-precision",
-    });
-    std::string w0_filepath = join_path(
-        {weights_folder_filepath, lora_layername_substr + "_A.weight"});
-    std::string w1_filepath = join_path(
-        {weights_folder_filepath, lora_layername_substr + "_B.weight"});
-    if (dt == DT_FLOAT) {
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_A.weight"
-                << ", num_rows: " << lora_A_num_rows
-                << ", num_cols: " << lora_A_num_cols
-                << ", num_shards: " << lora_A_num_shards
-                << ", shard_id: " << shard_id << std::endl;
-      load_peft_from_file((float *)weight.w0_ptr,
-                          lora_A_num_rows,
-                          lora_A_num_cols,
-                          lora_A_num_shards,
-                          shard_id,
-                          w0_filepath);
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_B.weight"
-                << ", num_rows: " << lora_B_num_rows
-                << ", num_cols: " << lora_B_num_cols
-                << ", num_shards: " << lora_B_num_shards
-                << ", shard_id: " << shard_id << std::endl;
-      load_peft_from_file((float *)weight.w1_ptr,
-                          lora_B_num_rows,
-                          lora_B_num_cols,
-                          lora_B_num_shards,
-                          shard_id,
-                          w1_filepath);
-    } else if (dt == DT_HALF) {
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_A.weight"
-                << ", num_rows: " << lora_A_num_rows
-                << ", num_cols: " << lora_A_num_cols
-                << ", num_shards: " << lora_A_num_shards
-                << ", shard_id: " << shard_id << std::endl;
-      load_peft_from_file((half *)weight.w0_ptr,
-                          lora_A_num_rows,
-                          lora_A_num_cols,
-                          lora_A_num_shards,
-                          shard_id,
-                          w0_filepath);
-      std::cout << "Loading LORA weight " << lora_layername_substr + "_B.weight"
-                << ", num_rows: " << lora_B_num_rows
-                << ", num_cols: " << lora_B_num_cols
-                << ", num_shards: " << lora_B_num_shards
-                << ", shard_id: " << shard_id << std::endl;
-      load_peft_from_file((half *)weight.w1_ptr,
-                          lora_B_num_rows,
-                          lora_B_num_cols,
-                          lora_B_num_shards,
-                          shard_id,
-                          w1_filepath);
+    if (!lora_config.init_lora_weights) {
+      // load weights from file
+      std::string weights_folder_filepath = join_path({
+          lora_config.cache_folder,
+          "weights",
+          lora_config.peft_model_id,
+          dt == DT_FLOAT ? "full-precision" : "half-precision",
+      });
+      std::string w0_filepath = join_path(
+          {weights_folder_filepath, lora_layername_substr + "_A.weight"});
+      std::string w1_filepath = join_path(
+          {weights_folder_filepath, lora_layername_substr + "_B.weight"});
+      if (dt == DT_FLOAT) {
+        std::cout << "Loading LORA weight "
+                  << lora_layername_substr + "_A.weight"
+                  << ", num_rows: " << lora_A_num_rows
+                  << ", num_cols: " << lora_A_num_cols
+                  << ", num_shards: " << lora_A_num_shards
+                  << ", shard_id: " << shard_id << std::endl;
+        load_peft_from_file((float *)weight.w0_ptr,
+                            lora_A_num_rows,
+                            lora_A_num_cols,
+                            lora_A_num_shards,
+                            shard_id,
+                            w0_filepath);
+        std::cout << "Loading LORA weight "
+                  << lora_layername_substr + "_B.weight"
+                  << ", num_rows: " << lora_B_num_rows
+                  << ", num_cols: " << lora_B_num_cols
+                  << ", num_shards: " << lora_B_num_shards
+                  << ", shard_id: " << shard_id << std::endl;
+        load_peft_from_file((float *)weight.w1_ptr,
+                            lora_B_num_rows,
+                            lora_B_num_cols,
+                            lora_B_num_shards,
+                            shard_id,
+                            w1_filepath);
+      } else if (dt == DT_HALF) {
+        std::cout << "Loading LORA weight "
+                  << lora_layername_substr + "_A.weight"
+                  << ", num_rows: " << lora_A_num_rows
+                  << ", num_cols: " << lora_A_num_cols
+                  << ", num_shards: " << lora_A_num_shards
+                  << ", shard_id: " << shard_id << std::endl;
+        load_peft_from_file((half *)weight.w0_ptr,
+                            lora_A_num_rows,
+                            lora_A_num_cols,
+                            lora_A_num_shards,
+                            shard_id,
+                            w0_filepath);
+        std::cout << "Loading LORA weight "
+                  << lora_layername_substr + "_B.weight"
+                  << ", num_rows: " << lora_B_num_rows
+                  << ", num_cols: " << lora_B_num_cols
+                  << ", num_shards: " << lora_B_num_shards
+                  << ", shard_id: " << shard_id << std::endl;
+        load_peft_from_file((half *)weight.w1_ptr,
+                            lora_B_num_rows,
+                            lora_B_num_cols,
+                            lora_B_num_shards,
+                            shard_id,
+                            w1_filepath);
+      } else {
+        assert(false && "Data type not supported");
+      }
     } else {
-      assert(false && "Data type not supported");
+      // initialize weights
+      int seed = 0;
+      init_kernel_wrapper(m, seed);
     }
 
     // allocate space for gradients if the LoRA layer is trainable
