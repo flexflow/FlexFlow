@@ -572,7 +572,6 @@ std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   return result;
 }
 
-
 template <typename C>
 auto pairs(C const &c) {
   using E = typename C::value_type;

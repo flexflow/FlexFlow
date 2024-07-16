@@ -115,14 +115,12 @@ SerialParallelDecomposition
     if (node == source) {
       continue;
     }
-    // std::unordered_set<SerialParallelDecomposition> unordered_sp_predecessors
-    // = transform(get_predecessors(g, node), [&](Node const &p) {return
-    // node_to_sp[p];}); std::vector<SerialParallelDecomposition>
-    // sp_predecessors(unordered_sp_predecessors.begin(),unordered_sp_predecessors.end());
-    std::vector<SerialParallelDecomposition> sp_predecessors;
-    for (Node const &p : get_predecessors(g, node)) {
-      sp_predecessors.push_back(node_to_sp[p]);
-    }
+    std::unordered_set<SerialParallelDecomposition> unordered_sp_predecessors =
+        transform(get_predecessors(g, node),
+                  [&](Node const &p) { return node_to_sp[p]; });
+    std::vector<SerialParallelDecomposition> sp_predecessors =
+        as_vector(unordered_sp_predecessors);
+
     SerialParallelDecomposition sp_decomp =
         serial_composition({parallel_composition(sp_predecessors), node});
     node_to_sp[node] = sp_decomp;

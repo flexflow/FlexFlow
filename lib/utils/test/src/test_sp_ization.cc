@@ -353,10 +353,11 @@ TEST_SUITE(FF_TEST_SUITE) {
       SerialParallelDecomposition result =
           dependency_invariant_sp_ization_with_coalescing(gv);
 
-      int extranodes =
-          get_nodes(multidigraph_from_sp_decomposition(result)).size() -
-          get_nodes(g).size();
-      CHECK(extranodes == 4);
+      std::unordered_set<Node> nodes_in_graph = get_nodes(g);
+      std::unordered_set<Node> nodes_in_sp = get_nodes(result);
+      CHECK(nodes_in_graph == nodes_in_sp);
+      size_t extranodes = 4;
+      CHECK(node_count(result) == (nodes_in_graph.size() + extranodes));
     }
   }
 
