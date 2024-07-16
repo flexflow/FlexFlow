@@ -52,18 +52,19 @@ def init_llm_co_serving(configs_dict, configs):
     )
     llm.compile(
         generation_config,
-        enable_peft_finetuning = (len(configs.finetuning_dataset) > 0),
+        enable_peft_finetuning = True,
         max_requests_per_batch=1,
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
 
 # Data comes from https://huggingface.co/datasets/databricks/databricks-dolly-15k
-def import_dataset():
-    inference_percentage = 0.6
+def import_dataset(dataset_size=10, inference_percentage=0.6):
     dataset = load_dataset("databricks/databricks-dolly-15k", split="train")
     data = []
     for i,row in enumerate(dataset):
+        if i == dataset_size:
+            break
         if len(row['context']) == 0:
             data.append((row['instruction'],row['response']))
     inference_prompts = []
@@ -107,7 +108,7 @@ if __name__ == "__main__":
             peft_model_id=llm.get_ff_peft_id(peft_model_id),
             dataset=finetuning_prompts,
         )
-        requests.append(finetuning_request)
+        # requests.append(finetuning_request)
     # Jointly serve inference and finetuning requests
     llm.generate(requests, max_length=configs.max_sequence_length)
     llm.stop_server()
