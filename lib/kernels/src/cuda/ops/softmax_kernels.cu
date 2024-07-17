@@ -21,10 +21,22 @@ namespace FlexFlow {
 namespace Kernels {
 namespace Softmax {
 
-SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle, int dim) {
+SoftmaxPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
+                                  int dim,
+                                  int input_n,
+                                  int input_c,
+                                  int input_h,
+                                  int input_w) {
   ffTensorDescriptor_t inputTensor;
 
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
+  checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
+                                        CUDNN_TENSOR_NCHW,
+                                        CUDNN_DATA_FLOAT,
+                                        input_n,
+                                        input_c,
+                                        input_h,
+                                        input_w));
 
   SoftmaxPerDeviceState per_device_state = {handle, inputTensor, dim};
   return per_device_state;

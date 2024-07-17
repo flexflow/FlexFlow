@@ -38,6 +38,7 @@ namespace Linear {
 
 LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  float *one_ptr,
+                                 std::optional<Activation> activation,
                                  std::optional<RegularizerAttrs> regularizer,
                                  bool use_bias,
                                  DataType input_type,
@@ -57,6 +58,7 @@ void forward_kernel(ffStream_t stream,
                     int in_dim,
                     int out_dim,
                     int batch_size);
+
 void backward_kernel(ffStream_t stream,
                      LinearPerDeviceState const &m,
                      void const *input_ptr,

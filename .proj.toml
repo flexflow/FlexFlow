@@ -11,8 +11,9 @@ build_targets = [
   # "substitutions",
   # "compiler",
   "substitution-generator",
-  "local-execution",
+  "local-execution", 
 ]
+
 test_targets = [
   "utils-tests",
   "op-attrs-tests",

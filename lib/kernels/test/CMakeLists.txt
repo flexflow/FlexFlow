@@ -1,0 +1,17 @@
+ff_add_test_executable(
+  NAME
+    kernels-tests
+  SRC_PATTERNS
+    src/*.cc
+  PRIVATE_INCLUDE 
+    src/
+  DEPS
+    doctest
+    utils-test-common
+    kernels
+    op-attrs
+    cuda
+    cudnn
+    cudart
+    cublas
+)

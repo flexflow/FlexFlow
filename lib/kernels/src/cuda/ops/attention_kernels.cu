@@ -15,6 +15,7 @@
 
 #include "device.h"
 #include "kernels/attention_kernels.h"
+#include "kernels/device.h"
 
 namespace FlexFlow {
 namespace Kernels {
@@ -41,11 +42,9 @@ MHAPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
   ffSeqDataDescriptor_t vDesc;
   ffSeqDataDescriptor_t oDesc;
   void *reserveSpace;
-  void *dropoutStates;
   int *devQoSeqArray;
   int *devKvSeqArray;
   size_t reserveSpaceSize;
-  size_t dropoutStateSize;
   size_t weightSize;
 
   checkCUDA(get_legion_stream(&stream));
@@ -301,8 +300,8 @@ void backward_kernel(cudaStream_t stream,
 
 void cleanup_kernel(Allocator &allocator,
                     MHAPerDeviceState const &device_state) {
-  allocator.deallocate(device_state.loWinIdx);
-  allocator.deallocate(device_state.hiWinIdx);
+  free(device_state.loWinIdx);
+  free(device_state.hiWinIdx);
   checkCUDNN(cudnnDestroyAttnDescriptor(device_state.attnDesc));
   checkCUDNN(cudnnDestroySeqDataDescriptor(device_state.qDesc));
   checkCUDNN(cudnnDestroySeqDataDescriptor(device_state.kDesc));
