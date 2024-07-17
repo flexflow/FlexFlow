@@ -75,6 +75,12 @@ std::vector<SerialParallelDecomposition>
 std::vector<SerialParallelDecomposition>
     to_sp_decomp(std::vector<std::variant<Serial, Node>> const &children);
 
+SerialParallelDecomposition
+    to_sp_decomp(std::variant<Parallel, Node> const &child);
+
+SerialParallelDecomposition
+    to_sp_decomp(std::variant<Serial, Node> const &child);
+
 } // namespace FlexFlow
 
 #endif

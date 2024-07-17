@@ -65,7 +65,7 @@ SerialParallelDecomposition
     std::vector<Serial> sp_branches = item.second;
     std::vector<Serial> cut_off = transform(sp_branches, cut_off_head);
     auto p_comp = parallel_composition_with_coalescing(cut_off);
-    sp.push_back(serial_composition({get_only(to_sp_decomp({head})), p_comp}));
+    sp.push_back(serial_composition({to_sp_decomp(head), p_comp}));
   }
   return parallel_composition(sp);
 }

@@ -111,7 +111,6 @@ TEST_SUITE(FF_TEST_SUITE) {
           std::get<Node>(node_decomp));
 
     CHECK(std::get<Serial>(normalize(mixed_serial)) == Serial{{n1, n2}});
-    auto x = normalize(nested);
     CHECK(std::get<Parallel>(normalize(mixed_parallel)) == Parallel{{n1, n2}});
     CHECK(std::get<Parallel>(normalize(nested)) == Parallel{{n1, n2, n3}});
   }
