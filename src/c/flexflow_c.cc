@@ -1630,7 +1630,6 @@ void flexflow_model_generate(flexflow_model_t handle_,
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<Request> requests;
 
-  int finetuning_req_idx = 0;
   for (int i = 0; i < num_requests; i++) {
     if (request_types[i] == RequestType::REQ_INFERENCE) {
       std::string const text_str(input_texts[i]);
@@ -1647,7 +1646,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
                   handle,
                   text_str.c_str(),
                   max_seq_lengths[i]);
-    } else {
+    } else if (request_types[i] == RequestType::REQ_FINETUNING) {
       Request fine_tuning_req;
       fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
       fine_tuning_req.max_sequence_length = max_seq_lengths[i];
@@ -1655,17 +1654,18 @@ void flexflow_model_generate(flexflow_model_t handle_,
       if (peft_model_id != nullptr) {
         fine_tuning_req.peft_model_id = *peft_model_id;
       }
-      std::string const dataset_fp(dataset_filepaths[finetuning_req_idx]);
+      std::string const dataset_fp(dataset_filepaths[i]);
       fine_tuning_req.dataset_filepath = dataset_fp;
-      fine_tuning_req.max_training_steps = training_steps[finetuning_req_idx];
+      fine_tuning_req.max_training_steps = training_steps[i];
       requests.push_back(fine_tuning_req);
-      DEBUG_PRINT("[Model] generate[%d] %p %s %i %i",
+      DEBUG_PRINT("[Model] finetune[%d] %p %s %i %i",
                   i,
                   handle,
                   dataset_fp.c_str(),
                   max_seq_lengths[i],
-                  training_steps[finetuning_req_idx]);
-      finetuning_req_idx++;
+                  training_steps[i]);
+    } else {
+      assert(false && "Unknown request type");
     }
   }
 
