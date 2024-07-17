@@ -58,7 +58,7 @@ def get_configs():
             "peft_activation_reserve_space_size": 1024,  # 1GB
             "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
-            "inference_debugging": True,
+            "inference_debugging": False,
             "fusion": False,
         }
         model_configs = {

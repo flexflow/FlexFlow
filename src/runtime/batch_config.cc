@@ -43,7 +43,7 @@ void set_optimizer_tasks(OptimizerTasks &tasks,
 
   // Update weights every gradient_accumulation_steps
   tasks.update_weights =
-      (completed_training_steps + 1 % gradient_accumulation_steps == 0);
+      ((completed_training_steps + 1) % gradient_accumulation_steps == 0);
 
   // Save updated weights only in the very last training step
   tasks.save_updated_weights =
