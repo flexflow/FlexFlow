@@ -409,72 +409,90 @@ void peft_bwd_kernel(LoraLinearMeta *m,
     float lora_alpha =
         m->model_state[bc->requestsInfo[i].peft_model_id].lora_alpha;
     DT scaling_constant = (DT)(lora_alpha / rank);
+
     // Compute LORA_B weight's gradient
-    DT alpha = 1.0f, beta = 0.0f;
-    checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_N,
-                           CUBLAS_OP_T,
-                           rank,
-                           out_dim,
-                           num_peft_tokens,
-                           &scaling_constant,
-                           m->low_rank_activation,
-                           lr_actv_type,
-                           rank,
-                           output_grad_ptr,
-                           output_type,
-                           out_dim,
-                           &beta,
-                           weight.w1_grad_ptr,
-                           weight_type,
-                           rank,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    if (bc->requestsInfo[i].optimizer_tasks.compute_gradients) {
+      DT alpha = 1.0f;
+      DT beta = (bc->requestsInfo[i].optimizer_tasks.reset_gradients_to_zero)
+                    ? 0.0f
+                    : 1.0f;
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_T,
+                             rank,
+                             out_dim,
+                             num_peft_tokens,
+                             &scaling_constant,
+                             m->low_rank_activation,
+                             lr_actv_type,
+                             rank,
+                             output_grad_ptr,
+                             output_type,
+                             out_dim,
+                             &beta,
+                             weight.w1_grad_ptr,
+                             weight_type,
+                             rank,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+
     // Compute LORA_B input's (and LORA_A output's) gradient inplace in
     // low_rank_activation
-    checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_N,
-                           CUBLAS_OP_N,
-                           rank,
-                           num_peft_tokens,
-                           out_dim,
-                           &scaling_constant,
-                           weight.w1_ptr,
-                           weight_type,
-                           rank,
-                           output_grad_ptr,
-                           output_type,
-                           out_dim,
-                           &beta,
-                           m->low_rank_activation,
-                           lr_actv_type,
-                           rank,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    {
+      DT alpha = 1.0f, beta = 0.0f;
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_N,
+                             rank,
+                             num_peft_tokens,
+                             out_dim,
+                             &scaling_constant,
+                             weight.w1_ptr,
+                             weight_type,
+                             rank,
+                             output_grad_ptr,
+                             output_type,
+                             out_dim,
+                             &beta,
+                             m->low_rank_activation,
+                             lr_actv_type,
+                             rank,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
+
     // Compute LORA_A weight's gradient
-    checkCUDA(cublasGemmEx(m->handle.blas,
-                           CUBLAS_OP_N,
-                           CUBLAS_OP_T,
-                           in_dim,
-                           rank,
-                           num_peft_tokens,
-                           &alpha,
-                           m->input_activation,
-                           input_type,
-                           in_dim,
-                           m->low_rank_activation,
-                           lr_actv_type,
-                           rank,
-                           &beta,
-                           weight.w0_grad_ptr,
-                           weight_type,
-                           in_dim,
-                           compute_type,
-                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    if (bc->requestsInfo[i].optimizer_tasks.compute_gradients) {
+      DT alpha = 1.0f;
+      DT beta = (bc->requestsInfo[i].optimizer_tasks.reset_gradients_to_zero)
+                    ? 0.0f
+                    : 1.0f;
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_T,
+                             in_dim,
+                             rank,
+                             num_peft_tokens,
+                             &alpha,
+                             m->input_activation,
+                             input_type,
+                             in_dim,
+                             m->low_rank_activation,
+                             lr_actv_type,
+                             rank,
+                             &beta,
+                             weight.w0_grad_ptr,
+                             weight_type,
+                             in_dim,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    }
     // Compute input gradient
     // NOTE: we use beta=1 for input_grad to accumulate gradients when needed
     if (input_grad_ptr != nullptr) {
-      beta = m->reset_input_grads[0] ? 0.0f : 1.0f;
+      DT alpha = 1.0f;
+      DT beta = m->reset_input_grads[0] ? 0.0f : 1.0f;
       checkCUDA(cublasGemmEx(m->handle.blas,
                              CUBLAS_OP_N,
                              CUBLAS_OP_N,
@@ -495,8 +513,8 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                              compute_type,
                              CUBLAS_GEMM_DEFAULT_TENSOR_OP));
     }
-    if (bc->requestsInfo[i].gradients_update_mode !=
-        GradientsUpdateMode::ACCUMULATE_ONLY) {
+
+    if (bc->requestsInfo[i].optimizer_tasks.update_weights) {
       LoraOptimizerConfig const *optimizer_config =
           m->model_state[bc->requestsInfo[i].peft_model_id].optimizer_config;
       assert(optimizer_config != nullptr);

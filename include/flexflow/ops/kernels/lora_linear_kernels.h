@@ -23,6 +23,9 @@ struct LoraLinearModelState {
   LoraLinearWeight weights;
   LoraOptimizerConfig const *optimizer_config;
   float lora_alpha;
+  std::string cache_folder;
+  // Huggingface model ID (for download and/or upload)
+  std::string peft_model_id;
 };
 
 class LoraLinearMeta : public OpMeta {

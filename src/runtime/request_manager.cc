@@ -908,15 +908,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
       new_bc.requestsInfo[inference_batch_size].peft_model_id =
           request.peft_model_id;
       new_bc.requestsInfo[inference_batch_size].peft_bwd = true;
-      if (request.completed_training_steps %
-              request.gradient_accumulation_steps ==
-          0) {
-        new_bc.requestsInfo[inference_batch_size].gradients_update_mode =
-            GradientsUpdateMode::UPDATE_WEIGHTS;
-      } else {
-        new_bc.requestsInfo[inference_batch_size].gradients_update_mode =
-            GradientsUpdateMode::ACCUMULATE_ONLY;
-      }
+      set_optimizer_tasks(
+          new_bc.requestsInfo[inference_batch_size].optimizer_tasks,
+          request.max_training_steps,
+          request.completed_training_steps,
+          request.gradient_accumulation_steps);
       // tokens info
       for (size_t i = request.dataset_entry_processed_tokens;
            i < request.dataset_entry_processed_tokens + num_peft_tokens;
