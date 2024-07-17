@@ -297,11 +297,11 @@ void load_attention_weights_to_dense_v2(DT *ptr,
   int replicate_num = num_heads / num_kv_heads;
 
   // stride for q, k, v, o
-  size_t stride_size = (q_size + v_replicate_size + k_replicate_size + o_size) /
+  size_t stride_size = (q_size + v_replicate_size + k_replicate_size) /
                        tensor_parallelism_degree;
   if(!load_o_proj) {
     for (auto filename : weight_filenames) {
-      std::cout << "Loading weight file " << filename << std::endl;
+      std::cout << "Loading weight file " << filename << " to dense"<< std::endl;
       std::string weight_filepath = join_path({weights_folder, filename});
 
       int data_index = 0;
@@ -347,13 +347,14 @@ void load_attention_weights_to_dense_v2(DT *ptr,
           }
         }
       }
-
+      std::cout<<"host array going out of scope, releasing"<<endl;
       // assert(data_index == partial_size);
       base_index += one_partition_size;
       file_index++;
     }
     assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
                             tensor_parallelism_degree);
+    std::cout<<"qkv weight loaded to dense, returning"<<endl;
   } else {
     std::cout << "Loading weight file " << o_file << std::endl;
     std::string weight_filepath = join_path({weights_folder, o_file});
@@ -906,6 +907,8 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   assert(data_type_size(weight->data_type) == sizeof(DT));
   DT *data = (DT *)malloc(sizeof(DT) * volume);
 
+  printf("loading weight for %s\n", l->name);
+
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
   bool is_attn_proj = false, is_o_proj = false;
 
@@ -1031,6 +1034,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   }
 
   // Copy the weight data from the buffer to the weight's ParallelTensor
+  printf("using default load for %s\n", l->name);
   ParallelTensor weight_pt;
   ff->get_parallel_tensor_from_tensor(weight, weight_pt);
   weight_pt->set_tensor<DT>(ff, dims_vec, data);

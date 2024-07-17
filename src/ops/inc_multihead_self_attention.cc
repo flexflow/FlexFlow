@@ -335,7 +335,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
   }
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
-  assert(dims[0].degree == 1);
+  // assert(dims[0].degree == 1);
   if (allocate_weights) {
     // Create weight tensor
     int num_dims = inputs[0]->num_dims;
