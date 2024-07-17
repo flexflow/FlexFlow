@@ -749,16 +749,21 @@ void LoraLinear::inference_task(Task const *task,
     } else {
       assert(false);
     }
-    // input activation (intermediate)
-    filename = dst_filepath.string() + ".low_rank_activation";
-    if (output.data_type == DT_FLOAT) {
-      save_tensor(
-          (float *)m->low_rank_activation, rank * num_tokens, filename.c_str());
-    } else if (output.data_type == DT_HALF) {
-      save_tensor(
-          (half *)m->low_rank_activation, rank * num_tokens, filename.c_str());
-    } else {
-      assert(false);
+
+    if (bc->num_active_peft_tokens() > 0) {
+      // input activation (intermediate)
+      filename = dst_filepath.string() + ".low_rank_activation";
+      if (output.data_type == DT_FLOAT) {
+        save_tensor((float *)m->low_rank_activation,
+                    rank * num_tokens,
+                    filename.c_str());
+      } else if (output.data_type == DT_HALF) {
+        save_tensor((half *)m->low_rank_activation,
+                    rank * num_tokens,
+                    filename.c_str());
+      } else {
+        assert(false);
+      }
     }
     m->decoding_step++;
   }
