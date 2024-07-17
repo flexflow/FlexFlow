@@ -47,24 +47,27 @@ class FlexFlowDemo(object):
                     trainable=True,
                     optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
                     optimizer_kwargs={
-                        "learning_rate": 1.0,
-                        "momentum": 0.0,
-                        "weight_decay": 0.0,
-                        "nesterov": False,
+                        "learning_rate": self.configs.learning_rate,
+                        "momentum": self.configs.momentum,
+                        "weight_decay": self.configs.weight_decay,
+                        "nesterov": self.configs.nesterov,
                     },
                 )
                 self.llm.add_peft(self.lora_finetuning_config)
 
             # Compile the LLM for inference and load the weights into memory
             generation_config = ff.GenerationConfig(
-                do_sample=False, temperature=0.9, topp=0.8, topk=1
+                do_sample=self.configs.do_sample,
+                temperature=self.configs.temperature,
+                topp=self.configs.topp,
+                topk=self.configs.topk
             )
             self.llm.compile(
                 generation_config,
                 enable_peft_finetuning=(len(self.configs.finetuning_dataset) > 0),
-                max_requests_per_batch=1,
-                max_seq_length=256,
-                max_tokens_per_batch=128,
+                max_requests_per_batch=self.configs.max_requests_per_batch,
+                max_seq_length=self.configs.max_sequence_length,
+                max_tokens_per_batch=self.configs.max_tokens_per_batch,
             )
         else:
             warnings.warn("FlexFlow has already been initialized. The behavior of the program from now on is undefined.")
@@ -97,7 +100,7 @@ class FlexFlowDemo(object):
                 ff.Request(
                     ff.RequestType.REQ_INFERENCE,
                     prompt=prompt,
-                    max_sequence_length=128,
+                    max_sequence_length=self.configs.max_sequence_length,
                     peft_model_id=self.llm.get_ff_peft_id(self.lora_inference_config),
                 )
                 for prompt in prompts
@@ -115,9 +118,9 @@ class FlexFlowDemo(object):
         if len(self.configs.finetuning_dataset) > 0:
             finetuning_request = ff.Request(
                 ff.RequestType.REQ_FINETUNING,
-                max_sequence_length=128,
+                max_sequence_length=self.configs.max_sequence_length,
                 peft_model_id=self.llm.get_ff_peft_id(self.lora_finetuning_config),
                 dataset_filepath=os.path.join(os.getcwd(), self.configs.finetuning_dataset),
-                max_training_steps=100,
+                max_training_steps=self.configs.max_training_steps,
             )
             self.llm.generate([finetuning_request])
