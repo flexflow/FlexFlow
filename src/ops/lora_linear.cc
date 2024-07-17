@@ -134,6 +134,45 @@ PEFTModelID *FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
     }
   }
 
+  // save finetuned lora model configs to file
+  if (peft_config.trainable) {
+    std::string finetuned_model_folder = join_path({
+        peft_config.cache_folder,
+        "finetuned_models",
+        peft_config.peft_model_id,
+    });
+    fs::remove_all(finetuned_model_folder);
+    std::string finetuned_model_config_folder = join_path({
+        finetuned_model_folder,
+        "config",
+    });
+    fs::create_directories(finetuned_model_config_folder);
+    std::string lora_linear_config_filepath = join_path({
+        finetuned_model_config_folder,
+        "ff_config.json",
+    });
+    serialize_to_json_file(peft_config, lora_linear_config_filepath);
+    std::string optimizer_config_filepath = join_path({
+        finetuned_model_config_folder,
+        "ff_optimizer_config.json",
+    });
+    if (typeid(*peft_config.optimizer_config) ==
+        typeid(LoraSGDOptimizerConfig)) {
+      LoraSGDOptimizerConfig const *sgd_config =
+          static_cast<LoraSGDOptimizerConfig const *>(
+              peft_config.optimizer_config);
+      serialize_to_json_file(*sgd_config, optimizer_config_filepath);
+    } else if (typeid(*peft_config.optimizer_config) ==
+               typeid(LoraAdamOptimizerConfig)) {
+      LoraAdamOptimizerConfig const *adam_config =
+          static_cast<LoraAdamOptimizerConfig const *>(
+              peft_config.optimizer_config);
+      serialize_to_json_file(*adam_config, optimizer_config_filepath);
+    } else {
+      assert(false && "Optimizer not supported");
+    }
+  }
+
   return peft_model_id;
 }
 
