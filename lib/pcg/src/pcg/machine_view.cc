@@ -74,9 +74,10 @@ MachineView make_1d_machine_view(device_id_t start,
                                  int stride) {
   if (get_device_type(start) == DeviceType::CPU) {
     return make_1d_machine_view(unwrap_cpu(start), num_points, stride);
+  } else {
+    assert(get_device_type(start) == DeviceType::GPU);
+    return make_1d_machine_view(unwrap_gpu(start), num_points, stride);
   }
-  assert(get_device_type(start) == DeviceType::GPU);
-  return make_1d_machine_view(unwrap_gpu(start), num_points, stride);
 }
 
 static StridedRectangle
@@ -103,9 +104,10 @@ MachineView make_1d_machine_view(device_id_t start,
 
   if (get_device_type(start) == DeviceType::CPU) {
     return make_1d_machine_view(unwrap_cpu(start), interval_size, stride);
+  } else {
+    assert(get_device_type(start) == DeviceType::GPU);
+    return make_1d_machine_view(unwrap_gpu(start), interval_size, stride);
   }
-  assert(get_device_type(start) == DeviceType::GPU);
-  return make_1d_machine_view(unwrap_gpu(start), interval_size, stride);
 }
 MachineView make_1d_machine_view(device_id_t start, size_t interval_size) {
   NOT_IMPLEMENTED();

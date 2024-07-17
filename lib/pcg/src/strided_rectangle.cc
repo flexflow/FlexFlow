@@ -20,11 +20,11 @@ size_t get_num_dims(StridedRectangle const &rect) {
 }
 
 num_points_t get_num_points(StridedRectangle const &rect) {
-  int num = 1;
-  for (StridedRectangleSide const &side : rect.sides) {
-    num *= side.num_points.unwrapped;
-  }
-  return num_points_t{num};
+  std::vector<StridedRectangleSide> sides(rect.sides.begin(), rect.sides.end());
+  return num_points_t{
+      product(transform(sides, [](StridedRectangleSide const &side) {
+        return side.num_points.unwrapped;
+      }))};
 }
 
 StridedRectangleSide get_side_at_idx(StridedRectangle const &rect,
