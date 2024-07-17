@@ -1,4 +1,5 @@
 #include "pcg/strided_rectangle.h"
+#include "op-attrs/dim_ordered/transform.h"
 #include "utils/containers.h"
 
 namespace FlexFlow {
@@ -20,9 +21,8 @@ size_t get_num_dims(StridedRectangle const &rect) {
 }
 
 num_points_t get_num_points(StridedRectangle const &rect) {
-  std::vector<StridedRectangleSide> sides(rect.sides.begin(), rect.sides.end());
   return num_points_t{
-      product(transform(sides, [](StridedRectangleSide const &side) {
+      product(transform(rect.sides, [](StridedRectangleSide const &side) {
         return side.num_points.unwrapped;
       }))};
 }
