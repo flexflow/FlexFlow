@@ -48,6 +48,9 @@ void set_optimizer_tasks(OptimizerTasks &tasks,
   // Save updated weights only in the very last training step
   tasks.save_updated_weights =
       (completed_training_steps == max_training_steps - 1);
+  if (tasks.save_updated_weights) {
+    assert(tasks.update_weights);
+  }
 }
 
 BatchConfig::BatchConfig() : num_tokens(0), num_peft_tokens(0) {
