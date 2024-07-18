@@ -67,7 +67,7 @@ def get_configs():
             "inference_peft_model_id": "goliaro/llama-160m-lora",
             "finetuning_peft_model_id": "goliaro/llama-160m-lora",
             # optional parameters
-            "cache_path": "",
+            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
             "full_precision": True,
             "prompt": "",
@@ -137,10 +137,11 @@ def main():
     generation_config = ff.GenerationConfig(
         do_sample=False, temperature=0.9, topp=0.8, topk=1
     )
+    enable_peft_finetuning = len(configs.finetuning_dataset) > 0
     llm.compile(
         generation_config,
-        enable_peft_finetuning=(len(configs.finetuning_dataset) > 0),
-        max_requests_per_batch=1,
+        enable_peft_finetuning=enable_peft_finetuning,
+        max_requests_per_batch = 1 if not enable_peft_finetuning else 2,
         max_seq_length=256,
         max_tokens_per_batch=128,
     )
