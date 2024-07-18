@@ -5,12 +5,15 @@ from types import SimpleNamespace
 
 class FlexFlowDemo(object):
 
-    def __init__(self, configs_dict):
+    def __init__(self, configs_dict, mode_only=None):
+        if mode_only != None and mode_only != "inference" and mode_only != "finetuning":
+            raise Exception("""Invalid parameter 'mode_only': should be one of None, "inference", or "finetuning".""")
         self.configs_dict = configs_dict
         self.configs = SimpleNamespace(**configs_dict)
         self.llm = None
         self.server_started = False
         self.server_stopped = False
+        self.mode_only = mode_only
 
         # Clear output file
         with open(self.configs.output_file, 'w') as file:
@@ -35,12 +38,12 @@ class FlexFlowDemo(object):
             # Add inference and/or finetuning lora
             self.lora_inference_config = None
             self.lora_finetuning_config = None
-            if len(self.configs.prompt) > 0:
+            if len(self.configs.inference_dataset) > 0 and self.mode_only != "finetuning":
                 self.lora_inference_config = ff.LoraLinearConfig(
                     self.llm.cache_path, self.configs.inference_peft_model_id
                 )
                 self.llm.add_peft(self.lora_inference_config)
-            if len(self.configs.finetuning_dataset) > 0:
+            if len(self.configs.finetuning_dataset) > 0 and self.mode_only != "inference":
                 self.lora_finetuning_config = ff.LoraLinearConfig(
                     self.llm.cache_path,
                     self.configs.inference_peft_model_id,
@@ -64,7 +67,7 @@ class FlexFlowDemo(object):
             )
             self.llm.compile(
                 generation_config,
-                enable_peft_finetuning=(len(self.configs.finetuning_dataset) > 0),
+                enable_peft_finetuning=(len(self.configs.finetuning_dataset) > 0 and self.mode_only != "inference"),
                 max_requests_per_batch=self.configs.max_requests_per_batch,
                 max_seq_length=self.configs.max_sequence_length,
                 max_tokens_per_batch=self.configs.max_tokens_per_batch,
@@ -93,9 +96,11 @@ class FlexFlowDemo(object):
             raise Exception("Server has not started.")
         if self.server_stopped:
             raise Exception("Server stopped.")
+        if self.mode_only == "finetuning":
+            raise Exception("Only finetuning is supported with the given configuration.")
         
-        if len(self.configs.prompt) > 0:
-            prompts = [s for s in json.load(open(self.configs.prompt))]
+        if len(self.configs.inference_dataset) > 0:
+            prompts = [s for s in json.load(open(self.configs.inference_dataset))]
             inference_requests = [
                 ff.Request(
                     ff.RequestType.REQ_INFERENCE,
@@ -114,6 +119,8 @@ class FlexFlowDemo(object):
             raise Exception("Server has not started.")
         if self.server_stopped:
             raise Exception("Server stopped.")
+        if self.mode_only == "inference":
+            raise Exception("Only inference is supported with the given configuration.")
 
         if len(self.configs.finetuning_dataset) > 0:
             finetuning_request = ff.Request(
