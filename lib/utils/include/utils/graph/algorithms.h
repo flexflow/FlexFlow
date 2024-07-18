@@ -272,6 +272,13 @@ std::vector<Node>
 std::vector<Node> get_topological_ordering(DiGraphView const &);
 std::vector<Node> get_unchecked_topological_ordering(DiGraphView const &);
 
+std::vector<Node>
+    get_topological_ordering_from_starting_node(DiGraphView const &,
+                                                Node const &);
+std::vector<Node>
+    get_unchecked_topological_ordering_from_starting_node(DiGraphView const &,
+                                                          Node const &);
+
 std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &);
 std::vector<MultiDiEdge>
     get_edge_topological_ordering(MultiDiGraphView const &);

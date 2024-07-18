@@ -492,6 +492,37 @@ std::vector<Node> get_topological_ordering(DiGraphView const &g) {
   return get_unchecked_topological_ordering(g);
 }
 
+std::vector<Node> get_unchecked_topological_ordering_from_starting_node(
+    DiGraphView const &g, Node const &starting_node) {
+
+  auto get_descendants = [&](DiGraphView const &g, Node const &starting_node) {
+    std::unordered_set<Node> descendants;
+    std::stack<Node> to_visit;
+    to_visit.push(starting_node);
+    while (!to_visit.empty()) {
+      Node current = to_visit.top();
+      to_visit.pop();
+      descendants.insert(current);
+      for (auto const &s :
+           filter(get_successors(g, current),
+                  [&](Node const &n) { return !contains(descendants, n); })) {
+        to_visit.push(s);
+      }
+    }
+    return descendants;
+  };
+  std::unordered_set<Node> descendants = get_descendants(g, starting_node);
+  return get_topological_ordering(get_subgraph(g, descendants));
+}
+
+std::vector<Node>
+    get_topological_ordering_from_starting_node(DiGraphView const &g,
+                                                Node const &starting_nodes) {
+  assert(is_acyclic(g));
+  return get_unchecked_topological_ordering_from_starting_node(g,
+                                                               starting_nodes);
+}
+
 std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &g) {
   std::vector<DirectedEdge> result;
   for (Node const &n : get_topological_ordering(g)) {

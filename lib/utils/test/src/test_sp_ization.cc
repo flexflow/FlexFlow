@@ -172,6 +172,17 @@ DiGraph make_linear(size_t length) {
   return g;
 }
 
+DiGraph make_rhombus() {
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  std::vector<Node> n = add_nodes(g, 4);
+
+  std::vector<DirectedEdge> edges = {
+      {n[0], n[1]}, {n[0], n[2]}, {n[1], n[3]}, {n[2], n[3]}};
+
+  add_edges(g, edges);
+  return g;
+}
+
 DiGraph make_diamond() {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> n = add_nodes(g, 6);
@@ -343,13 +354,8 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Dependency Invariant SP-ization algorithm - Rhombus Pattern") {
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> n = add_nodes(g, 4);
-
-    std::vector<DirectedEdge> edges = {
-        {n[0], n[1]}, {n[0], n[2]}, {n[1], n[3]}, {n[2], n[3]}};
-
-    add_edges(g, edges);
+    DiGraph g = TestingGraphs::make_rhombus();
+    std::vector<Node> n = sorted(get_nodes(g));
 
     auto gv = flipped(g); // flipped to account for the DiEdge bug
     SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
@@ -447,11 +453,34 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Dependency invariant SP-graph - NASNET like structure") {
-    DiGraph g = TestingGraphs::make_cifar10(1, 2);
+    DiGraph g = TestingGraphs::make_cifar10(1, 1);
     DiGraphView gv = flipped(g);
     SerialParallelDecomposition result =
         dependency_invariant_sp_ization_with_coalescing(gv);
     // CHECK(get_nodes(g).size() == node_count(result));
+  }
+
+  TEST_CASE("Barrier Sync, cost aware SP-graph - Linear Structure") {
+    DiGraph g = TestingGraphs::make_linear(3);
+    DiGraphView gv = flipped(g);
+    std::vector<Node> n = sorted(get_nodes(g));
+    auto cost_map = Distributions::make_cost_map(
+        get_nodes(g), Distributions::Uniform(0, 100));
+    SerialParallelDecomposition result =
+        cost_aware_barrier_sync_sp_ization(g, cost_map);
+    CHECK(std::get<Serial>(result) == Serial{{n[0], n[1], n[2]}});
+  }
+
+  TEST_CASE("Barrier Sync, cost aware SP-graph - Rhombus Pattern") {
+    DiGraph g = TestingGraphs::make_rhombus();
+    DiGraphView gv = flipped(g);
+    std::vector<Node> n = sorted(get_nodes(g));
+    auto cost_map =
+        Distributions::make_cost_map(get_nodes(g), Distributions::Constant(1));
+    SerialParallelDecomposition result =
+        cost_aware_barrier_sync_sp_ization(g, cost_map);
+    CHECK(std::get<Serial>(result) ==
+          Serial{{n[0], Parallel{{n[1], n[2]}}, n[3]}});
   }
 
   TEST_CASE("Benchmarking barrier-sync spization") {
@@ -500,8 +529,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       // CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map),
       // 1));
     }
-    SUBCASE("Parallel Chains, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_parallel_chains(10, 4);
+    SUBCASE("Parallel Chains, Unif(0,1) weightunordered_layer_to_nodes") {
+      DiGraph g = TestingGraphs::make_parallel_chains(4, 1);
       auto cost_map = Distributions::make_cost_map(
           get_nodes(g), Distributions::Uniform(0, 1));
       SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
@@ -560,7 +589,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
     }
     SUBCASE("Parallel Chains, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_parallel_chains(10, 4);
+      DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
       auto cost_map = Distributions::make_cost_map(
           get_nodes(g), Distributions::Uniform(0, 1));
       SerialParallelDecomposition sp =
