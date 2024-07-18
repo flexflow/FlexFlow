@@ -521,6 +521,78 @@ size_t node_count(SerialParallelDecomposition const &sp) {
   return sum(values(node_counter(sp)));
 }
 
+size_t node_count(DiGraphView const &g) {
+  return get_nodes(g).size();
+}
+
+float compute_cost(SerialParallelDecomposition const &sp,
+                   std::unordered_map<Node, float> cost_map) {
+  auto cost_per_node_group = [&](std::pair<Node, float> const &pair) {
+    return pair.second * cost_map.at(pair.first);
+  };
+  std::unordered_map<Node, size_t> counter = node_counter(sp);
+  std::vector<std::pair<Node, size_t>> pairs(counter.cbegin(), counter.cend());
+  return sum(transform(pairs, cost_per_node_group));
+}
+
+float compute_cost(DiGraphView const &g,
+                   std::unordered_map<Node, float> const &cost_map) {
+  return sum(transform(as_vector(get_nodes(g)),
+                       [&](Node const &node) { return cost_map.at(node); }));
+}
+
+float critical_path_cost(DiGraphView const &g,
+                         std::unordered_map<Node, float> const &cost_map) {
+  return maximum(
+      values(get_weighted_longest_path_lengths_from_source_node(g, cost_map)));
+}
+
+float critical_path_cost(SerialParallelDecomposition const &sp,
+                         std::unordered_map<Node, float> const &cost_map) {
+  if (std::holds_alternative<Node>(sp)) {
+    return cost_map.at(std::get<Node>(sp));
+  } else if (std::holds_alternative<Serial>(sp)) {
+    Serial s = std::get<Serial>(sp);
+    return sum(transform(s.children, [&](auto const &child) {
+      return critical_path_cost(to_sp_decomp(child), cost_map);
+    }));
+  } else {
+    assert(std::holds_alternative<Parallel>(sp));
+    Parallel p = std::get<Parallel>(sp);
+    return maximum(transform(p.children, [&](auto const &child) {
+      return critical_path_cost(to_sp_decomp(child), cost_map);
+    }));
+  }
+}
+
+float average_parallelism_degree(
+    SerialParallelDecomposition const &sp,
+    std::unordered_map<Node, float> const &cost_map) {
+  NOT_IMPLEMENTED();
+}
+
+float max_parallelism_degree(SerialParallelDecomposition const &sp,
+                             std::unordered_map<Node, float> const &cost_map) {
+  NOT_IMPLEMENTED();
+}
+
+// Metrics
+
+float relative_cost_increase(DiGraphView const &g,
+                             SerialParallelDecomposition const &sp,
+                             std::unordered_map<Node, float> const &cost_map) {
+  float a = compute_cost(sp, cost_map);
+  float b = compute_cost(g, cost_map);
+  return a / b;
+}
+
+float relative_critical_path_cost_increase(
+    DiGraphView const &g,
+    SerialParallelDecomposition const &sp,
+    std::unordered_map<Node, float> const &cost_map) {
+  return critical_path_cost(sp, cost_map) / critical_path_cost(g, cost_map);
+}
+
 struct MultiDiGraphFromSPDecompositionFunctor {
   template <typename T>
   MultiDiGraph operator()(T const &t) {

@@ -616,6 +616,20 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
+template <typename C>
+void inplace_sorted(C &c) {
+  CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);
+  std::sort(c.begin(), c.end());
+}
+
+template <typename C>
+auto sorted(C const &c) {
+  using Elem = typename C::value_type;
+  std::vector<Elem> result(c.begin(), c.end());
+  inplace_sorted(result);
+  return result;
+}
+
 template <typename C, typename F, typename Elem>
 void inplace_sorted_by(C &c, F const &f) {
   CHECK_SUPPORTS_ITERATOR_TAG(std::random_access_iterator_tag, C);

@@ -8,6 +8,57 @@
 #include <tuple>
 using namespace FlexFlow;
 
+bool isclose(float a, float b, float rel_tol = 1e-5f) {
+  return std::fabs(a - b) <= rel_tol * std::fmax(std::fabs(a), std::fabs(b));
+}
+
+namespace Distributions {
+struct Constant {
+  float val;
+  Constant(float val = 1) : val(val) {}
+  float operator()() const {
+    return val;
+  }
+};
+
+struct Uniform {
+  float a, b;
+  Uniform(float a = 0, float b = 1) : a(a), b(b) {}
+  float operator()() const {
+    return a + ((static_cast<double>(std::rand()) / RAND_MAX) * (b - a));
+  }
+};
+
+struct Bernoulli {
+  float p;
+  Bernoulli(float p = 0.5) : p(p) {}
+  float operator()() const {
+    return (Uniform(0, 1)() < p);
+  }
+};
+
+struct Binary {
+  float a, b, p;
+  Binary(float a = 0, float b = 1, float p = 0.5) : a(a), b(b), p(p) {}
+  float operator()() const {
+    return (Bernoulli(p)() ? a : b);
+  }
+};
+
+template <typename Dist>
+std::unordered_map<Node, float>
+    make_cost_map(std::unordered_set<Node> const &nodes,
+                  Dist const &distribution) {
+  std::unordered_map<Node, float> cost_map;
+  for (Node const &node : nodes) {
+    cost_map[node] = distribution();
+  }
+  return cost_map;
+}
+} // namespace Distributions
+
+namespace TestingGraphs {
+
 std::tuple<DiGraph, Node, Node> make_normal_nasnet_cell() {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> inputs = add_nodes(g, 2);
@@ -107,69 +158,176 @@ DiGraph make_cifar10(size_t num_reduction_cells, size_t N) {
   return g;
 }
 
+DiGraph make_linear(size_t length) {
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  if (length == 0) {
+    return g;
+  }
+  std::vector<Node> nodes = add_nodes(g, length);
+
+  for (size_t i = 0; i < length - 1; ++i) {
+    g.add_edge({nodes[i], nodes[i + 1]});
+  }
+
+  return g;
+}
+
+DiGraph make_diamond() {
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  std::vector<Node> n = add_nodes(g, 6);
+
+  std::vector<DirectedEdge> edges = {
+      {n[0], n[1]},
+      {n[0], n[2]},
+      {n[1], n[3]},
+      {n[2], n[3]},
+      {n[2], n[4]},
+      {n[3], n[5]},
+      {n[4], n[5]},
+  };
+
+  add_edges(g, edges);
+  return g;
+}
+
+DiGraph make_fully_connected(std::vector<size_t> layer_sizes) {
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  std::vector<std::vector<Node>> layers =
+      transform(layer_sizes, [&g](size_t size) { return add_nodes(g, size); });
+
+  std::vector<DirectedEdge> edges;
+
+  for (size_t i = 0; i < layers.size() - 1; ++i) {
+    for (Node const &n1 : layers[i]) {
+      for (Node const &n2 : layers[i + 1]) {
+        edges.push_back({n1, n2});
+      }
+    }
+  }
+
+  add_edges(g, edges);
+  return g;
+}
+
+DiGraph make_parallel_chains(size_t chain_length, size_t chain_num) {
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  assert(chain_length >= 3);
+  assert(chain_num >= 1);
+  std::vector<std::vector<Node>> chains;
+
+  for (size_t i = 0; i < chain_num; i++) {
+    std::vector<Node> chain_nodes = add_nodes(g, chain_length - 2);
+    chains.push_back(chain_nodes);
+
+    for (size_t j = 0; j < chain_length - 3; j++) {
+      g.add_edge({chain_nodes[j], chain_nodes[j + 1]});
+    }
+  }
+
+  Node source = get_only(add_nodes(g, 1));
+  Node sink = get_only(add_nodes(g, 1));
+
+  for (auto const &chain : chains) {
+    g.add_edge({source, chain.front()});
+    g.add_edge({chain.back(), sink});
+  }
+
+  return g;
+}
+
+DiGraph make_sample_dag_1() {
+
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  std::vector<Node> n = add_nodes(g, 7);
+
+  std::vector<DirectedEdge> edges = {{n[0], n[1]},
+                                     {n[0], n[2]},
+                                     {n[2], n[3]},
+                                     {n[1], n[4]},
+                                     {n[3], n[4]},
+                                     {n[3], n[5]},
+                                     {n[4], n[5]},
+                                     {n[0], n[6]},
+                                     {n[2], n[6]},
+                                     {n[6], n[5]}};
+
+  add_edges(g, edges);
+  return g;
+}
+
+DiGraph make_sample_dag_2() {
+  NOT_IMPLEMENTED();
+}
+
+DiGraph make_sample_dag_3() {
+  // Taken by "A New Algorithm for Mapping DAGs to Series-Parallel Form,
+  // Escribano et Al, 2002"
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  std::vector<Node> n = add_nodes(g, 18);
+
+  std::vector<DirectedEdge> edges = {
+      {n[0], n[1]},   {n[0], n[2]},   {n[1], n[3]},   {n[1], n[4]},
+      {n[2], n[10]},  {n[2], n[11]},  {n[2], n[12]},  {n[3], n[5]},
+      {n[3], n[6]},   {n[4], n[6]},   {n[4], n[7]},   {n[4], n[10]},
+      {n[5], n[8]},   {n[6], n[8]},   {n[6], n[9]},   {n[7], n[8]},
+      {n[8], n[17]},  {n[9], n[17]},  {n[10], n[16]}, {n[11], n[16]},
+      {n[12], n[13]}, {n[12], n[14]}, {n[13], n[15]}, {n[14], n[15]},
+      {n[15], n[16]}, {n[16], n[17]}};
+
+  add_edges(g, edges);
+  return g;
+}
+
+DiGraph make_taso_nasnet_cell() {
+  // From the TASO paper, pg 57
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  Node root = get_only(add_nodes(g, 1));
+  std::vector<Node> input = add_nodes(g, 2);
+  std::vector<Node> dwc = add_nodes(g, 5);
+  std::vector<Node> conv = add_nodes(g, 5);
+  std::vector<Node> avg = add_nodes(g, 3);
+  std::vector<Node> add = add_nodes(g, 5);
+  Node concat = get_only(add_nodes(g, 1));
+
+  std::vector<DirectedEdge> edges = {
+      {root, input[0]},   {root, input[1]},   {input[0], dwc[0]},
+      {input[0], dwc[1]}, {input[0], avg[0]}, {input[0], avg[1]},
+      {input[0], avg[2]}, {input[0], dwc[2]}, {input[1], add[2]},
+      {input[1], dwc[3]}, {input[1], dwc[4]}, {input[1], add[4]},
+      {dwc[0], conv[0]},  {dwc[1], conv[1]},  {dwc[2], conv[2]},
+      {dwc[3], conv[3]},  {dwc[4], conv[4]},  {conv[0], add[0]},
+      {conv[1], add[0]},  {avg[0], add[1]},   {avg[1], add[1]},
+      {avg[2], add[2]},   {conv[2], add[3]},  {conv[3], add[3]},
+      {conv[4], add[4]}};
+
+  add_edges(g, edges);
+
+  for (auto const &a : add) {
+    g.add_edge({a, concat});
+  }
+  return g;
+}
+
+} // namespace TestingGraphs
+
 TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("Barrier Syncing SP-ization Algorithm") {
-    /*
-    digraph G {
-    n0 [label="n0\nlayer=0"];
-    n1 [label="n1\nlayer=1"];
-    n2 [label="n2\nlayer=1"];
-    n3 [label="n3\nlayer=2"];
-    n4 [label="n4\nlayer=3"];
-    n5 [label="n5\nlayer=4"];
-    n6 [label="n6\nlayer=2"];
 
-    n0 -> n1;
-    n0 -> n2;
-    n2 -> n3;
-    n1 -> n4;
-    n3 -> n4;
-    n3 -> n5;
-    n4 -> n5;
-    n0 -> n6;
-    n2 -> n6;
-    n6 -> n5;
-    }
-
-    */
-
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> n = add_nodes(g, 7);
-
-    std::vector<DirectedEdge> edges = {{n[0], n[1]},
-                                       {n[0], n[2]},
-                                       {n[2], n[3]},
-                                       {n[1], n[4]},
-                                       {n[3], n[4]},
-                                       {n[3], n[5]},
-                                       {n[4], n[5]},
-                                       {n[0], n[6]},
-                                       {n[2], n[6]},
-                                       {n[6], n[5]}};
-
-    add_edges(g, edges);
-
+    DiGraph g = TestingGraphs::make_sample_dag_1();
+    std::vector<Node> n = sorted(get_nodes(g));
     auto gv = flipped(g); // to account for DiEdge bug
     SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
     CHECK(std::holds_alternative<Serial>(sp));
 
-    Serial expected = Serial{{Parallel{{n[0]}},
-                              Parallel{{n[1], n[2]}},
-                              Parallel{{n[3], n[6]}},
-                              Parallel{{n[4]}},
-                              Parallel{{n[5]}}}};
+    Serial expected = Serial{
+        {n[0], Parallel{{n[1], n[2]}}, Parallel{{n[3], n[6]}}, n[4], n[5]}};
     CHECK(std::get<Serial>(sp) == expected);
   }
 
   TEST_CASE("Dependency Invariant SP-ization algorithm - Straight Line") {
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> n = add_nodes(g, 4);
-
-    std::vector<DirectedEdge> edges = {
-        {n[0], n[1]}, {n[1], n[2]}, {n[2], n[3]}};
-
-    add_edges(g, edges);
+    DiGraph g = TestingGraphs::make_linear(4);
+    std::vector<Node> n = sorted(get_nodes(g));
 
     auto gv = flipped(g); // flipped to account for the DiEdge bug
     SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
@@ -205,17 +363,8 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Dependency Invariant SP-ization algorithm - Diamond Pattern") {
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> n = add_nodes(g, 5);
-
-    std::vector<DirectedEdge> edges = {{n[0], n[1]},
-                                       {n[0], n[2]},
-                                       {n[1], n[3]},
-                                       {n[2], n[3]},
-                                       {n[2], n[4]},
-                                       {n[3], n[4]}};
-
-    add_edges(g, edges);
+    DiGraph g = TestingGraphs::make_diamond();
+    std::vector<Node> n = sorted(get_nodes(g));
 
     auto gv = flipped(g); // flipped to account for the DiEdge bug
     SUBCASE("Naive Version") {
@@ -224,13 +373,15 @@ TEST_SUITE(FF_TEST_SUITE) {
       Serial sp1 = {{n[0], n[1]}};
       Serial sp2 = {{n[0], n[2]}};
       Serial sp3 = {{Parallel{{sp2, sp1}}, n[3]}};
-      Serial expected = {{Parallel{{sp3, sp2}}, n[4]}};
+      Serial sp4 = {{n[0], n[2], n[4]}};
+      Serial expected = {{Parallel{{sp3, sp4}}, n[5]}};
       CHECK(result == expected);
     }
     SUBCASE("Node coalescing") {
       Node s0 = n[0];
-      Parallel p = {{Serial{{Parallel{{n[1], n[2]}}, n[3]}}, n[2]}};
-      Node s1 = n[4];
+      Parallel p = {
+          {Serial{{Parallel{{n[1], n[2]}}, n[3]}}, Serial{{n[2], n[4]}}}};
+      Node s1 = n[5];
 
       Serial expected = {{s0, p, s1}};
 
@@ -241,103 +392,37 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Dependency Invariant SP-ization algorithm - More Complex Graph") {
-    // Taken by "A New Algorithm for Mapping DAGs to Series-Parallel Form,
-    // Escribano et Al, 2002"
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> n = add_nodes(g, 18);
-
-    std::vector<DirectedEdge> edges = {
-        {n[0], n[1]},   {n[0], n[2]},   {n[1], n[3]},   {n[1], n[4]},
-        {n[2], n[10]},  {n[2], n[11]},  {n[2], n[12]},  {n[3], n[5]},
-        {n[3], n[6]},   {n[4], n[6]},   {n[4], n[7]},   {n[4], n[10]},
-        {n[5], n[8]},   {n[6], n[8]},   {n[6], n[9]},   {n[7], n[8]},
-        {n[8], n[17]},  {n[9], n[17]},  {n[10], n[16]}, {n[11], n[16]},
-        {n[12], n[13]}, {n[12], n[14]}, {n[13], n[15]}, {n[14], n[15]},
-        {n[15], n[16]}, {n[16], n[17]}};
-
-    add_edges(g, edges);
+    DiGraph g = TestingGraphs::make_sample_dag_3();
 
     DiGraphView gv = flipped(g);
     SerialParallelDecomposition result =
         dependency_invariant_sp_ization_with_coalescing(gv);
     auto counter = node_counter(result);
     std::vector<size_t> expected_counts = {
-        1, 2, 2, 3, 4, 1, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    for (size_t i = 0; i < n.size(); i++) {
-      CHECK(counter[n[i]] == expected_counts[i]);
-    }
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 3, 4};
+    std::vector<size_t> result_counts = sorted(values(counter));
+    CHECK(expected_counts == result_counts);
     CHECK(node_count(result) == sum(expected_counts));
   }
 
-  TEST_CASE(
-      "Dependency Invariant SP-ization algorithm - Joining parallel segments") {
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> layer1 = add_nodes(g, 1);
-    std::vector<Node> layer2 = add_nodes(g, 3);
-    std::vector<Node> layer3 = add_nodes(g, 4);
-    std::vector<Node> layer4 = add_nodes(g, 1);
-
-    std::vector<DirectedEdge> edges;
-
-    for (Node const &n1 : layer1) {
-      for (Node const &n2 : layer2) {
-        edges.push_back({n1, n2});
-      }
-    }
-
-    for (Node const &n2 : layer2) {
-      for (Node const &n3 : layer3) {
-        edges.push_back({n2, n3});
-      }
-    }
-
-    for (Node const &n3 : layer3) {
-      for (Node const &n4 : layer4) {
-        edges.push_back({n3, n4});
-      }
-    }
-
-    add_edges(g, edges);
+  TEST_CASE("Dependency Invariant SP-ization algorithm - FC Layers") {
+    DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
+    std::vector<Node> n = sorted(get_nodes(g));
 
     DiGraphView gv = flipped(g); // flipped to account for the DiEdge bug
 
-    Serial expected =
-        Serial{{layer1[0],
-                Parallel{{layer2[0], layer2[1], layer2[2]}},
-                Parallel{{layer3[0], layer3[3], layer3[1], layer3[2]}},
-                layer4[0]}};
+    Serial expected = Serial{{n[0],
+                              Parallel{{n[1], n[2], n[3], n[4]}},
+                              Parallel{{n[5], n[6], n[7], n[8], n[9], n[10]}},
+                              n[11]}};
     Serial result =
         std::get<Serial>(dependency_invariant_sp_ization_with_coalescing(gv));
     CHECK(result == expected);
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - NASNET-A like cell") {
+  TEST_CASE("Dependency Invariant SP-ization algorithm - TASO NASNET-A cell") {
     // From the TASO paper, pg 57
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    Node root = get_only(add_nodes(g, 1));
-    std::vector<Node> input = add_nodes(g, 2);
-    std::vector<Node> dwc = add_nodes(g, 5);
-    std::vector<Node> conv = add_nodes(g, 5);
-    std::vector<Node> avg = add_nodes(g, 3);
-    std::vector<Node> add = add_nodes(g, 5);
-    Node concat = get_only(add_nodes(g, 1));
-
-    std::vector<DirectedEdge> edges = {
-        {root, input[0]},   {root, input[1]},   {input[0], dwc[0]},
-        {input[0], dwc[1]}, {input[0], avg[0]}, {input[0], avg[1]},
-        {input[0], avg[2]}, {input[0], dwc[2]}, {input[1], add[2]},
-        {input[1], dwc[3]}, {input[1], dwc[4]}, {input[1], add[4]},
-        {dwc[0], conv[0]},  {dwc[1], conv[1]},  {dwc[2], conv[2]},
-        {dwc[3], conv[3]},  {dwc[4], conv[4]},  {conv[0], add[0]},
-        {conv[1], add[0]},  {avg[0], add[1]},   {avg[1], add[1]},
-        {avg[2], add[2]},   {conv[2], add[3]},  {conv[3], add[3]},
-        {conv[4], add[4]}};
-
-    add_edges(g, edges);
-
-    for (auto const &a : add) {
-      g.add_edge({a, concat});
-    }
+    DiGraph g = TestingGraphs::make_taso_nasnet_cell();
 
     SUBCASE("No coalescing") {
       DiGraphView gv = flipped(g);
@@ -362,10 +447,121 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Dependency invariant SP-graph - NASNET like structure") {
-    DiGraph g = make_cifar10(1, 1);
+    DiGraph g = TestingGraphs::make_cifar10(1, 2);
     DiGraphView gv = flipped(g);
     SerialParallelDecomposition result =
         dependency_invariant_sp_ization_with_coalescing(gv);
     // CHECK(get_nodes(g).size() == node_count(result));
+  }
+
+  TEST_CASE("Benchmarking barrier-sync spization") {
+    SUBCASE("Linear Graph, Unit Weights") {
+      DiGraph g = TestingGraphs::make_linear(10);
+      auto cost_map = Distributions::make_cost_map(get_nodes(g),
+                                                   Distributions::Constant(1));
+      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+    SUBCASE("Fully Connected, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
+      auto cost_map = Distributions::make_cost_map(
+          get_nodes(g), Distributions::Uniform(0, 1));
+      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+    SUBCASE("Sample DAG 3, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_sample_dag_3();
+      auto cost_map = Distributions::make_cost_map(
+          get_nodes(g), Distributions::Uniform(0, 1));
+      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+
+    SUBCASE("Sample DAG 1, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_sample_dag_1();
+      auto cost_map = Distributions::make_cost_map(get_nodes(g),
+                                                   Distributions::Constant(1));
+      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+
+    SUBCASE("TASO NASNet-A cell, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+      auto cost_map = Distributions::make_cost_map(
+          get_nodes(g), Distributions::Binary(1, 100, .1));
+      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+    SUBCASE("Parallel Chains, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_parallel_chains(50, 10);
+      auto cost_map = Distributions::make_cost_map(
+          get_nodes(g), Distributions::Uniform(0, 1));
+      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+  }
+  TEST_CASE("Benchmarking dependency_invariant_sp_ization_with_coalescing") {
+    SUBCASE("Linear Graph, Unit Weights") {
+      DiGraph g = TestingGraphs::make_linear(10);
+      auto cost_map = Distributions::make_cost_map(get_nodes(g),
+                                                   Distributions::Constant(1));
+      SerialParallelDecomposition sp =
+          dependency_invariant_sp_ization_with_coalescing(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+    SUBCASE("Fully Connected, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
+      auto cost_map = Distributions::make_cost_map(get_nodes(g),
+                                                   Distributions::Constant(1));
+      SerialParallelDecomposition sp =
+          dependency_invariant_sp_ization_with_coalescing(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+    SUBCASE("Sample DAG 3, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_sample_dag_3();
+      auto cost_map = Distributions::make_cost_map(
+          get_nodes(g), Distributions::Uniform(0, 1));
+      SerialParallelDecomposition sp =
+          dependency_invariant_sp_ization_with_coalescing(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+
+    SUBCASE("Sample DAG 1, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_sample_dag_1();
+      auto cost_map = Distributions::make_cost_map(get_nodes(g),
+                                                   Distributions::Constant(1));
+      SerialParallelDecomposition sp =
+          dependency_invariant_sp_ization_with_coalescing(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+
+    SUBCASE("TASO NASNet-A cell, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+      auto cost_map = Distributions::make_cost_map(
+          get_nodes(g), Distributions::Binary(1, 100, .1));
+      SerialParallelDecomposition sp =
+          dependency_invariant_sp_ization_with_coalescing(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
+    SUBCASE("Parallel Chains, Unif(0,1) weights") {
+      DiGraph g = TestingGraphs::make_parallel_chains(50, 10);
+      auto cost_map = Distributions::make_cost_map(
+          get_nodes(g), Distributions::Uniform(0, 1));
+      SerialParallelDecomposition sp =
+          dependency_invariant_sp_ization_with_coalescing(g);
+      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
+      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+    }
   }
 }

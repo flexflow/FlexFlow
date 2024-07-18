@@ -30,7 +30,7 @@ SerialParallelDecomposition
         std::vector<std::variant<Serial, Node>>{nodes.begin(), nodes.end()}};
     sp.children.push_back(layer);
   }
-  return sp;
+  return normalize(sp);
 }
 
 SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g) {
@@ -49,8 +49,7 @@ SerialParallelDecomposition
   if (sp_predecessors.size() == 1) {
     return get_only(sp_predecessors);
   }
-  std::unordered_map<std::variant<Parallel, Node>, std::vector<Serial>>
-      coalescable;
+  std::map<std::variant<Parallel, Node>, std::vector<Serial>> coalescable;
   for (Serial predecessor : sp_predecessors) {
     if (predecessor.children.size() == 0) {
       continue;

@@ -319,6 +319,9 @@ Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &,
 
 std::unordered_map<Node, int>
     get_longest_path_lengths_from_source_node(DiGraphView const &g);
+std::unordered_map<Node, float>
+    get_weighted_longest_path_lengths_from_source_node(
+        DiGraphView const &g, std::unordered_map<Node, float> const &cost_map);
 
 MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);

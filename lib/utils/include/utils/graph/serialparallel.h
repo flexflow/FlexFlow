@@ -81,6 +81,36 @@ SerialParallelDecomposition
 SerialParallelDecomposition
     to_sp_decomp(std::variant<Serial, Node> const &child);
 
+size_t node_count(DiGraphView const &g);
+
+float compute_cost(SerialParallelDecomposition const &sp,
+                   std::unordered_map<Node, float> cost_map);
+
+float compute_cost(DiGraphView const &g,
+                   std::unordered_map<Node, float> const &cost_map);
+
+float critical_path_cost(DiGraphView const &g,
+                         std::unordered_map<Node, float> const &cost_map);
+
+float critical_path_cost(SerialParallelDecomposition const &sp,
+                         std::unordered_map<Node, float> const &cost_map);
+
+float average_parallelism_degree(
+    SerialParallelDecomposition const &sp,
+    std::unordered_map<Node, float> const &cost_map);
+
+float max_parallelism_degree(SerialParallelDecomposition const &sp,
+                             std::unordered_map<Node, float> const &cost_map);
+
+float relative_cost_increase(DiGraphView const &g,
+                             SerialParallelDecomposition const &sp,
+                             std::unordered_map<Node, float> const &cost_map);
+
+float relative_critical_path_cost_increase(
+    DiGraphView const &g,
+    SerialParallelDecomposition const &sp,
+    std::unordered_map<Node, float> const &cost_map);
+
 } // namespace FlexFlow
 
 #endif

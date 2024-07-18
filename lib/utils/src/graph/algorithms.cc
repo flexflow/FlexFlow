@@ -675,6 +675,38 @@ std::unordered_map<Node, int>
   return longest_path_lengths;
 }
 
+std::unordered_map<Node, float>
+    get_unchecked_weighted_longest_path_lengths_from_source_node(
+        DiGraphView const &g,
+        std::unordered_map<Node, float> const &node_costs) {
+
+  std::vector<Node> topo_order = get_topological_ordering(g);
+  std::unordered_map<Node, float> longest_path_lengths;
+
+  for (Node const &n : topo_order) {
+    std::unordered_set<float> predecessor_path_lengths =
+        transform(get_predecessors(g, n), [&](Node const &pred) {
+          return longest_path_lengths.at(pred);
+        });
+    longest_path_lengths[n] =
+        (predecessor_path_lengths.size() == 0)
+            ? node_costs.at(n)
+            : maximum(predecessor_path_lengths) + node_costs.at(n);
+  }
+
+  return longest_path_lengths;
+}
+
+std::unordered_map<Node, float>
+    get_weighted_longest_path_lengths_from_source_node(
+        DiGraphView const &g,
+        std::unordered_map<Node, float> const &node_costs) {
+
+  assert(is_acyclic(g));
+  return get_unchecked_weighted_longest_path_lengths_from_source_node(
+      g, node_costs);
+}
+
 std::unordered_map<Node, int>
     get_longest_path_lengths_from_source_node(DiGraphView const &g) {
   assert(is_acyclic(g));
