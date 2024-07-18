@@ -5,8 +5,6 @@
 #include "utils/graph/serialparallel.h"
 #include <cassert>
 #include <queue>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace FlexFlow {
 
@@ -14,16 +12,19 @@ bool is_2_terminal_sp_compliant(DiGraphView const &g) {
   return (is_acyclic(g) && has_single_source(g) && has_single_sink(g));
 }
 
-SerialParallelDecomposition
-    barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
-
+std::map<int, std::unordered_set<Node>>
+    naive_layer_split(DiGraphView const &g) {
   std::unordered_map<Node, int> node_to_sp_layer =
       get_longest_path_lengths_from_source_node(g);
   std::unordered_map<int, std::unordered_set<Node>> unordered_layer_to_node =
       invert_map(node_to_sp_layer);
   std::map<int, std::unordered_set<Node>> layer_to_node(
       unordered_layer_to_node.begin(), unordered_layer_to_node.end());
+  return layer_to_node;
+}
 
+SerialParallelDecomposition
+    naive_layer_merge(std::map<int, std::unordered_set<Node>> layer_to_node) {
   Serial sp;
   for (auto const &[_, nodes] : layer_to_node) {
     Parallel layer{
@@ -31,6 +32,13 @@ SerialParallelDecomposition
     sp.children.push_back(layer);
   }
   return normalize(sp);
+}
+
+SerialParallelDecomposition
+    barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
+
+  std::map<int, std::unordered_set<Node>> layer_split = naive_layer_split(g);
+  return naive_layer_merge(layer_split);
 }
 
 SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g) {
