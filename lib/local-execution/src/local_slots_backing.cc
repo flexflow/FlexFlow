@@ -1,4 +1,5 @@
 #include "local-execution/local_slots_backing.h"
+#include "utils/containers/contains_key.h"
 
 namespace FlexFlow {
 

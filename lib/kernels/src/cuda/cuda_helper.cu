@@ -28,10 +28,6 @@ cudaError_t get_legion_stream(cudaStream_t *stream) {
 #error "Unknown device, please make sure if CUDA is enabled"
 #endif
 
-}; // namespace FlexFlow
-
-using FlexFlow::get_legion_stream;
-
 __global__ void scale_kernel(float *ptr, coord_t size, float a, float b) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = (b - a) * ptr[i] + a;
@@ -331,3 +327,5 @@ template __host__ void
     print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
+
+}

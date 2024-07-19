@@ -1,4 +1,5 @@
 #include "local-execution/op_task_invocation.h"
+#include "utils/containers/contains_key.h"
 
 namespace FlexFlow {
 
