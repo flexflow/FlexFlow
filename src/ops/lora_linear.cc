@@ -125,7 +125,7 @@ PEFTModelID *FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
                                             0,
                                             true /*create_grad*/);
         }
-        layers.insert(it + 1, peft_layer);
+        it = layers.insert(it + 1, peft_layer);
         ++it;
         base_layer_to_peft_layer[target_module] = peft_layer;
         peft_layer_to_peft_id[peft_layer] = std::vector<PEFTModelID>();
