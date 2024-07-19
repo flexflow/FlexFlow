@@ -121,7 +121,7 @@ def main():
         with torch.no_grad():
             param.copy_(weight_tensor)
 
-    model.push_to_hub(f"{args.peft_model_id}2", use_auth_token=True)
+    model.push_to_hub(f"{args.peft_model_id}", use_auth_token=True, private=args.private)
 
     print("Upload process completed.")
 
