@@ -1,19 +1,17 @@
 import flexflow.serve as ff
 import json, os, warnings
 from types import SimpleNamespace
+import random
 
 
 class FlexFlowDemo(object):
 
-    def __init__(self, configs_dict, mode_only=None):
-        if mode_only != None and mode_only != "inference" and mode_only != "finetuning":
-            raise Exception("""Invalid parameter 'mode_only': should be one of None, "inference", or "finetuning".""")
+    def __init__(self, configs_dict):
         self.configs_dict = configs_dict
         self.configs = SimpleNamespace(**configs_dict)
         self.llm = None
         self.server_started = False
         self.server_stopped = False
-        self.mode_only = mode_only
 
         # Clear output file
         with open(self.configs.output_file, 'w') as file:
@@ -38,12 +36,12 @@ class FlexFlowDemo(object):
             # Add inference and/or finetuning lora
             self.lora_inference_config = None
             self.lora_finetuning_config = None
-            if len(self.configs.inference_dataset) > 0 and self.mode_only != "finetuning":
+            if len(self.configs.inference_dataset) > 0:
                 self.lora_inference_config = ff.LoraLinearConfig(
                     self.llm.cache_path, self.configs.inference_peft_model_id
                 )
                 self.llm.add_peft(self.lora_inference_config)
-            if len(self.configs.finetuning_dataset) > 0 and self.mode_only != "inference":
+            if len(self.configs.finetuning_dataset) > 0:
                 self.lora_finetuning_config = ff.LoraLinearConfig(
                     self.llm.cache_path,
                     self.configs.inference_peft_model_id,
@@ -65,10 +63,11 @@ class FlexFlowDemo(object):
                 topp=self.configs.topp,
                 topk=self.configs.topk
             )
+            enable_peft_finetuning = len(self.configs.finetuning_dataset) > 0
             self.llm.compile(
                 generation_config,
-                enable_peft_finetuning=(len(self.configs.finetuning_dataset) > 0 and self.mode_only != "inference"),
-                max_requests_per_batch=self.configs.max_requests_per_batch,
+                enable_peft_finetuning=enable_peft_finetuning,
+                max_requests_per_batch=1+int(enable_peft_finetuning),
                 max_seq_length=self.configs.max_sequence_length,
                 max_tokens_per_batch=self.configs.max_tokens_per_batch,
             )
@@ -96,8 +95,6 @@ class FlexFlowDemo(object):
             raise Exception("Server has not started.")
         if self.server_stopped:
             raise Exception("Server stopped.")
-        if self.mode_only == "finetuning":
-            raise Exception("Only finetuning is supported with the given configuration.")
         
         if len(self.configs.inference_dataset) > 0:
             prompts = [s for s in json.load(open(self.configs.inference_dataset))]
@@ -119,9 +116,8 @@ class FlexFlowDemo(object):
             raise Exception("Server has not started.")
         if self.server_stopped:
             raise Exception("Server stopped.")
-        if self.mode_only == "inference":
-            raise Exception("Only inference is supported with the given configuration.")
 
+        reqs = []
         if len(self.configs.finetuning_dataset) > 0:
             finetuning_request = ff.Request(
                 ff.RequestType.REQ_FINETUNING,
@@ -130,4 +126,83 @@ class FlexFlowDemo(object):
                 dataset_filepath=os.path.join(os.getcwd(), self.configs.finetuning_dataset),
                 max_training_steps=self.configs.max_training_steps,
             )
-            self.llm.generate([finetuning_request])
+            reqs += [finetuning_request]
+        if len(self.configs.inference_dataset) > 0:
+            prompts = [s for s in json.load(open(self.configs.inference_dataset))]
+            inference_requests = [
+                ff.Request(
+                    ff.RequestType.REQ_INFERENCE,
+                    prompt=prompt,
+                    max_sequence_length=self.configs.max_sequence_length,
+                    peft_model_id=self.llm.get_ff_peft_id(self.lora_inference_config),
+                )
+                for prompt in prompts
+            ]
+            reqs += inference_requests
+        self.llm.generate(reqs)
+
+if __name__ == "__main__":
+    configs_dict = {
+        "num_gpus": 1,
+        "memory_per_gpu": 8192,
+        "zero_copy_memory_per_node": 12000,
+        "num_cpus": 4,
+        "legion_utility_processors": 4,
+        "data_parallelism_degree": 1,
+        "tensor_parallelism_degree": 1,
+        "pipeline_parallelism_degree": 1,
+        "offload": False,
+        "offload_reserve_space_size": 8 * 1024,  # 8GB
+        "use_4bit_quantization": False,
+        "use_8bit_quantization": False,
+        "enable_peft": True,
+        "peft_activation_reserve_space_size": 1024,  # 1GB
+        "peft_weight_reserve_space_size": 1024,  # 1GB
+        "profiling": False,
+        "inference_debugging": False,
+        "fusion": False,
+        "max_requests_per_batch": 1,
+        "max_sequence_length": 256,
+        "max_tokens_per_batch": 128,
+        "max_training_steps": 4,
+        "seed": 42,
+    }
+    model_configs = {
+        "base_model": "JackFram/llama-160m",
+        "inference_peft_model_id": "goliaro/llama-160m-lora",
+        "finetuning_peft_model_id": "goliaro/llama-160m-lora",
+        "cache_path": os.environ.get("FF_CACHE_PATH", ""),
+        "refresh_cache": False,
+        "full_precision": True,
+        # relative paths
+        "inference_dataset": "inference_dataset.json",
+        "finetuning_dataset": "finetuning_dataset.json",
+        "output_file": "peft_demo.txt",
+    }
+    generation_configs = {
+        "do_sample": False,
+        "temperature": 0.9,
+        "topp": 0.8,
+        "topk": 1,
+    }
+    finetuning_configs = {
+        "learning_rate": 1.0,
+        "momentum": 0.0,
+        "weight_decay": 0.0,
+        "nesterov": False,
+    }
+    # Merge dictionaries
+    configs_dict.update(model_configs)
+    configs_dict.update(generation_configs)
+    configs_dict.update(finetuning_configs)
+
+    random.seed(configs_dict["seed"])
+
+    demo = FlexFlowDemo(configs_dict)
+
+    demo.initialize_flexflow()
+    demo.start_server()
+    demo.generate_finetuning()
+    demo.generate_inference()
+    #demo.generate_inference()
+    demo.stop_server()
