@@ -441,14 +441,17 @@ class LLM:
             max_tokens_per_batch,
         )
 
+        # Download the config from huggingface
+        self.download_hf_config()
+
+        # Download the weights from huggingface (if needed)
+        self.download_hf_weights_if_needed()
+
         # Add PEFT layer if registered
         for ff_peft_config, peft_dict in self.pefts.items():
             ff_peft_config.ff_compile()
             ff_peft_model_id = self.model.ffmodel.add_lora_layer(ff_peft_config)
             peft_dict["ff_peft_model_id"] = ff_peft_model_id
-
-        # Download the weights from huggingface (if needed)
-        self.download_hf_weights_if_needed()
 
         # Create file data loader, load weights into tensors
         model_configs = self.config_class(self.hf_config)
