@@ -328,4 +328,4 @@ template __host__ void
 template __host__ void
     print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
 
-}
+} // namespace FlexFlow
