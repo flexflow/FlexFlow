@@ -1,4 +1,5 @@
 #include "pcg/strided_rectangle.h"
+#include "op-attrs/dim_ordered/transform.h"
 #include "utils/containers.h"
 
 namespace FlexFlow {
@@ -15,12 +16,20 @@ namespace FlexFlow {
 /*   return idx; */
 /* } */
 
-size_t get_num_dims(StridedRectangle const &) {
-  NOT_IMPLEMENTED();
+size_t get_num_dims(StridedRectangle const &rect) {
+  return rect.sides.size();
 }
 
-size_t get_side_at_idx(StridedRectangle const &) {
-  NOT_IMPLEMENTED();
+num_points_t get_num_points(StridedRectangle const &rect) {
+  return num_points_t{
+      product(transform(rect.sides, [](StridedRectangleSide const &side) {
+        return side.num_points.unwrapped;
+      }))};
+}
+
+StridedRectangleSide get_side_at_idx(StridedRectangle const &rect,
+                                     ff_dim_t const &idx) {
+  return rect.sides.at(idx);
 }
 
 } // namespace FlexFlow
