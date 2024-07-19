@@ -249,12 +249,15 @@ void FlexFlow::top_level_task(Task const *task,
     optim_config = new LoraSGDOptimizerConfig(sgd_learning_rate);
   }
   LoraLinearConfig peft_config_finetuning =
-      peft_model_name.empty() ? LoraLinearConfig::EmptyConfig
-                              : LoraLinearConfig(file_paths.cache_folder_path,
-                                                 peft_model_name,
-                                                 true /*trainable*/,
-                                                 optim_config,
-                                                 false /*init_lora_weights*/);
+      peft_model_name.empty()
+          ? LoraLinearConfig::EmptyConfig
+          : LoraLinearConfig(file_paths.cache_folder_path,
+                             peft_model_name,
+                             true /*trainable*/,
+                             optim_config,
+                             false /*init_lora_weights*/,
+                             llm_model_name,
+                             use_full_precision ? "fp32" : "fp16");
 
   GenerationConfig generationConfig(do_sample, temperature, topp);
   RequestManager *rm = RequestManager::get_request_manager();

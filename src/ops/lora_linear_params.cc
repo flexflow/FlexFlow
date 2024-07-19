@@ -92,6 +92,8 @@ LoraLinearConfig::LoraLinearConfig(
     bool trainable_,
     LoraOptimizerConfig *optimizer_config_,
     bool init_lora_weights_,
+    std::string const &base_model_name_or_path_,
+    std::string const &precision_,
     int rank_,
     float lora_alpha_,
     float lora_dropout_,
@@ -99,7 +101,9 @@ LoraLinearConfig::LoraLinearConfig(
     : cache_folder(cache_folder_), peft_model_id(peft_model_id_), rank(rank_),
       lora_alpha(lora_alpha_), lora_dropout(lora_dropout_),
       trainable(trainable_), optimizer_config(optimizer_config_),
-      init_lora_weights(init_lora_weights_), target_modules(target_modules_) {
+      init_lora_weights(init_lora_weights_),
+      base_model_name_or_path(base_model_name_or_path_), precision(precision_),
+      target_modules(target_modules_) {
 
   if (peft_model_id.empty()) {
     return;
@@ -109,6 +113,11 @@ LoraLinearConfig::LoraLinearConfig(
   if (trainable) {
     assert(optimizer_config != nullptr &&
            "optimizer_config must be provided when using PEFT");
+    assert(
+        !base_model_name_or_path.empty() &&
+        "base_model_name_or_path must be provided when training a PEFT model");
+    assert(!precision.empty() &&
+           "precision must be provided when training a PEFT model");
   } else {
     assert(init_lora_weights == false &&
            "init_lora_weights must be false when LORA not trainable");
@@ -131,6 +140,8 @@ LoraLinearConfig::LoraLinearConfig(
         for (auto &s : model_config["target_modules"]) {
           target_modules.push_back(s);
         }
+        // do not load the base_model_name_or_path from the HF config because we
+        // may be applying LoRA to another model
       } catch (json::exception const &e) {
         std::cerr << "Error parsing PEFT config from JSON file: " << e.what()
                   << std::endl;
@@ -160,7 +171,9 @@ bool operator==(LoraLinearConfig const &lhs, LoraLinearConfig const &rhs) {
       lhs.target_modules.size() == rhs.target_modules.size() &&
       lhs.trainable == rhs.trainable &&
       lhs.init_lora_weights == rhs.init_lora_weights &&
-      lhs.optimizer_config == rhs.optimizer_config) {
+      lhs.optimizer_config == rhs.optimizer_config &&
+      lhs.base_model_name_or_path == rhs.base_model_name_or_path &&
+      lhs.precision == rhs.precision) {
     for (int i = 0; i < lhs.target_modules.size(); i++) {
       if (lhs.target_modules[i] != rhs.target_modules[i]) {
         return false;
@@ -200,6 +213,8 @@ std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
     std::cout << std::endl;
   }
   os << "init_lora_weights: " << llc.init_lora_weights << std::endl;
+  os << "base_model_name_or_path: " << llc.base_model_name_or_path << std::endl;
+  os << "precision: " << llc.precision << std::endl;
   return os;
 }
 
