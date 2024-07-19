@@ -8,8 +8,9 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
-struct ILabelledOpenDataflowGraphView : virtual public ILabelledDataflowGraphView<NodeLabel, ValueLabel>,
-                                        virtual public IOpenDataflowGraphView {
+struct ILabelledOpenDataflowGraphView
+    : virtual public ILabelledDataflowGraphView<NodeLabel, ValueLabel>,
+      virtual public IOpenDataflowGraphView {
 public:
   virtual NodeLabel const &at(Node const &) const override = 0;
   virtual ValueLabel const &at(OpenDataflowValue const &) const = 0;
@@ -21,7 +22,6 @@ public:
   virtual ~ILabelledOpenDataflowGraphView() = default;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ILabelledOpenDataflowGraphView<int, int>);
-
 
 } // namespace FlexFlow
 

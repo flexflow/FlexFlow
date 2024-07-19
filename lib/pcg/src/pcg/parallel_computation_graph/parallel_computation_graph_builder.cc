@@ -463,8 +463,8 @@ std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
         weight_tensor_attrs};
     raw_weight_tensors.push_back(get_only(this->pcg.raw_graph
                                               .add_node(weight_layer_attrs,
-                                                            weight_layer_inputs,
-                                                            weight_output_attrs)
+                                                        weight_layer_inputs,
+                                                        weight_output_attrs)
                                               .outputs));
   }
 

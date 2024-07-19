@@ -1,13 +1,15 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_INL
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_INL
 
-#include "utils/bidict/bidict.h"
 #include "containers.decl.h"
 #include "required_core.h"
 #include "type_traits_core.h"
+#include "utils/bidict/bidict.h"
 #include "utils/containers/extend_vector.h"
+#include "utils/containers/filter.h"
 #include "utils/containers/vector_transform.h"
 #include "utils/exception.h"
+#include "utils/hash/pair.h"
 #include "utils/type_traits.h"
 #include <algorithm>
 #include <cassert>
@@ -20,8 +22,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utils/hash/pair.h"
-#include "utils/containers/filter.h"
 
 namespace FlexFlow {
 
@@ -265,9 +265,10 @@ std::unordered_map<K, V> generate_map(C const &c, F const &f) {
   static_assert(is_hashable<K>::value,
                 "Key type should be hashable (but is not)");
 
-  auto transformed = transform(as_vector(c), [&](K const &k) -> std::pair<K, V> {
-    return {k, f(k)};
-  });
+  auto transformed =
+      transform(as_vector(c), [&](K const &k) -> std::pair<K, V> {
+        return {k, f(k)};
+      });
   return {transformed.cbegin(), transformed.cend()};
 }
 

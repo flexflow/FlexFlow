@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_UNDIRECTED_I_GRAPH_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_UNDIRECTED_I_GRAPH_H
 
-#include "utils/graph/node/node.dtg.h"
 #include "utils/graph/node/i_graph_view.h"
+#include "utils/graph/node/node.dtg.h"
 
 namespace FlexFlow {
 

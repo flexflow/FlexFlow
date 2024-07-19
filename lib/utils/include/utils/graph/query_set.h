@@ -4,13 +4,13 @@
 #include "utils/bidict/bidict.h"
 #include "utils/containers.h"
 #include "utils/exception.h"
-#include <optional>
-#include <unordered_set>
-#include <set>
-#include "utils/optional.h"
-#include "utils/hash-utils.h"
 #include "utils/fmt/unordered_set.h"
+#include "utils/hash-utils.h"
 #include "utils/hash/set.h"
+#include "utils/optional.h"
+#include <optional>
+#include <set>
+#include <unordered_set>
 
 namespace FlexFlow {
 
@@ -19,11 +19,13 @@ struct query_set {
   query_set() = delete;
   query_set(T const &t) : query(std::set<T>{t}) {}
 
-  query_set(std::unordered_set<T> const &query) : query(std::set<T>{query.cbegin(), query.cend()}) {}
+  query_set(std::unordered_set<T> const &query)
+      : query(std::set<T>{query.cbegin(), query.cend()}) {}
 
   query_set(std::optional<std::unordered_set<T>> const &query)
-    : query(transform(query, [](std::unordered_set<T> const &s) { return std::set<T>{s.cbegin(), s.cend()}; })) 
-    { }
+      : query(transform(query, [](std::unordered_set<T> const &s) {
+          return std::set<T>{s.cbegin(), s.cend()};
+        })) {}
 
   query_set(std::initializer_list<T> const &l)
       : query_set(std::unordered_set<T>{l}) {}
@@ -61,6 +63,7 @@ struct query_set {
   std::optional<std::set<T>> const &value() const {
     return this->query;
   }
+
 private:
   std::optional<std::set<T>> query;
 };
@@ -148,6 +151,6 @@ struct hash<::FlexFlow::query_set<T>> {
   }
 };
 
-}
+} // namespace std
 
 #endif

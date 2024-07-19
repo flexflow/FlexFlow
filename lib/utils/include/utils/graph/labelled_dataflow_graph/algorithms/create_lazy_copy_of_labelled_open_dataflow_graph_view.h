@@ -9,28 +9,36 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
-struct LazyLabelledDataflowGraph final : public ILabelledDataflowGraph<NodeLabel, ValueLabel> {
+struct LazyLabelledDataflowGraph final
+    : public ILabelledDataflowGraph<NodeLabel, ValueLabel> {
 public:
   LazyLabelledDataflowGraph() = delete;
-  LazyLabelledDataflowGraph(LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view, 
-                            std::function<LabelledDataflowGraph<NodeLabel, ValueLabel>(LabelledDataflowGraphView<NodeLabel, ValueLabel> const &)> const &make_copy_func)
-    : g(view), make_copy_func(make_copy_func) {}
+  LazyLabelledDataflowGraph(
+      LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view,
+      std::function<LabelledDataflowGraph<NodeLabel, ValueLabel>(
+          LabelledDataflowGraphView<NodeLabel, ValueLabel> const &)> const
+          &make_copy_func)
+      : g(view), make_copy_func(make_copy_func) {}
 
-  NodeAddedResult add_node(NodeLabel const &node_label,
-                           std::vector<DataflowOutput> const &inputs,
-                           std::vector<ValueLabel> const &output_labels) override {
-    return this->get_mutable_graph().add_node(node_label, inputs, output_labels);
+  NodeAddedResult
+      add_node(NodeLabel const &node_label,
+               std::vector<DataflowOutput> const &inputs,
+               std::vector<ValueLabel> const &output_labels) override {
+    return this->get_mutable_graph().add_node(
+        node_label, inputs, output_labels);
   }
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
     return this->get_view().query_nodes(q);
   }
 
-  std::unordered_set<DataflowEdge> query_edges(DataflowEdgeQuery const &q) const override {
+  std::unordered_set<DataflowEdge>
+      query_edges(DataflowEdgeQuery const &q) const override {
     return this->get_view().query_edges(q);
   }
 
-  std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &q) const override {
+  std::unordered_set<DataflowOutput>
+      query_outputs(DataflowOutputQuery const &q) const override {
     return this->get_view().query_outputs(q);
   }
 
@@ -39,32 +47,36 @@ public:
   }
 
   ValueLabel const &at(DataflowOutput const &v) const override {
-    return this->get_view().at(v); 
+    return this->get_view().at(v);
   }
 
   LazyLabelledDataflowGraph *clone() const override {
     return new LazyLabelledDataflowGraph(this->g, this->make_copy_func);
   }
 
-  void inplace_materialize_from(LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view) override {
+  void inplace_materialize_from(
+      LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view) override {
     this->g = view;
   }
+
 private:
-  std::variant<
-    LabelledDataflowGraphView<NodeLabel, ValueLabel>,
-    LabelledDataflowGraph<NodeLabel, ValueLabel>
-  > g;
-  std::function<LabelledDataflowGraph<NodeLabel, ValueLabel>(LabelledDataflowGraphView<NodeLabel, ValueLabel> const &)> make_copy_func;
+  std::variant<LabelledDataflowGraphView<NodeLabel, ValueLabel>,
+               LabelledDataflowGraph<NodeLabel, ValueLabel>>
+      g;
+  std::function<LabelledDataflowGraph<NodeLabel, ValueLabel>(
+      LabelledDataflowGraphView<NodeLabel, ValueLabel> const &)>
+      make_copy_func;
+
 private:
   LazyLabelledDataflowGraph(decltype(g) const &g,
                             decltype(make_copy_func) const &make_copy_func)
-    : g(g), make_copy_func(make_copy_func) {}
+      : g(g), make_copy_func(make_copy_func) {}
 
   LabelledDataflowGraphView<NodeLabel, ValueLabel> const &get_view() const {
     if (g.index() == 0) {
       return std::get<0>(this->g);
     } else {
-      assert (g.index() == 1);
+      assert(g.index() == 1);
       return std::get<1>(this->g);
     }
   }
@@ -72,28 +84,29 @@ private:
   LabelledDataflowGraph<NodeLabel, ValueLabel> &get_mutable_graph() {
     if (g.index() == 0) {
       this->g = this->make_copy_func(std::get<0>(g));
-    } 
-    assert (g.index() == 1);
+    }
+    assert(g.index() == 1);
 
     return std::get<1>(g);
   }
 };
 
 template <typename T, typename NodeLabel, typename ValueLabel>
-  static typename std::enable_if<std::is_base_of<ILabelledDataflowGraph<NodeLabel, ValueLabel>, T>::value,
-                                 LabelledDataflowGraph<NodeLabel, ValueLabel>>::type
-    make_lazy_copy_of(LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view) {
-  std::function<
-    LabelledDataflowGraph<NodeLabel, ValueLabel>(
-      LabelledDataflowGraphView<NodeLabel, ValueLabel> const &
-    )
-  > make_copy_func = [](LabelledDataflowGraphView<NodeLabel, ValueLabel> const &v) {
-    return LabelledDataflowGraph<NodeLabel, ValueLabel>::template create_copy_of<T>(v);
-  };
+static typename std::enable_if<
+    std::is_base_of<ILabelledDataflowGraph<NodeLabel, ValueLabel>, T>::value,
+    LabelledDataflowGraph<NodeLabel, ValueLabel>>::type
+    make_lazy_copy_of(
+        LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view) {
+  std::function<LabelledDataflowGraph<NodeLabel, ValueLabel>(
+      LabelledDataflowGraphView<NodeLabel, ValueLabel> const &)>
+      make_copy_func = [](LabelledDataflowGraphView<NodeLabel, ValueLabel> const
+                              &v) {
+        return LabelledDataflowGraph<NodeLabel,
+                                     ValueLabel>::template create_copy_of<T>(v);
+      };
   return LabelledDataflowGraph<NodeLabel, ValueLabel>::template create<
-    LazyLabelledDataflowGraph<NodeLabel, ValueLabel>>(view, make_copy_func);
+      LazyLabelledDataflowGraph<NodeLabel, ValueLabel>>(view, make_copy_func);
 }
-
 
 } // namespace FlexFlow
 

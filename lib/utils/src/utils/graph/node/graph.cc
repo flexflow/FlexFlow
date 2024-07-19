@@ -26,5 +26,4 @@ IGraph &Graph::get_ptr() {
   return *std::dynamic_pointer_cast<IGraph>(GraphView::ptr.get_mutable());
 }
 
-
 } // namespace FlexFlow

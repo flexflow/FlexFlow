@@ -13,7 +13,8 @@ namespace FlexFlow {
 //   };
 // }
 //
-// std::vector<std::tuple<ClosedPatternEdge, OutputPatternEdge, InputPatternEdge>>
+// std::vector<std::tuple<ClosedPatternEdge, OutputPatternEdge,
+// InputPatternEdge>>
 //     as_closed_output_input_tuples(UnlabelledPatternEdgeSplits const &s) {
 //   std::vector<
 //       std::tuple<ClosedPatternEdge, OutputPatternEdge, InputPatternEdge>>

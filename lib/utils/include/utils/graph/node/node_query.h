@@ -9,7 +9,6 @@ NodeQuery node_query_all();
 NodeQuery query_intersection(NodeQuery const &, NodeQuery const &);
 NodeQuery query_union(NodeQuery const &, NodeQuery const &);
 
-
 } // namespace FlexFlow
 
 #endif

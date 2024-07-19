@@ -7,26 +7,28 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
-struct OpenDataflowGraphLabellingWrapper final : public ILabelledOpenDataflowGraphView<NodeLabel, ValueLabel> {
+struct OpenDataflowGraphLabellingWrapper final
+    : public ILabelledOpenDataflowGraphView<NodeLabel, ValueLabel> {
 public:
   OpenDataflowGraphLabellingWrapper() = delete;
-  OpenDataflowGraphLabellingWrapper(OpenDataflowGraphView const &unlabelled,
-                                    std::unordered_map<Node, NodeLabel> const &node_labels,
-                                    std::unordered_map<OpenDataflowValue, ValueLabel> const &value_labels)
-    : unlabelled(unlabelled),
-      node_labels(node_labels),
-      value_labels(value_labels)
-    { }
+  OpenDataflowGraphLabellingWrapper(
+      OpenDataflowGraphView const &unlabelled,
+      std::unordered_map<Node, NodeLabel> const &node_labels,
+      std::unordered_map<OpenDataflowValue, ValueLabel> const &value_labels)
+      : unlabelled(unlabelled), node_labels(node_labels),
+        value_labels(value_labels) {}
 
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
     return this->unlabelled.query_nodes(q);
   }
 
-  std::unordered_set<OpenDataflowEdge> query_edges(OpenDataflowEdgeQuery const &q) const override {
+  std::unordered_set<OpenDataflowEdge>
+      query_edges(OpenDataflowEdgeQuery const &q) const override {
     return this->unlabelled.query_edges(q);
   }
 
-  std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &q) const override {
+  std::unordered_set<DataflowOutput>
+      query_outputs(DataflowOutputQuery const &q) const override {
     return this->unlabelled.query_outputs(q);
   }
 
@@ -44,9 +46,9 @@ public:
 
   OpenDataflowGraphLabellingWrapper *clone() const override {
     return new OpenDataflowGraphLabellingWrapper{
-      this->unlabelled,
-      this->node_labels,
-      this->value_labels,
+        this->unlabelled,
+        this->node_labels,
+        this->value_labels,
     };
   }
 
@@ -57,16 +59,13 @@ private:
 };
 
 template <typename NodeLabel, typename ValueLabel>
-LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>
-  with_labelling(OpenDataflowGraphView const &g, 
-                 std::unordered_map<Node, NodeLabel> const &node_labels, 
-                 std::unordered_map<OpenDataflowValue, ValueLabel> const &value_labels) {
+LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> with_labelling(
+    OpenDataflowGraphView const &g,
+    std::unordered_map<Node, NodeLabel> const &node_labels,
+    std::unordered_map<OpenDataflowValue, ValueLabel> const &value_labels) {
   return LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>::template create<
-    OpenDataflowGraphLabellingWrapper<NodeLabel, ValueLabel>>(
-      g,
-      node_labels,
-      value_labels
-    );
+      OpenDataflowGraphLabellingWrapper<NodeLabel, ValueLabel>>(
+      g, node_labels, value_labels);
 }
 
 } // namespace FlexFlow

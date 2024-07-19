@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_HASH_PAIR_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_HASH_PAIR_H
 
-#include <utility>
 #include "utils/hash-utils.h"
+#include <utility>
 
 namespace std {
 

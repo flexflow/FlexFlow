@@ -8,13 +8,16 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename OutputLabel>
-struct ILabelledDataflowGraph : virtual public ILabelledDataflowGraphView<NodeLabel, OutputLabel> {
+struct ILabelledDataflowGraph
+    : virtual public ILabelledDataflowGraphView<NodeLabel, OutputLabel> {
 public:
-  virtual NodeAddedResult add_node(NodeLabel const &node_label,
-                           std::vector<DataflowOutput> const &inputs,
-                           std::vector<OutputLabel> const &output_labels) = 0;
+  virtual NodeAddedResult
+      add_node(NodeLabel const &node_label,
+               std::vector<DataflowOutput> const &inputs,
+               std::vector<OutputLabel> const &output_labels) = 0;
 
-  virtual void inplace_materialize_from(LabelledDataflowGraphView<NodeLabel, OutputLabel> const &) = 0;
+  virtual void inplace_materialize_from(
+      LabelledDataflowGraphView<NodeLabel, OutputLabel> const &) = 0;
 
   virtual ~ILabelledDataflowGraph() = default;
 };

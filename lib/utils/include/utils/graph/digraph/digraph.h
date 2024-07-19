@@ -2,9 +2,9 @@
 #define UTILS_GRAPH_INCLUDE_UTILS_GRAPH_DIGRAPH
 
 #include "utils/graph/cow_ptr_t.h"
+#include "utils/graph/digraph/digraph_view.h"
 #include "utils/graph/digraph/directed_edge.dtg.h"
 #include "utils/graph/digraph/directed_edge_query.dtg.h"
-#include "utils/graph/digraph/digraph_view.h"
 #include "utils/graph/digraph/i_digraph.h"
 
 namespace FlexFlow {

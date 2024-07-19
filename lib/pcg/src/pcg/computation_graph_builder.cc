@@ -55,8 +55,8 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
     std::vector<TensorAttrs> weight_output_attrs = {weight_tensor_attrs};
     raw_weight_tensors.push_back(get_only(this->computation_graph.raw_graph
                                               .add_node(weight_layer_attrs,
-                                                            weight_layer_inputs,
-                                                            weight_output_attrs)
+                                                        weight_layer_inputs,
+                                                        weight_output_attrs)
                                               .outputs));
   }
 

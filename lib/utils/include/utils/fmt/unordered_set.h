@@ -2,11 +2,11 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_UNORDERED_SET_H
 
 #include "utils/check_fmtable.h"
+#include "utils/containers/sorted.h"
 #include "utils/join_strings.h"
+#include "utils/type_traits_core.h"
 #include <fmt/format.h>
 #include <unordered_set>
-#include "utils/containers/sorted.h"
-#include "utils/type_traits_core.h"
 
 namespace fmt {
 
@@ -24,8 +24,8 @@ struct formatter<
     std::string result;
     if constexpr (::FlexFlow::is_sortable_v<std::unordered_set<T>>) {
       std::vector<T> in_order = ::FlexFlow::sorted(m);
-      result =
-          ::FlexFlow::join_strings(in_order.cbegin(), in_order.cend(), ", ", [](T const &t) {
+      result = ::FlexFlow::join_strings(
+          in_order.cbegin(), in_order.cend(), ", ", [](T const &t) {
             return fmt::to_string(t);
           });
     } else {

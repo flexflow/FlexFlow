@@ -13,7 +13,8 @@ namespace FlexFlow {
 //     get_split_edges(UnlabelledPatternEdgeSplits const &,
 //                     ClosedPatternEdge const &);
 //
-// std::vector<std::tuple<ClosedPatternEdge, OutputPatternEdge, InputPatternEdge>>
+// std::vector<std::tuple<ClosedPatternEdge, OutputPatternEdge,
+// InputPatternEdge>>
 //     as_closed_output_input_tuples(UnlabelledPatternEdgeSplits const &);
 
 } // namespace FlexFlow

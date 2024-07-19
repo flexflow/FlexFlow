@@ -10,9 +10,11 @@ namespace FlexFlow {
 
 struct IOpenDataflowGraphView : virtual public IDataflowGraphView {
   virtual std::unordered_set<DataflowGraphInput> get_inputs() const = 0;
-  virtual std::unordered_set<OpenDataflowEdge> query_edges(OpenDataflowEdgeQuery const &) const = 0;
+  virtual std::unordered_set<OpenDataflowEdge>
+      query_edges(OpenDataflowEdgeQuery const &) const = 0;
 
-  std::unordered_set<DataflowEdge> query_edges(DataflowEdgeQuery const &) const override final;
+  std::unordered_set<DataflowEdge>
+      query_edges(DataflowEdgeQuery const &) const override final;
 
   virtual ~IOpenDataflowGraphView() = default;
 };

@@ -8,7 +8,8 @@ namespace FlexFlow {
 
 DataflowOutputQuery dataflow_output_query_all();
 DataflowOutputQuery dataflow_output_query_none();
-bool dataflow_output_query_includes_dataflow_output(DataflowOutputQuery const &, DataflowOutput const &);
+bool dataflow_output_query_includes_dataflow_output(DataflowOutputQuery const &,
+                                                    DataflowOutput const &);
 
 } // namespace FlexFlow
 

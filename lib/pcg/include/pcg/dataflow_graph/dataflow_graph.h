@@ -11,8 +11,10 @@
 // struct DataflowGraph {
 // public:
 //   DataflowGraph()
-//       : g(OutputLabelledMultiDiGraph<NodeLabel, OutputLabel>::template create<
-//             UnorderedOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>>()) {}
+//       : g(OutputLabelledMultiDiGraph<NodeLabel, OutputLabel>::template
+//       create<
+//             UnorderedOutputLabelledMultiDiGraph<NodeLabel, OutputLabel>>())
+//             {}
 //
 //   OperatorAddedResult
 //       add_operator(NodeLabel const &func,
@@ -26,8 +28,8 @@
 //
 //     std::vector<MultiDiOutput> outputs;
 //     for (auto const &[idx, label] : enumerate_vector(output_labels)) {
-//       MultiDiOutput output = MultiDiOutput{node, this->make_port_for_idx(idx)};
-//       this->g.add_output(output, label);
+//       MultiDiOutput output = MultiDiOutput{node,
+//       this->make_port_for_idx(idx)}; this->g.add_output(output, label);
 //       outputs.push_back(output);
 //     }
 //     this->output_map[node] = outputs;

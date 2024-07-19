@@ -8,18 +8,22 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
-struct ILabelledOpenDataflowGraph : virtual public ILabelledOpenDataflowGraphView<NodeLabel, ValueLabel> 
-                                  , virtual public ILabelledDataflowGraphView<NodeLabel, ValueLabel> {
-  virtual NodeAddedResult add_node(NodeLabel const &node_label,
-                                   std::vector<OpenDataflowValue> const &inputs,
-                                   std::vector<ValueLabel> const &output_labels) = 0;
+struct ILabelledOpenDataflowGraph
+    : virtual public ILabelledOpenDataflowGraphView<NodeLabel, ValueLabel>,
+      virtual public ILabelledDataflowGraphView<NodeLabel, ValueLabel> {
+  virtual NodeAddedResult
+      add_node(NodeLabel const &node_label,
+               std::vector<OpenDataflowValue> const &inputs,
+               std::vector<ValueLabel> const &output_labels) = 0;
 
   virtual DataflowGraphInput add_input(ValueLabel const &value_label) = 0;
 
   // NodeAddedResult add_node(NodeLabel const &node_label,
   //                          std::vector<DataflowOutput> const &inputs,
-  //                          std::vector<ValueLabel> const &output_labels) override final {
-  //   return this->add_node(node_label, transform(inputs, [](DataflowOutput const &o) { return OpenDataflowValue{o}; }), output_labels);
+  //                          std::vector<ValueLabel> const &output_labels)
+  //                          override final {
+  //   return this->add_node(node_label, transform(inputs, [](DataflowOutput
+  //   const &o) { return OpenDataflowValue{o}; }), output_labels);
   // }
 
   virtual ~ILabelledOpenDataflowGraph() = default;

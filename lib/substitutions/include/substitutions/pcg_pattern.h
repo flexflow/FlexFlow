@@ -3,16 +3,16 @@
 
 #include "substitutions/pcg_pattern.dtg.h"
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
-#include "substitutions/unlabelled/pattern_value.dtg.h"
 #include "substitutions/unlabelled/pattern_matching.h"
 #include "substitutions/unlabelled/pattern_node.dtg.h"
+#include "substitutions/unlabelled/pattern_value.dtg.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 
 namespace FlexFlow {
 
-std::vector<UnlabelledDataflowGraphPatternMatch> 
-  find_pattern_matches(PCGPattern const &pattern,
-                       SubParallelComputationGraph const &pcg);
+std::vector<UnlabelledDataflowGraphPatternMatch>
+    find_pattern_matches(PCGPattern const &pattern,
+                         SubParallelComputationGraph const &pcg);
 
 UnlabelledGraphPattern get_unlabelled_pattern(PCGPattern const &);
 

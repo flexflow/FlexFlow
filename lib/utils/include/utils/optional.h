@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 
-#include <rapidcheck.h>
 #include "utils/exception.h"
 #include "utils/fmt/optional.h"
+#include <rapidcheck.h>
 
 namespace FlexFlow {
 

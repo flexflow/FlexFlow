@@ -10,6 +10,7 @@ public:
   DataflowGraphInputSource();
 
   DataflowGraphInput new_dataflow_graph_input();
+
 private:
   static size_t next_available_uid;
 };

@@ -12,6 +12,7 @@ public:
   bool operator==(UndirectedEdge const &) const;
   bool operator!=(UndirectedEdge const &) const;
   bool operator<(UndirectedEdge const &) const;
+
 public:
   Node smaller;
   Node bigger;

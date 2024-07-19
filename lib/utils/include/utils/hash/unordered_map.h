@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_HASH_UNORDERED_MAP_H
 
 #include "utils/hash-utils.h"
-#include <unordered_map>
 #include "utils/hash/pair.h"
+#include <unordered_map>
 
 namespace std {
 

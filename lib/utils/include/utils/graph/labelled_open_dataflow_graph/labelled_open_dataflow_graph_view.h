@@ -8,13 +8,17 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
-struct LabelledOpenDataflowGraphView : virtual public LabelledDataflowGraphView<NodeLabel, ValueLabel>,
-                                       virtual public OpenDataflowGraphView {
+struct LabelledOpenDataflowGraphView
+    : virtual public LabelledDataflowGraphView<NodeLabel, ValueLabel>,
+      virtual public OpenDataflowGraphView {
 private:
   using Interface = ILabelledOpenDataflowGraphView<NodeLabel, ValueLabel>;
+
 public:
-  LabelledOpenDataflowGraphView(LabelledOpenDataflowGraphView const &) = default;
-  LabelledOpenDataflowGraphView &operator=(LabelledOpenDataflowGraphView const &) = default;
+  LabelledOpenDataflowGraphView(LabelledOpenDataflowGraphView const &) =
+      default;
+  LabelledOpenDataflowGraphView &
+      operator=(LabelledOpenDataflowGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
     return this->get_interface().at(n);
@@ -25,15 +29,18 @@ public:
   }
 
   template <typename T, typename... Args>
-  static typename std::enable_if<std::is_base_of<Interface, T>::value,
-                                 LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>>::type
-      create(Args &&... args) {
-    return LabelledOpenDataflowGraphView(
-      static_cast<cow_ptr_t<IGraphView>>(make_cow_ptr<T>(std::forward<Args>(args)...)));
+  static typename std::enable_if<
+      std::is_base_of<Interface, T>::value,
+      LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>>::type
+      create(Args &&...args) {
+    return LabelledOpenDataflowGraphView(static_cast<cow_ptr_t<IGraphView>>(
+        make_cow_ptr<T>(std::forward<Args>(args)...)));
   }
+
 protected:
   using OpenDataflowGraphView::OpenDataflowGraphView;
-  // using LabelledDataflowGraphView<NodeLabel, ValueLabel>::LabelledDataflowGraphView;
+  // using LabelledDataflowGraphView<NodeLabel,
+  // ValueLabel>::LabelledDataflowGraphView;
 private:
   Interface const &get_interface() const {
     return *std::dynamic_pointer_cast<Interface const>(GraphView::ptr.get());

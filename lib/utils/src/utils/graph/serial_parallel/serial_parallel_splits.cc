@@ -1,15 +1,14 @@
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
+#include "utils/fmt/variant.h"
+#include "utils/fmt/vector.h"
 #include "utils/hash-utils.h"
 #include "utils/hash/vector.h"
-#include "utils/fmt/vector.h"
-#include "utils/fmt/variant.h"
 
 namespace FlexFlow {
 
 SerialSplit::SerialSplit(
-  std::vector<std::variant<ParallelSplit, Node>> const &children) 
-  : children(children)
-{ }
+    std::vector<std::variant<ParallelSplit, Node>> const &children)
+    : children(children) {}
 
 bool SerialSplit::operator==(SerialSplit const &other) const {
   return this->tie() == other.tie();
@@ -48,9 +47,8 @@ std::ostream &operator<<(std::ostream &s, SerialSplit const &split) {
 }
 
 ParallelSplit::ParallelSplit(
-  std::vector<std::variant<SerialSplit, Node>> const &children) 
-  : children(children)
-{ }
+    std::vector<std::variant<SerialSplit, Node>> const &children)
+    : children(children) {}
 
 bool ParallelSplit::operator==(ParallelSplit const &other) const {
   return this->tie() == other.tie();
@@ -92,15 +90,15 @@ std::ostream &operator<<(std::ostream &s, ParallelSplit const &split) {
 
 namespace std {
 
-size_t hash<::FlexFlow::SerialSplit>
-  ::operator()(::FlexFlow::SerialSplit const &s) const {
+size_t hash<::FlexFlow::SerialSplit>::operator()(
+    ::FlexFlow::SerialSplit const &s) const {
   size_t result = 0;
   ::FlexFlow::hash_combine(result, s.children);
   return result;
 }
 
-size_t hash<::FlexFlow::ParallelSplit>
-  ::operator()(::FlexFlow::ParallelSplit const &s) const {
+size_t hash<::FlexFlow::ParallelSplit>::operator()(
+    ::FlexFlow::ParallelSplit const &s) const {
   size_t result = 0;
   ::FlexFlow::hash_combine(result, s.children);
   return result;

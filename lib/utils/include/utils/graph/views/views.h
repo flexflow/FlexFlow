@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_VIEWS_VIEWS_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_VIEWS_VIEWS_H
 
-#include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/digraph/digraph_view.h"
+#include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/undirected/undirected_graph_view.h"
 // #include "utils/graph/multidigraph/multidigraph_view.h"
 // #include "utils/graph/open_multidigraph/open_multidigraph_view.h"

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_UNDIRECTED_UNDIRECTED_GRAPH_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_UNDIRECTED_UNDIRECTED_GRAPH_H
 
-#include "utils/graph/undirected/undirected_graph_view.h"
 #include "utils/graph/undirected/i_undirected_graph.h"
+#include "utils/graph/undirected/undirected_graph_view.h"
 
 namespace FlexFlow {
 

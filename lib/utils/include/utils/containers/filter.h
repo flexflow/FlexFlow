@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_FILTER_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_FILTER_H
 
-#include <vector>
 #include <algorithm>
-#include <unordered_set>
-#include <set>
 #include <map>
+#include <set>
+#include <unordered_set>
+#include <vector>
 
 namespace FlexFlow {
 

@@ -3,8 +3,8 @@
 
 #include "utils/fmt/unordered_map.h"
 #include <cassert>
-#include <unordered_map>
 #include <optional>
+#include <unordered_map>
 
 namespace FlexFlow {
 
@@ -13,8 +13,7 @@ struct bidict {
   bidict() : fwd_map{}, bwd_map{} {}
 
   bidict(std::initializer_list<std::pair<L, R>> init)
-    : bidict(init.begin(), init.end())
-  { }
+      : bidict(init.begin(), init.end()) {}
 
   template <typename InputIt>
   bidict(InputIt first, InputIt last) {
@@ -200,7 +199,9 @@ std::ostream &operator<<(std::ostream &s, bidict<L, R> const &b) {
   return s << fmt::to_string(b);
 }
 
-template <typename K, typename V, typename F, 
+template <typename K,
+          typename V,
+          typename F,
           typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
 bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
   bidict<K2, V> result;
@@ -210,7 +211,9 @@ bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
   return result;
 }
 
-template <typename K, typename V, typename F,
+template <typename K,
+          typename V,
+          typename F,
           typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
 bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
   bidict<K, V2> result;
@@ -242,7 +245,9 @@ bidict<K, V> filter_values(bidict<K, V> const &m, F const &f) {
   return result;
 }
 
-template <typename K, typename V, typename F,
+template <typename K,
+          typename V,
+          typename F,
           typename K2 = typename std::invoke_result_t<F, K>::value_type>
 bidict<K2, V> filtermap_keys(bidict<K, V> const &m, F const &f) {
   bidict<K2, V> result;
@@ -255,7 +260,9 @@ bidict<K2, V> filtermap_keys(bidict<K, V> const &m, F const &f) {
   return result;
 }
 
-template <typename K, typename V, typename F,
+template <typename K,
+          typename V,
+          typename F,
           typename V2 = typename std::invoke_result_t<F, V>::value_type>
 bidict<K, V2> filtermap_values(bidict<K, V> const &m, F const &f) {
   bidict<K, V2> result;
@@ -268,7 +275,9 @@ bidict<K, V2> filtermap_values(bidict<K, V> const &m, F const &f) {
   return result;
 }
 
-template <typename K, typename V, typename F,
+template <typename K,
+          typename V,
+          typename F,
           typename K2 = typename std::invoke_result_t<F, K, V>::first_type,
           typename V2 = typename std::invoke_result_t<F, K, V>::second_type>
 bidict<K2, V2> transform(bidict<K, V> const &m, F const &f) {

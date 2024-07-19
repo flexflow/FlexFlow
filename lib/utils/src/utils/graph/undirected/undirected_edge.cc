@@ -37,4 +37,4 @@ size_t hash<UndirectedEdge>::operator()(UndirectedEdge const &e) const {
   return std::hash<decltype(members)>{}(members);
 }
 
-} // namespace FlexFlow
+} // namespace std

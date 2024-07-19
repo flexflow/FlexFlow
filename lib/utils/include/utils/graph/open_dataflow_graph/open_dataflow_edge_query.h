@@ -8,7 +8,8 @@ namespace FlexFlow {
 
 OpenDataflowEdgeQuery open_dataflow_edge_query_all();
 OpenDataflowEdgeQuery open_dataflow_edge_query_none();
-bool open_dataflow_edge_query_includes(OpenDataflowEdgeQuery const &q, OpenDataflowEdge const &);
+bool open_dataflow_edge_query_includes(OpenDataflowEdgeQuery const &q,
+                                       OpenDataflowEdge const &);
 
 } // namespace FlexFlow
 

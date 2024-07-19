@@ -5,8 +5,10 @@
 #include "utils/graph/node/graph.h"
 #include "utils/graph/undirected/undirected_graph.h"
 // #include "utils/graph/open_multidigraph/open_multidigraph.h"
-// #include "utils/graph/upward_open_multidigraph/upward_open_multidigraph_view.h"
-// #include "utils/graph/downward_open_multidigraph/downward_open_multidigraph_view.h"
+// #include
+// "utils/graph/upward_open_multidigraph/upward_open_multidigraph_view.h"
+// #include
+// "utils/graph/downward_open_multidigraph/downward_open_multidigraph_view.h"
 #include "utils/dot_file.h"
 #include "utils/graph/graph_split.dtg.h"
 
@@ -31,7 +33,8 @@ void remove_node(UndirectedGraph &, Node const &);
 void remove_node_if_unused(DiGraph &, Node const &);
 void remove_node_if_unused(UndirectedGraph &, Node const &);
 
-// void contract_node_inplace(MultiDiGraph &, Node const &from, Node const &into);
+// void contract_node_inplace(MultiDiGraph &, Node const &from, Node const
+// &into);
 void contract_node_inplace(DiGraph &, Node const &from, Node const &into);
 void contract_node_inplace(UndirectedGraph &,
                            Node const &from,
@@ -47,7 +50,8 @@ UndirectedGraphView contract_out_node(UndirectedGraphView const &,
                                       Node const &);
 
 // MultiDiGraphView
-//     contract_node(MultiDiGraphView const &, Node const &from, Node const &into);
+//     contract_node(MultiDiGraphView const &, Node const &from, Node const
+//     &into);
 DiGraphView
     contract_node(DiGraphView const &, Node const &from, Node const &into);
 UndirectedGraphView contract_node(UndirectedGraphView const &,
@@ -133,7 +137,8 @@ std::unordered_set<UndirectedEdge>
 std::unordered_set<Node> get_neighbors(UndirectedGraphView const &,
                                        Node const &);
 std::unordered_set<Node> get_neighbors(DiGraphView const &, Node const &);
-// std::unordered_set<Node> get_neighbors(MultiDiGraphView const &, Node const &);
+// std::unordered_set<Node> get_neighbors(MultiDiGraphView const &, Node const
+// &);
 
 // return the set of nodes without incoming edges
 std::unordered_set<Node> get_sources(DiGraphView const &);
@@ -190,14 +195,16 @@ std::unordered_set<std::unordered_set<Node>>
 std::unordered_set<DirectedEdge>
     get_transitive_reduction_delta(DiGraphView const &);
 
-// std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const &e);
-// MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge const &);
+// std::pair<OutputMultiDiEdge, InputMultiDiEdge> split_edge(MultiDiEdge const
+// &e); MultiDiEdge unsplit_edge(OutputMultiDiEdge const &, InputMultiDiEdge
+// const &);
 
 // std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &,
 //                                             GraphSplit const &);
 
 // std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &,
-//                                             std::unordered_set<Node> const &);
+//                                             std::unordered_set<Node> const
+//                                             &);
 
 // bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>
 //     get_edge_splits(MultiDiGraphView const &, GraphSplit const &);
@@ -218,7 +225,8 @@ std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &);
 Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &,
                                       DiGraphView const &);
 
-// MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const &rhs);
+// MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const
+// &rhs);
 DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs);
 UndirectedGraphView join(UndirectedGraphView const &lhs,
                          UndirectedGraphView const &rhs);

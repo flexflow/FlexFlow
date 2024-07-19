@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_MAP_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_MAP_H
 
-#include <fmt/format.h>
 #include "utils/check_fmtable.h"
-#include "utils/join_strings.h"
-#include <map>
 #include "utils/containers/sorted.h"
 #include "utils/fmt/pair.h"
+#include "utils/join_strings.h"
+#include <fmt/format.h>
+#include <map>
 
 namespace fmt {
 
@@ -25,7 +25,9 @@ struct formatter<
     std::vector<std::pair<K, V>> items = ::FlexFlow::sorted(m);
 
     std::string result = ::FlexFlow::join_strings(
-          items.cbegin(), items.cend(), ", ", [](std::pair<K, V> const &p) { return fmt::to_string(p); });
+        items.cbegin(), items.cend(), ", ", [](std::pair<K, V> const &p) {
+          return fmt::to_string(p);
+        });
 
     return formatter<std::string>::format("{" + result + "}", ctx);
   }

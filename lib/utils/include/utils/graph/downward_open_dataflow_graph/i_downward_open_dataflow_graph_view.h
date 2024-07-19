@@ -3,7 +3,8 @@
 
 namespace FlexFlow {
 
-struct IDownwardOpenDataflowGraphView : virtual public IDownwardOpenDataflowGraphView {
+struct IDownwardOpenDataflowGraphView
+    : virtual public IDownwardOpenDataflowGraphView {
   virtual std::unordered_set<DataflowGraphOutput> query_graph_outputs() const;
 };
 

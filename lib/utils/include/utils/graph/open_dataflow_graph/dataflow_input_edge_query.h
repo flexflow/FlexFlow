@@ -8,7 +8,8 @@ namespace FlexFlow {
 
 DataflowInputEdgeQuery dataflow_input_edge_query_all();
 DataflowInputEdgeQuery dataflow_input_edge_query_none();
-bool dataflow_input_edge_query_includes(DataflowInputEdgeQuery const &, DataflowInputEdge const &);
+bool dataflow_input_edge_query_includes(DataflowInputEdgeQuery const &,
+                                        DataflowInputEdge const &);
 
 } // namespace FlexFlow
 

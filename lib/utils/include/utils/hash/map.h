@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_HASH_MAP_H
 
 #include "utils/hash-utils.h"
-#include <map>
 #include "utils/hash/pair.h"
+#include <map>
 
 namespace std {
 

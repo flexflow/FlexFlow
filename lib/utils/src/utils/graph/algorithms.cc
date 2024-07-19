@@ -1,20 +1,20 @@
 #include "utils/graph/algorithms.h"
 #include "utils/containers.h"
 #include "utils/exception.h"
+#include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/directed_edge_query.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_query.h"
 #include "utils/graph/traversal.h"
+#include "utils/graph/undirected/undirected_edge_query.h"
 #include "utils/graph/views/views.h"
+#include "utils/hash-utils.h"
 #include "utils/variant.h"
 #include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <queue>
 #include <unordered_set>
-#include "utils/hash-utils.h"
-#include "utils/graph/digraph/directed_edge_query.h"
-#include "utils/graph/undirected/undirected_edge_query.h"
-#include "utils/graph/digraph/algorithms.h"
 
 namespace FlexFlow {
 
@@ -83,7 +83,8 @@ std::unordered_set<Node> query_nodes(GraphView const &g,
   return g.query_nodes(NodeQuery{nodes});
 }
 
-// std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const &g) {
+// std::unordered_set<NodePort> get_present_node_ports(MultiDiGraphView const
+// &g) {
 //   return flatmap(get_edges(g), [](MultiDiEdge const &e) {
 //     return std::unordered_set<NodePort>{e.src_idx, e.dst_idx};
 //   });
@@ -230,7 +231,8 @@ std::unordered_set<UndirectedEdge> get_edges(UndirectedGraphView const &g) {
   return g.query_edges(undirected_edge_query_all());
 }
 
-// std::unordered_set<OpenMultiDiEdge> get_edges(OpenMultiDiGraphView const &g) {
+// std::unordered_set<OpenMultiDiEdge> get_edges(OpenMultiDiGraphView const &g)
+// {
 //   return g.query_edges(OpenMultiDiEdgeQuery::all());
 // }
 
@@ -318,7 +320,8 @@ std::unordered_set<UndirectedEdge> get_node_edges(UndirectedGraphView const &g,
 
 // std::unordered_set<InputMultiDiEdge>
 //     get_open_inputs(OpenMultiDiGraphView const &g) {
-//   return narrow<InputMultiDiEdge>(g.query_edges(InputMultiDiEdgeQuery::all()));
+//   return
+//   narrow<InputMultiDiEdge>(g.query_edges(InputMultiDiEdgeQuery::all()));
 // }
 
 std::vector<Node> get_unchecked_dfs_ordering(
@@ -540,7 +543,8 @@ std::optional<Node>
 //   assert(input_edge.uid.first == output_edge.src.value());
 //   assert(input_edge.uid.second == output_edge.src_idx.value());
 //   return {
-//       input_edge.dst, input_edge.dst_idx, output_edge.src, output_edge.src_idx};
+//       input_edge.dst, input_edge.dst_idx, output_edge.src,
+//       output_edge.src_idx};
 // }
 
 // std::unordered_set<MultiDiEdge> get_cut_set(MultiDiGraphView const &g,
@@ -557,7 +561,8 @@ std::optional<Node>
 // std::unordered_set<MultiDiEdge>
 //     get_cut_set(MultiDiGraphView const &g,
 //                 std::unordered_set<Node> const &nodes) {
-//   return get_cut_set(g, GraphSplit{nodes, set_difference(get_nodes(g), nodes)});
+//   return get_cut_set(g, GraphSplit{nodes, set_difference(get_nodes(g),
+//   nodes)});
 // }
 
 // bidict<MultiDiEdge, std::pair<OutputMultiDiEdge, InputMultiDiEdge>>

@@ -7,9 +7,11 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename OutputLabel>
-struct LabelledDataflowGraph : virtual LabelledDataflowGraphView<NodeLabel, OutputLabel> {
+struct LabelledDataflowGraph
+    : virtual LabelledDataflowGraphView<NodeLabel, OutputLabel> {
 private:
   using Interface = ILabelledDataflowGraph<NodeLabel, OutputLabel>;
+
 public:
   LabelledDataflowGraph(LabelledDataflowGraph const &) = default;
   LabelledDataflowGraph &operator=(LabelledDataflowGraph const &) = default;
@@ -23,21 +25,23 @@ public:
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<Interface, T>::value,
                                  LabelledDataflowGraph>::type
-      create(Args && ...args) {
+      create(Args &&...args) {
     return LabelledDataflowGraph(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
   template <typename T>
   static typename std::enable_if<std::is_base_of<Interface, T>::value,
                                  LabelledDataflowGraph>::type
-      create_copy_of(LabelledDataflowGraphView<NodeLabel, OutputLabel> const &view) {
+      create_copy_of(
+          LabelledDataflowGraphView<NodeLabel, OutputLabel> const &view) {
     cow_ptr_t<T> impl = make_cow_ptr<T>();
     impl.get_mutable()->inplace_materialize_from(view);
     return LabelledDataflowGraph(std::move(impl));
   }
 
 protected:
-  using LabelledDataflowGraphView<NodeLabel, OutputLabel>::LabelledDataflowGraphView;
+  using LabelledDataflowGraphView<NodeLabel,
+                                  OutputLabel>::LabelledDataflowGraphView;
 
 private:
   Interface &get_interface() {

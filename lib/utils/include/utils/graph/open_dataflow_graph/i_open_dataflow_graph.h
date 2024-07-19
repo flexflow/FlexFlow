@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_OPEN_DATAFLOW_GRAPH_I_OPEN_DATAFLOW_GRAPH_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_OPEN_DATAFLOW_GRAPH_I_OPEN_DATAFLOW_GRAPH_H
 
+#include "utils/graph/dataflow_graph/node_added_result.dtg.h"
 #include "utils/graph/open_dataflow_graph/i_open_dataflow_graph_view.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
-#include "utils/graph/dataflow_graph/node_added_result.dtg.h"
 
 namespace FlexFlow {
 

@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-struct IDownwardOpenDataflowGraph : virtual public IDownwardOpenDataflowGraphView {
+struct IDownwardOpenDataflowGraph
+    : virtual public IDownwardOpenDataflowGraphView {
   virtual NodeAddedResult add_node(std::vector<DataflowOutput> const &inputs,
                                    int num_outputs) = 0;
 };

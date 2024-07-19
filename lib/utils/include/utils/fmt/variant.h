@@ -14,8 +14,9 @@ struct formatter<std::variant<Ts...>, Char>
   auto format(std::variant<Ts...> const &m, FormatContext &ctx)
       -> decltype(ctx.out()) {
 
-    std::string result = std::visit([&](auto &&x) { return fmt::to_string(x); }, m);
-    
+    std::string result =
+        std::visit([&](auto &&x) { return fmt::to_string(x); }, m);
+
     return formatter<std::string>::format(result, ctx);
   }
 };
@@ -30,6 +31,5 @@ std::ostream &operator<<(std::ostream &s, std::variant<Ts...> const &v) {
 }
 
 } // namespace FlexFlow
-
 
 #endif

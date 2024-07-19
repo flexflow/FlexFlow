@@ -21,10 +21,12 @@
 //
 //   for (auto const &[pattern_node, match_node] : match.node_assignment) {
 //     if (contains(split.first, pattern_node)) {
-//       result.prefix_submatch.node_assignment.equate(pattern_node, match_node);
+//       result.prefix_submatch.node_assignment.equate(pattern_node,
+//       match_node);
 //     } else {
 //       assert(contains(split.second, pattern_node));
-//       result.postfix_submatch.node_assignment.equate(pattern_node, match_node);
+//       result.postfix_submatch.node_assignment.equate(pattern_node,
+//       match_node);
 //     }
 //   }
 //
@@ -36,9 +38,11 @@
 //     std::unordered_set<PatternNode> edge_nodes = get_nodes(pattern_edge);
 //
 //     if (is_subseteq_of(edge_nodes, prefix)) {
-//       result.prefix_submatch.edge_assignment.equate(pattern_edge, graph_edge);
+//       result.prefix_submatch.edge_assignment.equate(pattern_edge,
+//       graph_edge);
 //     } else if (is_subseteq_of(edge_nodes, postfix)) {
-//       result.postfix_submatch.edge_assignment.equate(pattern_edge, graph_edge);
+//       result.postfix_submatch.edge_assignment.equate(pattern_edge,
+//       graph_edge);
 //     } else {
 //       assert(is_standard_edge(graph_edge));
 //

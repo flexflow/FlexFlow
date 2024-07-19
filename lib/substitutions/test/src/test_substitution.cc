@@ -7,10 +7,10 @@ using namespace FlexFlow;
 
 // TEST_SUITE(FF_TEST_SUITE) {
 //   TEST_CASE("substitution") {
-    // PCGPattern pattern;
-    // OutputGraphExpr output_expr;
-    // bidict<DataflowGraphInput
-    // Substitution s;
+// PCGPattern pattern;
+// OutputGraphExpr output_expr;
+// bidict<DataflowGraphInput
+// Substitution s;
 //   }
 // }
 
@@ -33,7 +33,8 @@ using namespace FlexFlow;
 //         std::vector<TensorAttributeConstraint>{}};
 //
 //     auto ig =
-//         OutputLabelledOpenMultiDiGraph<OperatorPattern, ParallelTensorPattern>::
+//         OutputLabelledOpenMultiDiGraph<OperatorPattern,
+//         ParallelTensorPattern>::
 //             create<UnorderedOutputLabelledOpenMultiDiGraph<
 //                 OperatorPattern,
 //                 ParallelTensorPattern>>();
@@ -68,7 +69,8 @@ using namespace FlexFlow;
 //           OperatorAttrAccess{n0, OperatorAttributeKey::REGULARIZER}}}};
 //
 //     OperatorAttrAssignment op_ass_n3{
-//         {{OperatorAttributeKey::OP_TYPE, AttrConstant{OperatorType::REDUCTION}},
+//         {{OperatorAttributeKey::OP_TYPE,
+//         AttrConstant{OperatorType::REDUCTION}},
 //          {OperatorAttributeKey::PARALLEL_DIM, AttrConstant{ff_dim_t{0}}},
 //          {OperatorAttributeKey::PARALLEL_DEGREE, AttrConstant{2}}}};
 //
@@ -105,8 +107,8 @@ using namespace FlexFlow;
 //
 //     Node n4 = pcg.add_node(Operator{InputAttrs{}, "input"});
 //     Node n5 = pcg.add_node(Operator{
-//         LinearAttrs{1, false, DataType::FLOAT, Activation::RELU, std::nullopt},
-//         "linear"});
+//         LinearAttrs{1, false, DataType::FLOAT, Activation::RELU,
+//         std::nullopt}, "linear"});
 //     NodePort p4 = pcg.add_node_port();
 //     NodePort p5 = pcg.add_node_port();
 //
@@ -114,7 +116,8 @@ using namespace FlexFlow;
 //     pcg.add_edge(e4);
 //     ParallelDim dim = {2, 1, false};
 //     ParallelTensorDims dims = {FFOrdered<ParallelDim>{dim}};
-//     pcg.add_label(e4, ParallelTensor(dims, DataType::FLOAT, CreateGrad::YES));
+//     pcg.add_label(e4, ParallelTensor(dims, DataType::FLOAT,
+//     CreateGrad::YES));
 //
 //     MatchAdditionalCriterion criterion{
 //         [&](Node const &pattern_node, Node const &graph_node) {

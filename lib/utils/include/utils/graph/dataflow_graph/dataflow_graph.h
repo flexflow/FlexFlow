@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_DATAFLOW_GRAPH_H
 
 #include "utils/graph/dataflow_graph/dataflow_graph_view.h"
-#include "utils/graph/dataflow_graph/node_added_result.dtg.h"
 #include "utils/graph/dataflow_graph/i_dataflow_graph.h"
+#include "utils/graph/dataflow_graph/node_added_result.dtg.h"
 
 namespace FlexFlow {
 
@@ -18,7 +18,8 @@ public:
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<DataflowEdge> query_edges(DataflowEdgeQuery const &) const;
-  std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &) const;
+  std::unordered_set<DataflowOutput>
+      query_outputs(DataflowOutputQuery const &) const;
 
   template <typename T>
   static typename std::enable_if<std::is_base_of<IDataflowGraph, T>::value,

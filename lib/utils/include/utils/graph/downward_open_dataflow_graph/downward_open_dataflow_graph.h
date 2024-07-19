@@ -11,7 +11,8 @@ struct DownwardOpenDataflowGraph : virtual DataflowGraph {
 public:
   std::unordered_set<Node> query_nodes(NodeQuery const &) const;
   std::unordered_set<DataflowEdge> query_edges(DataflowEdgeQuery const &) const;
-  std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &) const;
+  std::unordered_set<DataflowOutput>
+      query_outputs(DataflowOutputQuery const &) const;
   std::vector<DataflowGraphOutput> get_graph_outputs() const;
 
 protected:

@@ -1,6 +1,6 @@
+#include "utils/graph/dataflow_graph/algorithms.h"
 #include "test/utils/doctest.h"
 #include "utils/fmt/unordered_set.h"
-#include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
@@ -19,8 +19,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n3 = n3_added.node;
     DataflowOutput o3 = get_only(n3_added.outputs);
 
-    NodeAddedResult n4_added =
-        g.add_node({o1, o2, o3}, 1);
+    NodeAddedResult n4_added = g.add_node({o1, o2, o3}, 1);
     Node n4 = n4_added.node;
     DataflowOutput o4 = get_only(n4_added.outputs);
 
@@ -53,7 +52,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     DataflowOutput o3 = get_only(n3_added.outputs);
 
     std::vector<Node> result = get_topological_ordering(g);
-    std::vector<Node> correct = { n1, n2, n3 };
+    std::vector<Node> correct = {n1, n2, n3};
     CHECK(result == correct);
   }
 }

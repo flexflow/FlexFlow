@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/bidict/bidict.h"
+#include "test/utils/doctest.h"
 
 using namespace FlexFlow;
 
@@ -63,80 +63,86 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("map_keys(bidict<K, V>, F)") {
-      bidict<std::string, std::string> result = map_keys(dict, [](int k) { 
+      bidict<std::string, std::string> result = map_keys(dict, [](int k) {
         std::ostringstream oss;
         oss << k;
         return oss.str();
       });
       bidict<std::string, std::string> correct = {
-        {"1", "one"},
-        {"2", "two"},
+          {"1", "one"},
+          {"2", "two"},
       };
       CHECK(result == correct);
     }
 
     SUBCASE("map_values(bidict<K, V>, F)") {
-      bidict<int, std::string> result = map_values(dict, [](std::string const &v) { return v + "a"; });
+      bidict<int, std::string> result =
+          map_values(dict, [](std::string const &v) { return v + "a"; });
       bidict<int, std::string> correct = {
-        {1, "onea"},
-        {2, "twoa"},
+          {1, "onea"},
+          {2, "twoa"},
       };
       CHECK(result == correct);
     }
 
     SUBCASE("filter_keys(bidict<K, V>, F") {
-      bidict<int, std::string> result = filter_keys(dict, [](int k) { return k == 1; });
+      bidict<int, std::string> result =
+          filter_keys(dict, [](int k) { return k == 1; });
       bidict<int, std::string> correct = {
-        {1, "one"},
+          {1, "one"},
       };
       CHECK(result == correct);
     }
 
     SUBCASE("filter_values(bidict<K, V>, F") {
-      bidict<int, std::string> result = filter_values(dict, [](std::string const &v) { return v == "two"; });
+      bidict<int, std::string> result =
+          filter_values(dict, [](std::string const &v) { return v == "two"; });
       bidict<int, std::string> correct = {
-        {2, "two"},
+          {2, "two"},
       };
       CHECK(result == correct);
     }
 
     SUBCASE("filtermap_keys(bidict<K, V>, F)") {
-      bidict<std::string, std::string> result = filtermap_keys(dict, [](int k) -> std::optional<std::string> {
-        if (k == 1) {
-          return std::nullopt;
-        } else {
-          std::ostringstream oss;
-          oss << (k + 1);
-          return oss.str();
-        }
-      });
+      bidict<std::string, std::string> result =
+          filtermap_keys(dict, [](int k) -> std::optional<std::string> {
+            if (k == 1) {
+              return std::nullopt;
+            } else {
+              std::ostringstream oss;
+              oss << (k + 1);
+              return oss.str();
+            }
+          });
       bidict<std::string, std::string> correct = {
-        {"3", "two"},
+          {"3", "two"},
       };
       CHECK(result == correct);
     }
 
     SUBCASE("filtermap_values(bidict<K, V>, F)") {
-      bidict<int, int> result = filtermap_values(dict, [](std::string const &v) -> std::optional<int> {
-        if (v == "two") {
-          return std::nullopt;
-        } else {
-          return v.size() + 1;
-        }
-      });
+      bidict<int, int> result = filtermap_values(
+          dict, [](std::string const &v) -> std::optional<int> {
+            if (v == "two") {
+              return std::nullopt;
+            } else {
+              return v.size() + 1;
+            }
+          });
       bidict<int, int> correct = {
-        {1, 4},
+          {1, 4},
       };
       CHECK(result == correct);
     }
 
     SUBCASE("transform(bidict<K, V>, F)") {
-      bidict<std::string, int> result = transform(dict, [](int k, std::string const &v) {
-        return std::make_pair(v, k);
-      });
+      bidict<std::string, int> result =
+          transform(dict, [](int k, std::string const &v) {
+            return std::make_pair(v, k);
+          });
       bidict<std::string, int> correct = {
-        {"one", 1},
-        {"two", 2},
+          {"one", 1},
+          {"two", 2},
       };
       CHECK(result == correct);
     }

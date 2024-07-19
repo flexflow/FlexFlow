@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/fmt/unordered_set.h"
+#include "test/utils/doctest.h"
 
 using namespace ::FlexFlow;
 

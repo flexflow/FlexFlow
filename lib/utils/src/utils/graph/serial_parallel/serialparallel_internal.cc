@@ -1,9 +1,9 @@
 #include "utils/graph/serial_parallel/serialparallel_internal.h"
 #include "utils/graph/algorithms.h"
-#include "utils/graph/serial_parallel/sink_settings.dtg.h" 
-#include "utils/graph/serial_parallel/source_settings.dtg.h"
-#include "utils/graph/node/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/node/algorithms.h"
+#include "utils/graph/serial_parallel/sink_settings.dtg.h"
+#include "utils/graph/serial_parallel/source_settings.dtg.h"
 
 namespace FlexFlow {
 
@@ -83,8 +83,8 @@ DiGraphView source_to_sink_subgraph(DiGraphView const &g,
       g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
 }
 
-std::variant<IntermediateSpDecompositionTree, Node> 
-  sp_decomposition(DiGraphView const &g) {
+std::variant<IntermediateSpDecompositionTree, Node>
+    sp_decomposition(DiGraphView const &g) {
   if (num_nodes(g) == 1) {
     return get_only(get_nodes(g));
   }
@@ -95,18 +95,19 @@ std::variant<IntermediateSpDecompositionTree, Node>
   std::optional<Node> bottleneck = find_bottleneck_node(g);
   if (bottleneck.has_value()) {
     return IntermediateSpDecompositionTree{
-      SplitType::SERIAL,
-        {
-          sp_decomposition(source_to_sink_subgraph(g,
-                                                   sources,
-                                                   {bottleneck.value()},
-                                                   SourceSettings::INCLUDE_SOURCE_NODES,
-                                                   SinkSettings::EXCLUDE_SINK_NODES)),
-          sp_decomposition(source_to_sink_subgraph(g,
-                                                   {bottleneck.value()},
-                                                   sinks,
-                                                   SourceSettings::INCLUDE_SOURCE_NODES,
-                                                   SinkSettings::INCLUDE_SINK_NODES))}};
+        SplitType::SERIAL,
+        {sp_decomposition(
+             source_to_sink_subgraph(g,
+                                     sources,
+                                     {bottleneck.value()},
+                                     SourceSettings::INCLUDE_SOURCE_NODES,
+                                     SinkSettings::EXCLUDE_SINK_NODES)),
+         sp_decomposition(
+             source_to_sink_subgraph(g,
+                                     {bottleneck.value()},
+                                     sinks,
+                                     SourceSettings::INCLUDE_SOURCE_NODES,
+                                     SinkSettings::INCLUDE_SINK_NODES))}};
   } else {
     return parallel_decomposition(g);
   }
@@ -126,14 +127,16 @@ IntermediateSpDecompositionTree parallel_decomposition(DiGraphView const &g) {
 }
 
 struct FlattenAST {
-  void add_flattened_child_to_parent(IntermediateSpDecompositionTree &parent,
-                                     std::variant<IntermediateSpDecompositionTree, Node> const &child) {
+  void add_flattened_child_to_parent(
+      IntermediateSpDecompositionTree &parent,
+      std::variant<IntermediateSpDecompositionTree, Node> const &child) {
     if (std::holds_alternative<Node>(child)) {
       parent.children.push_back(child);
       return;
     }
 
-    IntermediateSpDecompositionTree child_node = get<IntermediateSpDecompositionTree>(child);
+    IntermediateSpDecompositionTree child_node =
+        get<IntermediateSpDecompositionTree>(child);
 
     if (parent.type == child_node.type) {
       extend(parent.children, child_node.children);
@@ -142,35 +145,48 @@ struct FlattenAST {
     }
   }
 
-  std::variant<IntermediateSpDecompositionTree, Node> operator()(IntermediateSpDecompositionTree const &ast_node) {
+  std::variant<IntermediateSpDecompositionTree, Node>
+      operator()(IntermediateSpDecompositionTree const &ast_node) {
     IntermediateSpDecompositionTree result(ast_node.type, {});
-    for (std::variant<IntermediateSpDecompositionTree, Node> const &child : ast_node.children) {
-      std::variant<IntermediateSpDecompositionTree, Node> flattened_child = flatten_ast(child);
+    for (std::variant<IntermediateSpDecompositionTree, Node> const &child :
+         ast_node.children) {
+      std::variant<IntermediateSpDecompositionTree, Node> flattened_child =
+          flatten_ast(child);
       add_flattened_child_to_parent(result, flattened_child);
     }
     return result;
   }
 
-  std::variant<IntermediateSpDecompositionTree, Node> operator()(Node const &ast_node) {
+  std::variant<IntermediateSpDecompositionTree, Node>
+      operator()(Node const &ast_node) {
     return ast_node;
   }
 };
 
-
-std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
+std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(
+    std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
   return std::visit(FlattenAST{}, ast);
 }
 
 struct ToFinalAST {
-  std::variant<SerialSplit, ParallelSplit, Node> operator()(IntermediateSpDecompositionTree const &node) {
+  std::variant<SerialSplit, ParallelSplit, Node>
+      operator()(IntermediateSpDecompositionTree const &node) {
     if (node.type == SplitType::SERIAL) {
-      return SerialSplit{transform(node.children, [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
-        return narrow<std::variant<ParallelSplit, Node>>(internal_to_final_ast(s)).value();
-      })};
+      return SerialSplit{transform(
+          node.children,
+          [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
+            return narrow<std::variant<ParallelSplit, Node>>(
+                       internal_to_final_ast(s))
+                .value();
+          })};
     } else {
-      return ParallelSplit{transform(node.children, [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
-        return narrow<std::variant<SerialSplit, Node>>(internal_to_final_ast(s)).value();
-      })};
+      return ParallelSplit{transform(
+          node.children,
+          [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
+            return narrow<std::variant<SerialSplit, Node>>(
+                       internal_to_final_ast(s))
+                .value();
+          })};
     }
   }
 
@@ -179,11 +195,13 @@ struct ToFinalAST {
   }
 };
 
-std::variant<SerialSplit, ParallelSplit, Node> internal_to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
+std::variant<SerialSplit, ParallelSplit, Node> internal_to_final_ast(
+    std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
   return std::visit(ToFinalAST{}, ast);
 }
 
-SerialParallelDecomposition to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
+SerialParallelDecomposition to_final_ast(
+    std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
   return std::visit([](auto &&x) { return SerialParallelDecomposition{x}; },
                     internal_to_final_ast(ast));
 }

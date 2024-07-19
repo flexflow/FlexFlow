@@ -31,21 +31,23 @@ PatternSplit find_even_split(UnlabelledGraphPattern const &pattern) {
 //     get_edge_splits(UnlabelledGraphPattern const &pattern,
 //                     PatternSplit const &split) {
 //   bidict<MultiDiEdge, std::pair<InputMultiDiEdge, OutputMultiDiEdge>>
-//       raw_result = get_edge_splits(pattern.raw_graph, get_raw_split(split), );
+//       raw_result = get_edge_splits(pattern.raw_graph, get_raw_split(split),
+//       );
 //   return UnlabelledPatternEdgeSplits{raw_result};
 // }
 
-PatternSplitResult
-    apply_split(UnlabelledGraphPattern const &p, PatternSplit const &s) {
-  UnlabelledGraphPatternSubgraphResult first_subgraph_result = get_subgraph(p, s.first);
-  UnlabelledGraphPatternSubgraphResult second_subgraph_result = get_subgraph(p, s.second);
+PatternSplitResult apply_split(UnlabelledGraphPattern const &p,
+                               PatternSplit const &s) {
+  UnlabelledGraphPatternSubgraphResult first_subgraph_result =
+      get_subgraph(p, s.first);
+  UnlabelledGraphPatternSubgraphResult second_subgraph_result =
+      get_subgraph(p, s.second);
 
   return PatternSplitResult{
-    first_subgraph_result.subpattern,
-    second_subgraph_result.subpattern,
-    first_subgraph_result.full_pattern_values_to_subpattern_inputs,
-    second_subgraph_result.full_pattern_values_to_subpattern_inputs
-  };
+      first_subgraph_result.subpattern,
+      second_subgraph_result.subpattern,
+      first_subgraph_result.full_pattern_values_to_subpattern_inputs,
+      second_subgraph_result.full_pattern_values_to_subpattern_inputs};
 }
 
 } // namespace FlexFlow

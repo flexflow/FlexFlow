@@ -3,10 +3,10 @@
 #include "utils/disjoint_set.h"
 #include "utils/exception.h"
 #include "utils/graph/algorithms.h"
-#include "utils/graph/undirected/undirected_edge_query.h"
-#include "utils/graph/node/node_query.h"
 #include "utils/graph/digraph/directed_edge_query.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/node/node_query.h"
+#include "utils/graph/undirected/undirected_edge_query.h"
 
 namespace FlexFlow {
 
@@ -57,13 +57,15 @@ UndirectedSubgraphView *UndirectedSubgraphView::clone() const {
 
 std::unordered_set<UndirectedEdge> UndirectedSubgraphView::query_edges(
     UndirectedEdgeQuery const &query) const {
-  UndirectedEdgeQuery subgraph_query = UndirectedEdgeQuery{this->subgraph_nodes};
+  UndirectedEdgeQuery subgraph_query =
+      UndirectedEdgeQuery{this->subgraph_nodes};
   return this->g.query_edges(query_intersection(query, subgraph_query));
 }
 
 std::unordered_set<Node>
     UndirectedSubgraphView::query_nodes(NodeQuery const &query) const {
-  return this->g.query_nodes(query_intersection(query, NodeQuery{this->subgraph_nodes}));
+  return this->g.query_nodes(
+      query_intersection(query, NodeQuery{this->subgraph_nodes}));
 }
 
 DiSubgraphView::DiSubgraphView(DiGraphView const &g,
@@ -72,14 +74,15 @@ DiSubgraphView::DiSubgraphView(DiGraphView const &g,
 
 std::unordered_set<DirectedEdge>
     DiSubgraphView::query_edges(DirectedEdgeQuery const &query) const {
-  DirectedEdgeQuery subgraph_query = DirectedEdgeQuery{this->subgraph_nodes,
-                                      this->subgraph_nodes};
+  DirectedEdgeQuery subgraph_query =
+      DirectedEdgeQuery{this->subgraph_nodes, this->subgraph_nodes};
   return this->g.query_edges(query_intersection(query, subgraph_query));
 }
 
 std::unordered_set<Node>
     DiSubgraphView::query_nodes(NodeQuery const &query) const {
-  return this->g.query_nodes(query_intersection(query, NodeQuery{this->subgraph_nodes}));
+  return this->g.query_nodes(
+      query_intersection(query, NodeQuery{this->subgraph_nodes}));
 }
 
 DiSubgraphView *DiSubgraphView::clone() const {
@@ -87,18 +90,20 @@ DiSubgraphView *DiSubgraphView::clone() const {
 }
 
 // MultiDiSubgraphView::MultiDiSubgraphView(
-//     MultiDiGraphView const &g, std::unordered_set<Node> const &subgraph_nodes)
-//     : g(g), subgraph_nodes(subgraph_nodes) {}
+//     MultiDiGraphView const &g, std::unordered_set<Node> const
+//     &subgraph_nodes) : g(g), subgraph_nodes(subgraph_nodes) {}
 
 // std::unordered_set<MultiDiEdge>
 //     MultiDiSubgraphView::query_edges(MultiDiEdgeQuery const &query) const {
-//   MultiDiEdgeQuery subgraph_query = MultiDiEdgeQuery{this->subgraph_nodes, this->subgraph_nodes};
-//   return this->g.query_edges(query_intersection(query, subgraph_query));
+//   MultiDiEdgeQuery subgraph_query = MultiDiEdgeQuery{this->subgraph_nodes,
+//   this->subgraph_nodes}; return this->g.query_edges(query_intersection(query,
+//   subgraph_query));
 // }
 
 // std::unordered_set<Node>
 //     MultiDiSubgraphView::query_nodes(NodeQuery const &query) const {
-//   return this->g.query_nodes(query_intersection(query, NodeQuery{this->subgraph_nodes}));
+//   return this->g.query_nodes(query_intersection(query,
+//   NodeQuery{this->subgraph_nodes}));
 // }
 
 UndirectedGraphView
@@ -113,7 +118,8 @@ DiGraphView view_subgraph(DiGraphView const &g,
 }
 
 // MultiDiGraphView view_subgraph(MultiDiGraphView const &g,
-//                                std::unordered_set<Node> const &subgraph_nodes) {
+//                                std::unordered_set<Node> const
+//                                &subgraph_nodes) {
 //   return MultiDiGraphView::create<MultiDiSubgraphView>(g, subgraph_nodes);
 // }
 
@@ -190,10 +196,12 @@ std::unordered_set<UndirectedEdge> JoinedUndirectedGraphView::query_edges(
   }
 
   std::unordered_set<UndirectedEdge> result;
-  for (UndirectedEdge const &e : this->lhs.query_edges(UndirectedEdgeQuery{left_nodes})) {
+  for (UndirectedEdge const &e :
+       this->lhs.query_edges(UndirectedEdgeQuery{left_nodes})) {
     result.insert(this->fix_lhs_edge(e));
   }
-  for (UndirectedEdge const &e : this->rhs.query_edges(UndirectedEdgeQuery{right_nodes})) {
+  for (UndirectedEdge const &e :
+       this->rhs.query_edges(UndirectedEdgeQuery{right_nodes})) {
     result.insert(this->fix_rhs_edge(e));
   }
 
@@ -202,14 +210,17 @@ std::unordered_set<UndirectedEdge> JoinedUndirectedGraphView::query_edges(
 
 UndirectedEdge
     JoinedUndirectedGraphView::fix_lhs_edge(UndirectedEdge const &e) const {
-  return {this->joined_nodes.at_join_key(JoinNodeKey{e.smaller, LRDirection::LEFT}),
-          this->joined_nodes.at_join_key(JoinNodeKey{e.bigger, LRDirection::LEFT})};
+  return {
+      this->joined_nodes.at_join_key(JoinNodeKey{e.smaller, LRDirection::LEFT}),
+      this->joined_nodes.at_join_key(JoinNodeKey{e.bigger, LRDirection::LEFT})};
 }
 
 UndirectedEdge
     JoinedUndirectedGraphView::fix_rhs_edge(UndirectedEdge const &e) const {
-  return {this->joined_nodes.at_join_key(JoinNodeKey{e.smaller, LRDirection::RIGHT}),
-          this->joined_nodes.at_join_key(JoinNodeKey{e.bigger, LRDirection::RIGHT})};
+  return {this->joined_nodes.at_join_key(
+              JoinNodeKey{e.smaller, LRDirection::RIGHT}),
+          this->joined_nodes.at_join_key(
+              JoinNodeKey{e.bigger, LRDirection::RIGHT})};
 }
 
 JoinedDigraphView::JoinedDigraphView(DiGraphView const &lhs,
@@ -232,8 +243,10 @@ std::unordered_set<DirectedEdge>
   std::unordered_set<Node> dsts = this->query_nodes(NodeQuery{query.dsts});
   auto traced_srcs = this->joined_nodes.trace_nodes(srcs);
   auto traced_dsts = this->joined_nodes.trace_nodes(dsts);
-  DirectedEdgeQuery left_query = DirectedEdgeQuery{traced_srcs.first, traced_dsts.first};
-  DirectedEdgeQuery right_query = DirectedEdgeQuery{traced_srcs.second, traced_dsts.second};
+  DirectedEdgeQuery left_query =
+      DirectedEdgeQuery{traced_srcs.first, traced_dsts.first};
+  DirectedEdgeQuery right_query =
+      DirectedEdgeQuery{traced_srcs.second, traced_dsts.second};
 
   std::unordered_set<DirectedEdge> result;
   for (DirectedEdge const &e : this->lhs.query_edges(left_query)) {
@@ -247,13 +260,15 @@ std::unordered_set<DirectedEdge>
 }
 
 DirectedEdge JoinedDigraphView::fix_lhs_edge(DirectedEdge const &e) const {
-  return DirectedEdge{this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::LEFT}),
-          this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::LEFT})};
+  return DirectedEdge{
+      this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::LEFT}),
+      this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::LEFT})};
 }
 
 DirectedEdge JoinedDigraphView::fix_rhs_edge(DirectedEdge const &e) const {
-  return DirectedEdge{this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::RIGHT}),
-          this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::RIGHT})};
+  return DirectedEdge{
+      this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::RIGHT}),
+      this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::RIGHT})};
 }
 
 // JoinedMultiDigraphView::JoinedMultiDigraphView(MultiDiGraphView const &lhs,
@@ -266,7 +281,8 @@ DirectedEdge JoinedDigraphView::fix_rhs_edge(DirectedEdge const &e) const {
 // }
 
 // std::unordered_set<MultiDiEdge>
-//     JoinedMultiDigraphView::query_edges(MultiDiEdgeQuery const &query) const {
+//     JoinedMultiDigraphView::query_edges(MultiDiEdgeQuery const &query) const
+//     {
 //   std::unordered_set<Node> srcs = this->query_nodes(NodeQuery{query.srcs});
 //   std::unordered_set<Node> dsts = this->query_nodes(NodeQuery{query.dsts});
 //
@@ -281,21 +297,24 @@ DirectedEdge JoinedDigraphView::fix_rhs_edge(DirectedEdge const &e) const {
 //       transform(this->lhs.query_edges(left_query),
 //                 [&](MultiDiEdge const &e) { return this->fix_lhs_edge(e); }),
 //       transform(this->rhs.query_edges(right_query),
-//                 [&](MultiDiEdge const &e) { return this->fix_rhs_edge(e); }));
+//                 [&](MultiDiEdge const &e) { return this->fix_rhs_edge(e);
+//                 }));
 // }
 
 // JoinedMultiDigraphView *JoinedMultiDigraphView::clone() const {
 //   return new JoinedMultiDigraphView(lhs, rhs);
 // }
 
-// MultiDiEdge JoinedMultiDigraphView::fix_lhs_edge(MultiDiEdge const &e) const {
+// MultiDiEdge JoinedMultiDigraphView::fix_lhs_edge(MultiDiEdge const &e) const
+// {
 //   return MultiDiEdge{
 //     this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::LEFT}),
 //     this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::LEFT})
 //   };
 // }
 
-// MultiDiEdge JoinedMultiDigraphView::fix_rhs_edge(MultiDiEdge const &e) const {
+// MultiDiEdge JoinedMultiDigraphView::fix_rhs_edge(MultiDiEdge const &e) const
+// {
 //   return MultiDiEdge{
 //     this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::RIGHT}),
 //     this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::RIGHT})
@@ -317,15 +336,14 @@ std::unordered_set<UndirectedEdge> to_undirected_edges(
 // }
 
 // std::unordered_set<UndirectedEdge>
-//     to_undirected_edges(std::unordered_set<MultiDiEdge> const &multidi_edges) {
+//     to_undirected_edges(std::unordered_set<MultiDiEdge> const &multidi_edges)
+//     {
 //   return to_undirected_edges(to_directed_edges(multidi_edges));
 // }
 
 std::unordered_set<DirectedEdge> to_directed_edges(UndirectedEdge const &e) {
-  return std::unordered_set<DirectedEdge>{
-    DirectedEdge{e.smaller, e.bigger}, 
-    DirectedEdge{e.bigger, e.smaller}
-  };
+  return std::unordered_set<DirectedEdge>{DirectedEdge{e.smaller, e.bigger},
+                                          DirectedEdge{e.bigger, e.smaller}};
 }
 
 std::unordered_set<DirectedEdge> to_directed_edges(
@@ -373,7 +391,8 @@ ViewUndirectedGraphAsDiGraph *ViewUndirectedGraphAsDiGraph::clone() const {
 std::unordered_set<DirectedEdge> ViewUndirectedGraphAsDiGraph::query_edges(
     DirectedEdgeQuery const &q) const {
   std::unordered_set<UndirectedEdge> undirected_edges =
-      intersection(g.query_edges(UndirectedEdgeQuery{q.srcs}), g.query_edges(UndirectedEdgeQuery{q.dsts}));
+      intersection(g.query_edges(UndirectedEdgeQuery{q.srcs}),
+                   g.query_edges(UndirectedEdgeQuery{q.dsts}));
   std::unordered_set<DirectedEdge> directed_edges =
       flatmap(undirected_edges,
               [](UndirectedEdge const &e) { return to_directed_edges(e); });
@@ -402,7 +421,8 @@ std::unordered_set<Node>
 // }
 
 // std::unordered_set<Node>
-//     ViewDiGraphAsMultiDiGraph::query_nodes(NodeQuery const &node_query) const {
+//     ViewDiGraphAsMultiDiGraph::query_nodes(NodeQuery const &node_query) const
+//     {
 //   return this->g.query_nodes(node_query);
 // }
 
@@ -418,7 +438,8 @@ std::unordered_set<Node>
 // }
 
 // std::unordered_set<Node>
-//     ViewMultiDiGraphAsOpenMultiDiGraph::query_nodes(NodeQuery const &q) const {
+//     ViewMultiDiGraphAsOpenMultiDiGraph::query_nodes(NodeQuery const &q) const
+//     {
 //   return g.query_nodes(q);
 // }
 
@@ -446,19 +467,21 @@ std::unordered_set<Node>
 // OpenMultiDiSubgraphView::OpenMultiDiSubgraphView(
 //     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
 //     : g(g), nodes(nodes) {
-//   this->inputs = transform(get_cut_set(g, nodes), input_multidiedge_from_multidiedge);
-//   this->outputs = transform(get_cut_set(g, nodes), output_multidiedge_from_multidiedge);
+//   this->inputs = transform(get_cut_set(g, nodes),
+//   input_multidiedge_from_multidiedge); this->outputs =
+//   transform(get_cut_set(g, nodes), output_multidiedge_from_multidiedge);
 // }
 
 // std::unordered_set<OpenMultiDiEdge>
-//     OpenMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &q) const {
+//     OpenMultiDiSubgraphView::query_edges(OpenMultiDiEdgeQuery const &q) const
+//     {
 //   OpenMultiDiEdgeQuery subgraph_query(
 //       q.input_edge_query.with_dst_nodes(nodes),
 //       q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes),
 //       q.output_edge_query.with_src_nodes(nodes));
 //   std::unordered_set<OpenMultiDiEdge> result = g.query_edges(subgraph_query);
-//   extend(result, query_edge(inputs, q.input_edge_query.with_dst_nodes(nodes)));
-//   extend(result,
+//   extend(result, query_edge(inputs,
+//   q.input_edge_query.with_dst_nodes(nodes))); extend(result,
 //          query_edge(outputs, q.output_edge_query.with_src_nodes(nodes)));
 //   return result;
 // }
@@ -471,22 +494,24 @@ std::unordered_set<Node>
 // UpwardOpenMultiDiSubgraphView::UpwardOpenMultiDiSubgraphView(
 //     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
 //     : g(g), nodes(nodes) {
-//   this->inputs = transform(get_cut_set(g, nodes), input_multidiedge_from_multidiedge);
+//   this->inputs = transform(get_cut_set(g, nodes),
+//   input_multidiedge_from_multidiedge);
 // }
 
 // UpwardOpenMultiDiSubgraphView *UpwardOpenMultiDiSubgraphView::clone() const {
 //   return new UpwardOpenMultiDiSubgraphView(g, nodes);
 // }
 
-// std::unordered_set<OpenMultiDiEdge> UpwardOpenMultiDiSubgraphView::query_edges(
+// std::unordered_set<OpenMultiDiEdge>
+// UpwardOpenMultiDiSubgraphView::query_edges(
 //     OpenMultiDiEdgeQuery const &q) const {
 //   OpenMultiDiEdgeQuery subgraph_query(
 //       q.input_edge_query.with_dst_nodes(nodes),
 //       q.standard_edge_query.with_src_nodes(nodes).with_dst_nodes(nodes),
 //       OutputMultiDiEdgeQuery::none());
 //   std::unordered_set<OpenMultiDiEdge> result = g.query_edges(subgraph_query);
-//   extend(result, query_edge(inputs, q.input_edge_query.with_dst_nodes(nodes)));
-//   return result;
+//   extend(result, query_edge(inputs,
+//   q.input_edge_query.with_dst_nodes(nodes))); return result;
 // }
 
 // std::unordered_set<Node>
@@ -497,7 +522,8 @@ std::unordered_set<Node>
 // DownwardOpenMultiDiSubgraphView::DownwardOpenMultiDiSubgraphView(
 //     OpenMultiDiGraphView const &g, std::unordered_set<Node> const &nodes)
 //     : g(g), nodes(nodes) {
-//   this->outputs = transform(get_cut_set(g, nodes), output_multidiedge_from_multidiedge);
+//   this->outputs = transform(get_cut_set(g, nodes),
+//   output_multidiedge_from_multidiedge);
 // }
 
 // std::unordered_set<OpenMultiDiEdge>

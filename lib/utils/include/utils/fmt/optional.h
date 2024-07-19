@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_OPTIONAL_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_OPTIONAL_H
 
-#include <optional>
-#include <fmt/format.h>
 #include "utils/check_fmtable.h"
+#include <fmt/format.h>
+#include <optional>
 
 namespace fmt {
 

@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_WITHOUT_NULLOPTS_H
 
 #include <optional>
-#include <vector>
 #include <unordered_set>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -19,7 +19,8 @@ std::vector<T> without_nullopts(std::vector<std::optional<T>> const &v) {
 }
 
 template <typename T>
-std::unordered_set<T> without_nullopts(std::unordered_set<std::optional<T>> const &s) {
+std::unordered_set<T>
+    without_nullopts(std::unordered_set<std::optional<T>> const &s) {
   std::unordered_set<T> result;
   for (std::optional<T> const &t : s) {
     if (t.has_value()) {

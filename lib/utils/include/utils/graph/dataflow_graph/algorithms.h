@@ -7,10 +7,13 @@
 namespace FlexFlow {
 
 std::unordered_set<DataflowEdge> get_edges(DataflowGraphView const &);
-std::vector<DataflowEdge> get_incoming_edges(DataflowGraphView const &, Node const &);
+std::vector<DataflowEdge> get_incoming_edges(DataflowGraphView const &,
+                                             Node const &);
 std::vector<DataflowOutput> get_inputs(DataflowGraphView const &, Node const &);
-std::vector<DataflowOutput> get_outputs(DataflowGraphView const &, Node const &);
-std::unordered_set<DataflowOutput> get_all_dataflow_outputs(DataflowGraphView const &);
+std::vector<DataflowOutput> get_outputs(DataflowGraphView const &,
+                                        Node const &);
+std::unordered_set<DataflowOutput>
+    get_all_dataflow_outputs(DataflowGraphView const &);
 
 } // namespace FlexFlow
 

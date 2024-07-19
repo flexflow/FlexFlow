@@ -1,6 +1,6 @@
 #include "op-attrs/datatype.h"
-#include "utils/exception.h"
 #include "utils/containers.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

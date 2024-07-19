@@ -11,7 +11,6 @@ bool matches_edge(DirectedEdgeQuery const &, DirectedEdge const &);
 DirectedEdgeQuery query_intersection(DirectedEdgeQuery const &,
                                      DirectedEdgeQuery const &);
 
-
 } // namespace FlexFlow
 
 #endif

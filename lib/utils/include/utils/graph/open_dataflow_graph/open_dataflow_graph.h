@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_OPEN_DATAFLOW_GRAPH_OPEN_DATAFLOW_GRAPH_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_OPEN_DATAFLOW_GRAPH_OPEN_DATAFLOW_GRAPH_H
 
+#include "utils/graph/dataflow_graph/node_added_result.dtg.h"
 #include "utils/graph/open_dataflow_graph/i_open_dataflow_graph.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
-#include "utils/graph/dataflow_graph/node_added_result.dtg.h"
 
 namespace FlexFlow {
 
 struct OpenDataflowGraph : virtual public OpenDataflowGraphView {
-public: 
+public:
   NodeAddedResult add_node(std::vector<OpenDataflowValue> const &inputs,
                            int num_outputs);
   DataflowGraphInput add_input();
@@ -20,6 +20,7 @@ public:
       create(Args &&...args) {
     return OpenDataflowGraph(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
+
 protected:
   using OpenDataflowGraphView::OpenDataflowGraphView;
 

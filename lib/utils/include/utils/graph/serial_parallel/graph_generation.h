@@ -6,20 +6,18 @@
 
 namespace FlexFlow {
 
-void parallel_extend_unsafe(DataflowGraph &g,
-                            DataflowGraphView const &ext);
+void parallel_extend_unsafe(DataflowGraph &g, DataflowGraphView const &ext);
 
-void serial_extend(DataflowGraph &g,
-                   DataflowGraphView const &ext);
+void serial_extend(DataflowGraph &g, DataflowGraphView const &ext);
 
-DataflowGraph serial_composition(DataflowGraphView const &g1, DataflowGraphView const &g2);
+DataflowGraph serial_composition(DataflowGraphView const &g1,
+                                 DataflowGraphView const &g2);
 
 DataflowGraph parallel_composition(DataflowGraphView const &g1,
                                    DataflowGraphView const &g2);
 
 DataflowGraph dataflow_graph_from_sp_decomposition(
     SerialParallelDecomposition const &sp_decomposition);
-
 
 } // namespace FlexFlow
 

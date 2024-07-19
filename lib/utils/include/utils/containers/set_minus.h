@@ -6,7 +6,8 @@
 namespace FlexFlow {
 
 template <typename T>
-std::unordered_set<T> set_minus(std::unordered_set<T> const &l, std::unordered_set<T> const &r) {
+std::unordered_set<T> set_minus(std::unordered_set<T> const &l,
+                                std::unordered_set<T> const &r) {
   std::unordered_set<T> result = l;
   for (T const &t : r) {
     result.erase(t);

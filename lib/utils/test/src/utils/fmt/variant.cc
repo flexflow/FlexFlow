@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/fmt/variant.h"
+#include "test/utils/doctest.h"
 
 using namespace ::FlexFlow;
 

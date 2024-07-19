@@ -15,7 +15,6 @@ struct IDiGraph : virtual public IDiGraphView {
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IDiGraph);
 
-
 } // namespace FlexFlow
 
 #endif

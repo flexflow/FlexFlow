@@ -9,10 +9,8 @@ namespace FlexFlow {
 
 ComputationGraph make_empty_computation_graph() {
   return ComputationGraph{
-    LabelledDataflowGraph<LayerAttrs, TensorAttrs>::create<
-      UnorderedSetLabelledOpenDataflowGraph<LayerAttrs, TensorAttrs>
-    >()
-  };
+      LabelledDataflowGraph<LayerAttrs, TensorAttrs>::create<
+          UnorderedSetLabelledOpenDataflowGraph<LayerAttrs, TensorAttrs>>()};
 }
 
 std::unordered_set<layer_guid_t> get_layers(ComputationGraph const &cg) {
@@ -26,16 +24,15 @@ TensorAttrs get_tensor_attrs(ComputationGraph const &cg,
 }
 
 std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg) {
-  std::vector<Node> layers =
-      get_topological_ordering(cg.raw_graph);
+  std::vector<Node> layers = get_topological_ordering(cg.raw_graph);
   return transform(
       layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }
 
 std::vector<layer_guid_t>
     reverse_topological_ordering(ComputationGraph const &cg) {
-  std::vector<Node> layers = reversed<std::vector<Node>>(
-      get_topological_ordering(cg.raw_graph));
+  std::vector<Node> layers =
+      reversed<std::vector<Node>>(get_topological_ordering(cg.raw_graph));
   return transform(
       layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }

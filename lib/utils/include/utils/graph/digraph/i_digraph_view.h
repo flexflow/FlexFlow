@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DIGRAPH_I_DIGRAPH_VIEW_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DIGRAPH_I_DIGRAPH_VIEW_H
 
-#include "utils/graph/node/node.dtg.h"
-#include "utils/graph/node/i_graph_view.h"
 #include "utils/graph/digraph/directed_edge.dtg.h"
 #include "utils/graph/digraph/directed_edge_query.dtg.h"
+#include "utils/graph/node/i_graph_view.h"
+#include "utils/graph/node/node.dtg.h"
 
 namespace FlexFlow {
 

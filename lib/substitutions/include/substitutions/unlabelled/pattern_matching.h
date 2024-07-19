@@ -11,15 +11,19 @@
 namespace FlexFlow {
 
 // OpenDataflowGraphView apply_match(UnlabelledGraphPattern const &pattern,
-//                                   UnlabelledDataflowGraphPatternMatch const &match);
+//                                   UnlabelledDataflowGraphPatternMatch const
+//                                   &match);
 
-OpenDataflowSubgraphResult subgraph_matched(OpenDataflowGraphView const &graph,
-                                            UnlabelledDataflowGraphPatternMatch const &match);
-bool pattern_matches_subgraph_under(UnlabelledGraphPattern const &pattern,
-                                    OpenDataflowGraphView const &subgraph,
-                                    bidict<OpenDataflowValue, DataflowGraphInput> const &full_graph_values_to_subgraph_inputs,
-                                    UnlabelledDataflowGraphPatternMatch const &match,
-                                    MatchAdditionalCriterion const &additional_criterion);
+OpenDataflowSubgraphResult
+    subgraph_matched(OpenDataflowGraphView const &graph,
+                     UnlabelledDataflowGraphPatternMatch const &match);
+bool pattern_matches_subgraph_under(
+    UnlabelledGraphPattern const &pattern,
+    OpenDataflowGraphView const &subgraph,
+    bidict<OpenDataflowValue, DataflowGraphInput> const
+        &full_graph_values_to_subgraph_inputs,
+    UnlabelledDataflowGraphPatternMatch const &match,
+    MatchAdditionalCriterion const &additional_criterion);
 
 bool unlabelled_pattern_does_match(
     UnlabelledGraphPattern const &pattern,

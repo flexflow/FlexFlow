@@ -1,7 +1,7 @@
-#include "test/utils/doctest.h"
 #include "pcg/machine_view.h"
 #include "pcg/strided_rectangle.h"
 #include "pcg/strided_rectangle_side.h"
+#include "test/utils/doctest.h"
 
 using namespace ::FlexFlow;
 

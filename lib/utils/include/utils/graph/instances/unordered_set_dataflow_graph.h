@@ -2,9 +2,9 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_UNORDERED_SET_DATAFLOW_GRAPH_H
 
 #include "utils/graph/dataflow_graph/i_dataflow_graph.h"
+#include "utils/graph/node/node_source.h"
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/graph/open_dataflow_graph/i_open_dataflow_graph.h"
-#include "utils/graph/node/node_source.h"
 
 namespace FlexFlow {
 
@@ -20,8 +20,10 @@ public:
   DataflowGraphInput add_input() override;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-  std::unordered_set<OpenDataflowEdge> query_edges(OpenDataflowEdgeQuery const &) const override;
-  std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &) const override;
+  std::unordered_set<OpenDataflowEdge>
+      query_edges(OpenDataflowEdgeQuery const &) const override;
+  std::unordered_set<DataflowOutput>
+      query_outputs(DataflowOutputQuery const &) const override;
   std::unordered_set<DataflowGraphInput> get_inputs() const override;
 
   void add_node_unsafe(Node const &node,
@@ -31,17 +33,19 @@ public:
   void inplace_materialize_from(DataflowGraphView const &view) override;
 
   UnorderedSetDataflowGraph *clone() const override;
+
 private:
   void add_node_unsafe(Node const &node,
                        std::vector<OpenDataflowValue> const &inputs,
                        std::vector<DataflowOutput> const &outputs);
 
-  UnorderedSetDataflowGraph(NodeSource const &node_source,
-                            DataflowGraphInputSource const &graph_input_source,
-                            std::unordered_set<Node> const &nodes,
-                            std::unordered_set<OpenDataflowEdge> const &edges,
-                            std::unordered_set<DataflowOutput> const &outputs,
-                            std::unordered_set<DataflowGraphInput> const &graph_inputs);
+  UnorderedSetDataflowGraph(
+      NodeSource const &node_source,
+      DataflowGraphInputSource const &graph_input_source,
+      std::unordered_set<Node> const &nodes,
+      std::unordered_set<OpenDataflowEdge> const &edges,
+      std::unordered_set<DataflowOutput> const &outputs,
+      std::unordered_set<DataflowGraphInput> const &graph_inputs);
 
 private:
   NodeSource node_source;

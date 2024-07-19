@@ -1,9 +1,9 @@
 #include "test/utils/doctest.h"
-#include "utils/graph/instances/unordered_set_dataflow_graph.h"
-#include "utils/graph/dataflow_graph/dataflow_graph.h"
-#include "utils/graph/node/node_query.h"
 #include "utils/graph/dataflow_graph/dataflow_edge_query.h"
+#include "utils/graph/dataflow_graph/dataflow_graph.h"
 #include "utils/graph/dataflow_graph/dataflow_output_query.h"
+#include "utils/graph/instances/unordered_set_dataflow_graph.h"
+#include "utils/graph/node/node_query.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("UnorderedSetDataflowGraph") {
@@ -16,13 +16,15 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     {
-      std::unordered_set<DataflowEdge> result = g.query_edges(dataflow_edge_query_all());
+      std::unordered_set<DataflowEdge> result =
+          g.query_edges(dataflow_edge_query_all());
       std::unordered_set<DataflowEdge> correct = {};
       REQUIRE(result == correct);
     }
 
     {
-      std::unordered_set<DataflowOutput> result = g.query_outputs(dataflow_output_query_all());
+      std::unordered_set<DataflowOutput> result =
+          g.query_outputs(dataflow_output_query_all());
       std::unordered_set<DataflowOutput> correct = {};
       REQUIRE(result == correct);
     }
@@ -36,13 +38,15 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     {
-      std::unordered_set<DataflowEdge> result = g.query_edges(dataflow_edge_query_all());
+      std::unordered_set<DataflowEdge> result =
+          g.query_edges(dataflow_edge_query_all());
       std::unordered_set<DataflowEdge> correct = {};
       REQUIRE(result == correct);
     }
 
     {
-      std::unordered_set<DataflowOutput> result = g.query_outputs(dataflow_output_query_all());
+      std::unordered_set<DataflowOutput> result =
+          g.query_outputs(dataflow_output_query_all());
       std::unordered_set<DataflowOutput> correct = without_order(added.outputs);
       REQUIRE(result == correct);
     }
@@ -56,17 +60,20 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     {
-      std::unordered_set<DataflowEdge> result = g.query_edges(dataflow_edge_query_all());
+      std::unordered_set<DataflowEdge> result =
+          g.query_edges(dataflow_edge_query_all());
       std::unordered_set<DataflowEdge> correct = {
-        DataflowEdge{added.outputs.at(0), DataflowInput{added2.node, 0}},
-        DataflowEdge{added.outputs.at(1), DataflowInput{added2.node, 1}},
+          DataflowEdge{added.outputs.at(0), DataflowInput{added2.node, 0}},
+          DataflowEdge{added.outputs.at(1), DataflowInput{added2.node, 1}},
       };
       REQUIRE(result == correct);
     }
 
     {
-      std::unordered_set<DataflowOutput> result = g.query_outputs(dataflow_output_query_all());
-      std::unordered_set<DataflowOutput> correct = set_union(without_order(added.outputs), without_order(added2.outputs));
+      std::unordered_set<DataflowOutput> result =
+          g.query_outputs(dataflow_output_query_all());
+      std::unordered_set<DataflowOutput> correct = set_union(
+          without_order(added.outputs), without_order(added2.outputs));
       REQUIRE(result == correct);
     }
   }

@@ -1,8 +1,8 @@
 #include "test/utils/doctest.h"
-#include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/construction.h"
 #include "utils/graph/hashmap_undirected_graph.h"
+#include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/undirected.h"
 #include <cinttypes>
 #include <iterator>

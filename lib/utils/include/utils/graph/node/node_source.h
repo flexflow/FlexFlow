@@ -10,6 +10,7 @@ public:
   NodeSource();
 
   Node new_node();
+
 private:
   static size_t next_available_node_id;
 };

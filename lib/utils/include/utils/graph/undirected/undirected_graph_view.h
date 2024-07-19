@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_UNDIRECTED_UNDIRECTED_GRAPH_VIEW_H
 
 #include "utils/graph/node/graph_view.h"
-#include "utils/graph/undirected/undirected_edge.h"
 #include "utils/graph/undirected/i_undirected_graph_view.h"
+#include "utils/graph/undirected/undirected_edge.h"
 
 namespace FlexFlow {
 

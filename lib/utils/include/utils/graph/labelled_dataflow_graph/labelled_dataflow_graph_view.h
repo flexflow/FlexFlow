@@ -10,9 +10,11 @@ template <typename NodeLabel, typename OutputLabel>
 struct LabelledDataflowGraphView : virtual public DataflowGraphView {
 private:
   using Interface = ILabelledDataflowGraphView<NodeLabel, OutputLabel>;
+
 public:
   LabelledDataflowGraphView(LabelledDataflowGraphView const &) = default;
-  LabelledDataflowGraphView &operator=(LabelledDataflowGraphView const &) = default;
+  LabelledDataflowGraphView &
+      operator=(LabelledDataflowGraphView const &) = default;
 
   NodeLabel const &at(Node const &n) const {
     return this->get_interface().at(n);
@@ -24,9 +26,11 @@ public:
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<Interface, T>::value,
                                  LabelledDataflowGraphView>::type
-      create(Args &&... args) {
-    return LabelledDataflowGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
+      create(Args &&...args) {
+    return LabelledDataflowGraphView(
+        make_cow_ptr<T>(std::forward<Args>(args)...));
   }
+
 protected:
   using DataflowGraphView::DataflowGraphView;
 
