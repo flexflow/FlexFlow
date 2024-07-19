@@ -79,6 +79,8 @@ public:
                    bool trainable_ = false,
                    LoraOptimizerConfig *optimizer_config_ = nullptr,
                    bool init_lora_weights_ = false,
+                   std::string const &base_model_name_or_path_ = "",
+                   std::string const &precision_ = "fp16",
                    int rank_ = 8,
                    float lora_alpha_ = 8.0f,
                    float lora_dropout_ = 0.0f,
@@ -98,7 +100,9 @@ public:
                                  lora_dropout,
                                  target_modules,
                                  trainable,
-                                 init_lora_weights)
+                                 init_lora_weights,
+                                 base_model_name_or_path,
+                                 precision)
 
   std::string cache_folder;
   // Huggingface model ID (for download and/or upload)
@@ -116,6 +120,9 @@ public:
   // whether to initialize weights randomly (instead of attempting to load them
   // from file)
   bool init_lora_weights;
+  // parameters only used to upload model after finetuning
+  std::string base_model_name_or_path;
+  std::string precision;
 };
 
 class LoraLinearParams {

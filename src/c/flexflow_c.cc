@@ -2862,6 +2862,8 @@ flexflow_lora_linear_config_t
                                        char const *peft_model_id_,
                                        bool trainable,
                                        bool init_lora_weights,
+                                       char const *base_model_name_or_path_,
+                                       char const *precision_,
                                        int rank,
                                        float lora_alpha,
                                        float lora_dropout,
@@ -2881,6 +2883,10 @@ flexflow_lora_linear_config_t
          "Cannot convert nullptr char * to std::string");
   assert(peft_model_id_ != nullptr &&
          "Cannot convert nullptr char * to std::string");
+  assert(base_model_name_or_path_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
+  assert(precision_ != nullptr &&
+         "Cannot convert nullptr char * to std::string");
   std::string const cache_folder(cache_folder_);
   std::string const peft_model_id(peft_model_id_);
   LoraOptimizerConfig *optim_config = nullptr;
@@ -2896,11 +2902,15 @@ flexflow_lora_linear_config_t
     std::string const target_module(target_modules_[i]);
     target_modules.push_back(target_module);
   }
+  std::string const base_model_name_or_path(base_model_name_or_path_);
+  std::string const precision(precision_);
   LoraLinearConfig *handle = new LoraLinearConfig(cache_folder,
                                                   peft_model_id,
                                                   trainable,
                                                   optim_config,
                                                   init_lora_weights,
+                                                  base_model_name_or_path,
+                                                  precision,
                                                   rank,
                                                   lora_alpha,
                                                   lora_dropout,
@@ -2968,6 +2978,18 @@ char const **flexflow_lora_linear_config_get_target_modules(
     target_modules_.push_back(target_module.c_str());
   }
   return target_modules_.data();
+}
+
+char const *flexflow_lora_linear_config_get_base_model_name_or_path(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->base_model_name_or_path.c_str();
+}
+
+char const *flexflow_lora_linear_config_get_precision(
+    flexflow_lora_linear_config_t handle_) {
+  LoraLinearConfig *handle = FFCObjectWrapper::unwrap(handle_);
+  return handle->precision.c_str();
 }
 
 void flexflow_lora_linear_config_set_lora_alpha(

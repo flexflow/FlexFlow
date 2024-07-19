@@ -39,6 +39,8 @@ from flexflow.type import (
 from flexflow.config import *
 from .flexflowlib import ffi, flexflow_library
 from typing import Union, List
+from peft import LoraConfig
+import json
 
 
 def ffc():
@@ -1754,6 +1756,8 @@ class LoraLinearConfig(object):
         peft_model_id: str,
         trainable: bool = False,
         init_lora_weights: bool = False,
+        base_model_name_or_path: str = "",
+        precision: str = "fp16",
         rank: int = 8,
         lora_alpha: float = 8.0,
         lora_dropout: float = 0.0,
@@ -1766,6 +1770,8 @@ class LoraLinearConfig(object):
         self._peft_model_id = peft_model_id
         self._trainable = trainable
         self._init_lora_weights = init_lora_weights
+        self._base_model_name_or_path = base_model_name_or_path
+        self._precision = precision
         self._rank = rank
         self._lora_alpha = lora_alpha
         self._lora_dropout = lora_dropout
@@ -1799,6 +1805,8 @@ class LoraLinearConfig(object):
     def ff_compile(self):
         c_cache_folder = get_c_name(os.path.expanduser(self.cache_folder))
         peft_model_id = get_c_name(self.peft_model_id)
+        base_model_name_or_path = get_c_name(self.base_model_name_or_path)
+        precision = get_c_name(self.precision)
         c_target_modules = [
             get_c_name(target_module) for target_module in self.target_modules
         ]
@@ -1819,6 +1827,8 @@ class LoraLinearConfig(object):
             peft_model_id,
             self.trainable,
             self.init_lora_weights,
+            base_model_name_or_path,
+            precision,
             self.rank,
             self.lora_alpha,
             self.lora_dropout,
@@ -1837,6 +1847,23 @@ class LoraLinearConfig(object):
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_lora_linear_config_destroy)
         self.ff_initialized = True
+
+    @classmethod
+    def from_jsonfile(self, jsonfile: str):
+        with open(jsonfile, "r") as file:
+            config = json.load(file)
+        config_dict = dict(config)
+        config_dict["optimizer_type"] = OptimizerType.OPTIMIZER_TYPE_SGD
+        return LoraLinearConfig(**config_dict)
+
+    def to_hf_config(self) -> LoraConfig:
+        return LoraConfig(
+            base_model_name_or_path=self.base_model_name_or_path,
+            r=self.rank,
+            target_modules=self.target_modules,
+            lora_alpha=self.lora_alpha,
+            lora_dropout=self.lora_dropout,
+        )
 
     @property
     def cache_folder(self):
@@ -1892,6 +1919,26 @@ class LoraLinearConfig(object):
             return ffc().flexflow_lora_linear_config_get_init_lora_weights(self.handle)
         else:
             return self._init_lora_weights
+
+    @property
+    def base_model_name_or_path(self):
+        if self.ff_initialized:
+            c_base_model_name_or_path = (
+                ffc().flexflow_lora_linear_config_get_base_model_name_or_path(
+                    self.handle
+                )
+            )
+            return ffi.string(c_base_model_name_or_path).decode("utf-8")
+        else:
+            return self._base_model_name_or_path
+
+    @property
+    def precision(self):
+        if self.ff_initialized:
+            c_precision = ffc().flexflow_lora_linear_config_get_precision(self.handle)
+            return ffi.string(c_precision).decode("utf-8")
+        else:
+            return self._precision
 
     @property
     def target_modules(self):
