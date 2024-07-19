@@ -1087,6 +1087,8 @@ flexflow_lora_linear_config_t
                                        char const *peft_model_id_,
                                        bool trainable,
                                        bool init_lora_weights,
+                                       char const *base_model_name_or_path,
+                                       char const *precision,
                                        int rank,
                                        float lora_alpha,
                                        float lora_dropout,
@@ -1127,6 +1129,12 @@ bool flexflow_lora_linear_config_get_init_lora_weights(
 
 char const **flexflow_lora_linear_config_get_target_modules(
     flexflow_lora_linear_config_t handle_, int *num_target_modules);
+
+char const *flexflow_lora_linear_config_get_base_model_name_or_path(
+    flexflow_lora_linear_config_t handle_);
+
+char const *flexflow_lora_linear_config_get_precision(
+    flexflow_lora_linear_config_t handle_);
 
 void flexflow_lora_linear_config_set_lora_alpha(
     flexflow_lora_linear_config_t handle_, float value);
