@@ -76,9 +76,9 @@ jobs:
         run: |
           build_libs.sh kernels
 
-      # - name: Build substitutions
-      #   run: |
-      #     build_libs.sh substitutions
+      - name: Build substitutions
+        run: |
+          build_libs.sh substitutions
 
       # - name: Build compiler
       #   run: |
@@ -104,9 +104,9 @@ jobs:
         run: |
           test_libs.sh pcg
 
-      # - name: Test substitutions
-      #   run: |
-      #     test_libs.sh substitutions
+      - name: Test substitutions
+        run: |
+          test_libs.sh substitutions
 
       # - name: Test compiler
       #   run: |

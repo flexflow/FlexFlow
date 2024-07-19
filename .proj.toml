@@ -20,7 +20,7 @@ test_targets = [
   "pcg-tests",
   "substitutions-tests",
   # "compiler-tests",
-  # "substitution-generator-tests",
+  "substitution-generator-tests",
 ]
 
 [cmake_flags_extra]
