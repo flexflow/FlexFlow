@@ -57,6 +57,7 @@ public:
 
   DataflowGraphInput add_input(ValueLabel const &value_label) override {
     DataflowGraphInput new_input = this->input_source.new_dataflow_graph_input();
+    this->inputs.insert(new_input);
     this->values.insert({OpenDataflowValue{new_input}, value_label});
     return new_input;
   }

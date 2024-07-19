@@ -77,10 +77,18 @@ private:
 OpenDataflowSubgraphResult get_subgraph(OpenDataflowGraphView const &g,
                                         std::unordered_set<Node> const &subgraph_nodes) {
   DataflowGraphInputSource input_source;
-  bidict<OpenDataflowValue, DataflowGraphInput> full_graph_values_to_subgraph_inputs = generate_bidict(get_subgraph_inputs(g, subgraph_nodes),
-                                                                                                       [&](OpenDataflowValue const &i) {
-                                                                                                         return input_source.new_dataflow_graph_input();
-                                                                                                       });
+  bidict<OpenDataflowValue, DataflowGraphInput> full_graph_values_to_subgraph_inputs = 
+    generate_bidict(
+      get_subgraph_inputs(g, subgraph_nodes),
+      [&](OpenDataflowValue const &v) -> DataflowGraphInput {
+        return v.visit<DataflowGraphInput>(overload {
+          [](DataflowGraphInput const &i) { return i; },
+          [&](DataflowOutput const &) {
+            return input_source.new_dataflow_graph_input();
+          },
+        });
+      }
+    );
 
   return OpenDataflowSubgraphResult{
     OpenDataflowGraphView::create<OpenDataflowSubgraph>(

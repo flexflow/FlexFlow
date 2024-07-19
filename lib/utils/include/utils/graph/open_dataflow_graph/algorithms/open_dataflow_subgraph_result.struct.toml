@@ -4,7 +4,7 @@ features = []
 
 includes = [
   "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h",
-  "utils/bidict.h",
+  "utils/bidict/bidict.h",
   "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
   "utils/graph/open_dataflow_graph/dataflow_graph_input.dtg.h",
 ]

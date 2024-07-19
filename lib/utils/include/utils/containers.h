@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_INL
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_INL
 
-#include "bidict.h"
+#include "utils/bidict/bidict.h"
 #include "containers.decl.h"
 #include "required_core.h"
 #include "type_traits_core.h"
@@ -85,11 +85,6 @@ bool contains(Container const &c, typename Container::value_type const &e) {
   return find<Container>(c, e) != c.cend();
 }
 
-template <typename C>
-bool contains_key(C const &m, typename C::key_type const &k) {
-  return m.find(k) != m.end();
-}
-
 template <typename K, typename V>
 bool contains_l(bidict<K, V> const &m, K const &k) {
   return m.contains_l(k);
@@ -110,15 +105,6 @@ std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
   return result;
 }
 
-template <typename K, typename V, typename F, typename K2>
-bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f) {
-  bidict<K2, V> result;
-  for (auto const &kv : m) {
-    result.equate(f(kv.first), kv.second);
-  }
-  return result;
-}
-
 template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
                                      F const &f) {
@@ -131,32 +117,12 @@ std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
   return result;
 }
 
-template <typename K, typename V, typename F>
-bidict<K, V> filter_values(bidict<K, V> const &m, F const &f) {
-  std::unordered_map<K, V> result;
-  for (auto const &kv : m) {
-    if (f(kv.second)) {
-      result.equate(kv);
-    }
-  }
-  return result;
-}
-
 template <typename K, typename V, typename F, typename V2>
 std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
                                      F const &f) {
   std::unordered_map<K, V2> result;
   for (auto const &kv : m) {
     result.insert({kv.first, f(kv.second)});
-  }
-  return result;
-}
-
-template <typename K, typename V, typename F, typename V2>
-bidict<K, V2> map_values(bidict<K, V> const &m, F const &f) {
-  bidict<K, V2> result;
-  for (auto const &kv : m) {
-    result.equate({kv.first, f(kv.second)});
   }
   return result;
 }

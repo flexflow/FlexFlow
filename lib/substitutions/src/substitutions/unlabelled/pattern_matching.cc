@@ -61,8 +61,8 @@ OpenDataflowSubgraphResult subgraph_matched(OpenDataflowGraphView const &g,
 //   return true;
 // }
 
-struct ConcreteFromPattern {
-  ConcreteFromPattern(UnlabelledDataflowGraphPatternMatch const &match, 
+struct SubgraphConcreteFromPattern {
+  SubgraphConcreteFromPattern(UnlabelledDataflowGraphPatternMatch const &match, 
                       bidict<OpenDataflowValue, DataflowGraphInput> const &full_graph_values_to_subgraph_inputs)
     : match(match), full_graph_values_to_subgraph_inputs(full_graph_values_to_subgraph_inputs)
   { }
@@ -124,7 +124,7 @@ bool pattern_matches_subgraph_under(UnlabelledGraphPattern const &pattern,
                                     bidict<OpenDataflowValue, DataflowGraphInput> const &full_graph_values_to_subgraph_inputs,
                                     UnlabelledDataflowGraphPatternMatch const &match,
                                     MatchAdditionalCriterion const &additional_criterion) {
-  ConcreteFromPattern concrete_from_pattern{match, full_graph_values_to_subgraph_inputs};
+  SubgraphConcreteFromPattern concrete_from_pattern{match, full_graph_values_to_subgraph_inputs};
 
   std::unordered_set<Node> concrete_nodes = get_nodes(subgraph);
   std::unordered_set<Node> concrete_nodes_from_match = transform(get_nodes(pattern), concrete_from_pattern);
@@ -174,7 +174,20 @@ bool unlabelled_pattern_does_match(
   assert (keys(match.node_assignment) == get_nodes(pattern));
   assert (keys(match.node_assignment.reversed()) == get_nodes(matched_subgraph));
 
-  return pattern_matches_subgraph_under(pattern, matched_subgraph, subgraph_result.full_graph_values_to_subgraph_inputs, match, additional_criterion);
+  MatchAdditionalCriterion through_subgraph_operation = MatchAdditionalCriterion{
+    additional_criterion.node_criterion,
+    [&](PatternValue const &pv, OpenDataflowValue const &v) {
+      return v.visit<bool>(overload {
+        [&](DataflowOutput const &) { return additional_criterion.value_criterion(pv, v); },
+        [&](DataflowGraphInput const &subgraph_input) { 
+          OpenDataflowValue full_graph_value = subgraph_result.full_graph_values_to_subgraph_inputs.at_r(subgraph_input);
+          return additional_criterion.value_criterion(pv, full_graph_value);
+        }
+      });
+    },
+  };
+  
+  return pattern_matches_subgraph_under(pattern, matched_subgraph, subgraph_result.full_graph_values_to_subgraph_inputs, match, through_subgraph_operation);
 }
 
 } // namespace FlexFlow

@@ -8,7 +8,7 @@ features = [
 ]
 
 includes = [
-  "utils/bidict.h",
+  "utils/bidict/bidict.h",
   "utils/graph/node/node.dtg.h",
   "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
   "substitutions/unlabelled/pattern_input.dtg.h",

@@ -6,6 +6,7 @@
 #include "substitutions/unlabelled/pattern_node.dtg.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
 #include "substitutions/unlabelled/pattern_input.dtg.h"
+#include "substitutions/unlabelled/unlabelled_graph_pattern_subgraph_result.dtg.h"
 
 namespace FlexFlow {
 
@@ -26,8 +27,8 @@ std::vector<PatternValue>
 std::vector<PatternValue>
     get_outputs_from_pattern_node(UnlabelledGraphPattern const &, PatternNode const &);
 
-UnlabelledGraphPattern get_subgraph(UnlabelledGraphPattern const &,
-                                    std::unordered_set<PatternNode> const &);
+UnlabelledGraphPatternSubgraphResult get_subgraph(UnlabelledGraphPattern const &,
+                                                  std::unordered_set<PatternNode> const &);
 
 } // namespace FlexFlow
 

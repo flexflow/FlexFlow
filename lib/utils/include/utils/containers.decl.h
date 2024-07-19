@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_DECL_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_DECL_H
 
-#include "utils/bidict.h"
+#include "utils/bidict/bidict.h"
 #include "utils/required_core.h"
 #include "utils/type_traits_core.h"
 #include <optional>
@@ -43,9 +43,6 @@ typename It::value_type product(It begin, It end);
 template <typename Container>
 bool contains(Container const &c, typename Container::value_type const &e);
 
-template <typename C>
-bool contains_key(C const &m, typename C::key_type const &k);
-
 template <typename K, typename V>
 bool contains_l(bidict<K, V> const &m, K const &k);
 
@@ -59,18 +56,9 @@ template <typename K,
 std::unordered_map<K2, V> map_keys(std::unordered_map<K, V> const &m,
                                    F const &f);
 
-template <typename K,
-          typename V,
-          typename F,
-          typename K2 = decltype(std::declval<F>()(std::declval<K>()))>
-bidict<K2, V> map_keys(bidict<K, V> const &m, F const &f);
-
 template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_keys(std::unordered_map<K, V> const &m,
                                      F const &f);
-
-template <typename K, typename V, typename F>
-bidict<K, V> filter_values(bidict<K, V> const &m, F const &f);
 
 template <typename K,
           typename V,
@@ -78,12 +66,6 @@ template <typename K,
           typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
 std::unordered_map<K, V2> map_values(std::unordered_map<K, V> const &m,
                                      F const &f);
-
-template <typename K,
-          typename V,
-          typename F,
-          typename V2 = decltype(std::declval<F>()(std::declval<V>()))>
-bidict<K, V2> map_values(bidict<K, V> const &m, F const &f);
 
 template <typename K, typename V, typename F>
 std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,

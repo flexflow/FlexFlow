@@ -76,7 +76,7 @@ std::vector<UnlabelledDataflowGraphPatternMatch>
     }
   } else {
     PatternSplit split = find_even_split(pattern);
-    auto subpatterns = apply_split(pattern, split);
+    PatternSplitResult subpatterns = apply_split(pattern, split);
     std::vector<UnlabelledDataflowGraphPatternMatch> prefix_matches =
         find_pattern_matches(subpatterns.subpattern_1, graph, additional_criterion);
     std::vector<UnlabelledDataflowGraphPatternMatch> postfix_matches =
@@ -87,7 +87,8 @@ std::vector<UnlabelledDataflowGraphPatternMatch>
         std::optional<UnlabelledDataflowGraphPatternMatch> unsplit =
           merge_unlabelled_dataflow_graph_pattern_matches(prefix_match,
                                                           postfix_match,
-                                                          subpatterns.subpattern_1_outputs_to_subpattern_2_inputs);
+                                                          subpatterns.full_pattern_values_to_subpattern_1_inputs,
+                                                          subpatterns.full_pattern_values_to_subpattern_2_inputs);
         if (unsplit.has_value() && unlabelled_pattern_does_match(pattern, graph, unsplit.value(), additional_criterion)) {
           matches.push_back(unsplit.value());
         }

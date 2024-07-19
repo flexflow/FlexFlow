@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
-#include "utils/bidict.h"
+#include "utils/bidict/bidict.h"
 #include "utils/containers.h"
 #include "utils/exception.h"
 #include <optional>

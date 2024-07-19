@@ -37,20 +37,14 @@ PatternSplit find_even_split(UnlabelledGraphPattern const &pattern) {
 
 PatternSplitResult
     apply_split(UnlabelledGraphPattern const &p, PatternSplit const &s) {
-  OpenDataflowSubgraphResult raw_second_subgraph_result = get_subgraph(p.raw_graph, transform(s.second, [](PatternNode const &pn) { return pn.raw_node; }));
+  UnlabelledGraphPatternSubgraphResult first_subgraph_result = get_subgraph(p, s.first);
+  UnlabelledGraphPatternSubgraphResult second_subgraph_result = get_subgraph(p, s.second);
 
-  bidict<PatternValue, PatternInput> subpattern_1_outputs_to_subpattern_2_inputs;
-  for (auto const &kv : raw_second_subgraph_result.full_graph_values_to_subgraph_inputs) {
-    OpenDataflowValue open_dataflow_value = kv.first;
-    DataflowGraphInput dataflow_graph_input = kv.second;
-    subpattern_1_outputs_to_subpattern_2_inputs.equate(
-                                                       pattern_value_from_raw_open_dataflow_value(open_dataflow_value), PatternInput{dataflow_graph_input});
-  }
-  
   return PatternSplitResult{
-    get_subgraph(p, s.first),
-    UnlabelledGraphPattern{raw_second_subgraph_result.graph},
-    subpattern_1_outputs_to_subpattern_2_inputs,
+    first_subgraph_result.subpattern,
+    second_subgraph_result.subpattern,
+    first_subgraph_result.full_pattern_values_to_subpattern_inputs,
+    second_subgraph_result.full_pattern_values_to_subpattern_inputs
   };
 }
 

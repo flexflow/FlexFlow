@@ -20,6 +20,7 @@ TensorAttributePattern get_tensor_pattern(PCGPattern const &,
                                           PatternValue const &);
 OperatorAttributePattern get_operator_pattern(PCGPattern const &,
                                               PatternNode const &);
+std::unordered_set<PatternInput> get_inputs(PCGPattern const &);
 
 bool assignment_satisfies(SubParallelComputationGraph const &,
                           PCGPattern const &,

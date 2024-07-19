@@ -101,33 +101,33 @@ TEST_SUITE(FF_TEST_SUITE) {
     PCGPattern pattern = PCGPattern{g};
 
     std::unordered_set<UnlabelledDataflowGraphPatternMatch> result = without_order(find_pattern_matches(pattern, sub_pcg_from_full_pcg(pcg)));
-    //
-    // UnlabelledDataflowGraphPatternMatch match1 = UnlabelledDataflowGraphPatternMatch{
-    //   bidict<PatternNode, Node>{
-    //     {op_pattern_1_node, x_matmul.raw_graph_node},
-    //     {op_pattern_2_node, y_matmul.raw_graph_node},
-    //   },
-    //   bidict<PatternInput, OpenDataflowValue>{
-    //     {PatternInput{pt_a}, OpenDataflowValue{a_tensor.raw_graph_output}},
-    //     {PatternInput{pt_b}, OpenDataflowValue{x_weights.raw_graph_output}},
-    //     {PatternInput{pt_c}, OpenDataflowValue{y_weights.raw_graph_output}},
-    //   }
-    // };
-    //
-    // UnlabelledDataflowGraphPatternMatch match2 = UnlabelledDataflowGraphPatternMatch{
-    //   bidict<PatternNode, Node>{
-    //     {op_pattern_1_node, y_matmul.raw_graph_node},
-    //     {op_pattern_2_node, x_matmul.raw_graph_node},
-    //   },
-    //   bidict<PatternInput, OpenDataflowValue>{
-    //     {PatternInput{pt_a}, OpenDataflowValue{a_tensor.raw_graph_output}},
-    //     {PatternInput{pt_b}, OpenDataflowValue{y_weights.raw_graph_output}},
-    //     {PatternInput{pt_c}, OpenDataflowValue{x_weights.raw_graph_output}},
-    //   }
-    // };
-    //
-    // std::unordered_set<UnlabelledDataflowGraphPatternMatch> correct = {match1, match2};
-    //
-    // CHECK(result == correct);
+
+    UnlabelledDataflowGraphPatternMatch match1 = UnlabelledDataflowGraphPatternMatch{
+      bidict<PatternNode, Node>{
+        {op_pattern_1_node, x_matmul.raw_graph_node},
+        {op_pattern_2_node, y_matmul.raw_graph_node},
+      },
+      bidict<PatternInput, OpenDataflowValue>{
+        {PatternInput{pt_a}, OpenDataflowValue{a_tensor.raw_graph_output}},
+        {PatternInput{pt_b}, OpenDataflowValue{x_weights.raw_graph_output}},
+        {PatternInput{pt_c}, OpenDataflowValue{y_weights.raw_graph_output}},
+      }
+    };
+
+    UnlabelledDataflowGraphPatternMatch match2 = UnlabelledDataflowGraphPatternMatch{
+      bidict<PatternNode, Node>{
+        {op_pattern_1_node, y_matmul.raw_graph_node},
+        {op_pattern_2_node, x_matmul.raw_graph_node},
+      },
+      bidict<PatternInput, OpenDataflowValue>{
+        {PatternInput{pt_a}, OpenDataflowValue{a_tensor.raw_graph_output}},
+        {PatternInput{pt_b}, OpenDataflowValue{y_weights.raw_graph_output}},
+        {PatternInput{pt_c}, OpenDataflowValue{x_weights.raw_graph_output}},
+      }
+    };
+
+    std::unordered_set<UnlabelledDataflowGraphPatternMatch> correct = {match1, match2};
+
+    CHECK(result == correct);
   }
 }

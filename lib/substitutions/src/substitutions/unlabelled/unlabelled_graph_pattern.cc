@@ -52,12 +52,22 @@ std::vector<PatternValue>
                    [](DataflowOutput const &o) { return pattern_value_from_raw_open_dataflow_value(OpenDataflowValue{o}); });
 }
 
-UnlabelledGraphPattern get_subgraph(UnlabelledGraphPattern const &p,
-                                    std::unordered_set<PatternNode> const &n) {
-  OpenDataflowGraphView raw_subgraph = 
-    get_subgraph(p.raw_graph, transform(n, [](PatternNode const &pn) { return pn.raw_node; })).graph;
-  return UnlabelledGraphPattern{
-    raw_subgraph,
+UnlabelledGraphPatternSubgraphResult get_subgraph(UnlabelledGraphPattern const &p,
+                                                  std::unordered_set<PatternNode> const &n) {
+  OpenDataflowSubgraphResult raw_result =  
+    get_subgraph(p.raw_graph, transform(n, [](PatternNode const &pn) { return pn.raw_node; }));
+  bidict<PatternValue, PatternInput> full_pattern_values_to_subpattern_inputs = transform(
+    raw_result.full_graph_values_to_subgraph_inputs,
+    [](OpenDataflowValue const &v, DataflowGraphInput const &i) {
+      return std::make_pair(
+        pattern_value_from_raw_open_dataflow_value(v),
+        PatternInput{i}
+      );
+    }
+  );
+  return UnlabelledGraphPatternSubgraphResult{
+    UnlabelledGraphPattern{raw_result.graph},
+    full_pattern_values_to_subpattern_inputs ,
   };
 }
 

@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "PatternSplitResult"
+name = "UnlabelledGraphPatternSubgraphResult"
 features = [ ]
 
 includes = [
@@ -10,17 +10,9 @@ includes = [
 ]
 
 [[fields]]
-name = "subpattern_1"
+name = "subpattern"
 type = "::FlexFlow::UnlabelledGraphPattern"
 
 [[fields]]
-name = "subpattern_2"
-type = "::FlexFlow::UnlabelledGraphPattern"
-
-[[fields]]
-name = "full_pattern_values_to_subpattern_1_inputs"
-type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::PatternInput>"
-
-[[fields]]
-name = "full_pattern_values_to_subpattern_2_inputs"
+name = "full_pattern_values_to_subpattern_inputs"
 type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::PatternInput>"

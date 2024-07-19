@@ -5,7 +5,7 @@ features = [
 ]
 
 includes = [
-  "utils/bidict.h",
+  "utils/bidict/bidict.h",
   "utils/graph.h",
   "<utility>",
 ]
