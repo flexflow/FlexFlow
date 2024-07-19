@@ -146,7 +146,7 @@ void forward_kernel(cudaStream_t stream,
                     OperatorType op_type,
                     bool broadcast_inputLHS,
                     PerDeviceFFHandle handle) {
-  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUBLAS(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
   float alpha1 = 1.0f, alpha2 = 1.0f, beta = 0.0f;
   switch (op_type) {
@@ -253,7 +253,7 @@ void backward_kernel(cudaStream_t stream,
                      bool broadcast_inputLHS,
                      bool broadcast_inputRHS,
                      PerDeviceFFHandle handle) {
-  checkCUDA(cublasSetStream(handle.blas, stream));
+  checkCUBLAS(cublasSetStream(handle.blas, stream));
   checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
   if (op_type == OperatorType::EW_ADD || op_type == OperatorType::EW_SUB) {

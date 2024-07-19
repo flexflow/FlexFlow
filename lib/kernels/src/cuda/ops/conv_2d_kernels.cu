@@ -207,46 +207,47 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   checkCUDNN(cudnnSetTensor4dDescriptor(
       outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
 
-  float time;
   // select forward algorithm
-  fwdAlgo = selectConvolutionForwardAlgorithm(handle.dnn,
-                                              inputTensor,
-                                              input.get_float_ptr(),
-                                              filterDesc,
-                                              filter_ptr,
-                                              convDesc,
-                                              handle.workSpace,
-                                              handle.workSpaceSize,
-                                              outputTensor,
-                                              output.get_float_ptr(),
-                                              nullptr);
+  fwdAlgo = selectConvolutionForwardAlgorithm(
+      handle.dnn,
+      inputTensor,
+      static_cast<void const *>(input.get_float_ptr()),
+      filterDesc,
+      filter_ptr,
+      convDesc,
+      handle.workSpace,
+      handle.workSpaceSize,
+      outputTensor,
+      output.get_float_ptr(),
+      nullptr);
 
   // select backward filter algorithm
-  bwdFilterAlgo =
-      selectConvolutionBackwardFilterAlgorithm(handle.dnn,
-                                               inputTensor,
-                                               input.get_float_ptr(),
-                                               outputTensor,
-                                               output.get_float_ptr(),
-                                               convDesc,
-                                               handle.workSpace,
-                                               handle.workSpaceSize,
-                                               filterDesc,
-                                               filter_grad_ptr,
-                                               nullptr);
+  bwdFilterAlgo = selectConvolutionBackwardFilterAlgorithm(
+      handle.dnn,
+      inputTensor,
+      static_cast<void const *>(input.get_float_ptr()),
+      outputTensor,
+      output.get_float_ptr(),
+      convDesc,
+      handle.workSpace,
+      handle.workSpaceSize,
+      filterDesc,
+      filter_grad_ptr,
+      nullptr);
 
   // select backward data algorithm
-  bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(handle.dnn,
-                                                       filterDesc,
-                                                       filter_ptr,
-                                                       outputTensor,
-                                                       output.get_float_ptr(),
-                                                       convDesc,
-                                                       handle.workSpace,
-                                                       handle.workSpaceSize,
-                                                       inputTensor,
-                                                       input.get_float_ptr(),
-                                                       nullptr);
+  bwdDataAlgo = selectConvolutionBackwardDataAlgorithm(
+      handle.dnn,
+      filterDesc,
+      filter_ptr,
+      outputTensor,
+      output.get_float_ptr(),
+      convDesc,
+      handle.workSpace,
+      handle.workSpaceSize,
+      inputTensor,
+      static_cast<void *>(input.get_float_ptr()),
+      nullptr);
   if (activation.has_value()) {
     checkCUDNN(cudnnSetActivationDescriptor(
         actiDesc, CUDNN_ACTIVATION_RELU, CUDNN_PROPAGATE_NAN, 0.0));
@@ -265,7 +266,7 @@ Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
   return per_device_state;
 }
 
-void forward_kernel(cudaStream_t stream,
+void forward_kernel(ffStream_t stream,
                     Conv2DPerDeviceState const &m,
                     float const *input_ptr,
                     float *output_ptr,
@@ -310,7 +311,7 @@ void forward_kernel(cudaStream_t stream,
   }
 }
 
-void backward_kernel(cudaStream_t stream,
+void backward_kernel(ffStream_t stream,
                      Conv2DPerDeviceState const &m,
                      float const *input_ptr,
                      float *input_grad_ptr,

@@ -6,13 +6,14 @@ header_extension = ".h"
 build_targets = [
   "utils",
   "op-attrs",
-  # "kernels",
+  "kernels",
   "pcg",
   "substitutions",
   # "compiler",
-  # "substitution-generator",
-  # "local-execution",
+  "substitution-generator",
+  "local-execution", 
 ]
+
 test_targets = [
   "utils-tests",
   "op-attrs-tests",

@@ -2,6 +2,7 @@
 #define _FLEXFLOW_OPS_KERNELS_TRANSPOSE_KERNELS_H
 
 #include "device.h"
+#include "kernels/accessor.h"
 #include <vector>
 
 namespace FlexFlow {

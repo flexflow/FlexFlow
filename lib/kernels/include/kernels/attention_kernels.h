@@ -3,6 +3,7 @@
 
 #include "device.h"
 #include "kernels/allocation.h"
+#include "kernels/device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/ops/attention.h"
 #include <memory>
