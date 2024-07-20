@@ -1,6 +1,5 @@
 #include "substitutions/unlabelled/pattern_matching.h"
 #include "substitutions/unlabelled/input_pattern_edge.h"
-#include "substitutions/unlabelled/match_split.h"
 #include "substitutions/unlabelled/pattern_edge.dtg.h"
 #include "substitutions/unlabelled/pattern_node_output.h"
 #include "substitutions/unlabelled/pattern_split.h"

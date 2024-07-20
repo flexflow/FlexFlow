@@ -14,8 +14,6 @@ size_t num_nodes(UnlabelledGraphPattern const &);
 bool is_singleton_pattern(UnlabelledGraphPattern const &);
 std::unordered_set<PatternNode> get_nodes(UnlabelledGraphPattern const &);
 std::unordered_set<PatternValue> get_values(UnlabelledGraphPattern const &);
-// std::unordered_set<PatternValueUse> get_value_uses(UnlabelledGraphPattern
-// const &, PatternValue const &);
 std::vector<PatternNode>
     get_topological_ordering(UnlabelledGraphPattern const &);
 

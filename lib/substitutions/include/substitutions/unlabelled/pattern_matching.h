@@ -4,7 +4,6 @@
 #include "substitutions/unlabelled/match_additional_criterion.dtg.h"
 #include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
-#include "utils/graph.h"
 #include "utils/graph/open_dataflow_graph/algorithms/open_dataflow_subgraph_result.dtg.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h"
 
