@@ -182,33 +182,45 @@ void RequestManager::register_tokenizer(ModelType type,
   this->model_type = type;
   this->bos_token_id = bos_token_id;
   this->eos_token_id = eos_token_id;
-  std::string tokenizer_folder =
-      (!path.empty() && path.back() != '/') ? path + '/' : path;
+  std::filesystem::path tokenizer_folder(path);
+
   if (model_type == ModelType::LLAMA) {
-    bool path_to_file = !path.empty() &&
-                        (path.size() >= strlen("tokenizer.model")) &&
-                        path.find("tokenizer.model") ==
-                            (path.size() - strlen("tokenizer.model"));
-    std::string tokenizer_filepath =
-        path_to_file ? path : tokenizer_folder + "tokenizer.model";
-    this->tokenizer_ =
-        Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(tokenizer_filepath));
+    std::filesystem::path tokenizer_model_path;
+    if (std::filesystem::is_directory(tokenizer_folder)) {
+      tokenizer_model_path =
+          std::filesystem::path(tokenizer_folder) / "tokenizer.model";
+    } else {
+      tokenizer_model_path = tokenizer_folder;
+    }
+    if (std::filesystem::exists(tokenizer_model_path)) {
+      // load from tokenizer.model
+      this->tokenizer_ = Tokenizer::FromBlobSentencePiece(
+          LoadBytesFromFile(tokenizer_model_path.string()));
+    } else {
+      // load from tokenizer.json
+      std::filesystem::path tokenizer_json_path =
+          tokenizer_folder / "tokenizer.json";
+      if (!std::filesystem::exists(tokenizer_json_path)) {
+        std::cerr << "Failed to open file: " << tokenizer_json_path
+                  << std::endl;
+        assert(false);
+      }
+      this->tokenizer_ = Tokenizer::FromBlobJSON(
+          LoadBytesFromFile(tokenizer_json_path.string()));
+    }
   } else if (model_type == ModelType::OPT) {
-    std::string vocab_file = tokenizer_folder + "vocab.json";
-    std::string merges_file = tokenizer_folder + "merges.txt";
-    std::string added_tokens_file =
-        tokenizer_folder + "special_tokens_map.json";
-    std::filesystem::path path1(vocab_file);
-    std::filesystem::path path2(merges_file);
-    std::filesystem::path path3(added_tokens_file);
-    assert(std::filesystem::exists(path1) &&
+    std::filesystem::path vocab_file = tokenizer_folder / "vocab.json";
+    std::filesystem::path merges_file = tokenizer_folder / "merges.txt";
+    std::filesystem::path added_tokens_file =
+        tokenizer_folder / "special_tokens_map.json";
+    assert(std::filesystem::exists(vocab_file) &&
            "Vocab file vocab.json does not exist at the specified path");
-    assert(std::filesystem::exists(path2) &&
+    assert(std::filesystem::exists(merges_file) &&
            "Merge file merges.txt does not exist at the specified path");
     // opt_tokenizer = new OptTokenizer(vocab_file, merges_file);
-    std::string vocab = LoadBytesFromFile(path1.string());
-    std::string merges = LoadBytesFromFile(path2.string());
-    std::string added_tokens = LoadBytesFromFile(path3.string());
+    std::string vocab = LoadBytesFromFile(vocab_file.string());
+    std::string merges = LoadBytesFromFile(merges_file.string());
+    std::string added_tokens = LoadBytesFromFile(added_tokens_file.string());
 
     this->tokenizer_ =
         Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
