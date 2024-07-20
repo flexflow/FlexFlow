@@ -671,6 +671,17 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                        << (profile_info.first_token_time -
                            profile_info.registration_time)
                        << ")\n";
+            if (request.benchmarking_tokens <= 0) {
+              outputFile << "token IDs: ";
+              for (int i = 0; i < request.tokens.size(); i++) {
+                outputFile << request.tokens[i];
+                if (i < request.tokens.size() - 1) {
+                  outputFile << ",";
+                }
+              }
+              outputFile << std::endl;
+              outputFile << output;
+            }
             outputFile.close();
           } else {
             std::cout << "Unable to open the output file: " << output_filepath
@@ -1124,16 +1135,16 @@ BeamSearchBatchConfig
             //            << std::endl;
             // outputFile << "num decoding steps: "
             //            << profile_info.llm_decoding_steps << std::endl;
-            // outputFile << "token IDs: ";
-            // for (int i = 0; i < request.tokens.size(); i++) {
-            //   outputFile << request.tokens[i];
-            //   if (i < request.tokens.size() - 1) {
-            //     outputFile << ",";
-            //   }
-            // }
-            // outputFile << std::endl;
-            // outputFile << output;
-            // outputFile << std::endl;
+            outputFile << "token IDs: ";
+            for (int i = 0; i < request.tokens.size(); i++) {
+              outputFile << request.tokens[i];
+              if (i < request.tokens.size() - 1) {
+                outputFile << ",";
+              }
+            }
+            outputFile << std::endl;
+            outputFile << output;
+            outputFile << std::endl;
             outputFile.close();
           } else {
             std::cout << "Unable to open the output file: " << output_filepath
