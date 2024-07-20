@@ -105,7 +105,9 @@ def main():
     lora_finetuning_config = None
     if len(configs.prompt) > 0:
         lora_inference_config = ff.LoraLinearConfig(
-            llm.cache_path, configs.inference_peft_model_id
+            llm.cache_path, 
+            configs.inference_peft_model_id,
+            base_model_name_or_path=configs.base_model
         )
         llm.add_peft(lora_inference_config)
     if len(configs.finetuning_dataset) > 0:
@@ -123,6 +125,7 @@ def main():
             llm.cache_path,
             configs.inference_peft_model_id,
             trainable=True,
+            base_model_name_or_path=configs.base_model,
             optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
             optimizer_kwargs={
                 "learning_rate": 1.0,
