@@ -206,7 +206,7 @@ def main():
     demo.initialize_flexflow()
     demo.start_server()
     demo.generate_finetuning()
-    #demo.generate_inference()
+    demo.generate_inference()
     demo.stop_server()
 
 if __name__ == "__main__":
