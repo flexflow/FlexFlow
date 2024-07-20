@@ -85,10 +85,10 @@ OpTaskSignature get_combine_bwd_signature() {
 }
 
 TaskImplFunction get_combine_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{forward_task_impl};
 }
 TaskImplFunction get_combine_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{backward_task_impl};
 }
 
 }; // namespace FlexFlow

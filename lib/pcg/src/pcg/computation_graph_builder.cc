@@ -512,20 +512,13 @@ tensor_guid_t ComputationGraphBuilder::multihead_attention(
     int kdim,
     int vdim,
     float dropout,
-    bool bias,
     bool add_bias_kv,
     bool add_zero_attn,
     std::optional<InitializerAttrs> initializer,
     std::optional<std::string> const &maybe_name) {
 
-  MultiHeadAttentionAttrs attrs = MultiHeadAttentionAttrs{embed_dim,
-                                                          num_heads,
-                                                          kdim,
-                                                          vdim,
-                                                          dropout,
-                                                          bias,
-                                                          add_bias_kv,
-                                                          add_zero_attn};
+  MultiHeadAttentionAttrs attrs = MultiHeadAttentionAttrs{
+      embed_dim, num_heads, kdim, vdim, dropout, add_bias_kv, add_zero_attn};
 
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));

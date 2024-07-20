@@ -18,7 +18,6 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*kdim=*/embed_dim,
         /*vdim=*/embed_dim,
         /*dropout=*/0.0,
-        /*bias=*/true,
         /*add_bias_kv=*/false,
         /*add_zero_attn=*/false,
     };

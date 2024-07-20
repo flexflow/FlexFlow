@@ -15,6 +15,12 @@ using LegionOrdered = DimOrdered<legion_dim_t, T>;
 
 using LegionTensorDims = LegionOrdered<size_t>;
 
+template <typename T>
+FFOrdered<T>
+    ff_ordered_from_legion_ordered(LegionOrdered<T> const &legion_ordered) {
+  return FFOrdered<T>(legion_ordered.rbegin(), legion_ordered.rend());
+}
+
 } // namespace FlexFlow
 
 #endif

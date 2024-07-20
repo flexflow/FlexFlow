@@ -13,7 +13,9 @@ struct DeviceSpecific {
 
   template <typename... Args>
   static DeviceSpecific<T> create(T device_specific, Args &&...args) {
-    return DeviceSpecific<T>(device_specific, std::forward<Args>(args)...);
+    size_t device_idx = 0;
+    return DeviceSpecific<T>(
+        device_specific, device_idx, std::forward<Args>(args)...);
   }
 
   bool operator==(DeviceSpecific const &other) const {
@@ -37,8 +39,7 @@ struct DeviceSpecific {
   // TODO: can modify ptr
 
 private:
-  DeviceSpecific(T ptr, size_t device_idx = 0)
-      : ptr(ptr), device_idx(device_idx) {}
+  DeviceSpecific(T ptr, size_t device_idx) : ptr(ptr), device_idx(device_idx) {}
 
   T ptr;
   size_t device_idx;

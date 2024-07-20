@@ -18,6 +18,11 @@ LocalTrainingBacking::LocalTrainingBacking(
     this->local_slots_backing.allocate_tensors(
         node, computation_graph, this->allocator);
 
+    // initialize map
+    this->task_registry.init_task_ids.insert({node, std::nullopt});
+    this->task_registry.forward_task_ids.insert({node, std::nullopt});
+    this->task_registry.backward_task_ids.insert({node, std::nullopt});
+
     if (!(attrs.has<WeightAttrs>() || attrs.has<InputAttrs>() ||
           attrs.has<NoopAttrs>())) {
       // register tasks
@@ -34,8 +39,8 @@ DeviceSpecific<DeviceStates>
                                               TaskArgumentAccessor const &acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn = std::get<std::function<DeviceSpecific<DeviceStates>(
-      TaskArgumentAccessor const &)>>(task_sig_impl.impl_function);
+  auto fn = task_sig_impl.impl_function.get<std::function<
+      DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>>();
   return fn(acc);
 }
 
@@ -44,16 +49,15 @@ std::optional<float>
                                          TaskArgumentAccessor acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn = std::get<
-      std::function<std::optional<float>(TaskArgumentAccessor const &)>>(
-      task_sig_impl.impl_function);
+  auto fn = task_sig_impl.impl_function.get<
+      std::function<std::optional<float>(TaskArgumentAccessor const &)>>();
   return fn(acc);
 }
 
 void LocalTrainingBacking::execute_init() {
   for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
-    if (contains_key(this->task_registry.init_task_ids, operator_node)) {
+    if (this->task_registry.init_task_ids.at(operator_node).has_value()) {
       ComputationGraphOpAttrs attrs =
           get_layer_attrs(this->computation_graph, operator_node).attrs;
 
@@ -72,7 +76,7 @@ PerLayerElapsedTime LocalTrainingBacking::execute_forward() {
   PerLayerElapsedTime per_op_elapsed_time;
   for (layer_guid_t const &operator_node :
        topological_ordering(this->computation_graph)) {
-    if (contains_key(this->task_registry.forward_task_ids, operator_node)) {
+    if (this->task_registry.forward_task_ids.at(operator_node).has_value()) {
       ComputationGraphOpAttrs attrs =
           get_layer_attrs(this->computation_graph, operator_node).attrs;
 
@@ -91,7 +95,7 @@ PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
   PerLayerElapsedTime per_op_elapsed_time;
   for (layer_guid_t const &operator_node :
        reversed(topological_ordering(this->computation_graph))) {
-    if (contains_key(this->task_registry.backward_task_ids, operator_node)) {
+    if (this->task_registry.backward_task_ids.at(operator_node).has_value()) {
       ComputationGraphOpAttrs attrs =
           get_layer_attrs(this->computation_graph, operator_node).attrs;
 

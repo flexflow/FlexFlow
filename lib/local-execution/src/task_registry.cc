@@ -10,17 +10,17 @@ void TaskRegistry::register_task(task_id_t const &task_id,
     case OpTaskType::INIT:
       assert(
           is_invocation_valid(task_signature_impl.task_signature, init(attrs)));
-      this->init_task_ids.insert({op_id, task_id});
+      this->init_task_ids[op_id] = task_id;
       break;
     case OpTaskType::FWD:
       assert(is_invocation_valid(task_signature_impl.task_signature,
                                  forward(attrs)));
-      this->forward_task_ids.insert({op_id, task_id});
+      this->forward_task_ids[op_id] = task_id;
       break;
     case OpTaskType::BWD:
       assert(is_invocation_valid(task_signature_impl.task_signature,
                                  backward(attrs)));
-      this->backward_task_ids.insert({op_id, task_id});
+      this->backward_task_ids[op_id] = task_id;
       break;
     default:
       throw mk_runtime_error("Invalid OpTaskType");
@@ -36,9 +36,9 @@ bool TaskRegistry::operator!=(TaskRegistry const &other) const {
   return this->tie() != other.tie();
 }
 
-std::tuple<std::unordered_map<layer_guid_t, task_id_t> const &,
-           std::unordered_map<layer_guid_t, task_id_t> const &,
-           std::unordered_map<layer_guid_t, task_id_t> const &,
+std::tuple<std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &,
+           std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &,
+           std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &,
            std::unordered_map<task_id_t, TaskSignatureAndImpl> const &>
     TaskRegistry::tie() const {
   return std::tie(this->init_task_ids,

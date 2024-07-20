@@ -46,13 +46,18 @@ Allocator LocalTaskArgumentAccessor::get_allocator() const {
   return this->allocator;
 }
 
-bool are_slots_backings_equivalent_up_to_allocation_addresses(
+bool are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
     TensorSlotsBacking const &slots_1, TensorSlotsBacking const &slots_2) {
   if (slots_1.size() != slots_2.size()) {
     return false;
   }
 
-  auto check_tensors = [](auto acc1_variant, auto acc2_variant) {
+  using TensorAccessorVariant =
+      std::variant<FlexFlow::GenericTensorAccessorW,
+                   std::vector<FlexFlow::GenericTensorAccessorW>>;
+
+  auto tensors_are_equivalent = [](TensorAccessorVariant acc1_variant,
+                                   TensorAccessorVariant acc2_variant) {
     GenericTensorAccessorW acc1 =
         std::get<GenericTensorAccessorW>(acc1_variant);
     GenericTensorAccessorW acc2 =
@@ -60,7 +65,8 @@ bool are_slots_backings_equivalent_up_to_allocation_addresses(
     return is_shape_and_dtype_equal(acc1, acc2);
   };
 
-  auto check_variadic_tensors = [](auto acc1_variant, auto acc2_variant) {
+  auto variadic_tensor_are_equivalent = [](TensorAccessorVariant acc1_variant,
+                                           TensorAccessorVariant acc2_variant) {
     std::vector<GenericTensorAccessorW> acc1 =
         std::get<std::vector<GenericTensorAccessorW>>(acc1_variant);
     std::vector<GenericTensorAccessorW> acc2 =
@@ -88,12 +94,13 @@ bool are_slots_backings_equivalent_up_to_allocation_addresses(
       return false;
     }
     if (std::holds_alternative<GenericTensorAccessorW>(accessor2_variant)) {
-      if (!check_tensors(accessor1_variant, accessor2_variant)) {
+      if (!tensors_are_equivalent(accessor1_variant, accessor2_variant)) {
         return false;
       }
     } else if (std::holds_alternative<std::vector<GenericTensorAccessorW>>(
                    accessor2_variant)) {
-      if (!check_variadic_tensors(accessor1_variant, accessor2_variant)) {
+      if (!variadic_tensor_are_equivalent(accessor1_variant,
+                                          accessor2_variant)) {
         return false;
       }
     } else {

@@ -276,7 +276,6 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
       /*kdim=*/kdim,
       /*vdim=*/vdim,
       /*dropout=*/dropout,
-      /*bias=*/bias,
       /*add_bias_kv=*/add_bias_kv,
       /*add_zero_attn=*/add_zero_attn,
   };

@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "TaskImplFunction"
+features = []
+
+includes = [
+  "local-execution/device_specific.h",
+  "local-execution/device_states.h",
+  "local-execution/task_argument_accessor.h"
+]
+
+[[values]]
+type = "std::function<::FlexFlow::DeviceSpecific<::FlexFlow::DeviceStates>(::FlexFlow::TaskArgumentAccessor const &)>"
+key = "init_task_impl_function"
+
+[[values]]
+type = "std::function<std::optional<float>(::FlexFlow::TaskArgumentAccessor const &)>"
+key = "fwd_bwd_task_impl_function"

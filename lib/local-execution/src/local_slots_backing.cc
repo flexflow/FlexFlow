@@ -135,7 +135,7 @@ ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
     return ConcreteArgSpec::create(per_device_op_states.at(op_guid));
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {
     ParallelTensorShapeRefType index_op_arg_ref =
-        std::get<ParallelTensorShapeRefType>(op_arg_ref_spec.get_ref_type());
+        op_arg_ref_spec.get_ref_type().get<ParallelTensorShapeRefType>();
 
     assert(contains_key(this->input_tensor_slots, op_guid));
     std::vector<tensor_guid_t> input_tensor_guids =

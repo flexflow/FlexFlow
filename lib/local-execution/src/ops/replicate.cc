@@ -75,10 +75,10 @@ static std::optional<float>
 }
 
 TaskImplFunction get_replicate_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{forward_task_impl};
 }
 TaskImplFunction get_replicate_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{backward_task_impl};
 }
 
 OpTaskSignature get_replicate_fwd_signature() {

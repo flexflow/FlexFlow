@@ -221,7 +221,6 @@ public:
       int kdim = 0,
       int vdim = 0,
       float dropout = 0.0f,
-      bool bias = true,
       bool add_bias_kv = false,
       bool add_zero_attn = false,
       std::optional<InitializerAttrs> initializer = std::nullopt,

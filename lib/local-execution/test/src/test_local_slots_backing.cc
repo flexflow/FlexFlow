@@ -7,19 +7,6 @@
 
 namespace FlexFlow {
 
-layer_guid_t
-    get_only_attention_layer_guid(ComputationGraph const &computation_graph) {
-  for (layer_guid_t const &layer_guid :
-       topological_ordering(computation_graph)) {
-    ComputationGraphOpAttrs attrs =
-        get_layer_attrs(computation_graph, layer_guid).attrs;
-    if (attrs.has<MultiHeadAttentionAttrs>()) {
-      return layer_guid;
-    }
-  }
-  throw mk_runtime_error("Attention operator does not exist in graph");
-}
-
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Local Slots Backing -- Attention Op") {
     // allocate input memory
@@ -50,6 +37,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         cg_builder.create_tensor(input_tensor_shape, CreateGrad::YES);
     tensor_guid_t value_guid =
         cg_builder.create_tensor(input_tensor_shape, CreateGrad::YES);
+
+    std::string layer_name = "attn1";
     tensor_guid_t output_guid =
         cg_builder.multihead_attention(query_guid,
                                        key_guid,
@@ -57,11 +46,15 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        embed_dim,
                                        num_heads,
                                        /*kdim=*/embed_dim,
-                                       /*vdim=*/embed_dim);
+                                       /*vdim=*/embed_dim,
+                                       /*dropout=*/0.0f,
+                                       /*add_bias_kv=*/false,
+                                       /*add_zero_attn=*/false,
+                                       /*initializer=*/std::nullopt,
+                                       /*maybe_name=*/layer_name);
 
-    // TODO: @lockshaw replace with named layers
     layer_guid_t layer_guid =
-        get_only_attention_layer_guid(cg_builder.computation_graph);
+        get_layer_by_name(cg_builder.computation_graph, layer_name);
 
     TensorBackingMap tensor_backing_map = {
         {query_guid, query}, {key_guid, key}, {value_guid, value}};
@@ -186,8 +179,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       {{OUTPUT, IsGrad::NO}, output},
                                       {{QUERY, IsGrad::YES}, query}};
 
-        CHECK(are_slots_backings_equivalent_up_to_allocation_addresses(correct,
-                                                                       result));
+        CHECK(are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
+            correct, result));
       }
       SUBCASE("Arg Slots Backing") {
         ArgSlotsBacking result =

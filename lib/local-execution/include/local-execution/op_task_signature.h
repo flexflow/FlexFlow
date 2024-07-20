@@ -43,6 +43,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
 struct OpTaskSignature {
   OpTaskSignature() = delete;
   explicit OpTaskSignature(OpTaskType);
+  OpTaskSignature(OpTaskSignature const &other);
 
   OpTaskType get_task_type() const {
     return this->type;
@@ -63,7 +64,6 @@ struct OpTaskSignature {
   void add_optional_weight_slot(slot_id, SlotType slot_type = SlotType::TENSOR);
 
   void add_from_slot_spec(OpTensorSlotSpec const &spec);
-  void add_grad_slot_from_slot_spec(OpTensorSlotSpec const &spec);
 
   template <typename T>
   void add_arg_slot(slot_id name) {
@@ -86,7 +86,6 @@ struct OpTaskSignature {
   std::unordered_set<OpTensorSlotSpec> get_tensor_slots() const;
   void set_arg_types(std::unordered_map<slot_id, std::type_index> const &);
   std::unordered_map<slot_id, std::type_index> get_arg_types() const;
-  void infer_from_forward(OpTaskSignature const &);
 
   OpTaskType type;
   std::optional<std::type_index> return_value;

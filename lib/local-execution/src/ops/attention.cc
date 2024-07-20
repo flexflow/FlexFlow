@@ -172,13 +172,9 @@ static std::optional<float>
   auto key_grad = acc.get_tensor_grad<Permissions::RW>(KEY);
   auto value_grad = acc.get_tensor_grad<Permissions::RW>(VALUE);
 
-  auto device_specific_per_device_state =
-      acc.get_argument<DeviceSpecific<DeviceStates>>(PER_DEVICE_STATE);
-
-  auto per_device_state = device_specific_per_device_state.get(0);
-
   MHAPerDeviceState mha_per_device_state =
-      std::get<MHAPerDeviceState>(per_device_state);
+      acc.get_argument_from_device_specific<MHAPerDeviceState>(
+          PER_DEVICE_STATE);
   ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
   float *key_grad_ptr =
@@ -209,13 +205,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_attention_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{init_task_impl};
 }
 TaskImplFunction get_attention_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{forward_task_impl};
 }
 TaskImplFunction get_attention_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{backward_task_impl};
 }
 
 OpTaskSignature get_attention_init_signature() {

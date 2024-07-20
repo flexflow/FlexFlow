@@ -73,9 +73,8 @@ size_t get_volume(ArrayShape const &shape) {
 }
 
 TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
-  return TensorShape{
-      TensorDims{FFOrdered<size_t>(shape.dims.rbegin(), shape.dims.rend())},
-      dtype};
+  return TensorShape{TensorDims{ff_ordered_from_legion_ordered(shape.dims)},
+                     dtype};
 }
 
 } // namespace FlexFlow

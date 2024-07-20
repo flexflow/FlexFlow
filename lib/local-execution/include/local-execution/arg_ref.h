@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_ARG_REF_H
 
 #include "kernels/ff_handle.h"
-#include "local-execution/profiling.h"
 // #include "local-execution/serialization.h
 #include "utils/type_index.h"
 #include "utils/visitable.h"

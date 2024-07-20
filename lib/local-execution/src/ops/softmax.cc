@@ -107,13 +107,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_softmax_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{init_task_impl};
 }
 TaskImplFunction get_softmax_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{forward_task_impl};
 }
 TaskImplFunction get_softmax_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{backward_task_impl};
 }
 
 OpTaskSignature get_softmax_init_signature() {

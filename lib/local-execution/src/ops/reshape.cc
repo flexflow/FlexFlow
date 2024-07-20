@@ -91,13 +91,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_reshape_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{init_task_impl};
 }
 TaskImplFunction get_reshape_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{forward_task_impl};
 }
 TaskImplFunction get_reshape_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{backward_task_impl};
 }
 
 OpTaskSignature get_reshape_init_signature() {
