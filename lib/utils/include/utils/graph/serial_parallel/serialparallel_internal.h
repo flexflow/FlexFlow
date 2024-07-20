@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_SERIALPARALLEL_INTERNAL_H
 #define _FLEXFLOW_UTILS_GRAPH_SERIALPARALLEL_INTERNAL_H
 
-#include "./sink_settings.dtg.h"
-#include "./source_settings.dtg.h"
+#include "utils/graph/serial_parallel/sink_settings.dtg.h"
+#include "utils/graph/serial_parallel/source_settings.dtg.h"
 #include "utils/graph/digraph/digraph_view.h"
 #include "utils/graph/serial_parallel/intermediate_sp_decomposition_tree.dtg.h"
 #include "utils/graph/serial_parallel/serialparallel.h"

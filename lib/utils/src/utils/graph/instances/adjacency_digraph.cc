@@ -4,16 +4,23 @@
 
 namespace FlexFlow {
 
+AdjacencyDiGraph::AdjacencyDiGraph() {}
+
+AdjacencyDiGraph::AdjacencyDiGraph(NodeSource const &node_source, std::unordered_map<Node, std::unordered_set<Node>> const &adjacency)
+  : node_source(node_source), adjacency(adjacency) {}
+
+AdjacencyDiGraph *AdjacencyDiGraph::clone() const {
+  return new AdjacencyDiGraph(this->node_source, this->adjacency);
+}
+
 Node AdjacencyDiGraph::add_node() {
-  Node node{this->next_node_idx};
-  adjacency[node];
-  this->next_node_idx++;
-  return node;
+  Node new_node = this->node_source.new_node();
+  this->adjacency[new_node];
+  return new_node;
 }
 
 void AdjacencyDiGraph::add_node_unsafe(Node const &node) {
-  adjacency[node];
-  this->next_node_idx = std::max(this->next_node_idx, node.raw_uid + 1);
+  this->adjacency[node];
 }
 
 void AdjacencyDiGraph::remove_node_unsafe(Node const &n) {
@@ -52,16 +59,13 @@ std::unordered_set<Node>
   return apply_query(query.nodes, keys(this->adjacency));
 }
 
-bool AdjacencyDiGraph::operator==(AdjacencyDiGraph const &other) const {
-  bool result = this->adjacency == other.adjacency;
-  if (result) {
-    assert(this->next_node_idx == other.next_node_idx);
-  }
-  return result;
-}
-
-bool AdjacencyDiGraph::operator!=(AdjacencyDiGraph const &other) const {
-  return (this->adjacency != other.adjacency);
-}
+// bool AdjacencyDiGraph::operator==(AdjacencyDiGraph const &other) const {
+//   bool result = this->adjacency == other.adjacency;
+//   return result;
+// }
+//
+// bool AdjacencyDiGraph::operator!=(AdjacencyDiGraph const &other) const {
+//   return (this->adjacency != other.adjacency);
+// }
 
 } // namespace FlexFlow

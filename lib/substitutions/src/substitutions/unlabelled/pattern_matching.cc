@@ -25,44 +25,6 @@ OpenDataflowSubgraphResult
   return get_subgraph(g, matched_nodes);
 }
 
-// bool are_dataflow_graphs_equal_under(DataflowGraphView const &l,
-//                                      DataflowGraphView const &r,
-//                                      bidict<Node, Node> const &matching) {
-//   std::unordered_set<Node> l_nodes = get_nodes(l);
-//
-//   auto l_from_r = [&](Node const &r_node) {
-//     return matching.at_r(r_node);
-//   };
-//
-//   std::unordered_set<Node> l_from_r_nodes = transform(get_nodes(r),
-//   l_from_r);
-//
-//   if (l_nodes != l_from_r_nodes) {
-//     return false;
-//   }
-//
-//   std::unordered_set<DataflowEdge> l_edges = get_edges(l);
-//   std::unordered_set<DataflowEdge> l_from_r_edges = transform(get_edges(r),
-//                            [&](DataflowEdge const &r_edge) {
-//                              return DataflowEdge{
-//                                DataflowOutput{
-//                                  l_from_r(r_edge.src.node),
-//                                  r_edge.src.idx,
-//                                },
-//                                DataflowInput{
-//                                  l_from_r(r_edge.dst.node),
-//                                  r_edge.dst.idx,
-//                                }
-//                              };
-//                            });
-//
-//   if (l_edges != l_from_r_edges) {
-//     return false;
-//   }
-//
-//   return true;
-// }
-
 struct SubgraphConcreteFromPattern {
   SubgraphConcreteFromPattern(
       UnlabelledDataflowGraphPatternMatch const &match,

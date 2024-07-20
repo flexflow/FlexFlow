@@ -1,7 +1,7 @@
 #include "utils/graph/serial_parallel/serialparallel.h"
-#include "./serialparallel_internal.h"
-#include "./sink_settings.dtg.h"
-#include "./source_settings.dtg.h"
+#include "utils/graph/serial_parallel/serialparallel_internal.h"
+#include "utils/graph/serial_parallel/sink_settings.dtg.h"
+#include "utils/graph/serial_parallel/source_settings.dtg.h"
 #include "utils/containers.h"
 #include "utils/graph/algorithms.h"
 

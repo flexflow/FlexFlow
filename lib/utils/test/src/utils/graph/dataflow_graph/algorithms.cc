@@ -2,10 +2,13 @@
 #include "test/utils/doctest.h"
 #include "utils/fmt/unordered_set.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/instances/unordered_set_dataflow_graph.h"
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_inputs/get_outputs") {
-    DataflowGraph g;
+    DataflowGraph g = DataflowGraph::create<UnorderedSetDataflowGraph>();
 
     NodeAddedResult n1_added = g.add_node({}, 1);
     Node n1 = n1_added.node;
@@ -37,7 +40,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("topological_ordering") {
-    DataflowGraph g;
+    DataflowGraph g = DataflowGraph::create<UnorderedSetDataflowGraph>();
 
     NodeAddedResult n1_added = g.add_node({}, 1);
     Node n1 = n1_added.node;

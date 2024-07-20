@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_INSTANCES_ADJACENCY_DIGRAPH_H
 
 #include "utils/graph/digraph/digraph.h"
+#include "utils/graph/node/node_source.h"
 #include <unordered_map>
 #include <unordered_set>
 
@@ -9,7 +10,8 @@ namespace FlexFlow {
 
 class AdjacencyDiGraph : public IDiGraph {
 public:
-  AdjacencyDiGraph() = default;
+  AdjacencyDiGraph();
+
   Node add_node() override;
   void add_node_unsafe(Node const &) override;
   void remove_node_unsafe(Node const &) override;
@@ -19,24 +21,19 @@ public:
       query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
-  bool operator==(AdjacencyDiGraph const &) const;
-  bool operator!=(AdjacencyDiGraph const &) const;
+  // bool operator==(AdjacencyDiGraph const &) const;
+  // bool operator!=(AdjacencyDiGraph const & const;
 
-  AdjacencyDiGraph *clone() const override {
-    return new AdjacencyDiGraph(this->next_node_idx, this->adjacency);
-  }
-
+  AdjacencyDiGraph *clone() const override;
 private:
-  using ContentsType = std::unordered_map<Node, std::unordered_set<Node>>;
 
-  AdjacencyDiGraph(std::size_t next_node_idx, ContentsType adjacency)
-      : next_node_idx(next_node_idx), adjacency(adjacency) {}
-  std::size_t next_node_idx = 0;
-  ContentsType adjacency;
+  AdjacencyDiGraph(NodeSource const &node_source, 
+                   std::unordered_map<Node, std::unordered_set<Node>> const &adjacency);
+
+  NodeSource node_source;
+  std::unordered_map<Node, std::unordered_set<Node>> adjacency;
 };
-
-static_assert(is_rc_copy_virtual_compliant<AdjacencyDiGraph>::value,
-              RC_COPY_VIRTUAL_MSG);
+CHECK_RC_COPY_VIRTUAL_COMPLIANT(AdjacencyDiGraph);
 
 } // namespace FlexFlow
 

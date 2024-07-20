@@ -8,6 +8,7 @@ ff_add_test_executable(
     src/utils/containers/*.cc
     src/utils/bidict/*.cc
     src/utils/fmt/*.cc
+    src/utils/graph/*.cc
   PRIVATE_INCLUDE
     src/
   DEPS

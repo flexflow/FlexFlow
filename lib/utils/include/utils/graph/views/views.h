@@ -56,16 +56,6 @@ private:
   std::unordered_set<Node> subgraph_nodes;
 };
 
-struct NodeSource {
-public:
-  NodeSource() = default;
-
-  Node fresh_node();
-
-private:
-  std::size_t next_node_idx = 0;
-};
-
 struct JoinedNodeView {
 public:
   JoinedNodeView() = delete;

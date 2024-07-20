@@ -7,7 +7,7 @@
 
 namespace FlexFlow {
 
-struct DataflowGraph : virtual DataflowGraphView {
+struct DataflowGraph : virtual public DataflowGraphView {
 public:
   NodeAddedResult add_node(std::vector<DataflowOutput> const &inputs,
                            int num_outputs);

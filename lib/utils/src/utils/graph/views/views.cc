@@ -100,20 +100,14 @@ DiGraphView view_subgraph(DiGraphView const &g,
   return DiGraphView::create<DiSubgraphView>(g, subgraph_nodes);
 }
 
-Node NodeSource::fresh_node() {
-  Node result(this->next_node_idx);
-  this->next_node_idx++;
-  return result;
-}
-
 JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {
   for (Node const &n : get_nodes(lhs)) {
     this->mapping.equate(JoinNodeKey{n, LRDirection::LEFT},
-                         this->node_source.fresh_node());
+                         this->node_source.new_node());
   }
   for (Node const &n : get_nodes(rhs)) {
     this->mapping.equate(JoinNodeKey{n, LRDirection::RIGHT},
-                         this->node_source.fresh_node());
+                         this->node_source.new_node());
   }
 }
 
