@@ -95,10 +95,11 @@ void LLAMA::create_llama_model(FFModel &ff,
     Tensor mha;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
-        mha = ff.spec_inc_multihead_self_attention(
+        mha = ff.spec_inc_multiquery_self_attention(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
+            llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
@@ -118,10 +119,11 @@ void LLAMA::create_llama_model(FFModel &ff,
         break;
       }
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multihead_self_attention_verify(
+        mha = ff.inc_multiquery_self_attention_verify(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
+            llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
@@ -141,10 +143,11 @@ void LLAMA::create_llama_model(FFModel &ff,
         break;
       }
       case INC_DECODING_MODE: {
-        mha = ff.inc_multihead_self_attention(
+        mha = ff.inc_multiquery_self_attention(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
+            llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
@@ -274,7 +277,7 @@ void LLAMA::create_llama_model(FFModel &ff,
       "",
       weight_file_path,
       llama_config.num_attention_heads,
-      llama_config.num_attention_heads,
+      llama_config.num_key_value_heads,
       llama_config.hidden_size,
       llama_config.hidden_size / llama_config.num_attention_heads,
       ff.config.tensor_parallelism_degree,
