@@ -38,7 +38,9 @@ class FlexFlowDemo(object):
             self.lora_finetuning_config = None
             if len(self.configs.inference_dataset) > 0:
                 self.lora_inference_config = ff.LoraLinearConfig(
-                    self.llm.cache_path, self.configs.inference_peft_model_id
+                    self.llm.cache_path, 
+                    self.configs.inference_peft_model_id,
+                    base_model_name_or_path=self.configs.base_model
                 )
                 self.llm.add_peft(self.lora_inference_config)
             if len(self.configs.finetuning_dataset) > 0:
@@ -46,6 +48,7 @@ class FlexFlowDemo(object):
                     self.llm.cache_path,
                     self.configs.inference_peft_model_id,
                     trainable=True,
+                    base_model_name_or_path=self.configs.base_model,
                     optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
                     optimizer_kwargs={
                         "learning_rate": self.configs.learning_rate,
@@ -67,7 +70,7 @@ class FlexFlowDemo(object):
             self.llm.compile(
                 generation_config,
                 enable_peft_finetuning=enable_peft_finetuning,
-                max_requests_per_batch=1+int(enable_peft_finetuning),
+                max_requests_per_batch=self.configs.max_requests_per_batch+int(enable_peft_finetuning),
                 max_seq_length=self.configs.max_sequence_length,
                 max_tokens_per_batch=self.configs.max_tokens_per_batch,
             )
@@ -141,16 +144,16 @@ class FlexFlowDemo(object):
             reqs += inference_requests
         self.llm.generate(reqs)
 
-if __name__ == "__main__":
+def main():
     configs_dict = {
-        "num_gpus": 1,
-        "memory_per_gpu": 8192,
-        "zero_copy_memory_per_node": 12000,
+        "num_gpus": 4,
+        "memory_per_gpu": 14000,
+        "zero_copy_memory_per_node": 40000,
         "num_cpus": 4,
         "legion_utility_processors": 4,
         "data_parallelism_degree": 1,
         "tensor_parallelism_degree": 1,
-        "pipeline_parallelism_degree": 1,
+        "pipeline_parallelism_degree": 4,
         "offload": False,
         "offload_reserve_space_size": 8 * 1024,  # 8GB
         "use_4bit_quantization": False,
@@ -168,9 +171,9 @@ if __name__ == "__main__":
         "seed": 42,
     }
     model_configs = {
-        "base_model": "JackFram/llama-160m",
-        "inference_peft_model_id": "goliaro/llama-160m-lora",
-        "finetuning_peft_model_id": "goliaro/llama-160m-lora",
+        "base_model": "meta-llama/Meta-Llama-3-8B",
+        "inference_peft_model_id": "goliaro/llama-3-8b-lora",
+        "finetuning_peft_model_id": "goliaro/llama-3-8b-lora",
         "cache_path": os.environ.get("FF_CACHE_PATH", ""),
         "refresh_cache": False,
         "full_precision": True,
@@ -203,6 +206,8 @@ if __name__ == "__main__":
     demo.initialize_flexflow()
     demo.start_server()
     demo.generate_finetuning()
-    demo.generate_inference()
     #demo.generate_inference()
     demo.stop_server()
+
+if __name__ == "__main__":
+    main()
