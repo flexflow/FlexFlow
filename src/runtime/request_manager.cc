@@ -37,7 +37,10 @@ LegionRuntime::Logger::Category log_req_mgr("RequestManager");
 
 std::string LoadBytesFromFile(std::string const &path) {
   std::ifstream fs(path, std::ios::in | std::ios::binary);
-  assert(!fs.fail() && "no such file");
+  if (fs.fail()) {
+    std::cerr << "Failed to open file: " << path << std::endl;
+    assert(false);
+  }
   std::string data;
   fs.seekg(0, std::ios::end);
   size_t size = static_cast<size_t>(fs.tellg());
