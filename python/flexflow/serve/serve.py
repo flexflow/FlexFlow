@@ -444,6 +444,9 @@ class LLM:
         # Download the config from huggingface
         self.download_hf_config()
 
+        # Download the tokenizer from huggingface (if needed) and load them
+        self.download_hf_tokenizer_if_needed()
+
         # Download the weights from huggingface (if needed)
         self.download_hf_weights_if_needed()
 
@@ -475,9 +478,6 @@ class LLM:
         # Register weights file loader
         self.im = InferenceManager()
         self.im.register_model_weights_loader(self.model.ffmodel, self.fileloader)
-
-        # Download the tokenizer from huggingface (if needed) and load them
-        self.download_hf_tokenizer_if_needed()
 
         # Create tokenizer (this must be done after we have downloaded the tokenizer
         bos_token_id = (
