@@ -44,17 +44,33 @@ __global__ void copy_result(cub::KeyValuePair<int, DT> *d_out,
   }
 }
 
+template <typename DT>
+__global__ void compute_sparse_categorical_crossentropy_loss(
+    DT const *logits,
+    BatchConfig::TokenId const *labels,
+    float *loss,
+    int num_tokens,
+    int num_classes) {
+  float const LOG_MIN_VALUE = 0.00000001f;
+  CUDA_KERNEL_LOOP(b, num_tokens) {
+    float my_logit =
+        max((float)logits[b * num_classes + labels[b]], LOG_MIN_VALUE);
+    atomicAdd(loss, -log(my_logit));
+  }
+}
+
 /*static*/
 template <typename DT>
 void ArgMax::forward_kernel(ArgMaxMeta const *m,
-                            DT *input_ptr,
+                            BatchConfig const *bc,
+                            DT const *input_ptr,
                             int *indices_ptr,
                             float *prob_ptr,
                             int *parent,
                             int const length,
                             int const batch_size,
+                            float *loss,
                             cudaStream_t stream) {
-
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
   if (m->beam_search) {
@@ -84,14 +100,64 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                           batch_size,
                           m->beam_search);
   // print_tensor<int>(indices_ptr, 32, "argmax op");
+
+  // compute cross-entropy loss if there is a finetuning request
+  assert(loss != nullptr);
+  BatchConfig::TokenId token_ids[BatchConfig::MAX_NUM_TOKENS];
+  int num_finetuning_requests = 0, num_bwd_tokens = 0;
+  int tokens_previous_requests = 0;
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    // Skip non-PEFT requests
+    if (bc->requestsInfo[i].peft_bwd) {
+      assert(num_finetuning_requests == 0 && num_bwd_tokens == 0);
+      num_bwd_tokens = bc->requestsInfo[i].num_tokens_in_batch - 1;
+      // shift labels by 1 position to the left (ignore first token label)
+      for (int j = 0; j < num_bwd_tokens; j++) {
+        token_ids[j] =
+            bc->tokensInfo[j + tokens_previous_requests + 1].token_id;
+      }
+      num_finetuning_requests += 1;
+    } else {
+      tokens_previous_requests += bc->requestsInfo[i].num_tokens_in_batch;
+    }
+  }
+  assert(num_finetuning_requests <= 1);
+  if (num_bwd_tokens > 0) {
+    checkCUDA(cudaMemcpyAsync(m->handle.workSpace,
+                              token_ids,
+                              sizeof(BatchConfig::TokenId) * num_bwd_tokens,
+                              cudaMemcpyHostToDevice,
+                              stream));
+    // copy loss to d_loss
+    checkCUDA(cudaMemsetAsync(m->d_loss, 0, sizeof(float), stream));
+    compute_sparse_categorical_crossentropy_loss<<<GET_BLOCKS(num_bwd_tokens),
+                                                   min(CUDA_NUM_THREADS,
+                                                       num_bwd_tokens),
+                                                   0,
+                                                   stream>>>(
+        input_ptr,
+        static_cast<BatchConfig::TokenId *>(m->handle.workSpace),
+        m->d_loss,
+        num_bwd_tokens,
+        length);
+    // copy value from d_loss to loss
+    checkCUDA(cudaMemcpyAsync(
+        loss, m->d_loss, sizeof(float), cudaMemcpyDeviceToHost, stream));
+    *loss = *loss / (float)num_bwd_tokens;
+  }
 }
 
 /*static*/
 void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
-                                    GenericTensorAccessorW const &input,
+                                    BatchConfig const *bc,
+                                    GenericTensorAccessorR const &input,
                                     GenericTensorAccessorW const &indices,
                                     GenericTensorAccessorW const &parent,
-                                    int batch_size) {
+                                    int batch_size,
+                                    float *loss) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   cudaEvent_t t_start, t_end;
@@ -104,6 +170,7 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
 
   if (input.data_type == DT_HALF) {
     ArgMax::forward_kernel<half>(m,
+                                 bc,
                                  input.get_half_ptr(),
                                  indices.get_int32_ptr(),
                                  m->probs,
@@ -111,10 +178,12 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                                 : nullptr,
                                  length,
                                  batch_size,
+                                 loss,
                                  stream);
 
   } else if (input.data_type == DT_FLOAT) {
     ArgMax::forward_kernel<float>(m,
+                                  bc,
                                   input.get_float_ptr(),
                                   indices.get_int32_ptr(),
                                   m->probs,
@@ -122,6 +191,7 @@ void ArgMax::forward_kernel_wrapper(ArgMaxMeta const *m,
                                                  : nullptr,
                                   length,
                                   batch_size,
+                                  loss,
                                   stream);
   } else {
     assert(false && "Unsupported data type");
@@ -202,6 +272,10 @@ ArgMaxMeta::ArgMaxMeta(FFHandler handler,
   gpu_mem_allocator.create_legion_instance(reserveInst, temp_storage_bytes);
   d_temp_storage =
       gpu_mem_allocator.allocate_instance_untyped(temp_storage_bytes);
+
+  // allocate space for loss on device
+  gpu_mem_allocator.create_legion_instance(reserveInst, sizeof(float));
+  d_loss = gpu_mem_allocator.allocate_instance<float>(1);
 }
 
 ArgMaxMeta::~ArgMaxMeta(void) {
