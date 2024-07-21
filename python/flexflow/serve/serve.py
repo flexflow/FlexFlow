@@ -285,35 +285,36 @@ class LLM:
 
         def download_peft_weights():
             for ff_peft_config, peft_dict in self.pefts.items():
-                peft_config = peft_dict["peft_config"]
-                peft_type = peft_dict["peft_type"]
-                peft_model_id = ff_peft_config.peft_model_id
+                if not ff_peft_config.init_lora_weights:
+                    peft_config = peft_dict["peft_config"]
+                    peft_type = peft_dict["peft_type"]
+                    peft_model_id = ff_peft_config.peft_model_id
 
-                weights_path = get_weights_path(peft_model_id)
-                refresh_cache_if_needed(peft_model_id)
-                ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
-                    peft_model_id, weights_path
-                )
+                    weights_path = get_weights_path(peft_model_id)
+                    refresh_cache_if_needed(peft_model_id)
+                    ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
+                        peft_model_id, weights_path
+                    )
 
-                if ff_revision != latest_revision:
-                    print(
-                        f"'{peft_model_id}' local model weights need updating! Downloading/converting new weights now..."
-                    )
-                    hf_model = get_hf_llm(peft_model_id)
-                    hf_peft_model = PeftModel.from_pretrained(
-                        hf_model, peft_model_id, config=peft_config
-                    )
-                    # Convert the model to FlexFlow format
-                    convert_peft_model(hf_peft_model, peft_type, weights_path)
-                    # Save new revision hash to file
-                    with open(ff_revision_file, "w+") as f:
-                        f.write(latest_revision)
-                    print(f"Done converting the weights for model {peft_model_id}")
-                    # Deallocate hf model
-                    del hf_peft_model
-                    del hf_model
-                    gc.collect()
-                    torch.cuda.empty_cache()
+                    if ff_revision != latest_revision:
+                        print(
+                            f"'{peft_model_id}' local model weights need updating! Downloading/converting new weights now..."
+                        )
+                        hf_model = get_hf_llm(peft_model_id)
+                        hf_peft_model = PeftModel.from_pretrained(
+                            hf_model, peft_model_id, config=peft_config
+                        )
+                        # Convert the model to FlexFlow format
+                        convert_peft_model(hf_peft_model, peft_type, weights_path)
+                        # Save new revision hash to file
+                        with open(ff_revision_file, "w+") as f:
+                            f.write(latest_revision)
+                        print(f"Done converting the weights for model {peft_model_id}")
+                        # Deallocate hf model
+                        del hf_peft_model
+                        del hf_model
+                        gc.collect()
+                        torch.cuda.empty_cache()
 
         self.weights_path = get_weights_path(self.model_name)
         download_llm_weights()

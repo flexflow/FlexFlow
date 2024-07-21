@@ -48,6 +48,10 @@ class FlexFlowDemo(object):
                     self.llm.cache_path,
                     self.configs.finetuning_peft_model_id,
                     trainable=True,
+                    init_lora_weights=True,
+                    rank=16,
+                    lora_alpha=16.0,
+                    target_modules = ["down_proj"],
                     base_model_name_or_path=self.configs.base_model,
                     optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
                     optimizer_kwargs={
@@ -159,7 +163,7 @@ def main():
     model_configs = {
         "base_model": "meta-llama/Meta-Llama-3-8B",
         "inference_peft_model_id": "goliaro/llama-3-8b-lora",
-        "finetuning_peft_model_id": "goliaro/llama-3-8b-lora",
+        "finetuning_peft_model_id": "flechman/llama-3-8b-lora-dolly",
         "cache_path": os.environ.get("FF_CACHE_PATH", ""),
         "refresh_cache": False,
         "full_precision": True,
