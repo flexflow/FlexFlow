@@ -9,6 +9,9 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/get_first.h"
 #include "utils/containers/are_disjoint.h"
+#include "utils/graph/digraph/algorithms/get_imm_post_dominator.h"
+#include "utils/graph/digraph/algorithms/get_dominators.h"
+#include "utils/graph/digraph/algorithms/is_acyclic.h"
 
 namespace FlexFlow {
 

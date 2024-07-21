@@ -25,18 +25,18 @@ struct formatter<
     CHECK_FMTABLE(V);
 
     std::string result;
-    if constexpr (::FlexFlow::is_sortable_v<std::unordered_map<K, V>>) {
-      std::vector<std::pair<K, V>> items = ::FlexFlow::sorted(m);
-      result = ::FlexFlow::join_strings(
-          items.cbegin(), items.cend(), ", ", [](std::pair<K, V> const &p) {
-            return fmt::to_string(p);
-          });
-    } else {
+    // if constexpr (::FlexFlow::is_sortable_v<std::unordered_map<K, V>>) {
+    //   std::vector<std::pair<K, V>> items = ::FlexFlow::sorted(m);
+    //   result = ::FlexFlow::join_strings(
+    //       items.cbegin(), items.cend(), ", ", [](std::pair<K, V> const &p) {
+    //         return fmt::to_string(p);
+    //       });
+    // } else {
       result =
           ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](std::pair<K, V> const &t) {
             return fmt::to_string(t);
           });
-    }
+    // }
 
     return formatter<std::string>::format("{" + result + "}", ctx);
   }

@@ -4,6 +4,7 @@
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/containers/get_only.h"
+#include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 
 using namespace ::FlexFlow;
 

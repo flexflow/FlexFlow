@@ -16,8 +16,6 @@ std::unordered_map<Node, std::unordered_set<DirectedEdge>>
     get_outgoing_edges(DiGraphView const &, std::unordered_set<Node> const &);
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sinks(DiGraphView const &);
-std::vector<Node> get_topological_ordering(DiGraphView const &);
-std::optional<bool> is_acyclic(DiGraphView const &);
 
 DiGraphView flipped(DiGraphView const &g);
 

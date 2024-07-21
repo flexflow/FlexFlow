@@ -21,6 +21,8 @@
 #include "utils/containers/flatmap.h"
 #include "utils/containers/set_difference.h"
 #include "utils/containers/restrict_keys.h"
+#include "utils/graph/digraph/algorithms/get_dominators.h"
+#include "utils/graph/digraph/algorithms/get_node_with_greatest_topo_rank.h"
 
 namespace FlexFlow {
 
@@ -413,110 +415,6 @@ std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
 //   return result;
 // }
 
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_dominators(DiGraphView const &g) {
-  std::vector<Node> topo = get_topological_ordering(g);
-  std::unordered_map<Node, std::unordered_set<Node>> result;
-
-  for (Node const &n : topo) {
-    result[n] =
-        intersection(transform(get_predecessors(g, n), [&](Node const &n) {
-          return result.at(n);
-        })).value_or(std::unordered_set<Node>{});
-    ;
-    result[n].insert(n);
-  }
-
-  return result;
-}
-
-std::unordered_set<Node> get_dominators(DiGraphView const &g, Node const &n) {
-  return get_dominators(g).at(n);
-}
-
-std::unordered_set<Node> get_dominators(DiGraphView const &g,
-                                        std::unordered_set<Node> const &n) {
-  if (n.empty()) {
-    throw mk_runtime_error("Cannot find dominators of no nodes");
-  }
-  std::optional<std::unordered_set<Node>> result =
-      intersection(values(restrict_keys(get_dominators(g), n)));
-  assert(result.has_value());
-
-  return result.value();
-}
-
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_post_dominators(DiGraphView const &g) {
-  return get_dominators(flipped(g));
-}
-
-std::unordered_map<Node, std::optional<Node>>
-    get_imm_dominators(DiGraphView const &g) {
-
-  std::unordered_map<Node, std::optional<Node>> result;
-  for (auto const &kv : get_dominators(g)) {
-    Node node = kv.first;
-    std::unordered_set<Node> node_dominators = kv.second;
-
-    assert(node_dominators.size() >= 1);
-
-    // a node cannot immediately dominate itself
-    if (node_dominators.size() == 1) {
-      assert(get_only(node_dominators) == node);
-      result[node] = std::nullopt;
-    } else {
-      node_dominators.erase(node);
-      result[node] = get_node_with_greatest_topo_rank(node_dominators, g);
-    }
-  }
-  return result;
-}
-
-std::unordered_map<Node, std::optional<Node>>
-    get_imm_post_dominators(DiGraphView const &g) {
-  return get_imm_dominators(flipped(g));
-}
-
-std::optional<Node> imm_post_dominator(DiGraphView const &g, Node const &n) {
-  return get_imm_post_dominators(g).at(n);
-}
-
-std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &g) {
-  std::vector<Node> topo_ordering = get_topological_ordering(g);
-  std::unordered_map<Node, int> topo_rank;
-  for (int i = 0; i < topo_ordering.size(); i++) {
-    topo_rank[topo_ordering[i]] = i;
-  }
-  return topo_rank;
-}
-
-Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &nodes,
-                                      DiGraphView const &g) {
-  std::unordered_map<Node, int> topo_rank = calculate_topo_rank(g);
-  return *std::max_element(nodes.cbegin(),
-                           nodes.cend(),
-                           [&topo_rank](Node const &lhs, Node const &rhs) {
-                             return topo_rank.at(lhs) < topo_rank.at(rhs);
-                           });
-}
-
-std::optional<Node>
-    get_imm_post_dominator(DiGraphView const &g,
-                           std::unordered_set<Node> const &nodes) {
-
-  if (nodes.empty()) {
-    throw mk_runtime_error("Cannot get imm_post_dominator of no nodes");
-  }
-  std::unordered_set<Node> commonDoms = assert_unwrap(
-      intersection(values(restrict_keys(get_post_dominators(g), nodes))));
-
-  if (!commonDoms.empty()) {
-    return get_node_with_greatest_topo_rank(commonDoms, g);
-  } else {
-    return std::nullopt;
-  }
-}
 
 // std::pair<OutputMultiDiEdge, InputMultiDiEdge>
 //     split_edge(MultiDiEdge const &e) {

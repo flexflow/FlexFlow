@@ -76,65 +76,6 @@ std::unordered_set<Node> get_sinks(DiGraphView const &g) {
   return get_sources(flipped(g));
 }
 
-static std::vector<Node>
-    get_unchecked_topological_ordering(DiGraphView const &g) {
-  auto dfs_view = unchecked_dfs(g, get_sources(g));
-  std::vector<Node> order;
-  std::unordered_set<Node> seen;
-  std::unordered_map<Node, std::unordered_set<Node>> predecessors =
-      get_predecessors(g, get_nodes(g));
-
-  auto all_predecessors_seen = [&](Node const &n) -> bool {
-    bool result = true;
-    for (Node const &pred : predecessors.at(n)) {
-      result &= contains(seen, pred);
-    }
-    return result;
-  };
-
-  unchecked_dfs_iterator it = dfs_view.cbegin();
-  while (it != dfs_view.cend()) {
-    if (all_predecessors_seen(*it)) {
-      order.push_back(*it);
-      seen.insert(*it);
-      it++;
-    } else {
-      it.skip();
-    }
-  }
-
-  return order;
-}
-
-std::vector<Node> get_topological_ordering(DiGraphView const &g) {
-  assert(is_acyclic(g));
-  return get_unchecked_topological_ordering(g);
-}
-
-std::optional<bool> is_acyclic(DiGraphView const &g) {
-  if (num_nodes(g) == 0) {
-    return std::nullopt;
-  }
-  std::unordered_set<Node> sources = get_sources(g);
-  if (sources.size() == 0) {
-    return false;
-  }
-  auto dfs_view = unchecked_dfs(g, sources);
-  std::unordered_set<Node> seen;
-  for (unchecked_dfs_iterator it = dfs_view.begin(); it != dfs_view.end();
-       it++) {
-    if (contains(seen, *it)) {
-      return false;
-    } else {
-      seen.insert(*it);
-    }
-  }
-  if (seen != get_nodes(g)) {
-    return false;
-  }
-  return true;
-}
-
 DiGraphView flipped(DiGraphView const &g) {
   return DiGraphView::create<FlippedView>(g);
 }

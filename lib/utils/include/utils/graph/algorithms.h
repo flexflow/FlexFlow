@@ -149,23 +149,8 @@ std::unordered_set<Node> get_sinks(DiGraphView const &);
 // std::unordered_set<Node> get_open_sources(OpenMultiDiGraphView const &g);
 // std::unordered_set<Node> get_open_sinks(OpenMultiDiGraphView const &g);
 
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_dominators(DiGraphView const &);
-std::unordered_set<Node> get_dominators(DiGraphView const &, Node const &);
-std::unordered_set<Node> get_dominators(DiGraphView const &,
-                                        std::unordered_set<Node> const &);
-
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_post_dominators(DiGraphView const &);
-std::unordered_map<Node, std::optional<Node>>
-    get_imm_dominators(DiGraphView const &);
-std::unordered_map<Node, std::optional<Node>>
-    get_imm_post_dominators(DiGraphView const &);
-std::optional<Node> get_imm_post_dominator(DiGraphView const &, Node const &);
 // std::optional<Node> get_imm_post_dominator(MultiDiGraphView const &,
 //                                            Node const &);
-std::optional<Node> get_imm_post_dominator(DiGraphView const &,
-                                           std::unordered_set<Node> const &);
 
 std::vector<Node>
     get_dfs_ordering(DiGraphView const &,
@@ -218,10 +203,6 @@ DiGraphView get_subgraph(DiGraphView const &, std::unordered_set<Node> const &);
 //                                   std::unordered_set<Node> const &nodes) {
 //   return OpenMultiDiGraphView::create<SubgraphView>(g, nodes);
 // }
-
-std::unordered_map<Node, int> calculate_topo_rank(DiGraphView const &);
-Node get_node_with_greatest_topo_rank(std::unordered_set<Node> const &,
-                                      DiGraphView const &);
 
 // MultiDiGraphView join(MultiDiGraphView const &lhs, MultiDiGraphView const
 // &rhs);
