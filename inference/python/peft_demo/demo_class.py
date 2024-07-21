@@ -46,7 +46,7 @@ class FlexFlowDemo(object):
             if len(self.configs.finetuning_dataset) > 0:
                 self.lora_finetuning_config = ff.LoraLinearConfig(
                     self.llm.cache_path,
-                    self.configs.inference_peft_model_id,
+                    self.configs.finetuning_peft_model_id,
                     trainable=True,
                     base_model_name_or_path=self.configs.base_model,
                     optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
@@ -120,7 +120,6 @@ class FlexFlowDemo(object):
         if self.server_stopped:
             raise Exception("Server stopped.")
 
-        reqs = []
         if len(self.configs.finetuning_dataset) > 0:
             finetuning_request = ff.Request(
                 ff.RequestType.REQ_FINETUNING,
@@ -129,20 +128,7 @@ class FlexFlowDemo(object):
                 dataset_filepath=os.path.join(os.getcwd(), self.configs.finetuning_dataset),
                 max_training_steps=self.configs.max_training_steps,
             )
-            reqs += [finetuning_request]
-        if len(self.configs.inference_dataset) > 0:
-            prompts = [s for s in json.load(open(self.configs.inference_dataset))]
-            inference_requests = [
-                ff.Request(
-                    ff.RequestType.REQ_INFERENCE,
-                    prompt=prompt,
-                    max_sequence_length=self.configs.max_sequence_length,
-                    peft_model_id=self.llm.get_ff_peft_id(self.lora_inference_config),
-                )
-                for prompt in prompts
-            ]
-            reqs += inference_requests
-        self.llm.generate(reqs)
+            self.llm.generate([finetuning_request])
 
 def main():
     configs_dict = {
