@@ -1,6 +1,6 @@
 #include "substitutions/operator_pattern/get_attribute.h"
 #include "op-attrs/get_op_type.h"
-#include "utils/containers.h"
+#include "utils/containers/as_vector.h"
 
 namespace FlexFlow {
 

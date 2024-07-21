@@ -1,6 +1,7 @@
 #include "substitutions/tensor_pattern/get_attribute.h"
-#include "utils/containers.h"
 #include "utils/integer_conversions.h"
+#include "utils/containers/as_vector.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

@@ -1,5 +1,4 @@
 #include "utils/graph/algorithms.h"
-#include "utils/containers.h"
 #include "utils/exception.h"
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/digraph/directed_edge_query.h"
@@ -14,7 +13,14 @@
 #include <cassert>
 #include <iostream>
 #include <queue>
-#include <unordered_set>
+#include "utils/containers/get_only.h"
+#include "utils/containers/without_order.h"
+#include "utils/containers/intersection.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/values.h"
+#include "utils/containers/flatmap.h"
+#include "utils/containers/set_difference.h"
+#include "utils/containers/restrict_keys.h"
 
 namespace FlexFlow {
 

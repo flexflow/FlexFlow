@@ -1,7 +1,9 @@
 #include "pcg/file_format/v1/graphs/v1_dataflow_graph.h"
+#include "utils/containers/values.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/integer_conversions.h"
+#include "utils/containers/enumerate.h"
 
 namespace FlexFlow {
 

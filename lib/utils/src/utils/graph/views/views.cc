@@ -1,5 +1,4 @@
 #include "utils/graph/views/views.h"
-#include "utils/containers.h"
 #include "utils/disjoint_set.h"
 #include "utils/exception.h"
 #include "utils/graph/algorithms.h"
@@ -7,6 +6,8 @@
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_query.h"
 #include "utils/graph/undirected/undirected_edge_query.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/flatmap.h"
 
 namespace FlexFlow {
 

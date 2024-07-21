@@ -1,5 +1,6 @@
 #include "substitutions/operator_pattern/satisfies_pattern.h"
 #include "substitutions/operator_pattern/satisfies_constraint.h"
+#include "utils/containers/all_of.h"
 
 namespace FlexFlow {
 

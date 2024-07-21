@@ -6,6 +6,9 @@
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph_view.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/containers/enumerate.h"
+#include "utils/containers/map_values.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

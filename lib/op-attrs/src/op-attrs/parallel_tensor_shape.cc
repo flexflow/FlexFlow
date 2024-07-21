@@ -1,7 +1,8 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_dims.h"
-#include "utils/containers.h"
 #include "utils/hash-utils.h"
+#include "utils/containers/product.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

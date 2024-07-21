@@ -2,7 +2,6 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
 #include "utils/bidict/bidict.h"
-#include "utils/containers.h"
 #include "utils/exception.h"
 #include "utils/fmt/unordered_set.h"
 #include "utils/hash-utils.h"
@@ -11,6 +10,12 @@
 #include <optional>
 #include <set>
 #include <unordered_set>
+#include "utils/containers/set_union.h"
+#include "utils/containers/contains.h"
+#include "utils/containers/intersection.h"
+#include "utils/containers/filter.h"
+#include "utils/containers/unique.h"
+#include "utils/containers/filter_keys.h"
 
 namespace FlexFlow {
 

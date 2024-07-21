@@ -1,9 +1,10 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
-#include "utils/containers.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

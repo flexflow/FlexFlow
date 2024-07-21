@@ -14,6 +14,8 @@
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/overload.h"
 #include <memory>
+#include "utils/containers/keys.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

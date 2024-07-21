@@ -22,18 +22,18 @@ struct formatter<
     CHECK_FMTABLE(T);
 
     std::string result;
-    if constexpr (::FlexFlow::is_sortable_v<std::unordered_set<T>>) {
-      std::vector<T> in_order = ::FlexFlow::sorted(m);
-      result = ::FlexFlow::join_strings(
-          in_order.cbegin(), in_order.cend(), ", ", [](T const &t) {
-            return fmt::to_string(t);
-          });
-    } else {
+    // if constexpr (::FlexFlow::is_sortable_v<std::unordered_set<T>>) {
+    //   std::vector<T> in_order = ::FlexFlow::sorted(m);
+    //   result = ::FlexFlow::join_strings(
+    //       in_order.cbegin(), in_order.cend(), ", ", [](T const &t) {
+    //         return fmt::to_string(t);
+    //       });
+    // } else {
       result =
           ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
             return fmt::to_string(t);
           });
-    }
+    // }
     return formatter<std::string>::format("{" + result + "}", ctx);
   }
 };

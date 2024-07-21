@@ -2,9 +2,10 @@
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
-#include "utils/containers.h"
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/enumerate_vector.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

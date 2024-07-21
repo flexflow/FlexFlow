@@ -2,6 +2,7 @@
 #include "substitutions/unlabelled/pattern_value.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
+#include "utils/containers/vector_split.h"
 
 namespace FlexFlow {
 

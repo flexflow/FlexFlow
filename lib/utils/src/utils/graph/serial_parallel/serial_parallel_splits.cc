@@ -3,6 +3,8 @@
 #include "utils/fmt/vector.h"
 #include "utils/hash-utils.h"
 #include "utils/hash/vector.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/hash/unordered_set.h"
 
 namespace FlexFlow {
 
@@ -18,22 +20,6 @@ bool SerialSplit::operator!=(SerialSplit const &other) const {
   return this->tie() != other.tie();
 }
 
-bool SerialSplit::operator<(SerialSplit const &other) const {
-  return this->tie() < other.tie();
-}
-
-bool SerialSplit::operator<=(SerialSplit const &other) const {
-  return this->tie() <= other.tie();
-}
-
-bool SerialSplit::operator>(SerialSplit const &other) const {
-  return this->tie() > other.tie();
-}
-
-bool SerialSplit::operator>=(SerialSplit const &other) const {
-  return this->tie() >= other.tie();
-}
-
 SerialSplit::Tie SerialSplit::tie() const {
   return std::tie(this->children);
 }
@@ -47,7 +33,7 @@ std::ostream &operator<<(std::ostream &s, SerialSplit const &split) {
 }
 
 ParallelSplit::ParallelSplit(
-    std::vector<std::variant<SerialSplit, Node>> const &children)
+    std::unordered_set<std::variant<SerialSplit, Node>> const &children)
     : children(children) {}
 
 bool ParallelSplit::operator==(ParallelSplit const &other) const {
@@ -56,22 +42,6 @@ bool ParallelSplit::operator==(ParallelSplit const &other) const {
 
 bool ParallelSplit::operator!=(ParallelSplit const &other) const {
   return this->tie() != other.tie();
-}
-
-bool ParallelSplit::operator<(ParallelSplit const &other) const {
-  return this->tie() < other.tie();
-}
-
-bool ParallelSplit::operator<=(ParallelSplit const &other) const {
-  return this->tie() <= other.tie();
-}
-
-bool ParallelSplit::operator>(ParallelSplit const &other) const {
-  return this->tie() > other.tie();
-}
-
-bool ParallelSplit::operator>=(ParallelSplit const &other) const {
-  return this->tie() >= other.tie();
 }
 
 ParallelSplit::Tie ParallelSplit::tie() const {

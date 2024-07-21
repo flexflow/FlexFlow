@@ -6,9 +6,9 @@
 #include "op-attrs/ops/embedding.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "pcg/computation_graph.h"
-#include "utils/containers.h"
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/enumerate_vector.h"
+#include "utils/containers/transform.h"
 #include "utils/expected.h"
 #include "utils/fmt.h"
 

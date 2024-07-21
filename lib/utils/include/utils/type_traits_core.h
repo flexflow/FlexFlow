@@ -180,6 +180,9 @@ struct is_hashable<
     void_t<decltype((size_t)(std::declval<std::hash<T>>()(std::declval<T>())))>>
     : std::true_type {};
 
+template <typename T>
+inline constexpr bool is_hashable_v = is_hashable<T>::value;
+
 template <typename T, typename Enable = void>
 struct is_plusable : std::false_type {};
 

@@ -4,6 +4,7 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_shape.h"
 #include "utils/integer_conversions.h"
+#include "utils/containers/product.h"
 
 namespace FlexFlow {
 

@@ -1,3 +1,4 @@
+#include "utils/containers/get_only.h"
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #include "substitutions/pcg_pattern.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"

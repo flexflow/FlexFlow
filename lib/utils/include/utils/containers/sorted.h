@@ -45,13 +45,6 @@ std::vector<Elem> sorted(C const &c) {
   return result;
 }
 
-template <typename C, typename F, typename Elem = sort_value_type_t<C>>
-std::vector<Elem> sorted_by(C const &c, F const &f) {
-  std::vector<Elem> result(c.begin(), c.end());
-  inplace_sorted_by(result, f);
-  return result;
-}
-
 } // namespace FlexFlow
 
 #endif

@@ -5,7 +5,7 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "ops/reverse.h"
 #include "tensor_shape.h"
-#include "utils/containers.h"
+#include "utils/containers/get_only.h"
 #include "utils/optional.h"
 
 namespace FlexFlow {

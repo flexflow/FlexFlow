@@ -1,10 +1,14 @@
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
-#include "utils/containers.h"
 #include "utils/containers/enumerate_vector.h"
+#include "utils/containers/extend.h"
+#include "utils/containers/without_order.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/count.h"
+#include "utils/containers/are_disjoint.h"
 
 namespace FlexFlow {
 

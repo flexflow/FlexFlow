@@ -3,6 +3,7 @@
 
 #include "utils/graph/node/node.dtg.h"
 #include <variant>
+#include <unordered_set>
 
 namespace FlexFlow {
 
@@ -16,11 +17,6 @@ public:
 
   bool operator==(SerialSplit const &) const;
   bool operator!=(SerialSplit const &) const;
-  bool operator<(SerialSplit const &) const;
-  bool operator<=(SerialSplit const &) const;
-  bool operator>(SerialSplit const &) const;
-  bool operator>=(SerialSplit const &) const;
-
 public:
   std::vector<std::variant<ParallelSplit, Node>> children;
 
@@ -32,20 +28,28 @@ private:
 std::string format_as(SerialSplit const &);
 std::ostream &operator<<(std::ostream &, SerialSplit const &);
 
+}
+
+namespace std {
+
+template <>
+struct hash<::FlexFlow::SerialSplit> {
+  size_t operator()(::FlexFlow::SerialSplit const &) const;
+};
+
+}
+
+namespace FlexFlow {
+
 struct ParallelSplit {
 public:
   ParallelSplit() = delete;
-  explicit ParallelSplit(std::vector<std::variant<SerialSplit, Node>> const &);
+  explicit ParallelSplit(std::unordered_set<std::variant<SerialSplit, Node>> const &);
 
   bool operator==(ParallelSplit const &) const;
   bool operator!=(ParallelSplit const &) const;
-  bool operator<(ParallelSplit const &) const;
-  bool operator<=(ParallelSplit const &) const;
-  bool operator>(ParallelSplit const &) const;
-  bool operator>=(ParallelSplit const &) const;
-
 public:
-  std::vector<std::variant<SerialSplit, Node>> children;
+  std::unordered_set<std::variant<SerialSplit, Node>> children;
 
 private:
   using Tie = std::tuple<decltype(children) const &>;
@@ -58,11 +62,6 @@ std::ostream &operator<<(std::ostream &, ParallelSplit const &);
 } // namespace FlexFlow
 
 namespace std {
-
-template <>
-struct hash<::FlexFlow::SerialSplit> {
-  size_t operator()(::FlexFlow::SerialSplit const &) const;
-};
 
 template <>
 struct hash<::FlexFlow::ParallelSplit> {

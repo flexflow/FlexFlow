@@ -4,6 +4,7 @@ features = [
   "eq",
   "ord",
   "hash",
+  "fmt",
 ]
 
 includes = [
@@ -15,6 +16,8 @@ includes = [
 
 src_includes = [
   "utils/hash/vector.h",
+  "utils/fmt/vector.h",
+  "utils/fmt/variant.h"
 ]
 
 [[fields]]

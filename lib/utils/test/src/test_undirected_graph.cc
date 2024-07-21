@@ -1,6 +1,5 @@
 #include "test/utils/all.h"
 #include "test/utils/rapidcheck/visitable.h"
-#include "utils/containers.h"
 #include "utils/graph/hashmap_undirected_graph.h"
 #include "utils/graph/undirected.h"
 

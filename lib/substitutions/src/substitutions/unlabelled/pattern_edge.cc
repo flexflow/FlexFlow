@@ -1,8 +1,8 @@
 #include "substitutions/unlabelled/pattern_edge.h"
 #include "substitutions/unlabelled/input_pattern_edge.h"
 #include "substitutions/unlabelled/standard_pattern_edge.h"
-#include "utils/containers.h"
 #include "utils/overload.h"
+#include <cassert>
 
 namespace FlexFlow {
 

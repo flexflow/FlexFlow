@@ -2,6 +2,7 @@
 #include "test/utils/doctest.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph.h"
+#include "utils/containers/get_only.h"
 
 using namespace ::FlexFlow;
 

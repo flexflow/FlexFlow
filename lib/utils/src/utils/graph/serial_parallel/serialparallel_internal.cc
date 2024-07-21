@@ -4,6 +4,10 @@
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/serial_parallel/sink_settings.dtg.h"
 #include "utils/graph/serial_parallel/source_settings.dtg.h"
+#include "utils/containers/extend.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/get_first.h"
 
 namespace FlexFlow {
 
@@ -180,13 +184,13 @@ struct ToFinalAST {
                 .value();
           })};
     } else {
-      return ParallelSplit{transform(
+      return ParallelSplit{without_order(transform(
           node.children,
           [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
             return narrow<std::variant<SerialSplit, Node>>(
                        internal_to_final_ast(s))
                 .value();
-          })};
+          }))};
     }
   }
 
@@ -197,7 +201,7 @@ struct ToFinalAST {
 
 std::variant<SerialSplit, ParallelSplit, Node> internal_to_final_ast(
     std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
-  return std::visit(ToFinalAST{}, ast);
+  return std::visit(ToFinalAST{}, flatten_ast(ast));
 }
 
 SerialParallelDecomposition to_final_ast(
