@@ -2706,6 +2706,8 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
 std::vector<GenerationResult>
     FFModel::generate(std::vector<Request> const &requests) {
   RequestManager *rm = RequestManager::get_request_manager();
+  // reset inference_finished flag
+  rm->set_inference_finished(false);
   std::vector<RequestManager::RequestGuid> inf_guids, peft_guids;
   for (int i = 0; i < requests.size(); i++) {
     RequestManager::RequestGuid guid;
