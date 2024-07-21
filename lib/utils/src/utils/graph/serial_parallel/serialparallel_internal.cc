@@ -8,6 +8,7 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/get_first.h"
+#include "utils/containers/are_disjoint.h"
 
 namespace FlexFlow {
 
@@ -62,12 +63,19 @@ std::unordered_set<Node>
   for (Node const &sink : sinks) {
     contraction.insert({sink, contracted_sink});
   }
-  auto contracted_view = apply_contraction(g, contraction);
+  DiGraphView contracted_view = apply_contraction(g, contraction);
 
   std::unordered_set<Node> result =
       from_source_to_sink(contracted_view, contracted_src, contracted_sink);
+
+  assert (contains(result, contracted_src));
+  assert (contains(result, contracted_sink));
+
   result.erase(contracted_src);
   result.erase(contracted_sink);
+
+  assert (are_disjoint(result, srcs));
+  assert (are_disjoint(result, sinks));
 
   if (include_src == SourceSettings::INCLUDE_SOURCE_NODES) {
     result = set_union(result, srcs);

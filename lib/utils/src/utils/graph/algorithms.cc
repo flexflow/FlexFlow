@@ -153,24 +153,6 @@ void remove_node_if_unused(UndirectedGraph &g, Node const &n) {
   g.remove_node_unsafe(n);
 }
 
-DiGraphView
-    contract_node(DiGraphView const &g, Node const &from, Node const &into) {
-  return DiGraphView::create<ContractNodeView>(g, from, into);
-}
-
-DiGraphView apply_contraction(DiGraphView const &g,
-                              std::unordered_map<Node, Node> const &nodes) {
-  DiGraphView contractedView = g;
-  for (auto const &kv : nodes) {
-    Node from = kv.first;
-    Node into = kv.second;
-    if (from != into) {
-      contractedView = contract_node(contractedView, from, into);
-    }
-  }
-  return contractedView;
-}
-
 // void add_edges(MultiDiGraph &g, std::vector<MultiDiEdge> const &edges) {
 //   for (MultiDiEdge const &e : edges) {
 //     g.add_edge(e);

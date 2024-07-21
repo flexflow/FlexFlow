@@ -6,6 +6,7 @@
 namespace FlexFlow {
 
 std::unordered_set<Node> get_nodes(GraphView const &);
+bool has_node(GraphView const &, Node const &);
 size_t num_nodes(GraphView const &);
 bool empty(GraphView const &);
 

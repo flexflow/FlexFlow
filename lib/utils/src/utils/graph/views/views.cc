@@ -29,20 +29,6 @@ FlippedView *FlippedView::clone() const {
   return new FlippedView(g);
 }
 
-std::unordered_set<DirectedEdge>
-    ContractNodeView::query_edges(DirectedEdgeQuery const &q) const {
-  return g.query_edges(q);
-}
-
-std::unordered_set<Node>
-    ContractNodeView::query_nodes(NodeQuery const &q) const {
-  return g.query_nodes(q);
-}
-
-ContractNodeView *ContractNodeView::clone() const {
-  return new ContractNodeView(g, from, to);
-}
-
 DirectedEdge flipped(DirectedEdge const &e) {
   return DirectedEdge{e.src, e.dst};
 }

@@ -52,8 +52,6 @@ UndirectedGraphView contract_out_node(UndirectedGraphView const &,
 // MultiDiGraphView
 //     contract_node(MultiDiGraphView const &, Node const &from, Node const
 //     &into);
-DiGraphView
-    contract_node(DiGraphView const &, Node const &from, Node const &into);
 UndirectedGraphView contract_node(UndirectedGraphView const &,
                                   Node const &from,
                                   Node const &into);

@@ -155,27 +155,6 @@ private:
   std::unique_ptr<AddDirectedEdgesView> added_edges_view;
 };
 
-struct ContractNodeView : public IDiGraphView {
-  ContractNodeView() = delete;
-  explicit ContractNodeView(DiGraphView const &g,
-                            Node const &removed,
-                            Node const &into)
-      : g(g), from(removed), to(into) {}
-
-  std::unordered_set<DirectedEdge>
-      query_edges(DirectedEdgeQuery const &) const override;
-  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-
-  ContractNodeView *clone() const override;
-
-private:
-  DirectedEdge fix_edge(DirectedEdge const &) const;
-
-private:
-  DiGraphView g;
-  Node from, to;
-};
-
 UndirectedEdge to_undirected_edge(DirectedEdge const &);
 std::unordered_set<UndirectedEdge>
     to_undirected_edges(std::unordered_set<DirectedEdge> const &);
