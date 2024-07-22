@@ -14,9 +14,16 @@ def parse_args():
         description="Download a PEFT model with FlexFlow, process it, and upload it to the Hugging Face Hub."
     )
     parser.add_argument(
-        "peft_model_id",
+        "--peft-model-id",
         type=str,
-        help="Hugging Face model ID of the PEFT model to upload.",
+        required=True,
+        help="(Local) Hugging Face model ID of the PEFT model to upload.",
+    )
+    parser.add_argument(
+        "--upload-peft-model-id",
+        type=str,
+        required=True,
+        help="(Remote) Hugging Face model ID of the PEFT model to upload.",
     )
     parser.add_argument(
         "--cache-folder",
@@ -126,7 +133,7 @@ def main():
         with torch.no_grad():
             param.copy_(weight_tensor)
 
-    model.push_to_hub(f"{args.peft_model_id}", use_auth_token=True, private=args.private)
+    model.push_to_hub(f"{args.upload_peft_model_id}", use_auth_token=True, private=args.private)
 
     print("Upload process completed.")
 

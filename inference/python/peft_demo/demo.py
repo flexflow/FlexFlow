@@ -1,6 +1,5 @@
 import json, random, subprocess
 from datasets import load_dataset
-from inference.python.peft_demo.demo import FlexFlowDemo
 from types import SimpleNamespace
 from huggingface_hub import HfFolder
 import os
@@ -34,14 +33,14 @@ def create_datasets(finetune_dataset_size=2, inference_file_path='inference_data
 
 
 configs_dict = {
-    "num_gpus": 4,
-    "memory_per_gpu": 14000,
+    "num_gpus": 1,
+    "memory_per_gpu": 21000,
     "zero_copy_memory_per_node": 40000,
     "num_cpus": 4,
     "legion_utility_processors": 4,
     "data_parallelism_degree": 1,
     "tensor_parallelism_degree": 1,
-    "pipeline_parallelism_degree": 4,
+    "pipeline_parallelism_degree": 1,
     "offload": False,
     "offload_reserve_space_size": 8 * 1024,  # 8GB
     "use_4bit_quantization": False,
@@ -53,21 +52,21 @@ configs_dict = {
     "inference_debugging": False,
     "fusion": False,
     "max_requests_per_batch": 1,
-    "max_sequence_length": 256,
+    "max_sequence_length": 128,
     "max_tokens_per_batch": 128,
-    "max_training_steps": 10,
+    "max_training_steps": 100,
     "seed": 42,
 }
 model_configs = {
     "base_model": "meta-llama/Meta-Llama-3-8B",
     "inference_peft_model_id": "goliaro/llama-3-8b-lora",
-    "finetuning_peft_model_id": "flechman/llama-3-8b-lora-dolly",
+    "finetuning_peft_model_id": "goliaro/llama-3-8b-lora",
     "cache_path": os.environ.get("FF_CACHE_PATH", ""),
     "refresh_cache": False,
-    "full_precision": True,
+    "full_precision": False,
     # relative paths
     "inference_dataset": "inference_dataset.json",
-    "finetuning_dataset": "finetuning_dataset.json",
+    "finetuning_dataset": "/usr/FlexFlow/inference/prompt/peft_dataset.json",
     "output_file": "peft_demo.txt",
 }
 generation_configs = {
@@ -77,7 +76,7 @@ generation_configs = {
     "topk": 1,
 }
 finetuning_configs = {
-    "learning_rate": 1.0,
+    "learning_rate": 0.001,
     "momentum": 0.0,
     "weight_decay": 0.0,
     "nesterov": False,
@@ -101,8 +100,8 @@ with open(configs.output_file, 'w') as file:
 
 # Download base and peft inference models
 args = [configs.inference_peft_model_id, '--base_model_name', configs.base_model]
-hf_token = input("Please enter your HuggingFace personal access token: ")
-subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
+# hf_token = input("Please enter your HuggingFace personal access token: ")
+# subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
 subprocess.run(['python', '../../utils/download_peft_model.py'] + args)
 
 
@@ -135,10 +134,10 @@ if len(configs.finetuning_dataset) > 0:
         llm.cache_path,
         configs.finetuning_peft_model_id,
         trainable=True,
-        init_lora_weights=True,
+        init_lora_weights=False,
         rank=16,
         lora_alpha=16.0,
-        target_modules = ["down_proj"],
+        # target_modules = ["down_proj"],
         base_model_name_or_path=configs.base_model,
         optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
         optimizer_kwargs={
@@ -170,17 +169,17 @@ llm.compile(
 llm.start_server()
 
 
-prompts = [s for s in json.load(open(configs.inference_dataset))]
-inference_requests = [
-    ff.Request(
-        ff.RequestType.REQ_INFERENCE,
-        prompt=prompt,
-        max_sequence_length=configs.max_sequence_length,
-        peft_model_id=llm.get_ff_peft_id(lora_inference_config),
-    )
-    for prompt in prompts
-]
-inf_req_res_1 = llm.generate(inference_requests)
+# prompts = [s for s in json.load(open(configs.inference_dataset))]
+# inference_requests = [
+#     ff.Request(
+#         ff.RequestType.REQ_INFERENCE,
+#         prompt=prompt,
+#         max_sequence_length=configs.max_sequence_length,
+#         peft_model_id=llm.get_ff_peft_id(lora_inference_config),
+#     )
+#     for prompt in prompts
+# ]
+# inf_req_res_1 = llm.generate(inference_requests)
 
 
 finetuning_request = ff.Request(
@@ -191,11 +190,14 @@ finetuning_request = ff.Request(
     max_training_steps=configs.max_training_steps,
 )
 ft_res = llm.generate([finetuning_request])
+for res in ft_res:
+    print(res.finetuning_losses)
 
+# exit(0)
+# hf_token = input("Please enter your HuggingFace personal access token: ")
+# subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
+subprocess.run(['python', '../../utils/upload_peft_model.py'] + f"--peft-model-id {configs.finetuning_peft_model_id} --upload-peft-model-id {configs.finetuning_peft_model_id}-dolly".split())
 
-hf_token = input("Please enter your HuggingFace personal access token: ")
-subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
-subprocess.run(['python', '../../utils/upload_peft_model.py'] + [configs.finetuning_peft_model_id])
 
 
 lora_inference_config = ff.LoraLinearConfig(
@@ -207,8 +209,8 @@ llm.add_peft(lora_inference_config)
 
 args = [configs.finetuning_peft_model_id, '--base_model_name', configs.base_model]
 #hf_token = input("Please enter your HuggingFace personal access token: ")
-subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
-subprocess.run(['python', '../../utils/download_peft_model.py'] + args)
+# subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
+# subprocess.run(['python', '../../utils/download_peft_model.py'] + args)
 
 
 prompts = [s for s in json.load(open(configs.inference_dataset))]

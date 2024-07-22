@@ -42,8 +42,8 @@ def get_configs():
         ff_init_configs = {
             # required parameters
             "num_gpus": 1,
-            "memory_per_gpu": 8192,
-            "zero_copy_memory_per_node": 12000,
+            "memory_per_gpu": 21000,
+            "zero_copy_memory_per_node": 30000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
@@ -63,13 +63,16 @@ def get_configs():
         }
         model_configs = {
             # required parameters
-            "base_model": "JackFram/llama-160m",
-            "inference_peft_model_id": "goliaro/llama-160m-lora",
-            "finetuning_peft_model_id": "goliaro/llama-160m-lora",
+            # "base_model": "JackFram/llama-160m",
+            # "inference_peft_model_id": "goliaro/llama-160m-lora",
+            # "finetuning_peft_model_id": "goliaro/llama-160m-lora",
+            "base_model": "meta-llama/Meta-Llama-3-8B",
+            "inference_peft_model_id": "goliaro/llama-3-8b-lora",
+            "finetuning_peft_model_id": "goliaro/llama-3-8b-lora-dolly",
             # optional parameters
             "cache_path": os.environ.get("FF_CACHE_PATH", ""),
             "refresh_cache": False,
-            "full_precision": True,
+            "full_precision": False,
             "prompt": "",
             "finetuning_dataset": os.path.join(
                 os.path.dirname(os.path.abspath(__file__)),
@@ -128,7 +131,7 @@ def main():
             base_model_name_or_path=configs.base_model,
             optimizer_type=ff.OptimizerType.OPTIMIZER_TYPE_SGD,
             optimizer_kwargs={
-                "learning_rate": 1.0,
+                "learning_rate": 0.001,
                 "momentum": 0.0,
                 "weight_decay": 0.0,
                 "nesterov": False,
@@ -172,7 +175,7 @@ def main():
             max_sequence_length=128,
             peft_model_id=llm.get_ff_peft_id(lora_finetuning_config),
             dataset_filepath=configs.finetuning_dataset,
-            max_training_steps=2,
+            max_training_steps=100,
         )
         requests.append(finetuning_request)
 

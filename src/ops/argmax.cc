@@ -404,7 +404,7 @@ InferenceResult
   ir.finetuning_loss = loss;
 
   if (bc->num_active_peft_tokens() > 0) {
-    printf("Epoch %i loss: %.4f\n", m->decoding_step, loss);
+    printf("Loss: %.4f\n", loss);
   }
 
   if (m->inference_debugging) {
