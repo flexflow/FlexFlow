@@ -1739,9 +1739,12 @@ class GenerationConfig(object):
 class GenerationResult(object):
     """A class to store the output of a generation request."""
 
-    def __init__(self, text: str = None, tokens: list = None):
+    def __init__(
+        self, text: str = None, tokens: list = None, finetuning_losses: list = []
+    ):
         self.output_text = text
         self.output_tokens = tokens
+        self.finetuning_losses = finetuning_losses
 
 
 # -----------------------------------------------------------------------
@@ -4657,6 +4660,8 @@ class FFModel(object):
         peft_model_ids = [PEFTModelID.no_id_handle() for prompt in prompt_list]
         dataset_filepaths = [ffi.NULL for prompt in prompt_list]
         training_steps = [0 for prompt in prompt_list]
+        num_finetuning_losses = ffi.new("int *")
+        c_finetuning_losses = ffi.new("float**")
         ffc().flexflow_model_generate(
             self.handle,
             len(prompt_list),
@@ -4668,11 +4673,15 @@ class FFModel(object):
             dataset_filepaths,
             training_steps,
             c_output_length_and_tokens,
+            num_finetuning_losses,
+            c_finetuning_losses,
         )
         from flexflow.serve import GenerationResult
 
         return [
-            GenerationResult(ffi.string(c_output_text), [])
+            GenerationResult(
+                text=ffi.string(c_output_text), tokens=[], finetuning_losses=[]
+            )
             for c_output_text in c_output_texts
         ]
 
@@ -4711,6 +4720,8 @@ class FFModel(object):
             get_c_name(request.dataset_filepath) for request in requests_list
         ]
         training_steps = [request.max_training_steps for request in requests_list]
+        num_finetuning_losses = ffi.new("int *")
+        c_finetuning_losses = ffi.new("float**")
         ffc().flexflow_model_generate(
             self.handle,
             len(requests_list),
@@ -4722,15 +4733,26 @@ class FFModel(object):
             dataset_filepaths,
             training_steps,
             c_output_length_and_tokens,
+            num_finetuning_losses,
+            c_finetuning_losses,
         )
-        return [
-            (
-                GenerationResult(ffi.string(c_output_text), [])
-                if c_output_text != ffi.NULL
-                else None
+        finetuning_losses = []
+        if num_finetuning_losses[0] > 0:
+            finetuning_losses = [
+                c_finetuning_losses[0][i] for i in range(num_finetuning_losses[0])
+            ]
+        results = []
+        for c_output_text in c_output_texts:
+            results.append(
+                GenerationResult(
+                    text=(
+                        ffi.string(c_output_text) if c_output_text != ffi.NULL else None
+                    ),
+                    tokens=[],
+                    finetuning_losses=finetuning_losses,
+                )
             )
-            for c_output_text in c_output_texts
-        ]
+        return results
 
     def set_position_offset(self, offset):
         ffc().flexflow_model_set_position_offset(self.handle, offset)

@@ -92,6 +92,7 @@ struct Request {
   std::vector<std::pair<std::vector<BatchConfig::TokenId>,
                         std::vector<BatchConfig::TokenId>>>
       dataset;
+  std::vector<float> finetuning_losses;
   friend std::ostream &operator<<(std::ostream &os, Request const &req);
 };
 

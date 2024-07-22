@@ -801,6 +801,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     assert(request.req_type == RequestType::REQ_FINETUNING &&
            "Found misplaced inference request");
 
+    request.finetuning_losses.push_back(result.finetuning_loss);
+
     request.dataset_entry_processed_tokens +=
         old_bc.requestsInfo[inference_batch_size].num_tokens_in_batch;
     request.processed_finetuning_tokens +=
@@ -824,9 +826,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         inference_finished) {
       // check if the fine tuning request has completed
       request.status = Request::COMPLETED;
-      trigger_request_completion_future(request.guid);
+
       GenerationResult &gr = request_generation_results[request.guid];
       assert(gr.guid == request.guid);
+      gr.finetuning_losses = request.finetuning_losses;
+      trigger_request_completion_future(request.guid);
       num_processed_requests++;
 
       ProfileInfo profile_info = profiling_requests[request.guid];

@@ -58,7 +58,7 @@ def get_configs():
             "peft_activation_reserve_space_size": 1024,  # 1GB
             "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
-            "inference_debugging": True,
+            "inference_debugging": False,
             "fusion": False,
         }
         model_configs = {
@@ -105,9 +105,9 @@ def main():
     lora_finetuning_config = None
     if len(configs.prompt) > 0:
         lora_inference_config = ff.LoraLinearConfig(
-            llm.cache_path, 
+            llm.cache_path,
             configs.inference_peft_model_id,
-            base_model_name_or_path=configs.base_model
+            base_model_name_or_path=configs.base_model,
         )
         llm.add_peft(lora_inference_config)
     if len(configs.finetuning_dataset) > 0:
@@ -144,7 +144,7 @@ def main():
     llm.compile(
         generation_config,
         enable_peft_finetuning=enable_peft_finetuning,
-        max_requests_per_batch = 1 if not enable_peft_finetuning else 2,
+        max_requests_per_batch=1 if not enable_peft_finetuning else 2,
         max_seq_length=256,
         max_tokens_per_batch=128,
     )
@@ -176,7 +176,7 @@ def main():
         )
         requests.append(finetuning_request)
 
-    llm.generate(requests)
+    results = llm.generate(requests)
 
     llm.stop_server()
 

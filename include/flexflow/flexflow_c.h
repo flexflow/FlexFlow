@@ -631,7 +631,9 @@ void flexflow_model_generate(flexflow_model_t handle_,
                              flexflow_peft_model_id_t *peft_model_ids,
                              char const **dataset_filepaths,
                              int *training_steps,
-                             int **output_length_and_tokens);
+                             int **output_length_and_tokens,
+                             int *num_finetuning_losses,
+                             float **finetuning_losses);
 
 void flexflow_model_set_position_offset(flexflow_model_t handle, int offset);
 

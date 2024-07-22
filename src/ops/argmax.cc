@@ -396,12 +396,17 @@ InferenceResult
   GenericTensorAccessorW parent;
   int batch_size = bc->num_active_infr_tokens();
   float loss = 0.0f;
+
   ArgMax::forward_kernel_wrapper(
       m, bc, input, indices, parent, batch_size, &loss);
+
+  InferenceResult ir;
+  ir.finetuning_loss = loss;
+
   if (bc->num_active_peft_tokens() > 0) {
     printf("Epoch %i loss: %.4f\n", m->decoding_step, loss);
   }
-  InferenceResult ir;
+
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -410,8 +415,10 @@ InferenceResult
   } else {
     m->decoding_step++;
   }
+
   copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
+
   return ir;
 }
 
