@@ -6,6 +6,7 @@ from peft import LoraConfig, PeftModel
 import torch
 import numpy as np
 import flexflow.serve as ff
+from peft import LoraConfig, get_peft_model
 
 
 def parse_args():
@@ -60,7 +61,7 @@ def main():
         torch_dtype=torch.float32 if peft_config.precision == "fp32" else torch.float16,
         device_map="auto",
     )
-    model = PeftModel.from_pretrained(model, args.peft_model_id, config=hf_peft_config)
+    model = get_peft_model(model, hf_peft_config)
     in_dim = model.config.intermediate_size
     out_dim = model.config.hidden_size
 
@@ -90,6 +91,10 @@ def main():
             for shard_id in range(num_shards):
                 weight_path_shard = weight_path.replace("shard_0", f"shard_{shard_id}")
                 weight_data_shard = np.fromfile(weight_path_shard, dtype=ff_dtype)
+                print("===in_dim:", in_dim)
+                print("===out_dim:", out_dim)
+                print("===rank:", peft_config.rank)
+                print("===num_shards:", num_shards)
                 weight_data_shard = weight_data_shard.reshape(
                     (in_dim // num_shards, peft_config.rank), order="F"
                 )
