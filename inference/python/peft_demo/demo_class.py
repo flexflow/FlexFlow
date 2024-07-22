@@ -1,7 +1,9 @@
 import flexflow.serve as ff
 import json, os, warnings
 from types import SimpleNamespace
+from huggingface_hub import HfFolder
 import random
+import subprocess
 
 
 class FlexFlowDemo(object):
@@ -114,7 +116,8 @@ class FlexFlowDemo(object):
                 )
                 for prompt in prompts
             ]
-            self.llm.generate(inference_requests)
+            return self.llm.generate(inference_requests)
+        return None
 
     def generate_finetuning(self):
         if self.llm is None:
@@ -132,7 +135,27 @@ class FlexFlowDemo(object):
                 dataset_filepath=os.path.join(os.getcwd(), self.configs.finetuning_dataset),
                 max_training_steps=self.configs.max_training_steps,
             )
-            self.llm.generate([finetuning_request])
+            return self.llm.generate([finetuning_request])
+        return None
+
+    def download_models(self, refresh_cache=True, ask_for_token=False):
+        args = [self.configs.inference_peft_model_id, '--base_model_name', self.configs.base_model]
+        if refresh_cache:
+            args.append('--refresh-cache')
+        if not HfFolder.get_token() or ask_for_token:
+            hf_token = input("Please enter your HuggingFace personal access token: ")
+            subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
+        subprocess.run(['python', '../../utils/download_peft_model.py'] + args)
+
+    def upload_finetuned_model(self, ask_for_token=False):
+        if self.llm is None:
+            raise Exception("FlexFlow has not been initialized.")
+        if self.lora_finetuning_config is not None:
+            args = [self.configs.finetuning_peft_model_id]
+            if not HfFolder.get_token() or ask_for_token:
+                hf_token = input("Please enter your HuggingFace personal access token: ")
+                subprocess.run(['huggingface-cli', 'login', '--token', hf_token])
+            subprocess.run(['python', '../../utils/upload_peft_model.py'] + args)
 
 def main():
     configs_dict = {
@@ -157,13 +180,13 @@ def main():
         "max_requests_per_batch": 1,
         "max_sequence_length": 256,
         "max_tokens_per_batch": 128,
-        "max_training_steps": 4,
+        "max_training_steps": 10,
         "seed": 42,
     }
     model_configs = {
         "base_model": "meta-llama/Meta-Llama-3-8B",
         "inference_peft_model_id": "goliaro/llama-3-8b-lora",
-        "finetuning_peft_model_id": "flechman/llama-3-8b-lora-dolly",
+        "finetuning_peft_model_id": "goliaro/llama-3-8b-lora-dolly",
         "cache_path": os.environ.get("FF_CACHE_PATH", ""),
         "refresh_cache": False,
         "full_precision": True,
@@ -193,12 +216,16 @@ def main():
 
     demo = FlexFlowDemo(configs_dict)
 
+    demo.download_models(ask_for_token=True)
     demo.initialize_flexflow()
     demo.start_server()
-    demo.generate_inference()
-    demo.generate_finetuning()
-    demo.generate_inference()
+    inf_results_1 = demo.generate_inference()
+    ft_results = demo.generate_finetuning()
+    demo.upload_finetuned_model(ask_for_token=True)
+    #inf_results_2 = demo.generate_inference()
     demo.stop_server()
+    #print(inf_results_1[0].output_text)
+    #print(ft_results[0].finetuning_losses)
 
 if __name__ == "__main__":
     main()
