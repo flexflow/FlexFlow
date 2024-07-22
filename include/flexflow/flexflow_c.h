@@ -633,7 +633,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
                              int *training_steps,
                              int **output_length_and_tokens,
                              int *num_finetuning_losses,
-                             float **finetuning_losses);
+                             float *finetuning_losses);
 
 void flexflow_model_set_position_offset(flexflow_model_t handle, int offset);
 

@@ -4721,7 +4721,10 @@ class FFModel(object):
         ]
         training_steps = [request.max_training_steps for request in requests_list]
         num_finetuning_losses = ffi.new("int *")
-        c_finetuning_losses = ffi.new("float**")
+        # c_finetuning_losses = ffi.new("float**")
+        # TODO: set this value automatically
+        c_finetuning_losses = ffi.new("float[]", 10000)
+        
         ffc().flexflow_model_generate(
             self.handle,
             len(requests_list),
@@ -4739,7 +4742,7 @@ class FFModel(object):
         finetuning_losses = []
         if num_finetuning_losses[0] > 0:
             finetuning_losses = [
-                c_finetuning_losses[0][i] for i in range(num_finetuning_losses[0])
+                c_finetuning_losses[i] for i in range(num_finetuning_losses[0])
             ]
         results = []
         for c_output_text in c_output_texts:

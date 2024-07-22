@@ -1628,7 +1628,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
                              int *training_steps,
                              int **output_length_and_tokens,
                              int *num_finetuning_losses,
-                             float **finetuning_losses) {
+                             float *finetuning_losses) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<Request> requests;
 
@@ -1671,7 +1671,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
     }
   }
 
-  static std::vector<GenerationResult> results = handle->generate(requests);
+  std::vector<GenerationResult> results = handle->generate(requests);
 
   for (int i = 0; i < num_requests; i++) {
     if (request_types[i] == RequestType::REQ_INFERENCE) {
@@ -1690,7 +1690,10 @@ void flexflow_model_generate(flexflow_model_t handle_,
     } else if (request_types[i] == RequestType::REQ_FINETUNING) {
       assert(results[i].finetuning_losses.size() > 0);
       *num_finetuning_losses = results[i].finetuning_losses.size();
-      *finetuning_losses = results[i].finetuning_losses.data();
+      // *finetuning_losses = results[i].finetuning_losses.data();
+      std::memcpy(finetuning_losses,
+                  results[i].finetuning_losses.data(),
+                  results[i].finetuning_losses.size() * sizeof(float));
     }
   }
 }
