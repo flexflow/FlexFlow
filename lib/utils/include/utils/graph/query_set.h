@@ -14,7 +14,7 @@
 #include "utils/containers/contains.h"
 #include "utils/containers/intersection.h"
 #include "utils/containers/filter.h"
-#include "utils/containers/unique.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/containers/filter_keys.h"
 
 namespace FlexFlow {
@@ -98,10 +98,10 @@ bool includes(query_set<T> const &q, T const &v) {
 template <typename T, typename C>
 std::unordered_set<T> apply_query(query_set<T> const &q, C const &c) {
   if (is_matchall(q)) {
-    return unique(c);
+    return unordered_set_of(c);
   }
 
-  return filter(unique(c), [&](T const &t) { return includes(q, t); });
+  return filter(unordered_set_of(c), [&](T const &t) { return includes(q, t); });
 }
 
 template <typename C,

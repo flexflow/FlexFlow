@@ -72,18 +72,6 @@ bool contains_r(bidict<K, V> const &m, V const &v) {
   return m.contains_r(v);
 }
 
-template <typename K, typename V, typename F>
-std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
-                                       F const &f) {
-  std::unordered_map<K, V> result;
-  for (auto const &kv : m) {
-    if (f(kv.second)) {
-      result.insert(kv);
-    }
-  }
-  return result;
-}
-
 template <typename K, typename V>
 bool is_submap(std::unordered_map<K, V> const &m,
                std::unordered_map<K, V> const &sub) {

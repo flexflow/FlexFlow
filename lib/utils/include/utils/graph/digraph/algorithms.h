@@ -6,22 +6,12 @@
 namespace FlexFlow {
 
 std::unordered_set<DirectedEdge> get_edges(DiGraphView const &);
-std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &,
-                                                    Node const &);
-std::unordered_map<Node, std::unordered_set<DirectedEdge>>
-    get_incoming_edges(DiGraphView const &, std::unordered_set<Node> const &);
 std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &,
                                                     Node const &);
 std::unordered_map<Node, std::unordered_set<DirectedEdge>>
     get_outgoing_edges(DiGraphView const &, std::unordered_set<Node> const &);
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sinks(DiGraphView const &);
-
-DiGraphView flipped(DiGraphView const &g);
-
-std::unordered_set<Node> get_predecessors(DiGraphView const &, Node const &);
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_predecessors(DiGraphView const &, std::unordered_set<Node> const &);
 
 } // namespace FlexFlow
 

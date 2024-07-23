@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_UNORDERED_MAP_H
 
 #include "utils/check_fmtable.h"
-#include "utils/containers/sorted.h"
 #include "utils/fmt/pair.h"
 #include "utils/join_strings.h"
 #include <algorithm>
@@ -24,15 +23,7 @@ struct formatter<
     CHECK_FMTABLE(K);
     CHECK_FMTABLE(V);
 
-    std::string result;
-    // if constexpr (::FlexFlow::is_sortable_v<std::unordered_map<K, V>>) {
-    //   std::vector<std::pair<K, V>> items = ::FlexFlow::sorted(m);
-    //   result = ::FlexFlow::join_strings(
-    //       items.cbegin(), items.cend(), ", ", [](std::pair<K, V> const &p) {
-    //         return fmt::to_string(p);
-    //       });
-    // } else {
-      result =
+    std::string result =
           ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](std::pair<K, V> const &t) {
             return fmt::to_string(t);
           });

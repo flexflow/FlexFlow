@@ -1,7 +1,7 @@
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/containers/enumerate_vector.h"
 #include "utils/containers/extend.h"
-#include "utils/containers/without_order.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
@@ -92,7 +92,7 @@ void UnorderedSetDataflowGraph::add_node_unsafe(
     std::vector<OpenDataflowValue> const &inputs,
     std::vector<DataflowOutput> const &outputs) {
   assert(!contains(this->nodes, node));
-  assert(are_disjoint(this->outputs, without_order(outputs)));
+  assert(are_disjoint(this->outputs, unordered_set_of(outputs)));
 
   this->nodes.insert(node);
 

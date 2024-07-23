@@ -39,7 +39,7 @@ static std::optional<UnlabelledDataflowGraphPatternMatch>
       get_inputs_to_pattern_node(pattern, pattern_node);
   std::unordered_set<PatternInput> pattern_graph_inputs = get_inputs(pattern);
 
-  assert(without_order(pattern_node_inputs) ==
+  assert(unordered_set_of(pattern_node_inputs) ==
          transform(pattern_graph_inputs,
                    [](PatternInput const &i) { return PatternValue{i}; }));
 

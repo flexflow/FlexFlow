@@ -5,8 +5,6 @@
 
 namespace FlexFlow {
 
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_dominators(DiGraphView const &);
 std::unordered_set<Node> get_dominators(DiGraphView const &, Node const &);
 std::unordered_set<Node> get_dominators(DiGraphView const &,
                                         std::unordered_set<Node> const &);

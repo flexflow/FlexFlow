@@ -14,7 +14,7 @@
 #include <iostream>
 #include <queue>
 #include "utils/containers/get_only.h"
-#include "utils/containers/without_order.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/containers/intersection.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/values.h"
@@ -23,6 +23,7 @@
 #include "utils/containers/restrict_keys.h"
 #include "utils/graph/digraph/algorithms/get_dominators.h"
 #include "utils/graph/digraph/algorithms/get_node_with_greatest_topo_rank.h"
+#include "utils/graph/digraph/algorithms/get_incoming_edges.h"
 
 namespace FlexFlow {
 
@@ -525,7 +526,7 @@ std::unordered_set<std::unordered_set<Node>>
 
   for (Node const &node : get_nodes(g)) {
     std::unordered_set<Node> component =
-        without_order(get_bfs_ordering(as_digraph(g), {node}));
+        unordered_set_of(get_bfs_ordering(as_digraph(g), {node}));
     components.insert(component);
     visited = set_union(visited, component);
   }

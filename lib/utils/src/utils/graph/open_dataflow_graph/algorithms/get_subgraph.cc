@@ -5,7 +5,7 @@
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
 #include "utils/overload.h"
-#include "utils/containers/without_order.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/containers/values.h"
 #include "utils/containers/is_subseteq_of.h"
 #include "utils/bidict/generate_bidict.h"
@@ -68,7 +68,7 @@ struct OpenDataflowSubgraph final : public IOpenDataflowGraphView {
   }
 
   std::unordered_set<DataflowGraphInput> get_inputs() const override {
-    return without_order(values(this->full_graph_values_to_subgraph_inputs));
+    return unordered_set_of(values(this->full_graph_values_to_subgraph_inputs));
   };
 
   OpenDataflowSubgraph *clone() const override {

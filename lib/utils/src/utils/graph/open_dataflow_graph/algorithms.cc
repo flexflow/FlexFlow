@@ -1,7 +1,7 @@
 #include "utils/graph/open_dataflow_graph/algorithms.h"
 #include "utils/containers/generate_map.h"
 #include "utils/containers/group_by.h"
-#include "utils/containers/without_order.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
@@ -58,7 +58,7 @@ std::unordered_set<OpenDataflowValue>
     get_open_dataflow_values(OpenDataflowGraphView const &g) {
   return set_union(
       transform(
-          without_order(g.get_inputs()),
+          unordered_set_of(g.get_inputs()),
           [](DataflowGraphInput const &gi) { return OpenDataflowValue{gi}; }),
       transform(get_all_dataflow_outputs(g),
                 [](DataflowOutput const &o) { return OpenDataflowValue{o}; }));

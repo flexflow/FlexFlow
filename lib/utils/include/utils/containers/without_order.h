@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 template <typename C, typename T = typename C::value_type>
-std::unordered_set<T> without_order(C const &c) {
+std::unordered_multiset<T> without_order(C const &c) {
   return {c.cbegin(), c.cend()};
 }
 

@@ -7,36 +7,12 @@
 #include "utils/graph/views/views.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/transform.h"
+#include "utils/graph/digraph/algorithms/flipped.h"
 
 namespace FlexFlow {
 
 std::unordered_set<DirectedEdge> get_edges(DiGraphView const &g) {
   return g.query_edges(directed_edge_query_all());
-}
-
-std::unordered_set<DirectedEdge> get_incoming_edges(DiGraphView const &g,
-                                                    Node const &n) {
-  return g.query_edges(DirectedEdgeQuery{
-      query_set<Node>::matchall(),
-      query_set<Node>{n},
-  });
-}
-
-std::unordered_map<Node, std::unordered_set<DirectedEdge>>
-    get_incoming_edges(DiGraphView const &g,
-                       std::unordered_set<Node> const &ns) {
-  std::unordered_map<Node, std::unordered_set<DirectedEdge>> result =
-      group_by(g.query_edges(DirectedEdgeQuery{
-                   query_set<Node>::matchall(),
-                   query_set<Node>{ns},
-               }),
-               [](DirectedEdge const &e) { return e.dst; });
-
-  for (Node const &n : ns) {
-    result[n];
-  }
-
-  return result;
 }
 
 std::unordered_set<DirectedEdge> get_outgoing_edges(DiGraphView const &g,
@@ -74,23 +50,6 @@ std::unordered_set<Node> get_sources(DiGraphView const &g) {
 
 std::unordered_set<Node> get_sinks(DiGraphView const &g) {
   return get_sources(flipped(g));
-}
-
-DiGraphView flipped(DiGraphView const &g) {
-  return DiGraphView::create<FlippedView>(g);
-}
-
-std::unordered_set<Node> get_predecessors(DiGraphView const &g, Node const &n) {
-  return get_predecessors(g, std::unordered_set<Node>{n}).at(n);
-}
-
-std::unordered_map<Node, std::unordered_set<Node>>
-    get_predecessors(DiGraphView const &g, std::unordered_set<Node> const &ns) {
-  return map_values(get_incoming_edges(g, ns),
-                    [](std::unordered_set<DirectedEdge> const &es) {
-                      return transform(
-                          es, [](DirectedEdge const &e) { return e.src; });
-                    });
 }
 
 } // namespace FlexFlow

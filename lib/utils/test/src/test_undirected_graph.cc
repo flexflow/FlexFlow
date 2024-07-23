@@ -50,12 +50,12 @@ TEST_SUITE(FF_TEST_SUITE) {
         g.add_edge(edge);
       }
 
-      CHECK(g.query_nodes(NodeQuery::all()) == without_order(n));
+      CHECK(g.query_nodes(NodeQuery::all()) == unordered_set_of(n));
 
       auto subset = *rc::subset_of(n);
       CHECK(g.query_nodes(NodeQuery{query_set<Node>{subset}}) == subset);
 
-      CHECK(g.query_edges(UndirectedEdgeQuery::all()) == without_order(e));
+      CHECK(g.query_edges(UndirectedEdgeQuery::all()) == unordered_set_of(e));
     });
   }
 }

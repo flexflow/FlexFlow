@@ -117,7 +117,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     PCGPattern pattern = PCGPattern{g};
 
     std::unordered_set<UnlabelledDataflowGraphPatternMatch> result =
-        without_order(
+        unordered_set_of(
             find_pattern_matches(pattern, sub_pcg_from_full_pcg(pcg)));
 
     UnlabelledDataflowGraphPatternMatch match1 =

@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_UNIQUE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_UNIQUE_H
 
-#include "utils/containers/without_order.h"
+#include <unordered_set>
 
 namespace FlexFlow {
 
 template <typename C, typename T = typename C::value_type>
-std::unordered_set<T> unique(C const &c) {
-  return without_order(c);
+std::unordered_set<T> unordered_set_of(C const &c) {
+  return std::unordered_set{c.cbegin(), c.cend()};
 }
 
 } // namespace FlexFlow

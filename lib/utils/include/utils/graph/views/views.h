@@ -8,21 +8,6 @@
 
 namespace FlexFlow {
 
-struct FlippedView : public IDiGraphView {
-public:
-  FlippedView() = delete;
-  explicit FlippedView(DiGraphView const &);
-
-  std::unordered_set<DirectedEdge>
-      query_edges(DirectedEdgeQuery const &) const override;
-  std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-
-  FlippedView *clone() const override;
-
-private:
-  DiGraphView g;
-};
-
 struct UndirectedSubgraphView : public IUndirectedGraphView {
 public:
   UndirectedSubgraphView() = delete;
@@ -190,8 +175,6 @@ public:
 private:
   UndirectedGraphView g;
 };
-
-DirectedEdge flipped(DirectedEdge const &);
 
 std::unordered_map<Node, Node>
     flatten_contraction(std::unordered_map<Node, Node> const &);

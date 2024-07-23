@@ -195,7 +195,7 @@ struct ToFinalAST {
                 .value();
           })};
     } else {
-      return ParallelSplit{without_order(transform(
+      return ParallelSplit{unordered_set_of(transform(
           node.children,
           [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
             return narrow<std::variant<SerialSplit, Node>>(

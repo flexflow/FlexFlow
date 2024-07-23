@@ -184,13 +184,34 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("find_bottleneck_node") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> n = add_nodes(g, 2);
-    g.add_edge(DirectedEdge{n.at(0), n.at(1)});
 
-    std::optional<Node> result = find_bottleneck_node(g);
-    std::optional<Node> correct = n.at(1);
+    SUBCASE("has bottleneck") {
+      std::vector<Node> n = add_nodes(g, 2);
+      g.add_edge(DirectedEdge{n.at(0), n.at(1)});
 
-    CHECK(result == correct);
+      std::optional<Node> result = find_bottleneck_node(g);
+      std::optional<Node> correct = n.at(1);
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("is parallel") {
+      std::vector<Node> n = add_nodes(g, 2);
+
+      std::optional<Node> result = find_bottleneck_node(g);
+      std::optional<Node> correct = std::nullopt;
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("is only a single node") {
+      std::vector<Node> n = add_nodes(g, 1);
+
+      std::optional<Node> result = find_bottleneck_node(g);
+      std::optional<Node> correct = std::nullopt;
+
+      CHECK(result == correct);
+    }
   }
 
   TEST_CASE("sp_decomposition (serial)") {
