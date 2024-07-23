@@ -107,6 +107,9 @@ option(FF_USE_NCCL "Run FlexFlow with NCCL" OFF)
 # option for avx2
 option(FF_USE_AVX2 "Run FlexFlow with AVX2" OFF)
 
+# option for tensorrt
+option(FF_USE_TENSORRT "Run FlexFlow with TensorRT" ON)
+
 # option for max dim
 set(FF_MAX_DIM "4" CACHE STRING "Maximum dimention of tensors")
 
@@ -182,6 +185,15 @@ if(NOT BUILD_LEGION_ONLY)
       -DFF_USE_NCCL)
     list(APPEND FF_NVCC_FLAGS
       -DFF_USE_NCCL)
+  endif()
+
+  # TensorRT
+  if(FF_USE_TENSORRT)
+    include(tensorrt) 
+    list(APPEND FF_CC_FLAGS
+      -DFF_USE_TENSORRT)
+    list(APPEND FF_NVCC_FLAGS
+      -DFF_USE_TENSORRT)
   endif()
 
   # Inference tests
@@ -282,13 +294,16 @@ if(NOT BUILD_LEGION_ONLY)
   target_link_libraries(substitution_loader nlohmann_json::nlohmann_json)
 
 
-  #message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
+  message("FLEXFLOW_INCLUDE_DIRS: ${FLEXFLOW_INCLUDE_DIRS}")
+  message("FLEXFLOW GPU_BACKEND: ${FF_GPU_BACKEND}")
 
   # compile flexflow lib
   if (FF_GPU_BACKEND STREQUAL "cuda")
     file(GLOB_RECURSE FLEXFLOW_GPU_SRC
       LIST_DIRECTORIES False
       ${FLEXFLOW_ROOT}/src/*.cu)
+
+    message("FLEXFLOW Target GPU files: ${FLEXFLOW_GPU_SRC}")
 
     add_compile_definitions(FF_USE_CUDA)
 
