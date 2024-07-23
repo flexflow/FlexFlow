@@ -15,8 +15,8 @@
  */
 
 #include "custom_allreduce_kernels.h"
-#include "tensorrt_llm/common/cudaBf16Fallbacks.cuh"
-#include "tensorrt_llm/common/cudaTypeUtils.cuh"
+#include "cudaBf16Fallbacks.cuh"
+#include "cudaTypeUtils.cuh"
 #include "tensorrt_llm/common/dataType.h"
 #include <tuple>
 #include <type_traits>

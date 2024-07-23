@@ -194,6 +194,7 @@ if(NOT BUILD_LEGION_ONLY)
       -DFF_USE_TENSORRT)
     list(APPEND FF_NVCC_FLAGS
       -DFF_USE_TENSORRT)
+    set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --expt-relaxed-constexpr")
   endif()
 
   # Inference tests
