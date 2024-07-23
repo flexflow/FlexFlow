@@ -170,10 +170,6 @@ std::vector<DirectedEdge> get_edge_topological_ordering(DiGraphView const &);
 
 // std::unordered_set<std::unordered_set<Node>>
 //     get_weakly_connected_components(MultiDiGraphView const &);
-std::unordered_set<std::unordered_set<Node>>
-    get_weakly_connected_components(DiGraphView const &);
-std::unordered_set<std::unordered_set<Node>>
-    get_connected_components(UndirectedGraphView const &);
 
 std::unordered_set<DirectedEdge>
     get_transitive_reduction_delta(DiGraphView const &);

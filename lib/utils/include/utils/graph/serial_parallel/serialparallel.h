@@ -12,11 +12,6 @@ namespace FlexFlow {
 SerialParallelDecomposition
     get_serial_parallel_decomposition(DiGraphView const &);
 
-std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp);
-std::unordered_set<Node> get_nodes(SerialSplit const &);
-std::unordered_set<Node> get_nodes(ParallelSplit const &);
-std::unordered_set<Node> get_nodes(Node const &);
-
 } // namespace FlexFlow
 
 #endif

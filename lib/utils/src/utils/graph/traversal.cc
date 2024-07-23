@@ -1,6 +1,7 @@
 #include "utils/graph/traversal.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/algorithms/get_outgoing_edges.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/containers/contains.h"
 

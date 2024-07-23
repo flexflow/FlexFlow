@@ -1,6 +1,7 @@
 #include "utils/graph/algorithms.h"
 #include "utils/exception.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/algorithms/get_outgoing_edges.h"
 #include "utils/graph/digraph/directed_edge_query.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_query.h"
@@ -508,30 +509,6 @@ DiGraphView as_digraph(UndirectedGraphView const &g) {
 // OpenMultiDiGraphView as_openmultidigraph(MultiDiGraphView const &g) {
 //   return OpenMultiDiGraphView::create<ViewMultiDiGraphAsOpenMultiDiGraph>(g);
 // }
-
-std::unordered_set<std::unordered_set<Node>>
-    get_weakly_connected_components(DiGraphView const &g) {
-  return get_connected_components(as_undirected(g));
-}
-
-// std::unordered_set<std::unordered_set<Node>>
-//     get_weakly_connected_components(MultiDiGraphView const &g) {
-//   return get_connected_components(as_undirected(g));
-// }
-
-std::unordered_set<std::unordered_set<Node>>
-    get_connected_components(UndirectedGraphView const &g) {
-  std::unordered_set<std::unordered_set<Node>> components;
-  std::unordered_set<Node> visited;
-
-  for (Node const &node : get_nodes(g)) {
-    std::unordered_set<Node> component =
-        unordered_set_of(get_bfs_ordering(as_digraph(g), {node}));
-    components.insert(component);
-    visited = set_union(visited, component);
-  }
-  return components;
-}
 
 // std::unordered_set<Node> get_closed_sources(OpenMultiDiGraphView const &g) {
 //   return filter(get_nodes(g), [&](Node const &n) {

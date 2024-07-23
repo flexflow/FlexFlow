@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "InverseLineGraphResult"
+features = [ ]
+
+includes = [
+  "utils/graph/digraph/digraph_view.h",
+  "utils/bidict/bidict.h",
+]
+
+[[fields]]
+name = "graph"
+type = "::FlexFlow::DiGraphView"
+
+[[fields]]
+name = "line_edge_to_inverse_node_bidict"
+type = "::FlexFlow::bidict<::FlexFlow::DirectedEdge, ::FlexFlow::Node>"

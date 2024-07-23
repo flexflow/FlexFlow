@@ -34,13 +34,6 @@ DiGraphView source_to_sink_subgraph(DiGraphView const &g,
                                     SourceSettings include_src,
                                     SinkSettings include_sink);
 
-std::variant<SerialSplit, ParallelSplit, Node> internal_to_final_ast(
-    std::variant<IntermediateSpDecompositionTree, Node> const &ast);
-SerialParallelDecomposition
-    to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &);
-std::variant<IntermediateSpDecompositionTree, Node>
-    flatten_ast(std::variant<IntermediateSpDecompositionTree, Node> const &ast);
-
 } // namespace FlexFlow
 
 #endif

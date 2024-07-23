@@ -33,7 +33,6 @@ public:
       create() {
     return DiGraph(make_cow_ptr<T>());
   }
-
 protected:
   using DiGraphView::DiGraphView;
 
