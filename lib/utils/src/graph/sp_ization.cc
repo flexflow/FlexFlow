@@ -41,37 +41,42 @@ std::unordered_set<Node> get_heads(DiGraphView const &g,
   std::unordered_set<Node> previous_layer_sinks =
       set_union(transform(metanodes, get_sinks));
   std::unordered_set<Node> candidate_heads = set_union(values(get_successors(
-      flipped(g), previous_layer_sinks))); // TODO: remove flipped, accounts for
-                                           // diedge bug currently
+      g, previous_layer_sinks)));
   return filter(candidate_heads, [&](Node const &n) {
-    return all_of(get_predecessors(flipped(g), n),
+    return all_of(get_predecessors(g, n),
                   [&](Node const &p) { return contains(explored, p); });
-  }); // TODO: remove flipped, accounts for diedge bug currently
+  }); 
 }
 
 std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
     DiGraphView const &g, std::unordered_set<Node> const &heads) {
   std::unordered_set<std::vector<Node>> topo_orderings =
       transform(heads, [&](Node const &head) {
-        return get_topological_ordering_from_starting_node(flipped(g),
-                                                           {{head}});
-      }); // TODO: remove flipped, accounts for diedge bug currently
+        return get_topological_ordering_from_starting_node(g,
+                                                           head);
+      });
   std::unordered_set<Node> all_nodes = set_union(
       without_order(transform(topo_orderings, [&](std::vector<Node> const &v) {
         return without_order(v);
       })));
-  std::unordered_set non_visitable_nodes =
+
+  std::unordered_set<Node> non_visitable_nodes =
       filter(all_nodes, [&](Node const &n) {
-        return sum(transform(topo_orderings, [&](auto const &ordering) {
-                 return contains(ordering, n);
-               })) != 1;
+        std::vector<int> contains_vec = transform(as_vector(topo_orderings), [&](auto const &ordering) -> int {
+                return contains(ordering, n) ? 1 : 0;
+               });
+      return sum(contains_vec) != 1;
       });
   std::unordered_set<std::vector<Node>> non_overlapping_topo_orderings;
-  for (auto const &topo_ordering : topo_orderings) {
+  for (std::vector<Node> const &topo_ordering : topo_orderings) {
+    std::cout << topo_ordering.size() << std::endl;
+    std::vector<Node> filtered_topo_ordering;
+    for (Node const &n: topo_ordering) {
+      if (!contains(non_visitable_nodes,n)) {filtered_topo_ordering.push_back(n);}
+    }
+    std::cout << filtered_topo_ordering.size() <<std::endl;
     non_overlapping_topo_orderings.insert(
-        filter(topo_ordering, [&](Node const &n) {
-          return !contains(non_visitable_nodes, n);
-        }));
+        filtered_topo_ordering);
   }
   return non_overlapping_topo_orderings;
 }
@@ -102,7 +107,7 @@ std::vector<std::vector<DiGraphView>>
     cost_aware_layer_split(DiGraphView const &g,
                            std::unordered_map<Node, float> const &cost_map) {
   std::vector<std::vector<DiGraphView>> layers;
-  Node source = get_only(get_sinks(g));
+  Node source = get_only(get_sources(g));
   std::unordered_set<Node> explored = {{source}};
   layers.push_back({{get_subgraph(g, {{source}})}});
   for (int i = 1; get_nodes(g) != explored; i++) {
