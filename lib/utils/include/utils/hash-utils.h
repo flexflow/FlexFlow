@@ -30,11 +30,16 @@ inline void hash_combine(std::size_t &seed, T const &v, Ts... rest) {
 }
 
 template <typename T>
+void unordered_hash_combine(std::size_t &seed, T const &t) {
+  seed += get_std_hash(t);  
+}
+
+template <typename T>
 void unordered_container_hash(std::size_t &seed, T const &t) {
   hash_combine(seed, t.size());
   size_t total = 0;
   for (auto const &v : t) {
-    total += get_std_hash(v);
+    unordered_hash_combine(total, v);
   }
   hash_combine(seed, total);
 }

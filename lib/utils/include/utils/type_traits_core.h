@@ -171,6 +171,9 @@ struct is_lt_comparable<
     void_t<decltype((bool)(std::declval<T>() < std::declval<T>()))>>
     : std::true_type {};
 
+template <typename T>
+inline constexpr bool is_lt_comparable_v = is_lt_comparable<T>::value;
+
 template <typename T, typename Enable = void>
 struct is_hashable : std::false_type {};
 

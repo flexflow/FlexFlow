@@ -2,12 +2,7 @@ ff_add_test_executable(
   NAME
     utils-tests
   SRC_PATTERNS
-    src/test_cow_ptr.cc
-    src/test_optional.cc
-    src/utils/containers/*.cc
-    src/utils/bidict/*.cc
-    src/utils/fmt/*.cc
-    src/utils/graph/*.cc
+    src/utils/*.cc
   PRIVATE_INCLUDE
     src/
   DEPS

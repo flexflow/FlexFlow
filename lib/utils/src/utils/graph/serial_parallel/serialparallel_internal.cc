@@ -5,6 +5,7 @@
 #include "utils/graph/multidigraph/algorithms/get_outgoing_edges.h"
 #include "utils/graph/multidigraph/algorithms/get_incoming_edges.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/serial_parallel/parallel_reduction.h"
 #include "utils/graph/serial_parallel/sink_settings.dtg.h"
 #include "utils/graph/serial_parallel/source_settings.dtg.h"
 #include "utils/containers/extend.h"
@@ -100,50 +101,6 @@ DiGraphView source_to_sink_subgraph(DiGraphView const &g,
                                     SinkSettings include_sink) {
   return get_subgraph(
       g, from_source_to_sink(g, srcs, sinks, include_src, include_sink));
-}
-
-std::optional<std::pair<MultiDiEdge, MultiDiEdge>> find_parallel_reduction(MultiDiGraphView const &g) {
-  std::unordered_set<MultiDiEdge> edges = get_edges(g);
-
-  for (MultiDiEdge const &e1 : edges) {
-    for (MultiDiEdge const &e2 : edges) {
-      if (e1 != e2
-          && g.get_multidiedge_src(e1) == g.get_multidiedge_src(e2) 
-          && g.get_multidiedge_dst(e1) == g.get_multidiedge_dst(e2)) {
-        return std::make_pair(e1, e2);
-      }
-    }
-  }
-
-  return std::nullopt;
-}
-
-std::optional<std::pair<MultiDiEdge, MultiDiEdge>> find_series_reduction(MultiDiGraphView const &g) {
-  std::unordered_set<MultiDiEdge> edges = get_edges(g);
-
-  for (MultiDiEdge const &e1 : edges) {
-    for (MultiDiEdge const &e2 : edges) {
-      if (e1 == e2) {
-        continue;
-      }
-      Node e1_dst = g.get_multidiedge_dst(e1);
-      Node e2_src = g.get_multidiedge_src(e2);
-      if (e1_dst != e2_src) {
-        continue;
-      }
-
-      std::unordered_set<MultiDiEdge> outgoing = get_outgoing_edges(g, e1_dst);
-      std::unordered_set<MultiDiEdge> incoming = get_incoming_edges(g, e1_dst);
-
-      if (outgoing.size() > 1 || incoming.size() > 1) {
-        continue;
-      }
-
-      return std::make_pair(e1, e2);
-    }
-  }
-
-  return std::nullopt;
 }
 
 std::variant<IntermediateSpDecompositionTree, Node>

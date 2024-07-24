@@ -1,9 +1,13 @@
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
+#include "utils/graph/serial_parallel/parallel_reduction.h"
 #include "utils/graph/serial_parallel/serialparallel_internal.h"
 #include "utils/graph/instances/adjacency_digraph.h"
+#include "utils/graph/instances/adjacency_multidigraph.h"
 #include "utils/graph/algorithms.h"
 #include "utils/fmt/variant.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/multidigraph/algorithms/add_nodes.h"
+#include "utils/graph/multidigraph/algorithms/add_edges.h"
 
 using namespace ::FlexFlow;
 

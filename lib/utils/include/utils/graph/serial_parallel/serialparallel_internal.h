@@ -10,6 +10,8 @@
 #include "utils/visitable.h"
 #include <variant>
 #include <vector>
+#include "utils/graph/serial_parallel/parallel_reduction.dtg.h"
+#include "utils/graph/serial_parallel/series_reduction.dtg.h"
 
 namespace FlexFlow {
 
@@ -35,8 +37,6 @@ DiGraphView source_to_sink_subgraph(DiGraphView const &g,
                                     SourceSettings include_src,
                                     SinkSettings include_sink);
 
-std::optional<std::pair<MultiDiEdge, MultiDiEdge>> find_parallel_reduction(MultiDiGraphView const &);
-std::optional<std::pair<MultiDiEdge, MultiDiEdge>> find_series_reduction(MultiDiGraphView const &);
 
 } // namespace FlexFlow
 
