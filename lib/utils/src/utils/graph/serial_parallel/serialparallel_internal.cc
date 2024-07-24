@@ -101,32 +101,7 @@ DiGraphView source_to_sink_subgraph(DiGraphView const &g,
 
 std::variant<IntermediateSpDecompositionTree, Node>
     sp_decomposition(DiGraphView const &g) {
-  if (num_nodes(g) == 1) {
-    return get_only(get_nodes(g));
-  }
-
-  std::unordered_set<Node> sources = get_sources(g);
-  std::unordered_set<Node> sinks = get_sinks(g);
-
-  std::optional<Node> bottleneck = find_bottleneck_node(g);
-  if (bottleneck.has_value()) {
-    return IntermediateSpDecompositionTree{
-        SplitType::SERIAL,
-        {sp_decomposition(
-             source_to_sink_subgraph(g,
-                                     sources,
-                                     {bottleneck.value()},
-                                     SourceSettings::INCLUDE_SOURCE_NODES,
-                                     SinkSettings::EXCLUDE_SINK_NODES)),
-         sp_decomposition(
-             source_to_sink_subgraph(g,
-                                     {bottleneck.value()},
-                                     sinks,
-                                     SourceSettings::INCLUDE_SOURCE_NODES,
-                                     SinkSettings::INCLUDE_SINK_NODES))}};
-  } else {
-    return parallel_decomposition(g);
-  }
+  // MultiDiGraph
 }
 
 IntermediateSpDecompositionTree parallel_decomposition(DiGraphView const &g) {
