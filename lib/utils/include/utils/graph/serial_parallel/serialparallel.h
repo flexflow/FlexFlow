@@ -9,7 +9,7 @@
 
 namespace FlexFlow {
 
-SerialParallelDecomposition
+std::optional<SerialParallelDecomposition>
     get_serial_parallel_decomposition(DiGraphView const &);
 
 } // namespace FlexFlow

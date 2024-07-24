@@ -8,10 +8,12 @@
 
 namespace FlexFlow {
 
-SerialParallelDecomposition
+std::optional<SerialParallelDecomposition>
     get_serial_parallel_decomposition(DiGraphView const &g) {
-  std::variant<IntermediateSpDecompositionTree, Node> ast = sp_decomposition(g);
-  return to_final_ast(ast);
+  return transform(sp_decomposition(g),
+                   [](std::variant<IntermediateSpDecompositionTree, Node> const &ast) {
+                     return to_final_ast(ast);
+                   });
 }
 
 } // namespace FlexFlow

@@ -25,6 +25,14 @@ struct MultiDiGraph : virtual public MultiDiGraphView {
     return MultiDiGraph(make_cow_ptr<T>());
   }
 
+  template <typename T>
+  static std::enable_if_t<std::is_base_of<IMultiDiGraph, T>::value,
+                          MultiDiGraph>
+      materialize_copy_of(MultiDiGraphView const &view) {
+    cow_ptr_t<T> impl = make_cow_ptr<T>();
+    impl.get_mutable()->inplace_materialize_from(view);
+    return MultiDiGraph(std::move(impl));
+  }
 protected:
   using MultiDiGraphView::MultiDiGraphView;
 

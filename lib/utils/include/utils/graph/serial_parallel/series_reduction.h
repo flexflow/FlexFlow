@@ -3,12 +3,14 @@
 
 #include "utils/graph/multidigraph/multidiedge.dtg.h"
 #include "utils/graph/serial_parallel/series_reduction.dtg.h"
-#include "utils/graph/multidigraph/multidigraph_view.h"
+#include "utils/graph/multidigraph/multidigraph.h"
 
 namespace FlexFlow {
 
 SeriesReduction make_series_reduction(MultiDiEdge const &, MultiDiEdge const &);
 std::optional<SeriesReduction> find_series_reduction(MultiDiGraphView const &);
+
+MultiDiEdge apply_series_reduction(MultiDiGraph &, SeriesReduction const &);
 
 } // namespace FlexFlow
 

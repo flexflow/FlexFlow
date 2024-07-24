@@ -19,6 +19,7 @@ public:
   std::unordered_set<MultiDiEdge> query_edges(MultiDiEdgeQuery const &) const override; 
   Node get_multidiedge_src(MultiDiEdge const &) const override;
   Node get_multidiedge_dst(MultiDiEdge const &) const override;
+  void inplace_materialize_from(MultiDiGraphView const &) override;
 
   AdjacencyMultiDiGraph *clone() const override;
 private:

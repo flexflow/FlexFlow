@@ -4,6 +4,8 @@
 #include "utils/containers/keys.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/values.h"
+#include "utils/graph/multidigraph/algorithms/get_edges.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
@@ -92,6 +94,27 @@ Node AdjacencyMultiDiGraph::get_multidiedge_src(MultiDiEdge const &e) const {
 
 Node AdjacencyMultiDiGraph::get_multidiedge_dst(MultiDiEdge const &e) const {
   return this->edge_nodes.at(e).second;
+}
+
+void AdjacencyMultiDiGraph::inplace_materialize_from(MultiDiGraphView const &g) {
+  std::unordered_set<Node> nodes = get_nodes(g);
+  std::unordered_set<MultiDiEdge> edges = get_edges(g);
+
+  this->adjacency = generate_map(nodes, 
+                                 [&](Node const &) {
+                                   return generate_map(nodes,
+                                      [&](Node const &) {
+                                        return std::unordered_set<MultiDiEdge>{}; 
+                                      });
+                                 });
+  this->edge_nodes.clear();
+
+  for (MultiDiEdge const &e : edges) {
+    Node src = g.get_multidiedge_src(e);
+    Node dst = g.get_multidiedge_dst(e);
+    this->adjacency.at(src).at(dst).insert(e);
+    this->edge_nodes.insert({e, {src, dst}});
+  }
 }
 
 AdjacencyMultiDiGraph *AdjacencyMultiDiGraph::clone() const {

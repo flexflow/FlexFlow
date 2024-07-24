@@ -19,7 +19,7 @@ Node find_source_node(DiGraphView const &);
 Node find_sink_node(DiGraphView const &);
 std::optional<Node> find_bottleneck_node(DiGraphView const &);
 
-std::variant<IntermediateSpDecompositionTree, Node>
+std::optional<std::variant<IntermediateSpDecompositionTree, Node>>
     sp_decomposition(DiGraphView const &g);
 IntermediateSpDecompositionTree parallel_decomposition(DiGraphView const &g);
 

@@ -21,6 +21,17 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
+    SUBCASE("does not apply when there is only one edge") {
+      std::vector<Node> n = add_nodes(g, 2);
+      std::vector<MultiDiEdge> e = add_edges(g, {
+        {n.at(0), n.at(1)},
+      });
+
+      std::optional<ParallelReduction> result = find_parallel_reduction(g);
+      std::optional<ParallelReduction> correct = std::nullopt;
+      CHECK(result == correct);
+    }
+
     SUBCASE("requires both ends be the same") {
       std::vector<Node> n = add_nodes(g, 3);
         SUBCASE("branch out") {

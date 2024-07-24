@@ -123,5 +123,9 @@ TEST_SUITE(FF_TEST_SUITE) {
         CHECK(result == correct);
       }
     }
+
+    SUBCASE("create_copy_of") {
+      FAIL_CHECK("TODO");
+    }
   }
 }
