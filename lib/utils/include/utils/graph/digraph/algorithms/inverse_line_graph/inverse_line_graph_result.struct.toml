@@ -12,5 +12,5 @@ name = "graph"
 type = "::FlexFlow::DiGraphView"
 
 [[fields]]
-name = "line_edge_to_inverse_node_bidict"
+name = "inverse_edge_to_line_node_bidict"
 type = "::FlexFlow::bidict<::FlexFlow::DirectedEdge, ::FlexFlow::Node>"

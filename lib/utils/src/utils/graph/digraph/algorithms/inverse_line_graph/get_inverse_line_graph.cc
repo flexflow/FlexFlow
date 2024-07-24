@@ -32,37 +32,38 @@ InverseLineGraphResult get_inverse_line_graph(DiGraphView const &view) {
     return get_component_containing_node_in_head(cbc_decomposition, n).value();
   };
   auto t = [&](Node const &n) -> BipartiteComponent {
-    return get_component_containing_node_in_head(cbc_decomposition, n).value();
+    return get_component_containing_node_in_tail(cbc_decomposition, n).value();
   };
 
   std::unordered_set<Node> sources = get_sources(view);
   std::unordered_set<Node> sinks = get_sinks(view);
+
   auto edge_for_node = [&](Node const &v) -> DirectedEdge {
     if (contains(sources, v) && contains(sinks, v)) {
-      return DirectedEdge{alpha, component_nodes.at_l(h(v))};
-    } else if (contains(sources, v)) {
-      return DirectedEdge{component_nodes.at_l(t(v)), omega};
-    } else if (contains(sinks, v)) {
       return DirectedEdge{alpha, omega};
+    } else if (contains(sources, v)) {
+      return DirectedEdge{alpha, component_nodes.at_l(h(v))};
+    } else if (contains(sinks, v)) {
+      return DirectedEdge{component_nodes.at_l(t(v)), omega};
     } else {
       return DirectedEdge{component_nodes.at_l(t(v)), component_nodes.at_l(h(v))};
     }
   };
 
-  bidict<DirectedEdge, Node> line_edge_to_inverse_node_bidict;
+  bidict<DirectedEdge, Node> inverse_edge_to_line_node_bidict;
 
   for (Node const &v : get_nodes(view)) {
     DirectedEdge e = edge_for_node(v);
     result_graph.add_edge(e);
 
-    assert (!line_edge_to_inverse_node_bidict.contains_l(e));
-    assert (!line_edge_to_inverse_node_bidict.contains_r(v));
-    line_edge_to_inverse_node_bidict.equate({e, v});
+    assert (!inverse_edge_to_line_node_bidict.contains_l(e));
+    assert (!inverse_edge_to_line_node_bidict.contains_r(v));
+    inverse_edge_to_line_node_bidict.equate({e, v});
   }
 
   return InverseLineGraphResult{
     result_graph,
-    line_edge_to_inverse_node_bidict,
+    inverse_edge_to_line_node_bidict,
   };
 }
 

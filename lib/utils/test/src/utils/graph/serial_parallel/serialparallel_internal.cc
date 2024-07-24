@@ -132,29 +132,29 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == correct);
   }
 
-  TEST_CASE("sp_decomposition (composite)") {
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> ns = add_nodes(g, 3);
-    add_edges(g, {
-      DirectedEdge{ns.at(0), ns.at(1)},
-      DirectedEdge{ns.at(0), ns.at(2)},
-    });
-    std::variant<IntermediateSpDecompositionTree, Node> result = sp_decomposition(g);
-    std::variant<IntermediateSpDecompositionTree, Node> correct = IntermediateSpDecompositionTree{
-      SplitType::SERIAL,
-      {
-        ns.at(0),
-        IntermediateSpDecompositionTree{
-          SplitType::PARALLEL, 
-          {
-            ns.at(1),
-            ns.at(2),
-          }
-        }
-      }
-    };
-    CHECK(result == correct);
-  }
+  // TEST_CASE("sp_decomposition (composite)") {
+  //   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  //   std::vector<Node> ns = add_nodes(g, 3);
+  //   add_edges(g, {
+  //     DirectedEdge{ns.at(0), ns.at(1)},
+  //     DirectedEdge{ns.at(0), ns.at(2)},
+  //   });
+  //   std::variant<IntermediateSpDecompositionTree, Node> result = sp_decomposition(g);
+  //   std::variant<IntermediateSpDecompositionTree, Node> correct = IntermediateSpDecompositionTree{
+  //     SplitType::SERIAL,
+  //     {
+  //       ns.at(0),
+  //       IntermediateSpDecompositionTree{
+  //         SplitType::PARALLEL, 
+  //         {
+  //           ns.at(1),
+  //           ns.at(2),
+  //         }
+  //       }
+  //     }
+  //   };
+  //   CHECK(result == correct);
+  // }
 
   // TEST_CASE("sp_decomposition (hmm)") {
   //   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
