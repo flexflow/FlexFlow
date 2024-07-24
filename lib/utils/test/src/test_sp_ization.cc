@@ -321,83 +321,177 @@ DiGraph make_taso_nasnet_cell() {
 
 } // namespace TestingGraphs
 
+namespace BenchMark {
+using Result = std::pair<float, float>;
+using CombinedResult = std::tuple<Result, Result, Result>;
+template <typename D>
+CombinedResult perform_benchmark(DiGraphView const &g,
+                                 D const &Dist,
+                                 size_t const &repeat) {
+  Result dependency_invariant = {0, 0};
+  Result barrier_sync = {0, 0};
+  Result cost_aware = {0, 0};
+  for (int i = 0; i < repeat; i++) {
+    auto cost_map = Distributions::make_cost_map(get_nodes(g), Dist);
+    SerialParallelDecomposition sp1 =
+        dependency_invariant_sp_ization_with_coalescing(g);
+    SerialParallelDecomposition sp2 = barrier_sync_sp_ization(g);
+    SerialParallelDecomposition sp3 =
+        cost_aware_barrier_sync_sp_ization(g, cost_map);
+
+    dependency_invariant.first += relative_cost_increase(g, sp1, cost_map);
+    dependency_invariant.second +=
+        relative_critical_path_cost_increase(g, sp1, cost_map);
+    barrier_sync.first += relative_cost_increase(g, sp2, cost_map);
+    barrier_sync.second +=
+        relative_critical_path_cost_increase(g, sp2, cost_map);
+    cost_aware.first += relative_cost_increase(g, sp3, cost_map);
+    cost_aware.second += relative_critical_path_cost_increase(g, sp3, cost_map);
+  }
+  std::vector<Result> results = {
+      dependency_invariant, barrier_sync, cost_aware};
+  for (Result &r : results) {
+    r.first /= repeat;
+    r.second /= repeat;
+  }
+
+  return {results[0], results[1], results[2]};
+}
+
+void output_benchmark(CombinedResult const &combined_result,
+                      std::string const &title) {
+  auto [d_i, b_s, c_a] = combined_result;
+  std::cout << "Benchmark for " << title << std::endl;
+  std::cout << "Technique | Work-Increase | Critical-Path-Increase"
+            << std::endl;
+  std::cout << "Dependency Invariant | " << d_i.first << " | " << d_i.second
+            << std::endl;
+  std::cout << "Barrier Sync | " << b_s.first << " | " << b_s.second
+            << std::endl;
+  std::cout << "Cost_Increase | " << c_a.first << " | " << c_a.second
+            << std::endl;
+  std::cout << std::endl;
+}
+
+template <typename D>
+void bench_mark(std::string title,
+                DiGraphView const &g,
+                D const &Dist,
+                size_t const &repeat) {
+  output_benchmark(perform_benchmark(g, Dist, repeat), title);
+}
+
+} // namespace BenchMark
+
 TEST_SUITE(FF_TEST_SUITE) {
 
-  TEST_CASE("Barrier Syncing SP-ization Algorithm") {
+  TEST_CASE("barrier_sync_sp_ization - sample_dag_1") {
 
     DiGraph g = TestingGraphs::make_sample_dag_1();
     std::vector<Node> n = sorted(get_nodes(g));
     auto gv = flipped(g); // to account for DiEdge bug
-    SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
-    CHECK(std::holds_alternative<Serial>(sp));
-
+    SerialParallelDecomposition result = barrier_sync_sp_ization(gv);
     Serial expected = Serial{
         {n[0], Parallel{{n[1], n[2]}}, Parallel{{n[3], n[6]}}, n[4], n[5]}};
-    CHECK(std::get<Serial>(sp) == expected);
+    CHECK(std::get<Serial>(result) == expected);
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - Straight Line") {
+  TEST_CASE("dependency_invariant_sp_ization - linear") {
     DiGraph g = TestingGraphs::make_linear(4);
     std::vector<Node> n = sorted(get_nodes(g));
-
     auto gv = flipped(g); // flipped to account for the DiEdge bug
     SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
     SerialParallelDecomposition expected = Serial{{n[0], n[1], n[2], n[3]}};
     CHECK(
         std::get<Serial>(result) ==
         std::get<Serial>(expected)); // currently cannot directly compare the 2.
-
-    result = dependency_invariant_sp_ization_with_coalescing(gv);
-    CHECK(
-        std::get<Serial>(result) ==
-        std::get<Serial>(expected)); // currently cannot directly compare the 2.
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - Rhombus Pattern") {
+  TEST_CASE("dependency_invariant_sp_ization - rhombus") {
     DiGraph g = TestingGraphs::make_rhombus();
     std::vector<Node> n = sorted(get_nodes(g));
 
     auto gv = flipped(g); // flipped to account for the DiEdge bug
     SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
     SerialParallelDecomposition expected =
-        Serial{{n[0], Parallel{{n[2], n[1]}}, n[3]}};
+        Serial{{Parallel{{Serial{{n[0], n[1]}}, Serial{{n[0], n[2]}}}}, n[3]}};
+    CHECK(std::get<Serial>(result) == std::get<Serial>(expected));
+  }
 
-    result = dependency_invariant_sp_ization_with_coalescing(gv);
+  TEST_CASE("dependency_invariant_sp_ization - diamond") {
+    DiGraph g = TestingGraphs::make_diamond();
+    std::vector<Node> n = sorted(get_nodes(g));
+
+    auto gv = flipped(g); // flipped to account for the DiEdge bug
+    Serial result = std::get<Serial>(dependency_invariant_sp_ization(gv));
+    Serial sp0 = {{n[0]}};
+    Serial sp1 = {{n[0], n[1]}};
+    Serial sp2 = {{n[0], n[2]}};
+    Serial sp3 = {{Parallel{{sp2, sp1}}, n[3]}};
+    Serial sp4 = {{n[0], n[2], n[4]}};
+    Serial expected = {{Parallel{{sp3, sp4}}, n[5]}};
+    CHECK(result == expected);
+  }
+
+  TEST_CASE("dependency_invariant_sp_ization_with - taso_nasnet_cell") {
+
+    DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+
+    DiGraphView gv = flipped(g);
+    SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
+
+    int extranodes =
+        get_nodes(multidigraph_from_sp_decomposition(result)).size() -
+        get_nodes(gv).size();
+    CHECK(extranodes == 17);
+  }
+
+  TEST_CASE("dependency_invariant_sp_ization_with_coalescing - linear") {
+    DiGraph g = TestingGraphs::make_linear(4);
+    std::vector<Node> n = sorted(get_nodes(g));
+
+    auto gv = flipped(g); // flipped to account for the DiEdge bug
+    SerialParallelDecomposition result =
+        dependency_invariant_sp_ization_with_coalescing(gv);
+    SerialParallelDecomposition expected = Serial{{n[0], n[1], n[2], n[3]}};
     CHECK(
         std::get<Serial>(result) ==
         std::get<Serial>(expected)); // currently cannot directly compare the 2.
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - Diamond Pattern") {
+  TEST_CASE("dependency_invariant_sp_ization_with_coalescing - rhombus") {
+    DiGraph g = TestingGraphs::make_rhombus();
+    std::vector<Node> n = sorted(get_nodes(g));
+
+    auto gv = flipped(g); // flipped to account for the DiEdge bug
+    SerialParallelDecomposition result =
+        dependency_invariant_sp_ization_with_coalescing(gv);
+    SerialParallelDecomposition expected =
+        Serial{{n[0], Parallel{{n[2], n[1]}}, n[3]}};
+
+    CHECK(
+        std::get<Serial>(result) ==
+        std::get<Serial>(expected)); // currently cannot directly compare the 2.
+  }
+
+  TEST_CASE("dependency_invariant_sp_ization_with_coalescing - diamond") {
     DiGraph g = TestingGraphs::make_diamond();
     std::vector<Node> n = sorted(get_nodes(g));
 
     auto gv = flipped(g); // flipped to account for the DiEdge bug
-    SUBCASE("Naive Version") {
-      Serial result = std::get<Serial>(dependency_invariant_sp_ization(gv));
-      Serial sp0 = {{n[0]}};
-      Serial sp1 = {{n[0], n[1]}};
-      Serial sp2 = {{n[0], n[2]}};
-      Serial sp3 = {{Parallel{{sp2, sp1}}, n[3]}};
-      Serial sp4 = {{n[0], n[2], n[4]}};
-      Serial expected = {{Parallel{{sp3, sp4}}, n[5]}};
-      CHECK(result == expected);
-    }
-    SUBCASE("Node coalescing") {
-      Node s0 = n[0];
-      Parallel p = {
-          {Serial{{Parallel{{n[1], n[2]}}, n[3]}}, Serial{{n[2], n[4]}}}};
-      Node s1 = n[5];
+    Node s0 = n[0];
+    Parallel p = {
+        {Serial{{Parallel{{n[1], n[2]}}, n[3]}}, Serial{{n[2], n[4]}}}};
+    Node s1 = n[5];
 
-      Serial expected = {{s0, p, s1}};
+    Serial expected = {{s0, p, s1}};
 
-      Serial result =
-          std::get<Serial>(dependency_invariant_sp_ization_with_coalescing(gv));
-      CHECK(result == expected);
-    }
+    Serial result =
+        std::get<Serial>(dependency_invariant_sp_ization_with_coalescing(gv));
+    CHECK(result == expected);
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - More Complex Graph") {
+  TEST_CASE("dependency_invariant_sp_ization_with_coalescing - sample_dag_3") {
     DiGraph g = TestingGraphs::make_sample_dag_3();
 
     DiGraphView gv = flipped(g);
@@ -411,7 +505,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(node_count(result) == sum(expected_counts));
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - FC Layers") {
+  TEST_CASE(
+      "dependency_invariant_sp_ization_with_coalescing - fully_connected") {
     DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
     std::vector<Node> n = sorted(get_nodes(g));
 
@@ -426,52 +521,45 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == expected);
   }
 
-  TEST_CASE("Dependency Invariant SP-ization algorithm - TASO NASNET-A cell") {
-    // From the TASO paper, pg 57
+  TEST_CASE(
+      "dependency_invariant_sp_ization_with_coalescing - taso_nasnet_cell") {
+
     DiGraph g = TestingGraphs::make_taso_nasnet_cell();
 
-    SUBCASE("No coalescing") {
-      DiGraphView gv = flipped(g);
-      SerialParallelDecomposition result = dependency_invariant_sp_ization(gv);
+    DiGraphView gv = flipped(g);
+    SerialParallelDecomposition result =
+        dependency_invariant_sp_ization_with_coalescing(gv);
 
-      int extranodes =
-          get_nodes(multidigraph_from_sp_decomposition(result)).size() -
-          get_nodes(gv).size();
-      CHECK(extranodes == 17);
-    }
-    SUBCASE("coalescing") {
-      DiGraphView gv = flipped(g);
-      SerialParallelDecomposition result =
-          dependency_invariant_sp_ization_with_coalescing(gv);
-
-      std::unordered_set<Node> nodes_in_graph = get_nodes(g);
-      std::unordered_set<Node> nodes_in_sp = get_nodes(result);
-      CHECK(nodes_in_graph == nodes_in_sp);
-      size_t extranodes = 4;
-      CHECK(node_count(result) == (nodes_in_graph.size() + extranodes));
-    }
+    std::unordered_set<Node> nodes_in_graph = get_nodes(g);
+    std::unordered_set<Node> nodes_in_sp = get_nodes(result);
+    CHECK(nodes_in_graph == nodes_in_sp);
+    size_t extranodes = 4;
+    CHECK(node_count(result) == (nodes_in_graph.size() + extranodes));
   }
 
-  TEST_CASE("Dependency invariant SP-graph - NASNET like structure") {
+  TEST_CASE("dependency_invariant_sp_ization_with_coalescing - Cifar10") {
     DiGraph g = TestingGraphs::make_cifar10(1, 1);
     DiGraphView gv = flipped(g);
     SerialParallelDecomposition result =
         dependency_invariant_sp_ization_with_coalescing(gv);
-    // CHECK(get_nodes(g).size() == node_count(result));
+    std::unordered_set<Node> nodes_in_graph = get_nodes(gv);
+    std::unordered_set<Node> nodes_in_sp = get_nodes(result);
+    CHECK(nodes_in_graph == nodes_in_sp);
+    CHECK(node_count(result) >= node_count(gv));
   }
 
-  TEST_CASE("Barrier Sync, cost aware SP-graph - Linear Structure") {
-    DiGraph g = TestingGraphs::make_linear(3);
+  TEST_CASE("cost_aware_barrier_sync_sp_ization - linear") {
+    DiGraph g = TestingGraphs::make_linear(4);
     DiGraphView gv = flipped(g);
-    std::vector<Node> n = sorted(get_nodes(g));
-    auto cost_map = Distributions::make_cost_map(
-        get_nodes(g), Distributions::Uniform(0, 100));
+    std::vector<Node> n = sorted(get_nodes(gv));
+    auto cost_map =
+        Distributions::make_cost_map(get_nodes(g), Distributions::Constant(1));
     SerialParallelDecomposition result =
         cost_aware_barrier_sync_sp_ization(gv, cost_map);
-    CHECK(std::get<Serial>(result) == Serial{{n[0], n[1], n[2]}});
+    CHECK(std::get<Serial>(result) == Serial{{n[0], n[1], n[2], n[3]}});
   }
 
-  TEST_CASE("Barrier Sync, cost aware SP-graph - Rhombus Pattern") {
+  TEST_CASE("cost_aware_barrier_sync_sp_ization - rhombus") {
     DiGraph g = TestingGraphs::make_rhombus();
     DiGraphView gv = flipped(g);
     std::vector<Node> n = sorted(get_nodes(g));
@@ -483,144 +571,851 @@ TEST_SUITE(FF_TEST_SUITE) {
           Serial{{n[0], Parallel{{n[1], n[2]}}, n[3]}});
   }
 
-  TEST_CASE("Barrier Sync, cost aware SP-graph - Testing cost-awareness") {
-DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-  std::vector<Node> n = add_nodes(g, 5);
-
-  std::vector<DirectedEdge> edges = {
-      {n[0], n[1]}, {n[0], n[2]}, {n[1], n[3]}, {n[2], n[4]}, {n[3], n[4]}};
-  std::unordered_map<Node, float> cost_map = {{n[0], 1}, {n[1], 4}, {n[2], 10}, {n[3], 4}, {n[4], 1}};
-  add_edges(g, edges);
+  TEST_CASE("cost_aware_barrier_sync_sp_ization - custom graph") {
+    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+    std::vector<Node> n = add_nodes(g, 5);
+    std::vector<DirectedEdge> edges = {
+        {n[0], n[1]}, {n[0], n[2]}, {n[1], n[3]}, {n[2], n[4]}, {n[3], n[4]}};
+    add_edges(g, edges);
+    std::unordered_map<Node, float> cost_map = {
+        {n[0], 1}, {n[1], 4}, {n[2], 10}, {n[3], 4}, {n[4], 1}};
     DiGraphView gv = flipped(g);
+
     SerialParallelDecomposition result =
         cost_aware_barrier_sync_sp_ization(gv, cost_map);
-    Serial expected = Serial{{n[0], Parallel{{Serial{{n[1], n[3]}}, n[2]}}, n[4]}};
+    Serial expected =
+        Serial{{n[0], Parallel{{Serial{{n[1], n[3]}}, n[2]}}, n[4]}};
     CHECK(std::get<Serial>(result) == expected);
   }
 
-  TEST_CASE("Benchmarking barrier-sync spization") {
-    std::srand(static_cast<unsigned int>(std::time(nullptr)));
-    SUBCASE("Linear Graph, Unit Weights") {
-      DiGraph g = TestingGraphs::make_linear(10);
-      auto cost_map = Distributions::make_cost_map(get_nodes(g),
-                                                   Distributions::Constant(1));
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
-      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
-    }
-    SUBCASE("Fully Connected, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
-      auto cost_map = Distributions::make_cost_map(
-          get_nodes(g), Distributions::Uniform(0, 1));
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
-      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
-    }
-    SUBCASE("Sample DAG 3, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_sample_dag_3();
-      auto cost_map = Distributions::make_cost_map(
-          get_nodes(g), Distributions::Binary(1, 1000));
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
-      // CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      // CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map),1));
-    }
+  TEST_CASE("cost_aware_barrier_sync_sp_ization - sample_dag_1") {
+    DiGraph g = TestingGraphs::make_sample_dag_1();
+    std::vector<Node> n = sorted(get_nodes(g));
+    DiGraphView gv = flipped(g);
 
-    SUBCASE("Sample DAG 1, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_sample_dag_1();
-      auto cost_map = Distributions::make_cost_map(get_nodes(g),
-                                                   Distributions::Binary(0,1000));
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
-      // CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      // CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map),1));
+    SUBCASE("Cost Map #1") {
+      std::unordered_map<Node, float> cost_map = {{n[0], 1},
+                                                  {n[1], 5},
+                                                  {n[2], 3},
+                                                  {n[3], 1},
+                                                  {n[4], 1},
+                                                  {n[5], 1},
+                                                  {n[6], 1}};
+      SerialParallelDecomposition result =
+          cost_aware_barrier_sync_sp_ization(gv, cost_map);
+      Serial expected =
+          Serial{{n[0],
+                  Parallel{{n[1], Serial{{n[2], Parallel{{n[3], n[6]}}}}}},
+                  n[4],
+                  n[5]}};
+      CHECK(std::get<Serial>(result) == expected);
     }
-
-    SUBCASE("TASO NASNet-A cell, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_cifar10(5,2);
-      auto cost_map = Distributions::make_cost_map(
-          get_nodes(g), Distributions::Constant(1));
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
-      // CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
-    }
-    
-    SUBCASE("Parallel Chains, Unif(0,1) weightunordered_layer_to_nodes") {
-      DiGraph g = TestingGraphs::make_parallel_chains(4, 1);
-      auto cost_map = Distributions::make_cost_map(
-          get_nodes(g), Distributions::Binary(1, 1000));
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
-      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      // CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map),
-      // 1));
+    SUBCASE("Cost Map #2") {
+      std::unordered_map<Node, float> cost_map = {{n[0], 1},
+                                                  {n[1], 5},
+                                                  {n[2], 3},
+                                                  {n[3], 2},
+                                                  {n[4], 4},
+                                                  {n[5], 1},
+                                                  {n[6], 2}};
+      SerialParallelDecomposition result =
+          cost_aware_barrier_sync_sp_ization(gv, cost_map);
+      Serial expected = Serial{
+          {n[0], Parallel{{n[1], Serial{{n[2], n[6]}}}}, n[3], n[4], n[5]}};
+      CHECK(std::get<Serial>(result) == expected);
     }
   }
 
-  TEST_CASE("Benchmarking dependency_invariant_sp_ization_with_coalescing") {
-    SUBCASE("Linear Graph, Unit Weights") {
+  TEST_CASE("barrier_sync_sp_ization - cost increases") {
+    SUBCASE("linear") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("fully_connected") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("sample_dag_3") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(relative_critical_path_cost_increase(gv, sp, cost_map) == 1);
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("sample_dag_1") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("taso_nasnet_cell") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("parallel_chains") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("cifar10") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 2);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 2);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 2);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp = barrier_sync_sp_ization(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+  }
+
+  TEST_CASE("cost_aware_barrier_sync_sp_ization - cost increases") {
+    SUBCASE("linear") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("fully_connected") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("sample_dag_3") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(relative_critical_path_cost_increase(gv, sp, cost_map) == 1);
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("sample_dag_1") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("taso_nasnet_cell") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("cifar10") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("parallel_chains") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            cost_aware_barrier_sync_sp_ization(gv, cost_map);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+  }
+
+  TEST_CASE(
+      "dependency_invariant_sp_ization_with_coalescing - cost increases") {
+    SUBCASE("Linear Graph") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_linear(10);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("fully_connected") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("sample_dag_3") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_sample_dag_3();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("sample_dag_1") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_sample_dag_1();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("taso_nasnet_cell") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_taso_nasnet_cell();
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("cifar10") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+    SUBCASE("parallel_chains") {
+      SUBCASE("Constant(1)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Constant(1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Uniform(0,1)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Uniform(0, 1));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+      SUBCASE("Binary(1,1000)") {
+        DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
+        DiGraphView gv = flipped(g);
+        auto cost_map = Distributions::make_cost_map(
+            get_nodes(g), Distributions::Binary(1, 1000));
+        SerialParallelDecomposition sp =
+            dependency_invariant_sp_ization_with_coalescing(gv);
+        CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
+        CHECK(
+            isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+      }
+    }
+  }
+  TEST_CASE("BenchMark SP-ization Techniques") {
+    SUBCASE("linear") {
       DiGraph g = TestingGraphs::make_linear(10);
-      auto cost_map = Distributions::make_cost_map(get_nodes(g),
-                                                   Distributions::Constant(1));
-      SerialParallelDecomposition sp =
-          dependency_invariant_sp_ization_with_coalescing(g);
-      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark(
+          "linear, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark(
+          "linear, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 100);
+      BenchMark::bench_mark(
+          "linear, Binary(1, 1000)", gv, Distributions::Binary(1, 1000), 100);
     }
-    SUBCASE("Fully Connected, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
-      auto cost_map = Distributions::make_cost_map(get_nodes(g),
-                                                   Distributions::Constant(1));
-      SerialParallelDecomposition sp =
-          dependency_invariant_sp_ization_with_coalescing(g);
-      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
-    }
-    SUBCASE("Sample DAG 3, Unif(0,1) weights") {
+
+    SUBCASE("sample_dag_3") {
       DiGraph g = TestingGraphs::make_sample_dag_3();
       DiGraphView gv = flipped(g);
-      auto cost_map = Distributions::make_cost_map(
-          get_nodes(gv), Distributions::Uniform(0, 1));
-      SerialParallelDecomposition sp =
-          dependency_invariant_sp_ization_with_coalescing(gv);
-      // CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
+
+      BenchMark::bench_mark(
+          "sample_dag_3, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark(
+          "sample_dag_3, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 100);
+      BenchMark::bench_mark("sample_dag_3, Binary(1, 1000)",
+                            gv,
+                            Distributions::Binary(1, 1000),
+                            100);
     }
 
-    SUBCASE("Sample DAG 1, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_sample_dag_1();
-      auto cost_map = Distributions::make_cost_map(get_nodes(g),
-                                                   Distributions::Uniform(0,1));
-      SerialParallelDecomposition sp =
-          dependency_invariant_sp_ization_with_coalescing(g);
-      // CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
-    }
-
-    SUBCASE("TASO NASNet-A cell, Unif(0,1) weights") {
+    SUBCASE("nasnet_cell") {
       DiGraph g = TestingGraphs::make_taso_nasnet_cell();
       DiGraphView gv = flipped(g);
-      
-      auto cost_map = Distributions::make_cost_map(
-          get_nodes(gv), Distributions::Constant(1));
-      SerialParallelDecomposition sp =
-          dependency_invariant_sp_ization_with_coalescing(gv);
-      // CHECK(isclose(relative_cost_increase(gv, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
-    }
-    SUBCASE("Parallel Chains, Unif(0,1) weights") {
-      DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
-      auto cost_map = Distributions::make_cost_map(
-          get_nodes(g), Distributions::Binary(0, 1000));
-      SerialParallelDecomposition sp =
-          dependency_invariant_sp_ization_with_coalescing(g);
-      CHECK(isclose(relative_cost_increase(g, sp, cost_map), 1));
-      CHECK(isclose(relative_critical_path_cost_increase(g, sp, cost_map), 1));
+
+      BenchMark::bench_mark(
+          "nasnet_cell, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark(
+          "nasnet_cell, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 100);
+      BenchMark::bench_mark("nasnet_cell, Binary(1, 1000)",
+                            gv,
+                            Distributions::Binary(1, 1000),
+                            100);
     }
 
-    SUBCASE("Cost Map") {
-      std::unordered_set<Node> v = {Node(1), Node(2), Node(3), Node(4), Node(5), Node(6), Node(7), Node(8), Node(9), Node(10)};
-      auto cost_map = Distributions::make_cost_map(v, Distributions::Uniform(0, 1));
-      cost_map = Distributions::make_cost_map(v, Distributions::Constant(1));
-       cost_map = Distributions::make_cost_map(v, Distributions::Binary(0, 1000, .5));
-       cost_map = Distributions::make_cost_map(v, Distributions::Bernoulli(.5));
+    SUBCASE("rhombus") {
+      DiGraph g = TestingGraphs::make_rhombus();
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark(
+          "rhombus, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark(
+          "rhombus, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 100);
+      BenchMark::bench_mark(
+          "rhombus, Binary(1, 1000)", gv, Distributions::Binary(1, 1000), 100);
+    }
+
+    SUBCASE("diamond") {
+      DiGraph g = TestingGraphs::make_diamond();
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark(
+          "diamond, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark(
+          "diamond, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 100);
+      BenchMark::bench_mark(
+          "diamond, Binary(1, 1000)", gv, Distributions::Binary(1, 1000), 100);
+    }
+
+    SUBCASE("fully_connected") {
+      DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark(
+          "fully_connected, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark("fully_connected, Uniform(0,1)",
+                            gv,
+                            Distributions::Uniform(0, 1),
+                            100);
+      BenchMark::bench_mark("fully_connected, Binary(1, 1000)",
+                            gv,
+                            Distributions::Binary(1, 1000),
+                            100);
+    }
+
+    SUBCASE("parallel_chains") {
+      DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark(
+          "parallel_chains, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark("parallel_chains, Uniform(0,1)",
+                            gv,
+                            Distributions::Uniform(0, 1),
+                            100);
+      BenchMark::bench_mark("parallel_chains, Binary(1, 1000)",
+                            gv,
+                            Distributions::Binary(1, 1000),
+                            100);
+    }
+
+    SUBCASE("cifar10") {
+      DiGraph g = TestingGraphs::make_cifar10(1, 1);
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark(
+          "cifar10, Constant(1)", gv, Distributions::Constant(1), 5);
+      BenchMark::bench_mark(
+          "cifar10, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 5);
+      BenchMark::bench_mark(
+          "cifar10, Binary(1, 1000)", gv, Distributions::Binary(1, 1000), 5);
+    }
+
+    SUBCASE("sample_dag_1") {
+      DiGraph g = TestingGraphs::make_sample_dag_1();
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark(
+          "sample_dag_1, Constant(1)", gv, Distributions::Constant(1), 100);
+      BenchMark::bench_mark(
+          "sample_dag_1, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 100);
+      BenchMark::bench_mark("sample_dag_1, Binary(1, 1000)",
+                            gv,
+                            Distributions::Binary(1, 1000),
+                            100);
     }
   }
 }

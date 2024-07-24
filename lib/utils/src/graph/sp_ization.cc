@@ -38,22 +38,22 @@ SerialParallelDecomposition
 std::unordered_set<Node> get_heads(DiGraphView const &g,
                                    std::vector<DiGraphView> metanodes,
                                    std::unordered_set<Node> explored) {
-  std::unordered_set<Node> previous_layer_sinks =
-      set_union(transform(metanodes, get_sinks));
-  std::unordered_set<Node> candidate_heads = set_union(values(get_successors(
-      g, previous_layer_sinks)));
+  std::unordered_set<Node> previous_layer_nodes = set_union(
+      transform(metanodes, [&](DiGraphView const &g) { return get_nodes(g); }));
+  std::unordered_set<Node> candidate_heads =
+      set_union(values(get_successors(g, previous_layer_nodes)));
   return filter(candidate_heads, [&](Node const &n) {
-    return all_of(get_predecessors(g, n),
-                  [&](Node const &p) { return contains(explored, p); });
-  }); 
+    return (!contains(explored, n) &&
+            all_of(get_predecessors(g, n),
+                   [&](Node const &p) { return contains(explored, p); }));
+  });
 }
 
 std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
     DiGraphView const &g, std::unordered_set<Node> const &heads) {
   std::unordered_set<std::vector<Node>> topo_orderings =
       transform(heads, [&](Node const &head) {
-        return get_topological_ordering_from_starting_node(g,
-                                                           head);
+        return get_topological_ordering_from_starting_node(g, head);
       });
   std::unordered_set<Node> all_nodes = set_union(
       without_order(transform(topo_orderings, [&](std::vector<Node> const &v) {
@@ -62,21 +62,21 @@ std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
 
   std::unordered_set<Node> non_visitable_nodes =
       filter(all_nodes, [&](Node const &n) {
-        std::vector<int> contains_vec = transform(as_vector(topo_orderings), [&](auto const &ordering) -> int {
-                return contains(ordering, n) ? 1 : 0;
-               });
-      return sum(contains_vec) != 1;
+        std::vector<int> contains_vec = transform(
+            as_vector(topo_orderings), [&](auto const &ordering) -> int {
+              return contains(ordering, n) ? 1 : 0;
+            });
+        return sum(contains_vec) != 1;
       });
   std::unordered_set<std::vector<Node>> non_overlapping_topo_orderings;
   for (std::vector<Node> const &topo_ordering : topo_orderings) {
-    std::cout << topo_ordering.size() << std::endl;
     std::vector<Node> filtered_topo_ordering;
-    for (Node const &n: topo_ordering) {
-      if (!contains(non_visitable_nodes,n)) {filtered_topo_ordering.push_back(n);}
+    for (Node const &n : topo_ordering) {
+      if (!contains(non_visitable_nodes, n)) {
+        filtered_topo_ordering.push_back(n);
+      }
     }
-    std::cout << filtered_topo_ordering.size() <<std::endl;
-    non_overlapping_topo_orderings.insert(
-        filtered_topo_ordering);
+    non_overlapping_topo_orderings.insert(filtered_topo_ordering);
   }
   return non_overlapping_topo_orderings;
 }
