@@ -177,17 +177,6 @@ bool are_all_same(C const &c) {
   return true;
 }
 
-template <typename F, typename Out>
-std::vector<Out> repeat(int n, F const &f) {
-  assert(n >= 0);
-
-  std::vector<Out> result;
-  for (int i = 0; i < n; i++) {
-    result.push_back(f());
-  }
-  return result;
-}
-
 template <typename In, typename F, typename Out>
 std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;

@@ -30,5 +30,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       CHECK(result == correct);
     }
+
+    SUBCASE("graph without any edges") {
+      std::vector<Node> n = add_nodes(g, 4);
+      
+      std::optional<CompleteBipartiteCompositeDecomposition> result = get_cbc_decomposition(g);
+      std::optional<CompleteBipartiteCompositeDecomposition> correct = CompleteBipartiteCompositeDecomposition{{}};
+
+      CHECK(result == correct);
+    }
   }
 }

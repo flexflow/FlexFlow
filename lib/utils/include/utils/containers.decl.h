@@ -78,9 +78,6 @@ std::optional<bool> optional_all_of(Container const &, Function const &);
 template <typename C>
 bool are_all_same(C const &c);
 
-template <typename F, typename Out = std::invoke_result_t<F>>
-std::vector<Out> repeat(int n, F const &f);
-
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);
 

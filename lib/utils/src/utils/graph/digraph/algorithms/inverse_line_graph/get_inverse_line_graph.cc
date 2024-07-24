@@ -5,7 +5,7 @@
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/complete_bipartite_composite_decomposition.h"
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/get_cbc_decomposition.h"
 #include "utils/graph/digraph/digraph.h"
-#include "utils/graph/instances/adjacency_digraph.h"
+#include "utils/graph/instances/adjacency_multidigraph.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/hash/pair.h"
 
@@ -13,7 +13,7 @@ namespace FlexFlow {
 
 InverseLineGraphResult get_inverse_line_graph(DiGraphView const &view) {
   // implementation of the algorithm from https://doi.org/10.1145/800135.804393 left of page 8, definition 5
-  DiGraph result_graph = DiGraph::create<AdjacencyDiGraph>();
+  MultiDiGraph result_graph = MultiDiGraph::create<AdjacencyMultiDiGraph>();
 
   CompleteBipartiteCompositeDecomposition cbc_decomposition = unwrap(get_cbc_decomposition(view), [] {
     throw mk_runtime_error("get_inverse_line_graph requires a cbc graph");
@@ -38,25 +38,27 @@ InverseLineGraphResult get_inverse_line_graph(DiGraphView const &view) {
   std::unordered_set<Node> sources = get_sources(view);
   std::unordered_set<Node> sinks = get_sinks(view);
 
-  auto edge_for_node = [&](Node const &v) -> DirectedEdge {
-    if (contains(sources, v) && contains(sinks, v)) {
-      return DirectedEdge{alpha, omega};
-    } else if (contains(sources, v)) {
-      return DirectedEdge{alpha, component_nodes.at_l(h(v))};
-    } else if (contains(sinks, v)) {
-      return DirectedEdge{component_nodes.at_l(t(v)), omega};
+  auto src_for_node = [&](Node const &v) -> Node {
+    if (contains(sources, v)) {
+      return alpha;
     } else {
-      return DirectedEdge{component_nodes.at_l(t(v)), component_nodes.at_l(h(v))};
+      return component_nodes.at_l(t(v));
     }
   };
 
-  bidict<DirectedEdge, Node> inverse_edge_to_line_node_bidict;
+  auto dst_for_node = [&](Node const &v) -> Node {
+    if (contains(sinks, v)) {
+      return omega;
+    } else {
+      return component_nodes.at_l(h(v));
+    }
+  };
+
+  bidict<MultiDiEdge, Node> inverse_edge_to_line_node_bidict;
 
   for (Node const &v : get_nodes(view)) {
-    DirectedEdge e = edge_for_node(v);
-    result_graph.add_edge(e);
+    MultiDiEdge e = result_graph.add_edge(src_for_node(v), dst_for_node(v));
 
-    assert (!inverse_edge_to_line_node_bidict.contains_l(e));
     assert (!inverse_edge_to_line_node_bidict.contains_r(v));
     inverse_edge_to_line_node_bidict.equate({e, v});
   }

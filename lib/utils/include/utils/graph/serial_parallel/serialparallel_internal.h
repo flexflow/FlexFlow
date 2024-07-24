@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_SERIALPARALLEL_INTERNAL_H
 #define _FLEXFLOW_UTILS_GRAPH_SERIALPARALLEL_INTERNAL_H
 
+#include "utils/graph/multidigraph/multidigraph_view.h"
 #include "utils/graph/serial_parallel/sink_settings.dtg.h"
 #include "utils/graph/serial_parallel/source_settings.dtg.h"
 #include "utils/graph/digraph/digraph_view.h"
@@ -33,6 +34,9 @@ DiGraphView source_to_sink_subgraph(DiGraphView const &g,
                                     std::unordered_set<Node> const &sinks,
                                     SourceSettings include_src,
                                     SinkSettings include_sink);
+
+std::optional<std::pair<MultiDiEdge, MultiDiEdge>> find_parallel_reduction(MultiDiGraphView const &);
+std::optional<std::pair<MultiDiEdge, MultiDiEdge>> find_series_reduction(MultiDiGraphView const &);
 
 } // namespace FlexFlow
 

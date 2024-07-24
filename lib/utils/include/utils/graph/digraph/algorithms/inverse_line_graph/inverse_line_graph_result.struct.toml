@@ -3,14 +3,14 @@ name = "InverseLineGraphResult"
 features = [ ]
 
 includes = [
-  "utils/graph/digraph/digraph_view.h",
+  "utils/graph/multidigraph/multidigraph_view.h",
   "utils/bidict/bidict.h",
 ]
 
 [[fields]]
 name = "graph"
-type = "::FlexFlow::DiGraphView"
+type = "::FlexFlow::MultiDiGraphView"
 
 [[fields]]
 name = "inverse_edge_to_line_node_bidict"
-type = "::FlexFlow::bidict<::FlexFlow::DirectedEdge, ::FlexFlow::Node>"
+type = "::FlexFlow::bidict<::FlexFlow::MultiDiEdge, ::FlexFlow::Node>"

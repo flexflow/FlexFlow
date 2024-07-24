@@ -18,8 +18,6 @@ namespace FlexFlow {
 std::optional<CompleteBipartiteCompositeDecomposition> get_cbc_decomposition(DiGraphView const &g) {
   // implementation of the algorithm from https://doi.org/10.1145/800135.804393 top left of page 8, second paragraph
 
-  assert(get_weakly_connected_components(g).size() == 1); // possible to handle other cases, but for now we don't
-
   std::unordered_set<Node> already_in_a_head = {};
   std::unordered_set<Node> already_in_a_tail = {};
   std::unordered_set<DirectedEdge> edges_to_process = get_edges(g);
