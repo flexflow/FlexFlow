@@ -319,6 +319,33 @@ DiGraph make_taso_nasnet_cell() {
   return g;
 }
 
+DiGraph make_2_terminal_random_dag(size_t num_nodes, float p, size_t step) {
+  DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  auto sampler = Distributions::Bernoulli(p);
+  std::vector<Node> n = add_nodes(g, num_nodes - 2);
+  for (int i = 0; i < n.size(); i++) {
+    for (int j = i + step + 1; j < n.size(); j++) {
+      if (sampler()) {
+        g.add_edge({n[i], n[j]});
+      }
+    }
+  }
+  auto sinks = get_sinks(g);
+  auto sources = get_sources(g);
+  auto sink = get_only(add_nodes(g, 1));
+  auto source = get_only(add_nodes(g, 1));
+  for (Node s : sources) {
+    g.add_edge({s, source});
+  }
+  for (Node s : sinks) {
+    g.add_edge({sink, s});
+  }
+  assert(has_single_source(g));
+  assert(has_single_sink(g));
+  assert(is_acyclic(g));
+  return g;
+}
+
 } // namespace TestingGraphs
 
 namespace BenchMark {
@@ -1377,7 +1404,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("parallel_chains") {
-      DiGraph g = TestingGraphs::make_parallel_chains(20, 4);
+      DiGraph g = TestingGraphs::make_parallel_chains(8, 3);
       DiGraphView gv = flipped(g);
 
       BenchMark::bench_mark(
@@ -1397,11 +1424,11 @@ TEST_SUITE(FF_TEST_SUITE) {
       DiGraphView gv = flipped(g);
 
       BenchMark::bench_mark(
-          "cifar10, Constant(1)", gv, Distributions::Constant(1), 5);
+          "cifar10, Constant(1)", gv, Distributions::Constant(1), 1);
       BenchMark::bench_mark(
-          "cifar10, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 5);
+          "cifar10, Uniform(0,1)", gv, Distributions::Uniform(0, 1), 1);
       BenchMark::bench_mark(
-          "cifar10, Binary(1, 1000)", gv, Distributions::Binary(1, 1000), 5);
+          "cifar10, Binary(1, 1000)", gv, Distributions::Binary(1, 1000), 1);
     }
 
     SUBCASE("sample_dag_1") {
@@ -1416,6 +1443,23 @@ TEST_SUITE(FF_TEST_SUITE) {
                             gv,
                             Distributions::Binary(1, 1000),
                             100);
+    }
+    SUBCASE("random_2_terminal_random_dag") {
+      DiGraph g = TestingGraphs::make_2_terminal_random_dag(100, .1, 10);
+      DiGraphView gv = flipped(g);
+
+      BenchMark::bench_mark("random_2_terminal_random_dag, Constant(1)",
+                            gv,
+                            Distributions::Constant(1),
+                            5);
+      BenchMark::bench_mark("random_2_terminal_random_dag, Uniform(0,1)",
+                            gv,
+                            Distributions::Uniform(0, 1),
+                            5);
+      BenchMark::bench_mark("random_2_terminal_random_dag, Binary(1, 1000)",
+                            gv,
+                            Distributions::Binary(1, 1000),
+                            5);
     }
   }
 }

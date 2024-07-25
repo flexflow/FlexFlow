@@ -12,7 +12,8 @@ static bool is_2_terminal_sp_compliant(DiGraphView const &g) {
   return (is_acyclic(g) && has_single_source(g) && has_single_sink(g));
 }
 
-static std::vector<std::unordered_set<Node>> naive_layer_split(DiGraphView const &g) {
+static std::vector<std::unordered_set<Node>>
+    naive_layer_split(DiGraphView const &g) {
   std::unordered_map<Node, int> node_to_sp_layer =
       get_longest_path_lengths_from_source_node(g);
   std::unordered_map<int, std::unordered_set<Node>> unordered_layer_to_node =
@@ -36,8 +37,8 @@ static SerialParallelDecomposition
 }
 
 static std::unordered_set<Node> get_heads(DiGraphView const &g,
-                                   std::vector<DiGraphView> metanodes,
-                                   std::unordered_set<Node> explored) {
+                                          std::vector<DiGraphView> metanodes,
+                                          std::unordered_set<Node> explored) {
   std::unordered_set<Node> previous_layer_nodes = set_union(
       transform(metanodes, [&](DiGraphView const &g) { return get_nodes(g); }));
   std::unordered_set<Node> candidate_heads =
@@ -49,8 +50,9 @@ static std::unordered_set<Node> get_heads(DiGraphView const &g,
   });
 }
 
-static std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
-    DiGraphView const &g, std::unordered_set<Node> const &heads) {
+static std::unordered_set<std::vector<Node>>
+    get_non_overlapping_topological_orderings(
+        DiGraphView const &g, std::unordered_set<Node> const &heads) {
   std::unordered_set<std::vector<Node>> topo_orderings =
       transform(heads, [&](Node const &head) {
         return get_topological_ordering_from_starting_node(g, head);
@@ -70,7 +72,8 @@ static std::unordered_set<std::vector<Node>> get_non_overlapping_topological_ord
       });
   std::unordered_set<std::vector<Node>> non_overlapping_topo_orderings;
   for (std::vector<Node> const &topo_ordering : topo_orderings) {
-    // std::vector<Node> filtered_topo_ordering = filter(topo_ordering, [&](Node const &n) {return !contains(non_visitable_nodes, n);});
+    // std::vector<Node> filtered_topo_ordering = filter(topo_ordering, [&](Node
+    // const &n) {return !contains(non_visitable_nodes, n);});
     std::vector<Node> filtered_topo_ordering;
     for (Node const &n : topo_ordering) {
       if (!contains(non_visitable_nodes, n)) {
