@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "IsTrainable"
+features = [
+  "hash",
+  "fmt",
+  "rapidcheck",
+  "json",
+]
+
+[[values]]
+name = "YES"
+
+[[values]]
+name = "NO"

@@ -1,5 +1,6 @@
 #include "device.h"
 #include "kernels/datatype_dispatch.h"
+#include "utils/containers/reversed.h"
 
 namespace FlexFlow {
 

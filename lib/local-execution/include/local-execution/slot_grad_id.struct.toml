@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "SlotGradId"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "local-execution/is_grad.dtg.h",
+  "local-execution/slot_id_t.dtg.h",
+]
+
+[[fields]]
+name = "slot_id"
+type = "::FlexFlow::slot_id_t"
+
+[[fields]]
+name = "is_grad"
+type = "::FlexFlow::IsGrad"

@@ -1,15 +1,22 @@
 #include "local-execution/local_task_argument_accessor.h"
+#include "utils/hash/pair.h"
 
 namespace FlexFlow {
 
+LocalTaskArgumentAccessor::LocalTaskArgumentAccessor(Allocator const &allocator,
+                            TensorSlotsBacking const &tensor_slots_backing,
+                            ArgSlotsBacking const &arg_slots_backing)
+      : allocator(allocator), tensor_slots_backing(tensor_slots_backing),
+        arg_slots_backing(arg_slots_backing){};
+
 ConcreteArgSpec const &
-    LocalTaskArgumentAccessor::get_concrete_arg(slot_id name) const {
+    LocalTaskArgumentAccessor::get_concrete_arg(slot_id_t name) const {
   return this->arg_slots_backing.at(name);
 }
 
 GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
-    slot_id slot, Permissions priv, IsGrad is_grad) const {
-  SlotGradId slot_grad_pair = std::make_pair(slot, is_grad);
+    slot_id_t slot, Permissions priv, IsGrad is_grad) const {
+  SlotGradId slot_grad_pair = SlotGradId{slot, is_grad};
   auto tensor_backing = std::get<GenericTensorAccessorW>(
       this->tensor_slots_backing.at(slot_grad_pair));
   if (priv == Permissions::RO) {
@@ -23,8 +30,8 @@ GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
   }
 }
 VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
-    slot_id slot, Permissions priv, IsGrad is_grad) const {
-  SlotGradId slot_grad_pair = std::make_pair(slot, is_grad);
+    slot_id_t slot, Permissions priv, IsGrad is_grad) const {
+  SlotGradId slot_grad_pair = SlotGradId{slot, is_grad};
   auto variadic_tensor_backing = std::get<std::vector<GenericTensorAccessorW>>(
       this->tensor_slots_backing.at(slot_grad_pair));
   if (priv == Permissions::RO) {
@@ -44,6 +51,10 @@ VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
 
 Allocator LocalTaskArgumentAccessor::get_allocator() const {
   return this->allocator;
+}
+
+size_t LocalTaskArgumentAccessor::get_device_idx() const {
+  return 0;
 }
 
 } // namespace FlexFlow

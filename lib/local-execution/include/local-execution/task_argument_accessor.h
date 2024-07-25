@@ -1,38 +1,65 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 
-#include "itask_argument_accessor.h"
+#include "local-execution/itask_argument_accessor.h"
 
 namespace FlexFlow {
 
 struct TaskArgumentAccessor {
   template <typename T>
-  T const &get_argument(slot_id slot) const {
+  T const &get_argument(int slot) const {
+    return this->get_argument<T>(slot_id_t{slot});
+  }
+
+  template <typename T>
+  T const &get_argument(slot_id_t slot) const {
     return this->ptr->get_concrete_arg(slot).get<T>();
   }
 
   template <Permissions PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor(slot_id slot) const {
+  privilege_mode_to_accessor<PRIV> get_tensor(int slot) const {
+    return this->get_tensor<PRIV>(slot_id_t{slot});
+  }
+
+  template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor(slot_id_t slot) const {
     return std::get<privilege_mode_to_accessor<PRIV>>(
         this->ptr->get_tensor(slot, PRIV, IsGrad::NO));
   }
 
   template <Permissions PRIV>
-  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id slot) const {
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(int slot) const {
+    return this->get_tensor_grad<PRIV>(slot_id_t{slot});
+  }
+
+  template <Permissions PRIV>
+  privilege_mode_to_accessor<PRIV> get_tensor_grad(slot_id_t slot) const {
     return std::get<privilege_mode_to_accessor<PRIV>>(
         this->ptr->get_tensor(slot, PRIV, IsGrad::YES));
   }
 
   template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>>
-      get_variadic_tensor(slot_id slot) const {
+      get_variadic_tensor(int slot) const {
+    return this->get_variadic_tensor<PRIV>(slot_id_t{slot});
+  }
+
+  template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor(slot_id_t slot) const {
     return std::get<std::vector<privilege_mode_to_accessor<PRIV>>>(
         this->ptr->get_variadic_tensor(slot, PRIV, IsGrad::NO));
   }
 
   template <Permissions PRIV>
   std::vector<privilege_mode_to_accessor<PRIV>>
-      get_variadic_tensor_grad(slot_id slot) const {
+      get_variadic_tensor_grad(int slot) const {
+    return this->get_variadic_tensor_grad<PRIV>(slot_id_t{slot});
+  }
+
+  template <Permissions PRIV>
+  std::vector<privilege_mode_to_accessor<PRIV>>
+      get_variadic_tensor_grad(slot_id_t slot) const {
     return std::get<std::vector<privilege_mode_to_accessor<PRIV>>>(
         this->ptr->get_variadic_tensor(slot, PRIV, IsGrad::YES));
   }

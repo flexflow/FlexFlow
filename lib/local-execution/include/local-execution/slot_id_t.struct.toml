@@ -1,0 +1,12 @@
+namespace = "FlexFlow"
+name = "slot_id_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+[[fields]]
+name = "raw_id"
+type = "int"

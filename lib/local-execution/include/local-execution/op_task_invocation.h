@@ -8,6 +8,7 @@
 #include "local-execution/op_tensor_spec.h"
 #include "local-execution/profiling.h"
 #include "local-execution/runtime_arg_ref.h"
+#include "local-execution/slot_grad_id.dtg.h"
 #include "local-execution/tasks.h"
 #include "local-execution/variadic_tensor_ref.h"
 #include "op-attrs/computation_graph_op_attrs.h"
@@ -18,56 +19,83 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
+#include "local-execution/is_trainable.dtg.h"
+#include "local-execution/op_arg_spec.dtg.h"
 
 namespace FlexFlow {
-
-enum class IsTrainable { YES, NO };
-
-using OpArgSpec =
-    std::variant<ConcreteArgSpec, OpArgRefSpec, RuntimeArgRefSpec>;
 
 struct OpTaskBinding {
   OpTaskBinding() = default;
 
-  void bind(slot_id, VariadicTensorRef<OpTensorSpec> const &);
-  void bind(slot_id, OpTensorSpec const &);
-  void bind_grad(slot_id, OpTensorSpec const &);
+  void bind(int, VariadicTensorRef<OpTensorSpec> const &);
+  void bind(slot_id_t, VariadicTensorRef<OpTensorSpec> const &);
+
+  void bind(int, OpTensorSpec const &);
+  void bind(slot_id_t, OpTensorSpec const &);
+
+  void bind_grad(int, OpTensorSpec const &);
+  void bind_grad(slot_id_t, OpTensorSpec const &);
 
   template <typename T>
-  void bind_device_specific_arg(slot_id name, T const &t) {
+  void bind_device_specific_arg(int name, T const &t) {
+    this->bind_device_specific_arg<T>(slot_id_t{name}, t);
+  }
+
+  template <typename T>
+  void bind_device_specific_arg(slot_id_t name, T const &t) {
     NOT_IMPLEMENTED();
   }
 
   template <typename T>
-  void bind_device_specific_arg(slot_id name, OpArgRef<T> const &t) {
+  void bind_device_specific_arg(int name, OpArgRef<T> const &t) {
+    this->bind_device_specific_arg<T>(slot_id_t{name}, t);
+  }
+
+  template <typename T>
+  void bind_device_specific_arg(slot_id_t name, OpArgRef<T> const &t) {
     NOT_IMPLEMENTED();
   }
 
   template <typename T>
-  void bind_arg(slot_id name, T const &t) {
-    this->insert_arg_spec(name, ConcreteArgSpec::create(t));
+  void bind_arg(int name, T const &t) {
+    this->bind_arg<T>(slot_id_t{name}, t);
   }
 
   template <typename T>
-  void bind_arg(slot_id name, RuntimeArgRef<T> const &ref) {
-    this->insert_arg_spec(name, RuntimeArgRefSpec::create(ref));
+  void bind_arg(slot_id_t name, T const &t) {
+    this->insert_arg_spec(name, OpArgSpec{ConcreteArgSpec::create(t)});
   }
 
   template <typename T>
-  void bind_arg(slot_id name, OpArgRef<T> const &ref) {
-    this->insert_arg_spec(name, OpArgRefSpec::create(ref));
+  void bind_arg(int name, RuntimeArgRef<T> const &t) {
+    this->bind_arg<T>(slot_id_t{name}, t);
   }
 
-  std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
+  template <typename T>
+  void bind_arg(slot_id_t name, RuntimeArgRef<T> const &ref) {
+    this->insert_arg_spec(name, OpArgSpec{RuntimeArgRefSpec::create(ref)});
+  }
+
+  template <typename T>
+  void bind_arg(int name, OpArgRef<T> const &t) {
+    this->bind_arg<T>(slot_id_t{name}, t);
+  }
+
+  template <typename T>
+  void bind_arg(slot_id_t name, OpArgRef<T> const &ref) {
+    this->insert_arg_spec(name, OpArgSpec{OpArgRefSpec::create(ref)});
+  }
+
+  std::unordered_map<SlotGradId, OpTensorSpec> const &
       get_tensor_bindings() const;
-  std::unordered_map<slot_id, OpArgSpec> const &get_arg_bindings() const;
+  std::unordered_map<slot_id_t, OpArgSpec> const &get_arg_bindings() const;
 
   void bind_from_forward(OpTaskBinding const &fwd);
 
 private:
-  void insert_arg_spec(slot_id name, OpArgSpec const &arg_spec);
-  std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> tensor_bindings;
-  std::unordered_map<slot_id, OpArgSpec> arg_bindings;
+  void insert_arg_spec(slot_id_t name, OpArgSpec const &arg_spec);
+  std::unordered_map<SlotGradId, OpTensorSpec> tensor_bindings;
+  std::unordered_map<slot_id_t, OpArgSpec> arg_bindings;
 };
 
 struct OpTaskInvocation {

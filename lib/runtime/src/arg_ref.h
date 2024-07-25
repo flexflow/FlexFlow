@@ -59,4 +59,8 @@ ArgRef<PerDeviceFFHandle> ff_handle();
 
 } // namespace FlexFlow
 
+namespace std {
+  
+}
+
 #endif
