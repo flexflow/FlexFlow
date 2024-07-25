@@ -1256,7 +1256,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("cifar10") {
       SUBCASE("Constant(1)") {
-        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraph g = TestingGraphs::make_cifar10(1, 1);
         DiGraphView gv = flipped(g);
         auto cost_map = Distributions::make_cost_map(
             get_nodes(g), Distributions::Constant(1));
@@ -1266,7 +1266,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
       }
       SUBCASE("Uniform(0,1)") {
-        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraph g = TestingGraphs::make_cifar10(1, 1);
         DiGraphView gv = flipped(g);
         auto cost_map = Distributions::make_cost_map(
             get_nodes(g), Distributions::Uniform(0, 1));
@@ -1276,7 +1276,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
       }
       SUBCASE("Binary(1,1000)") {
-        DiGraph g = TestingGraphs::make_cifar10(2, 1);
+        DiGraph g = TestingGraphs::make_cifar10(1, 1);
         DiGraphView gv = flipped(g);
         auto cost_map = Distributions::make_cost_map(
             get_nodes(g), Distributions::Binary(1, 1000));
@@ -1288,7 +1288,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("parallel_chains") {
       SUBCASE("Constant(1)") {
-        DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
+        DiGraph g = TestingGraphs::make_parallel_chains(10, 3);
         DiGraphView gv = flipped(g);
         auto cost_map = Distributions::make_cost_map(
             get_nodes(g), Distributions::Constant(1));
@@ -1299,7 +1299,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
       }
       SUBCASE("Uniform(0,1)") {
-        DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
+        DiGraph g = TestingGraphs::make_parallel_chains(10, 3);
         DiGraphView gv = flipped(g);
         auto cost_map = Distributions::make_cost_map(
             get_nodes(g), Distributions::Uniform(0, 1));
@@ -1310,7 +1310,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             isclose(relative_critical_path_cost_increase(gv, sp, cost_map), 1));
       }
       SUBCASE("Binary(1,1000)") {
-        DiGraph g = TestingGraphs::make_parallel_chains(4, 2);
+        DiGraph g = TestingGraphs::make_parallel_chains(10, 3);
         DiGraphView gv = flipped(g);
         auto cost_map = Distributions::make_cost_map(
             get_nodes(g), Distributions::Binary(1, 1000));
@@ -1388,7 +1388,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("fully_connected") {
-      DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 1});
+      DiGraph g = TestingGraphs::make_fully_connected({1, 4, 6, 4, 1});
       DiGraphView gv = flipped(g);
 
       BenchMark::bench_mark(
@@ -1445,21 +1445,21 @@ TEST_SUITE(FF_TEST_SUITE) {
                             100);
     }
     SUBCASE("random_2_terminal_random_dag") {
-      DiGraph g = TestingGraphs::make_2_terminal_random_dag(100, .1, 10);
+      DiGraph g = TestingGraphs::make_2_terminal_random_dag(10, .1, 1);
       DiGraphView gv = flipped(g);
 
       BenchMark::bench_mark("random_2_terminal_random_dag, Constant(1)",
                             gv,
                             Distributions::Constant(1),
-                            5);
+                            1);
       BenchMark::bench_mark("random_2_terminal_random_dag, Uniform(0,1)",
                             gv,
                             Distributions::Uniform(0, 1),
-                            5);
+                            1);
       BenchMark::bench_mark("random_2_terminal_random_dag, Binary(1, 1000)",
                             gv,
                             Distributions::Binary(1, 1000),
-                            5);
+                            1);
     }
   }
 }

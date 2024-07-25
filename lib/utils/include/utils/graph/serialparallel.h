@@ -57,6 +57,7 @@ MultiDiGraph parallel_composition(MultiDiGraph const &g1,
 
 SerialParallelDecomposition parallel_composition(
     std::vector<SerialParallelDecomposition> const &sp_compositions);
+
 SerialParallelDecomposition serial_composition(
     std::vector<SerialParallelDecomposition> const &sp_compositions);
 
@@ -64,9 +65,12 @@ MultiDiGraph multidigraph_from_sp_decomposition(
     SerialParallelDecomposition const &sp_decomposition);
 
 bool isempty(SerialParallelDecomposition const &sp);
-SerialParallelDecomposition normalize(SerialParallelDecomposition sp);
+
+SerialParallelDecomposition normalize(SerialParallelDecomposition const &sp);
+
 std::unordered_map<Node, size_t>
     node_counter(SerialParallelDecomposition const &sp);
+
 size_t node_count(SerialParallelDecomposition const &sp);
 
 std::vector<SerialParallelDecomposition>

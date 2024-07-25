@@ -402,7 +402,7 @@ std::vector<std::variant<Parallel, Node>> filter_empty(Serial const &serial) {
   // return filter(serial.children, [](auto const &child) {return
   // !isempty(to_sp_decomp(child));});
   std::vector<std::variant<Parallel, Node>> filtered;
-  for (auto const &child : serial.children) {
+  for (std::variant<Parallel, Node> const &child : serial.children) {
     if (!isempty(to_sp_decomp(child))) {
       filtered.push_back(child);
     }
@@ -414,7 +414,7 @@ std::vector<std::variant<Serial, Node>> filter_empty(Parallel const &parallel) {
   // return filter(parallel.children, [](auto const &child) {return
   // !isempty(to_sp_decomp(child));});
   std::vector<std::variant<Serial, Node>> filtered;
-  for (auto const &child : parallel.children) {
+  for (std::variant<Serial, Node> const &child : parallel.children) {
     if (!isempty(to_sp_decomp(child))) {
       filtered.push_back(child);
     }
@@ -422,69 +422,48 @@ std::vector<std::variant<Serial, Node>> filter_empty(Parallel const &parallel) {
   return filtered;
 }
 
-SerialParallelDecomposition normalize(SerialParallelDecomposition sp) {
+SerialParallelDecomposition normalize(SerialParallelDecomposition const &sp) {
   if (std::holds_alternative<Node>(sp)) {
     return sp;
-  } else if (std::holds_alternative<Serial>(sp)) {
-    Serial serial = std::get<Serial>(sp);
+  }
 
-    // Exclude empty children.
-    std::vector<std::variant<Parallel, Node>> filtered_children =
-        filter_empty(serial);
-
+  auto normalize_children = [](auto const &container) {
     std::vector<SerialParallelDecomposition> normalized_children;
-    for (std::variant<Parallel, Node> &child : filtered_children) {
-      if (std::holds_alternative<Parallel>(child)) {
-        normalized_children.push_back(
-            normalize(SerialParallelDecomposition{std::get<Parallel>(child)}));
-      } else {
+    for (const auto &child : filter_empty(container)) {
+      if (std::holds_alternative<Node>(child)) {
         normalized_children.push_back(std::get<Node>(child));
+      } else {
+        normalized_children.push_back(normalize(to_sp_decomp(child)));
       }
     }
+    return normalized_children;
+  };
 
-    SerialParallelDecomposition normalized =
-        serial_composition(normalized_children);
+  auto simplify_composition =
+      [](SerialParallelDecomposition const &composition) {
+        if (std::holds_alternative<Serial>(composition)) {
+          Serial serial = std::get<Serial>(composition);
+          if (serial.children.size() == 1) {
+            return to_sp_decomp(serial.children[0]);
+          }
+        } else if (std::holds_alternative<Parallel>(composition)) {
+          Parallel parallel = std::get<Parallel>(composition);
+          if (parallel.children.size() == 1) {
+            return to_sp_decomp(parallel.children[0]);
+          }
+        }
+        return composition;
+      };
 
-    if (std::holds_alternative<Serial>(normalized) &&
-        std::get<Serial>(normalized).children.size() == 1) {
-      return to_sp_decomp(get_only(std::get<Serial>(normalized).children));
-    } else if (std::holds_alternative<Parallel>(normalized) &&
-               std::get<Parallel>(normalized).children.size() == 1) {
-      return to_sp_decomp(get_only(std::get<Parallel>(normalized).children));
-    } else {
-      return normalized;
-    }
-
+  if (std::holds_alternative<Serial>(sp)) {
+    std::vector<SerialParallelDecomposition> normalized_children =
+        normalize_children(std::get<Serial>(sp));
+    return simplify_composition(serial_composition(normalized_children));
   } else {
     assert(std::holds_alternative<Parallel>(sp));
-    Parallel parallel = std::get<Parallel>(sp);
-
-    // Exclude empty children.
-    std::vector<std::variant<Serial, Node>> filtered_children =
-        filter_empty(parallel);
-
-    std::vector<SerialParallelDecomposition> normalized_children;
-    for (std::variant<Serial, Node> &child : filtered_children) {
-      if (std::holds_alternative<Serial>(child)) {
-        normalized_children.push_back(
-            normalize(SerialParallelDecomposition{std::get<Serial>(child)}));
-      } else {
-        normalized_children.push_back(std::get<Node>(child));
-      }
-    }
-
-    SerialParallelDecomposition normalized =
-        parallel_composition(normalized_children);
-
-    if (std::holds_alternative<Serial>(normalized) &&
-        std::get<Serial>(normalized).children.size() == 1) {
-      return to_sp_decomp(get_only(std::get<Serial>(normalized).children));
-    } else if (std::holds_alternative<Parallel>(normalized) &&
-               std::get<Parallel>(normalized).children.size() == 1) {
-      return to_sp_decomp(get_only(std::get<Parallel>(normalized).children));
-    } else {
-      return normalized;
-    }
+    std::vector<SerialParallelDecomposition> normalized_children =
+        normalize_children(std::get<Parallel>(sp));
+    return simplify_composition(parallel_composition(normalized_children));
   }
 }
 
@@ -496,18 +475,20 @@ std::unordered_map<Node, size_t>
     Node node = std::get<Node>(sp);
     counter[node]++;
   } else if (std::holds_alternative<Serial>(sp)) {
-    Serial const &serial = std::get<Serial>(sp);
-    for (auto const &child : serial.children) {
-      auto child_counter = node_counter(to_sp_decomp(child));
+    for (std::variant<Parallel, Node> const &child :
+         std::get<Serial>(sp).children) {
+      std::unordered_map<Node, size_t> child_counter =
+          node_counter(to_sp_decomp(child));
       for (auto const &[node, count] : child_counter) {
         counter[node] += count;
       }
     }
   } else {
     assert(std::holds_alternative<Parallel>(sp));
-    Parallel const &parallel = std::get<Parallel>(sp);
-    for (auto const &child : parallel.children) {
-      auto child_counter = node_counter(to_sp_decomp(child));
+    for (std::variant<Serial, Node> const &child :
+         std::get<Parallel>(sp).children) {
+      std::unordered_map<Node, size_t> child_counter =
+          node_counter(to_sp_decomp(child));
       for (auto const &[node, count] : child_counter) {
         counter[node] += count;
       }
@@ -552,16 +533,18 @@ float critical_path_cost(SerialParallelDecomposition const &sp,
   if (std::holds_alternative<Node>(sp)) {
     return cost_map.at(std::get<Node>(sp));
   } else if (std::holds_alternative<Serial>(sp)) {
-    Serial s = std::get<Serial>(sp);
-    return sum(transform(s.children, [&](auto const &child) {
-      return critical_path_cost(to_sp_decomp(child), cost_map);
-    }));
+    return sum(transform(std::get<Serial>(sp).children,
+                         [&](std::variant<Parallel, Node> const &child) {
+                           return critical_path_cost(to_sp_decomp(child),
+                                                     cost_map);
+                         }));
   } else {
     assert(std::holds_alternative<Parallel>(sp));
-    Parallel p = std::get<Parallel>(sp);
-    return maximum(transform(p.children, [&](auto const &child) {
-      return critical_path_cost(to_sp_decomp(child), cost_map);
-    }));
+    return maximum(transform(std::get<Parallel>(sp).children,
+                             [&](std::variant<Serial, Node> const &child) {
+                               return critical_path_cost(to_sp_decomp(child),
+                                                         cost_map);
+                             }));
   }
 }
 
@@ -581,9 +564,7 @@ float max_parallelism_degree(SerialParallelDecomposition const &sp,
 float relative_cost_increase(DiGraphView const &g,
                              SerialParallelDecomposition const &sp,
                              std::unordered_map<Node, float> const &cost_map) {
-  float a = compute_cost(sp, cost_map);
-  float b = compute_cost(g, cost_map);
-  return a / b;
+  return compute_cost(sp, cost_map) / compute_cost(g, cost_map);
 }
 
 float relative_critical_path_cost_increase(
