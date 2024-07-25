@@ -7,6 +7,10 @@
 
 namespace FlexFlow {
 
+Node get_pre_node(MultiDiGraphView const &, SeriesReduction const &);
+Node get_post_node(MultiDiGraphView const &, SeriesReduction const &);
+Node get_center_node(MultiDiGraphView const &, SeriesReduction const &);
+
 SeriesReduction make_series_reduction(MultiDiEdge const &, MultiDiEdge const &);
 std::optional<SeriesReduction> find_series_reduction(MultiDiGraphView const &);
 

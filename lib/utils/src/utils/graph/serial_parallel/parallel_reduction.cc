@@ -23,4 +23,9 @@ std::optional<ParallelReduction> find_parallel_reduction(MultiDiGraphView const 
   return std::nullopt;
 }
 
+MultiDiEdge apply_parallel_reduction(MultiDiGraph &g, ParallelReduction const &r) {
+  g.remove_edge(r.edges.max());
+  return r.edges.min();
+}
+
 } // namespace FlexFlow

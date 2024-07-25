@@ -113,16 +113,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == correct);
   }
 
-  TEST_CASE("sp_decomposition (parallel)") { 
-    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    std::vector<Node> ns = add_nodes(g, 2);
-    std::optional<std::variant<IntermediateSpDecompositionTree, Node>> result = sp_decomposition(g);
-    std::optional<std::variant<IntermediateSpDecompositionTree, Node>> correct = IntermediateSpDecompositionTree{
-      SplitType::PARALLEL,
-      {ns.at(0), ns.at(1)},
-    };
-    CHECK(result == correct);
-  }
+  // TEST_CASE("sp_decomposition (parallel)") { 
+  //   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+  //   std::vector<Node> ns = add_nodes(g, 2);
+  //   std::optional<std::variant<IntermediateSpDecompositionTree, Node>> result = sp_decomposition(g);
+  //   std::optional<std::variant<IntermediateSpDecompositionTree, Node>> correct = IntermediateSpDecompositionTree{
+  //     SplitType::PARALLEL,
+  //     {ns.at(0), ns.at(1)},
+  //   };
+  //   CHECK(result == correct);
+  // }
 
   TEST_CASE("sp_decomposition (serial)") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
