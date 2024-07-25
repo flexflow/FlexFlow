@@ -8,11 +8,11 @@
 
 namespace FlexFlow {
 
-bool is_2_terminal_sp_compliant(DiGraphView const &g) {
+static bool is_2_terminal_sp_compliant(DiGraphView const &g) {
   return (is_acyclic(g) && has_single_source(g) && has_single_sink(g));
 }
 
-std::vector<std::unordered_set<Node>> naive_layer_split(DiGraphView const &g) {
+static std::vector<std::unordered_set<Node>> naive_layer_split(DiGraphView const &g) {
   std::unordered_map<Node, int> node_to_sp_layer =
       get_longest_path_lengths_from_source_node(g);
   std::unordered_map<int, std::unordered_set<Node>> unordered_layer_to_node =
@@ -24,7 +24,7 @@ std::vector<std::unordered_set<Node>> naive_layer_split(DiGraphView const &g) {
   return layer_to_nodes;
 }
 
-SerialParallelDecomposition
+static SerialParallelDecomposition
     naive_layer_merge(std::vector<std::unordered_set<Node>> layer_to_node) {
   Serial sp;
   for (auto const nodes : layer_to_node) {
@@ -35,7 +35,7 @@ SerialParallelDecomposition
   return normalize(sp);
 }
 
-std::unordered_set<Node> get_heads(DiGraphView const &g,
+static std::unordered_set<Node> get_heads(DiGraphView const &g,
                                    std::vector<DiGraphView> metanodes,
                                    std::unordered_set<Node> explored) {
   std::unordered_set<Node> previous_layer_nodes = set_union(
@@ -49,7 +49,7 @@ std::unordered_set<Node> get_heads(DiGraphView const &g,
   });
 }
 
-std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
+static std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
     DiGraphView const &g, std::unordered_set<Node> const &heads) {
   std::unordered_set<std::vector<Node>> topo_orderings =
       transform(heads, [&](Node const &head) {
@@ -70,6 +70,7 @@ std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
       });
   std::unordered_set<std::vector<Node>> non_overlapping_topo_orderings;
   for (std::vector<Node> const &topo_ordering : topo_orderings) {
+    // std::vector<Node> filtered_topo_ordering = filter(topo_ordering, [&](Node const &n) {return !contains(non_visitable_nodes, n);});
     std::vector<Node> filtered_topo_ordering;
     for (Node const &n : topo_ordering) {
       if (!contains(non_visitable_nodes, n)) {
@@ -81,7 +82,7 @@ std::unordered_set<std::vector<Node>> get_non_overlapping_topological_orderings(
   return non_overlapping_topo_orderings;
 }
 
-std::vector<DiGraphView> get_metanodes(
+static std::vector<DiGraphView> get_metanodes(
     DiGraphView const &g,
     std::unordered_set<std::vector<Node>> const &non_overlapping_topo_orderings,
     float layer_cost,
@@ -103,7 +104,7 @@ std::vector<DiGraphView> get_metanodes(
   return metanodes;
 }
 
-std::vector<std::vector<DiGraphView>>
+static std::vector<std::vector<DiGraphView>>
     cost_aware_layer_split(DiGraphView const &g,
                            std::unordered_map<Node, float> const &cost_map) {
   std::vector<std::vector<DiGraphView>> layers;
@@ -163,7 +164,7 @@ SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g) {
   return barrier_sync_sp_ization_unchecked(g);
 }
 
-Serial cut_off_head(Serial s) {
+static Serial cut_off_head(Serial s) {
   assert(s.children.size() > 0);
   return {std::vector<std::variant<Parallel, Node>>(s.children.begin() + 1,
                                                     s.children.end())};
