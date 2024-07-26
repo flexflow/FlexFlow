@@ -90,7 +90,7 @@ UndirectedGraphView contract_node(UndirectedGraphView const &g,
 
 /**
  * @brief modifies the given graph in-place by splitting the given node into 2
- *separate ones
+ *separate nodes.
  **/
 void contract_out_node_inplace(MultiDiGraph &g, Node const &node);
 void contract_out_node_inplace(DiGraph &g, Node const &node);
