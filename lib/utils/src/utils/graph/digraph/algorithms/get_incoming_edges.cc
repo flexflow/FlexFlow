@@ -28,5 +28,4 @@ std::unordered_map<Node, std::unordered_set<DirectedEdge>>
   return result;
 }
 
-
 } // namespace FlexFlow

@@ -1,6 +1,17 @@
 #include "utils/graph/algorithms.h"
+#include "utils/containers/flatmap.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/intersection.h"
+#include "utils/containers/restrict_keys.h"
+#include "utils/containers/set_difference.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/unordered_set_of.h"
+#include "utils/containers/values.h"
 #include "utils/exception.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/algorithms/get_dominators.h"
+#include "utils/graph/digraph/algorithms/get_incoming_edges.h"
+#include "utils/graph/digraph/algorithms/get_node_with_greatest_topo_rank.h"
 #include "utils/graph/digraph/algorithms/get_outgoing_edges.h"
 #include "utils/graph/digraph/directed_edge_query.h"
 #include "utils/graph/node/algorithms.h"
@@ -14,17 +25,6 @@
 #include <cassert>
 #include <iostream>
 #include <queue>
-#include "utils/containers/get_only.h"
-#include "utils/containers/unordered_set_of.h"
-#include "utils/containers/intersection.h"
-#include "utils/containers/transform.h"
-#include "utils/containers/values.h"
-#include "utils/containers/flatmap.h"
-#include "utils/containers/set_difference.h"
-#include "utils/containers/restrict_keys.h"
-#include "utils/graph/digraph/algorithms/get_dominators.h"
-#include "utils/graph/digraph/algorithms/get_node_with_greatest_topo_rank.h"
-#include "utils/graph/digraph/algorithms/get_incoming_edges.h"
 
 namespace FlexFlow {
 
@@ -416,7 +416,6 @@ std::unordered_set<Node> get_neighbors(UndirectedGraphView const &g,
 //
 //   return result;
 // }
-
 
 // std::pair<OutputMultiDiEdge, InputMultiDiEdge>
 //     split_edge(MultiDiEdge const &e) {

@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_I_MULTIDIGRAPH_VIEW_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_I_MULTIDIGRAPH_VIEW_H
 
+#include "utils/graph/digraph/i_digraph_view.h"
 #include "utils/graph/multidigraph/multidiedge.dtg.h"
 #include "utils/graph/multidigraph/multidiedge_query.dtg.h"
-#include "utils/graph/digraph/i_digraph_view.h"
 
 namespace FlexFlow {
 
@@ -23,7 +23,8 @@ public:
 
   virtual ~IMultiDiGraphView() = default;
 
-  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override final;
+  std::unordered_set<DirectedEdge>
+      query_edges(DirectedEdgeQuery const &) const override final;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(IMultiDiGraphView);
 

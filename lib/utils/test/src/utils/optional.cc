@@ -1,6 +1,6 @@
+#include "utils/optional.h"
 #include "test/utils/doctest.h"
 #include "test/utils/rapidcheck.h"
-#include "utils/optional.h"
 #include <rapidcheck.h>
 
 TEST_SUITE(FF_TEST_SUITE) {

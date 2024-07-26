@@ -31,7 +31,7 @@ inline void hash_combine(std::size_t &seed, T const &v, Ts... rest) {
 
 template <typename T>
 void unordered_hash_combine(std::size_t &seed, T const &t) {
-  seed += get_std_hash(t);  
+  seed += get_std_hash(t);
 }
 
 template <typename T>

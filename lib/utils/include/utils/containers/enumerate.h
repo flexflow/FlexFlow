@@ -22,7 +22,6 @@ bidict<size_t, T> enumerate(std::unordered_set<T> const &c) {
   return m;
 }
 
-
 } // namespace FlexFlow
 
 #endif

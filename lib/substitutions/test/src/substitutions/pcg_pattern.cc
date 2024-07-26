@@ -1,8 +1,8 @@
 #include "utils/containers/get_only.h"
 #define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
-#include "substitutions/pcg_pattern.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
+#include "substitutions/pcg_pattern.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "test/utils/doctest.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"

@@ -23,10 +23,10 @@ struct formatter<
     CHECK_FMTABLE(K);
     CHECK_FMTABLE(V);
 
-    std::string result =
-          ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](std::pair<K, V> const &t) {
-            return fmt::to_string(t);
-          });
+    std::string result = ::FlexFlow::join_strings(
+        m.cbegin(), m.cend(), ", ", [](std::pair<K, V> const &t) {
+          return fmt::to_string(t);
+        });
     // }
 
     return formatter<std::string>::format("{" + result + "}", ctx);

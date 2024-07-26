@@ -22,7 +22,8 @@ std::unordered_set<Node> MultiDiGraph::query_nodes(NodeQuery const &q) const {
   return this->get_interface().query_nodes(q);
 }
 
-std::unordered_set<MultiDiEdge> MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
+std::unordered_set<MultiDiEdge>
+    MultiDiGraph::query_edges(MultiDiEdgeQuery const &q) const {
   return this->get_interface().query_edges(q);
 }
 

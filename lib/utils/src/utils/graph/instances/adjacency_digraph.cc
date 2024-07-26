@@ -6,8 +6,10 @@ namespace FlexFlow {
 
 AdjacencyDiGraph::AdjacencyDiGraph() {}
 
-AdjacencyDiGraph::AdjacencyDiGraph(NodeSource const &node_source, std::unordered_map<Node, std::unordered_set<Node>> const &adjacency)
-  : node_source(node_source), adjacency(adjacency) {}
+AdjacencyDiGraph::AdjacencyDiGraph(
+    NodeSource const &node_source,
+    std::unordered_map<Node, std::unordered_set<Node>> const &adjacency)
+    : node_source(node_source), adjacency(adjacency) {}
 
 AdjacencyDiGraph *AdjacencyDiGraph::clone() const {
   return new AdjacencyDiGraph(this->node_source, this->adjacency);

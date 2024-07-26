@@ -25,10 +25,11 @@ public:
   // bool operator!=(AdjacencyDiGraph const & const;
 
   AdjacencyDiGraph *clone() const override;
-private:
 
-  AdjacencyDiGraph(NodeSource const &node_source, 
-                   std::unordered_map<Node, std::unordered_set<Node>> const &adjacency);
+private:
+  AdjacencyDiGraph(
+      NodeSource const &node_source,
+      std::unordered_map<Node, std::unordered_set<Node>> const &adjacency);
 
   NodeSource node_source;
   std::unordered_map<Node, std::unordered_set<Node>> adjacency;

@@ -1,6 +1,6 @@
 #include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
-#include "utils/graph/node/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
@@ -9,7 +9,7 @@ void materialize_digraph_view(DiGraph &result, DiGraphView const &g) {
     result.add_node_unsafe(n);
   }
   for (DirectedEdge const &e : get_edges(g)) {
-    result.add_edge(e); 
+    result.add_edge(e);
   }
 }
 

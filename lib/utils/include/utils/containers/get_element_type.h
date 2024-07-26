@@ -18,7 +18,6 @@ struct get_element_type<std::optional<T>> {
 template <typename T>
 using get_element_type_t = typename get_element_type<T>::type;
 
-
 } // namespace FlexFlow
 
 #endif

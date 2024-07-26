@@ -15,17 +15,17 @@ Node get_post_node(MultiDiGraphView const &g, SeriesReduction const &r) {
 }
 
 Node get_center_node(MultiDiGraphView const &g, SeriesReduction const &r) {
-  return require_same(
-    g.get_multidiedge_dst(r.first),
-    g.get_multidiedge_src(r.second)
-  );
+  return require_same(g.get_multidiedge_dst(r.first),
+                      g.get_multidiedge_src(r.second));
 }
 
-SeriesReduction make_series_reduction(MultiDiEdge const &e1, MultiDiEdge const &e2) {
+SeriesReduction make_series_reduction(MultiDiEdge const &e1,
+                                      MultiDiEdge const &e2) {
   return SeriesReduction{e1, e2};
 }
 
-std::optional<SeriesReduction> find_series_reduction(MultiDiGraphView const &g) {
+std::optional<SeriesReduction>
+    find_series_reduction(MultiDiGraphView const &g) {
   std::unordered_set<MultiDiEdge> edges = get_edges(g);
 
   for (MultiDiEdge const &e1 : edges) {

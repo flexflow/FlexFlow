@@ -2,6 +2,12 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
 #include "utils/bidict/bidict.h"
+#include "utils/containers/contains.h"
+#include "utils/containers/filter.h"
+#include "utils/containers/filter_keys.h"
+#include "utils/containers/intersection.h"
+#include "utils/containers/set_union.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/exception.h"
 #include "utils/fmt/unordered_set.h"
 #include "utils/hash-utils.h"
@@ -10,12 +16,6 @@
 #include <optional>
 #include <set>
 #include <unordered_set>
-#include "utils/containers/set_union.h"
-#include "utils/containers/contains.h"
-#include "utils/containers/intersection.h"
-#include "utils/containers/filter.h"
-#include "utils/containers/unordered_set_of.h"
-#include "utils/containers/filter_keys.h"
 
 namespace FlexFlow {
 
@@ -101,7 +101,8 @@ std::unordered_set<T> apply_query(query_set<T> const &q, C const &c) {
     return unordered_set_of(c);
   }
 
-  return filter(unordered_set_of(c), [&](T const &t) { return includes(q, t); });
+  return filter(unordered_set_of(c),
+                [&](T const &t) { return includes(q, t); });
 }
 
 template <typename C,

@@ -2,14 +2,14 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_OP_TASK_SIGNATURE_H
 
 #include "local-execution/is_grad.dtg.h"
+#include "local-execution/op_task_type.dtg.h"
+#include "local-execution/op_tensor_slot_spec.dtg.h"
 #include "local-execution/serialization.h"
 #include "local-execution/slot_id_t.dtg.h"
 #include "local-execution/slot_type.dtg.h"
 #include "local-execution/tasks.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
-#include "local-execution/op_tensor_slot_spec.dtg.h"
-#include "local-execution/op_task_type.dtg.h"
 
 namespace FlexFlow {
 
@@ -25,10 +25,10 @@ struct OpTaskSignature {
   void add_input_slot(slot_id_t, SlotType slot_type = SlotType::TENSOR);
 
   void add_optional_input_slot(int, SlotType slot_type = SlotType::TENSOR);
-  void add_optional_input_slot(slot_id_t, SlotType slot_type = SlotType::TENSOR);
+  void add_optional_input_slot(slot_id_t,
+                               SlotType slot_type = SlotType::TENSOR);
 
-  void add_untrainable_input_slot(int,
-                                  SlotType slot_type = SlotType::TENSOR);
+  void add_untrainable_input_slot(int, SlotType slot_type = SlotType::TENSOR);
   void add_untrainable_input_slot(slot_id_t,
                                   SlotType slot_type = SlotType::TENSOR);
 
@@ -49,7 +49,8 @@ struct OpTaskSignature {
   void add_weight_slot(slot_id_t, SlotType slot_type = SlotType::TENSOR);
 
   void add_optional_weight_slot(int, SlotType slot_type = SlotType::TENSOR);
-  void add_optional_weight_slot(slot_id_t, SlotType slot_type = SlotType::TENSOR);
+  void add_optional_weight_slot(slot_id_t,
+                                SlotType slot_type = SlotType::TENSOR);
 
   void add_from_slot_spec(OpTensorSlotSpec const &spec);
 

@@ -71,17 +71,16 @@ ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
     slot_id_t arg_slot = arg_binding.first;
     OpArgSpec op_arg_spec = arg_binding.second;
 
-    mapping.insert({arg_slot, op_arg_spec.visit<ConcreteArgSpec>(overload {
-      [&](OpArgRefSpec const &s) {
-        return this->resolve_op_arg_ref_spec(s, op_guid);
-      },
-      [&](RuntimeArgRefSpec const &s) {
-        return this->resolve_runtime_arg_ref_spec(s);
-      },
-      [](ConcreteArgSpec const &s) {
-        return s;
-      },
-    })});
+    mapping.insert({arg_slot,
+                    op_arg_spec.visit<ConcreteArgSpec>(overload{
+                        [&](OpArgRefSpec const &s) {
+                          return this->resolve_op_arg_ref_spec(s, op_guid);
+                        },
+                        [&](RuntimeArgRefSpec const &s) {
+                          return this->resolve_runtime_arg_ref_spec(s);
+                        },
+                        [](ConcreteArgSpec const &s) { return s; },
+                    })});
   }
   return mapping;
 }

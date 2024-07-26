@@ -5,12 +5,12 @@
 #include "substitutions/unlabelled/pattern_split.h"
 #include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/transform.h"
 #include "utils/containers/zip.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/open_dataflow_graph/algorithms.h"
-#include "utils/containers/get_only.h"
-#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

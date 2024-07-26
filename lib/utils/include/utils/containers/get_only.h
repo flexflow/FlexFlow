@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_GET_ONLY_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_GET_ONLY_H
 
-#include "utils/exception.h"
 #include "utils/containers/maybe_get_only.h"
+#include "utils/exception.h"
 #include "utils/optional.h"
 
 namespace FlexFlow {

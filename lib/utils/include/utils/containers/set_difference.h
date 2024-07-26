@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_SET_DIFFERENCE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_SET_DIFFERENCE_H
 
-#include <unordered_set>
-#include "utils/containers/filter.h"
 #include "utils/containers/contains.h"
+#include "utils/containers/filter.h"
+#include <unordered_set>
 
 namespace FlexFlow {
 

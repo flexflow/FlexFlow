@@ -11,7 +11,6 @@ std::vector<E> as_vector(C const &c) {
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

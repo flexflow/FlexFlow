@@ -26,7 +26,6 @@ private:
   Node from, to;
 };
 
-
 DiGraphView
     contract_node(DiGraphView const &g, Node const &from, Node const &into);
 

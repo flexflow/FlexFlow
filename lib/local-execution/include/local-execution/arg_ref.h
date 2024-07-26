@@ -63,6 +63,6 @@ struct hash<::FlexFlow::ArgRefSpec<LABEL_TYPE>> {
   }
 };
 
-}
+} // namespace std
 
 #endif

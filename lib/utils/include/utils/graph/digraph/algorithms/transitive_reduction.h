@@ -8,12 +8,14 @@ namespace FlexFlow {
 struct DirectedEdgeMaskView final : public IDiGraphView {
   DirectedEdgeMaskView() = delete;
   explicit DirectedEdgeMaskView(DiGraphView const &,
-                          std::unordered_set<DirectedEdge> const &);
+                                std::unordered_set<DirectedEdge> const &);
 
-  std::unordered_set<DirectedEdge> query_edges(DirectedEdgeQuery const &) const override;
+  std::unordered_set<DirectedEdge>
+      query_edges(DirectedEdgeQuery const &) const override;
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
 
   DirectedEdgeMaskView *clone() const override;
+
 private:
   DiGraphView g;
   std::unordered_set<DirectedEdge> edge_mask;

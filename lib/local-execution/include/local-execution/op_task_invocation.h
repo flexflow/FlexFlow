@@ -3,7 +3,9 @@
 
 #include "kernels/accessor.h"
 #include "local-execution/concrete_arg.h"
+#include "local-execution/is_trainable.dtg.h"
 #include "local-execution/op_arg_ref.h"
+#include "local-execution/op_arg_spec.dtg.h"
 #include "local-execution/op_task_signature.h"
 #include "local-execution/op_tensor_spec.h"
 #include "local-execution/profiling.h"
@@ -19,8 +21,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <variant>
-#include "local-execution/is_trainable.dtg.h"
-#include "local-execution/op_arg_spec.dtg.h"
 
 namespace FlexFlow {
 

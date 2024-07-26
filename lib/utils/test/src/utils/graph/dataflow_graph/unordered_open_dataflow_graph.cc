@@ -47,7 +47,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     {
       std::unordered_set<DataflowOutput> result =
           g.query_outputs(dataflow_output_query_all());
-      std::unordered_set<DataflowOutput> correct = unordered_set_of(added.outputs);
+      std::unordered_set<DataflowOutput> correct =
+          unordered_set_of(added.outputs);
       REQUIRE(result == correct);
     }
 

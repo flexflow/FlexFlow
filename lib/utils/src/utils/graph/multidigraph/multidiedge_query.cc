@@ -8,8 +8,8 @@ MultiDiEdgeQuery multidiedge_query_all() {
 
 MultiDiEdgeQuery multidiedge_query_none() {
   return MultiDiEdgeQuery{
-    query_set<Node>::match_none(),
-    query_set<Node>::match_none(),
+      query_set<Node>::match_none(),
+      query_set<Node>::match_none(),
   };
 }
 

@@ -5,7 +5,8 @@
 
 namespace FlexFlow {
 
-std::vector<MultiDiEdge> add_edges(MultiDiGraph &, std::vector<std::pair<Node, Node>> const &);
+std::vector<MultiDiEdge> add_edges(MultiDiGraph &,
+                                   std::vector<std::pair<Node, Node>> const &);
 
 } // namespace FlexFlow
 

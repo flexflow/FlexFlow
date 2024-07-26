@@ -1,7 +1,7 @@
 #include "op-attrs/ops/loss_functions.h"
+#include "utils/containers/transform.h"
 #include <algorithm>
 #include <cassert>
-#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

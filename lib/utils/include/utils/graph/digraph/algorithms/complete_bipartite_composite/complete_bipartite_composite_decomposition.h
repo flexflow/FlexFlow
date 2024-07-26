@@ -6,10 +6,14 @@
 
 namespace FlexFlow {
 
-std::optional<BipartiteComponent> get_component_containing_node_in_head(CompleteBipartiteCompositeDecomposition const &, Node const &);
-std::optional<BipartiteComponent> get_component_containing_node_in_tail(CompleteBipartiteCompositeDecomposition const &, Node const &);
-std::unordered_set<std::unordered_set<Node>> get_head_subcomponents(CompleteBipartiteCompositeDecomposition const &);
-std::unordered_set<std::unordered_set<Node>> get_tail_subcomponents(CompleteBipartiteCompositeDecomposition const &);
+std::optional<BipartiteComponent> get_component_containing_node_in_head(
+    CompleteBipartiteCompositeDecomposition const &, Node const &);
+std::optional<BipartiteComponent> get_component_containing_node_in_tail(
+    CompleteBipartiteCompositeDecomposition const &, Node const &);
+std::unordered_set<std::unordered_set<Node>>
+    get_head_subcomponents(CompleteBipartiteCompositeDecomposition const &);
+std::unordered_set<std::unordered_set<Node>>
+    get_tail_subcomponents(CompleteBipartiteCompositeDecomposition const &);
 
 } // namespace FlexFlow
 

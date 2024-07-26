@@ -1,10 +1,10 @@
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
+#include "utils/fmt/unordered_set.h"
 #include "utils/fmt/variant.h"
 #include "utils/fmt/vector.h"
 #include "utils/hash-utils.h"
-#include "utils/hash/vector.h"
-#include "utils/fmt/unordered_set.h"
 #include "utils/hash/unordered_set.h"
+#include "utils/hash/vector.h"
 
 namespace FlexFlow {
 

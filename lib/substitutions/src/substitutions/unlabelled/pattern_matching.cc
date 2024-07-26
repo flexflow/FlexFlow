@@ -5,6 +5,8 @@
 #include "substitutions/unlabelled/pattern_split.h"
 #include "substitutions/unlabelled/standard_pattern_edge.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
+#include "utils/containers/keys.h"
+#include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/open_dataflow_graph/algorithms.h"
@@ -14,8 +16,6 @@
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/overload.h"
 #include <memory>
-#include "utils/containers/keys.h"
-#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

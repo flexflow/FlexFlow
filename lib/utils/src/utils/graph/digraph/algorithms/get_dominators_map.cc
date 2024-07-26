@@ -1,8 +1,8 @@
 #include "utils/graph/digraph/algorithms/get_dominators_map.h"
 #include "utils/containers/generate_map.h"
 #include "utils/containers/restrict_keys.h"
-#include "utils/containers/values.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/values.h"
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/digraph/algorithms/get_predecessors.h"
 #include "utils/graph/digraph/algorithms/get_successors.h"
@@ -23,11 +23,12 @@ std::unordered_map<Node, std::unordered_set<Node>>
     queue.push(src);
   }
 
-  std::unordered_map<Node, std::unordered_set<Node>> result = generate_map(get_nodes(g), [&](Node const &) { return get_nodes(g); });
+  std::unordered_map<Node, std::unordered_set<Node>> result =
+      generate_map(get_nodes(g), [&](Node const &) { return get_nodes(g); });
   while (!queue.empty()) {
     Node n = queue.front();
     queue.pop();
-    
+
     std::unordered_set<Node> old_result_entry = result.at(n);
 
     result.at(n) =

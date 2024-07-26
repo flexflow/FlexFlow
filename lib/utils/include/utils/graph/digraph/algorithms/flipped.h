@@ -20,7 +20,7 @@ private:
   DiGraphView g;
 };
 
-DiGraphView flipped(DiGraphView const &); 
+DiGraphView flipped(DiGraphView const &);
 DirectedEdge flipped_directed_edge(DirectedEdge const &);
 
 } // namespace FlexFlow

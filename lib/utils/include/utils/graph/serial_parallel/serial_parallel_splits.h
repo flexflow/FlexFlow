@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_FLATTENED_DECOMPOSITION_TREE_H
 
 #include "utils/graph/node/node.dtg.h"
-#include <variant>
 #include <unordered_set>
+#include <variant>
 
 namespace FlexFlow {
 
@@ -17,6 +17,7 @@ public:
 
   bool operator==(SerialSplit const &) const;
   bool operator!=(SerialSplit const &) const;
+
 public:
   std::vector<std::variant<ParallelSplit, Node>> children;
 
@@ -28,7 +29,7 @@ private:
 std::string format_as(SerialSplit const &);
 std::ostream &operator<<(std::ostream &, SerialSplit const &);
 
-}
+} // namespace FlexFlow
 
 namespace std {
 
@@ -37,17 +38,19 @@ struct hash<::FlexFlow::SerialSplit> {
   size_t operator()(::FlexFlow::SerialSplit const &) const;
 };
 
-}
+} // namespace std
 
 namespace FlexFlow {
 
 struct ParallelSplit {
 public:
   ParallelSplit() = delete;
-  explicit ParallelSplit(std::unordered_set<std::variant<SerialSplit, Node>> const &);
+  explicit ParallelSplit(
+      std::unordered_set<std::variant<SerialSplit, Node>> const &);
 
   bool operator==(ParallelSplit const &) const;
   bool operator!=(ParallelSplit const &) const;
+
 public:
   std::unordered_set<std::variant<SerialSplit, Node>> children;
 

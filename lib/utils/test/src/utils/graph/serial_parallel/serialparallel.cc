@@ -1,7 +1,7 @@
-#include "test/utils/doctest.h"
 #include "utils/graph/serial_parallel/serialparallel.h"
-#include "utils/graph/instances/adjacency_digraph.h"
+#include "test/utils/doctest.h"
 #include "utils/graph/algorithms.h"
+#include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/serial_parallel/serialparallel_internal.h"
 
 using namespace ::FlexFlow;
@@ -38,7 +38,8 @@ TEST_SUITE(FF_TEST_SUITE) {
   //     }}
   //   }};
   //
-  //   SerialParallelDecomposition result = get_serial_parallel_decomposition(g);
+  //   SerialParallelDecomposition result =
+  //   get_serial_parallel_decomposition(g);
   //
   //   CHECK(result == correct);
   // }

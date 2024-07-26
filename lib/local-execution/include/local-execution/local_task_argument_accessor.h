@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TASK_ARGUMENT_ACCESSOR_H
 #define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_TASK_ARGUMENT_ACCESSOR_H
 
-#include "local-execution/task_argument_accessor.h"
 #include "local-execution/slot_grad_id.dtg.h"
+#include "local-execution/task_argument_accessor.h"
 #include <unordered_map>
 #include <variant>
 
@@ -23,8 +23,9 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
 
   ConcreteArgSpec const &get_concrete_arg(slot_id_t) const override;
 
-  GenericTensorAccessor
-      get_tensor(slot_id_t slot, Permissions priv, IsGrad is_grad) const override;
+  GenericTensorAccessor get_tensor(slot_id_t slot,
+                                   Permissions priv,
+                                   IsGrad is_grad) const override;
   VariadicGenericTensorAccessor get_variadic_tensor(
       slot_id_t slot, Permissions priv, IsGrad is_grad) const override;
 

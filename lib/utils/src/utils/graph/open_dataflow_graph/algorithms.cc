@@ -1,12 +1,12 @@
 #include "utils/graph/open_dataflow_graph/algorithms.h"
 #include "utils/containers/generate_map.h"
 #include "utils/containers/group_by.h"
+#include "utils/containers/sorted_by.h"
+#include "utils/containers/transform.h"
 #include "utils/containers/unordered_set_of.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
-#include "utils/containers/transform.h"
-#include "utils/containers/sorted_by.h"
 
 namespace FlexFlow {
 

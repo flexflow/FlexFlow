@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_AT_IDX_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_AT_IDX_H
 
-#include <vector>
 #include <optional>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -14,7 +14,6 @@ std::optional<E> at_idx(std::vector<E> const &v, size_t idx) {
     return v.at(idx);
   }
 }
-
 
 } // namespace FlexFlow
 

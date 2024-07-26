@@ -3,12 +3,12 @@
 
 #include "pcg/file_format/v1/graphs/v1_dataflow_graph.h"
 #include "pcg/file_format/v1/graphs/v1_labelled_dataflow_graph.dtg.h"
-#include "utils/graph/dataflow_graph/algorithms.h"
-#include "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph_view.h"
-#include "utils/graph/node/algorithms.h"
 #include "utils/containers/enumerate.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/transform.h"
+#include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph_view.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 

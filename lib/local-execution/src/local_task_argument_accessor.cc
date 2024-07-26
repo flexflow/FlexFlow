@@ -3,11 +3,12 @@
 
 namespace FlexFlow {
 
-LocalTaskArgumentAccessor::LocalTaskArgumentAccessor(Allocator const &allocator,
-                            TensorSlotsBacking const &tensor_slots_backing,
-                            ArgSlotsBacking const &arg_slots_backing)
-      : allocator(allocator), tensor_slots_backing(tensor_slots_backing),
-        arg_slots_backing(arg_slots_backing){};
+LocalTaskArgumentAccessor::LocalTaskArgumentAccessor(
+    Allocator const &allocator,
+    TensorSlotsBacking const &tensor_slots_backing,
+    ArgSlotsBacking const &arg_slots_backing)
+    : allocator(allocator), tensor_slots_backing(tensor_slots_backing),
+      arg_slots_backing(arg_slots_backing){};
 
 ConcreteArgSpec const &
     LocalTaskArgumentAccessor::get_concrete_arg(slot_id_t name) const {

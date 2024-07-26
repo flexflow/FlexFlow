@@ -1,7 +1,7 @@
-#include <doctest/doctest.h>
 #include "utils/graph/multidigraph/algorithms/add_nodes.h"
 #include "utils/graph/instances/adjacency_multidigraph.h"
 #include "utils/graph/node/node_query.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

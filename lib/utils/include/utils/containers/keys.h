@@ -14,7 +14,6 @@ std::unordered_set<typename C::key_type> keys(C const &c) {
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

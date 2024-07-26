@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_GET_ELEMENT_COUNTS_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_GET_ELEMENT_COUNTS_H
 
-#include <string>
-#include <unordered_map> 
-#include <vector>
 #include "utils/containers/contains_key.h"
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 namespace FlexFlow {
 

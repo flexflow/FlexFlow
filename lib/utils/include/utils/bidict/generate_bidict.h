@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_GENERATE_BIDICT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_GENERATE_BIDICT_H
 
-#include <type_traits>
 #include "utils/bidict/bidict.h"
 #include "utils/containers/get_element_type.h"
 #include "utils/containers/transform.h"
+#include <type_traits>
 
 namespace FlexFlow {
 
@@ -23,7 +23,6 @@ bidict<K, V> generate_bidict(C const &c, F const &f) {
   });
   return {transformed.cbegin(), transformed.cend()};
 }
-
 
 } // namespace FlexFlow
 

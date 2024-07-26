@@ -1,22 +1,23 @@
-#include <doctest/doctest.h>
-#include "utils/containers/set_minus.h"
 #include "utils/graph/serial_parallel/series_reduction.h"
+#include "utils/containers/set_minus.h"
 #include "utils/graph/instances/adjacency_multidigraph.h"
-#include "utils/graph/multidigraph/algorithms/add_nodes.h"
 #include "utils/graph/multidigraph/algorithms/add_edges.h"
+#include "utils/graph/multidigraph/algorithms/add_nodes.h"
 #include "utils/graph/multidigraph/algorithms/get_edges.h"
 #include "utils/graph/node/algorithms.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_pre/post/center_node") {
     MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
-    std::vector<Node> n = add_nodes(g, 3);  
-    std::vector<MultiDiEdge> e = add_edges(g, {
-      {n.at(0), n.at(1)},
-      {n.at(1), n.at(2)},
-    });
+    std::vector<Node> n = add_nodes(g, 3);
+    std::vector<MultiDiEdge> e = add_edges(g,
+                                           {
+                                               {n.at(0), n.at(1)},
+                                               {n.at(1), n.at(2)},
+                                           });
     SeriesReduction reduction = make_series_reduction(e.at(0), e.at(1));
 
     SUBCASE("get_pre_node") {
@@ -41,25 +42,28 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("find_series_reduction") {
     MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
     SUBCASE("base case") {
-      std::vector<Node> n = add_nodes(g, 3);  
-      std::vector<MultiDiEdge> e = add_edges(g, {
-        {n.at(0), n.at(1)},
-        {n.at(1), n.at(2)},
-      });
+      std::vector<Node> n = add_nodes(g, 3);
+      std::vector<MultiDiEdge> e = add_edges(g,
+                                             {
+                                                 {n.at(0), n.at(1)},
+                                                 {n.at(1), n.at(2)},
+                                             });
 
       std::optional<SeriesReduction> result = find_series_reduction(g);
-      std::optional<SeriesReduction> correct = make_series_reduction(e.at(0), e.at(1));
+      std::optional<SeriesReduction> correct =
+          make_series_reduction(e.at(0), e.at(1));
       CHECK(result == correct);
     }
 
     SUBCASE("does not find if other edges are involved with center node") {
       SUBCASE("duplicate edge") {
         std::vector<Node> n = add_nodes(g, 3);
-        std::vector<MultiDiEdge> e = add_edges(g, {
-          {n.at(0), n.at(1)},
-          {n.at(0), n.at(1)},
-          {n.at(1), n.at(2)},
-        });
+        std::vector<MultiDiEdge> e = add_edges(g,
+                                               {
+                                                   {n.at(0), n.at(1)},
+                                                   {n.at(0), n.at(1)},
+                                                   {n.at(1), n.at(2)},
+                                               });
 
         std::optional<SeriesReduction> result = find_series_reduction(g);
         std::optional<SeriesReduction> correct = std::nullopt;
@@ -68,11 +72,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("misc edge") {
         std::vector<Node> n = add_nodes(g, 4);
-        std::vector<MultiDiEdge> e = add_edges(g, {
-          {n.at(0), n.at(1)},
-          {n.at(1), n.at(3)},
-          {n.at(1), n.at(2)},
-        });
+        std::vector<MultiDiEdge> e = add_edges(g,
+                                               {
+                                                   {n.at(0), n.at(1)},
+                                                   {n.at(1), n.at(3)},
+                                                   {n.at(1), n.at(2)},
+                                               });
 
         std::optional<SeriesReduction> result = find_series_reduction(g);
         std::optional<SeriesReduction> correct = std::nullopt;
@@ -83,34 +88,37 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("does find if other edges are involved with non-center node") {
       std::vector<Node> n = add_nodes(g, 4);
       SUBCASE("edge from dst") {
-        std::vector<MultiDiEdge> e = add_edges(g, {
-          {n.at(0), n.at(1)},
-          {n.at(1), n.at(2)},
+        std::vector<MultiDiEdge> e = add_edges(g,
+                                               {
+                                                   {n.at(0), n.at(1)},
+                                                   {n.at(1), n.at(2)},
 
-          {n.at(2), n.at(3)},
-          {n.at(3), n.at(2)},
-          {n.at(0), n.at(3)},
-          {n.at(3), n.at(0)},
-        });
+                                                   {n.at(2), n.at(3)},
+                                                   {n.at(3), n.at(2)},
+                                                   {n.at(0), n.at(3)},
+                                                   {n.at(3), n.at(0)},
+                                               });
 
         std::optional<SeriesReduction> result = find_series_reduction(g);
-        std::optional<SeriesReduction> correct = make_series_reduction(e.at(0), e.at(1));
+        std::optional<SeriesReduction> correct =
+            make_series_reduction(e.at(0), e.at(1));
         CHECK(result == correct);
       }
     }
 
     SUBCASE("finds one reduction when there are multiple") {
       std::vector<Node> n = add_nodes(g, 4);
-      std::vector<MultiDiEdge> e = add_edges(g, {
-        {n.at(0), n.at(1)},
-        {n.at(1), n.at(2)},
-        {n.at(2), n.at(3)},
-      });
+      std::vector<MultiDiEdge> e = add_edges(g,
+                                             {
+                                                 {n.at(0), n.at(1)},
+                                                 {n.at(1), n.at(2)},
+                                                 {n.at(2), n.at(3)},
+                                             });
 
       std::optional<SeriesReduction> result = find_series_reduction(g);
       std::unordered_set<SeriesReduction> correct_options = {
-        make_series_reduction(e.at(0), e.at(1)),
-        make_series_reduction(e.at(1), e.at(2)),
+          make_series_reduction(e.at(0), e.at(1)),
+          make_series_reduction(e.at(1), e.at(2)),
       };
       CHECK(result.has_value());
       CHECK(contains(correct_options, result.value()));
@@ -118,19 +126,21 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("in larger graph") {
       std::vector<Node> n = add_nodes(g, 8);
-      std::vector<MultiDiEdge> e = add_edges(g, {
-        {n.at(0), n.at(2)},
-        {n.at(1), n.at(2)},
-        {n.at(2), n.at(3)},
-        {n.at(2), n.at(3)},
-        {n.at(3), n.at(4)}, //*
-        {n.at(4), n.at(5)}, //*
-        {n.at(5), n.at(6)},
-        {n.at(5), n.at(7)},
-      });
+      std::vector<MultiDiEdge> e = add_edges(g,
+                                             {
+                                                 {n.at(0), n.at(2)},
+                                                 {n.at(1), n.at(2)},
+                                                 {n.at(2), n.at(3)},
+                                                 {n.at(2), n.at(3)},
+                                                 {n.at(3), n.at(4)}, //*
+                                                 {n.at(4), n.at(5)}, //*
+                                                 {n.at(5), n.at(6)},
+                                                 {n.at(5), n.at(7)},
+                                             });
 
       std::optional<SeriesReduction> result = find_series_reduction(g);
-      std::optional<SeriesReduction> correct = make_series_reduction(e.at(4), e.at(5));
+      std::optional<SeriesReduction> correct =
+          make_series_reduction(e.at(4), e.at(5));
       CHECK(result == correct);
     }
   }
@@ -139,11 +149,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
 
     SUBCASE("base case") {
-      std::vector<Node> n = add_nodes(g, 3);  
-      std::vector<MultiDiEdge> e = add_edges(g, {
-        {n.at(0), n.at(1)},
-        {n.at(1), n.at(2)},
-      });
+      std::vector<Node> n = add_nodes(g, 3);
+      std::vector<MultiDiEdge> e = add_edges(g,
+                                             {
+                                                 {n.at(0), n.at(1)},
+                                                 {n.at(1), n.at(2)},
+                                             });
 
       SeriesReduction reduction = make_series_reduction(e.at(0), e.at(1));
 
@@ -151,13 +162,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("nodes") {
         std::unordered_set<Node> result_nodes = get_nodes(g);
-        std::unordered_set<Node> correct_nodes = { n.at(0), n.at(2) };
+        std::unordered_set<Node> correct_nodes = {n.at(0), n.at(2)};
         CHECK(result_nodes == correct_nodes);
       }
 
       SUBCASE("edges") {
         std::unordered_set<MultiDiEdge> result_edges = get_edges(g);
-        std::unordered_set<MultiDiEdge> correct_edges = { returned_edge };
+        std::unordered_set<MultiDiEdge> correct_edges = {returned_edge};
         CHECK(result_edges == correct_edges);
       }
 
@@ -178,26 +189,29 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("in larger graph") {
       std::vector<Node> n = add_nodes(g, 8);
-      std::vector<MultiDiEdge> e = add_edges(g, {
-        {n.at(0), n.at(2)},
-        {n.at(1), n.at(2)},
-        {n.at(2), n.at(3)},
-        {n.at(2), n.at(3)},
-        {n.at(3), n.at(4)}, //*
-        {n.at(4), n.at(5)}, //*
-        {n.at(5), n.at(6)},
-        {n.at(5), n.at(7)},
-      });
+      std::vector<MultiDiEdge> e = add_edges(g,
+                                             {
+                                                 {n.at(0), n.at(2)},
+                                                 {n.at(1), n.at(2)},
+                                                 {n.at(2), n.at(3)},
+                                                 {n.at(2), n.at(3)},
+                                                 {n.at(3), n.at(4)}, //*
+                                                 {n.at(4), n.at(5)}, //*
+                                                 {n.at(5), n.at(6)},
+                                                 {n.at(5), n.at(7)},
+                                             });
 
       MultiDiEdge reduction_e1 = e.at(4);
       MultiDiEdge reduction_e2 = e.at(5);
-      SeriesReduction reduction = make_series_reduction(reduction_e1, reduction_e2);
+      SeriesReduction reduction =
+          make_series_reduction(reduction_e1, reduction_e2);
 
       MultiDiEdge returned_edge = apply_series_reduction(g, reduction);
 
       SUBCASE("nodes") {
         std::unordered_set<Node> result_nodes = get_nodes(g);
-        std::unordered_set<Node> correct_nodes = set_minus(unordered_set_of(n), {n.at(4)});
+        std::unordered_set<Node> correct_nodes =
+            set_minus(unordered_set_of(n), {n.at(4)});
         CHECK(result_nodes == correct_nodes);
       }
 

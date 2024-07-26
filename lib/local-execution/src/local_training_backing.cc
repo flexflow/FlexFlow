@@ -1,6 +1,6 @@
 #include "local-execution/local_training_backing.h"
-#include "utils/exception.h"
 #include "utils/containers/reversed.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

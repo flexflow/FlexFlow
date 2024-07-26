@@ -24,7 +24,6 @@ std::unordered_set<T> set_union(C const &sets) {
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

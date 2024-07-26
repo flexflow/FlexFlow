@@ -9,5 +9,4 @@ std::unordered_map<Node, std::unordered_set<Node>>
   return get_dominators_map(flipped(g));
 }
 
-
 } // namespace FlexFlow

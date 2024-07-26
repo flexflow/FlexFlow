@@ -32,8 +32,6 @@ void extend(std::unordered_set<T> &lhs, std::optional<T> const &rhs) {
   }
 }
 
-
-
 } // namespace FlexFlow
 
 #endif

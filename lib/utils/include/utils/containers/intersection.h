@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_INTERSECTION_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_INTERSECTION_H
 
-#include <unordered_set>
 #include "utils/containers/contains.h"
 #include <optional>
+#include <unordered_set>
 
 namespace FlexFlow {
 
@@ -28,7 +28,6 @@ std::optional<T> intersection(C const &c) {
 
   return result;
 }
-
 
 } // namespace FlexFlow
 

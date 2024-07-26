@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
@@ -12,115 +12,114 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("to_final_ast (serial)") {
-    std::variant<IntermediateSpDecompositionTree, Node> input = IntermediateSpDecompositionTree{
-      SplitType::SERIAL,
-      {Node{1}, Node{2}},
-    };
+    std::variant<IntermediateSpDecompositionTree, Node> input =
+        IntermediateSpDecompositionTree{
+            SplitType::SERIAL,
+            {Node{1}, Node{2}},
+        };
     SerialParallelDecomposition result = to_final_ast(input);
     SerialParallelDecomposition correct = SerialParallelDecomposition{
-      SerialSplit{{
-        Node{1},
-        Node{2},
-      }},
+        SerialSplit{{
+            Node{1},
+            Node{2},
+        }},
     };
   }
 
   TEST_CASE("to_final_ast (composite)") {
-    std::variant<IntermediateSpDecompositionTree, Node> input = IntermediateSpDecompositionTree{
-      SplitType::SERIAL,
-      {
-        Node{0},
+    std::variant<IntermediateSpDecompositionTree, Node> input =
         IntermediateSpDecompositionTree{
-          SplitType::SERIAL,
-          {
-            Node{1},
-            IntermediateSpDecompositionTree{
-              SplitType::PARALLEL,
-              { 
+            SplitType::SERIAL,
+            {
+                Node{0},
                 IntermediateSpDecompositionTree{
-                  SplitType::PARALLEL,
-                  {
-                    Node{2},
-                    Node{3},
-                  },
+                    SplitType::SERIAL,
+                    {
+                        Node{1},
+                        IntermediateSpDecompositionTree{
+                            SplitType::PARALLEL,
+                            {
+                                IntermediateSpDecompositionTree{
+                                    SplitType::PARALLEL,
+                                    {
+                                        Node{2},
+                                        Node{3},
+                                    },
+                                },
+                                Node{4},
+                            },
+                        },
+                    },
                 },
-                Node{4},
-              },
-            },
-          },
-        },
-        Node{5},
-      }
-    };
+                Node{5},
+            }};
 
     SerialParallelDecomposition result = to_final_ast(input);
-    SerialParallelDecomposition correct = SerialParallelDecomposition{
-      SerialSplit{{
-        Node{0},
-        Node{1},
-        ParallelSplit{{
-          Node{2},
-          Node{3},
-          Node{4},
-        }},
-        Node{5},
-      }}
-    };
+    SerialParallelDecomposition correct =
+        SerialParallelDecomposition{SerialSplit{{
+            Node{0},
+            Node{1},
+            ParallelSplit{{
+                Node{2},
+                Node{3},
+                Node{4},
+            }},
+            Node{5},
+        }}};
     CHECK(result == correct);
   }
 
   TEST_CASE("get_nodes(SerialParallelDecomposition)") {
-    SerialParallelDecomposition input = SerialParallelDecomposition{
-      SerialSplit{{
-        ParallelSplit{{
-          Node{1},
-          Node{2},
-        }},
-        Node{3},
-        ParallelSplit{{
-          Node{4},
-          Node{5},
-        }},
-      }}
-    };
+    SerialParallelDecomposition input =
+        SerialParallelDecomposition{SerialSplit{{
+            ParallelSplit{{
+                Node{1},
+                Node{2},
+            }},
+            Node{3},
+            ParallelSplit{{
+                Node{4},
+                Node{5},
+            }},
+        }}};
 
     std::unordered_set<Node> result = get_nodes(input);
     std::unordered_set<Node> correct = {
-      Node{1},
-      Node{2},
-      Node{3},
-      Node{4},
-      Node{5},
+        Node{1},
+        Node{2},
+        Node{3},
+        Node{4},
+        Node{5},
     };
     CHECK(result == correct);
   }
 
   TEST_CASE("get_nodes(SerialSplit)") {
     ParallelSplit input = ParallelSplit{{
-      Node{1},
-      SerialSplit{{
-        Node{2},
-        ParallelSplit{{
-          Node{3},
-          Node{4},
+        Node{1},
+        SerialSplit{{
+            Node{2},
+            ParallelSplit{{
+                Node{3},
+                Node{4},
+            }},
         }},
-      }},
-      SerialSplit{{
-        Node{5},
-        Node{6},
-      }},
-      Node{7},
+        SerialSplit{{
+            Node{5},
+            Node{6},
+        }},
+        Node{7},
     }};
 
     std::unordered_set<Node> result = get_nodes(input);
     std::unordered_set<Node> correct = {
-      Node{1},
-      Node{2},
-      Node{3},
-      Node{4},
-      Node{5},
-      Node{6},
-      Node{7},
+        Node{1},
+        Node{2},
+        Node{3},
+        Node{4},
+        Node{5},
+        Node{6},
+        Node{7},
     };
 
     CHECK(result == correct);
@@ -128,28 +127,27 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("get_nodes(ParallelSplit)") {
     ParallelSplit input = ParallelSplit{{
-      Node{1},
-      SerialSplit{{
-        Node{2},
-        Node{3},
-        ParallelSplit{{
-          Node{4},
-          Node{5},
+        Node{1},
+        SerialSplit{{
+            Node{2},
+            Node{3},
+            ParallelSplit{{
+                Node{4},
+                Node{5},
+            }},
         }},
-      }},
     }};
-    
+
     std::unordered_set<Node> result = get_nodes(input);
     std::unordered_set<Node> correct = {
-      Node{1},
-      Node{2},
-      Node{3},
-      Node{4},
-      Node{5},
+        Node{1},
+        Node{2},
+        Node{3},
+        Node{4},
+        Node{5},
     };
 
     CHECK(result == correct);
-
   }
 
   TEST_CASE("get_nodes(Node)") {

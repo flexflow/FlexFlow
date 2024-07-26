@@ -9,7 +9,8 @@ std::unordered_set<DirectedEdge>
     FlippedView::query_edges(DirectedEdgeQuery const &query) const {
   std::unordered_set<DirectedEdge> result =
       this->g.query_edges(DirectedEdgeQuery{query.dsts, query.srcs});
-  return transform(result, [](DirectedEdge const &e) { return flipped_directed_edge(e); });
+  return transform(
+      result, [](DirectedEdge const &e) { return flipped_directed_edge(e); });
 }
 
 std::unordered_set<Node>

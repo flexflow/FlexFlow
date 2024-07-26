@@ -1,11 +1,11 @@
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_inputs.h"
+#include "utils/containers/contains.h"
 #include "utils/containers/extend.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/values.h"
 #include "utils/graph/open_dataflow_graph/algorithms.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/overload.h"
-#include "utils/containers/contains.h"
-#include "utils/containers/values.h"
-#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

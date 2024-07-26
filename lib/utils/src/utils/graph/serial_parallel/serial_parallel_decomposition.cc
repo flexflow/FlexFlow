@@ -1,10 +1,10 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
-#include "utils/graph/serial_parallel/intermediate_sp_decomposition_tree.h"
-#include "utils/containers/transform.h"
-#include "utils/variant.h"
-#include "utils/containers/unordered_set_of.h"
 #include "utils/containers/set_union.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/unordered_set_of.h"
+#include "utils/graph/serial_parallel/intermediate_sp_decomposition_tree.h"
 #include "utils/hash/unordered_set.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
@@ -70,6 +70,5 @@ std::unordered_set<Node> get_nodes(ParallelSplit const &parallel) {
 std::unordered_set<Node> get_nodes(Node const &node) {
   return {node};
 }
-
 
 } // namespace FlexFlow

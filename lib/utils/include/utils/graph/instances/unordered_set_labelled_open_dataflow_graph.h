@@ -1,7 +1,13 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_DATAFLOW_GRAPH_UNORDERED_SET_LABELLED_DATAFLOW_GRAPH_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_DATAFLOW_GRAPH_UNORDERED_SET_LABELLED_DATAFLOW_GRAPH_H
 
+#include "utils/containers/count.h"
 #include "utils/containers/enumerate_vector.h"
+#include "utils/containers/filter.h"
+#include "utils/containers/generate_map.h"
+#include "utils/containers/keys.h"
+#include "utils/containers/map_keys.h"
+#include "utils/containers/transform.h"
 #include "utils/containers/without_nullopts.h"
 #include "utils/containers/zip.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
@@ -13,12 +19,6 @@
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
-#include "utils/containers/transform.h"
-#include "utils/containers/count.h"
-#include "utils/containers/keys.h"
-#include "utils/containers/filter.h"
-#include "utils/containers/generate_map.h"
-#include "utils/containers/map_keys.h"
 
 namespace FlexFlow {
 

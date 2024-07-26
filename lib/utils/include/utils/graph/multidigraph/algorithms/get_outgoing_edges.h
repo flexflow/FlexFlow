@@ -5,7 +5,8 @@
 
 namespace FlexFlow {
 
-std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &, Node const &);
+std::unordered_set<MultiDiEdge> get_outgoing_edges(MultiDiGraphView const &,
+                                                   Node const &);
 
 } // namespace FlexFlow
 

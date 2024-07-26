@@ -12,7 +12,6 @@ T reversed(T const &t) {
   return r;
 }
 
-
 } // namespace FlexFlow
 
 #endif

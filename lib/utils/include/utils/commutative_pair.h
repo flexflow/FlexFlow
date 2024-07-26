@@ -1,12 +1,11 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_UNORDERED_PAIR_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_UNORDERED_PAIR_H
 
-#include <tuple>
-#include "utils/hash-utils.h"
+#include "utils/fmt/pair.h"
 #include "utils/hash-utils.h"
 #include "utils/type_traits_core.h"
-#include "utils/fmt/pair.h"
 #include <rapidcheck.h>
+#include <tuple>
 
 namespace FlexFlow {
 
@@ -14,9 +13,7 @@ template <typename T>
 struct commutative_pair {
 public:
   commutative_pair() = delete;
-  commutative_pair(T const &x, T const &y) 
-    : first(x), second(y)
-  { }
+  commutative_pair(T const &x, T const &y) : first(x), second(y) {}
 
   bool operator==(commutative_pair const &other) const {
     return this->tie() == other.tie() || this->rtie() == other.tie();
@@ -28,7 +25,7 @@ public:
 
   bool operator<(commutative_pair const &other) const {
     static_assert(is_lt_comparable_v<T>);
-    
+
     return this->otie() < other.otie();
   }
 
@@ -40,13 +37,13 @@ public:
 
   bool operator<=(commutative_pair const &other) const {
     static_assert(is_lt_comparable_v<T>);
-    
+
     return this->otie() <= other.otie();
   }
 
   bool operator>=(commutative_pair const &other) const {
     static_assert(is_lt_comparable_v<T>);
-    
+
     return this->otie() >= other.otie();
   }
 
@@ -64,9 +61,10 @@ public:
     return std::make_pair(this->first, this->second);
   }
 
-private:  
+private:
   T first;
   T second;
+
 private:
   std::tuple<T const &, T const &> tie() const {
     return std::tie(this->first, this->second);
@@ -106,7 +104,7 @@ struct hash<::FlexFlow::commutative_pair<T>> {
   }
 };
 
-}
+} // namespace std
 
 namespace rc {
 
@@ -119,6 +117,6 @@ struct Arbitrary<::FlexFlow::commutative_pair<T>> {
   }
 };
 
-}
+} // namespace rc
 
 #endif

@@ -4,7 +4,8 @@
 
 namespace FlexFlow {
 
-std::unordered_map<Node, std::unordered_set<Node>> get_successors(DiGraphView const &g) {
+std::unordered_map<Node, std::unordered_set<Node>>
+    get_successors(DiGraphView const &g) {
   return get_predecessors(flipped(g));
 }
 

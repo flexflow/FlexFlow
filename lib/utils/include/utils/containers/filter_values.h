@@ -17,7 +17,6 @@ std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

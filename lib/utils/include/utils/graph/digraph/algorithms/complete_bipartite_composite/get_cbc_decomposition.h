@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 std::optional<CompleteBipartiteCompositeDecomposition>
-  get_cbc_decomposition(DiGraphView const &);
+    get_cbc_decomposition(DiGraphView const &);
 
 } // namespace FlexFlow
 

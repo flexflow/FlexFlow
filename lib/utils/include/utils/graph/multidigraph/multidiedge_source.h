@@ -10,6 +10,7 @@ public:
   MultiDiEdgeSource();
 
   MultiDiEdge new_multidiedge();
+
 private:
   static size_t next_available_multidiedge_id;
 };

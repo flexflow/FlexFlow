@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_MULTIDIGRAPH_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_MULTIDIGRAPH_MULTIDIGRAPH_H
 
-#include "utils/graph/multidigraph/multidigraph_view.h"
 #include "utils/graph/multidigraph/i_multidigraph.h"
+#include "utils/graph/multidigraph/multidigraph_view.h"
 
 namespace FlexFlow {
 
@@ -33,6 +33,7 @@ struct MultiDiGraph : virtual public MultiDiGraphView {
     impl.get_mutable()->inplace_materialize_from(view);
     return MultiDiGraph(std::move(impl));
   }
+
 protected:
   using MultiDiGraphView::MultiDiGraphView;
 

@@ -21,9 +21,9 @@ struct formatter<
     CHECK_FMTABLE(T);
 
     std::string result =
-          ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
-            return fmt::to_string(t);
-          });
+        ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
+          return fmt::to_string(t);
+        });
     // }
     return formatter<std::string>::format("{" + result + "}", ctx);
   }

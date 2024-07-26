@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_SERIES_REDUCTION_H
 
 #include "utils/graph/multidigraph/multidiedge.dtg.h"
-#include "utils/graph/serial_parallel/series_reduction.dtg.h"
 #include "utils/graph/multidigraph/multidigraph.h"
+#include "utils/graph/serial_parallel/series_reduction.dtg.h"
 
 namespace FlexFlow {
 

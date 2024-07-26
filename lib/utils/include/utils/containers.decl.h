@@ -2,12 +2,12 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_DECL_H
 
 #include "utils/bidict/bidict.h"
+#include "utils/containers/get_element_type.h"
 #include "utils/required_core.h"
 #include "utils/type_traits_core.h"
 #include <optional>
 #include <string>
 #include <vector>
-#include "utils/containers/get_element_type.h"
 
 namespace FlexFlow {
 

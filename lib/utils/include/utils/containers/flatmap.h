@@ -39,7 +39,6 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

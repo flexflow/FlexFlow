@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_RESTRICT_KEYS_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_RESTRICT_KEYS_H
 
+#include "utils/containers/contains.h"
 #include <unordered_map>
 #include <unordered_set>
-#include "utils/containers/contains.h"
 
 namespace FlexFlow {
 

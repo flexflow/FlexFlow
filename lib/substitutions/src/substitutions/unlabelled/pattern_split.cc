@@ -1,13 +1,14 @@
 #include "substitutions/unlabelled/pattern_split.h"
 #include "substitutions/unlabelled/pattern_value.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
 #include "utils/containers/vector_split.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
 
 namespace FlexFlow {
 
 PatternSplit find_even_split(UnlabelledGraphPattern const &pattern) {
-  std::vector<PatternNode> topological_ordering = get_topological_ordering(pattern);
+  std::vector<PatternNode> topological_ordering =
+      get_topological_ordering(pattern);
   assert(topological_ordering.size() >= 2);
 
   int split_point = topological_ordering.size() / 2;

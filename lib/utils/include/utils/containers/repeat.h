@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_REPEAT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_REPEAT_H
 
+#include <cassert>
 #include <type_traits>
 #include <vector>
-#include <cassert>
 
 namespace FlexFlow {
 

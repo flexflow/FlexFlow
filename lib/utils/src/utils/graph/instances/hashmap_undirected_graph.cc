@@ -1,7 +1,7 @@
 #include "utils/graph/instances/hashmap_undirected_graph.h"
 #include "utils/containers/contains_key.h"
-#include "utils/exception.h"
 #include "utils/containers/keys.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

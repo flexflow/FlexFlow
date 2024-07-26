@@ -1,17 +1,15 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_TRANSFORM_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_TRANSFORM_H
 
-#include <type_traits>
-#include <vector>
-#include <algorithm>
 #include "utils/containers/vector_transform.h"
 #include "utils/required_core.h"
+#include <algorithm>
+#include <type_traits>
+#include <vector>
 
 namespace FlexFlow {
 
-template <typename F,
-          typename In,
-          typename Out = std::invoke_result_t<F, In>>
+template <typename F, typename In, typename Out = std::invoke_result_t<F, In>>
 std::vector<Out> transform(std::vector<In> const &v, F const &f) {
   return vector_transform(v, f);
 }
@@ -40,12 +38,13 @@ std::string transform(std::string const &s, F const &f) {
   return result;
 }
 
-template <typename K, 
+template <typename K,
           typename V,
           typename F,
           typename K2 = typename std::invoke_result_t<F, K, V>::first_type,
           typename V2 = typename std::invoke_result_t<F, K, V>::second_type>
-std::unordered_map<K2, V2> transform(std::unordered_map<K, V> const &m, F const &f) {
+std::unordered_map<K2, V2> transform(std::unordered_map<K, V> const &m,
+                                     F const &f) {
   std::unordered_map<K2, V2> result;
   for (auto const &[k, v] : m) {
     result.insert(f(k, v));

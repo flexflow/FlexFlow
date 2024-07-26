@@ -5,8 +5,14 @@
 #include "required_core.h"
 #include "type_traits_core.h"
 #include "utils/bidict/bidict.h"
+#include "utils/containers/contains.h"
+#include "utils/containers/extend.h"
 #include "utils/containers/extend_vector.h"
 #include "utils/containers/filter.h"
+#include "utils/containers/intersection.h"
+#include "utils/containers/is_subseteq_of.h"
+#include "utils/containers/sorted.h"
+#include "utils/containers/transform.h"
 #include "utils/containers/vector_transform.h"
 #include "utils/exception.h"
 #include "utils/hash/pair.h"
@@ -22,12 +28,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include "utils/containers/extend.h"
-#include "utils/containers/transform.h"
-#include "utils/containers/contains.h"
-#include "utils/containers/intersection.h"
-#include "utils/containers/sorted.h"
-#include "utils/containers/is_subseteq_of.h"
 
 namespace FlexFlow {
 

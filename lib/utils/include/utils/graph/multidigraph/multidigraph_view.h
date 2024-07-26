@@ -27,7 +27,6 @@ protected:
 
 private:
   IMultiDiGraphView const &get_interface() const;
-
 };
 
 } // namespace FlexFlow
