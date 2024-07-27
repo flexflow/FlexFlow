@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-InverseLineGraphResult get_inverse_line_graph(DiGraphView const &);
+std::optional<InverseLineGraphResult> get_inverse_line_graph(DiGraphView const &);
 
 } // namespace FlexFlow
 

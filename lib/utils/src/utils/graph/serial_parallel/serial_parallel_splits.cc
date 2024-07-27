@@ -12,6 +12,10 @@ SerialSplit::SerialSplit(
     std::vector<std::variant<ParallelSplit, Node>> const &children)
     : children(children) {}
 
+SerialSplit::SerialSplit(
+    std::initializer_list<std::variant<ParallelSplit, Node>> const &children)
+    : children(children) {}
+
 bool SerialSplit::operator==(SerialSplit const &other) const {
   return this->tie() == other.tie();
 }
@@ -34,6 +38,10 @@ std::ostream &operator<<(std::ostream &s, SerialSplit const &split) {
 
 ParallelSplit::ParallelSplit(
     std::unordered_set<std::variant<SerialSplit, Node>> const &children)
+    : children(children) {}
+
+ParallelSplit::ParallelSplit(
+    std::initializer_list<std::variant<SerialSplit, Node>> const &children)
     : children(children) {}
 
 bool ParallelSplit::operator==(ParallelSplit const &other) const {

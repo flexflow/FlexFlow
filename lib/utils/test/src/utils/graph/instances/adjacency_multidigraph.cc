@@ -1,5 +1,7 @@
 #include "utils/graph/instances/adjacency_multidigraph.h"
+#include "utils/graph/multidigraph/algorithms/get_multidiedge_to_diedge_map.h"
 #include "utils/graph/multidigraph/multidiedge_query.h"
+#include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_query.h"
 #include <doctest/doctest.h>
 
@@ -130,8 +132,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    // SUBCASE("create_copy_of") {
-    //   MultiDiGraphView g2 = g;
-    // }
+    SUBCASE("materialize_copy_of") {
+      std::unordered_set<Node> correct_nodes = get_nodes(g);
+      std::unordered_map<MultiDiEdge, DirectedEdge> correct_edges =
+          get_multidiedge_to_diedge_map(g);
+
+      MultiDiGraph g2 =
+          MultiDiGraph::materialize_copy_of<AdjacencyMultiDiGraph>(g);
+
+      SUBCASE("nodes") {
+        std::unordered_set<Node> result_nodes = get_nodes(g2);
+        CHECK(result_nodes == correct_nodes);
+      }
+
+      SUBCASE("edges") {
+        std::unordered_map<MultiDiEdge, DirectedEdge> result_edges =
+            get_multidiedge_to_diedge_map(g);
+        CHECK(result_edges == correct_edges);
+      }
+    }
   }
 }

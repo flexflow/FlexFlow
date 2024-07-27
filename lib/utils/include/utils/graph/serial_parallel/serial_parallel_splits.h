@@ -14,6 +14,7 @@ struct SerialSplit {
 public:
   SerialSplit() = delete;
   explicit SerialSplit(std::vector<std::variant<ParallelSplit, Node>> const &);
+  explicit SerialSplit(std::initializer_list<std::variant<ParallelSplit, Node>> const &);
 
   bool operator==(SerialSplit const &) const;
   bool operator!=(SerialSplit const &) const;
@@ -47,6 +48,7 @@ public:
   ParallelSplit() = delete;
   explicit ParallelSplit(
       std::unordered_set<std::variant<SerialSplit, Node>> const &);
+  explicit ParallelSplit(std::initializer_list<std::variant<SerialSplit, Node>> const &);
 
   bool operator==(ParallelSplit const &) const;
   bool operator!=(ParallelSplit const &) const;

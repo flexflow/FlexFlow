@@ -11,24 +11,23 @@
 
 namespace FlexFlow {
 
-InverseLineGraphResult get_inverse_line_graph(DiGraphView const &view) {
+std::optional<InverseLineGraphResult> get_inverse_line_graph(DiGraphView const &view) {
   // implementation of the algorithm from https://doi.org/10.1145/800135.804393
   // left of page 8, definition 5
   MultiDiGraph result_graph = MultiDiGraph::create<AdjacencyMultiDiGraph>();
 
-  CompleteBipartiteCompositeDecomposition cbc_decomposition =
-      unwrap(get_cbc_decomposition(view), [] {
-        throw mk_runtime_error("get_inverse_line_graph requires a cbc graph");
-      });
+  CompleteBipartiteCompositeDecomposition cbc_decomposition = ({
+    std::optional<CompleteBipartiteCompositeDecomposition> maybe_decomp = get_cbc_decomposition(view);
+    if (!maybe_decomp.has_value()) {
+      return std::nullopt;
+    }
+
+    maybe_decomp.value();
+  });
 
   Node alpha = result_graph.add_node();
   Node omega = result_graph.add_node();
-  // std::unordered_set<std::unordered_set<Node>> all_subcomponents =
-  // set_union(get_head_subcomponents(cbc_decomposition),
-  // get_tail_subcomponents(cbc_decomposition));
-  // bidict<std::unordered_set<Node>, Node> subcomponent_nodes =
-  // generate_bidict(all_subcomponents,
-  //                                                                             [&](std::unordered_set<Node> const &) { return result_graph.add_node(); });
+
   bidict<BipartiteComponent, Node> component_nodes = generate_bidict(
       cbc_decomposition.subgraphs,
       [&](BipartiteComponent const &) { return result_graph.add_node(); });
