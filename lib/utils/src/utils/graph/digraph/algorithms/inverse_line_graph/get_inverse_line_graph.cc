@@ -11,13 +11,15 @@
 
 namespace FlexFlow {
 
-std::optional<InverseLineGraphResult> get_inverse_line_graph(DiGraphView const &view) {
+std::optional<InverseLineGraphResult>
+    get_inverse_line_graph(DiGraphView const &view) {
   // implementation of the algorithm from https://doi.org/10.1145/800135.804393
   // left of page 8, definition 5
   MultiDiGraph result_graph = MultiDiGraph::create<AdjacencyMultiDiGraph>();
 
   CompleteBipartiteCompositeDecomposition cbc_decomposition = ({
-    std::optional<CompleteBipartiteCompositeDecomposition> maybe_decomp = get_cbc_decomposition(view);
+    std::optional<CompleteBipartiteCompositeDecomposition> maybe_decomp =
+        get_cbc_decomposition(view);
     if (!maybe_decomp.has_value()) {
       return std::nullopt;
     }

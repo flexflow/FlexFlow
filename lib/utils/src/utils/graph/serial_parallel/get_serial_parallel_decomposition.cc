@@ -1,14 +1,14 @@
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/map_values.h"
 #include "utils/containers/transform.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
 #include "utils/graph/digraph/algorithms/inverse_line_graph/get_inverse_line_graph.h"
 #include "utils/graph/instances/adjacency_multidigraph.h"
-#include "utils/containers/map_values.h"
-#include "utils/graph/serial_parallel/parallel_reduction.h"
-#include "utils/graph/serial_parallel/series_reduction.h"
 #include "utils/graph/multidigraph/algorithms/get_edges.h"
 #include "utils/graph/node/algorithms.h"
-#include "utils/containers/get_only.h"
+#include "utils/graph/serial_parallel/parallel_reduction.h"
+#include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
+#include "utils/graph/serial_parallel/series_reduction.h"
 
 namespace FlexFlow {
 
@@ -16,7 +16,8 @@ std::optional<SerialParallelDecomposition>
     get_serial_parallel_decomposition(DiGraphView const &g) {
 
   InverseLineGraphResult inverse_line_graph_result = ({
-    std::optional<InverseLineGraphResult> maybe_line_graph = get_inverse_line_graph(g);
+    std::optional<InverseLineGraphResult> maybe_line_graph =
+        get_inverse_line_graph(g);
     if (!maybe_line_graph.has_value()) {
       return std::nullopt;
     }

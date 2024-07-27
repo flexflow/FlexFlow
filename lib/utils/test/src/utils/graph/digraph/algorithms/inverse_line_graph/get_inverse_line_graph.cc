@@ -48,10 +48,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
       add_edges(g, es);
 
-      std::optional<InverseLineGraphResult> maybe_result = get_inverse_line_graph(g);
+      std::optional<InverseLineGraphResult> maybe_result =
+          get_inverse_line_graph(g);
       REQUIRE(maybe_result.has_value());
       InverseLineGraphResult result = maybe_result.value();
-      
 
       std::unordered_set<Node> result_nodes = get_nodes(result.graph);
       REQUIRE(result_nodes.size() == 5);
@@ -106,7 +106,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       // (0, 1) -> b
       std::vector<Node> n = add_nodes(g, 2);
 
-      std::optional<InverseLineGraphResult> maybe_result = get_inverse_line_graph(g);
+      std::optional<InverseLineGraphResult> maybe_result =
+          get_inverse_line_graph(g);
       REQUIRE(maybe_result.has_value());
       InverseLineGraphResult result = maybe_result.value();
 
