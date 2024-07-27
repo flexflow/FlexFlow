@@ -22,6 +22,7 @@
 #include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
+#include <deque>
 
 namespace FlexFlow {
 
@@ -48,7 +49,6 @@ public:
     // Method to get the last token id
     int get_last_token_id() const;
 
-private:
     int block_number;
     int block_size;
     int num_tokens;
@@ -60,10 +60,9 @@ public:
     // Constructor
     PhysicalTokenBlock(int block_number, int block_size);
 
-private:
+    int ref_count;
     int block_number;
     int block_size;
-    int ref_count;
 };
 
 class BlockAllocator {
@@ -83,36 +82,33 @@ public:
 private:
     int block_size;
     int num_blocks;
-    std::queue<PhysicalTokenBlock> free_blocks;
+    std::deque<PhysicalTokenBlock> free_blocks;
 };
 
 
 class PageManager {
 public:
     using BlockTable = std::vector<PhysicalTokenBlock>;
-    PageManager(int block_size, int num_blocks);
+    using RequestGuid = BatchConfig::RequestGuid;
+    PageManager(int block_size, int num_total_blocks);
 
-    bool can_allocate(const &RequestGuid) const;
-    void allocate(const RequestGuid& request_guid);
-
-    bool can_append_slot(const &RequestGuid) const;
-    std::optional<std::pair<int, int>> append_slot(const RequestGuid& request_guid);
-
+    bool prefill(const RequestGuid& request_guid, const std::vector<int>& token_ids);
+    bool allocate(const RequestGuid& request_guid);
     void free(const RequestGuid& request_guid);
 
-    std::vector<int> get_block_table(const RequestGuid&) const;
-
     int get_num_free_blocks() const;
+
+    std::vector<int> get_block_table_indices(const RequestGuid& request_guid) const;
 
 private:
     int block_size;
     int num_total_blocks;
 
     BlockAllocator gpu_allocator;
+    bool can_prefill(const RequestGuid& request_guid, const std::vector<int>& token_ids);
+    bool can_allocate(const RequestGuid& request_guid) const;
     std::unordered_map<int, BlockTable> block_tables;
-
-    BlockTable _get_physical_blocks(const ) const;
-    void _free_block_table(const BlockTable& block_table);
+    void _free_block_table(BlockTable& block_table);
 };
 
 }; // namespace FlexFlow
