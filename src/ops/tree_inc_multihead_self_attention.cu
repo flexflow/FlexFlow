@@ -95,7 +95,7 @@ __global__ void commit_tokens_kernel(
     bool const *request_available,
     int num_requests,
     int hidden_size,
-    int num_committed_tokens,
+    int const *num_committed_tokens,
     int const max_num_pages) {
   int const idx = blockIdx.x * blockDim.x + threadIdx.x;
   int const request_compact_idx = idx / hidden_size;
@@ -110,7 +110,7 @@ __global__ void commit_tokens_kernel(
     }
   }
 
-  for (int i = 0; i < num_committed_tokens; i++) {
+  for (int i = 0; i < *num_committed_tokens; i++) {
     if (committedTokenInfos[i].request_index == requext_idx_in_batch) {
       int const index_in_kv_cache = committedTokenInfos[i].index_in_kv_cache;
       if (index_in_kv_cache == -1) {
@@ -144,7 +144,6 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  int num_tokens_to_commit = bc->num_tokens_to_commit;
   int const max_num_pages =
       (BatchConfig::max_sequence_length() +
        BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
@@ -159,7 +158,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                                    m->request_available,
                                    num_requests,
                                    m->hidden_size,
-                                   num_tokens_to_commit,
+                                   m->num_tokens_to_commit,
                                    max_num_pages);
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -737,6 +736,10 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BatchConfig::request_available) +
             sizeof(BatchConfig::causalMask));
+    num_tokens_to_commit = 
+        reinterpret_cast<int *>(
+            reinterpret_cast<char *>(committed_token_infos) +
+            sizeof(BatchConfig::committed_tokens));
   }
 
   cudaStreamSynchronize(stream);

@@ -146,6 +146,7 @@ public:
 public:
   int num_active_tokens;
   BatchConfig::CommittedTokensInfo *committed_token_infos;
+  int *num_tokens_to_commit;
 };
 
 }; // namespace FlexFlow

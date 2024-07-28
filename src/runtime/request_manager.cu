@@ -370,6 +370,14 @@ void RequestManager::load_batch_config_task(
       }
       total_copy_size += sizeof(BatchConfig::committed_tokens);
 
+      checkCUDA(cudaMemcpyAsync(
+          static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+          &(batch_config->num_tokens_to_commit),
+          sizeof(int),
+          cudaMemcpyHostToDevice,
+          stream));
+      total_copy_size += sizeof(int);
+
       // calculate the attention meta data
       {
         BatchConfig::PerRequestInfo *request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
