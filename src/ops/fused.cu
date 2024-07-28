@@ -607,8 +607,7 @@ __host__ void
 
   GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
-                      bc->prompt_phase,
-                      (bc->get_mode() == TREE_VERIFY_MODE && !bc->prompt_phase) ? bc->num_tokens_to_commit : 0};
+                      bc->prompt_phase};
   //graph_params.Print();
   // int shard_id = task->index_point.point_data[0];
 
