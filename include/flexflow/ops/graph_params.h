@@ -9,12 +9,13 @@ namespace FlexFlow {
     int num_active_requests;
     int num_active_tokens;
     bool prompt_phase;
+    int num_tokens_to_commit;
 
-    GraphParams(int num_active_requests, int num_active_tokens, bool prompt_phase)
-      : num_active_requests(num_active_requests), num_active_tokens(num_active_tokens), prompt_phase(prompt_phase) {}
+    GraphParams(int num_active_requests, int num_active_tokens, bool prompt_phase, int num_tokens_to_commit)
+      : num_active_requests(num_active_requests), num_active_tokens(num_active_tokens), prompt_phase(prompt_phase), num_tokens_to_commit(num_tokens_to_commit) {}
 
     void Print() const {
-      printf("GraphParams, num_active_requests: %d, num_active_tokens: %d, prompt_phase: %d\n \n", num_active_requests, num_active_tokens, prompt_phase);
+      printf("GraphParams, num_active_requests: %d, num_active_tokens: %d, prompt_phase: %d, num_tokens_to_commit: %d\n\n", num_active_requests, num_active_tokens, prompt_phase, num_tokens_to_commit);
     }
   };
 
@@ -26,7 +27,8 @@ namespace std {
     size_t operator()(const FlexFlow::GraphParams& gp) const {
       return std::hash<int>()(gp.num_active_requests) ^
              std::hash<int>()(gp.num_active_tokens) ^
-             std::hash<bool>()(gp.prompt_phase);
+             std::hash<bool>()(gp.prompt_phase) ^
+              std::hash<int>()(gp.num_tokens_to_commit);
     }
   };
 }
@@ -37,7 +39,8 @@ namespace std {
     bool operator()(const FlexFlow::GraphParams& lhs, const FlexFlow::GraphParams& rhs) const {
       return lhs.num_active_requests == rhs.num_active_requests &&
              lhs.num_active_tokens == rhs.num_active_tokens && 
-             lhs.prompt_phase == rhs.prompt_phase;
+             lhs.prompt_phase == rhs.prompt_phase &&
+              lhs.num_tokens_to_commit == rhs.num_tokens_to_commit;
     }
   };
 }
