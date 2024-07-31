@@ -1,6 +1,6 @@
-# subtitutions
+# substitutions
 
-## `Substitution`
+## Substitution
 
 A substitution is to replace a subgraph of the PCG by a new one. We refer to the subgraph to be replaced as the input graph, and the new subgraph to replace the input graph as the output graph.
 
@@ -9,7 +9,7 @@ A `Substitution` object describes a substitution. It consists of
 * An `output_graph` of type `OutputGraphExpr` that describes how the output graph is computed from the input graph; and
 * An `input_mapping` and `output_maping` that describes how the output graph is connected to the original PCG.
 
-### `GraphPattern` and `MultiDiGraphPatternMatch`
+### GraphPattern and MultiDiGraphPatternMatch
 
 A `GraphPattern` is defined as an open graph with node label `OperatorPattern` and output label `ParallelTensorPattern`, which is refered to as the pattern graph. The graph structure of a `GraphPattern` instance defines the geometrical property of the input graph, while the node labels and output labels define the attribute property of that.
 
@@ -20,7 +20,7 @@ The input graph derived by this match is then defined by `values(node_assignment
 * `node_assignment` and `edge_assignment` are injections;
 * For every node `n` in the pattern graph, `edge_assignment` derives a bijection between `query_edges({n})` and `query_edges({node_assignment.at_l(n)})`.
 
-### `OutputGraphExpr`
+### OutputGraphExpr
 
 An `OutputGraphExpr` is defined as an open graph with node label `OperatorAttrAssignment` and output label `ParallelTensorAttrAssignment`, which defines how the operator attributes and the parallel tensor attributes of the output graph are derived from the input graph.
 

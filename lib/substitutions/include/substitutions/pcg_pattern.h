@@ -10,6 +10,9 @@
 
 namespace FlexFlow {
 
+/**
+ * @brief Find all locations in \p pcg that match \p pattern
+ */
 std::vector<UnlabelledDataflowGraphPatternMatch>
     find_pattern_matches(PCGPattern const &pattern,
                          SubParallelComputationGraph const &pcg);
