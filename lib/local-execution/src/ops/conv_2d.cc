@@ -1,7 +1,6 @@
 #include "conv_2d.h"
 #include "kernels/conv_2d_kernels.h"
 #include "op-attrs/get_output_shapes.h"
-#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
@@ -57,7 +56,7 @@ static DeviceSpecific<DeviceStates>
 
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto attrs = acc.get_argument<Conv2DAttrs>(ATTRS);
-  auto input = acc.get_tensor<Permissions::RO>(INPUT);
+  auto input = acc.get_tensor<Permissions::WO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto filter = acc.get_tensor<Permissions::RO>(FILTER);
   auto filter_grad = acc.get_tensor_grad<Permissions::RW>(FILTER);

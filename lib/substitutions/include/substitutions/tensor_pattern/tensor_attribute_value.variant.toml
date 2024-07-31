@@ -10,8 +10,8 @@ features = [
 
 includes = [
   "<vector>",
-  "utils/hash-utils-core.h",
-  "utils/fmt.h",
+  "utils/hash/vector.h",
+  "utils/fmt/vector.h",
 ]
 
 [[values]]

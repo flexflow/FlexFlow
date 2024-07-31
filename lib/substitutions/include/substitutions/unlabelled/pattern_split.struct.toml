@@ -3,13 +3,15 @@ name = "PatternSplit"
 features = [
   "eq",
   # "ord",
-  "json",
+  "hash",
+  # "json",
   "fmt",
 ]
 
 includes = [
-  "utils/graph.h",
   "<unordered_set>",
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_set.h",
   "substitutions/unlabelled/pattern_node.dtg.h",
 ]
 

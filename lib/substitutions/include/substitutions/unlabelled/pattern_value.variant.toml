@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "PatternValue"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "substitutions/unlabelled/pattern_input.dtg.h",
+  "substitutions/unlabelled/pattern_node_output.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::PatternNodeOutput"
+
+[[values]]
+type = "::FlexFlow::PatternInput"

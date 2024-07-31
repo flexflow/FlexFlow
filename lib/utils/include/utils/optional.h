@@ -1,10 +1,9 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_OPTIONAL_H
 
-#include "fmt.h"
-#include "rapidcheck.h"
 #include "utils/exception.h"
-#include "utils/optional.decl"
+#include "utils/fmt/optional.h"
+#include <rapidcheck.h>
 
 namespace FlexFlow {
 
@@ -37,29 +36,6 @@ std::optional<std::invoke_result_t<F, T>> transform(std::optional<T> const &o,
 }
 
 } // namespace FlexFlow
-
-namespace fmt {
-
-template <typename T, typename Char>
-struct formatter<
-    ::std::optional<T>,
-    Char,
-    std::enable_if_t<!detail::has_format_as<std::optional<T>>::value>>
-    : formatter<std::string> {
-  template <typename FormatContext>
-  auto format(::std::optional<T> const &q, FormatContext &ctx)
-      -> decltype(ctx.out()) {
-    std::string result;
-    if (q.has_value()) {
-      result = fmt::to_string(q.value());
-    } else {
-      result = "nullopt";
-    }
-    return formatter<std::string>::format(result, ctx);
-  }
-};
-
-} // namespace fmt
 
 namespace rc {
 

@@ -24,7 +24,7 @@ namespace Dropout {
 DropoutPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                   float rate,
                                   unsigned long long seed,
-                                  ArrayShape output_shape,
+                                  ArrayShape const &output_shape,
                                   Allocator allocator) {
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;

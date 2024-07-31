@@ -4,7 +4,6 @@
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/get_output_shapes.h"
 #include "utils/exception.h"
-#include "utils/graph/views.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -74,6 +73,7 @@ static DeviceSpecific<DeviceStates>
 
   LinearPerDeviceState state = init_kernel(handle,
                                            one_ptr,
+                                           attrs.activation,
                                            attrs.regularizer,
                                            attrs.use_bias,
                                            input.data_type,

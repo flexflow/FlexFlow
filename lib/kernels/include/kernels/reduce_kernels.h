@@ -31,8 +31,8 @@ namespace Reduce {
 ReducePerDeviceState init_kernel(PerDeviceFFHandle const &,
                                  OperatorType const &,
                                  size_t const &,
-                                 ArrayShape input_shape,
-                                 ArrayShape output_shape);
+                                 ArrayShape const &input_shape,
+                                 ArrayShape const &output_shape);
 
 void forward_kernel(ffStream_t stream,
                     ReducePerDeviceState const &m,

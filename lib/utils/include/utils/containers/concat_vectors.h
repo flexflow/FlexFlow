@@ -13,6 +13,15 @@ std::vector<T> concat_vectors(std::vector<T> const &prefix,
   return result;
 }
 
+template <typename T>
+std::vector<T> concat_vectors(std::vector<std::vector<T>> const &vecs) {
+  std::vector<T> result;
+  for (std::vector<T> const &v : vecs) {
+    extend_vector(result, v);
+  }
+  return result;
+}
+
 } // namespace FlexFlow
 
 #endif

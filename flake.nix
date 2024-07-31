@@ -99,7 +99,11 @@
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
               tl-expected
+              doxygen
               lcov # for code coverage
+            ])
+            (with proj-repo.packages.${system}; [
+              proj
             ])
             (with self.packages.${system}; [
               legion
@@ -130,9 +134,6 @@
               jq
               gh
               lcov # for code coverage
-            ])
-            (with proj-repo.packages.${system}; [
-              proj
             ])
             (with pkgs.python3Packages; [
               gitpython

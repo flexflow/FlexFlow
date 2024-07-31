@@ -52,6 +52,10 @@ jobs:
       #     environment-file: packaging/conda/environment.yml
       #     auto-activate-base: false
 
+      - name: Regenerate all dtgen files
+        run: |
+          proj dtgen --force
+
       - name: Run cmake
         run: |
           cmake_${{ matrix.gpu_backend }}.sh
@@ -72,9 +76,9 @@ jobs:
         run: |
           build_libs.sh kernels
 
-      # - name: Build substitutions
-      #   run: |
-      #     build_libs.sh substitutions
+      - name: Build substitutions
+        run: |
+          build_libs.sh substitutions
 
       # - name: Build compiler
       #   run: |
@@ -100,9 +104,9 @@ jobs:
         run: |
           test_libs.sh pcg
 
-      # - name: Test substitutions
-      #   run: |
-      #     test_libs.sh substitutions
+      - name: Test substitutions
+        run: |
+          test_libs.sh substitutions
 
       # - name: Test compiler
       #   run: |

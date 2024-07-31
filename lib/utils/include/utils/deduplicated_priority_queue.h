@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_DEDUPLICATED_PRIORITY_QUEUE_H
 #define _FLEXFLOW_UTILS_DEDUPLICATED_PRIORITY_QUEUE_H
 
-#include "utils/containers.h"
+#include "utils/containers/contains.h"
 #include <queue>
 #include <unordered_set>
 #include <vector>

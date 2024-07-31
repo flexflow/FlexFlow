@@ -4,10 +4,11 @@ features = [
   "eq",
   "ord",
   "hash",
+  "fmt",
 ]
 
 includes = [
-  "utils/graph.h",
+  "utils/graph/node/node.dtg.h",
 ]
 
 [[fields]]

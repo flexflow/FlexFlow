@@ -16,6 +16,10 @@ includes = [
   "utils/json.h"
 ]
 
+src_includes = [
+  "utils/fmt/optional.h",
+]
+
 [[fields]]
 name = "attrs"
 type = "::FlexFlow::ComputationGraphOpAttrs"

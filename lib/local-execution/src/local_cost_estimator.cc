@@ -1,10 +1,12 @@
 #include "local-execution/local_cost_estimator.h"
 #include "kernels/device.h"
+#include "kernels/local_cuda_allocator.h"
 #include "local-execution/tracked_allocator.h"
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/computation_graph_builder.h"
 #include "pcg/parallel_tensor_attrs.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 
@@ -39,7 +41,7 @@ CostDetails LocalCostEstimator::estimate_cost(
 
   // allocate memory for inputs
   std::shared_ptr<TrackedAllocator> tracked_allocator_ptr =
-      std::make_shared<TrackedAllocator>(get_local_memory_allocator());
+      std::make_shared<TrackedAllocator>(create_local_cuda_memory_allocator());
   Allocator allocator = Allocator(tracked_allocator_ptr);
   TensorBackingMap tensor_backing_map;
   std::vector<tensor_guid_t> input_tensor_ids;
