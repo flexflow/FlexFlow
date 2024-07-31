@@ -3,15 +3,17 @@ name = "MachineMapping"
 features = [
   "eq",
   # "ord",
-  # "hash",
+  "hash",
   # "json",
   # "rapidcheck",
-  # "fmt",
+  "fmt",
 ]
 
 includes = [ 
   "utils/graph/node/node.dtg.h",
   "pcg/machine_view.dtg.h",
+  "utils/hash/unordered_map.h",
+  "utils/fmt/unordered_map.h", 
 ]
 
 [[fields]]

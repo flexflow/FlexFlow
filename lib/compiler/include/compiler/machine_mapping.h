@@ -2,6 +2,7 @@
 #define _FLEXFLOW_COMPILER_MACHINE_MAPPING_H
 
 #include "compiler/machine_mapping.dtg.h"
+#include "compiler/optimal_cost_state.dtg.h"
 #include "cost_estimate.h"
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
@@ -15,18 +16,6 @@ namespace FlexFlow {
 MachineMapping combine(MachineMapping const &, MachineMapping const &);
 
 bool nodes_are_disjoint(MachineMapping const &m1, MachineMapping const &m2);
-
-struct OptimalCostState {
-  SerialParallelDecomposition subgraph;
-  MachineSpecification resource;
-  std::unordered_map<Node, MachineView> given_machine_views;
-  req<std::unordered_map<OpenDataflowEdge, MachineView>> frontier_machine_views;
-};
-FF_VISITABLE_STRUCT(OptimalCostState,
-                    subgraph,
-                    resource,
-                    given_machine_views,
-                    frontier_machine_views);
 
 struct OptimalCostResult {
   static OptimalCostResult sequential_combine(OptimalCostResult const &s1,
@@ -66,15 +55,15 @@ OptimalCostResult optimal_cost(
 
 } // namespace FlexFlow
 
-namespace std {
+// namespace std {
+//
+// template <>
+// struct hash<std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping>> {
+//   size_t operator()(
+//       std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g)
+//       const;
+// };
 
-template <>
-struct hash<std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping>> {
-  size_t operator()(
-      std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g)
-      const;
-};
-
-}; // namespace std
+// }; // namespace std
 
 #endif

@@ -57,19 +57,17 @@ bool OptimalCostRuntimeCmp::operator()(OptimalCostResult const &lhs,
 
 std::optional<OptimalCostResult>
     OptimalCostCache::load(OptimalCostState const &state) const {
-  NOT_IMPLEMENTED();
-  // if (contains_key(cache, state)) {
-  //   OptimalCostResult result = cache.at(state);
-  //   return std::make_optional(result);
-  // }
-  // return std::nullopt;
+  if (contains_key(cache, state)) {
+    OptimalCostResult result = cache.at(state);
+    return std::make_optional(result);
+  }
+  return std::nullopt;
 }
 
 void OptimalCostCache::save(OptimalCostState const &state,
                             OptimalCostResult const &result) {
-  NOT_IMPLEMENTED();
-  //   assert(!contains_key(cache, state));
-  //   cache.emplace(state, result);
+  assert(!contains_key(cache, state));
+  cache.emplace(state, result);
 }
 
 std::vector<std::pair<MachineSpecification, MachineSpecification>>
@@ -85,17 +83,32 @@ std::vector<std::pair<MachineSpecification, MachineSpecification>>
 }
 
 // We may replace this by having unflattened AST
-template <typename T>
 std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
-    decompose(T const &t) {
-  NOT_IMPLEMENTED();
-  // if (t.children.size() == 2) {
-  //   return {widen<SerialParallelDecomposition>(t.children[0]),
-  //           widen<SerialParallelDecomposition>(t.children[1])};
-  // }
-  // T decompn1 = t;
-  // decompn1.children.pop_back();
-  // return {decompn1, widen<SerialParallelDecomposition>(t.children.back())};
+    decompose(SerialSplit const &serial) {
+  if (serial.children.size() == 2) {
+    return {widen<SerialParallelDecomposition>(serial.children[0]),
+            widen<SerialParallelDecomposition>(serial.children[1])};
+  }
+  SerialSplit decompn1 = serial;
+  decompn1.children.pop_back();
+  return {SerialParallelDecomposition(decompn1),
+          widen<SerialParallelDecomposition>(serial.children.back())};
+}
+
+std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
+    decompose(ParallelSplit const &parallel) {
+  if (parallel.children.size() == 2) {
+    std::vector<SerialParallelDecomposition> children =
+        transform(as_vector(parallel.children), [&](auto const &child) {
+          return widen<SerialParallelDecomposition>(child);
+        });
+    return {children[0], children[1]};
+  }
+  ParallelSplit decompn1 = parallel;
+  std::variant<SerialSplit, Node> child = *parallel.children.begin();
+  decompn1.children.erase(child);
+  return {SerialParallelDecomposition(decompn1),
+          widen<SerialParallelDecomposition>(child)};
 }
 
 GraphSplit
@@ -114,9 +127,9 @@ float estimate_cost(SubParallelComputationGraph const &g,
   float cost = 0;
   // for (Node const &node : get_nodes(g.raw_graph)) {
   //   std::vector<OpenDataflowEdge> incoming_edges =
-  //       get_incoming_edges(g.raw_graph, node));
+  //       get_incoming_edges(g.raw_graph, node);
   //   std::vector<ParallelTensorShape> inputs =
-  //       transform(incoming_edges),
+  //       transform(incoming_edges,
   //                 [&](OpenDataflowEdge const &input_edge) {
   //                   return g.raw_graph.at(input_edge).get_shape();
   //                 });
@@ -201,7 +214,8 @@ struct MachineMappingSearcher {
       std::unordered_map<Node, MachineView> const &given_machine_views,
       std::unordered_map<OpenDataflowEdge, MachineView> const
           &frontier_machine_views) {
-    OptimalCostResult optimal_result = OptimalCostResult::infinity();
+    NOT_IMPLEMENTED();
+    // OptimalCostResult optimal_result = OptimalCostResult::infinity();
 
     // auto decomposed = decompose(serial);
     // SerialParallelDecomposition pre_decompn = decomposed.first;
@@ -229,23 +243,24 @@ struct MachineMappingSearcher {
     //   std::unordered_map<OpenDataflowEdge, MachineView>
     //       new_frontier_machine_views = frontier_machine_views;
     //   new_frontier_machine_views.emplace(split_edge, mv);
-    //   minimize_runtime(optimal_result,
-    //                    OptimalCostResult::sequential_combine(
-    //                        std::visit(OptimalCostFunctor(this,
-    //                                                 pre_graph,
-    //                                                 resource,
-    //                                                 given_machine_views,
-    //                                                 new_frontier_machine_views),
-    //                              pre_decompn),
-    //                        std::visit(OptimalCostFunctor(this,
-    //                                                 post_graph,
-    //                                                 resource,
-    //                                                 new_given_machine_views,
-    //                                                 frontier_machine_views),
-    //                              post_decompn)));
+    //   minimize_runtime(
+    //       optimal_result,
+    //       OptimalCostResult::sequential_combine(
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         pre_graph,
+    //                                         resource,
+    //                                         given_machine_views,
+    //                                         new_frontier_machine_views),
+    //                      pre_decompn.raw_variant),
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         post_graph,
+    //                                         resource,
+    //                                         new_given_machine_views,
+    //                                         frontier_machine_views),
+    //                      post_decompn.raw_variant)));
     // }
 
-    return optimal_result;
+    // return optimal_result;
   }
 
   OptimalCostResult optimal_cost(
@@ -255,46 +270,46 @@ struct MachineMappingSearcher {
       std::unordered_map<Node, MachineView> const &given_machine_views,
       std::unordered_map<OpenDataflowEdge, MachineView> const
           &frontier_machine_views) {
+
     NOT_IMPLEMENTED();
     // auto decomposed = decompose(parallel);
     // SerialParallelDecomposition decompn1 = decomposed.first;
     // SerialParallelDecomposition decompn2 = decomposed.second;
 
     // GraphSplit graph_split = get_graph_split(decompn1, decompn2);
-    // SubParallelComputationGraph g1 = get_subgraph(
-    //                                     g, graph_split.first),
-    //                                 g2 = get_subgraph(
-    //                                     g, graph_split.second);
+    // SubParallelComputationGraph g1 = get_subgraph(g, graph_split.first),
+    //                             g2 = get_subgraph(g, graph_split.second);
 
     // OptimalCostResult optimal_result = OptimalCostResult::sequential_combine(
     //     std::visit(OptimalCostFunctor(this,
-    //                              g1,
-    //                              resource,
-    //                              given_machine_views,
-    //                              frontier_machine_views),
-    //           decompn1.raw_variant),
+    //                                   g1,
+    //                                   resource,
+    //                                   given_machine_views,
+    //                                   frontier_machine_views),
+    //                decompn1.raw_variant),
     //     std::visit(OptimalCostFunctor(this,
-    //                              g2,
-    //                              resource,
-    //                              given_machine_views,
-    //                              frontier_machine_views),
-    //           decompn2.raw_variant));
+    //                                   g2,
+    //                                   resource,
+    //                                   given_machine_views,
+    //                                   frontier_machine_views),
+    //                decompn2.raw_variant));
 
     // for (auto const &resource_split : get_resource_split(resource)) {
-    //   minimize_runtime(optimal_result,
-    //                    OptimalCostResult::parallel_combine(
-    //                        std::visit(OptimalCostFunctor(this,
-    //                                                 g1,
-    //                                                 resource_split.first,
-    //                                                 given_machine_views,
-    //                                                 frontier_machine_views),
-    //                              decompn1.raw_variant),
-    //                        std::visit(OptimalCostFunctor(this,
-    //                                                 g2,
-    //                                                 resource_split.second,
-    //                                                 given_machine_views,
-    //                                                 frontier_machine_views),
-    //                              decompn2.raw_variant)));
+    //   minimize_runtime(
+    //       optimal_result,
+    //       OptimalCostResult::parallel_combine(
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         g1,
+    //                                         resource_split.first,
+    //                                         given_machine_views,
+    //                                         frontier_machine_views),
+    //                      decompn1.raw_variant),
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         g2,
+    //                                         resource_split.second,
+    //                                         given_machine_views,
+    //                                         frontier_machine_views),
+    //                      decompn2.raw_variant)));
     // }
 
     // return optimal_result;

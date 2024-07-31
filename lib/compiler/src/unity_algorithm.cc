@@ -36,7 +36,7 @@ Strategy graph_optimize(
         ParallelLayerAttrs const &, MachineSpecification const &)> const
         &allowed_machine_views,
     OptimizerConfig const &opt_config) {
-  // NOT_IMPLEMENTED();
+  NOT_IMPLEMENTED();
   // ParallelComputationGraph pcg = cg_to_pcg(cg);
 
   // std::unordered_set<Substitution> subs =
