@@ -99,6 +99,7 @@
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
               tl-expected
+              doxygen
               lcov # for code coverage
             ])
             (with proj-repo.packages.${system}; [
