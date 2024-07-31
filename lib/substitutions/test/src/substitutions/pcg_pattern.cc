@@ -1,8 +1,9 @@
+#include "substitutions/pcg_pattern.h"
+#include "substitutions/operator_pattern/operator_attribute_constraint.h"
+#include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
 #include "utils/containers/get_only.h"
-#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
-#include "substitutions/pcg_pattern.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "test/utils/doctest.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
@@ -79,18 +80,16 @@ TEST_SUITE(FF_TEST_SUITE) {
                 OperatorAttributePattern,
                 TensorAttributePattern>>();
 
-    TensorAttributePattern pattern_tensor_a = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_b = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_c = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_x = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_y = TensorAttributePattern{{}};
+    TensorAttributePattern pattern_tensor_a = tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_b = tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_c = tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_x = tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_y = tensor_attribute_pattern_match_all();
 
     OperatorAttributePattern op_pattern_1 =
-        OperatorAttributePattern{{OperatorAttributeConstraint{
-            ConstraintType::EQUAL,
-            OperatorAttributeExpr{OperatorAttributeKey::OP_TYPE},
-            OperatorAttributeValue{OperatorType::LINEAR},
-        }}};
+        OperatorAttributePattern{{
+          op_type_equals_constraint(OperatorType::LINEAR),
+        }};
 
     OperatorAttributePattern op_pattern_2 = op_pattern_1;
 

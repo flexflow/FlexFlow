@@ -136,6 +136,23 @@ public:
     });
   }
 
+  virtual void inplace_materialize_from(
+    LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &view) override {
+
+    std::unordered_map<Node, NodeLabel> nodes = generate_map(get_nodes(view),
+                                                             [&](Node const &n) { return view.at(n); });
+    std::unordered_set<OpenDataflowEdge> edges = get_edges(view);
+    std::unordered_set<DataflowGraphInput> inputs = get_inputs(view);
+
+    std::unordered_map<OpenDataflowValue, ValueLabel> values = transform(get_open_dataflow_values(view),
+                                                                         [&](OpenDataflowValue const &v) { return view.at(v); });
+
+    this->inputs = inputs;
+    this->nodes = nodes;
+    this->edges = edges;
+    this->values = values;
+  }
+
   UnorderedSetLabelledOpenDataflowGraph *clone() const override {
     return new UnorderedSetLabelledOpenDataflowGraph{
         this->node_source,

@@ -9,8 +9,8 @@
 namespace FlexFlow {
 
 std::optional<OperatorAttributeValue>
-    evaluate_attribute_expr(PCGOperatorAttrs const &attrs,
-                            OperatorAttributeExpr const &expr);
+    evaluate_attribute_expr(OperatorAttributeExpr const &expr,
+                            PCGOperatorAttrs const &attrs);
 } // namespace FlexFlow
 
 #endif

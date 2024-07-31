@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "WithNewNodeIdsResult"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+  "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h",
+  "utils/bidict/bidict.h",
+]
+
+[[fields]]
+name = "graph_view"
+type = "::FlexFlow::OpenDataflowGraphView"
+
+[[fields]]
+name = "old_to_new_node_id_map"
+type = "::FlexFlow::bidict<::FlexFlow::Node, ::FlexFlow::Node>"

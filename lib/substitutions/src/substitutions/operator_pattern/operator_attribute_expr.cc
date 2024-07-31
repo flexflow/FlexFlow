@@ -7,8 +7,8 @@
 namespace FlexFlow {
 
 std::optional<OperatorAttributeValue>
-    evaluate_attribute_expr(PCGOperatorAttrs const &attrs,
-                            OperatorAttributeExpr const &expr) {
+    evaluate_attribute_expr(OperatorAttributeExpr const &expr, 
+                            PCGOperatorAttrs const &attrs) {
   return expr.visit<std::optional<OperatorAttributeValue>>(overload{
       [&](OperatorAttributeKey const &k) { return get_attribute(attrs, k); },
       [&](OperatorAttributeListSize const &k) {

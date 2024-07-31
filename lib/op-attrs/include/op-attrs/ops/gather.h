@@ -9,6 +9,13 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(GatherAttrs);
 
+TensorShape get_output_shape(GatherAttrs const &,
+                             TensorShape const &input,
+                             TensorShape const &index);
+ParallelTensorShape get_output_shape(GatherAttrs const &,
+                                     ParallelTensorShape const &input,
+                                     ParallelTensorShape const &index);
+
 } // namespace FlexFlow
 
 #endif
