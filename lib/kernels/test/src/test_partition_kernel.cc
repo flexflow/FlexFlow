@@ -15,7 +15,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         managed_handle.raw_handle(), DataType::FLOAT);
 
     TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({10, 10});
+        make_tensor_shape_from_legion_dims({10, 10}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
 
     SUBCASE("forward_kernel") {
@@ -29,8 +29,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           managed_stream.raw_stream(), state, input_accessor, output_accessor);
 
       std::vector<float> check_output_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(output_accessor));
+          load_accessor_data<DataType::FLOAT>(output_accessor);
 
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 1.0f);
@@ -50,8 +49,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                             output_grad_accessor);
 
       std::vector<float> host_grad_input_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(input_grad_accessor));
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
 
       std::vector<float> expected_grad_input_data(
           input_grad_accessor.shape.num_elements(), 3.0f);

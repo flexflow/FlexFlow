@@ -134,8 +134,10 @@ std::vector<half const *>
 
 GenericTensorAccessorR read_only_accessor_from_write_accessor(
     GenericTensorAccessorW const &writable) {
-  return GenericTensorAccessorR{
-      writable.data_type, writable.shape, req<void const *>(writable.ptr)};
+  return GenericTensorAccessorR{writable.data_type,
+                                writable.shape,
+                                req<void const *>(writable.ptr),
+                                writable.on_device};
 }
 
 } // namespace FlexFlow

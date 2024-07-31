@@ -1,24 +1,19 @@
 #include "test_utils.h"
 
-GenericTensorAccessorW create_random_filled_accessor_w(TensorShape const &shape,
-                                                       Allocator &allocator,
-                                                       bool on_host) {
-  GenericTensorAccessorW accessor = allocator.allocate_tensor(shape);
-  size_t volume = accessor.shape.num_elements();
-  std::vector<float> host_data(volume);
-  std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dist(-1.0f, 1.0f);
+GenericTensorAccessorR create_random_filled_accessor_r(TensorShape const &shape,
+                                                       Allocator &allocator) {
+  GenericTensorAccessorW accessor =
+      create_random_filled_accessor_w<DataType::FLOAT>(shape, allocator);
 
-  for (auto &val : host_data) {
-    val = dist(gen);
-  }
+  return read_only_accessor_from_write_accessor(accessor);
+}
 
-  transfer_memory(static_cast<float *>(accessor.ptr),
-                  host_data.data(),
-                  volume,
-                  GpuDirection::HostToDevice,
-                  on_host);
-
-  return accessor;
+TensorShape make_tensor_shape_from_legion_dims(FFOrdered<size_t> dims,
+                                               DataType DT) {
+  return TensorShape{
+      TensorDims{
+          dims,
+      },
+      DT,
+  };
 }

@@ -36,17 +36,17 @@ TEST_SUITE(FF_TEST_SUITE) {
                                      stride_w,
                                      pool_type);
 
-    TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
-            {input_w, input_h, input_c, input_n});
-    TensorShape output_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
-            {output_w, output_h, output_c, output_n});
+    TensorShape input_shape = make_tensor_shape_from_legion_dims(
+        {input_w, input_h, input_c, input_n}, DataType::FLOAT);
+    TensorShape output_shape = make_tensor_shape_from_legion_dims(
+        {output_w, output_h, output_c, output_n}, DataType::FLOAT);
 
     GenericTensorAccessorW input_accessor =
-        create_random_filled_accessor_w(input_shape, allocator);
+        create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
+                                                         allocator);
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
+        create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+                                                         allocator);
 
     SUBCASE("forward_kernel") {
       Kernels::Pool2D::forward_kernel(managed_stream.raw_stream(),
@@ -54,8 +54,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       input_accessor.ptr,
                                       output_accessor.ptr);
 
-      std::vector<float> host_output_data = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor));
+      std::vector<float> host_output_data =
+          load_accessor_data<DataType::FLOAT>(output_accessor);
       CHECK(contains_non_zero(host_output_data));
     }
 
@@ -72,8 +72,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        output_accessor.ptr,
                                        output_grad_accessor.ptr);
 
-      std::vector<float> host_input_grad = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(input_grad_accessor));
+      std::vector<float> host_input_grad =
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
       CHECK(contains_non_zero(host_input_grad));
     }
   }

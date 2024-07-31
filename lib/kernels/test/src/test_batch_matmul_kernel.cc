@@ -20,18 +20,21 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape_a =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({m, k, batch});
+        make_tensor_shape_from_legion_dims({m, k, batch}, DataType::FLOAT);
     TensorShape input_shape_b =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({k, n, batch});
+        make_tensor_shape_from_legion_dims({k, n, batch}, DataType::FLOAT);
     TensorShape output_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({m, n, batch});
+        make_tensor_shape_from_legion_dims({m, n, batch}, DataType::FLOAT);
 
     GenericTensorAccessorW a_accessor =
-        create_random_filled_accessor_w(input_shape_a, allocator);
+        create_random_filled_accessor_w<DataType::FLOAT>(input_shape_a,
+                                                         allocator);
     GenericTensorAccessorW b_accessor =
-        create_random_filled_accessor_w(input_shape_b, allocator);
+        create_random_filled_accessor_w<DataType::FLOAT>(input_shape_b,
+                                                         allocator);
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
+        create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+                                                         allocator);
 
     SUBCASE("forward_kernel") {
       Kernels::BatchMatmul::forward_kernel(managed_stream.raw_stream(),
@@ -50,7 +53,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW o_grad_accessor =
-          create_random_filled_accessor_w(output_shape, allocator);
+          create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+                                                           allocator);
       GenericTensorAccessorW a_grad_accessor =
           allocator.allocate_tensor(input_shape_a);
       GenericTensorAccessorW b_grad_accessor =

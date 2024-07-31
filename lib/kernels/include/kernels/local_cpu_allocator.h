@@ -10,6 +10,7 @@ struct LocalCPUAllocator : public IAllocator {
   ~LocalCPUAllocator() override;
 
   void *allocate(size_t) override;
+  void *allocate_and_zero(size_t) override;
   void deallocate(void *) override;
 
 private:

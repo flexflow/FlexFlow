@@ -60,4 +60,10 @@ size_t get_volume(ArrayShape const &shape) {
   return shape.get_volume();
 }
 
+TensorShape get_tensor_shape(ArrayShape const &shape, DataType DT) {
+  FFOrdered<size_t> ff_dims(shape.dims.begin(), shape.dims.end());
+  TensorDims tensor_shape_dims(ff_dims);
+  return TensorShape(tensor_shape_dims, DT);
+}
+
 } // namespace FlexFlow

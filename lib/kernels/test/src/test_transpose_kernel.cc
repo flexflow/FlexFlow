@@ -18,30 +18,31 @@ TEST_SUITE(FF_TEST_SUITE) {
         Kernels::Transpose::init_kernel(num_dims, perm);
 
     TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({10, 10});
+        make_tensor_shape_from_legion_dims({10, 10}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(input_shape, allocator));
+          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
+                                                           allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
       Kernels::Transpose::forward_kernel(
           managed_stream.raw_stream(), state, input_accessor, output_accessor);
 
-      std::vector<float> host_output_data = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor));
+      std::vector<float> host_output_data =
+          load_accessor_data<DataType::FLOAT>(output_accessor);
       CHECK(contains_non_zero(host_output_data));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(output_shape, allocator));
+          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
+                                                           allocator);
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
+                                                           allocator);
 
       Kernels::Transpose::backward_kernel(managed_stream.raw_stream(),
                                           state,
@@ -49,8 +50,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                           output_grad_accessor);
 
       std::vector<float> host_grad_input_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(input_grad_accessor));
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
       CHECK(contains_non_zero(host_grad_input_data));
     }
   }

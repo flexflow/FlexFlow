@@ -29,15 +29,20 @@ public:
   double *get_double_ptr() const;
   half *get_half_ptr() const;
 
+  GenericTensorAccessorW(DataType dt,
+                         ArrayShape sh,
+                         req<void *> p,
+                         bool on_dev = true)
+      : data_type(dt), shape(sh), ptr(p), on_device(on_dev) {}
+
 public:
   DataType data_type;
   ArrayShape shape;
   req<void *> ptr;
+  bool on_device;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorW,
-                                             data_type,
-                                             shape,
-                                             ptr);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
+    GenericTensorAccessorW, data_type, shape, ptr, on_device);
 
 class GenericTensorAccessorR {
 public:
@@ -57,15 +62,20 @@ public:
   double const *get_double_ptr() const;
   half const *get_half_ptr() const;
 
+  GenericTensorAccessorR(DataType dt,
+                         ArrayShape sh,
+                         req<void const *> p,
+                         bool on_dev = true)
+      : data_type(dt), shape(sh), ptr(p), on_device(on_dev) {}
+
 public:
   DataType data_type;
   ArrayShape shape;
   req<void const *> ptr;
+  bool on_device;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorR,
-                                             data_type,
-                                             shape,
-                                             ptr);
+FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
+    GenericTensorAccessorR, data_type, shape, ptr, on_device);
 
 int32_t *get_int32_ptr(GenericTensorAccessorW const &);
 int64_t *get_int64_ptr(GenericTensorAccessorW const &);

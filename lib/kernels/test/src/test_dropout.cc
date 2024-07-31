@@ -14,7 +14,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({10, 10});
+        make_tensor_shape_from_legion_dims({10, 10}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
 
     ManagedFFStream managed_stream{};
@@ -31,8 +31,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(input_shape, allocator));
+          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
+                                                           allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -42,17 +42,18 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        output_accessor.get_float_ptr());
 
       std::vector<float> host_output_accessor =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(output_accessor));
+          load_accessor_data<DataType::FLOAT>(output_accessor);
 
       CHECK(contains_non_zero(host_output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_data =
-          create_random_filled_accessor_w(output_shape, allocator);
+          create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+                                                           allocator);
       GenericTensorAccessorW input_grad_data =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
+                                                           allocator);
 
       Kernels::Dropout::backward_kernel(managed_stream.raw_stream(),
                                         state,

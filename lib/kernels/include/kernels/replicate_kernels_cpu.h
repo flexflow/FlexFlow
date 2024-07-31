@@ -7,16 +7,14 @@
 namespace FlexFlow {
 namespace Kernels {
 namespace Replicate {
-namespace CPU {
 
-void forward_kernel(GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output);
+void cpu_forward_kernel(GenericTensorAccessorR const &input,
+                        GenericTensorAccessorW const &output);
 
-void backward_kernel(GenericTensorAccessorW const &input,
-                     GenericTensorAccessorR const &output,
-                     size_t num_replicas);
+void cpu_backward_kernel(GenericTensorAccessorW const &input,
+                         GenericTensorAccessorR const &output,
+                         size_t num_replicas);
 
-} // namespace CPU
 } // namespace Replicate
 } // namespace Kernels
 } // namespace FlexFlow

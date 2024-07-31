@@ -7,15 +7,13 @@
 namespace FlexFlow {
 namespace Kernels {
 namespace Combine {
-namespace CPU {
 
-void forward_kernel(GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output);
+void cpu_forward_kernel(GenericTensorAccessorR const &input,
+                        GenericTensorAccessorW const &output);
 
-void backward_kernel(GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const &input_grad);
+void cpu_backward_kernel(GenericTensorAccessorR const &output_grad,
+                         GenericTensorAccessorW const &input_grad);
 
-} // namespace CPU
 } // namespace Combine
 } // namespace Kernels
 } // namespace FlexFlow

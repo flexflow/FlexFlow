@@ -13,18 +13,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedFFStream managed_stream{};
 
     TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({size_per_input});
-    TensorShape output_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
-            {size_per_input, num_inputs});
+        make_tensor_shape_from_legion_dims({size_per_input}, DataType::FLOAT);
+    TensorShape output_shape = make_tensor_shape_from_legion_dims(
+        {size_per_input, num_inputs}, DataType::FLOAT);
 
     Allocator allocator = create_local_cuda_memory_allocator();
 
     SUBCASE("forward_kernel") {
       std::vector<GenericTensorAccessorR> input_accessors =
           repeat(num_inputs, [&]() {
-            return read_only_accessor_from_write_accessor(
-                create_random_filled_accessor_w(input_shape, allocator));
+            return create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
+                                                                    allocator);
           });
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
@@ -34,16 +33,16 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       input_accessors,
                                       concat_axis);
 
-      std::vector<float> host_output_data = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor));
+      std::vector<float> host_output_data =
+          load_accessor_data<DataType::FLOAT>(output_accessor);
 
       CHECK(contains_non_zero(host_output_data));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(output_shape, allocator));
+          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
+                                                           allocator);
       std::vector<GenericTensorAccessorW> input_grad_accessors = repeat(
           num_inputs, [&]() { return allocator.allocate_tensor(input_shape); });
 

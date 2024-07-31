@@ -10,9 +10,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::size_t in_blk_size = 10;
     std::size_t num_out_blks = 1;
 
-    TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
-            {num_out_blks, reverse_dim_size, in_blk_size});
+    TensorShape input_shape = make_tensor_shape_from_legion_dims(
+        {num_out_blks, reverse_dim_size, in_blk_size}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
 
     ManagedPerDeviceFFHandle managed_handle{};
@@ -36,15 +35,15 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        input_accessor.shape.num_elements());
 
       std::vector<float> check_output_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(output_accessor));
+          load_accessor_data<DataType::FLOAT>(output_accessor);
 
       CHECK(contains_non_zero(check_output_data));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_accessor =
-          create_random_filled_accessor_w(output_shape, allocator);
+          create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+                                                           allocator);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
@@ -58,8 +57,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           input_grad_accessor.shape.num_elements());
 
       std::vector<float> host_grad_input_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(input_grad_accessor));
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
 
       CHECK(contains_non_zero(host_grad_input_data));
     }
@@ -70,9 +68,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::size_t reverse_dim_size = 3;
     std::size_t in_blk_size = 5;
 
-    TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>(
-            {num_out_blks, reverse_dim_size, in_blk_size});
+    TensorShape input_shape = make_tensor_shape_from_legion_dims(
+        {num_out_blks, reverse_dim_size, in_blk_size}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
 
     ManagedPerDeviceFFHandle managed_handle{};
@@ -89,7 +86,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       // Run GPU Cast Forward Kernel
       GenericTensorAccessorW input_accessor_gpu =
           create_transformed_accessor_w<float, float>(
-              input_shape, gpu_allocator, transform, false);
+              input_shape, gpu_allocator, transform);
       GenericTensorAccessorW output_accessor_gpu =
           gpu_allocator.allocate_tensor(output_shape);
 
@@ -101,17 +98,17 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        in_blk_size,
                                        input_accessor_gpu.shape.num_elements());
 
-      std::vector<float> result_data_gpu = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor_gpu), false);
+      std::vector<float> result_data_gpu =
+          load_accessor_data<DataType::FLOAT>(output_accessor_gpu);
 
       // Run CPU Cast Forward Kernel
       GenericTensorAccessorW input_accessor_cpu =
           create_transformed_accessor_w<float, float>(
-              input_shape, cpu_allocator, transform, true);
+              input_shape, cpu_allocator, transform);
       GenericTensorAccessorW output_accessor_cpu =
           cpu_allocator.allocate_tensor(output_shape);
 
-      Kernels::Reverse::CPU::forward_kernel(
+      Kernels::Reverse::cpu_forward_kernel(
           input_accessor_cpu.get_float_ptr(),
           output_accessor_cpu.get_float_ptr(),
           num_out_blks,
@@ -119,8 +116,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           in_blk_size,
           input_accessor_cpu.shape.num_elements());
 
-      std::vector<float> result_data_cpu = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor_cpu), true);
+      std::vector<float> result_data_cpu =
+          load_accessor_data<DataType::FLOAT>(output_accessor_cpu);
 
       CHECK(result_data_gpu == result_data_cpu);
     }
@@ -128,7 +125,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("backward_kernel") {
       // Run GPU Cast Backward Kernel
       GenericTensorAccessorW output_grad_accessor_gpu =
-          create_random_filled_accessor_w(output_shape, gpu_allocator);
+          create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+                                                           gpu_allocator);
       GenericTensorAccessorW input_grad_accessor_gpu =
           gpu_allocator.allocate_tensor(input_shape);
 
@@ -141,20 +139,18 @@ TEST_SUITE(FF_TEST_SUITE) {
           in_blk_size,
           input_grad_accessor_gpu.shape.num_elements());
 
-      std::vector<float> result_data_gpu = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(input_grad_accessor_gpu),
-          false);
+      std::vector<float> result_data_gpu =
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor_gpu);
 
       // Run CPU Cast Backward Kernel
       GenericTensorAccessorW output_grad_accessor_cpu =
           copy_tensor_between_memories<DataType::FLOAT>(
               read_only_accessor_from_write_accessor(output_grad_accessor_gpu),
-              output_shape,
               cpu_allocator);
       GenericTensorAccessorW input_grad_accessor_cpu =
           cpu_allocator.allocate_tensor(input_shape);
 
-      Kernels::Reverse::CPU::backward_kernel(
+      Kernels::Reverse::cpu_backward_kernel(
           output_grad_accessor_cpu.get_float_ptr(),
           input_grad_accessor_cpu.get_float_ptr(),
           num_out_blks,
@@ -162,9 +158,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           in_blk_size,
           input_grad_accessor_cpu.shape.num_elements());
 
-      std::vector<float> result_data_cpu = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(input_grad_accessor_cpu),
-          true);
+      std::vector<float> result_data_cpu =
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor_cpu);
 
       CHECK(result_data_gpu == result_data_cpu);
     }

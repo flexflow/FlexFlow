@@ -7,19 +7,17 @@
 namespace FlexFlow {
 namespace Kernels {
 namespace Cast {
-namespace CPU {
 
-void forward_kernel(GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output,
-                    DataType input_type,
-                    DataType output_type);
+void cpu_forward_kernel(GenericTensorAccessorR const &input,
+                        GenericTensorAccessorW const &output,
+                        DataType input_type,
+                        DataType output_type);
 
-void backward_kernel(GenericTensorAccessorR const &input,
-                     GenericTensorAccessorW const &output,
-                     DataType input_type,
-                     DataType output_type);
+void cpu_backward_kernel(GenericTensorAccessorR const &input,
+                         GenericTensorAccessorW const &output,
+                         DataType input_type,
+                         DataType output_type);
 
-} // namespace CPU
 } // namespace Cast
 } // namespace Kernels
 } // namespace FlexFlow

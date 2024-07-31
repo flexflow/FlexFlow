@@ -14,26 +14,28 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({100});
+        make_tensor_shape_from_legion_dims({100}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
 
     SoftmaxPerDeviceState state = Kernels::Softmax::init_kernel(
         managed_handle.raw_handle(), 0, input_n, channels, input_h, input_w);
 
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w(output_shape, allocator);
+        create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+                                                         allocator);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW input_accessor =
-          create_random_filled_accessor_w(input_shape, allocator);
+          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
+                                                           allocator);
 
       Kernels::Softmax::forward_kernel(managed_stream.raw_stream(),
                                        state,
                                        input_accessor.get_float_ptr(),
                                        output_accessor.get_float_ptr());
 
-      std::vector<float> host_output_data = load_accessor_data<DataType::FLOAT>(
-          read_only_accessor_from_write_accessor(output_accessor));
+      std::vector<float> host_output_data =
+          load_accessor_data<DataType::FLOAT>(output_accessor);
       CHECK(contains_non_zero(host_output_data));
     }
 
@@ -52,8 +54,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<float> expected_input_grad_data =
           std::vector<float>(input_grad_accessor.shape.num_elements(), 1.0f);
       std::vector<float> host_input_grad_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(input_grad_accessor));
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
       CHECK(host_input_grad_data == expected_input_grad_data);
     }
   }

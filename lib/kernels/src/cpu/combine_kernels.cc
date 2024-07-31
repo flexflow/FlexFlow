@@ -4,10 +4,9 @@
 namespace FlexFlow {
 namespace Kernels {
 namespace Combine {
-namespace CPU {
 
 template <DataType DT>
-struct ForwardKernel {
+struct CPUForwardKernel {
   void operator()(GenericTensorAccessorR const &input,
                   GenericTensorAccessorW const &output) {
     memcpy(output.get<DT>(),
@@ -17,7 +16,7 @@ struct ForwardKernel {
 };
 
 template <DataType DT>
-struct BackwardKernel {
+struct CPUBackwardKernel {
   void operator()(GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorW const &input_grad) {
     size_t num_elements = output_grad.shape.get_volume();
@@ -27,18 +26,17 @@ struct BackwardKernel {
   }
 };
 
-void forward_kernel(GenericTensorAccessorR const &input,
-                    GenericTensorAccessorW const &output) {
-  DataTypeDispatch1<ForwardKernel>{}(input.data_type, input, output);
+void cpu_forward_kernel(GenericTensorAccessorR const &input,
+                        GenericTensorAccessorW const &output) {
+  DataTypeDispatch1<CPUForwardKernel>{}(input.data_type, input, output);
 }
 
-void backward_kernel(GenericTensorAccessorR const &output_grad,
-                     GenericTensorAccessorW const &input_grad) {
-  DataTypeDispatch1<BackwardKernel>{}(
+void cpu_backward_kernel(GenericTensorAccessorR const &output_grad,
+                         GenericTensorAccessorW const &input_grad) {
+  DataTypeDispatch1<CPUBackwardKernel>{}(
       input_grad.data_type, output_grad, input_grad);
 }
 
-} // namespace CPU
 } // namespace Combine
 } // namespace Kernels
 } // namespace FlexFlow

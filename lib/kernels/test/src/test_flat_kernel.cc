@@ -11,7 +11,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ManagedFFStream managed_stream{};
 
     TensorShape input_shape =
-        make_tensor_shape_from_legion_dims<DataType::FLOAT>({100});
+        make_tensor_shape_from_legion_dims({100}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
 
     GenericTensorAccessorR input_accessor =
@@ -27,8 +27,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                     output_accessor.get_float_ptr());
 
       std::vector<float> check_output_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(output_accessor));
+          load_accessor_data<DataType::FLOAT>(output_accessor);
 
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 2.0f);
@@ -47,8 +46,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                      output_grad_accessor.get_float_ptr());
 
       std::vector<float> backward_output_data =
-          load_accessor_data<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(input_grad_accessor));
+          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
 
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 1.0f);

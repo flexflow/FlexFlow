@@ -12,6 +12,7 @@ struct TrackedAllocator : public IAllocator {
   ~TrackedAllocator() = default;
 
   void *allocate(size_t) override;
+  void *allocate_and_zero(size_t) override;
   void deallocate(void *) override;
   size_t get_current_mem_usage();
 
