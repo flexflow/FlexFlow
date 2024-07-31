@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include "flexflow/ffconst.h"
+
 #include <cuda_fp16.h>
 #include <stdint.h>
 
@@ -75,7 +77,7 @@ inline AllReduceStrategyType SelectImplementation(size_t message_size, int world
   return AllReduceStrategyType::TWOSHOT;
 }
 
-void customAllReduce(AllReduceParams& params, void* data, size_t elts, DLDataType dataType,
+void customAllReduce(AllReduceParams& params, void* data, size_t elts, DataType dataType,
                      AllReduceStrategyType strat, cudaStream_t stream);
 
 }  // namespace tensorrt_llm

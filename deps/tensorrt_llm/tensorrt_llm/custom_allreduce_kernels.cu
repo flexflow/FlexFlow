@@ -15,9 +15,10 @@
  */
 
 #include <cuda_fp16.h>
-#include <dlpack/dlpack.h>
-#include <stdint.h>
-#include <tvm/runtime/logging.h>
+#include <cassert>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
 
 #include "custom_allreduce_kernels.h"
 
@@ -270,7 +271,7 @@ inline int divUp(int a, int b) { return (a + b - 1) / b; }
 
 std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReduceParams& param,
                                         size_t elts_per_thread) {
-  ICHECK(param.elts_total % elts_per_thread == 0);
+  assert(param.elts_total % elts_per_thread == 0);
 
   int blocks_per_grid = 1, threads_per_block = DEFAULT_BLOCK_SIZE;
 
@@ -292,11 +293,11 @@ std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReducePar
     }
     case AllReduceStrategyType::TWOSHOT: {  // two stage all reduce algo
       const size_t elts_per_rank = param.elts_total / param.ranks_per_node;
-      ICHECK(elts_per_rank % elts_per_thread == 0);
+      assert(elts_per_rank % elts_per_thread == 0);
 
       size_t total_threads = elts_per_rank / elts_per_thread;
       total_threads = WARP_SIZE * ((total_threads + WARP_SIZE - 1) / WARP_SIZE);
-      ICHECK(total_threads % WARP_SIZE == 0);
+      assert(total_threads % WARP_SIZE == 0);
 
       while (total_threads % blocks_per_grid != 0 ||
              total_threads / blocks_per_grid > DEFAULT_BLOCK_SIZE) {
@@ -321,7 +322,7 @@ std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReducePar
       break;
     }
     default:
-      LOG(FATAL) << ("Algorithm not supported here.");
+      assert(false && "Algorithm not supported here.");
   }
 
   return std::make_tuple(blocks_per_grid, threads_per_block);
@@ -344,10 +345,11 @@ void dispatchARKernels(AllReduceStrategyType algo, AllReduceParams& param, int b
 template <typename T>
 void invokeOneOrTwoShotAllReduceKernel(AllReduceParams& param, AllReduceStrategyType strat,
                                        cudaStream_t stream) {
-  ICHECK(strat == AllReduceStrategyType::ONESHOT || strat == AllReduceStrategyType::TWOSHOT);
+  assert(strat == AllReduceStrategyType::ONESHOT || strat == AllReduceStrategyType::TWOSHOT);
   auto last_error = cudaGetLastError();
   if (last_error != cudaSuccess) {
-    LOG(INFO) << "cuda error:" << cudaGetErrorString(last_error);
+    printf("cuda error: %s\n", cudaGetErrorString(last_error));
+    assert(false && "Error before launching the kernel");
   }
 
   size_t elts_per_thread = 16 / sizeof(T);
@@ -370,7 +372,8 @@ void invokeOneOrTwoShotAllReduceKernel(AllReduceParams& param, AllReduceStrategy
   }
   last_error = cudaGetLastError();
   if (last_error != cudaSuccess) {
-    LOG(INFO) << "cuda error:" << cudaGetErrorString(last_error);
+    printf("cuda error: %s\n", cudaGetErrorString(last_error));
+    assert(false && "Error after launching the kernel");
   }
 }
 
@@ -378,23 +381,17 @@ void invokeMultiGpuBarrier(AllReduceParams& param, cudaStream_t stream) {
   multiGpuBarrierKernel<<<1, param.ranks_per_node, 0, stream>>>(param);
 }
 
-void customAllReduce(AllReduceParams& params, void* data, size_t elts, DLDataType dataType,
+void customAllReduce(AllReduceParams& params, void* data, size_t elts, DataType dataType,
                      AllReduceStrategyType strat, cudaStream_t stream) {
   params.local_output_buffer_ptr = data;
   params.elts_total = elts;
 
-  if (dataType.code == kDLFloat && dataType.bits == 32) {
+  if (dataType == DT_FLOAT) {
     invokeOneOrTwoShotAllReduceKernel<float>(params, strat, stream);
-  } else if (dataType.code == kDLFloat && dataType.bits == 16) {
+  } else if (dataType == DT_HALF) {
     invokeOneOrTwoShotAllReduceKernel<half>(params, strat, stream);
-  }
-#ifdef ENABLE_BF16
-  else if (dataType.code == kDLBfloat && dataType.bits == 16) {
-    invokeOneOrTwoShotAllReduceKernel<__nv_bfloat16>(params, strat, stream);
-  }
-#endif
-  else {
-    LOG(FATAL) << ("Unsupported dataType for customAllReduce");
+  } else {
+    assert(false && "Unspported data type");
   }
 }
 
