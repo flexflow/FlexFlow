@@ -1,31 +1,26 @@
 #ifndef _FLEXFLOW_COMPILER_MACHINE_MAPPING_H
 #define _FLEXFLOW_COMPILER_MACHINE_MAPPING_H
 
+#include "compiler/machine_mapping.dtg.h"
 #include "cost_estimate.h"
+#include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
-#include "pcg/parallel_computation_graph.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "substitutions/sub_parallel_computation_graph.h"
+#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 
 namespace FlexFlow {
 
-using SubParallelComputationGraphView =
-    OutputLabelledOpenMultiDiGraphView<Operator, ParallelTensor>;
+MachineMapping combine(MachineMapping const &, MachineMapping const &);
 
-struct MachineMapping {
-  static MachineMapping combine(MachineMapping const &, MachineMapping const &);
-  static bool nodes_are_disjoint(MachineMapping const &m1,
-                                 MachineMapping const &m2);
-
-  req<std::unordered_map<Node, MachineView>> machine_views;
-};
-FF_VISITABLE_STRUCT(MachineMapping, machine_views);
+bool nodes_are_disjoint(MachineMapping const &m1, MachineMapping const &m2);
 
 struct OptimalCostState {
   SerialParallelDecomposition subgraph;
   MachineSpecification resource;
   std::unordered_map<Node, MachineView> given_machine_views;
-  req<std::unordered_map<OpenMultiDiEdge, MachineView>> frontier_machine_views;
+  req<std::unordered_map<OpenDataflowEdge, MachineView>> frontier_machine_views;
 };
 FF_VISITABLE_STRUCT(OptimalCostState,
                     subgraph,
@@ -60,14 +55,14 @@ private:
   std::unordered_map<OptimalCostState, OptimalCostResult> cache;
 };
 
-OptimalCostResult
-    optimal_cost(ParallelComputationGraph const &g,
-                 std::function<std::unordered_set<MachineView>(
-                     Operator const &, MachineSpecification const &)> const
-                     &allowed_machine_views,
-                 CostEstimator const &cost_estimator,
-                 MachineSpecification const &resources,
-                 OptimalCostCache &cached_subgraph_costs);
+OptimalCostResult optimal_cost(
+    ParallelComputationGraph const &g,
+    std::function<std::unordered_set<MachineView>(
+        ParallelLayerAttrs const &, MachineSpecification const &)> const
+        &allowed_machine_views,
+    CostEstimator const &cost_estimator,
+    MachineSpecification const &resources,
+    OptimalCostCache &cached_subgraph_costs);
 
 } // namespace FlexFlow
 

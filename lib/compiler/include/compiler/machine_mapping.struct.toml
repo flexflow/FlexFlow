@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "MachineMapping"
+features = [
+  "eq",
+  # "ord",
+  # "hash",
+  # "json",
+  # "rapidcheck",
+  # "fmt",
+]
+
+includes = [ 
+  "utils/graph/node/node.dtg.h",
+  "pcg/machine_view.dtg.h",
+]
+
+[[fields]]
+name = "machine_views"
+type = "std::unordered_map<::FlexFlow::Node, ::FlexFlow::MachineView>"
