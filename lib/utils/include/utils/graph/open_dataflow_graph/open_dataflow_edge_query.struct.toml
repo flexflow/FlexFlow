@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "OpenDataflowEdgeQuery"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/dataflow_graph/dataflow_edge_query.dtg.h",
+  "utils/graph/open_dataflow_graph/dataflow_input_edge_query.dtg.h",
+]
+
+[[fields]]
+name = "input_edge_query"
+type = "::FlexFlow::DataflowInputEdgeQuery"
+
+[[fields]]
+name = "standard_edge_query"
+type = "::FlexFlow::DataflowEdgeQuery"

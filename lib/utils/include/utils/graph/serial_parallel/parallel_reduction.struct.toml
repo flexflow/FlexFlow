@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "ParallelReduction"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/multidigraph/multidiedge.dtg.h",
+  "utils/commutative_pair.h",
+]
+
+[[fields]]
+name = "edges"
+type = "::FlexFlow::commutative_pair<::FlexFlow::MultiDiEdge>"

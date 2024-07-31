@@ -15,6 +15,10 @@ includes = [
   "utils/json.h",
 ]
 
+src_includes = [
+  "utils/fmt/optional.h",
+]
+
 fields = [
   { name = "out_channels", type = "int" },
   { name = "kernel_h", type = "int" },

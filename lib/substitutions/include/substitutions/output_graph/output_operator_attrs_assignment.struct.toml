@@ -14,6 +14,11 @@ includes = [
   "<unordered_map>",
 ]
 
+src_includes = [
+  "utils/hash/unordered_map.h",
+  "utils/fmt/unordered_map.h",
+]
+
 # NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
 # define the assignment for each operator type.
 [[fields]]

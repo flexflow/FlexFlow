@@ -147,7 +147,7 @@ bool is_valid_substitution(Substitution const &) {
 SubParallelComputationGraph
     apply_substitution(SubParallelComputationGraph const &,
                        Substitution const &,
-                       MultiDiGraphPatternMatch const &) {
+                       UnlabelledDataflowGraphPatternMatch const &) {
   NOT_IMPLEMENTED();
 }
 

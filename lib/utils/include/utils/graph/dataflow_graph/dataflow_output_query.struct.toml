@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "DataflowOutputQuery"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/query_set.h",
+  "utils/graph/node/node.dtg.h",
+  "utils/fmt/unordered_set.h",
+]
+
+[[fields]]
+name = "nodes"
+type = "::FlexFlow::query_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "output_idxs"
+type = "::FlexFlow::query_set<int>"

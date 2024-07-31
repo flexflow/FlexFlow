@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "DataflowInputEdge"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/open_dataflow_graph/dataflow_graph_input.dtg.h",
+  "utils/graph/dataflow_graph/dataflow_input.dtg.h",
+]
+
+[[fields]]
+name = "src"
+type = "::FlexFlow::DataflowGraphInput"
+
+[[fields]]
+name = "dst"
+type = "::FlexFlow::DataflowInput"

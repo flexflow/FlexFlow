@@ -45,8 +45,24 @@ private:
 
   std::type_index type_idx;
   LABEL_TYPE ref_type;
+
+  friend struct std::hash<ArgRefSpec<LABEL_TYPE>>;
 };
 
 } // namespace FlexFlow
+
+namespace std {
+
+template <typename LABEL_TYPE>
+struct hash<::FlexFlow::ArgRefSpec<LABEL_TYPE>> {
+  size_t operator()(::FlexFlow::ArgRefSpec<LABEL_TYPE> const &s) const {
+    size_t result = 0;
+    hash_combine(s.type_idx);
+    hash_combine(s.ref_type);
+    return result;
+  }
+};
+
+} // namespace std
 
 #endif

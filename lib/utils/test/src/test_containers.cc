@@ -122,7 +122,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("without_order") {
     std::vector<int> v = {1, 4, 6, 4, 6};
     std::unordered_set<int> expected = {1, 4, 6};
-    CHECK(without_order(v) == expected);
+    CHECK(unordered_set_of(v) == expected);
   }
 
   TEST_CASE("index_of") {

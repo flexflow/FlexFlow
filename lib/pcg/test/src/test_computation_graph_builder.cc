@@ -2,6 +2,8 @@
 #include "pcg/computation_graph.h"
 #include "pcg/computation_graph_builder.h"
 
+using namespace ::FlexFlow;
+
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ComputationGraphBuilder") {
     ComputationGraphBuilder b;

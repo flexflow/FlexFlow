@@ -1,5 +1,5 @@
 #include "kernels/array_shape.h"
-#include "utils/containers.h"
+#include "utils/containers/product.h"
 
 namespace FlexFlow {
 

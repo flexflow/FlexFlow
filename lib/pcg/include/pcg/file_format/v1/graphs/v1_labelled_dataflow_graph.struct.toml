@@ -1,0 +1,34 @@
+namespace = "FlexFlow"
+name = "V1LabelledDataflowGraph"
+features = [
+  # "eq",
+  # "ord",
+  # "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+template_params = [
+  "NodeLabel",
+  "OutputLabel",
+]
+
+includes = [
+  "<unordered_map>",
+  "pcg/file_format/v1/graphs/v1_dataflow_graph.dtg.h",
+  "pcg/file_format/v1/graphs/v1_graph_output.dtg.h",
+]
+
+[[fields]]
+name = "node_labels"
+type = "std::unordered_map<size_t, NodeLabel>"
+
+[[fields]]
+name = "output_labels"
+type = "std::unordered_map<size_t, std::vector<OutputLabel>>"
+
+[[fields]]
+name = "graph"
+type = "::FlexFlow::V1DataflowGraph"
+

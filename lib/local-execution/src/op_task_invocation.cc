@@ -1,31 +1,47 @@
 #include "local-execution/op_task_invocation.h"
+#include "local-execution/op_arg_spec.h"
+#include "utils/containers/contains_key.h"
 
 namespace FlexFlow {
 
 void OpTaskBinding::bind(
-    slot_id slot, VariadicTensorRef<OpTensorSpec> const &variadic_tensor_ref) {
+    int slot, VariadicTensorRef<OpTensorSpec> const &variadic_tensor_ref) {
+  this->bind(slot_id_t{slot}, variadic_tensor_ref);
+}
+
+void OpTaskBinding::bind(
+    slot_id_t slot,
+    VariadicTensorRef<OpTensorSpec> const &variadic_tensor_ref) {
   NOT_IMPLEMENTED();
 }
 
-void OpTaskBinding::bind(slot_id slot, OpTensorSpec const &tensor_spec) {
-  this->tensor_bindings.insert({{slot, IsGrad::NO}, tensor_spec});
+void OpTaskBinding::bind(int slot, OpTensorSpec const &tensor_spec) {
+  this->bind(slot_id_t{slot}, tensor_spec);
 }
 
-void OpTaskBinding::bind_grad(slot_id slot, OpTensorSpec const &tensor_spec) {
-  this->tensor_bindings.insert({{slot, IsGrad::YES}, tensor_spec});
+void OpTaskBinding::bind(slot_id_t slot, OpTensorSpec const &tensor_spec) {
+  this->tensor_bindings.insert({SlotGradId{slot, IsGrad::NO}, tensor_spec});
 }
 
-void OpTaskBinding::insert_arg_spec(slot_id name, OpArgSpec const &arg_spec) {
+void OpTaskBinding::bind_grad(int slot, OpTensorSpec const &tensor_spec) {
+  this->bind_grad(slot_id_t{slot}, tensor_spec);
+}
+
+void OpTaskBinding::bind_grad(slot_id_t slot, OpTensorSpec const &tensor_spec) {
+  this->tensor_bindings.insert({SlotGradId{slot, IsGrad::YES}, tensor_spec});
+}
+
+void OpTaskBinding::insert_arg_spec(slot_id_t name, OpArgSpec const &arg_spec) {
   assert(!contains_key(this->arg_bindings, name));
   this->arg_bindings.insert({name, arg_spec});
 }
 
-std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &
+std::unordered_map<SlotGradId, OpTensorSpec> const &
     OpTaskBinding::get_tensor_bindings() const {
   return this->tensor_bindings;
 }
 
-std::unordered_map<slot_id, OpArgSpec> const &
+std::unordered_map<slot_id_t, OpArgSpec> const &
     OpTaskBinding::get_arg_bindings() const {
   return this->arg_bindings;
 }
@@ -42,7 +58,7 @@ OpTaskBinding infer_bwd_binding(OpTaskBinding const &fwd) {
     OpSlotOptions slot_option = spec.slot_option;
     if (slot_option != OpSlotOptions::UNTRAINABLE ||
         slot_option != OpSlotOptions::OPTIONAL_UNTRAINABLE) {
-      slot_id slot = key.first;
+      slot_id_t slot = key.slot_id;
       bwd.bind_grad(slot, spec);
     }
   }
@@ -59,8 +75,8 @@ bool is_tensor_invocation_valid(OpTaskSignature const &sig,
                                 OpTaskInvocation const &inv) {
   auto tensor_bindings = inv.binding.get_tensor_bindings();
   for (OpTensorSlotSpec const &op_tensor_slot_spec : sig.get_tensor_slots()) {
-    std::pair<slot_id, IsGrad> tensor_key =
-        std::make_pair(op_tensor_slot_spec.name, op_tensor_slot_spec.is_grad);
+    SlotGradId tensor_key =
+        SlotGradId{op_tensor_slot_spec.name, op_tensor_slot_spec.is_grad};
     OpTensorSpec op_tensor_spec = tensor_bindings.at(tensor_key);
     if (is_op_tensor_spec_invalid(op_tensor_slot_spec, op_tensor_spec)) {
       return false;
@@ -71,9 +87,7 @@ bool is_tensor_invocation_valid(OpTaskSignature const &sig,
 
 bool is_arg_type_invalid(std::type_index expected_arg_type,
                          OpArgSpec op_arg_spec) {
-  std::type_index arg_spec_type = std::visit(
-      [](auto &&arg) -> std::type_index { return arg.get_type_index(); },
-      op_arg_spec);
+  std::type_index arg_spec_type = get_op_arg_spec_type_index(op_arg_spec);
   return arg_spec_type != expected_arg_type;
 }
 

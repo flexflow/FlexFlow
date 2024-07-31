@@ -23,6 +23,12 @@ includes = [
   "<cstddef>",
 ]
 
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/fmt/vector.h",
+  "utils/hash/vector.h",
+]
+
 [[values]]
 type = "int"
 

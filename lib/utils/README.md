@@ -1,6 +1,9 @@
 # utils
 
-## `visitable`
+## visitable
+
+[!WARNING]
+`visitable` is deprecated, new code should instead use `dtgen`
 
 ### Motivation
 
@@ -246,7 +249,7 @@ FlexFlow's codebase contains tens if not hundreds of these product types, and so
 [^1]: aka product types, aka Haskell's `data`. Essentially types that are just a tuple of fields with names.
 [^2]: by "plain old data" we refer to the general idea behind [C++'s POD](https://en.cppreference.com/w/cpp/named_req/PODType), but not its exact definition
 
-### Adding new `visitable` types
+### Adding new visitable types
 
 FlexFlow's `visitable` support provides an easy way to express product types, and prevents any of the bugs listed above.
 To express the above definition of `Person` using `visitable`, we would write the following code:
@@ -358,7 +361,7 @@ struct hash<::TownPopulation> {
 ```
 which is tedious and bug-prone.
 To remove the constructibility checks performed by `FF_VISITABLE_STRUCT`, we simply use `FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION` instead:
-```c++
+```cpp
 struct TownPopulation {
   TownPopulation() = default;
   TownPopulation(std::vector<Person> const &people,
@@ -373,7 +376,7 @@ struct TownPopulation {
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(TownPopulation, people, cows);
 ```
 This is also useful for defining structs with specific non-standard constructor signatures. For example,
-```c++
+```cpp
 struct TownPopulation {
   TownPopulation() = default;
 
@@ -431,16 +434,16 @@ The properties that are checked by each macro are as follows:
 
 TODO
 
-## `stack_vector`, `stack_string`, `stack_map`
+## stack_vector, stack_string, stack_map
 
-## `strong_typedef`
+## strong_typedef
 
-## `containers.h`
+## containers
 
-## `graph`
+## graph
 
-## `bidict`
+## bidict
 
-## `type_traits`
+## type_traits
 
-## `test_types`
+## test_types

@@ -1,6 +1,6 @@
 #include "pcg/strided_rectangle.h"
 #include "op-attrs/dim_ordered/transform.h"
-#include "utils/containers.h"
+#include "utils/containers/product.h"
 
 namespace FlexFlow {
 
