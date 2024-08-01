@@ -116,6 +116,10 @@ jobs:
         run: |
           test_libs.sh substitution-generator
 
+      - name: Test local-execution
+        run: |
+          test_libs.sh local-execution
+
       - name: Generate code coverage
         run: |
           echo "gitwork: $GITHUB_WORKSPACE"
