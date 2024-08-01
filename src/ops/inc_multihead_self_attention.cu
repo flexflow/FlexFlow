@@ -543,9 +543,9 @@ template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
-                        DT const *weight_ptr,
+                        // DT const *weight_ptr,
                         DT *output_ptr,
-                        DT const *bias_ptr,
+                        // DT const *bias_ptr,
                         cudaStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
@@ -629,6 +629,7 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
                          DT const *bias_ptr,
                          int num_tokens,
                          cudaStream_t stream) {
+  return; // this function is no longer used
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
@@ -811,11 +812,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
 
-  if (m->offload && m->biasSize > 0) {
-    cudaMemcpyAsync(
-        m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
-    bias_ptr = static_cast<DT *>(m->bias_ptr);
-  }
+  // if (m->offload && m->biasSize > 0) {
+  //   cudaMemcpyAsync(
+  //       m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
+  //   bias_ptr = static_cast<DT *>(m->bias_ptr);
+  // }
 
   // phase 0: copy calculated qkv into devQKVProjArray
   // [qProjSize, num_heads, 3, num_new_tokens]
@@ -834,9 +835,10 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                      bc,
                      shard_id,
                     //  input_ptr,
-                     weight_ptr,
+                    //  weight_ptr,
+                    //  nullptr, // does not use weight
                      static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
+                    //  bias_ptr,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
@@ -1691,12 +1693,14 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
-    GenericTensorAccessorR const &weight,
-    GenericTensorAccessorW const &output,
-    GenericTensorAccessorR const &bias) {
+    // GenericTensorAccessorR const &weight,
+    GenericTensorAccessorW const &output
+    // GenericTensorAccessorR const &bias
+    ) {
+  // printf("inf_k_warpper start\n");
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
+  // bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -1707,9 +1711,9 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  if (use_bias) {
-    assert(input.data_type == bias.data_type);
-  }
+  // if (use_bias) {
+  //   assert(input.data_type == bias.data_type);
+  // }
 
   if (input.data_type == DT_HALF) {
     Kernels::IncMultiHeadAttention::inference_kernel(

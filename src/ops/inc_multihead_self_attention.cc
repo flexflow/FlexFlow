@@ -123,7 +123,8 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
                    data_type,
                    name,
                    1 /*inputs*/,
-                   weight_num /*weights*/,
+                  //  weight_num /*weights*/,
+                   0,
                    1 /*outputs*/,
                    casted_input);
   } else {
@@ -132,7 +133,8 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
                    data_type,
                    name,
                    1 /*inputs*/,
-                   weight_num /*weights*/,
+                  //  weight_num /*weights*/,
+                   0,
                    1 /*outputs*/,
                    input);
   }
@@ -160,36 +162,36 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
                     vParas * num_q_heads + oParas * num_q_heads;
   int one_head_size = qParas + kParas + vParas + oParas;
 
-  {
-    // compress the weight size if quantization.
-    if (quantization_type != DT_NONE) {
-      one_head_size = get_quantization_to_byte_size(
-          data_type, quantization_type, one_head_size);
-    }
-    int dims[1] = {weight_size};
-    li->weights[0] = create_weight_legion_ordering(
-        1,
-        dims,
-        quantization_type == DT_NONE ? data_type : quantization_type,
-        li,
-        true /*create_grad*/,
-        kernel_initializer,
-        CHOSEN_SYNC_TYPE);
-  }
-  if (qkv_bias || final_bias) {
-    // q, k, v, o
-    int qkv_bias_size =
-        qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-    int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
-                   (final_bias ? oProjSize : 0)};
-    li->weights[1] = create_weight_legion_ordering(1,
-                                                   dims,
-                                                   data_type,
-                                                   li,
-                                                   true /*create_grad*/,
-                                                   kernel_initializer,
-                                                   CHOSEN_SYNC_TYPE);
-  }
+  // {
+  //   // compress the weight size if quantization.
+  //   if (quantization_type != DT_NONE) {
+  //     one_head_size = get_quantization_to_byte_size(
+  //         data_type, quantization_type, one_head_size);
+  //   }
+  //   int dims[1] = {weight_size};
+  //   li->weights[0] = create_weight_legion_ordering(
+  //       1,
+  //       dims,
+  //       quantization_type == DT_NONE ? data_type : quantization_type,
+  //       li,
+  //       true /*create_grad*/,
+  //       kernel_initializer,
+  //       CHOSEN_SYNC_TYPE);
+  // }
+  // if (qkv_bias || final_bias) {
+  //   // q, k, v, o
+  //   int qkv_bias_size =
+  //       qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
+  //   int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
+  //                  (final_bias ? oProjSize : 0)};
+  //   li->weights[1] = create_weight_legion_ordering(1,
+  //                                                  dims,
+  //                                                  data_type,
+  //                                                  li,
+  //                                                  true /*create_grad*/,
+  //                                                  kernel_initializer,
+  //                                                  CHOSEN_SYNC_TYPE);
+  // }
   li->data_type = data_type;
   li->add_int_property("embed_dim", embed_dim);
   li->add_int_property("num_q_heads", num_q_heads);
@@ -308,7 +310,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_qkv_bias || _final_bias ? 2 : 1), /*weights*/
+        //  (_qkv_bias || _final_bias ? 2 : 1), /*weights*/
+         0,
          1 /*outputs*/,
          _input),
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
@@ -359,31 +362,31 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     }
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-    weights[0] = model.create_parallel_weight<2>(
-        dims,
-        quantization_type == DT_NONE ? this->data_type : quantization_type,
-        nullptr /*owner_op*/,
-        model.config.computationMode == COMP_MODE_INFERENCE
-            ? false
-            : true /*create_grad*/,
-        initializer,
-        CHOSEN_SYNC_TYPE);
-    if (qkv_bias || final_bias) {
-      ParallelTensorShape bias_shape = _input->get_shape();
-      int qkv_bias_size =
-          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-      bias_shape.dims[0].size =
-          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
-      bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
-      weights[1] =
-          model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
-                                                       bias_shape.dims,
-                                                       this->data_type,
-                                                       nullptr /*owner_op*/,
-                                                       true /*create_grad*/,
-                                                       initializer,
-                                                       CHOSEN_SYNC_TYPE);
-    }
+    // weights[0] = model.create_parallel_weight<2>(
+    //     dims,
+    //     quantization_type == DT_NONE ? this->data_type : quantization_type,
+    //     nullptr /*owner_op*/,
+    //     model.config.computationMode == COMP_MODE_INFERENCE
+    //         ? false
+    //         : true /*create_grad*/,
+    //     initializer,
+    //     CHOSEN_SYNC_TYPE);
+    // if (qkv_bias || final_bias) {
+    //   ParallelTensorShape bias_shape = _input->get_shape();
+    //   int qkv_bias_size =
+    //       qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
+    //   bias_shape.dims[0].size =
+    //       (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
+    //   bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
+    //   weights[1] =
+    //       model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
+    //                                                    bias_shape.dims,
+    //                                                    this->data_type,
+    //                                                    nullptr /*owner_op*/,
+    //                                                    true /*create_grad*/,
+    //                                                    initializer,
+    //                                                    CHOSEN_SYNC_TYPE);
+    // }
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -424,7 +427,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
          _input->data_type,
          name,
          1 /*inputs*/,
-         (_qkv_bias || _final_bias ? 2 : 1), /*weights*/
+        //  (_qkv_bias || _final_bias ? 2 : 1), /*weights*/
+         0,
          1 /*outputs*/,
          _input,
          _weight),
@@ -475,29 +479,29 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     }
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-    weights[0] = model.create_parallel_weight<2>(
-        dims,
-        quantization_type == DT_NONE ? this->data_type : quantization_type,
-        NULL /*owner_op*/,
-        true /*create_grad*/,
-        initializer,
-        CHOSEN_SYNC_TYPE);
-    if (qkv_bias || final_bias) {
-      ParallelTensorShape bias_shape = _input->get_shape();
-      int qkv_bias_size =
-          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-      bias_shape.dims[0].size =
-          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
-      bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
-      weights[1] =
-          model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
-                                                       bias_shape.dims,
-                                                       this->data_type,
-                                                       nullptr /*owner_op*/,
-                                                       true /*create_grad*/,
-                                                       initializer,
-                                                       CHOSEN_SYNC_TYPE);
-    }
+    // weights[0] = model.create_parallel_weight<2>(
+    //     dims,
+    //     quantization_type == DT_NONE ? this->data_type : quantization_type,
+    //     NULL /*owner_op*/,
+    //     true /*create_grad*/,
+    //     initializer,
+    //     CHOSEN_SYNC_TYPE);
+    // if (qkv_bias || final_bias) {
+    //   ParallelTensorShape bias_shape = _input->get_shape();
+    //   int qkv_bias_size =
+    //       qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
+    //   bias_shape.dims[0].size =
+    //       (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
+    //   bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
+    //   weights[1] =
+    //       model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
+    //                                                    bias_shape.dims,
+    //                                                    this->data_type,
+    //                                                    nullptr /*owner_op*/,
+    //                                                    true /*create_grad*/,
+    //                                                    initializer,
+    //                                                    CHOSEN_SYNC_TYPE);
+    // }
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -596,20 +600,21 @@ void IncMultiHeadSelfAttention::init_inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part,
-                        0 /*projection id*/,
-                        READ_ONLY,
-                        EXCLUSIVE,
-                        weights[0]->region,
-                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
-  launcher.add_field(1, FID_DATA);
+  // launcher.add_region_requirement(
+  //     RegionRequirement(weights[0]->part,
+  //                       0 /*projection id*/,
+  //                       READ_ONLY,
+  //                       EXCLUSIVE,
+  //                       weights[0]->region,
+  //                       ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  // launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     batch_outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
+  // launcher.add_field(2, FID_DATA);
+  launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
@@ -636,18 +641,19 @@ void IncMultiHeadSelfAttention::init(FFModel const &ff) {
                                                     EXCLUSIVE,
                                                     inputs[0]->region));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    weights[0]->region));
-  launcher.add_field(1, FID_DATA);
+  // launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+  //                                                   0 /*projection id*/,
+  //                                                   READ_ONLY,
+  //                                                   EXCLUSIVE,
+  //                                                   weights[0]->region));
+  // launcher.add_field(1, FID_DATA);
   launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
                                                     EXCLUSIVE,
                                                     outputs[0]->region));
-  launcher.add_field(2, FID_DATA);
+  // launcher.add_field(2, FID_DATA);
+  launcher.add_field(1, FID_DATA);
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
@@ -675,17 +681,24 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
                                        FID_DATA,
                                        ctx,
                                        runtime);
-  GenericTensorAccessorR weight =
-      helperGetGenericTensorAccessorRO(attn->weights[0]->data_type,
-                                       regions[1],
-                                       task->regions[1],
-                                       FID_DATA,
-                                       ctx,
-                                       runtime);
+  // GenericTensorAccessorR weight =
+  //     helperGetGenericTensorAccessorRO(attn->weights[0]->data_type,
+  //                                      regions[1],
+  //                                      task->regions[1],
+  //                                      FID_DATA,
+  //                                      ctx,
+  //                                      runtime);
+  // GenericTensorAccessorW output =
+  //     helperGetGenericTensorAccessorWO(attn->outputs[0]->data_type,
+  //                                      regions[2],
+  //                                      task->regions[2],
+  //                                      FID_DATA,
+  //                                      ctx,
+  //                                      runtime);
   GenericTensorAccessorW output =
       helperGetGenericTensorAccessorWO(attn->outputs[0]->data_type,
-                                       regions[2],
-                                       task->regions[2],
+                                       regions[1],
+                                       task->regions[1],
                                        FID_DATA,
                                        ctx,
                                        runtime);
@@ -698,7 +711,10 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       attn->num_kv_heads / attn->tensor_parallelism_degree +
       (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
 
-  assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
+  if(attn->oProjSize != output.domain.hi()[0] - output.domain.lo()[0] + 1) {
+    printf("attn o_proj size %d does not match output domain %d\n", attn->oProjSize, output.domain.hi()[0] - output.domain.lo()[0] + 1);
+  }
+  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                        .only_kind(Memory::GPU_FB_MEM)
@@ -714,7 +730,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   IncMultiHeadSelfAttentionMeta *m =
       new IncMultiHeadSelfAttentionMeta(handle,
                                         attn,
-                                        weight,
+                                        GenericTensorAccessorR(),
                                         gpu_mem_allocator,
                                         num_samples,
                                         num_q_heads,
@@ -728,10 +744,10 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
   m->inference_debugging = attn->inference_debugging;
   std::strcpy(m->op_name, attn->name);
   m->layer_guid = attn->layer_guid;
-  if (attn->quantization_type == DT_NONE) {
-    assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
-           m->weightSize);
-  }
+  // if (attn->quantization_type == DT_NONE) {
+  //   assert(weight.domain.get_volume() * data_type_size(weight.data_type) ==
+  //          m->weightSize);
+  // }
 
   return m;
 }
@@ -747,6 +763,7 @@ FutureMap IncMultiHeadSelfAttention::inference(
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {
+  // printf("inference starting\n");
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -773,14 +790,14 @@ FutureMap IncMultiHeadSelfAttention::inference(
                                                     EXCLUSIVE,
                                                     batch_inputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
-  launcher.add_region_requirement(
-      RegionRequirement(weights[0]->part,
-                        0 /*projection id*/,
-                        READ_ONLY,
-                        EXCLUSIVE,
-                        weights[0]->region,
-                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
-  launcher.add_field(idx++, FID_DATA);
+  // launcher.add_region_requirement(
+  //     RegionRequirement(weights[0]->part,
+  //                       0 /*projection id*/,
+  //                       READ_ONLY,
+  //                       EXCLUSIVE,
+  //                       weights[0]->region,
+  //                       ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  // launcher.add_field(idx++, FID_DATA); // remove weight from attn operator
   launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
                                                     0 /*projection id*/,
                                                     WRITE_ONLY,
@@ -788,16 +805,17 @@ FutureMap IncMultiHeadSelfAttention::inference(
                                                     batch_outputs[0]->region));
   launcher.add_field(idx++, FID_DATA);
 
-  if (qkv_bias || final_bias) {
-    launcher.add_region_requirement(
-        RegionRequirement(weights[1]->part,
-                          0 /*projection id*/,
-                          READ_ONLY,
-                          EXCLUSIVE,
-                          weights[1]->region,
-                          ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
-    launcher.add_field(idx++, FID_DATA);
-  }
+  // if (qkv_bias || final_bias) {
+  //   launcher.add_region_requirement(
+  //       RegionRequirement(weights[1]->part,
+  //                         0 /*projection id*/,
+  //                         READ_ONLY,
+  //                         EXCLUSIVE,
+  //                         weights[1]->region,
+  //                         ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  //   launcher.add_field(idx++, FID_DATA);
+  // }
+  // printf("inference reveived all data, launching task\n");
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -812,6 +830,8 @@ void IncMultiHeadSelfAttention::inference_task(
     Context ctx,
     Runtime *runtime) {
 
+  // printf("starting inference task\n");
+
   assert(task->regions.size() == regions.size());
 
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
@@ -819,60 +839,69 @@ void IncMultiHeadSelfAttention::inference_task(
                     bc->num_tokens,
                     bc->num_active_requests());
   if (bc->num_tokens == 0) {
+    // printf("returned early because no tokens\n");
     return;
   }
 
   IncMultiHeadSelfAttentionMeta *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
 
-  assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
-                                           : regions.size() == 3));
+  // assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
+  //                                          : regions.size() == 3));
+  // printf("getting tensor accessors\n");
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-      m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR biases;
-  if (*m->qkv_bias || *m->final_bias) {
-    biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
-                                              regions[3],
-                                              task->regions[3],
-                                              FID_DATA,
-                                              ctx,
-                                              runtime);
-    Domain bias_domain = runtime->get_index_space_domain(
-        ctx, task->regions[3].region.get_index_space());
-    assert(bias_domain.get_dim() == 4);
-  }
+  // printf("got input tensor accessor\n");
+  // GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+  //     m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  // GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+  //     m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+    GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  // GenericTensorAccessorR biases;
+  // if (*m->qkv_bias || *m->final_bias) {
+  //   biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
+  //                                             regions[3],
+  //                                             task->regions[3],
+  //                                             FID_DATA,
+  //                                             ctx,
+  //                                             runtime);
+  //   Domain bias_domain = runtime->get_index_space_domain(
+  //       ctx, task->regions[3].region.get_index_space());
+  //   assert(bias_domain.get_dim() == 4);
+  // }
 
+  // printf("getting IS domains");
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  Domain weight_domain = runtime->get_index_space_domain(
-      ctx, task->regions[1].region.get_index_space());
+  // Domain weight_domain = runtime->get_index_space_domain(
+  //     ctx, task->regions[1].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
-      ctx, task->regions[2].region.get_index_space());
+      ctx, task->regions[1].region.get_index_space());
 
   assert(input_domain.get_dim() == 4);
-  assert(weight_domain.get_dim() == 2);
+  // assert(weight_domain.get_dim() == 2);
   assert(output_domain.get_dim() == 4);
 
   assert(task->index_point.get_dim() == 1);
 
+  // IncMultiHeadSelfAttention::inference_kernel_wrapper(
+  //     m, bc, task->index_point.point_data[0], input, weight, output, biases);
+  // printf(" before calling inf_k_wrapper\n");
   IncMultiHeadSelfAttention::inference_kernel_wrapper(
-      m, bc, task->index_point.point_data[0], input, weight, output, biases);
+         m, bc, task->index_point.point_data[0], input, output);
 
   if (m->inference_debugging) {
-    assert(task->index_point.get_dim() == 1);
-    int shard_id = task->index_point.point_data[0];
-    std::vector<GenericTensorAccessorR> weights_accessors;
-    weights_accessors.push_back(weight);
-    if (*m->qkv_bias || *m->final_bias) {
-      weights_accessors.push_back(biases);
-    }
-    IncMultiHeadSelfAttention::save_inference_tensors_to_file(
-        m, shard_id, bc, {input}, weights_accessors, {output});
+    // assert(task->index_point.get_dim() == 1);
+    // int shard_id = task->index_point.point_data[0];
+    // std::vector<GenericTensorAccessorR> weights_accessors;
+    // weights_accessors.push_back(weight);
+    // if (*m->qkv_bias || *m->final_bias) {
+    //   weights_accessors.push_back(biases);
+    // }
+    // IncMultiHeadSelfAttention::save_inference_tensors_to_file(
+    //     m, shard_id, bc, {input}, weights_accessors, {output});
   }
 }
 

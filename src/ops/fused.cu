@@ -462,9 +462,10 @@ __host__ void
             bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
-            my_weight_accessor[0],
-            my_output_accessor[0],
-            biases);
+            // my_weight_accessor[0],
+            my_output_accessor[0]
+            // biases
+            );
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {

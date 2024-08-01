@@ -330,30 +330,35 @@ void load_attention_weights_to_dense_v2(DT *ptr,
         assert(false && "data size mismatch");
       }
       // wq, wk, wo
-      if (file_index == 0) {
-        for (int i = 0; i < tensor_parallelism_degree; i++) {
-          for (int j = 0; j < one_partition_size; j++) {
-            ptr[base_index + i * stride_size + j] = host_array.at(data_index++);
-          }
-        }
-      } else {
-        for (int i = 0; i < num_heads; i++) {
-          int kv_idx = i / (num_heads / num_kv_heads);
-          int head_idx = i % (num_heads / tensor_parallelism_degree);
-          int tp_idx = (i / (num_heads / tensor_parallelism_degree));
-          for (int j = 0; j < single_proj_size; j++) {
-            ptr[base_index + tp_idx * stride_size + single_proj_size * head_idx +
-                j] = host_array.at(kv_idx * single_proj_size + j);
-          }
-        }
+      // if (file_index == 0) {
+      //   for (int i = 0; i < tensor_parallelism_degree; i++) {
+      //     for (int j = 0; j < one_partition_size; j++) {
+      //       ptr[base_index + i * stride_size + j] = host_array.at(data_index++);
+      //     }
+      //   }
+      // } else {
+      //   for (int i = 0; i < num_heads; i++) {
+      //     int kv_idx = i / (num_heads / num_kv_heads);
+      //     int head_idx = i % (num_heads / tensor_parallelism_degree);
+      //     int tp_idx = (i / (num_heads / tensor_parallelism_degree));
+      //     for (int j = 0; j < single_proj_size; j++) {
+      //       ptr[base_index + tp_idx * stride_size + single_proj_size * head_idx +
+      //           j] = host_array.at(kv_idx * single_proj_size + j);
+      //     }
+      //   }
+      // }
+      for (int i = 0; i < one_weight_file_size; i++) {
+        ptr[base_index + i] = host_array.at(data_index++);
       }
       std::cout<<"host array going out of scope, releasing"<<endl;
       // assert(data_index == partial_size);
-      base_index += one_partition_size;
+      // base_index += one_partition_size;
+      base_index += one_weight_file_size;
       file_index++;
     }
-    assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
-                            tensor_parallelism_degree);
+    // assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
+    //                         tensor_parallelism_degree);
+    assert(base_index == (q_size + k_replicate_size + v_replicate_size));
     std::cout<<"qkv weight loaded to dense, returning"<<endl;
   } else {
     std::cout << "Loading weight file " << o_file << std::endl;
@@ -380,13 +385,16 @@ void load_attention_weights_to_dense_v2(DT *ptr,
 
     int one_partition_size =
         qkv_inner_dim * (num_heads / tensor_parallelism_degree);
+    // for (int i = 0; i < one_weight_file_size; i++) {
+    //   int part_idx = (i / one_partition_size) % tensor_parallelism_degree;
+    //   int block_num = (i / one_partition_size);
+    //   int offset = block_num / tensor_parallelism_degree * one_partition_size +
+    //                (i % one_partition_size);
+    //   ptr[part_idx * stride_size + offset] = 
+    //       host_array.at(data_index++);
+    // }
     for (int i = 0; i < one_weight_file_size; i++) {
-      int part_idx = (i / one_partition_size) % tensor_parallelism_degree;
-      int block_num = (i / one_partition_size);
-      int offset = block_num / tensor_parallelism_degree * one_partition_size +
-                   (i % one_partition_size);
-      ptr[part_idx * stride_size + offset] = 
-          host_array.at(data_index++);
+      ptr[i] = host_array.at(data_index++);
     }
 
     in.close();
@@ -941,29 +949,29 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
         l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
-      if (weight_idx == 0) {
-        load_attention_weights_v2(data,
-                                  num_heads,
-                                  num_kv_heads,
-                                  hidden_dim,
-                                  qkv_inner_dim,
-                                  weight_filename,
-                                  weights_folder,
-                                  volume,
-                                  tensor_parallelism_degree);
-      } else {
-        long long value;
-        l->get_int_property("final_bias", value);
-        bool final_bias = (bool)value;
-        load_attention_bias_v2(data,
-                               num_heads,
-                               num_kv_heads,
-                               hidden_dim,
-                               qkv_inner_dim,
-                               final_bias,
-                               weight_filename,
-                               weights_folder);
-      }
+      // if (weight_idx == 0) {
+      //   load_attention_weights_v2(data,
+      //                             num_heads,
+      //                             num_kv_heads,
+      //                             hidden_dim,
+      //                             qkv_inner_dim,
+      //                             weight_filename,
+      //                             weights_folder,
+      //                             volume,
+      //                             tensor_parallelism_degree);
+      // } else {
+      //   long long value;
+      //   l->get_int_property("final_bias", value);
+      //   bool final_bias = (bool)value;
+      //   load_attention_bias_v2(data,
+      //                          num_heads,
+      //                          num_kv_heads,
+      //                          hidden_dim,
+      //                          qkv_inner_dim,
+      //                          final_bias,
+      //                          weight_filename,
+      //                          weights_folder);
+      // }
     } else if(is_attn_proj) {
       if(is_o_proj) {
         if(weight_idx == 0) {

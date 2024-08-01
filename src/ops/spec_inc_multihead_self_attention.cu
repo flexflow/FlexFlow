@@ -714,15 +714,15 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                   cudaMemcpyDeviceToDevice,
                   stream);
   // phase 1: Implement kernel to compute KQV for input tokens
-
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                    //  input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn first
+  // compute_qkv_kernel(m,
+  //                    bc,
+  //                    shard_id,
+  //                   //  input_ptr,
+  //                    weight_ptr,
+  //                    static_cast<DT *>(m->devQKVProjArray),
+  //                    bias_ptr,
+  //                    stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
   if (bc->num_generation_tokens > 0) {

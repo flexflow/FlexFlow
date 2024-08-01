@@ -936,14 +936,15 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                    //  input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn first
+  // compute_qkv_kernel(m,
+  //                    bc,
+  //                    shard_id,
+  //                   //  input_ptr,
+  //                    weight_ptr,
+  //                    static_cast<DT *>(m->devQKVProjArray),
+  //                    bias_ptr,
+  //                    stream);
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(
