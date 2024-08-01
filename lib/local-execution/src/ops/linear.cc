@@ -59,7 +59,7 @@ OpTaskInvocation backward(LinearAttrs const &attrs) {
   return {LINEAR_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LinearAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -82,7 +82,8 @@ static DeviceSpecific<DeviceStates>
                                                       output.data_type,
                                                       batch_size,
                                                       attrs.out_channels);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<LinearPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

@@ -40,7 +40,7 @@ OpTaskInvocation backward(DropoutAttrs const &attrs) {
   return {DROPOUT_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   Allocator allocator = acc.get_allocator();
@@ -49,7 +49,8 @@ static DeviceSpecific<DeviceStates>
 
   DropoutPerDeviceState per_device_state =
       init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<DropoutPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

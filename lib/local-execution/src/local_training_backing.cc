@@ -18,29 +18,19 @@ LocalTrainingBacking::LocalTrainingBacking(
     this->local_slots_backing.allocate_tensors(
         node, computation_graph, this->allocator);
 
-    // initialize map
-    this->task_registry.init_task_ids.insert({node, std::nullopt});
-    this->task_registry.forward_task_ids.insert({node, std::nullopt});
-    this->task_registry.backward_task_ids.insert({node, std::nullopt});
-
-    if (!(attrs.has<WeightAttrs>() || attrs.has<InputAttrs>() ||
-          attrs.has<NoopAttrs>())) {
-      // register tasks
-      std::vector<task_id_t> task_ids = get_task_ids(attrs);
-      for (task_id_t task_id : task_ids) {
-        this->task_registry.register_task(task_id, node, attrs);
-      }
-    }
+    // register tasks
+    this->task_registry.register_tasks_for_layer(node, attrs);
   }
 }
 
-DeviceSpecific<DeviceStates>
+DeviceSpecificDeviceStates
     LocalTrainingBacking::call_init_task_impl(task_id_t task_id,
                                               TaskArgumentAccessor const &acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn = task_sig_impl.impl_function.get<std::function<
-      DeviceSpecific<DeviceStates>(TaskArgumentAccessor const &)>>();
+  auto fn =
+      task_sig_impl.impl_function.get<std::function<DeviceSpecificDeviceStates(
+          TaskArgumentAccessor const &)>>();
   return fn(acc);
 }
 
@@ -64,8 +54,9 @@ void LocalTrainingBacking::execute_init() {
       OpTaskInvocation invocation = init(attrs);
       TaskArgumentAccessor accessor =
           this->get_task_arg_accessor(invocation, operator_node);
-      DeviceSpecific<DeviceStates> device_state =
+      DeviceSpecificDeviceStates device_state =
           this->call_init_task_impl(invocation.task_id, accessor);
+      std::cout << "post init";
       this->local_slots_backing.add_per_device_op_state(operator_node,
                                                         device_state);
     }

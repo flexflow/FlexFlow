@@ -49,12 +49,13 @@ OpTaskInvocation backward(ReshapeAttrs const &attrs) {
   return {RESHAPE_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
   ReshapePerDeviceState per_device_state = init_kernel(attrs.shape.data_type);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<ReshapePerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

@@ -31,6 +31,10 @@ name = "dropout"
 type = "float"
 
 [[fields]]
+name = "bias"
+type = "bool"
+
+[[fields]]
 name = "add_bias_kv"
 type = "bool"
 

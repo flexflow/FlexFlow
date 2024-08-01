@@ -90,7 +90,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             std::get<std::vector<GenericTensorAccessorR>>(
                 acc.get_variadic_tensor(
                     VARIADIC_TENSORS, Permissions::RO, IsGrad::NO));
-        CHECK(correct == result);
+        CHECK(result == correct);
       }
       SUBCASE("Read-only grad tensors") {
         std::vector<GenericTensorAccessorR> correct = {

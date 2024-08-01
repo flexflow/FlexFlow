@@ -17,7 +17,12 @@ struct ICostEstimator {
                     std::vector<ParallelTensorShape> const &inputs,
                     std::vector<ParallelTensorAttrs> const &weights,
                     std::vector<ParallelTensorAttrs> const &outputs,
-                    std::optional<MachineView> const &mv) const = 0;
+                    MachineView const &mv) const = 0;
+  virtual CostDetails
+      estimate_cost(PCGOperatorAttrs const &op,
+                    std::vector<ParallelTensorShape> const &inputs,
+                    std::vector<ParallelTensorAttrs> const &weights,
+                    std::vector<ParallelTensorAttrs> const &outputs) const = 0;
   virtual float estimate_cost(ParallelTensorShape const &tensor_shape,
                               MachineView const &src,
                               MachineView const &dst) const = 0;
@@ -35,9 +40,18 @@ struct CostEstimator {
                             std::vector<ParallelTensorShape> const &inputs,
                             std::vector<ParallelTensorAttrs> const &weights,
                             std::vector<ParallelTensorAttrs> const &outputs,
-                            std::optional<MachineView> const &mv) const {
+                            MachineView const &mv) const {
     return this->implementation_ptr->estimate_cost(
         op, inputs, weights, outputs, mv);
+  }
+
+  CostDetails
+      estimate_cost(PCGOperatorAttrs const &op,
+                    std::vector<ParallelTensorShape> const &inputs,
+                    std::vector<ParallelTensorAttrs> const &weights,
+                    std::vector<ParallelTensorAttrs> const &outputs) const {
+    return this->implementation_ptr->estimate_cost(
+        op, inputs, weights, outputs);
   }
 
   float estimate_cost(ParallelTensorShape const &tensor_shape,

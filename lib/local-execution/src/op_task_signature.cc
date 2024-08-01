@@ -4,10 +4,6 @@ namespace FlexFlow {
 
 OpTaskSignature::OpTaskSignature(OpTaskType t) : type(t){};
 
-OpTaskSignature::OpTaskSignature(OpTaskSignature const &other)
-    : type(other.type), return_value(other.return_value),
-      task_arg_types(task_arg_types), op_tensor_slots(op_tensor_slots){};
-
 void OpTaskSignature::add_input_slot(slot_id name, SlotType slot_type) {
   OpTensorSlotSpec op_tensor_slot_spec = {
       name, slot_type, TensorRole::INPUT, IsGrad::NO, OpSlotOptions::NECESSARY};
@@ -84,6 +80,7 @@ void OpTaskSignature::add_from_slot_spec(OpTensorSlotSpec const &spec) {
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd) {
   OpTaskSignature bwd(fwd);
+  bwd.type = OpTaskType::BWD;
   for (auto const &op_tensor_slot_spec : fwd.get_tensor_slots()) {
     OpSlotOptions slot_option = op_tensor_slot_spec.slot_option;
     if (slot_option != OpSlotOptions::UNTRAINABLE ||

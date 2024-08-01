@@ -310,4 +310,12 @@ OpTaskInvocation backward(ComputationGraphOpAttrs const &op) {
   });
 }
 
+std::string format_as(TaskSignatureAndImpl const &x) {
+  return fmt::format("TaskSignatureAndImpl");
+}
+
+std::ostream &operator<<(std::ostream &s, TaskSignatureAndImpl const &x) {
+  return (s << fmt::to_string(x));
+}
+
 } // namespace FlexFlow

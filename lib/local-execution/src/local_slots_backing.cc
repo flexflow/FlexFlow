@@ -9,7 +9,7 @@ LocalSlotsBacking::LocalSlotsBacking(TensorBackingMap const &allocated_tensors,
 
 void LocalSlotsBacking::add_per_device_op_state(
     layer_guid_t const &op_guid,
-    DeviceSpecific<DeviceStates> const &device_state) {
+    DeviceSpecificDeviceStates const &device_state) {
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
@@ -130,9 +130,13 @@ ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
 
 ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
     OpArgRefSpec const &op_arg_ref_spec, layer_guid_t const &op_guid) const {
-  if (op_arg_ref_spec.holds<DeviceSpecific<DeviceStates>>()) {
+  if (op_arg_ref_spec.holds<DeviceSpecificDeviceStates>()) {
     assert(contains_key(per_device_op_states, op_guid));
-    return ConcreteArgSpec::create(per_device_op_states.at(op_guid));
+    DeviceSpecificDeviceStates device_specific =
+        per_device_op_states.at(op_guid);
+    DeviceStates device_state =
+        get_device_state_from_device_specific(device_specific, 0);
+    return ConcreteArgSpec::create(device_state);
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {
     ParallelTensorShapeRefType index_op_arg_ref =
         op_arg_ref_spec.get_ref_type().get<ParallelTensorShapeRefType>();
@@ -154,8 +158,9 @@ ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
 
 ConcreteArgSpec LocalSlotsBacking::resolve_runtime_arg_ref_spec(
     RuntimeArgRefSpec const &runtime_arg_ref_spec) const {
-  if (runtime_arg_ref_spec.holds<PerDeviceFFHandle>()) {
-    return ConcreteArgSpec::create(this->runtime_arg_config.ff_handle);
+  if (runtime_arg_ref_spec.holds<DeviceSpecific<PerDeviceFFHandle>>()) {
+    return ConcreteArgSpec::create(
+        *(this->runtime_arg_config.ff_handle.get(0)));
   } else if (runtime_arg_ref_spec.holds<ProfilingSettings>()) {
     return ConcreteArgSpec::create(this->runtime_arg_config.profiling_settings);
   } else {

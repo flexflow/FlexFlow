@@ -43,7 +43,6 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
 struct OpTaskSignature {
   OpTaskSignature() = delete;
   explicit OpTaskSignature(OpTaskType);
-  OpTaskSignature(OpTaskSignature const &other);
 
   OpTaskType get_task_type() const {
     return this->type;

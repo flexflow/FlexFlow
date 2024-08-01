@@ -15,10 +15,10 @@ using OpArgRef = ArgRef<OpArgRefType, T>;
 using OpArgRefSpec = ArgRefSpec<OpArgRefType>;
 
 template <typename T>
-OpArgRef<DeviceSpecific<DeviceStates>> per_device_op_state() {
+OpArgRef<DeviceSpecificDeviceStates> per_device_op_state() {
   OpArgRefType op_arg_ref_type = OpArgRefType{PerDeviceOpStateRefType{}};
-  ArgRef<OpArgRefType, DeviceSpecific<DeviceStates>> arg_ref = {
-      op_arg_ref_type};
+  static_assert(DeviceStates::IsPartOfDeviceStates_v<T>);
+  ArgRef<OpArgRefType, DeviceSpecificDeviceStates> arg_ref = {op_arg_ref_type};
   return arg_ref;
 }
 

@@ -58,7 +58,7 @@ OpTaskInvocation backward(GatherAttrs const &attrs) {
   return {GATHER_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto index = acc.get_tensor<Permissions::RO>(INDEX);
@@ -80,7 +80,8 @@ static DeviceSpecific<DeviceStates>
   }
 
   GatherPerDeviceState per_device_state = {handle, legion_dim};
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<GatherPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

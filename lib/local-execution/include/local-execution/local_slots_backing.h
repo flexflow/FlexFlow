@@ -18,7 +18,7 @@ struct LocalSlotsBacking {
 
 public:
   void add_per_device_op_state(layer_guid_t const &,
-                               DeviceSpecific<DeviceStates> const &);
+                               DeviceSpecificDeviceStates const &);
   void allocate_tensors(layer_guid_t const &,
                         ComputationGraph const &,
                         Allocator &);
@@ -27,14 +27,15 @@ public:
   ArgSlotsBacking construct_arg_slots_backing(OpTaskBinding const &,
                                               layer_guid_t const &) const;
 
+  ConcreteArgSpec resolve_runtime_arg_ref_spec(RuntimeArgRefSpec const &) const;
+  ConcreteArgSpec resolve_op_arg_ref_spec(OpArgRefSpec const &,
+                                          layer_guid_t const &) const;
+
 private:
   bool is_tensor_allocated(tensor_guid_t const &) const;
   bool is_gradient_tensor_allocated(tensor_guid_t const &) const;
   GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
                                                    IsGrad) const;
-  ConcreteArgSpec resolve_op_arg_ref_spec(OpArgRefSpec const &,
-                                          layer_guid_t const &) const;
-  ConcreteArgSpec resolve_runtime_arg_ref_spec(RuntimeArgRefSpec const &) const;
 
 public:
   // tensors
@@ -46,7 +47,7 @@ public:
       output_tensor_slots;
 
   // arguments
-  std::unordered_map<layer_guid_t, DeviceSpecific<DeviceStates>>
+  std::unordered_map<layer_guid_t, DeviceSpecificDeviceStates>
       per_device_op_states;
   RuntimeArgConfig runtime_arg_config;
 };

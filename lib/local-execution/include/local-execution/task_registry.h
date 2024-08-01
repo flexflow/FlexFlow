@@ -12,9 +12,8 @@ namespace FlexFlow {
 struct TaskRegistry {
   TaskRegistry() = default;
 
-  void register_task(task_id_t const &,
-                     layer_guid_t const &,
-                     ComputationGraphOpAttrs const &attrs);
+  void register_tasks_for_layer(layer_guid_t const &,
+                                ComputationGraphOpAttrs const &attrs);
 
   std::unordered_map<layer_guid_t, std::optional<task_id_t>> init_task_ids;
   std::unordered_map<layer_guid_t, std::optional<task_id_t>> forward_task_ids;
@@ -31,6 +30,9 @@ private:
              decltype(task_mapping) const &>
       tie() const;
 };
+
+std::string format_as(TaskRegistry const &x);
+std::ostream &operator<<(std::ostream &s, TaskRegistry const &x);
 
 } // namespace FlexFlow
 

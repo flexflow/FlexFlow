@@ -23,7 +23,7 @@ OpTaskInvocation init(Pool2DAttrs const &attrs) {
   return {POOL2D_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<Pool2DAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -82,7 +82,8 @@ static DeviceSpecific<DeviceStates>
                                                       attrs.stride_w,
                                                       attrs.pool_type);
 
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<Pool2DPerDeviceState>::create(per_device_state)};
 }
 
 OpTaskInvocation forward(Pool2DAttrs const &attrs) {

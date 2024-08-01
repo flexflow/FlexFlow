@@ -32,7 +32,7 @@ OpTaskInvocation init(ReduceAttrs const &attrs) {
   return {REDUCE_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
   auto attrs = acc.get_argument<ReduceAttrs>(ATTRS);
@@ -44,7 +44,8 @@ static DeviceSpecific<DeviceStates>
   size_t reduction_size = input.shape.get_volume() / output.shape.get_volume();
   ReducePerDeviceState per_device_state =
       init_kernel(handle, op_type, reduction_size, input.shape, output.shape);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<ReducePerDeviceState>::create(per_device_state)};
 }
 
 // Note: forward_kernel only needs ReducePerDeviceState, input, output

@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_CONCRETE_ARG_H
 #define _FLEXFLOW_LOCAL_EXECUTION_CONCRETE_ARG_H
 
+#include "fmt/format.h"
 #include "local-execution/serialization.h"
 #include "utils/type_index.h"
 #include <memory>
@@ -46,6 +47,9 @@ private:
 
   std::tuple<decltype(type_idx) const &> tie() const;
 };
+
+std::string format_as(ConcreteArgSpec const &);
+std::ostream &operator<<(std::ostream &, ConcreteArgSpec const &);
 
 } // namespace FlexFlow
 

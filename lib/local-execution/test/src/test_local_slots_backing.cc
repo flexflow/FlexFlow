@@ -1,4 +1,5 @@
 #include "doctest/doctest.h"
+#include "kernels/attention_kernels.h"
 #include "local-execution/local_cost_estimator.h"
 #include "local-execution/local_cpu_allocator.h"
 #include "local-execution/local_slots_backing.h"
@@ -48,6 +49,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        /*kdim=*/embed_dim,
                                        /*vdim=*/embed_dim,
                                        /*dropout=*/0.0f,
+                                       /*bias=*/true,
                                        /*add_bias_kv=*/false,
                                        /*add_zero_attn=*/false,
                                        /*initializer=*/std::nullopt,
@@ -62,8 +64,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     // runtime arg config
     ProfilingSettings settings = ProfilingSettings{/*warmup_iters=*/0,
                                                    /*measure_iters=*/0};
-    RuntimeArgConfig runtime_arg_config = RuntimeArgConfig{
-        get_mock_per_device_ff_handle(), EnableProfiling::NO, settings};
+    PerDeviceFFHandle handle = get_mock_per_device_ff_handle();
+    RuntimeArgConfig runtime_arg_config =
+        RuntimeArgConfig{DeviceSpecific<PerDeviceFFHandle>::create(handle),
+                         EnableProfiling::NO,
+                         settings};
 
     LocalSlotsBacking local_slots_backing = {tensor_backing_map,
                                              runtime_arg_config};
@@ -74,38 +79,47 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("Allocate and insert new tensors into slots") {
       SUBCASE("Tensor allocation") {
+        std::pair<ArrayShape, DataType> correct_input =
+            std::make_pair(ArrayShape{input_tensor_shape}, dtype);
         SUBCASE("Query grad") {
           GenericTensorAccessorW query_grad =
               local_slots_backing.gradient_tensor_mapping.at(query_guid);
-          CHECK(shape_and_dtype_matches(
-              query_grad, ArrayShape{input_tensor_shape}, dtype));
+          std::pair<ArrayShape, DataType> result =
+              get_shape_and_datatype(query_grad);
+          CHECK(result == correct_input);
         }
         SUBCASE("Key grad") {
           GenericTensorAccessorW key_grad =
               local_slots_backing.gradient_tensor_mapping.at(key_guid);
-          CHECK(shape_and_dtype_matches(
-              key_grad, ArrayShape{input_tensor_shape}, dtype));
+          std::pair<ArrayShape, DataType> result =
+              get_shape_and_datatype(key_grad);
+          CHECK(result == correct_input);
         }
         SUBCASE("Value grad") {
           GenericTensorAccessorW value_grad =
               local_slots_backing.gradient_tensor_mapping.at(value_guid);
-          CHECK(shape_and_dtype_matches(
-              value_grad, ArrayShape{input_tensor_shape}, dtype));
+          std::pair<ArrayShape, DataType> result =
+              get_shape_and_datatype(value_grad);
+          CHECK(result == correct_input);
         }
 
         TensorAttrs output_attrs =
             get_tensor_attrs(cg_builder.computation_graph, output_guid);
+        std::pair<ArrayShape, DataType> correct_output =
+            std::make_pair(ArrayShape{output_attrs.shape}, dtype);
         SUBCASE("Output") {
           GenericTensorAccessorW output =
               local_slots_backing.tensor_mapping.at(output_guid);
-          CHECK(shape_and_dtype_matches(
-              output, ArrayShape{output_attrs.shape}, dtype));
+          std::pair<ArrayShape, DataType> result =
+              get_shape_and_datatype(output);
+          CHECK(result == correct_output);
         }
         SUBCASE("Output grad") {
           GenericTensorAccessorW output_grad =
               local_slots_backing.tensor_mapping.at(output_guid);
-          CHECK(shape_and_dtype_matches(
-              output_grad, ArrayShape{output_attrs.shape}, dtype));
+          std::pair<ArrayShape, DataType> result =
+              get_shape_and_datatype(output_grad);
+          CHECK(result == correct_output);
         }
       }
 
@@ -189,6 +203,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
         ParallelTensorShape query_parallel_tensor_shape =
             lift_to_parallel(input_tensor_shape);
+
         ArgSlotsBacking correct = {
             {QPROJSIZE, ConcreteArgSpec::create(get_qProjSize(attrs))},
             {ATTRS, ConcreteArgSpec::create(attrs)},
@@ -196,7 +211,48 @@ TEST_SUITE(FF_TEST_SUITE) {
              ConcreteArgSpec::create(query_parallel_tensor_shape)},
             {PROFILING,
              ConcreteArgSpec::create(runtime_arg_config.profiling_settings)},
-            {HANDLE, ConcreteArgSpec::create(runtime_arg_config.ff_handle)}};
+            {HANDLE, ConcreteArgSpec::create(handle)}};
+
+        CHECK(result == correct);
+
+        SUBCASE("FF Handle") {
+          RuntimeArgRefSpec ref_spec = RuntimeArgRefSpec::create(ff_handle());
+          ConcreteArgSpec arg_spec =
+              local_slots_backing.resolve_runtime_arg_ref_spec(ref_spec);
+
+          PerDeviceFFHandle result_handle = arg_spec.get<PerDeviceFFHandle>();
+          CHECK(result_handle == handle);
+        }
+      }
+
+      SUBCASE("Device Specific Device States") {
+        MHAPerDeviceState correct = MHAPerDeviceState{
+            /*handle=*/handle,
+            /*weightSize=*/0,
+            /*reserveSpaceSize=*/0,
+            /*attnDesc=*/nullptr,
+            /*qDesc=*/nullptr,
+            /*kDesc=*/nullptr,
+            /*vDesc=*/nullptr,
+            /*oDesc=*/nullptr,
+            /*devQoSeqArray=*/nullptr,
+            /*devKvSeqArray=*/nullptr,
+            /*lowWinIdx=*/nullptr,
+            /*hiWinIdx=*/nullptr,
+            /*reserveSpace=*/nullptr,
+            /*allocator=*/allocator,
+        };
+
+        DeviceSpecificDeviceStates device_specific_device_states =
+            DeviceSpecificDeviceStates{
+                DeviceSpecific<MHAPerDeviceState>::create(correct)};
+        DeviceStates device_state = get_device_state_from_device_specific(
+            device_specific_device_states, 0);
+
+        ConcreteArgSpec arg_spec = ConcreteArgSpec::create(device_state);
+        DeviceStates concrete_device_state = arg_spec.get<DeviceStates>();
+        MHAPerDeviceState result =
+            concrete_device_state.get<MHAPerDeviceState>();
 
         CHECK(result == correct);
       }

@@ -3,25 +3,16 @@
 namespace FlexFlow {
 void *LocalCPUAllocator::allocate(size_t requested_memory_size) {
   void *ptr = malloc(requested_memory_size);
-  this->ptrs.insert(ptr);
+  this->ptrs.insert({ptr, std::unique_ptr<void, decltype(&free)>(ptr, free)});
   return ptr;
 }
 
 void LocalCPUAllocator::deallocate(void *ptr) {
-  if (contains(this->ptrs, ptr)) {
+  if (contains_key(this->ptrs, ptr)) {
     this->ptrs.erase(ptr);
-    free(ptr);
   } else {
     throw std::runtime_error(
         "Deallocating a pointer that was not allocated by this Allocator");
-  }
-}
-
-LocalCPUAllocator::~LocalCPUAllocator() {
-  while (!ptrs.empty()) {
-    auto it = ptrs.begin();
-    void *ptr = *it;
-    this->deallocate(ptr);
   }
 }
 

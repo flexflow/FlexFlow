@@ -12,11 +12,11 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     // local backing initialization
     ManagedPerDeviceFFHandle managed_handle{};
 
-    RuntimeArgConfig runtime_arg_config =
-        RuntimeArgConfig{managed_handle.raw_handle(),
-                         EnableProfiling::YES,
-                         ProfilingSettings{/*warmup_iters=*/0,
-                                           /*measure_iters=*/1}};
+    RuntimeArgConfig runtime_arg_config = RuntimeArgConfig{
+        DeviceSpecific<PerDeviceFFHandle>::create(managed_handle.raw_handle()),
+        EnableProfiling::YES,
+        ProfilingSettings{/*warmup_iters=*/0,
+                          /*measure_iters=*/1}};
 
     LocalCostEstimator cost_estimator = LocalCostEstimator{runtime_arg_config};
 
@@ -65,8 +65,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
           std::vector<ParallelTensorShape>{
               inputs_shape, inputs_shape, inputs_shape},
           std::vector<ParallelTensorAttrs>{weight_attrs},
-          std::vector<ParallelTensorAttrs>{output_attrs},
-          std::nullopt);
+          std::vector<ParallelTensorAttrs>{output_attrs});
 
       CHECK(result.total_elapsed_time > 0);
       CHECK(result.total_mem_usage > 0);

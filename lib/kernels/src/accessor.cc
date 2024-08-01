@@ -157,4 +157,32 @@ bool shape_and_dtype_matches(GenericTensorAccessorR const &accessor,
          accessor.data_type == expected_dtype;
 }
 
+std::pair<ArrayShape, DataType>
+    get_shape_and_datatype(GenericTensorAccessorR const &accessor) {
+  return std::make_pair(accessor.shape, accessor.data_type);
+}
+
+std::pair<ArrayShape, DataType>
+    get_shape_and_datatype(GenericTensorAccessorW const &accessor) {
+  return std::make_pair(accessor.shape, accessor.data_type);
+}
+
+std::string format_as(std::vector<GenericTensorAccessorR> const &x) {
+  return fmt::format("std::vector<GenericTensorAccessorR>");
+}
+
+std::ostream &operator<<(std::ostream &s,
+                         std::vector<GenericTensorAccessorR> const &x) {
+  return (s << fmt::to_string(x));
+}
+
+std::string format_as(std::vector<GenericTensorAccessorW> const &x) {
+  return fmt::format("std::vector<GenericTensorAccessorW>");
+}
+
+std::ostream &operator<<(std::ostream &s,
+                         std::vector<GenericTensorAccessorW> const &x) {
+  return (s << fmt::to_string(x));
+}
+
 } // namespace FlexFlow

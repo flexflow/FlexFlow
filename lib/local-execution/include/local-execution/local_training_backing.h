@@ -28,8 +28,8 @@ struct LocalTrainingBacking {
                                              layer_guid_t const &) const;
 
 private:
-  DeviceSpecific<DeviceStates>
-      call_init_task_impl(task_id_t, TaskArgumentAccessor const &);
+  DeviceSpecificDeviceStates call_init_task_impl(task_id_t,
+                                                 TaskArgumentAccessor const &);
   std::optional<float> call_task_impl(task_id_t, TaskArgumentAccessor);
 
   Allocator allocator;

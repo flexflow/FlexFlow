@@ -53,7 +53,7 @@ OpTaskInvocation backward(RepartitionAttrs const &attrs) {
   return {REPARTITION_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -62,7 +62,8 @@ static DeviceSpecific<DeviceStates>
 
   RepartitionPerDeviceState per_device_state =
       init_kernel(handle, input.data_type);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<RepartitionPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

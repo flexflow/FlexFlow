@@ -56,13 +56,14 @@ OpTaskInvocation backward(TopKAttrs const &attrs) {
   return {TOPK_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   auto attrs = acc.get_argument<TopKAttrs>(ATTRS);
 
   TopKPerDeviceState per_device_state = init_kernel(attrs.sorted);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<TopKPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {

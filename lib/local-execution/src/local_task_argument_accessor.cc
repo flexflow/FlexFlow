@@ -56,8 +56,8 @@ bool are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
       std::variant<FlexFlow::GenericTensorAccessorW,
                    std::vector<FlexFlow::GenericTensorAccessorW>>;
 
-  auto tensors_are_equivalent = [](TensorAccessorVariant acc1_variant,
-                                   TensorAccessorVariant acc2_variant) {
+  auto tensors_are_equivalent = [](TensorAccessorVariant const &acc1_variant,
+                                   TensorAccessorVariant const &acc2_variant) {
     GenericTensorAccessorW acc1 =
         std::get<GenericTensorAccessorW>(acc1_variant);
     GenericTensorAccessorW acc2 =
@@ -65,22 +65,23 @@ bool are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
     return is_shape_and_dtype_equal(acc1, acc2);
   };
 
-  auto variadic_tensor_are_equivalent = [](TensorAccessorVariant acc1_variant,
-                                           TensorAccessorVariant acc2_variant) {
-    std::vector<GenericTensorAccessorW> acc1 =
-        std::get<std::vector<GenericTensorAccessorW>>(acc1_variant);
-    std::vector<GenericTensorAccessorW> acc2 =
-        std::get<std::vector<GenericTensorAccessorW>>(acc2_variant);
-    if (acc1.size() != acc2.size()) {
-      return false;
-    }
-    for (int i = 0; i < acc1.size(); ++i) {
-      if (!is_shape_and_dtype_equal(acc1.at(i), acc2.at(i))) {
-        return false;
-      }
-    }
-    return true;
-  };
+  auto variadic_tensor_are_equivalent =
+      [](TensorAccessorVariant const &acc1_variant,
+         TensorAccessorVariant const &acc2_variant) {
+        std::vector<GenericTensorAccessorW> acc1 =
+            std::get<std::vector<GenericTensorAccessorW>>(acc1_variant);
+        std::vector<GenericTensorAccessorW> acc2 =
+            std::get<std::vector<GenericTensorAccessorW>>(acc2_variant);
+        if (acc1.size() != acc2.size()) {
+          return false;
+        }
+        for (int i = 0; i < acc1.size(); ++i) {
+          if (!is_shape_and_dtype_equal(acc1.at(i), acc2.at(i))) {
+            return false;
+          }
+        }
+        return true;
+      };
 
   for (auto const &slot_tensor : slots_1) {
     if (!contains_key(slots_2, slot_tensor.first)) {

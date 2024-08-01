@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 
 #include "local-execution/device_specific.h"
+#include "local-execution/device_states.dtg.h"
 #include "local-execution/itask_argument_accessor.h"
 
 namespace FlexFlow {
@@ -9,14 +10,13 @@ namespace FlexFlow {
 struct TaskArgumentAccessor {
   template <typename T>
   T const &get_argument(slot_id slot) const {
-    return this->ptr->get_concrete_arg(slot).get<T>();
-  }
-
-  template <typename T>
-  T const &get_argument_from_device_specific(slot_id slot) const {
-    ConcreteArgSpec concrete_arg = this->ptr->get_concrete_arg(slot);
-    DeviceSpecific<T> device_specific = concrete_arg.get<DeviceSpecific<T>>();
-    return device_specific.get(0); // 0 is the device id
+    if constexpr (DeviceStates::IsPartOfDeviceStates_v<T>) {
+      DeviceStates device_states =
+          this->ptr->get_concrete_arg(slot).get<DeviceStates>();
+      return device_states.get<T>();
+    } else {
+      return this->ptr->get_concrete_arg(slot).get<T>();
+    }
   }
 
   template <Permissions PRIV>

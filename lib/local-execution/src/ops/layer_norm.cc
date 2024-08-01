@@ -112,7 +112,7 @@ static std::optional<float>
                  beta_grad);
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LayerNormAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
@@ -141,7 +141,8 @@ static DeviceSpecific<DeviceStates>
                   effective_batch_size,
                   effective_num_elements,
                   attrs.eps);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<LayerNormPerDeviceState>::create(per_device_state)};
 }
 
 TaskImplFunction get_layer_norm_init_task_impl() {

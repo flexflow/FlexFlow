@@ -167,6 +167,9 @@ enum task_id_t {
 
 void register_flexflow_internal_tasks();
 
+std::string format_as(task_id_t const &x);
+std::ostream &operator<<(std::ostream &s, task_id_t const &x);
+
 } // namespace FlexFlow
 
 #endif

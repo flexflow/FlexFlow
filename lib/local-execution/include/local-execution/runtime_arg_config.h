@@ -9,7 +9,7 @@ namespace FlexFlow {
 
 struct RuntimeArgConfig {
 public:
-  PerDeviceFFHandle ff_handle;
+  DeviceSpecific<PerDeviceFFHandle> ff_handle;
   EnableProfiling enable_profiling;
   ProfilingSettings profiling_settings;
 };

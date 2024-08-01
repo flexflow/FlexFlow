@@ -11,7 +11,7 @@ build_targets = [
   # "substitutions",
   # "compiler",
   "substitution-generator",
-  "local-execution", 
+  "local-execution",
 ]
 
 test_targets = [
@@ -22,7 +22,7 @@ test_targets = [
   # "substitutions-tests",
   # "compiler-tests",
   "substitution-generator-tests",
-  # "local-execution-tests"
+  "local-execution-tests"
 ]
 
 [cmake_flags_extra]
