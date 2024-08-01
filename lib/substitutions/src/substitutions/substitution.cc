@@ -10,6 +10,7 @@
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_labels.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_node_labels.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_value_labels.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_value_uses.h"
 #include "utils/overload.h"
 #include "utils/containers/transform.h"
 #include "op-attrs/get_output_shapes.h"
@@ -225,11 +226,93 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
   }
 
   std::unordered_set<OpenDataflowEdge> query_edges(OpenDataflowEdgeQuery const &q) const override {
-    NOT_IMPLEMENTED();
+    std::unordered_set<OpenDataflowEdge> original_result = this->spcg.raw_graph.query_edges(q);
+    std::unordered_set<OpenDataflowEdge> substitution_output_result = this->substitution_result.raw_graph.query_edges(q);
+
+    std::unordered_set<OpenDataflowEdge> from_original = filter(original_result, 
+                                                                [&](OpenDataflowEdge const &e) {
+                                                                  if (e.has<DataflowInputEdge>()) {
+                                                                    return true;
+                                                                  } else {
+                                                                    DataflowEdge dfe = e.get<DataflowEdge>();
+                                                                    if (has_node(this->substitution_result.raw_graph, dfe.src.node)
+                                                                        || this->match.node_assignment.contains_r(dfe.src.node)) {
+                                                                      return false;
+                                                                    }
+                                                                    if (has_node(this->substitution_result.raw_graph, dfe.dst.node)
+                                                                        || this->match.node_assignment.contains_r(dfe.dst.node)) {
+                                                                      return false;
+                                                                    }
+
+                                                                    return true;
+                                                                  }
+                                                                });
+
+    std::unordered_set<OpenDataflowEdge> from_output = filter(substitution_output_result,
+                                                              [&](OpenDataflowEdge const &e) {
+                                                                return !e.has<DataflowInputEdge>();
+                                                              });
+
+    std::unordered_set<OpenDataflowEdge> incoming_to_output;
+    for (auto const &[pattern_input, base_graph_value] : this->match.input_assignment) {
+      OutputGraphExprInput output_expr_input = this->sub.inputs_mapping.at_l(pattern_input);
+      for (DataflowInput const &use : get_open_dataflow_value_uses(this->substitution_result.raw_graph, OpenDataflowValue{pattern_input.raw_dataflow_graph_input})) {
+        incoming_to_output.insert(
+          open_dataflow_edge_from_src_and_dst(base_graph_value, use));
+      }
+    }
+
+    // std::unordered_set<OpenDataflowEdge> outgoing_from_output;
+    // for (auto const &[pattern_output, output_graph_output] : this->sub.
+
+    // std::unordered_set<OpenDataflowEdge> outgoing_from_output = filter(original_result, 
+    //                                                                    [&](OpenDataflowEdge const &e) {
+    //                                                                      if (e.has<DataflowInputEdge>()) {
+    //                                                                        return false;
+    //                                                                      }
+    //
+    //                                                                      DataflowEdge dfe = e.get<DataflowEdge>();
+    //                                                                      if (!has_node(this->substitution_result.raw_graph, dfe.src.node)) {
+    //                                                                        return false;
+    //                                                                      }
+    //                                                                      if (has_node(this->substitution_result.raw_graph, dfe.dst.node)
+    //                                                                          || this->match.node_assignment.contains_r(dfe.dst.node)) {
+    //                                                                        return false;
+    //                                                                      }
+    //
+    //                                                                      return OpenDataflowEdge{
+    //                                                                        DataflowEdge{
+    //                                                                          this->sub.outputs_mapping.at_
+    //                                                                          dfe.dst,
+    //                                                                        },
+    //                                                                      }
+    //                                                                    });
+    // std::unordered_set<OpenDataflowEdge> incoming_to_output = filter(original_result,
+    //                                                                  [&](OpenDataflowEdge const &e) {
+    //                                                                    if (e.has<DataflowInputEdge>()) {
+    //                                                                      return false;
+    //                                                                    }
+    //
+    //                                                                    DataflowEdge dfe = e.get<DataflowEdge>();
+    //                                                                    if (has_node(this->substitution_result.raw_graph, dfe.src.node)
+    //                                                                        || this->match.node_assignment.contains_r(dfe.src.node)) {
+    //                                                                      return false;
+    //                                                                    }
+    //                                                                    if (!has_node(this->substitution_result.raw_graph, dfe.dst.node)) {
+    //                                                                      return false;
+    //                                                                    }
+    //
+    //                                                                    return OpenDataflowValue{
+    //                                                                      DataflowEdge{
+    //                                                                        dfe.src,
+    //                                                                        dfe.dst,
+    //                                                                      }
+    //                                                                    };
+    //                                                                  });
   }
 
 
-  ParallelLayerAttrs const &at(Node const &n) const override {
+  ParallelLayerAttrs at(Node const &n) const override {
     if (has_node(this->substitution_result.raw_graph, n)) {
       return this->substitution_result.raw_graph.at(n);
     } else if (this->match.node_assignment.contains_r(n)) {
@@ -239,9 +322,18 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
     }
   }
 
-  ParallelTensorAttrs const &at(OpenDataflowValue const &v) const override {
+  ParallelTensorAttrs at(OpenDataflowValue const &v) const override {
     return v.visit<ParallelTensorAttrs>(overload {
-
+      [&](DataflowGraphInput const &i) { return this->spcg.raw_graph.at(OpenDataflowValue{i}); },
+      [&](DataflowOutput const &o) { 
+        if (has_node(this->substitution_result.raw_graph, o.node)) {
+          return this->substitution_result.raw_graph.at(OpenDataflowValue{o});
+        } else if (this->match.node_assignment.contains_r(o.node)) {
+          throw mk_runtime_error("Cannot access node that has been replaced out by a substitution");
+        } else {
+          return this->spcg.raw_graph.at(OpenDataflowValue{o});
+        }
+      },
     });
   }
 private:

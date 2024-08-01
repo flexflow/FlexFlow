@@ -6,6 +6,7 @@
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_values.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_inputs.h"
 

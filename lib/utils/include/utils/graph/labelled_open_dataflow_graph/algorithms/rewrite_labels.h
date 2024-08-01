@@ -4,7 +4,7 @@
 #include "utils/containers/generate_map.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/with_labelling.h"
 #include "utils/graph/labelled_open_dataflow_graph/labelled_open_dataflow_graph_view.h"
-#include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_values.h"
 
 namespace FlexFlow {
 

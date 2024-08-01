@@ -23,4 +23,21 @@ bool dataflow_input_edge_query_includes(DataflowInputEdgeQuery const &q,
          includes(q.dst_idxs, e.dst.idx);
 }
 
+DataflowInputEdgeQuery dataflow_input_edge_query_all_outgoing_from(DataflowGraphInput const &src) {
+  return DataflowInputEdgeQuery{
+    query_set<DataflowGraphInput>{src},
+    query_set<Node>::matchall(),
+    query_set<int>::matchall(),
+  };
+}
+
+DataflowInputEdgeQuery dataflow_input_edge_query_all_incoming_to(DataflowInput const &dst) {
+  return DataflowInputEdgeQuery{
+    query_set<DataflowGraphInput>::matchall(),
+    query_set<Node>{dst.node},
+    query_set<int>{dst.idx},
+  };
+
+}
+
 } // namespace FlexFlow

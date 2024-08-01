@@ -16,22 +16,24 @@ OperatorAttributeConstraint operator_attribute_constraint_from_legacy(LegacyPara
 }
 
 std::unordered_map<std::string, Substitution> substitutions_from_legacy_rules(LegacyRuleCollection const &legacy) {
+  NOT_IMPLEMENTED();
 }
 
 Substitution substitution_from_legacy_rule(LegacyRule const &legacy) {
-  LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern> pattern_g = 
-    LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>
-    ::create<UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>>();
-
-  for (LegacyOperator const &legacy_op : legacy.srcOp) {
-    OperatorAttributePattern op_pattern = OperatorAttributePattern{{
-      op_type_equals_constraint(operator_type_from_legacy(legacy_op.op_type)),
-    }};
-
-    
-  }
-
-
+  NOT_IMPLEMENTED();
+  // LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern> pattern_g = 
+  //   LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>
+  //   ::create<UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>>();
+  //
+  // for (LegacyOperator const &legacy_op : legacy.srcOp) {
+  //   OperatorAttributePattern op_pattern = OperatorAttributePattern{{
+  //     op_type_equals_constraint(operator_type_from_legacy(legacy_op.op_type)),
+  //   }};
+  //
+  //
+  // }
+  //
+  //
 }
 
 } // namespace FlexFlow

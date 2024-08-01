@@ -2,6 +2,11 @@
 
 namespace FlexFlow {
 
+TensorShape get_output_shape(Pool2DAttrs const &,
+                             TensorShape const &) {
+  NOT_IMPLEMENTED();
+}
+
 ParallelTensorShape get_output_shape(Pool2DAttrs const &,
                                      ParallelTensorShape const &) {
   NOT_IMPLEMENTED();

@@ -11,6 +11,7 @@
 #include "utils/containers/without_nullopts.h"
 #include "utils/containers/zip.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms.h"
 #include "utils/graph/dataflow_graph/dataflow_edge_query.h"
 #include "utils/graph/dataflow_graph/dataflow_output_query.h"
 #include "utils/graph/labelled_open_dataflow_graph/i_labelled_open_dataflow_graph.h"
@@ -19,6 +20,7 @@
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_values.h"
 
 namespace FlexFlow {
 
@@ -109,11 +111,11 @@ public:
     return this->inputs;
   }
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel at(Node const &n) const override {
     return this->nodes.at(n);
   }
 
-  ValueLabel const &at(OpenDataflowValue const &v) const override {
+  ValueLabel at(OpenDataflowValue const &v) const override {
     return this->values.at(v);
   }
 
@@ -142,10 +144,10 @@ public:
     std::unordered_map<Node, NodeLabel> nodes = generate_map(get_nodes(view),
                                                              [&](Node const &n) { return view.at(n); });
     std::unordered_set<OpenDataflowEdge> edges = get_edges(view);
-    std::unordered_set<DataflowGraphInput> inputs = get_inputs(view);
+    std::unordered_set<DataflowGraphInput> inputs = ::FlexFlow::get_inputs(view);
 
-    std::unordered_map<OpenDataflowValue, ValueLabel> values = transform(get_open_dataflow_values(view),
-                                                                         [&](OpenDataflowValue const &v) { return view.at(v); });
+    std::unordered_map<OpenDataflowValue, ValueLabel> values = generate_map(get_open_dataflow_values(view),
+                                                                            [&](OpenDataflowValue const &v) { return view.at(v); });
 
     this->inputs = inputs;
     this->nodes = nodes;

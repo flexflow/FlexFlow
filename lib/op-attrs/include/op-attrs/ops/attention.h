@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_ATTENTION_ATTRS_H
 #define _FLEXFLOW_ATTENTION_ATTRS_H
 
-#include "core.h"
+#include "op-attrs/ops/core.h"
 #include "op-attrs/ops/attention/multihead_attention_inputs.dtg.h"
 #include "op-attrs/ops/attention/multihead_attention_parallel_inputs.dtg.h"
 #include "op-attrs/ops/attention_attrs.dtg.h"

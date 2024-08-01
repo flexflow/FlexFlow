@@ -28,4 +28,8 @@ NodeQuery query_union(NodeQuery const &lhs, NodeQuery const &rhs) {
   NOT_IMPLEMENTED();
 }
 
+std::unordered_set<Node> apply_node_query(NodeQuery const &query, std::unordered_set<Node> const &ns) {
+  return apply_query(query.nodes, ns);
+}
+
 } // namespace FlexFlow

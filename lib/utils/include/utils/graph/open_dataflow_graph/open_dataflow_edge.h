@@ -8,6 +8,7 @@ namespace FlexFlow {
 
 Node get_open_dataflow_edge_dst_node(OpenDataflowEdge const &);
 int get_open_dataflow_edge_dst_idx(OpenDataflowEdge const &);
+DataflowInput get_open_dataflow_edge_dst(OpenDataflowEdge const &);
 OpenDataflowValue get_open_dataflow_edge_source(OpenDataflowEdge const &);
 OpenDataflowEdge
     open_dataflow_edge_from_src_and_dst(OpenDataflowValue const &src,

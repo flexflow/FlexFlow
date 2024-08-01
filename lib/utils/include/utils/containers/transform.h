@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <type_traits>
 #include <vector>
+#include <set>
 
 namespace FlexFlow {
 
@@ -25,6 +26,17 @@ template <typename F,
           typename Out = decltype(std::declval<F>()(std::declval<In>()))>
 std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
   std::unordered_set<Out> result;
+  for (auto const &e : v) {
+    result.insert(f(e));
+  }
+  return result;
+}
+
+template <typename F,
+          typename In,
+          typename Out = decltype(std::declval<F>()(std::declval<In>()))>
+std::set<Out> transform(std::set<In> const &v, F const &f) {
+  std::set<Out> result;
   for (auto const &e : v) {
     result.insert(f(e));
   }

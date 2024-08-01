@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_IS_VALID_H
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_IS_VALID_H
 
-#include "op-attrs/parallel_tensor_shape.dtg.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/pcg_operator_attrs.dtg.h"
 
 namespace FlexFlow {

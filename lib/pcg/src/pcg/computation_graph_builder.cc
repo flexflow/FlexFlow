@@ -11,6 +11,12 @@
 #include "utils/containers/transform.h"
 #include "utils/expected.h"
 #include "utils/fmt.h"
+#include "utils/containers/get_only.h"
+#include "op-attrs/ops/element_unary.h"
+#include "op-attrs/ops/conv_2d.h"
+#include "op-attrs/ops/dropout.h"
+#include "op-attrs/ops/gather.h"
+#include "op-attrs/ops/batch_norm.h"
 
 namespace FlexFlow {
 
@@ -430,7 +436,7 @@ tensor_guid_t ComputationGraphBuilder::embedding(
   return this->add_layer(layer, {input}, {weight_attrs}, output_shape);
 }
 
-std::vector<tensor_guid_t> ComputationGraphBuilder::gather(
+tensor_guid_t ComputationGraphBuilder::gather(
     tensor_guid_t const &input,
     tensor_guid_t const &index,
     ff_dim_t dim,
@@ -448,10 +454,10 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::gather(
                            DataType::INT32,
                            DataType::INT64);
   }
-  std::vector<TensorShape> output_shapes =
-      get_output_shapes(attrs, this->get_shape(input), this->get_shape(index));
+  TensorShape output_shape =
+      get_output_shape(attrs, this->get_shape(input), this->get_shape(index));
 
-  return this->add_layer(layer, {input}, {}, output_shapes);
+  return this->add_layer(layer, {input}, {}, output_shape);
 }
 
 /* std::vector<TensorShape>
