@@ -212,6 +212,8 @@ struct FFHandler {
   bool allowTensorOpMathConversion;
 #ifdef FF_USE_NCCL
   ncclComm_t ncclComm;
+  int num_devices;
+  int device_id;
 #endif
 };
 

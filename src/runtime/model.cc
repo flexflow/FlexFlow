@@ -1243,12 +1243,15 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     Rect<DIM> rect = domain;                                                   \
-    int idx = 0;                                                               \
+    int idx = 0, num_devices = rect.volume();                                  \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
       if (op_type == OP_ALLREDUCE) {                                           \
         ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
-        handle.ncclComm = nccl_comms[idx++];                                   \
+        handle.ncclComm = nccl_comms[idx];                                     \
+        handle.num_devices = num_devices;                                      \
+        handle.device_id = idx;                                                \
+        idx++;                                                                 \
       }                                                                        \
       argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
     }                                                                          \
