@@ -57,6 +57,28 @@ std::tuple<std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &,
                   this->task_mapping);
 }
 
+std::string format_as(
+    std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &x) {
+  return fmt::format("TaskRegistry layer_id->task_id");
+}
+
+std::ostream &operator<<(
+    std::ostream &s,
+    std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &x) {
+  return (s << fmt::to_string(x));
+}
+
+std::string
+    format_as(std::unordered_map<task_id_t, TaskSignatureAndImpl> const &x) {
+  return fmt::format("TaskRegistry task_id->sig_impl");
+}
+
+std::ostream &
+    operator<<(std::ostream &s,
+               std::unordered_map<task_id_t, TaskSignatureAndImpl> const &x) {
+  return (s << fmt::to_string(x));
+}
+
 std::string format_as(TaskRegistry const &x) {
   return fmt::format("TaskRegistry");
 }

@@ -186,12 +186,13 @@ TEST_SUITE(FF_TEST_SUITE) {
             get_tensor_attrs(cg_builder.computation_graph, output_guid);
         GenericTensorAccessorW output =
             allocator.allocate_tensor(output_attrs.shape);
-        TensorSlotsBacking correct = {{{QUERY, IsGrad::NO}, query},
-                                      {{KEY, IsGrad::NO}, key},
-                                      {{VALUE, IsGrad::NO}, value},
-                                      {{WEIGHTS, IsGrad::NO}, weights},
-                                      {{OUTPUT, IsGrad::NO}, output},
-                                      {{QUERY, IsGrad::YES}, query}};
+        TensorSlotsBacking correct = {
+            {SlotGradId{slot_id_t{QUERY}, IsGrad::NO}, query},
+            {SlotGradId{slot_id_t{KEY}, IsGrad::NO}, key},
+            {SlotGradId{slot_id_t{VALUE}, IsGrad::NO}, value},
+            {SlotGradId{slot_id_t{WEIGHTS}, IsGrad::NO}, weights},
+            {SlotGradId{slot_id_t{OUTPUT}, IsGrad::NO}, output},
+            {SlotGradId{slot_id_t{QUERY}, IsGrad::YES}, query}};
 
         CHECK(are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
             correct, result));
@@ -205,13 +206,14 @@ TEST_SUITE(FF_TEST_SUITE) {
             lift_to_parallel(input_tensor_shape);
 
         ArgSlotsBacking correct = {
-            {QPROJSIZE, ConcreteArgSpec::create(get_qProjSize(attrs))},
-            {ATTRS, ConcreteArgSpec::create(attrs)},
-            {QUERY_PARALLEL_TENSOR_SHAPE,
+            {slot_id_t{QPROJSIZE},
+             ConcreteArgSpec::create(get_qProjSize(attrs))},
+            {slot_id_t{ATTRS}, ConcreteArgSpec::create(attrs)},
+            {slot_id_t{QUERY_PARALLEL_TENSOR_SHAPE},
              ConcreteArgSpec::create(query_parallel_tensor_shape)},
-            {PROFILING,
+            {slot_id_t{PROFILING},
              ConcreteArgSpec::create(runtime_arg_config.profiling_settings)},
-            {HANDLE, ConcreteArgSpec::create(handle)}};
+            {slot_id_t{HANDLE}, ConcreteArgSpec::create(handle)}};
 
         CHECK(result == correct);
 

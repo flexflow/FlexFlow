@@ -19,6 +19,7 @@ struct TaskArgumentAccessor {
     }
   }
 
+  template <typename T>
   T const &get_argument(int slot) const {
     return this->get_argument<T>(slot_id_t{slot});
   }

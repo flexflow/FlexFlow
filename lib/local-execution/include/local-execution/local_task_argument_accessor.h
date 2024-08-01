@@ -44,6 +44,11 @@ bool are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
 
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
 
+std::string format_as(std::unordered_map<slot_id_t, ConcreteArgSpec> const &x);
+std::ostream &
+    operator<<(std::ostream &s,
+               std::unordered_map<slot_id_t, ConcreteArgSpec> const &x);
+
 } // namespace FlexFlow
 
 #endif

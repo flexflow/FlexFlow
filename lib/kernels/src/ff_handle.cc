@@ -10,4 +10,4 @@ std::ostream &operator<<(std::ostream &s, PerDeviceFFHandle const &x) {
   return (s << fmt::to_string(x));
 }
 
-}
+} // namespace FlexFlow

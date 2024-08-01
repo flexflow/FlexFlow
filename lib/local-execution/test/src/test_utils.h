@@ -3,6 +3,10 @@
 
 #include "kernels/ff_handle.h"
 
+namespace FlexFlow {
+
 PerDeviceFFHandle get_mock_per_device_ff_handle();
+
+} // namespace FlexFlow
 
 #endif

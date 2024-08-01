@@ -44,8 +44,8 @@ bool OpTaskBinding::operator!=(OpTaskBinding const &other) const {
   return this->tie() != other.tie();
 }
 
-std::tuple<std::unordered_map<std::pair<slot_id, IsGrad>, OpTensorSpec> const &,
-           std::unordered_map<slot_id, OpArgSpec> const &>
+std::tuple<std::unordered_map<SlotGradId, OpTensorSpec> const &,
+           std::unordered_map<slot_id_t, OpArgSpec> const &>
     OpTaskBinding::tie() const {
   return std::tie(this->tensor_bindings, this->arg_bindings);
 }

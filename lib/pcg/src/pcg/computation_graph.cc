@@ -1,4 +1,5 @@
 #include "pcg/computation_graph.h"
+#include "utils/containers/get_only.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"

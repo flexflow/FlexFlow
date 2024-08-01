@@ -31,6 +31,18 @@ private:
       tie() const;
 };
 
+std::string format_as(
+    std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &x);
+std::ostream &operator<<(
+    std::ostream &s,
+    std::unordered_map<layer_guid_t, std::optional<task_id_t>> const &x);
+
+std::string
+    format_as(std::unordered_map<task_id_t, TaskSignatureAndImpl> const &x);
+std::ostream &
+    operator<<(std::ostream &s,
+               std::unordered_map<task_id_t, TaskSignatureAndImpl> const &x);
+
 std::string format_as(TaskRegistry const &x);
 std::ostream &operator<<(std::ostream &s, TaskRegistry const &x);
 

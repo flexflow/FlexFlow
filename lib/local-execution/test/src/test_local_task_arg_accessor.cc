@@ -36,10 +36,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     TensorSlotsBacking tensor_slots_backing = {
-        {{INPUT, IsGrad::NO}, input},
-        {{INPUT, IsGrad::YES}, input_grad},
-        {{VARIADIC_TENSORS, IsGrad::NO}, variadic_tensors},
-        {{VARIADIC_TENSORS, IsGrad::YES}, variadic_tensors_grad},
+        {SlotGradId{slot_id_t{INPUT}, IsGrad::NO}, input},
+        {SlotGradId{slot_id_t{INPUT}, IsGrad::YES}, input_grad},
+        {SlotGradId{slot_id_t{VARIADIC_TENSORS}, IsGrad::NO}, variadic_tensors},
+        {SlotGradId{slot_id_t{VARIADIC_TENSORS}, IsGrad::YES},
+         variadic_tensors_grad},
     };
 
     LocalTaskArgumentAccessor acc = {allocator, tensor_slots_backing, {}};
@@ -49,34 +50,34 @@ TEST_SUITE(FF_TEST_SUITE) {
         GenericTensorAccessorR correct =
             read_only_accessor_from_write_accessor(input);
         GenericTensorAccessorR result = std::get<GenericTensorAccessorR>(
-            acc.get_tensor(INPUT, Permissions::RO, IsGrad::NO));
+            acc.get_tensor(slot_id_t{INPUT}, Permissions::RO, IsGrad::NO));
         CHECK(correct == result);
       }
       SUBCASE("Read-only input grad tensor") {
         GenericTensorAccessorR correct =
             read_only_accessor_from_write_accessor(input_grad);
         GenericTensorAccessorR result = std::get<GenericTensorAccessorR>(
-            acc.get_tensor(INPUT, Permissions::RO, IsGrad::YES));
+            acc.get_tensor(slot_id_t{INPUT}, Permissions::RO, IsGrad::YES));
         CHECK(correct == result);
       }
       SUBCASE("Write-only input tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(INPUT, Permissions::WO, IsGrad::NO));
+            acc.get_tensor(slot_id_t{INPUT}, Permissions::WO, IsGrad::NO));
         CHECK(input == result);
       }
       SUBCASE("Write-only input grad tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(INPUT, Permissions::WO, IsGrad::YES));
+            acc.get_tensor(slot_id_t{INPUT}, Permissions::WO, IsGrad::YES));
         CHECK(input_grad == result);
       }
       SUBCASE("Read-write input tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(INPUT, Permissions::RW, IsGrad::NO));
+            acc.get_tensor(slot_id_t{INPUT}, Permissions::RW, IsGrad::NO));
         CHECK(input == result);
       }
       SUBCASE("Read-write input grad tensor") {
         GenericTensorAccessorW result = std::get<GenericTensorAccessorW>(
-            acc.get_tensor(INPUT, Permissions::RW, IsGrad::YES));
+            acc.get_tensor(slot_id_t{INPUT}, Permissions::RW, IsGrad::YES));
         CHECK(input_grad == result);
       }
     }
@@ -89,7 +90,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::vector<GenericTensorAccessorR> result =
             std::get<std::vector<GenericTensorAccessorR>>(
                 acc.get_variadic_tensor(
-                    VARIADIC_TENSORS, Permissions::RO, IsGrad::NO));
+                    slot_id_t{VARIADIC_TENSORS}, Permissions::RO, IsGrad::NO));
         CHECK(result == correct);
       }
       SUBCASE("Read-only grad tensors") {
@@ -100,35 +101,35 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::vector<GenericTensorAccessorR> result =
             std::get<std::vector<GenericTensorAccessorR>>(
                 acc.get_variadic_tensor(
-                    VARIADIC_TENSORS, Permissions::RO, IsGrad::YES));
+                    slot_id_t{VARIADIC_TENSORS}, Permissions::RO, IsGrad::YES));
         CHECK(correct == result);
       }
       SUBCASE("Write-only tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    VARIADIC_TENSORS, Permissions::WO, IsGrad::NO));
+                    slot_id_t{VARIADIC_TENSORS}, Permissions::WO, IsGrad::NO));
         CHECK(variadic_tensors == result);
       }
       SUBCASE("Write-only grad tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    VARIADIC_TENSORS, Permissions::WO, IsGrad::YES));
+                    slot_id_t{VARIADIC_TENSORS}, Permissions::WO, IsGrad::YES));
         CHECK(variadic_tensors_grad == result);
       }
       SUBCASE("Read-write tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    VARIADIC_TENSORS, Permissions::RW, IsGrad::NO));
+                    slot_id_t{VARIADIC_TENSORS}, Permissions::RW, IsGrad::NO));
         CHECK(variadic_tensors == result);
       }
       SUBCASE("Read-write grad tensors") {
         std::vector<GenericTensorAccessorW> result =
             std::get<std::vector<GenericTensorAccessorW>>(
                 acc.get_variadic_tensor(
-                    VARIADIC_TENSORS, Permissions::RW, IsGrad::YES));
+                    slot_id_t{VARIADIC_TENSORS}, Permissions::RW, IsGrad::YES));
         CHECK(variadic_tensors_grad == result);
       }
     }

@@ -1,4 +1,5 @@
 #include "local-execution/local_cpu_allocator.h"
+#include "utils/containers/contains_key.h"
 
 namespace FlexFlow {
 void *LocalCPUAllocator::allocate(size_t requested_memory_size) {

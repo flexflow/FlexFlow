@@ -1,4 +1,5 @@
 #include "local-execution/local_task_argument_accessor.h"
+#include "utils/containers/contains_key.h"
 #include "utils/hash/pair.h"
 
 namespace FlexFlow {
@@ -121,6 +122,15 @@ bool are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
 
 size_t LocalTaskArgumentAccessor::get_device_idx() const {
   return 0;
+}
+
+std::string format_as(std::unordered_map<slot_id_t, ConcreteArgSpec> const &x) {
+  return fmt::format("ArgSlotsBacking");
+}
+std::ostream &
+    operator<<(std::ostream &s,
+               std::unordered_map<slot_id_t, ConcreteArgSpec> const &x) {
+  return (s << fmt::to_string(x));
 }
 
 } // namespace FlexFlow
