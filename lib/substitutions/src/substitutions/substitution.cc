@@ -7,10 +7,12 @@
 #include "utils/containers/map_values.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/node/algorithms/generate_new_node_id_permutation.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_labels.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_node_labels.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_value_labels.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_value_uses.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/permute_node_ids.h"
 #include "utils/overload.h"
 #include "utils/containers/transform.h"
 #include "op-attrs/get_output_shapes.h"
@@ -193,27 +195,47 @@ SubParallelComputationGraph evaluate_substitution_output(SubParallelComputationG
                                                          UnlabelledDataflowGraphPatternMatch const &match) {
   std::unordered_map<PatternNode, PCGOperatorAttrs> node_match = map_values(match.node_assignment.as_unordered_map(), 
                                                                             [&](Node const &n) { return get_operator_attrs(spcg, n); });
+
+  bidict<NewNode, Node> new_node_id_permutation = generate_new_node_id_permutation(sub.output_graph_expr.raw_graph);
+  LabelledOpenDataflowGraphView<OutputOperatorAttrsAssignment, std::monostate> permuted = permute_node_ids(
+    sub.output_graph_expr.raw_graph,
+    new_node_id_permutation
+  );
+
   LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate> without_shapes = 
-    rewrite_node_labels(sub.output_graph_expr.raw_graph, 
+    rewrite_node_labels(permuted,
       [&](Node const &n, OutputOperatorAttrsAssignment const &attrs) { 
         return ParallelLayerAttrs{
-        materialize_output_operator_from_attrs_assignment(attrs, node_match),
-        std::nullopt,
+          materialize_output_operator_from_attrs_assignment(attrs, node_match),
+          std::nullopt,
         };
       }
     );
 
-  // here is where we need to apply shape inference topologically
   std::unordered_map<DataflowGraphInput, ParallelTensorAttrs> input_shapes = map_values(map_keys(match.input_assignment,
                                                                                       [](PatternInput const &i) { return i.raw_dataflow_graph_input; }),
                                                                                       [&](OpenDataflowValue const &v) { return spcg.raw_graph.at(v); });
   LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs> with_shapes = perform_shape_inference(without_shapes, input_shapes);
 
+  // TODO(@lockshaw): also return the new node ids through some type of result struct
   return SubParallelComputationGraph{with_shapes};
 }
 
 
 struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs> {
+  SubstitutionAppliedView(NodeSource const &node_source,
+                          Substitution const &sub,
+                          UnlabelledDataflowGraphPatternMatch const &match,
+                          SubParallelComputationGraph const &spcg,
+                          SubParallelComputationGraph const &substitution_result)
+    : node_source(node_source),
+      sub(sub),
+      match(match),
+      spcg(spcg),
+      substitution_result(substitution_result)
+    { }
+
+
   std::unordered_set<Node> query_nodes(NodeQuery const &q) const override {
     std::unordered_set<Node> original_result = this->spcg.raw_graph.query_nodes(q);
     std::unordered_set<Node> matched_by_subsitution = right_entries(this->match.node_assignment);
@@ -223,6 +245,11 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
 
   std::unordered_set<DataflowGraphInput> get_inputs() const override {
     return this->spcg.raw_graph.get_inputs();
+  }
+
+  std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &q) const override {
+    NOT_IMPLEMENTED();
+    // return this->spcg.query_outputs(q);
   }
 
   std::unordered_set<OpenDataflowEdge> query_edges(OpenDataflowEdgeQuery const &q) const override {
@@ -335,6 +362,16 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
         }
       },
     });
+  }
+
+  SubstitutionAppliedView *clone() const override {
+    return new SubstitutionAppliedView(
+      this->node_source,
+      this->sub,
+      this->match,
+      this->spcg,
+      this->substitution_result
+    );
   }
 private:
   NodeSource node_source;

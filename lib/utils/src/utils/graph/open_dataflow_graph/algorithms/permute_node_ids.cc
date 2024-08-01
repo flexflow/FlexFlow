@@ -1,4 +1,4 @@
-#include "utils/graph/open_dataflow_graph/algorithms/with_new_node_ids/with_new_node_ids.h"
+#include "utils/graph/open_dataflow_graph/algorithms/permute_node_ids.h"
 #include "utils/bidict/algorithms/right_entries.h"
 #include "utils/bidict/generate_bidict.h"
 #include "utils/containers/set_minus.h"
@@ -12,9 +12,9 @@
 
 namespace FlexFlow {
 
-struct WithNewNodeIdsView final : public IOpenDataflowGraphView {
-  WithNewNodeIdsView(OpenDataflowGraphView const &g, 
-                     bidict<Node, Node> const &new_node_tofrom_old_node)
+struct PermuteNodeIdsView final : public IOpenDataflowGraphView {
+  PermuteNodeIdsView(OpenDataflowGraphView const &g, 
+                     bidict<NewNode, Node> const &new_node_tofrom_old_node)
     : g(g), new_node_tofrom_old_node(new_node_tofrom_old_node)
   { }
 
@@ -64,8 +64,8 @@ struct WithNewNodeIdsView final : public IOpenDataflowGraphView {
     return this->g.get_inputs();
   }
 
-  WithNewNodeIdsView *clone() const override {
-    return new WithNewNodeIdsView(
+  PermuteNodeIdsView *clone() const override {
+    return new PermuteNodeIdsView(
       this->g,
       this->new_node_tofrom_old_node
     );
@@ -118,26 +118,20 @@ private:
   }
 
   Node old_node_from_new(Node const &new_node) const {
-    return this->new_node_tofrom_old_node.at_l(new_node);
+    return this->new_node_tofrom_old_node.at_l(NewNode{new_node});
   }
 
   Node new_node_from_old(Node const &old_node) const {
-    return this->new_node_tofrom_old_node.at_r(old_node);
+    return this->new_node_tofrom_old_node.at_r(old_node).raw_node;
   }
 
   OpenDataflowGraphView g;
-  bidict<Node, Node> new_node_tofrom_old_node;
+  bidict<NewNode, Node> new_node_tofrom_old_node;
 };
 
-WithNewNodeIdsResult with_new_node_ids(OpenDataflowGraphView const &g) {
-  NodeSource node_source;
-  bidict<Node, Node> new_node_tofrom_old_node = generate_bidict(get_nodes(g), 
-                                                              [&](Node const &) { return node_source.new_node(); });
-
-  return WithNewNodeIdsResult{
-    OpenDataflowGraphView::create<WithNewNodeIdsView>(g, new_node_tofrom_old_node),
-    new_node_tofrom_old_node,
-  };
+OpenDataflowGraphView permute_node_ids(OpenDataflowGraphView const &g, 
+                                      bidict<NewNode, Node> const &new_node_tofrom_old_node) {
+  return OpenDataflowGraphView::create<PermuteNodeIdsView>(g, new_node_tofrom_old_node);
 
 }
 
