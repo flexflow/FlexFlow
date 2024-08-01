@@ -14,6 +14,10 @@ includes = [
   "utils/json.h",
 ]
 
+src_includes = [
+  "utils/fmt/variant.h",
+]
+
 [[fields]]
 name = "value"
 type = "::FlexFlow::DataTypeValue"

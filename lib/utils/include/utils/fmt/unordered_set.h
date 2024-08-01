@@ -3,6 +3,7 @@
 
 #include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
+#include "utils/type_traits_core.h"
 #include <fmt/format.h>
 #include <unordered_set>
 
@@ -23,6 +24,7 @@ struct formatter<
         ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
           return fmt::to_string(t);
         });
+    // }
     return formatter<std::string>::format("{" + result + "}", ctx);
   }
 };

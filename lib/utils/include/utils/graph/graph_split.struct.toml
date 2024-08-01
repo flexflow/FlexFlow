@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "GraphSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<unordered_set>",
+  "utils/graph/node/node.dtg.h",
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_set.h",
+]
+
+[[fields]]
+name = "first"
+type = "std::unordered_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "second"
+type = "std::unordered_set<::FlexFlow::Node>"

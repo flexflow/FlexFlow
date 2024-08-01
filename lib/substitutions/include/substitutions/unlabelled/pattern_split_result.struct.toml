@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "PatternSplitResult"
+features = [ ]
+
+includes = [
+  "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h",
+  "substitutions/unlabelled/pattern_value.dtg.h",
+  "substitutions/unlabelled/pattern_input.dtg.h",
+  "utils/bidict/bidict.h",
+]
+
+[[fields]]
+name = "subpattern_1"
+type = "::FlexFlow::UnlabelledGraphPattern"
+
+[[fields]]
+name = "subpattern_2"
+type = "::FlexFlow::UnlabelledGraphPattern"
+
+[[fields]]
+name = "full_pattern_values_to_subpattern_1_inputs"
+type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::PatternInput>"
+
+[[fields]]
+name = "full_pattern_values_to_subpattern_2_inputs"
+type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::PatternInput>"

@@ -1,4 +1,6 @@
 #include "local-execution/local_slots_backing.h"
+#include "utils/containers/contains_key.h"
+#include "utils/overload.h"
 
 namespace FlexFlow {
 
@@ -94,9 +96,9 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
             fmt::format("Invalid TensorRole")); // inserting role yields
                                                 // "type_is_unformattable" error
     }
-    IsGrad is_grad = slot_grad_id.second;
 
     assert(tensor_guids.size() > tensor_spec.idx);
+    IsGrad is_grad = slot_grad_id.is_grad;
     GenericTensorAccessorW tensor_backing =
         this->get_tensor_backing(tensor_guids.at(tensor_spec.idx), is_grad);
 
@@ -109,21 +111,19 @@ ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
     OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
   ArgSlotsBacking mapping;
   for (auto const &arg_binding : binding.get_arg_bindings()) {
-    slot_id arg_slot = arg_binding.first;
+    slot_id_t arg_slot = arg_binding.first;
     OpArgSpec op_arg_spec = arg_binding.second;
-    if (std::holds_alternative<OpArgRefSpec>(op_arg_spec)) {
-      mapping.insert({arg_slot,
-                      resolve_op_arg_ref_spec(
-                          std::get<OpArgRefSpec>(op_arg_spec), op_guid)});
-    } else if (std::holds_alternative<RuntimeArgRefSpec>(op_arg_spec)) {
-      mapping.insert({arg_slot,
-                      resolve_runtime_arg_ref_spec(
-                          std::get<RuntimeArgRefSpec>(op_arg_spec))});
-    } else if (std::holds_alternative<ConcreteArgSpec>(op_arg_spec)) {
-      mapping.insert({arg_slot, std::get<ConcreteArgSpec>(op_arg_spec)});
-    } else {
-      throw mk_runtime_error("Unhandled argument type");
-    }
+
+    mapping.insert({arg_slot,
+                    op_arg_spec.visit<ConcreteArgSpec>(overload{
+                        [&](OpArgRefSpec const &s) {
+                          return this->resolve_op_arg_ref_spec(s, op_guid);
+                        },
+                        [&](RuntimeArgRefSpec const &s) {
+                          return this->resolve_runtime_arg_ref_spec(s);
+                        },
+                        [](ConcreteArgSpec const &s) { return s; },
+                    })});
   }
   return mapping;
 }

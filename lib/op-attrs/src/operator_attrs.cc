@@ -1,9 +1,7 @@
 #include "op-attrs/operator_attrs.h"
-#include "utils/containers.h"
 #include "utils/fmt.h"
 #include "utils/record_formatter.h"
 #include "utils/type_traits.h"
-#include "visit_struct/visit_struct.hpp"
 
 namespace FlexFlow {
 

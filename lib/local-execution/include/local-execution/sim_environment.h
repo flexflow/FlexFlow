@@ -26,18 +26,18 @@ public:
 };
 
 struct SimTaskBinding {
-  void bind(slot_id, ParallelTensorShape const &);
-  void bind_untrainable(slot_id, ParallelTensorShape const &);
-  void bind(slot_id, ParallelTensorShape const &, IsTrainable);
-  void bind(slot_id, InputParallelTensorDesc const &);
+  void bind(slot_id_t, ParallelTensorShape const &);
+  void bind_untrainable(slot_id_t, ParallelTensorShape const &);
+  void bind(slot_id_t, ParallelTensorShape const &, IsTrainable);
+  void bind(slot_id_t, InputParallelTensorDesc const &);
 
-  void bind(slot_id, std::vector<ParallelTensorShape> const &);
-  void bind_untrainable(slot_id, std::vector<ParallelTensorShape> const &);
-  void bind(slot_id, std::vector<ParallelTensorShape> const &, IsTrainable);
-  void bind(slot_id, InputVariadicParallelTensorDesc const &);
+  void bind(slot_id_t, std::vector<ParallelTensorShape> const &);
+  void bind_untrainable(slot_id_t, std::vector<ParallelTensorShape> const &);
+  void bind(slot_id_t, std::vector<ParallelTensorShape> const &, IsTrainable);
+  void bind(slot_id_t, InputVariadicParallelTensorDesc const &);
 
   template <typename T>
-  void bind_arg(slot_id, T const &);
+  void bind_arg(slot_id_t, T const &);
 };
 
 SimTaskBinding infer_bwd_binding(SimTaskBinding const &);

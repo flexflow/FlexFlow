@@ -1,5 +1,6 @@
 #include "substitutions/tensor_pattern/satisfies_pattern.h"
 #include "substitutions/tensor_pattern/satisfies_constraint.h"
+#include "utils/containers/all_of.h"
 
 namespace FlexFlow {
 

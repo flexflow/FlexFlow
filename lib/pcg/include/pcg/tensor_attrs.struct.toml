@@ -17,6 +17,10 @@ includes = [
   "<optional>",
 ]
 
+src_includes = [
+  "utils/fmt/optional.h",
+]
+
 [[fields]]
 name = "shape"
 type = "::FlexFlow::TensorShape"
@@ -28,7 +32,6 @@ type = "std::optional<::FlexFlow::InitializerAttrs>"
 [[fields]]
 name = "sync_type"
 type = "std::optional<::FlexFlow::ParamSync>"
-
 
 [[fields]]
 name = "create_gradients"

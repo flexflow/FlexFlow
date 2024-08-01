@@ -1,10 +1,17 @@
 #include "pcg/computation_graph.h"
-#include "utils/containers.h"
+#include "utils/containers/reversed.h"
+#include "utils/containers/transform.h"
+#include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/digraph/algorithms/get_topological_ordering.h"
+#include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
 ComputationGraph make_empty_computation_graph() {
-  return ComputationGraph{DataflowGraph<LayerAttrs, TensorAttrs>{}};
+  return ComputationGraph{
+      LabelledDataflowGraph<LayerAttrs, TensorAttrs>::create<
+          UnorderedSetLabelledOpenDataflowGraph<LayerAttrs, TensorAttrs>>()};
 }
 
 std::unordered_set<layer_guid_t> get_layers(ComputationGraph const &cg) {
@@ -18,33 +25,29 @@ TensorAttrs get_tensor_attrs(ComputationGraph const &cg,
 }
 
 std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg) {
-  std::vector<Node> layers =
-      get_topological_ordering(cg.raw_graph.get_raw_graph());
+  std::vector<Node> layers = get_topological_ordering(cg.raw_graph);
   return transform(
       layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }
 
-static std::vector<tensor_guid_t>
-    sort_edge_set(std::unordered_set<MultiDiEdge> const &edges) {
+std::vector<layer_guid_t>
+    reverse_topological_ordering(ComputationGraph const &cg) {
+  std::vector<Node> layers =
+      reversed<std::vector<Node>>(get_topological_ordering(cg.raw_graph));
   return transform(
-      sorted_by(edges, compare_by<MultiDiEdge>([](MultiDiEdge const &e) {
-                  return e.src_idx;
-                })),
-      [&](MultiDiEdge const &e) -> tensor_guid_t { return tensor_guid_t{e}; });
+      layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }
 
 std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n) {
-  return transform(cg.raw_graph.get_output_map().at(n.raw_node),
-                   [&](MultiDiOutput const &o) -> tensor_guid_t {
-                     return tensor_guid_t{o};
-                   });
+  return transform(get_outputs(cg.raw_graph, n.raw_node),
+                   [](DataflowOutput const &o) { return tensor_guid_t{o}; });
 }
 
 std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n) {
-  return sort_edge_set(
-      get_incoming_edges(cg.raw_graph.get_raw_graph(), n.raw_node));
+  return transform(get_inputs(cg.raw_graph, n.raw_node),
+                   [](DataflowOutput const &o) { return tensor_guid_t{o}; });
 }
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n) {

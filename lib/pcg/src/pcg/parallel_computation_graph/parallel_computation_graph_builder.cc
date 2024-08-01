@@ -2,8 +2,10 @@
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
-#include "utils/containers.h"
 #include "utils/containers/concat_vectors.h"
+#include "utils/containers/enumerate_vector.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 
@@ -444,7 +446,7 @@ std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
     std::vector<parallel_tensor_guid_t> const &inputs,
     std::vector<ParallelTensorAttrs> const &weights,
     std::vector<ParallelTensorAttrs> const &outputs) {
-  std::vector<MultiDiOutput> raw_weight_tensors;
+  std::vector<DataflowOutput> raw_weight_tensors;
   for (auto const &kv : enumerate_vector(weights)) {
     int weight_idx = kv.first;
     ParallelTensorAttrs weight_tensor_attrs = kv.second;
@@ -457,26 +459,26 @@ std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
         PCGOperatorAttrs{WeightAttrs{}},
         weight_name,
     };
-    std::vector<MultiDiOutput> weight_layer_inputs = {};
+    std::vector<DataflowOutput> weight_layer_inputs = {};
     std::vector<ParallelTensorAttrs> weight_output_attrs = {
         weight_tensor_attrs};
     raw_weight_tensors.push_back(get_only(this->pcg.raw_graph
-                                              .add_operator(weight_layer_attrs,
-                                                            weight_layer_inputs,
-                                                            weight_output_attrs)
+                                              .add_node(weight_layer_attrs,
+                                                        weight_layer_inputs,
+                                                        weight_output_attrs)
                                               .outputs));
   }
 
-  std::vector<MultiDiOutput> raw_inputs =
+  std::vector<DataflowOutput> raw_inputs =
       transform(inputs, [](parallel_tensor_guid_t const &t) {
         return t.raw_graph_output;
       });
-  std::vector<MultiDiOutput> raw_outputs =
+  std::vector<DataflowOutput> raw_outputs =
       this->pcg.raw_graph
-          .add_operator(
+          .add_node(
               layer, concat_vectors(raw_inputs, raw_weight_tensors), outputs)
           .outputs;
-  return transform(raw_outputs, [](MultiDiOutput const &o) {
+  return transform(raw_outputs, [](DataflowOutput const &o) {
     return parallel_tensor_guid_t{o};
   });
 }

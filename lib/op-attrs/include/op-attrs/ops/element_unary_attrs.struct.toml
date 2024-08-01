@@ -12,7 +12,11 @@ features = [
 
 includes = [
   "utils/json.h",
-  "op-attrs/operator_type.h"
+  "op-attrs/operator_type.h",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
 ]
 
 [[fields]]

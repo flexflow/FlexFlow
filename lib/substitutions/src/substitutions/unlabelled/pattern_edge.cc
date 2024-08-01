@@ -1,50 +1,61 @@
 #include "substitutions/unlabelled/pattern_edge.h"
-#include "utils/containers.h"
+#include "substitutions/unlabelled/input_pattern_edge.h"
+#include "substitutions/unlabelled/standard_pattern_edge.h"
+#include "utils/overload.h"
+#include <cassert>
 
 namespace FlexFlow {
 
 std::unordered_set<PatternNode> get_nodes(PatternEdge const &e) {
-  return transform(get_nodes(e.raw_edge),
-                   [](Node const &n) { return PatternNode{n}; });
+  return e.visit<std::unordered_set<PatternNode>>(overload{
+      [](InputPatternEdge const &ee) {
+        return std::unordered_set<PatternNode>{get_dst_node(ee)};
+      },
+      [](StandardPatternEdge const &ee) {
+        return std::unordered_set<PatternNode>{
+            get_src_node(ee),
+            get_dst_node(ee),
+        };
+      },
+  });
 }
 
 bool is_standard_edge(PatternEdge const &e) {
-  return is_standard_edge(e.raw_edge);
+  return e.has<StandardPatternEdge>();
 }
 
 bool is_input_edge(PatternEdge const &e) {
-  return is_input_edge(e.raw_edge);
+  return e.has<InputPatternEdge>();
 }
 
-bool is_output_edge(PatternEdge const &e) {
-  return is_output_edge(e.raw_edge);
-}
-
-ClosedPatternEdge require_closed_edge(PatternEdge const &e) {
-  assert(is_closed_edge(e));
-  return ClosedPatternEdge{std::get<MultiDiEdge>(e.raw_edge)};
+StandardPatternEdge require_standard_edge(PatternEdge const &e) {
+  assert(is_standard_edge(e));
+  return e.get<StandardPatternEdge>();
 }
 
 InputPatternEdge require_input_edge(PatternEdge const &e) {
   assert(is_input_edge(e));
-  return InputPatternEdge{std::get<InputMultiDiEdge>(e.raw_edge)};
-}
-
-OutputPatternEdge require_output_edge(PatternEdge const &e) {
-  assert(is_output_edge(e));
-  return OutputPatternEdge{std::get<OutputMultiDiEdge>(e.raw_edge)};
+  return e.get<InputPatternEdge>();
 }
 
 PatternEdge pattern_edge_from_input_edge(InputPatternEdge const &e) {
-  return PatternEdge{OpenMultiDiEdge{e.raw_edge}};
+  return PatternEdge{e};
 }
 
-PatternEdge pattern_edge_from_output_edge(OutputPatternEdge const &e) {
-  return PatternEdge{OpenMultiDiEdge{e.raw_edge}};
+PatternEdge pattern_edge_from_standard_edge(StandardPatternEdge const &e) {
+  return PatternEdge{e};
 }
 
-PatternEdge pattern_edge_from_closed_edge(ClosedPatternEdge const &e) {
-  return PatternEdge{OpenMultiDiEdge{e.raw_edge}};
+PatternEdge
+    pattern_edge_from_raw_open_dataflow_edge(OpenDataflowEdge const &e) {
+  return e.visit<PatternEdge>(overload{
+      [](DataflowInputEdge const &ee) {
+        return PatternEdge{InputPatternEdge{ee}};
+      },
+      [](DataflowEdge const &ee) {
+        return PatternEdge{StandardPatternEdge{ee}};
+      },
+  });
 }
 
 } // namespace FlexFlow

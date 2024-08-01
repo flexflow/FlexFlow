@@ -12,6 +12,8 @@ ParallelComputationGraph empty_parallel_computation_graph();
 
 std::unordered_set<parallel_layer_guid_t>
     get_parallel_layers(ParallelComputationGraph const &);
+std::unordered_set<parallel_tensor_guid_t>
+    get_parallel_tensors(ParallelComputationGraph const &);
 
 ParallelLayerAddedResult
     add_parallel_layer(ParallelComputationGraph &pcg,
@@ -36,6 +38,10 @@ ParallelTensorAttrs get_parallel_tensor_attrs(ParallelComputationGraph const &,
 
 std::vector<parallel_layer_guid_t>
     topological_ordering(ParallelComputationGraph const &);
+
+parallel_layer_guid_t
+    get_parallel_layer_by_name(ParallelComputationGraph const &pcg,
+                               std::string const &name);
 
 } // namespace FlexFlow
 

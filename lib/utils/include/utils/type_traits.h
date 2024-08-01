@@ -64,15 +64,6 @@ template <typename T>
 struct is_streamable<T, void_t<decltype(std::cout << std::declval<T>())>>
     : std::true_type {};
 
-template <typename T, typename Enable = void>
-struct is_lt_comparable : std::false_type {};
-
-template <typename T>
-struct is_lt_comparable<
-    T,
-    void_t<decltype((bool)(std::declval<T>() < std::declval<T>()))>>
-    : std::true_type {};
-
 template <template <typename...> class Cond, typename... Ts>
 struct elements_satisfy_impl;
 

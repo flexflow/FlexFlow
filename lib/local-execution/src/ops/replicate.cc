@@ -18,9 +18,7 @@
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/exception.h"
-#include "utils/graph/serialparallel.h"
 #include "utils/hash-utils.h"
-#include <sys/types.h>
 
 namespace FlexFlow {
 

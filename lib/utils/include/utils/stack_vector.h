@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_UTILS_STACK_VECTOR_H
 #define _FLEXFLOW_UTILS_STACK_VECTOR_H
 
-#include "containers.h"
 #include "hash-utils.h"
 #include "rapidcheck.h"
 #include "utils/fmt.h"

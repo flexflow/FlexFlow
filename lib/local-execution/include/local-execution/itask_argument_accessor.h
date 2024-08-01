@@ -13,12 +13,12 @@ struct ITaskArgumentAccessor {
 
   virtual ~ITaskArgumentAccessor() = default;
 
-  virtual ConcreteArgSpec const &get_concrete_arg(slot_id) const = 0;
+  virtual ConcreteArgSpec const &get_concrete_arg(slot_id_t) const = 0;
 
   virtual GenericTensorAccessor
-      get_tensor(slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
+      get_tensor(slot_id_t slot, Permissions priv, IsGrad is_grad) const = 0;
   virtual VariadicGenericTensorAccessor get_variadic_tensor(
-      slot_id slot, Permissions priv, IsGrad is_grad) const = 0;
+      slot_id_t slot, Permissions priv, IsGrad is_grad) const = 0;
 
   virtual Allocator get_allocator() const = 0;
   virtual size_t get_device_idx() const = 0;

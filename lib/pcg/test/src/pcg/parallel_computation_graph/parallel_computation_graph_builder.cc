@@ -3,8 +3,14 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_layer_attrs.h"
 #include "test/utils/doctest.h"
-#include "utils/containers.h"
+#include "utils/containers/count.h"
+#include "utils/containers/generate_map.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/items.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/values.h"
 #include "utils/containers/without_nullopts.h"
+#include "utils/hash/pair.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ParallelComputationGraphBuilder::add") {

@@ -1,5 +1,6 @@
 #include "kernels/local_cuda_allocator.h"
 #include "kernels/device.h"
+#include "utils/containers/contains.h"
 
 namespace FlexFlow {
 void *LocalCudaAllocator::allocate(size_t requested_memory_size) {
