@@ -603,45 +603,18 @@ __host__ void
 
   // create new cuda graph
   cudaGraphExec_t instance;
-  // cudaGraphExecUpdateResult updateResult;
 
   GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->prompt_phase};
-  //graph_params.Print();
-  // int shard_id = task->index_point.point_data[0];
 
-  // bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE or bc->get_mode() == TREE_VERIFY_MODE);
-  bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE);
-  // bool use_cuda_graph = (bc->get_mode() == TREE_VERIFY_MODE);
-  // bool use_cuda_graph = false;
+  bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE or bc->get_mode() == TREE_VERIFY_MODE);
   bool captured = false;
 
   if(use_cuda_graph && metas->graph_collections.count(graph_params)  != 0) {
     captured = true;
     instance = metas->graph_collections[graph_params];
-    // if (cudaGraphExecUpdate(instance, graph, NULL, &updateResult) != cudaSuccess) {
-    //   cudaGraphExecDestroy(instance);
-    //   captured = false;
-    // } else {
-    //   // if(shard_id == 0) {
-    //   //   printf("---------start to reuse the graph-------\n");
-    //   //   graph_params.Print();
-    //   //   // bc->print();
-    //   //   printf("---------end to reuse the graph-------\n");
-    //   // }
-    // }
   }
-
-  // ssm ops: 23, (89/90 93 90 5 5 86 5) * 2, 90 5 19
-  // OP_EMBEDDING
-  // OP_RMS_NORM/OP_RESIDUAL_RMS_NORM, OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION, OP_RESIDUAL_RMS_NORM, OP_LINEAR, OP_LINEAR, OP_SIGMOID_SILU_MULTI, OP_LINEAR
-  // OP_RESIDUAL_RMS_NORM, OP_LINEAR, OP_SOFTMAX
-
-  // llm ops: 23, (89/90 94 101 90 5 5 86 5 101) * 32, 90 5 
-  // OP_EMBEDDING
-  // OP_RMS_NORM/OP_RESIDUAL_RMS_NORM, OP_TREE_INC_MULTIHEAD_SELF_ATTENTION, OP_ALLREDUCE, OP_RESIDUAL_RMS_NORM, OP_LINEAR, OP_LINEAR, OP_SIGMOID_SILU_MULTI, OP_LINEAR, OP_ALLREDUCE
-  // OP_RESIDUAL_RMS_NORM, OP_LINEAR
 
   if (!captured) {
     cudaGraph_t graph;
@@ -947,10 +920,6 @@ __host__ void
             assert(fused->op_num_outputs[op] == 1);
             TreeIncMultiHeadSelfAttentionMeta *m =
                 (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-            // TreeVerifyBatchConfig const *verify_bc =
-            //     (TreeVerifyBatchConfig *)task->args;
-            // BatchConfig const &verify_bc =
-            //     Future(task->futures[0]).get_result<BatchConfig>();
             BatchConfig const *verify_bc =
                 BatchConfig::from_future(task->futures[0]);
             assert(fused->op_num_weights[op] ==
@@ -975,10 +944,6 @@ __host__ void
             assert(fused->op_num_outputs[op] == 1);
             SpecIncMultiHeadSelfAttentionMeta *m =
                 (SpecIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-            // TreeSearchBatchConfig const *search_bc =
-            //     (TreeSearchBatchConfig *)task->args;
-            // BatchConfig const &search_bc =
-            //     Future(task->futures[0]).get_result<BatchConfig>();
             BatchConfig const *search_bc =
                 BatchConfig::from_future(task->futures[0]);
             assert(fused->op_num_weights[op] ==
@@ -1184,12 +1149,6 @@ __host__ void
     if (use_cuda_graph) { 
       cudaGraphInstantiate(&instance, graph, NULL, NULL, 0);
       metas->graph_collections[graph_params] = instance;
-      // if(shard_id == 0) {
-      //   printf("*************start cudaGraphInstantiate**********\n");
-      //   graph_params.Print();
-      //   // bc->print();
-      //   printf("*************end cudaGraphInstantiate**********\n");
-      // }
       cudaGraphDestroy(graph);
     }
   }
@@ -1197,23 +1156,7 @@ __host__ void
   if (use_cuda_graph) {
     assert(metas->graph_collections.find(graph_params) !=
           metas->graph_collections.end());
-    // cudaEvent_t t_start, t_end;
-    // float elapsed;
-    // cudaEventCreate(&t_start);
-    // cudaEventCreate(&t_end);
-    // cudaEventRecord(t_start, stream);
-
     cudaGraphLaunch(instance, stream);
-
-    // cudaEventRecord(t_end, stream);
-    // checkCUDA(cudaEventSynchronize(t_end));
-    // elapsed = 0;
-    // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-    // cudaEventDestroy(t_start);
-    // cudaEventDestroy(t_end);
-    // if(shard_id == 0 && bc->get_mode() == TREE_SEARCH_MODE) {
-    //   printf("cudaGraphLaunch time: %f ms, captured: %d\n", elapsed, captured);
-    // }
   }
 }
 
