@@ -5,7 +5,7 @@
 #include "op-attrs/operator_attrs.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/machine_view.h"
-#include "pcg/parallel_tensor_attrs.dtg.h"
+#include "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h"
 
 namespace FlexFlow {
 

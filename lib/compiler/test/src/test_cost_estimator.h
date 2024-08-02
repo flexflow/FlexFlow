@@ -8,6 +8,8 @@ namespace FlexFlow {
 struct TestCostEstimator : public ICostEstimator {
   float estimate_cost(PCGOperatorAttrs const &op,
                       std::vector<ParallelTensorShape> const &inputs,
+                      std::vector<ParallelTensorAttrs> const &weights,
+                      std::vector<ParallelTensorAttrs> const &outputs,
                       MachineView const &mv) const override {
     return 0.1;
   }
