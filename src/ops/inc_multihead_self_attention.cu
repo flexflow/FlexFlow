@@ -812,46 +812,17 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
 
-  // if (m->offload && m->biasSize > 0) {
-  //   cudaMemcpyAsync(
-  //       m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
-  //   bias_ptr = static_cast<DT *>(m->bias_ptr);
-  // }
-
   // phase 0: copy calculated qkv into devQKVProjArray
   // [qProjSize, num_heads, 3, num_new_tokens]
   size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
-  checkCUDA(cudaDeviceSynchronize());
 
-  cudaMemcpy(m->devQKVProjArray,
+  cudaMemcpyAsync(m->devQKVProjArray,
                   qkv_ptr,
                   qkv_proj_size * sizeof(DT),
-                  cudaMemcpyDeviceToDevice);
-                  // stream);
-
-  // std::string op_name_without_uid =
-  //       IncMultiHeadSelfAttention::get_op_name_without_uid(m);
-  //   fs::path dst_filepath = get_dst_folder("fwd", m->decoding_step, shard_id);
-  //   if (m->layer_guid.model_id > 0) {
-  //     assert(false && "Model ID > 0 not supported yet");
-  //   }
-  //   std::string layername = "layers." +
-  //                           std::to_string(m->layer_guid.transformer_layer_id) +
-  //                           "." + op_name_without_uid;
-  //   dst_filepath /= layername;
-  //   std::string file_name = dst_filepath.string() + ".qkv";
-
-  //   std::cout<<"attn kernel logging "<<m->qProjSize * m->num_q_heads * 3 * bc->num_active_infr_tokens()<<" numbers to "<<file_name<<std::endl;
-  //   std::cout<<"proj_size: "<<m->qProjSize<<", num_q_heads: "<<m->num_q_heads<<", num_tokens: "<<bc->num_active_infr_tokens()<<std::endl;
-
-  //   save_tensor((DT*)m->devQKVProjArray, m->qProjSize * m->num_q_heads * 3 * bc->num_active_infr_tokens(), file_name.c_str());
-  //   // save_tensor(qkv_ptr, 1152*128, file_name.c_str());
-
-
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 
   // phase 1: Implement kernel to apply rotary embedding and scaling
-  
-
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
@@ -878,33 +849,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
 
-
-  // simply copy the result to output_ptr
-  // TODO: maybe let previous kernel write directly to output_ptr?
-  checkCUDA(cudaDeviceSynchronize());
-  cudaMemcpy(output_ptr,
+  cudaMemcpyAsync(output_ptr,
                   m->attn_heads,
                   m->oProjSize * num_tokens * sizeof(DT),
-                  cudaMemcpyDeviceToDevice);
-                  // stream);
-
-  // std::string op_name_without_uid =
-  //       IncMultiHeadSelfAttention::get_op_name_without_uid(m);
-  //   fs::path dst_filepath = get_dst_folder("fwd", m->decoding_step, shard_id);
-  //   if (m->layer_guid.model_id > 0) {
-  //     assert(false && "Model ID > 0 not supported yet");
-  //   }
-  //   std::string layername = "layers." +
-  //                           std::to_string(m->layer_guid.transformer_layer_id) +
-  //                           "." + op_name_without_uid;
-  //   dst_filepath /= layername;
-  //   std::string file_name = dst_filepath.string() + ".o_raw";
-
-  //   std::cout<<"attn kernel logging "<<m->vProjSize * m->num_q_heads * bc->num_active_infr_tokens()<<" numbers to "<<file_name<<std::endl;
-  //   std::cout<<"proj_size: "<<m->vProjSize<<", num_q_heads: "<<m->num_q_heads<<", num_tokens: "<<bc->num_active_infr_tokens()<<std::endl;
-
-  //   save_tensor((DT*)output_ptr, m->vProjSize * m->num_q_heads * bc->num_active_infr_tokens(), file_name.c_str());
-    // save_tensor(qkv_ptr, 1152*128, file_name.c_str());
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,

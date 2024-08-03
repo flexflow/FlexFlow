@@ -125,10 +125,7 @@ public:
                                        BatchConfig const *bc,
                                        int shard_id,
                                        GenericTensorAccessorR const &input,
-                                      //  GenericTensorAccessorR const &weight,
-                                       GenericTensorAccessorW const &output
-                                      //  GenericTensorAccessorR const &bias);
-  );
+                                       GenericTensorAccessorW const &output);
   static void peft_bwd_kernel_wrapper(IncMultiHeadSelfAttentionMeta *m,
                                       BatchConfig const *bc,
                                       int shard_id,
