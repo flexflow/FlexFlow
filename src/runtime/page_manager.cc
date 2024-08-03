@@ -27,6 +27,8 @@
 
 namespace FlexFlow {
 
+PageManager *page_manager_singleton = nullptr;
+
 LogicalTokenBlock::LogicalTokenBlock(int block_number, int block_size)
     : block_number(block_number), block_size(block_size), num_tokens(0) {}
 
@@ -165,6 +167,14 @@ std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request
         indices.push_back(block.block_number);
     }
     return indices;
+}
+
+PageManager *PageManager::get_page_manager() {
+  if (page_manager_singleton == nullptr) {
+    // FIXME: These values are hardcoded for now
+    page_manager_singleton = new PageManager(64, 10000);
+  }
+  return page_manager_singleton;
 }
 
 

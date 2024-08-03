@@ -88,6 +88,7 @@ private:
 
 class PageManager {
 public:
+    static PageManager *get_page_manager();
     using BlockTable = std::vector<PhysicalTokenBlock>;
     using RequestGuid = BatchConfig::RequestGuid;
     PageManager(int block_size, int num_total_blocks);
