@@ -330,36 +330,35 @@ void load_attention_weights_to_dense_v2(DT *ptr,
         assert(false && "data size mismatch");
       }
       // wq, wk, wo
-      // if (file_index == 0) {
-      //   for (int i = 0; i < tensor_parallelism_degree; i++) {
-      //     for (int j = 0; j < one_partition_size; j++) {
-      //       ptr[base_index + i * stride_size + j] = host_array.at(data_index++);
-      //     }
-      //   }
-      // } else {
-      //   for (int i = 0; i < num_heads; i++) {
-      //     int kv_idx = i / (num_heads / num_kv_heads);
-      //     int head_idx = i % (num_heads / tensor_parallelism_degree);
-      //     int tp_idx = (i / (num_heads / tensor_parallelism_degree));
-      //     for (int j = 0; j < single_proj_size; j++) {
-      //       ptr[base_index + tp_idx * stride_size + single_proj_size * head_idx +
-      //           j] = host_array.at(kv_idx * single_proj_size + j);
-      //     }
-      //   }
-      // }
-      for (int i = 0; i < one_weight_file_size; i++) {
-        ptr[base_index + i] = host_array.at(data_index++);
+      if (file_index == 0) {
+        for (int i = 0; i < tensor_parallelism_degree; i++) {
+          for (int j = 0; j < one_partition_size; j++) {
+            ptr[base_index + i * stride_size + j] = host_array.at(data_index++);
+          }
+        }
+      } else {
+        for (int i = 0; i < num_heads; i++) {
+          int kv_idx = i / (num_heads / num_kv_heads);
+          int head_idx = i % (num_heads / tensor_parallelism_degree);
+          int tp_idx = (i / (num_heads / tensor_parallelism_degree));
+          for (int j = 0; j < single_proj_size; j++) {
+            ptr[base_index + tp_idx * stride_size + single_proj_size * head_idx +
+                j] = host_array.at(kv_idx * single_proj_size + j);
+          }
+        }
       }
+      // for (int i = 0; i < one_weight_file_size; i++) {
+      //   ptr[base_index + i] = host_array.at(data_index++);
+      // }
       std::cout<<"host array going out of scope, releasing"<<endl;
       // assert(data_index == partial_size);
-      // base_index += one_partition_size;
-      base_index += one_weight_file_size;
+      base_index += one_partition_size;
+      // base_index += one_weight_file_size;
       file_index++;
     }
-    // assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
-    //                         tensor_parallelism_degree);
-    assert(base_index == (q_size + k_replicate_size + v_replicate_size));
-    std::cout<<"qkv weight loaded to dense, returning"<<endl;
+    assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
+                            tensor_parallelism_degree);
+    // assert(base_index == (q_size + k_replicate_size + v_replicate_size));
   } else {
     std::cout << "Loading weight file " << o_file << std::endl;
     std::string weight_filepath = join_path({weights_folder, o_file});

@@ -303,6 +303,7 @@ public:
 
     // save all inputs
     for (int i = 0; i < input_tensors.size(); i++) {
+      std::cout<<"input tensor "<<i<<": "<<input_tensors[i].domain.lo()<<" "<<input_tensors[i].domain.hi()<<std::endl;
       std::string filename = dst_filepath.string() + ".input_";
       if (fwd_pass) {
         filename += std::to_string(i);
@@ -310,10 +311,12 @@ public:
         filename += "gradient_" + std::to_string(i);
       }
       if (input_tensors[i].data_type == DT_FLOAT) {
+        std::cout<<"saving tensor as float"<<std::endl;
         save_tensor(input_tensors[i].get_float_ptr(),
                     input_tensors[i].domain.get_volume(),
                     filename.c_str());
       } else if (input_tensors[i].data_type == DT_HALF) {
+        std::cout<<"saving tensor as half"<<std::endl;
         save_tensor(input_tensors[i].get_half_ptr(),
                     input_tensors[i].domain.get_volume(),
                     filename.c_str());
@@ -364,6 +367,7 @@ public:
 
     // save all outputs
     for (int i = 0; i < output_tensors.size(); i++) {
+      std::cout<<"output tensor "<<i<<": "<<output_tensors[i].domain.lo()<<" "<<output_tensors[i].domain.hi()<<std::endl;
       std::string filename = dst_filepath.string() + ".output_";
       if (fwd_pass) {
         filename += std::to_string(i);
@@ -371,10 +375,12 @@ public:
         filename += "gradient_" + std::to_string(i);
       }
       if (output_tensors[i].data_type == DT_FLOAT) {
+        std::cout<<"saving tensor as float"<<std::endl;
         save_tensor(output_tensors[i].get_float_ptr(),
                     output_tensors[i].domain.get_volume(),
                     filename.c_str());
       } else if (output_tensors[i].data_type == DT_HALF) {
+        std::cout<<"saving tensor as half"<<std::endl;
         save_tensor(output_tensors[i].get_half_ptr(),
                     output_tensors[i].domain.get_volume(),
                     filename.c_str());

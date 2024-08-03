@@ -511,6 +511,24 @@ void forward_kernel(LinearMeta const *m,
                          out_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
+  if(std::string(m->op_name).find(".o_proj") != std::string::npos) {
+    // std::string op_name_without_uid =
+    // Linear::get_op_name_without_uid(m);
+    //   fs::path dst_filepath = get_dst_folder("fwd", m->decoding_step, shard_id);
+    // if (m->layer_guid.model_id > 0) {
+    //   assert(false && "Model ID > 0 not supported yet");
+    // }
+    // std::string layername = "layers." +
+    //                         std::to_string(m->layer_guid.transformer_layer_id) +
+    //                         "." + op_name_without_uid;
+    // dst_filepath /= layername;
+    // std::string file_name = dst_filepath.string() + ".o_proj_raw";
+
+    std::cout<<"logging raw o_proj, batch_size: "<<batch_size<<", in_dim: "<<in_dim<<", out_dim: "<<out_dim<<std::endl;
+
+    // save_tensor((DT*)output_ptr, batch_size * out_dim, file_name);
+  }
   // use_bias = True
   if (bias_ptr != NULL) {
     // fuse bias and relu

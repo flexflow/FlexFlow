@@ -893,15 +893,18 @@ void IncMultiHeadSelfAttention::inference_task(
          m, bc, task->index_point.point_data[0], input, output);
 
   if (m->inference_debugging) {
-    // assert(task->index_point.get_dim() == 1);
-    // int shard_id = task->index_point.point_data[0];
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
     // std::vector<GenericTensorAccessorR> weights_accessors;
     // weights_accessors.push_back(weight);
     // if (*m->qkv_bias || *m->final_bias) {
     //   weights_accessors.push_back(biases);
     // }
-    // IncMultiHeadSelfAttention::save_inference_tensors_to_file(
-    //     m, shard_id, bc, {input}, weights_accessors, {output});
+    // std::cout<<"input qkv projection: "<<input.domain.hi() <<" "<<input.domain.lo()<<std::endl;
+    IncMultiHeadSelfAttention::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {}, {output});
+
+    assert(m->decoding_step < 2 && "inference debugging not intended");
   }
 }
 
