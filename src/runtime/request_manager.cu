@@ -145,18 +145,159 @@ void RequestManager::load_batch_config_task(
             cudaMemcpyHostToDevice,
             stream));
       }
-    }
-    total_copy_size += sizeof(BatchConfig::causalMask);
-
-    if (batch_config->num_tokens_to_commit > 0) {
-      checkCUDA(cudaMemcpyAsync(
-          static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-          &(batch_config->committed_tokens),
-          batch_config->num_tokens_to_commit *
-              sizeof(BatchConfig::CommittedTokensInfo),
-          cudaMemcpyHostToDevice,
-          stream));
       total_copy_size += sizeof(BatchConfig::committed_tokens);
+
+      // calculate the attention meta data
+      {
+        BatchConfig::PerRequestInfo *request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
+          static_cast<char *>(handle.batch_config_metadata) +
+          sizeof(BatchConfig::tokensInfo));
+        bool *request_available = reinterpret_cast<bool *>(
+          static_cast<char *>(handle.batch_config_metadata) +
+          sizeof(BatchConfig::tokensInfo) +
+          sizeof(BatchConfig::requestsInfo));
+        BatchConfig::BitMask *causalMask = reinterpret_cast<BatchConfig::BitMask *>(
+          static_cast<char *>(handle.batch_config_metadata) +
+          sizeof(BatchConfig::tokensInfo) +
+          sizeof(BatchConfig::requestsInfo) +
+          sizeof(BatchConfig::request_available));
+        int batch_size = batch_config->num_active_requests();
+        uint32_t const max_num_pages = (BatchConfig::max_sequence_length() +
+          BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;
+
+        int parallelism = batch_size;
+
+        // Update gpu-side custom mask referring from CaualMask
+        if (!batch_config->prompt_phase) {
+          int parallelism = 0;
+          for (int req_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
+            if (batch_config->request_available[req_idx]) {
+              int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
+              int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
+                          batch_config->requestsInfo[req_idx].first_token_index_in_request;
+              parallelism += (q_len * kv_len + 7) / 8;
+            }
+          }
+          update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
+                                      min(CUDA_NUM_THREADS, parallelism),
+                                      0,
+                                      stream>>>(handle.tree_verify_attention_metadata->custom_mask,
+                                                handle.tree_verify_attention_metadata->qk_indptr,
+                                                causalMask,
+                                                request_infos,
+                                                request_available,
+                                                batch_size);
+        }
+      }
+
+      // prepare attention forward handler
+      {
+        int batch_size = batch_config->num_active_requests();
+        uint32_t const max_num_pages = (BatchConfig::max_sequence_length() +
+          BatchConfig::max_spec_tree_token_num() + kPagesize - 1) / kPagesize;
+        BatchPrefillHandler *handler = nullptr;
+
+        if (!batch_config->prompt_phase) {
+          if (handle.tree_verify_attention_metadata->decode_handler_collections.count(batch_size) == 0) {
+            handle.tree_verify_attention_metadata->decode_handler_collections[batch_size] =
+                static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+          }
+          handler = static_cast<BatchPrefillHandler *>(
+            handle.tree_verify_attention_metadata->decode_handler_collections[batch_size]);
+        } else {
+          if (handle.tree_verify_attention_metadata->prompt_handler_collections.count(batch_size) == 0) {
+            handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size] =
+                static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+          }
+          handler = static_cast<BatchPrefillHandler *>(
+            handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
+        }
+
+        if (!batch_config->prompt_phase) {
+          if (handle.tree_verify_attention_metadata->decode_handler_collections.count(batch_size) == 0) {
+            handle.tree_verify_attention_metadata->decode_handler_collections[batch_size] =
+                static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+          }
+          handler = static_cast<BatchPrefillHandler *>(
+            handle.tree_verify_attention_metadata->decode_handler_collections[batch_size]);
+        } else {
+          if (handle.tree_verify_attention_metadata->prompt_handler_collections.count(batch_size) == 0) {
+            handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size] =
+                static_cast<void *>(new flashinfer::BatchPrefillHandler(true));
+          }
+          handler = static_cast<BatchPrefillHandler *>(
+            handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
+        }
+
+        static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+        static int32_t kv_indices_h[BatchConfig::MAX_NUM_REQUESTS * BatchConfig::MAX_NUM_TOKENS];
+        static int32_t qk_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+        static int32_t kv_last_page_len_h[BatchConfig::MAX_NUM_REQUESTS];
+        q_indptr_h[0] = 0;
+        kv_indptr_h[0] = 0;
+        qk_indptr_h[0] = 0;
+        int cnt_1 = 0, q_lens = 0, qk_lens = 0;
+        int indices_offset = 0, indices_lens = 0, kv_len = 0;
+        for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
+          if (batch_config->request_available[req_idx]) {
+            int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
+            int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
+                        batch_config->requestsInfo[req_idx].first_token_index_in_request;
+            q_lens += q_len;
+            qk_lens += (q_len * kv_len + 7) / 8;
+            indices_offset = indices_lens;
+            indices_lens += (kv_len + kPagesize - 1) / kPagesize;
+            q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
+            kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+            for (int i = indices_offset; i < indices_lens; i++) {
+              kv_indices_h[i] = max_num_pages * req_idx  + (i - indices_offset);
+            }
+            qk_indptr_h[indptr_idx + 1] = qk_lens;
+            kv_last_page_len_h[indptr_idx] = (kv_len - 1) % kPagesize + 1;
+            indptr_idx++;
+          }
+        }
+
+        // do the copy
+        checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_indices,
+                                  kv_indices_h,
+                                  sizeof(int32_t) * batch_size * max_num_pages,
+                                  cudaMemcpyHostToDevice,
+                                  stream));
+        checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_last_page_len,
+                                  kv_last_page_len_h,
+                                  sizeof(int32_t) * batch_size,
+                                  cudaMemcpyHostToDevice,
+                                  stream));
+        checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->q_indptr,
+                                  q_indptr_h,
+                                  sizeof(int32_t) * (batch_size + 1),
+                                  cudaMemcpyHostToDevice,
+                                  stream));
+        checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_indptr,
+                                  kv_indptr_h,
+                                  sizeof(int32_t) * (batch_size + 1),
+                                  cudaMemcpyHostToDevice,
+                                  stream));
+        checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->qk_indptr,
+                                  qk_indptr_h,
+                                  sizeof(int32_t) * (batch_size + 1),
+                                  cudaMemcpyHostToDevice,
+                                  stream));
+
+        handler->SetCUDAStream(stream);
+        handler->BeginForward<half, int32_t>(static_cast<void*>(
+                                              static_cast<char*>(handle.tree_verify_attention_metadata->workspace) +
+                                              handle.tree_verify_attention_metadata->workspace_block * batch_size),
+                                            handle.tree_verify_attention_metadata->workspace_block,
+                                            static_cast<int32_t *>(q_indptr_h),
+                                            static_cast<int32_t *>(kv_indptr_h),
+                                            batch_size,
+                                            handle.tree_verify_attention_metadata->num_q_heads(),
+                                            handle.tree_verify_attention_metadata->num_kv_heads(),
+                                            handle.tree_verify_attention_metadata->head_dim(),
+                                            kPagesize);
+      }
     }
   }
 
