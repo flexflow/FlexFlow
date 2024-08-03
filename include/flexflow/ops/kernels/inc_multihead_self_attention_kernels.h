@@ -56,7 +56,8 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     int num_heads,
                                     int num_kv_heads,
                                     bool scaling_query,
-                                    float scaling_factor);
+                                    float scaling_factor,
+                                    int hidden_size);
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 template <typename DT>
