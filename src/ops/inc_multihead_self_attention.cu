@@ -1332,7 +1332,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       // TODO: check if this transposeAdd can correctly implement gradient accumulation
       transposeAdd(C, B, n_, k_, alpha, beta, stream);
       
-      printf("backward of raw attn grad: %d, %d, with redudant dimension %d\n", k_, n_, m_);
+      // printf("backward of raw attn grad: %d, %d, with redudant dimension %d\n", k_, n_, m_);
       if (m->inference_debugging) {
         std::string filename =
             get_peft_dbg_folder(m, shard_id) + ".self_attn.input_gradient_0";
@@ -1745,9 +1745,9 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorW const &input_grad,
-    GenericTensorAccessorR const &weight,
-    GenericTensorAccessorR const &output_grad,
-    GenericTensorAccessorR const &bias) {
+    // GenericTensorAccessorR const &weight,
+    GenericTensorAccessorR const &output_grad) {
+    // GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   bool use_bias = *m->qkv_bias || *m->final_bias;
@@ -1761,33 +1761,37 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
 
   // assert(input.data_type == weight.data_type);
   assert(input_grad.data_type == output_grad.data_type);
-  if (use_bias) {
-    assert(input_grad.data_type == bias.data_type);
-  }
+  // if (use_bias) {
+  //   assert(input_grad.data_type == bias.data_type);
+  // }
 
   if (input_grad.data_type == DT_HALF) {
     assert(!m->offload);
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
+    // half const *bias_ptr =
+    //     use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
                                                     bc,
                                                     shard_id,
                                                     input_grad.get_half_ptr(),
-                                                    weight.get_half_ptr(),
+                                                    // weight.get_half_ptr(),
+                                                    static_cast<half const *>(nullptr),
                                                     output_grad.get_half_ptr(),
-                                                    bias_ptr,
+                                                    // bias_ptr,
+                                                    static_cast<half const *>(nullptr),
                                                     stream);
   } else if (input_grad.data_type == DT_FLOAT) {
     assert(!m->offload);
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
+    // float const *bias_ptr =
+    //     use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
                                                     bc,
                                                     shard_id,
                                                     input_grad.get_float_ptr(),
-                                                    weight.get_float_ptr(),
+                                                    // weight.get_float_ptr(),
+                                                    static_cast<float const *>(nullptr),
                                                     output_grad.get_float_ptr(),
-                                                    bias_ptr,
+                                                    // bias_ptr,
+                                                    static_cast<float const *>(nullptr),
                                                     stream);
   } else {
     assert(false && "Unspported data type");

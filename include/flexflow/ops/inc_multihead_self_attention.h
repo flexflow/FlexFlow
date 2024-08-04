@@ -130,9 +130,9 @@ public:
                                       BatchConfig const *bc,
                                       int shard_id,
                                       GenericTensorAccessorW const &input_grad,
-                                      GenericTensorAccessorR const &weight,
-                                      GenericTensorAccessorR const &output_grad,
-                                      GenericTensorAccessorR const &bias);
+                                      // GenericTensorAccessorR const &weight,
+                                      GenericTensorAccessorR const &output_grad);
+                                      // GenericTensorAccessorR const &bias);
   Params get_params() const;
 
 public:

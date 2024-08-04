@@ -33,8 +33,10 @@ fs::path get_dst_folder(std::string const &subdir,
   char cwd[PATH_MAX];
   getcwd(cwd, sizeof(cwd));
 
-  char const *ff_cache_path = std::string(std::getenv("FF_DEBUG_PATH")) == "." ?
-      cwd : std::getenv("FF_DEBUG_PATH");
+  // char const *ff_cache_path = std::string(std::getenv("FF_DEBUG_PATH")) == "." ?
+  //     cwd : std::getenv("FF_DEBUG_PATH");
+
+  char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
   
   std::string debug_dir_ =
       ff_cache_path ? std::string(ff_cache_path) + "/debug/flexflow"

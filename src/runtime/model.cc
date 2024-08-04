@@ -1152,7 +1152,6 @@ bool Op::check_output_input_weight_parallel_dims(bool allocate_weights) const {
 bool Op::check_output_input_weight_same_parallel_is() const {
   assert(numOutputs > 0);
   IndexSpace parallel_is = outputs[0]->parallel_is;
-  printf("checking operator %s\n", name);
   for (int i = 0; i < numOutputs; i++) {
     if (outputs[i]->parallel_is != parallel_is) {
       std::cout<<"outputs["<<i<<"] has different parallel_is "<<outputs[i]->parallel_is<<" than output[0] "<<parallel_is<<std::endl;
