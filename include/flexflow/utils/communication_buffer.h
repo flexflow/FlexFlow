@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef _IPC_MEMORY_H
-#define _IPC_MEMORY_H
+#ifndef _COMMUNICATION_BUFFER_H
+#define _COMMUNICATION_BUFFER_H
 
 #include <vector>
 #ifdef FF_USE_NCCL
@@ -27,29 +27,28 @@
 
 // adapted from https://github.com/mlc-ai/relax
 
-/*!
- * \brief The CUDA IPC (interprocess communication) memory object,
- * which internally contains data pointers to CUDA IPC memory.
- * It is be useful for efficient all-reduce implementation.
- * \note Right now the class members are closely tied with customized
- * all-reduce kernel. They may also be extended for other uses in
- * the future.
- */
-class IPCMemory {
+// The CUDA interprocess communication memory object,
+// which internally contains data pointers to CUDA IPC memory.
+// It is be useful for efficient all-reduce implementation.
+// Right now the class members are closely tied with customized
+// all-reduce kernel. They may also be extended for other uses in
+// the future.
+class CommunicationBuffer {
  public:
-  // The device information for CUDA IPC memory.
+  // The device information for CUDA CommunicationBuffer.
   int num_devices;
   int device_id;
+  void* local_ptr;
 
   // The data pointers of all all-reduce inputs.
   // It has "num_devices" pointers. The i-th pointer is the data pointer on worker i.
   // If "i != device_id", the pointer is an IPC data pointer.
   // Otherwise, the pointer is a local CUDA data pointer.
-  std::vector<void*> remote_data;
+  std::vector<void*> comm_ptrs;
 
-  // The barrier helper datas per IPCMemory object, which can be used 
+  // The barrier helper datas per CommunicationBuffer, which can be used 
   // by custom collective operations and allow fine-grained synchronization on each buffer.
-  // They have "num_devices" pointers, and the pointer arrangement is the same as "remote_data".
+  // They have "num_devices" pointers, and the pointer arrangement is the same as "comm_ptrs".
   std::vector<void*> barrier_in;
   std::vector<void*> barrier_out;
 
@@ -58,10 +57,9 @@ class IPCMemory {
   int barrier_flag;
 };
 
-// Given a local CUDA data pointer, return the IPCMemory object of the pointer.
-IPCMemory create_ipc_memory(int num_devices, int device_id, void* local_ptr);
+CommunicationBuffer create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm, void* local_ptr);
 
-// Release the IPCMemory object.
-void release_ipc_memory(IPCMemory ipc_mem);
+// Release the CommunicationBuffer.
+void release_comm_buf(CommunicationBuffer comm_buf);
 
-#endif // _IPC_MEMORY_H
+#endif // _COMMUNICATION_BUFFER_H
