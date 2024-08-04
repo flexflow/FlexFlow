@@ -87,7 +87,6 @@ __host__ void
   // const FusedOp* fused = (FusedOp*) task->args;
   FusedOpMeta const *metas = *((FusedOpMeta **)task->local_args);
   FusedOp const *fused = metas->fused_op;
-  // BatchConfig const *bc = (BatchConfig *)task->args;
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   // Return if no active tokens
   if (bc->num_tokens == 0) {
@@ -101,16 +100,11 @@ __host__ void
   assert((int)regions.size() == fused->numInputs + fused->numWeights +
                                     fused->numOutputs +
                                     softmax_grad_additional_region);
-  // Domain input_domain[MAX_NUM_INPUTS];
-  // Domain weight_domain[MAX_NUM_WEIGHTS];
-  // Domain output_domain[MAX_NUM_OUTPUTS];
   GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
   GenericTensorAccessorW output_accessor[MAX_NUM_OUTPUTS];
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
-    // input_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i].region.get_index_space());
     input_accessor[i] =
         helperGetGenericTensorAccessorRO(fused->input_data_types[i],
                                          regions[i],
@@ -122,8 +116,6 @@ __host__ void
   int roff = fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
-    // weight_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     weight_accessor[i] =
         helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
                                          regions[i + roff],
@@ -135,8 +127,6 @@ __host__ void
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
-    // output_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     output_accessor[i] =
         helperGetGenericTensorAccessorWO(fused->output_data_types[i],
                                          regions[i + roff],
@@ -165,22 +155,17 @@ __host__ void
 #if 0
     std::cout << get_operator_type_name(fused->op_op_type[op]) << std::endl;
 #endif
-    // Domain my_id[MAX_NUM_INPUTS];
-    // Domain my_wd[MAX_NUM_WEIGHTS];
-    // Domain my_od[MAX_NUM_OUTPUTS];
     GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
     GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
     GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        // my_id[i] = input_domain[my_off];
         my_input_accessor[i] = input_accessor[my_off];
 #if 0
         printf("\tmy_input_accessor[%i] = input_accessor[%i]\n", i, my_off);
 #endif
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        // my_id[i] = output_domain[my_off];
         my_input_accessor[i] = output_accessor[my_off];
 #if 0
         printf("\tmy_input_accessor[%i] = output_accessor[%i]\n", i, my_off);
@@ -191,15 +176,11 @@ __host__ void
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
       my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
     }
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       int my_off = fused->op_output_idx[i + ooff];
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
-      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
       my_output_accessor[i] = output_accessor[my_off];
 #if 0
       printf("\tmy_output_accessor[%i] = output_accessor[%i]\n", i, my_off);
@@ -490,8 +471,6 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         TreeIncMultiHeadSelfAttentionMeta *m =
             (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        // TreeVerifyBatchConfig const *tree_bc =
-        //     (TreeVerifyBatchConfig *)task->args;
         TreeVerifyBatchConfig const &tree_bc =
             Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
         assert(fused->op_num_weights[op] ==
@@ -1244,16 +1223,11 @@ __host__ void FusedOp::forward_task(Task const *task,
   assert(regions.size() == task->regions.size());
   assert((int)regions.size() ==
          fused->numInputs + fused->numWeights + fused->numOutputs);
-  // Domain input_domain[MAX_NUM_INPUTS];
-  // Domain weight_domain[MAX_NUM_WEIGHTS];
-  // Domain output_domain[MAX_NUM_OUTPUTS];
   GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
   GenericTensorAccessorW output_accessor[MAX_NUM_OUTPUTS];
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
-    // input_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i].region.get_index_space());
     input_accessor[i] =
         helperGetGenericTensorAccessorRO(fused->input_data_types[i],
                                          regions[i],
@@ -1265,8 +1239,6 @@ __host__ void FusedOp::forward_task(Task const *task,
   int roff = fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
-    // weight_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     weight_accessor[i] =
         helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
                                          regions[i + roff],
@@ -1278,8 +1250,6 @@ __host__ void FusedOp::forward_task(Task const *task,
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
-    // output_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     output_accessor[i] =
         helperGetGenericTensorAccessorWO(fused->output_data_types[i],
                                          regions[i + roff],
@@ -1304,20 +1274,15 @@ __host__ void FusedOp::forward_task(Task const *task,
 
   int ioff = 0, woff = 0, ooff = 0;
   for (int op = 0; op < fused->numOperators; op++) {
-    // Domain my_id[MAX_NUM_INPUTS];
-    // Domain my_wd[MAX_NUM_WEIGHTS];
-    // Domain my_od[MAX_NUM_OUTPUTS];
     GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
     GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
     GenericTensorAccessorW my_output_accessor[MAX_NUM_OUTPUTS];
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        // my_id[i] = input_domain[my_off];
         assert(my_off < fused->numInputs);
         my_input_accessor[i] = input_accessor[my_off];
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        // my_id[i] = output_domain[my_off];
         assert(my_off < fused->numOutputs);
         my_input_accessor[i] = output_accessor[my_off];
       } else {
@@ -1326,8 +1291,6 @@ __host__ void FusedOp::forward_task(Task const *task,
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
       assert(fused->op_weight_idx[i + woff] < fused->numWeights);
       my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
     }
@@ -1335,8 +1298,6 @@ __host__ void FusedOp::forward_task(Task const *task,
       int my_off = fused->op_output_idx[i + ooff];
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
       assert(my_off < fused->numOutputs);
-      // my_od[i] = output_domain[fused->op_output_idx[i + ooff]];
-      // my_op[i] = output_ptr[fused->op_output_idx[i + ooff]];
       my_output_accessor[i] = output_accessor[my_off];
     }
     switch (fused->op_op_type[op]) {
@@ -1565,7 +1526,6 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_weights[op] == 0);
         assert(fused->op_num_outputs[op] == 1);
-        // assert(my_input_accessor[0].domain == my_output_accessor[0].domain);
         Pool2DMeta *m = (Pool2DMeta *)metas->meta[op];
         Kernels::Pool2D::forward_kernel_wrapper(
             m,
@@ -1699,9 +1659,6 @@ __host__ void FusedOp::backward_task(Task const *task,
     int sum = fused->numInputs + fused->numWeights + fused->numOutputs;
     assert(sum * 2 == (int)regions.size());
   }
-  // Domain input_domain[MAX_NUM_INPUTS], input_grad_domain[MAX_NUM_INPUTS];
-  // Domain weight_domain[MAX_NUM_WEIGHTS], weight_grad_domain[MAX_NUM_WEIGHTS];
-  // Domain output_domain[MAX_NUM_OUTPUTS], output_grad_domain[MAX_NUM_OUTPUTS];
   GenericTensorAccessorR input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorW input_grad_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR weight_accessor[MAX_NUM_WEIGHTS];
@@ -1711,8 +1668,6 @@ __host__ void FusedOp::backward_task(Task const *task,
   int roff = 0;
   assert(fused->numInputs <= MAX_NUM_INPUTS);
   for (int i = 0; i < fused->numInputs; i++) {
-    // input_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i].region.get_index_space());
     input_accessor[i] =
         helperGetGenericTensorAccessorRO(fused->input_data_types[i],
                                          regions[i],
@@ -1724,8 +1679,6 @@ __host__ void FusedOp::backward_task(Task const *task,
   roff += fused->numInputs;
   assert(fused->numWeights <= MAX_NUM_WEIGHTS);
   for (int i = 0; i < fused->numWeights; i++) {
-    // weight_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     weight_accessor[i] =
         helperGetGenericTensorAccessorRO(fused->weight_data_types[i],
                                          regions[i + roff],
@@ -1737,8 +1690,6 @@ __host__ void FusedOp::backward_task(Task const *task,
   roff += fused->numWeights;
   assert(fused->numOutputs <= MAX_NUM_OUTPUTS);
   for (int i = 0; i < fused->numOutputs; i++) {
-    // output_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     output_accessor[i] =
         helperGetGenericTensorAccessorRO(fused->output_data_types[i],
                                          regions[i + roff],
@@ -1749,8 +1700,6 @@ __host__ void FusedOp::backward_task(Task const *task,
   }
   roff += fused->numOutputs;
   for (int i = 0; i < fused->numInputs; i++) {
-    // input_grad_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     input_grad_accessor[i] =
         helperGetGenericTensorAccessorRW(fused->input_data_types[i],
                                          regions[i + roff],
@@ -1762,8 +1711,6 @@ __host__ void FusedOp::backward_task(Task const *task,
   }
   roff += fused->numInputs;
   for (int i = 0; i < fused->numWeights; i++) {
-    // weight_grad_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     weight_grad_accessor[i] =
         helperGetGenericTensorAccessorRW(fused->weight_data_types[i],
                                          regions[i + roff],
@@ -1776,8 +1723,6 @@ __host__ void FusedOp::backward_task(Task const *task,
   }
   roff += fused->numWeights;
   for (int i = 0; i < fused->numOutputs; i++) {
-    // output_grad_domain[i] = runtime->get_index_space_domain(
-    //     ctx, task->regions[i + roff].region.get_index_space());
     output_grad_accessor[i] =
         helperGetGenericTensorAccessorRW(fused->output_data_types[i],
                                          regions[i + roff],
@@ -1803,9 +1748,6 @@ __host__ void FusedOp::backward_task(Task const *task,
   }
 
   int ioff = 0, woff = 0, ooff = 0;
-  // Domain my_id[MAX_NUM_INPUTS], my_grad_id[MAX_NUM_INPUTS];
-  // Domain my_wd[MAX_NUM_WEIGHTS], my_grad_wd[MAX_NUM_WEIGHTS];
-  // Domain my_od[MAX_NUM_OUTPUTS], my_grad_od[MAX_NUM_OUTPUTS];
   GenericTensorAccessorR my_input_accessor[MAX_NUM_INPUTS];
   GenericTensorAccessorR my_weight_accessor[MAX_NUM_WEIGHTS];
   GenericTensorAccessorR my_output_accessor[MAX_NUM_OUTPUTS];
@@ -1826,19 +1768,11 @@ __host__ void FusedOp::backward_task(Task const *task,
     for (int i = 0; i < fused->op_num_inputs[op]; i++) {
       int my_off = fused->op_input_idx[i + ioff];
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
-        // my_id[i] = input_domain[my_off];
-        // my_ip[i] = input_ptr[my_off];
         my_input_accessor[i] = input_accessor[my_off];
-        // my_grad_id[i] = input_grad_domain[my_off];
-        // my_grad_ip[i] = input_grad_ptr[my_off];
         my_input_grad_accessor[i] = input_grad_accessor[my_off];
         assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
-        // my_id[i] = output_domain[my_off];
-        // my_ip[i] = output_ptr[my_off];
         my_input_accessor[i] = output_accessor[my_off];
-        // my_grad_id[i] = output_grad_domain[my_off];
-        // my_grad_ip[i] = output_grad_ptr[my_off];
         my_input_grad_accessor[i] = output_grad_accessor[my_off];
         assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
       } else {
@@ -1847,11 +1781,7 @@ __host__ void FusedOp::backward_task(Task const *task,
     }
     for (int i = 0; i < fused->op_num_weights[op]; i++) {
       assert(fused->op_weight_source[i + woff] == SOURCE_WEIGHT);
-      // my_wd[i] = weight_domain[fused->op_weight_idx[i + woff]];
-      // my_wp[i] = weight_ptr[fused->op_weight_idx[i + woff]];
       my_weight_accessor[i] = weight_accessor[fused->op_weight_idx[i + woff]];
-      // my_grad_wd[i] = weight_grad_domain[fused->op_weight_idx[i + woff]];
-      // my_grad_wp[i] = weight_grad_ptr[fused->op_weight_idx[i + woff]];
       my_weight_grad_accessor[i] =
           weight_grad_accessor[fused->op_weight_idx[i + woff]];
       assert(my_weight_grad_accessor[i].domain.get_volume() ==
@@ -1860,11 +1790,7 @@ __host__ void FusedOp::backward_task(Task const *task,
     for (int i = 0; i < fused->op_num_outputs[op]; i++) {
       assert(fused->op_output_source[i + ooff] == SOURCE_OUTPUT);
       int my_off = fused->op_output_idx[i + ooff];
-      // my_od[i] = output_domain[my_off];
-      // my_op[i] = output_ptr[my_off];
       my_output_accessor[i] = output_accessor[my_off];
-      // my_grad_od[i] = output_grad_domain[my_off];
-      // my_grad_op[i] = output_grad_ptr[my_off];
       my_output_grad_accessor[i] = output_grad_accessor[my_off];
       assert(my_output_grad_accessor[i].domain == my_output_accessor[i].domain);
     }
