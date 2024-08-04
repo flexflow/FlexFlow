@@ -2,6 +2,10 @@
 #define _FLEXFLOW_COMPILER_GRAPH_UTILS_H
 
 #include "compiler/unity_algorithm.h"
+#include "pcg/computation_graph.dtg.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h"
+#include "substitutions/sub_parallel_computation_graph.dtg.h"
+#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 
 namespace FlexFlow {
 
@@ -9,8 +13,7 @@ SerialParallelDecomposition
     get_serial_parallel_decomposition(ParallelComputationGraph const &pcg);
 
 ParallelComputationGraph cg_to_pcg(ComputationGraph const &g);
-SubParallelComputationGraphView
-    pcg_to_subpcg(ParallelComputationGraph const &g);
+SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &g);
 
 // NOTE(@wmdi): I think we should have the following interfaces in the graph
 // library eventually.
