@@ -5,7 +5,7 @@
 
 namespace FlexFlow {
 
-std::optional<bool> is_acyclic(DiGraphView const &);
+bool is_acyclic(DiGraphView const &);
 
 } // namespace FlexFlow
 

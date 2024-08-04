@@ -4,6 +4,7 @@
 #include "utils/containers/transform.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/algorithms/get_successors.h"
+#include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/multidigraph/algorithms/get_directed_edge.h"
 #include "utils/graph/multidigraph/algorithms/get_edge_counts.h"

@@ -8,6 +8,8 @@
 
 namespace FlexFlow {
 
+SerialSplit::SerialSplit() : children{} {}
+
 SerialSplit::SerialSplit(
     std::vector<std::variant<ParallelSplit, Node>> const &children)
     : children(children) {}
@@ -35,6 +37,8 @@ std::string format_as(SerialSplit const &split) {
 std::ostream &operator<<(std::ostream &s, SerialSplit const &split) {
   return s << fmt::to_string(split);
 }
+
+ParallelSplit::ParallelSplit() : children{} {}
 
 ParallelSplit::ParallelSplit(
     std::unordered_set<std::variant<SerialSplit, Node>> const &children)

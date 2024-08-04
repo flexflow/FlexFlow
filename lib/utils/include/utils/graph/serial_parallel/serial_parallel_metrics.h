@@ -1,0 +1,38 @@
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_METRICS_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_METRICS_H
+
+#include "utils/graph/digraph/digraph_view.h"
+#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
+#include <unordered_map>
+
+namespace FlexFlow {
+
+std::unordered_map<Node, size_t>
+    node_frequency_counter(SerialParallelDecomposition const &sp);
+
+size_t num_nodes(SerialParallelDecomposition const &sp);
+
+float work_cost(SerialParallelDecomposition const &sp,
+                std::unordered_map<Node, float> cost_map);
+
+float work_cost(DiGraphView const &g,
+                std::unordered_map<Node, float> const &cost_map);
+
+float critical_path_cost(SerialParallelDecomposition const &sp,
+                         std::unordered_map<Node, float> const &cost_map);
+
+float critical_path_cost(DiGraphView const &g,
+                         std::unordered_map<Node, float> const &cost_map);
+
+float relative_work_increase(DiGraphView const &g,
+                             SerialParallelDecomposition const &sp,
+                             std::unordered_map<Node, float> const &cost_map);
+
+float relative_critical_path_cost_increase(
+    DiGraphView const &g,
+    SerialParallelDecomposition const &sp,
+    std::unordered_map<Node, float> const &cost_map);
+
+} // namespace FlexFlow
+
+#endif // FLEXFLOW_SERIAL_PARALLEL_METRICS_H

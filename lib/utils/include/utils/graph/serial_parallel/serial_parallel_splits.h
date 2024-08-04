@@ -12,7 +12,7 @@ struct ParallelSplit;
 
 struct SerialSplit {
 public:
-  SerialSplit() = delete;
+  SerialSplit();
   explicit SerialSplit(std::vector<std::variant<ParallelSplit, Node>> const &);
   explicit SerialSplit(
       std::initializer_list<std::variant<ParallelSplit, Node>> const &);
@@ -46,7 +46,7 @@ namespace FlexFlow {
 
 struct ParallelSplit {
 public:
-  ParallelSplit() = delete;
+  ParallelSplit();
   explicit ParallelSplit(
       std::unordered_set<std::variant<SerialSplit, Node>> const &);
   explicit ParallelSplit(

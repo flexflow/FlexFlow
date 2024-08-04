@@ -1,39 +1,68 @@
-#include "utils/graph/sp_ization.h"
-#include "utils/graph/adjacency_multidigraph.h"
+#include "utils/containers.h"
+#include "utils/containers/all_of.h"
+#include "utils/containers/as_unordered_set.h"
+#include "utils/containers/as_vector.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/invert_map.h"
+#include "utils/containers/keys.h"
+#include "utils/containers/sorted.h"
+#include "utils/containers/values.h"
 #include "utils/graph/algorithms.h"
-#include "utils/graph/multidigraph.h"
-#include "utils/graph/serialparallel.h"
-#include <cassert>
-#include <queue>
+#include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/algorithms/get_longest_path_lengths_from_root.h"
+#include "utils/graph/digraph/algorithms/get_predecessors.h"
+#include "utils/graph/digraph/algorithms/get_successors.h"
+#include "utils/graph/digraph/algorithms/get_topological_ordering.h"
+#include "utils/graph/digraph/algorithms/is_2_terminal_dag.h"
+#include "utils/graph/digraph/digraph.h"
+#include "utils/graph/node/algorithms.h"
+#include "utils/graph/serial_parallel/parallel_composition.h"
+#include "utils/graph/serial_parallel/serial_composition.h"
+#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
+#include "utils/graph/serial_parallel/serial_parallel_metrics.h"
+#include "utils/graph/serial_parallel/serial_parallel_normalize.h"
+#include "utils/hash/vector.h"
+#include <unordered_set>
+#include <vector>
+#include "utils/graph/digraph/algorithms/is_acyclic.h"
 
 namespace FlexFlow {
 
-static bool is_2_terminal_sp_compliant(DiGraphView const &g) {
-  return (is_acyclic(g) && has_single_source(g) && has_single_sink(g));
-}
-
-static std::vector<std::unordered_set<Node>>
-    naive_layer_split(DiGraphView const &g) {
+std::vector<std::unordered_set<Node>> naive_layer_split(DiGraphView const &g) {
   std::unordered_map<Node, int> node_to_sp_layer =
-      get_longest_path_lengths_from_source_node(g);
+      get_longest_path_lengths_from_root(g);
   std::unordered_map<int, std::unordered_set<Node>> unordered_layer_to_node =
       invert_map(node_to_sp_layer);
   std::vector<std::unordered_set<Node>> layer_to_nodes;
   for (int layer_num : sorted(keys(unordered_layer_to_node))) {
-    layer_to_nodes.push_back(unordered_layer_to_node[layer_num]);
+    layer_to_nodes.push_back(unordered_layer_to_node.at(layer_num));
   }
   return layer_to_nodes;
 }
 
 static SerialParallelDecomposition
     naive_layer_merge(std::vector<std::unordered_set<Node>> layer_to_node) {
-  Serial sp;
-  for (auto const nodes : layer_to_node) {
-    Parallel layer{
-        std::vector<std::variant<Serial, Node>>{nodes.begin(), nodes.end()}};
+  SerialSplit sp({});
+  for (auto const &nodes : layer_to_node) {
+    ParallelSplit layer({});
+    for (Node const &node : nodes) {
+      layer.children.insert(node);
+    }
     sp.children.push_back(layer);
   }
-  return normalize(sp);
+  return normalize(SerialParallelDecomposition(sp));
+}
+
+SerialParallelDecomposition
+    barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
+
+  std::vector<std::unordered_set<Node>> layer_split = naive_layer_split(g);
+  return naive_layer_merge(layer_split);
+}
+
+SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g) {
+  assert(is_acyclic(g));
+  return barrier_sync_sp_ization_unchecked(g);
 }
 
 static std::unordered_set<Node> get_heads(DiGraphView const &g,
@@ -57,9 +86,9 @@ static std::unordered_set<std::vector<Node>>
       transform(heads, [&](Node const &head) {
         return get_topological_ordering_from_starting_node(g, head);
       });
-  std::unordered_set<Node> all_nodes = set_union(
-      without_order(transform(topo_orderings, [&](std::vector<Node> const &v) {
-        return without_order(v);
+  std::unordered_set<Node> all_nodes = set_union(as_unordered_set(
+      transform(topo_orderings, [&](std::vector<Node> const &v) {
+        return as_unordered_set(v);
       })));
 
   std::unordered_set<Node> non_visitable_nodes =
@@ -72,7 +101,8 @@ static std::unordered_set<std::vector<Node>>
       });
   std::unordered_set<std::vector<Node>> non_overlapping_topo_orderings;
   for (std::vector<Node> const &topo_ordering : topo_orderings) {
-    // std::vector<Node> filtered_topo_ordering = filter(topo_ordering, [&](Node
+    // std::vector<Node> filtered_topo_ordering = filter(topo_ordering,
+    // [&](Node
     // const &n) {return !contains(non_visitable_nodes, n);});
     std::vector<Node> filtered_topo_ordering;
     for (Node const &n : topo_ordering) {
@@ -85,7 +115,7 @@ static std::unordered_set<std::vector<Node>>
   return non_overlapping_topo_orderings;
 }
 
-static std::vector<DiGraphView> get_metanodes(
+static std::vector<DiGraphView> get_metanodes_naive(
     DiGraphView const &g,
     std::unordered_set<std::vector<Node>> const &non_overlapping_topo_orderings,
     float layer_cost,
@@ -102,7 +132,29 @@ static std::vector<DiGraphView> get_metanodes(
         s += cost_map.at(node);
       }
     }
-    metanodes.push_back(get_subgraph(g, without_order(explored_nodes)));
+    metanodes.push_back(get_subgraph(g, as_unordered_set(explored_nodes)));
+  }
+  return metanodes;
+}
+
+static std::vector<DiGraphView> get_metanodes(
+    DiGraphView const &g,
+    std::unordered_set<std::vector<Node>> const &non_overlapping_topo_orderings,
+    float layer_cost,
+    std::unordered_map<Node, float> const &cost_map) {
+  std::vector<DiGraphView> metanodes;
+  for (auto const topo_ordering : non_overlapping_topo_orderings) {
+    std::vector<Node> explored_nodes;
+    for (Node const &node : topo_ordering) {
+      explored_nodes.push_back(node);
+      DiGraphView sg = get_subgraph(g, as_unordered_set(explored_nodes));
+      if (critical_path_cost(barrier_sync_sp_ization(sg), cost_map) >
+          layer_cost * 1.01) {
+        explored_nodes.pop_back();
+        break;
+      }
+    }
+    metanodes.push_back(get_subgraph(g, as_unordered_set(explored_nodes)));
   }
   return metanodes;
 }
@@ -133,7 +185,7 @@ static std::vector<std::vector<DiGraphView>>
 SerialParallelDecomposition cost_aware_barrier_sync_sp_ization_unchecked(
     DiGraphView const &g, std::unordered_map<Node, float> const &cost_map) {
   if (get_nodes(g).size() == 1) {
-    return get_only(get_nodes(g));
+    return SerialParallelDecomposition(get_only(get_nodes(g)));
   }
   std::vector<std::vector<DiGraphView>> layer_split =
       cost_aware_layer_split(g, cost_map);
@@ -151,117 +203,8 @@ SerialParallelDecomposition cost_aware_barrier_sync_sp_ization_unchecked(
 
 SerialParallelDecomposition cost_aware_barrier_sync_sp_ization(
     DiGraphView const &g, std::unordered_map<Node, float> const &cost_map) {
-  assert(is_2_terminal_sp_compliant(g));
+  // assert(is_2_terminal_dag(g));
   return cost_aware_barrier_sync_sp_ization_unchecked(g, cost_map);
 }
 
-SerialParallelDecomposition
-    barrier_sync_sp_ization_unchecked(DiGraphView const &g) {
-
-  std::vector<std::unordered_set<Node>> layer_split = naive_layer_split(g);
-  return naive_layer_merge(layer_split);
-}
-
-SerialParallelDecomposition barrier_sync_sp_ization(DiGraphView const &g) {
-  assert(is_2_terminal_sp_compliant(g));
-  return barrier_sync_sp_ization_unchecked(g);
-}
-
-static Serial cut_off_head(Serial s) {
-  assert(s.children.size() > 0);
-  return {std::vector<std::variant<Parallel, Node>>(s.children.begin() + 1,
-                                                    s.children.end())};
-}
-
-SerialParallelDecomposition
-    parallel_composition_with_coalescing(std::vector<Serial> sp_predecessors) {
-  if (sp_predecessors.size() == 1) {
-    return get_only(sp_predecessors);
-  }
-  std::map<std::variant<Parallel, Node>, std::vector<Serial>> coalescable;
-  for (Serial predecessor : sp_predecessors) {
-    if (predecessor.children.size() == 0) {
-      continue;
-    } else {
-      coalescable[predecessor.children[0]].push_back(predecessor);
-    }
-  }
-
-  std::vector<SerialParallelDecomposition> sp;
-  for (auto const &item : coalescable) {
-    std::variant<Parallel, Node> head = item.first;
-    std::vector<Serial> sp_branches = item.second;
-    std::vector<Serial> cut_off = transform(sp_branches, cut_off_head);
-    auto p_comp = parallel_composition_with_coalescing(cut_off);
-    sp.push_back(serial_composition({to_sp_decomp(head), p_comp}));
-  }
-  return parallel_composition(sp);
-}
-
-SerialParallelDecomposition
-    dependency_invariant_sp_ization_unchecked_with_coalescing(
-        DiGraphView const &g) {
-  std::unordered_map<Node, Serial> node_to_sp;
-
-  Node source = find_source_node(g);
-  node_to_sp[source] = {{source}}; // base-case
-
-  for (Node const &node : get_topological_ordering(g)) {
-    if (node == source) {
-      continue;
-    }
-    std::vector<Serial> sp_predecessors;
-    for (Node const &p : get_predecessors(g, node)) {
-      sp_predecessors.push_back(node_to_sp[p]);
-    }
-    SerialParallelDecomposition parallel_composed_predecessors =
-        parallel_composition_with_coalescing(sp_predecessors);
-    SerialParallelDecomposition sp_decomp =
-        serial_composition({parallel_composed_predecessors, node});
-    assert(std::holds_alternative<Serial>(sp_decomp));
-    node_to_sp[node] = std::get<Serial>(sp_decomp);
-  }
-
-  Node sink = find_sink_node(g);
-  return normalize(node_to_sp.at(sink));
-}
-
-SerialParallelDecomposition
-    dependency_invariant_sp_ization_with_coalescing(DiGraphView const &g) {
-  assert(is_2_terminal_sp_compliant(g));
-  return dependency_invariant_sp_ization_unchecked_with_coalescing(g);
-}
-
-SerialParallelDecomposition
-    dependency_invariant_sp_ization_unchecked(DiGraphView const &g) {
-  std::unordered_map<Node, SerialParallelDecomposition> node_to_sp;
-
-  Node source = find_source_node(g);
-  node_to_sp[source] = source; // base-case
-
-  for (Node const &node : get_topological_ordering(g)) {
-    if (node == source) {
-      continue;
-    }
-    std::unordered_set<SerialParallelDecomposition> unordered_sp_predecessors =
-        transform(get_predecessors(g, node),
-                  [&](Node const &p) { return node_to_sp[p]; });
-    std::vector<SerialParallelDecomposition> sp_predecessors =
-        as_vector(unordered_sp_predecessors);
-
-    SerialParallelDecomposition sp_decomp =
-        serial_composition({parallel_composition(sp_predecessors), node});
-    node_to_sp[node] = sp_decomp;
-  }
-
-  Node sink = find_sink_node(g);
-  return node_to_sp.at(sink);
-}
-
-SerialParallelDecomposition
-    dependency_invariant_sp_ization(DiGraphView const &g) {
-  assert(is_2_terminal_sp_compliant(g));
-  return dependency_invariant_sp_ization_unchecked(g);
-}
-
-}; // namespace FlexFlow
+} // namespace FlexFlow
