@@ -450,6 +450,7 @@ __host__ void
         assert(fused->op_num_outputs[op] == 1);
         IncMultiHeadSelfAttentionMeta *m =
             (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
+        // TODO: why is op_num_weight still non-zero?
         assert(fused->op_num_weights[op] ==
                (1 + (int)(*m->qkv_bias || *m->final_bias)));
         GenericTensorAccessorR biases;
@@ -462,9 +463,7 @@ __host__ void
             bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
-            // my_weight_accessor[0],
             my_output_accessor[0]
-            // biases
             );
         break;
       }
@@ -487,9 +486,7 @@ __host__ void
             &tree_bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
-            my_weight_accessor[0],
-            my_output_accessor[0],
-            biases);
+            my_output_accessor[0]);
         break;
       }
       case OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -513,9 +510,7 @@ __host__ void
             &beam_bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
-            my_weight_accessor[0],
-            my_output_accessor[0],
-            biases);
+            my_output_accessor[0]);
         break;
       }
       case OP_LAYERNORM: {
