@@ -29,8 +29,10 @@ namespace FlexFlow {
 
 PageManager *page_manager_singleton = nullptr;
 
-LogicalTokenBlock::LogicalTokenBlock(int block_number, int block_size)
-    : block_number(block_number), block_size(block_size), num_tokens(0) {}
+LogicalTokenBlock::LogicalTokenBlock(int block_number, uint32_t block_size)
+    : block_number(block_number), block_size(block_size), num_tokens(0) {
+        // WARNING: init token lists as empty vector
+    }
 
 bool LogicalTokenBlock::is_empty() const {
     return num_tokens == 0;
@@ -44,7 +46,7 @@ bool LogicalTokenBlock::is_full() const {
     return num_tokens == block_size;
 }
 
-void LogicalTokenBlock::append_tokens(const std::vector<int>& token_ids_to_append) {
+void LogicalTokenBlock::append_tokens(const std::vector<TokenId>& token_ids_to_append) {
     if (num_tokens + token_ids_to_append.size() > block_size) {
         throw std::runtime_error("Block is full! Cannot append more tokens.");
     }
@@ -63,10 +65,10 @@ int LogicalTokenBlock::get_last_token_id() const {
     return token_ids.back();
 }
 
-PhysicalTokenBlock::PhysicalTokenBlock(int block_number, int block_size)
+PhysicalTokenBlock::PhysicalTokenBlock(int block_number, uint32_t block_size)
     : block_number(block_number), block_size(block_size), ref_count(0) {}
 
-BlockAllocator::BlockAllocator(int block_size, int num_total_blocks) {
+BlockAllocator::BlockAllocator(uint32_t block_size, int num_total_blocks) {
     for (int block_number = 0; block_number < num_total_blocks; ++block_number) {
         free_blocks.push_back(PhysicalTokenBlock(block_number, block_size));
     }
@@ -99,7 +101,7 @@ int BlockAllocator::get_num_free_blocks() const {
     return free_blocks.size();
 }
 
-PageManager::PageManager(int block_size, int num_total_blocks)
+PageManager::PageManager(uint32_t block_size, int num_total_blocks)
     : block_size(block_size), num_total_blocks(num_total_blocks),
       gpu_allocator(block_size, num_total_blocks) {}
 
@@ -169,10 +171,21 @@ std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request
     return indices;
 }
 
+int PageManager::get_num_allocated_blocks(const RequestGuid& request_guid) const {
+    return block_tables.at(request_guid).size();
+}
+
+// int PageManager::get_num_slots_in_block(const RequestGuid& request_guid) {
+//     // get the last block in the block table
+//     BlockTable block_table = block_tables.at(request_guid);
+//     // get the number of remaining slots in the last block
+//     return block_table.back().get_num_empty_slots();
+// }
+
 PageManager *PageManager::get_page_manager() {
   if (page_manager_singleton == nullptr) {
     // FIXME: These values are hardcoded for now
-    page_manager_singleton = new PageManager(64, 10000);
+    page_manager_singleton = new PageManager(kPagesize, 10000);
   }
   return page_manager_singleton;
 }

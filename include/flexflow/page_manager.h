@@ -18,6 +18,7 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
+#include "flexflow/config.h"
 #include "flexflow/utils/file_loader.h"
 #include <future>
 #include <mutex>
@@ -26,10 +27,12 @@
 
 namespace FlexFlow {
 
+using TokenId = BatchConfig::TokenId;
+
 class LogicalTokenBlock {
 public:
     // Constructor
-    LogicalTokenBlock(int block_number, int block_size);
+    LogicalTokenBlock(int block_number, uint32_t block_size);
 
     // Method to check if the block is empty
     bool is_empty() const;
@@ -41,7 +44,7 @@ public:
     bool is_full() const;
 
     // Method to append tokens
-    void append_tokens(const std::vector<int>& token_ids_to_append);
+    void append_tokens(const std::vector<TokenId>& token_ids_to_append);
 
     // Method to get the list of token ids
     std::vector<int> get_token_ids() const;
@@ -50,7 +53,7 @@ public:
     int get_last_token_id() const;
 
     int block_number;
-    int block_size;
+    uint32_t block_size;
     int num_tokens;
     std::vector<int> token_ids;
 };
@@ -58,17 +61,17 @@ public:
 class PhysicalTokenBlock {
 public:
     // Constructor
-    PhysicalTokenBlock(int block_number, int block_size);
+    PhysicalTokenBlock(int block_number, uint32_t block_size);
 
     int ref_count;
     int block_number;
-    int block_size;
+    uint32_t block_size;
 };
 
 class BlockAllocator {
 public:
     // Constructor
-    BlockAllocator(int block_size, int num_blocks);
+    BlockAllocator(uint32_t block_size, int num_blocks);
 
     // Allocate a block
     PhysicalTokenBlock allocate();
@@ -80,7 +83,7 @@ public:
     int get_num_free_blocks() const;
 
 private:
-    int block_size;
+    uint32_t block_size;
     int num_blocks;
     std::deque<PhysicalTokenBlock> free_blocks;
 };
@@ -91,7 +94,7 @@ public:
     static PageManager *get_page_manager();
     using BlockTable = std::vector<PhysicalTokenBlock>;
     using RequestGuid = BatchConfig::RequestGuid;
-    PageManager(int block_size, int num_total_blocks);
+    PageManager(uint32_t block_size, int num_total_blocks);
 
     bool prefill(const RequestGuid& request_guid, const std::vector<int>& token_ids);
     bool allocate(const RequestGuid& request_guid);
@@ -101,8 +104,13 @@ public:
 
     std::vector<int> get_block_table_indices(const RequestGuid& request_guid) const;
 
+    int get_num_slots_in_block(const RequestGuid& request_guid);
+
+    // get the number of available slots in the current block
+    int get_num_allocated_blocks(const RequestGuid& request_guid) const;
+
 private:
-    int block_size;
+    uint32_t block_size;
     int num_total_blocks;
 
     BlockAllocator gpu_allocator;

@@ -1450,6 +1450,33 @@ bool RequestManager::update_ssm_inference_results(
   }
   return all_request_last_layer_empty;
 }
+/* --------- Page Attention Related Functions --------- */
+void RequestManager::_append_logical_block_to_request(
+    Request &request) {
+  // Append the logical block to the request
+  LogicalTokenBlock block(request.tokens.size(),
+                                  kPagesize);
+  request.blocks.push_back(block);
+}
+
+void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens) {
+  int cursor = 0;
+  int num_tokens = tokens.size();
+  while (cursor < num_tokens) {
+    if (request.blocks.empty() ||
+      request.blocks.back().is_full()) {
+      // Append a new logical block
+      _append_logical_block_to_request(request);
+    }
+    int num_empty_slots = request.blocks.back().get_num_empty_slots();
+    int num_tokens_to_append = std::min(num_empty_slots, num_tokens - cursor);
+    // vector to be appeneded will be [cursor, cursor + num_tokens_to_append)]
+    std::vector<TokenId> tokens_to_append(tokens.begin() + cursor, tokens.begin() + cursor + num_tokens_to_append);
+    request.blocks.back().append_tokens(tokens_to_append);
+    cursor += num_tokens_to_append;
+  }
+}
+/* --------- Page Attention Related Functions --------- */
 
 /* --------- Bitmask Related Functions --------- */
 

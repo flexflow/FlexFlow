@@ -76,6 +76,9 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
+  // Used for keeping track of the block information
+  std::vector<LogicalTokenBlock> blocks;
+
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
@@ -394,6 +397,12 @@ private:
   double total_request_run_time;
   void load_pending_request_to_batch();
   void request_complete_clean_up(int batch_index);
+
+  /* ---------- Page Attention Helper Functions ---------- */
+  void _append_logical_block_to_request(Request &request);
+  void _append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens);
+  /* ---------- Page Attention Helper Functions ---------- */
+
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
   bool update_llm_decode_results(InferenceResult const &result);
