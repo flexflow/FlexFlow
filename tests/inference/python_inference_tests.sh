@@ -84,12 +84,13 @@ function compare_decoding_steps_spec_infer_incr_decoding {
     local specInf_file="$2"
 
     # Read the number of decoding steps from the second line of the files
-    second_line=$(sed -n '2p' "$incrDec_file")
-    read -r line <<< "$second_line"
-    incrDec=${line#*: }
-    second_line=$(sed -n '2p' "$specInf_file")
-    read -r line <<< "$second_line"
-    specInf=${line#*: }
+    first_line=$(sed -n '1p' "$incrDec_file")
+    incr_dec_steps="${first_line##*llm_decoding_steps(}"
+    incr_dec_steps="${incr_dec_steps%%)*}"
+    
+    first_line=$(sed -n '1p' "$specInf_file")
+    spec_inf_steps="${first_line##*llm_decoding_steps(}"
+    spec_inf_steps="${spec_inf_steps%%)*}"
 
     if ! command -v bc &> /dev/null; then
         echo "bc is not installed. Installing..."
@@ -97,8 +98,8 @@ function compare_decoding_steps_spec_infer_incr_decoding {
     fi
     
     # Perform the comparison
-    threshold=$(bc <<< "$specInf * 1.5")
-    if (( $(echo "$incrDec >= $threshold" | bc -l) )); then
+    threshold=$(bc <<< "$spec_inf_steps * 1.5")
+    if (( $(echo "$incr_dec_steps >= $threshold" | bc -l) )); then
         #echo "The decoding steps in $specInf_file are at least 1.5x less than those in $incrDec_file."
         :
     else

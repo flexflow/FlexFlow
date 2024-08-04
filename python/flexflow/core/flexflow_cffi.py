@@ -4661,7 +4661,7 @@ class FFModel(object):
         dataset_filepaths = [ffi.NULL for prompt in prompt_list]
         training_steps = [0 for prompt in prompt_list]
         num_finetuning_losses = ffi.new("int *")
-        c_finetuning_losses = ffi.new("float**")
+        c_finetuning_losses = ffi.new("float[]", 0)
         ffc().flexflow_model_generate(
             self.handle,
             len(prompt_list),

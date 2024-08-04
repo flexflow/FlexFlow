@@ -350,15 +350,7 @@ class LLM:
                 f"'{self.model_name}' tokenizer needs updating! Downloading tokenizer now..."
             )
             # Download tokenizer from HuggingFace, or load it from the local folder
-            if self.model_type == ModelType.LLAMA:
-                if "3-" in self.model_name:
-                    hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
-                else:
-                    hf_tokenizer = LlamaTokenizer.from_pretrained(
-                        self.model_name, use_fast=True
-                    )
-            else:
-                hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+            hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
             # Save tokenizer
             hf_tokenizer.save_pretrained(self.tokenizer_path)
             print("Done updating HF tokenizer.")

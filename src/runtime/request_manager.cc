@@ -1148,7 +1148,6 @@ BeamSearchBatchConfig
             }
             outputFile << std::endl;
             outputFile << output;
-            outputFile << std::endl;
             outputFile.close();
           } else {
             std::cout << "Unable to open the output file: " << output_filepath
