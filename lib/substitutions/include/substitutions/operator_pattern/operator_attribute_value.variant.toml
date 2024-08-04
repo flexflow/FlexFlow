@@ -36,6 +36,9 @@ type = "int"
 type = "bool"
 
 [[values]]
+type = "float"
+
+[[values]]
 type = "std::vector<int>"
 
 [[values]]

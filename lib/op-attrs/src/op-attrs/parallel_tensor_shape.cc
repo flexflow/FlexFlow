@@ -3,6 +3,7 @@
 #include "utils/containers/product.h"
 #include "utils/containers/transform.h"
 #include "utils/hash-utils.h"
+#include "op-attrs/parallel_tensor_dims.h"
 
 namespace FlexFlow {
 
@@ -72,6 +73,15 @@ ParallelTensorShape
           s.dims, sum_degree, discard_copy_degree, shard_degrees),
       s.data_type,
   };
+}
+
+TensorShape require_not_parallel(ParallelTensorShape const &s) {
+  int total_degree = get_total_parallel_degree(s);
+  if (total_degree != 1) {
+    throw mk_runtime_error(fmt::format("Error: require_not_parallel received a parallel tensor shape with parallel degree {}: {}", total_degree, s));
+  }
+
+  return get_reduced_shape(s);
 }
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {

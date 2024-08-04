@@ -1,4 +1,4 @@
-#include "substitution-generator/json.h"
+#include "substitution-generator/legacy_rules.h"
 #include "doctest/doctest.h"
 
 using namespace FlexFlow;
@@ -15,7 +15,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         {"type", "OP_EW_ADD"},
     };
 
-    Operator o;
+    LegacyOperator o;
     from_json(j, o);
 
     CHECK(o.op_type == LegacyOperatorType::EW_ADD);
@@ -28,7 +28,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("deserialize full file") {
-    RuleCollection collection =
+    LegacyRuleCollection collection =
         load_rule_collection_from_path("graph_subst_3_v2.json");
     CHECK(collection.rules.size() == 640);
   }

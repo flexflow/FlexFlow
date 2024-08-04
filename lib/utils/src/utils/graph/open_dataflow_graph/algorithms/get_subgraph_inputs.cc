@@ -3,7 +3,7 @@
 #include "utils/containers/extend.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/values.h"
-#include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/overload.h"
 

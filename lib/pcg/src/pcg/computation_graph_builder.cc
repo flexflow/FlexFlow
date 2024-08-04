@@ -54,7 +54,7 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
           return fmt::format("{}.weights[{}]", layer_name, weight_idx);
         });
     LayerAttrs weight_layer_attrs = LayerAttrs{
-        ComputationGraphOpAttrs{WeightAttrs{}},
+        ComputationGraphOpAttrs{WeightAttrs{weight_tensor_attrs.shape}},
         weight_name,
     };
     std::vector<DataflowOutput> weight_layer_inputs = {};

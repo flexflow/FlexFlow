@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 
-#include "fmt.decl.h"
 #include "hash-utils.h"
 #include "test_types.h"
 #include "type_traits_core.h"
 #include <vector>
+#include <fmt/format.h>
 
 namespace FlexFlow {
 
@@ -191,7 +191,9 @@ template <typename T>
 using req = required<T>;
 
 template <typename T>
-struct delegate_ostream_operator<req<T>> : std::true_type {};
+std::ostream &operator<<(std::ostream &s, required<T> const &t) {
+  return (s << fmt::to_string(t)); 
+}
 
 template <typename T>
 struct remove_req {

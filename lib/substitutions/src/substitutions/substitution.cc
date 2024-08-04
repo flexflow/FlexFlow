@@ -162,37 +162,32 @@ bool is_valid_substitution(Substitution const &) {
   NOT_IMPLEMENTED();
 }
 
-LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs> perform_shape_inference(
+LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> perform_shape_inference(
   LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate> const &g,
-  std::unordered_map<DataflowGraphInput, ParallelTensorAttrs> const &input_attrs) {
+  std::unordered_map<DataflowGraphInput, ParallelTensorShape> const &input_shapes) {
   
-  std::unordered_map<OpenDataflowValue, ParallelTensorAttrs> inferred = map_keys(input_attrs, 
+  std::unordered_map<OpenDataflowValue, ParallelTensorShape> inferred = map_keys(input_shapes, 
                                                                                  [](DataflowGraphInput const &i) { return OpenDataflowValue{i}; });
 
   for (Node const &n : get_topological_ordering(g)) {
-    std::vector<ParallelTensorShape> input_shapes = transform(get_inputs(g, n), [&](OpenDataflowValue const &v) { return inferred.at(v).shape; });
-    std::vector<ParallelTensorAttrs> output_attrs = transform(get_output_shapes(g.at(n).op_attrs, input_shapes), 
-                                                              [](ParallelTensorShape const &s) { 
-                                                                return ParallelTensorAttrs{
-                                                                  s,
-                                                                  /*sync_type=*/std::nullopt,
-                                                                  /*initializer=*/std::nullopt,
-                                                                  CreateGrad::YES,
-                                                                }; 
-                                                              });
+    std::vector<ParallelTensorShape> input_shapes = transform(get_inputs(g, n), [&](OpenDataflowValue const &v) { return inferred.at(v); });
+    std::vector<ParallelTensorShape> output_shapes = get_output_shapes(g.at(n).op_attrs, input_shapes);
     std::vector<DataflowOutput> outputs = get_outputs(g, n);
 
-    for (auto const &[output, attrs] : zip(outputs, output_attrs)) {
-      inferred.insert({OpenDataflowValue{output}, attrs});
+    for (auto const &[output, shape] : zip(outputs, output_shapes)) {
+      inferred.insert({OpenDataflowValue{output}, shape});
     }
   }
 
   return rewrite_value_labels(g, [&](OpenDataflowValue const &v, std::monostate const &) { return inferred.at(v); });
 }
 
-SubParallelComputationGraph evaluate_substitution_output(SubParallelComputationGraph const &spcg,
-                                                         Substitution const &sub,
-                                                         UnlabelledDataflowGraphPatternMatch const &match) {
+std::pair<
+  SubParallelComputationGraph,
+  bidict<NewNode, Node>
+> evaluate_substitution_output(SubParallelComputationGraph const &spcg,
+                               Substitution const &sub,
+                               UnlabelledDataflowGraphPatternMatch const &match) {
   std::unordered_map<PatternNode, PCGOperatorAttrs> node_match = map_values(match.node_assignment.as_unordered_map(), 
                                                                             [&](Node const &n) { return get_operator_attrs(spcg, n); });
 
@@ -212,27 +207,38 @@ SubParallelComputationGraph evaluate_substitution_output(SubParallelComputationG
       }
     );
 
-  std::unordered_map<DataflowGraphInput, ParallelTensorAttrs> input_shapes = map_values(map_keys(match.input_assignment,
+  std::unordered_map<DataflowGraphInput, ParallelTensorShape> input_shapes = map_values(map_keys(match.input_assignment,
                                                                                       [](PatternInput const &i) { return i.raw_dataflow_graph_input; }),
-                                                                                      [&](OpenDataflowValue const &v) { return spcg.raw_graph.at(v); });
-  LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs> with_shapes = perform_shape_inference(without_shapes, input_shapes);
+                                                                                      [&](OpenDataflowValue const &v) { return spcg.raw_graph.at(v).shape; });
+  LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> with_shapes = perform_shape_inference(without_shapes, input_shapes);
+  LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs> with_attrs = rewrite_value_labels(with_shapes, 
+                                                                                                           [](OpenDataflowValue const &, ParallelTensorShape const &s) {
+                                                                                                             return ParallelTensorAttrs{
+                                                                                                               s, 
+                                                                                                               std::nullopt,
+                                                                                                               std::nullopt,
+                                                                                                               CreateGrad::YES,
+                                                                                                             };
+                                                                                                            });
 
-  // TODO(@lockshaw): also return the new node ids through some type of result struct
-  return SubParallelComputationGraph{with_shapes};
+  return std::make_pair(
+   SubParallelComputationGraph{with_attrs},
+   new_node_id_permutation 
+  );
 }
 
 
 struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs> {
-  SubstitutionAppliedView(NodeSource const &node_source,
-                          Substitution const &sub,
+  SubstitutionAppliedView(Substitution const &sub,
                           UnlabelledDataflowGraphPatternMatch const &match,
                           SubParallelComputationGraph const &spcg,
-                          SubParallelComputationGraph const &substitution_result)
-    : node_source(node_source),
-      sub(sub),
+                          SubParallelComputationGraph const &substitution_result,
+                          bidict<NewNode, Node> const &substitution_result_node_id_permutation)
+    : sub(sub),
       match(match),
       spcg(spcg),
-      substitution_result(substitution_result)
+      substitution_result(substitution_result),
+      substitution_result_node_id_permutation(substitution_result_node_id_permutation)
     { }
 
 
@@ -288,6 +294,8 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
           open_dataflow_edge_from_src_and_dst(base_graph_value, use));
       }
     }
+
+    NOT_IMPLEMENTED();
 
     // std::unordered_set<OpenDataflowEdge> outgoing_from_output;
     // for (auto const &[pattern_output, output_graph_output] : this->sub.
@@ -366,34 +374,38 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
 
   SubstitutionAppliedView *clone() const override {
     return new SubstitutionAppliedView(
-      this->node_source,
       this->sub,
       this->match,
       this->spcg,
-      this->substitution_result
+      this->substitution_result,
+      this->substitution_result_node_id_permutation
     );
   }
 private:
-  NodeSource node_source;
   Substitution sub;
   UnlabelledDataflowGraphPatternMatch match;
   SubParallelComputationGraph spcg;
   SubParallelComputationGraph substitution_result;
+  bidict<NewNode, Node> substitution_result_node_id_permutation;
 };
 
 SubParallelComputationGraph
     apply_substitution(SubParallelComputationGraph const &spcg,
                        Substitution const &sub,
                        UnlabelledDataflowGraphPatternMatch const &match) {
-  // probably evaluate the substitution output and then use a view-based approach to sub in the merge points, which can always be directly materialized if desired
+  auto substitution_output_result = evaluate_substitution_output(spcg, sub, match);
+  SubParallelComputationGraph substitution_output_graph = substitution_output_result.first;
+  bidict<NewNode, Node> substitution_result_node_id_permutation = substitution_output_result.second;
 
-  LabelledOpenDataflowGraph<ParallelLayerAttrs, ParallelTensorAttrs> g = 
-    LabelledOpenDataflowGraph<ParallelLayerAttrs, ParallelTensorAttrs>::create_copy_of<
-      UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs, ParallelTensorAttrs>>(spcg.raw_graph);
-
-  SubParallelComputationGraph substitution_output = evaluate_substitution_output(spcg, sub, match);
-
-  
+  return SubParallelComputationGraph{
+    LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs>::create<SubstitutionAppliedView>(
+      sub,
+      match,
+      spcg,
+      substitution_output_graph,
+      substitution_result_node_id_permutation
+    )
+  };
 }
 
 } // namespace FlexFlow

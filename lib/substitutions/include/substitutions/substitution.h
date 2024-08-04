@@ -4,8 +4,20 @@
 #include "sub_parallel_computation_graph.dtg.h"
 #include "substitutions/substitution.dtg.h"
 #include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
+#include "utils/graph/node/algorithms/new_node.dtg.h"
 
 namespace FlexFlow {
+
+LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> perform_shape_inference(
+  LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate> const &g,
+  std::unordered_map<DataflowGraphInput, ParallelTensorShape> const &input_shapes);
+
+std::pair<
+  SubParallelComputationGraph,
+  bidict<NewNode, Node>
+> evaluate_substitution_output(SubParallelComputationGraph const &spcg,
+                               Substitution const &sub,
+                               UnlabelledDataflowGraphPatternMatch const &match);
 
 /**
  * @brief Checks that all internal invariants of the given substitution hold

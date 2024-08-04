@@ -25,13 +25,15 @@ LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> permute_node_ids(
   auto old_value_from_new = [&](OpenDataflowValue const &new_value) {
     return new_value.visit<OpenDataflowValue>(overload {
       [&](DataflowOutput const &new_o) {
-        return DataflowOutput{
-          old_node_from_new(new_o.node),
-          new_o.idx,
+        return OpenDataflowValue{
+          DataflowOutput{
+            old_node_from_new(new_o.node),
+            new_o.idx,
+          },
         };
       },
       [](DataflowGraphInput const &i) {
-        return i; 
+        return OpenDataflowValue{i}; 
       },
     });
   };

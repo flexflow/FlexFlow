@@ -15,6 +15,7 @@
 #include "op-attrs/ops/input.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/weight.h"
 
 namespace FlexFlow {
 
@@ -67,6 +68,9 @@ std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &pcg_o
     },
     [&](LinearAttrs const &attrs) -> std::vector<ParallelTensorShape> {
       return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
+    },
+    [&](WeightAttrs const &attrs) -> std::vector<ParallelTensorShape> {
+      return {get_output_parallel_tensor_shape(attrs)};
     },
     [&](auto const &attrs) -> std::vector<ParallelTensorShape> {
       NOT_IMPLEMENTED();

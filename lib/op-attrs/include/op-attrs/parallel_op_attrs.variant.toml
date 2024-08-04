@@ -1,0 +1,34 @@
+namespace = "FlexFlow"
+name = "ParallelOpAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ops/combine_attrs.dtg.h", 
+  "op-attrs/ops/reduction_attrs.dtg.h",
+  "op-attrs/ops/repartition_attrs.dtg.h",
+  "op-attrs/ops/replicate_attrs.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::CombineAttrs"
+key = "combine_distributed"
+
+[[values]]
+type = "::FlexFlow::ReductionAttrs"
+key = "reduce_distributed"
+
+[[values]]
+type = "::FlexFlow::RepartitionAttrs"
+key = "partition_distributed"
+
+[[values]]
+type = "::FlexFlow::ReplicateAttrs"
+key = "replicate_distributed"
+

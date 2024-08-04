@@ -137,6 +137,9 @@ private:
                 std::vector<ParallelTensorAttrs> const &weights,
                 ParallelTensorShape const &output);
 
+  parallel_tensor_guid_t 
+      add_weight(ParallelTensorAttrs const &weight_tensor_attrs, 
+                 std::optional<std::string> const &name = std::nullopt);
 public:
   ParallelComputationGraph pcg;
 };

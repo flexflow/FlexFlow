@@ -3,10 +3,15 @@
 namespace FlexFlow {
 
 struct Accessor {
-  Accessor(std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &);
+  Accessor(std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &m)
+    : m(m) {}
+
+  std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &m;
 
   template <typename T>
-  T const &get(OperatorAttributeKey) const;
+  T const &get(OperatorAttributeKey k) const {
+    return m.at(k).get<T>();
+  }
 };
 
 PCGOperatorAttrs materialize_operator_from_attrs_map(std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &attrs) {

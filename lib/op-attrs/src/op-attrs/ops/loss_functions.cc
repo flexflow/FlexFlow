@@ -31,8 +31,8 @@ LossFunction parse_loss_name(std::string const &raw_name) {
   } else if (name == "identity") {
     return LossFunction::IDENTITY;
   } else {
-    throw mk_runtime_error(
-        "Unknown loss type {}. Please report this as an issue.", name);
+    throw mk_runtime_error(fmt::format(
+        "Unknown loss type {}. Please report this as an issue.", name));
   }
 }
 

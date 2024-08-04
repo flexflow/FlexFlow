@@ -10,7 +10,7 @@
 #include "utils/containers/zip.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
-#include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_inputs.h"
 
 namespace FlexFlow {
 
