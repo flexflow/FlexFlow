@@ -607,8 +607,12 @@ __host__ void
   GraphParams graph_params = {bc->num_active_requests(),
                       bc->num_active_tokens(),
                       bc->prompt_phase};
+  int shard_id = task->index_point.point_data[0];
 
-  bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE or bc->get_mode() == TREE_VERIFY_MODE);
+  // bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE or bc->get_mode() == TREE_VERIFY_MODE);
+  // bool use_cuda_graph = bc->get_mode() == TREE_VERIFY_MODE;
+  bool use_cuda_graph = bc->get_mode() == TREE_SEARCH_MODE;
+  // bool use_cuda_graph = false;
   bool captured = false;
 
   if(use_cuda_graph && metas->graph_collections.count(graph_params)  != 0) {
@@ -1156,7 +1160,23 @@ __host__ void
   if (use_cuda_graph) {
     assert(metas->graph_collections.find(graph_params) !=
           metas->graph_collections.end());
+    cudaEvent_t t_start, t_end;
+    float elapsed;
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+
     cudaGraphLaunch(instance, stream);
+
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    if(shard_id == 0 && bc->get_mode() == TREE_SEARCH_MODE) {
+      printf("cudaGraphLaunch time: %f ms, captured: %d\n", elapsed, captured);
+    }
   }
 }
 
