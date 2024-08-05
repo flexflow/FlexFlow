@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "PCGPatternMatch"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/bidict/bidict.h",
+  "substitutions/unlabelled/pattern_node.dtg.h",
+  "substitutions/unlabelled/pattern_input.dtg.h",
+  "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
+  "substitutions/open_parallel_tensor_guid_t.dtg.h",
+  "<unordered_map>",
+]
+
+src_includes = [
+  "utils/fmt/unordered_map.h",
+  "utils/hash/unordered_map.h",
+]
+
+[[fields]]
+name = "node_assignment"
+type = "::FlexFlow::bidict<::FlexFlow::PatternNode, ::FlexFlow::parallel_layer_guid_t>"
+
+[[fields]]
+name = "input_assignment"
+type = "std::unordered_map<::FlexFlow::PatternInput, ::FlexFlow::open_parallel_tensor_guid_t>"

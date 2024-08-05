@@ -6,14 +6,14 @@
 #include "substitutions/unlabelled/pattern_matching.h"
 #include "substitutions/unlabelled/pattern_node.dtg.h"
 #include "substitutions/unlabelled/pattern_value.dtg.h"
-#include "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h"
+#include "substitutions/pcg_pattern_match.dtg.h"
 
 namespace FlexFlow {
 
 /**
  * @brief Find all locations in \p pcg that match \p pattern
  */
-std::vector<UnlabelledDataflowGraphPatternMatch>
+std::vector<PCGPatternMatch>
     find_pattern_matches(PCGPattern const &pattern,
                          SubParallelComputationGraph const &pcg);
 

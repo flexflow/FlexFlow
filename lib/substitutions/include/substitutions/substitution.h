@@ -2,9 +2,10 @@
 #define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTION_H
 
 #include "sub_parallel_computation_graph.dtg.h"
+#include "substitutions/pcg_pattern_match.dtg.h"
 #include "substitutions/substitution.dtg.h"
-#include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 #include "utils/graph/node/algorithms/new_node.dtg.h"
+#include "substitutions/output_graph/output_graph_expr_node.dtg.h"
 
 namespace FlexFlow {
 
@@ -14,10 +15,10 @@ LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> perform_s
 
 std::pair<
   SubParallelComputationGraph,
-  bidict<NewNode, Node>
+  bidict<parallel_layer_guid_t, OutputGraphExprNode>
 > evaluate_substitution_output(SubParallelComputationGraph const &spcg,
                                Substitution const &sub,
-                               UnlabelledDataflowGraphPatternMatch const &match);
+                               PCGPatternMatch const &match);
 
 /**
  * @brief Checks that all internal invariants of the given substitution hold
@@ -35,7 +36,7 @@ std::pair<
 bool is_valid_substitution(Substitution const &);
 
 /**
- * @brief Applies substitution to sub_pcg at the location specified by match,
+ * @brief Applies \p substitution to \p sub_pcg at the location specified by \p match,
  * returning the resulting SubParallelComputationGraph
  *
  * @param sub_pcg
@@ -51,7 +52,7 @@ bool is_valid_substitution(Substitution const &);
 SubParallelComputationGraph
     apply_substitution(SubParallelComputationGraph const &sub_pcg,
                        Substitution const &substitution,
-                       UnlabelledDataflowGraphPatternMatch const &match);
+                       PCGPatternMatch const &match);
 
 } // namespace FlexFlow
 

@@ -21,4 +21,18 @@ PCGOperatorAttrs materialize_output_operator_from_attrs_assignment(OutputOperato
   return materialize_operator_from_attrs_map(attr_map);
 }
 
+std::pair<OperatorAttributeKey, OutputOperatorAttributeExpr> copy_attr_from_pattern_node(OperatorAttributeKey key, PatternNode const &pattern_node) {
+  return {
+    key, 
+    OutputOperatorAttributeExpr{OutputOperatorAttrAccess{pattern_node, OperatorAttributeExpr{key}}}
+  };
+}
+
+std::pair<OperatorAttributeKey, OutputOperatorAttributeExpr> set_attr_to_constant(OperatorAttributeKey key, OperatorAttributeValue const &value) {
+  return {
+    key, 
+    OutputOperatorAttributeExpr{AttrConstant{value}},
+  };
+}
+
 } // namespace FlexFlow

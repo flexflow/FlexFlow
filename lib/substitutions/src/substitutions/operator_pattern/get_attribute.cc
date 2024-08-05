@@ -248,7 +248,7 @@ std::optional<OperatorAttributeValue> get_attribute(Pool2DAttrs const &p,
     case OperatorAttributeKey::POOL_TYPE:
       return p.pool_type;
     case OperatorAttributeKey::ACTIVATION:
-      return p.activation;
+      return std::optional<Activation>{p.activation};
     default:
       return std::nullopt;
   }

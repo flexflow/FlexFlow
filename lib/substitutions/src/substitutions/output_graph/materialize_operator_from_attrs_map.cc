@@ -40,7 +40,7 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(std::unordered_map<Operator
         /*padding_h=*/acc.get<int>(OperatorAttributeKey::PADDING_H),
         /*padding_w=*/acc.get<int>(OperatorAttributeKey::PADDING_W),
         /*pool_type=*/acc.get<PoolOp>(OperatorAttributeKey::POOL_TYPE),
-        /*activation=*/acc.get<Activation>(OperatorAttributeKey::ACTIVATION),
+        /*activation=*/acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION).value(),
       }};
     case OperatorType::NOOP:
     case OperatorType::INPUT:
@@ -48,6 +48,13 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(std::unordered_map<Operator
     case OperatorType::CONV2D:
     case OperatorType::DROPOUT:
     case OperatorType::LINEAR:
+      return PCGOperatorAttrs{LinearAttrs{
+        acc.get<int>(OperatorAttributeKey::OUT_CHANNELS),
+        acc.get<bool>(OperatorAttributeKey::USE_BIAS),
+        acc.get<DataType>(OperatorAttributeKey::DATA_TYPE),
+        acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION),
+        acc.get<std::optional<RegularizerAttrs>>(OperatorAttributeKey::REGULARIZER),
+      }};
     case OperatorType::BATCHMATMUL:
     case OperatorType::SCALAR_MULTIPLY:
     case OperatorType::SCALAR_ADD:

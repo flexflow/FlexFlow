@@ -328,11 +328,30 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
   return this->add_layer(layer, {query, key, value}, weights, output_shape);
 }
 
-parallel_tensor_guid_t ParallelComputationGraphBuilder::relu(
+parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
+    parallel_tensor_guid_t const &input,
+    bool relu,
+    std::optional<std::string> const &maybe_name) {
+  
+  BatchNormAttrs attrs = BatchNormAttrs{
+    relu
+  };
+
+  std::string name =
+      maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
+
+  ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
+
+  ParallelTensorShape output_shape =
+      get_output_shape(attrs, this->get_shape(input));
+
+  return this->add_layer(layer, {input}, {}, {output_shape});
+}
+
+parallel_tensor_guid_t ParallelComputationGraphBuilder::element_unary(
+    ElementUnaryAttrs const &attrs,
     parallel_tensor_guid_t const &input,
     std::optional<std::string> const &maybe_name) {
-
-  ElementUnaryAttrs attrs = ElementUnaryAttrs{OperatorType::RELU, std::nullopt};
 
   std::string name =
       maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
@@ -343,6 +362,79 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::relu(
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, {output_shape});
+}
+
+parallel_tensor_guid_t ParallelComputationGraphBuilder::relu(
+    parallel_tensor_guid_t const &input,
+    std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{
+    OperatorType::RELU,
+    std::nullopt,
+  };
+   
+  return this->element_unary(attrs, input, maybe_name);
+}
+
+parallel_tensor_guid_t ParallelComputationGraphBuilder::identity(
+    parallel_tensor_guid_t const &input,
+    std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{
+    OperatorType::IDENTITY,
+    std::nullopt,
+  };
+   
+  return this->element_unary(attrs, input, maybe_name);
+}
+
+
+parallel_tensor_guid_t ParallelComputationGraphBuilder::gelu(
+    parallel_tensor_guid_t const &input,
+    std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{
+    OperatorType::GELU,
+    std::nullopt,
+  };
+   
+  return this->element_unary(attrs, input, maybe_name);
+}
+
+parallel_tensor_guid_t ParallelComputationGraphBuilder::sigmoid(
+    parallel_tensor_guid_t const &input,
+    std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{
+    OperatorType::SIGMOID,
+    std::nullopt,
+  };
+   
+  return this->element_unary(attrs, input, maybe_name);
+}
+
+parallel_tensor_guid_t ParallelComputationGraphBuilder::tanh(
+    parallel_tensor_guid_t const &input,
+    std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{
+    OperatorType::TANH,
+    std::nullopt,
+  };
+   
+  return this->element_unary(attrs, input, maybe_name);
+}
+
+parallel_tensor_guid_t ParallelComputationGraphBuilder::elu(
+    parallel_tensor_guid_t const &input,
+    std::optional<std::string> const &maybe_name) {
+
+  ElementUnaryAttrs attrs = ElementUnaryAttrs{
+    OperatorType::TANH,
+    std::nullopt,
+  };
+   
+  return this->element_unary(attrs, input, maybe_name);
 }
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_partition(

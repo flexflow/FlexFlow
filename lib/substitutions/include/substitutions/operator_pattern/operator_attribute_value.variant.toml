@@ -48,7 +48,7 @@ type = "std::vector<::FlexFlow::ff_dim_t>"
 type = "::FlexFlow::OperatorType"
 
 [[values]]
-type = "::FlexFlow::Activation"
+type = "std::optional<::FlexFlow::Activation>"
 
 [[values]]
 type = "::FlexFlow::ff_dim_t"
