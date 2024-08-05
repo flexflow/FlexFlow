@@ -896,20 +896,31 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   // page attention: add logical blocks here
   // TODO: currently only support specinfer, might need to support incremental
   if (decoding_mode == SPECULATIVE_DECODING) {
-    _append_tokens_to_blocks(prefill_request, prefill_request->tokens);
+    _append_tokens_to_blocks(*prefill_request, prefill_request->tokens);
+    printf("append block\n");
+    printf("prefilling request num_tokens: %d\n", prefill_request->tokens.size());
     PageManager *page_manager = PageManager::get_page_manager();
+    printf("page manager address prepare: %p\n", page_manager);
+    assert(page_manager != nullptr);
     // we first need to update the physical block numbers
-    int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
+    int num_allocated_blocks = page_manager->get_num_allocated_blocks(guid);
+    printf("num allocated blocks: %d\n", num_allocated_blocks);
+    int diff_block = request.blocks.size() - num_allocated_blocks;
+    printf("diff block: %d\n", diff_block);
     assert(diff_block >= 0);
     for (int i = 0; i < diff_block; i++) {
-      page_manager->allocate_block(guid);
+      page_manager->allocate(guid);
     }
+    printf("after allocate\n");
     // update last kv len
-    bc.requestsInfo[request_index].last_kv_len = request.blocks.back().get_num_alloc_slots();
+    bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
+    printf("after kv_last_page_len\n");
     // update the block table
     bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
+    printf("page_indices size: %d\n", bc.requestsInfo[request_index].page_indices.size());
     // update the num kv pages
-    bc.requestsInfo[request_index].num_kv_pages = new_bc.requestsInfo[request_index].page_indices.size()
+    bc.requestsInfo[request_index].num_kv_pages = bc.requestsInfo[request_index].page_indices.size();
+    printf("after num_kv_pages\n");
   }
 
 
@@ -930,8 +941,9 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
 
   if (verbose) {
     std::cout << "prepare_llm_prefilling_batch NEW batchconfig:" << std::endl;
-    bc.print();
+    // bc.print();
   }
+  printf("end of prepare_llm_prefilling_batch\n");
   return bc;
 }
 
@@ -1277,14 +1289,15 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
 
     // get page manager
     PageManager *page_manager = PageManager::get_page_manager();
+    assert(page_manager != nullptr);
     // we first need to update the physical block numbers
     int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
     assert(diff_block >= 0);
     for (int i = 0; i < diff_block; i++) {
-      page_manager->allocate_block(guid);
+      page_manager->allocate(guid);
     }
     // update last kv len
-    new_bc.requestsInfo[request_index].last_kv_len = request.blocks.back().get_num_alloc_slots();
+    new_bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
     // update the block table
     new_bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
     // update the num kv pages
@@ -1503,7 +1516,7 @@ bool RequestManager::update_ssm_inference_results(
 void RequestManager::_append_logical_block_to_request(
     Request &request) {
   // Append the logical block to the request
-  LogicalTokenBlock block(request.tokens.size(),
+  LogicalTokenBlock block(request.blocks.size(),
                                   kPagesize);
   request.blocks.push_back(block);
 }
@@ -1524,6 +1537,9 @@ void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<Toke
     request.blocks.back().append_tokens(tokens_to_append);
     cursor += num_tokens_to_append;
   }
+  // TODO: delete later
+  // check the number of logical blocks
+  printf("number of logical blocks: %d\n", request.blocks.size());
 }
 /* --------- Page Attention Related Functions --------- */
 

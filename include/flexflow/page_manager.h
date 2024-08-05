@@ -29,7 +29,6 @@ namespace FlexFlow {
 
 using TokenId = BatchConfig::TokenId;
 
-PageManager *page_manager_singleton = nullptr;
 
 class LogicalTokenBlock {
 public:
@@ -42,7 +41,7 @@ public:
     // Method to get the number of empty slots
     int get_num_empty_slots() const;
 
-    int get_num_alloc_slots() const;
+    int get_num_alloc_slots();
 
     // Method to check if the block is full
     bool is_full() const;

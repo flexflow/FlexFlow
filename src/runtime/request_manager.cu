@@ -475,6 +475,18 @@ void RequestManager::load_batch_config_task(
                                           kv_indices_h,
                                           kv_last_page_len_h,
                                           qk_indptr_h);
+        prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
+                                          min(CUDA_NUM_THREADS, parallelism),
+                                          0,
+                                          stream>>>(batch_size,
+                                                    request_infos,
+                                                    request_available,
+                                                    max_num_pages,
+                                                    handle.tree_verify_attention_metadata->q_indptr,
+                                                    handle.tree_verify_attention_metadata->kv_indptr,
+                                                    handle.tree_verify_attention_metadata->kv_indices,
+                                                    handle.tree_verify_attention_metadata->kv_last_page_len,
+                                                    handle.tree_verify_attention_metadata->qk_indptr);
 
         // Update gpu-side custom mask referring from CaualMask
         if (!batch_config->prompt_phase) {
@@ -539,6 +551,7 @@ void RequestManager::load_batch_config_task(
         }
 
         handler->SetCUDAStream(stream);
+        // printf("here??\n");
         handler->BeginForward<half, int32_t>(static_cast<void*>(
                                               static_cast<char*>(handle.tree_verify_attention_metadata->workspace) +
                                               handle.tree_verify_attention_metadata->workspace_block * batch_size),

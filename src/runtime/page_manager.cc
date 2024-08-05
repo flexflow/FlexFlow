@@ -42,6 +42,10 @@ int LogicalTokenBlock::get_num_empty_slots() const {
     return block_size - num_tokens;
 }
 
+int LogicalTokenBlock::get_num_alloc_slots() {
+    return num_tokens;
+}
+
 bool LogicalTokenBlock::is_full() const {
     return num_tokens == block_size;
 }
@@ -139,10 +143,11 @@ bool PageManager::allocate(const RequestGuid& request_guid) {
     if (!can_allocate(request_guid)) {
         return false;
     }
-    BlockTable block_table = block_tables[request_guid];
+    BlockTable& block_table = block_tables[request_guid];
 
     PhysicalTokenBlock block = gpu_allocator.allocate();
     block_table.push_back(block);
+    printf("allocated block %d\n", block.block_number);
     return true;
 }
 
@@ -172,7 +177,13 @@ std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request
 }
 
 int PageManager::get_num_allocated_blocks(const RequestGuid& request_guid) const {
-    return block_tables.at(request_guid).size();
+    printf("called num allocated blocks\n");
+    auto it = block_tables.find(request_guid);
+    if (it == block_tables.end()) {
+        return 0;
+    }else{
+        return it->second.size();
+    }
 }
 
 // int PageManager::get_num_slots_in_block(const RequestGuid& request_guid) {
