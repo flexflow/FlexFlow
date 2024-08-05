@@ -194,7 +194,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("evaluate_substitution_output") {
-    LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern> pattern_g = 
+    auto pattern_g = 
       LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>::create<
         UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>>();
 
@@ -328,81 +328,88 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     
-    std::pair<
-      SubParallelComputationGraph,
-      bidict<parallel_layer_guid_t, OutputGraphExprNode>
-    > result = evaluate_substitution_output(pcg, sub, match);
+    SUBCASE("evaluate_substitution_output") {
+      std::pair<
+        SubParallelComputationGraph,
+        bidict<parallel_layer_guid_t, OutputGraphExprNode>
+      > result = evaluate_substitution_output(pcg, sub, match);
 
-    SubParallelComputationGraph result_graph = result.first;
-    bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map = result.second;
+      SubParallelComputationGraph result_graph = result.first;
+      bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map = result.second;
 
-    LinearAttrs correct_result_fused_mm_relu_attrs = LinearAttrs{
-      12,
-      /*use_bias=*/false,
-      DataType::FLOAT,
-      Activation::RELU,
-      /*regularizer=*/std::nullopt,
-    };
+      LinearAttrs correct_result_fused_mm_relu_attrs = LinearAttrs{
+        12,
+        /*use_bias=*/false,
+        DataType::FLOAT,
+        Activation::RELU,
+        /*regularizer=*/std::nullopt,
+      };
 
-    ParallelTensorAttrs correct_result_i_activation_attrs = get_parallel_tensor_attrs(pcg, mm_match_layer_input_activations);
-    ParallelTensorAttrs correct_result_i_weights_attrs = get_parallel_tensor_attrs(pcg, mm_match_layer_input_weights);
-    ParallelTensorAttrs correct_result_fused_mm_relu_output_attrs = get_parallel_tensor_attrs(pcg, open_parallel_tensor_guid_from_closed(get_only(get_layer_outputs(pcg, relu_match_layer))));
+      ParallelTensorAttrs correct_result_i_activation_attrs = get_parallel_tensor_attrs(pcg, mm_match_layer_input_activations);
+      ParallelTensorAttrs correct_result_i_weights_attrs = get_parallel_tensor_attrs(pcg, mm_match_layer_input_weights);
+      ParallelTensorAttrs correct_result_fused_mm_relu_output_attrs = get_parallel_tensor_attrs(pcg, open_parallel_tensor_guid_from_closed(get_only(get_layer_outputs(pcg, relu_match_layer))));
 
-    parallel_layer_guid_t result_fused_mm_relu_node = result_node_map.at_r(fused_mm_relu_node);
-    parallel_tensor_guid_t result_fused_mm_relu_output = get_only(get_layer_outputs(result_graph, result_fused_mm_relu_node));
+      parallel_layer_guid_t result_fused_mm_relu_node = result_node_map.at_r(fused_mm_relu_node);
+      parallel_tensor_guid_t result_fused_mm_relu_output = get_only(get_layer_outputs(result_graph, result_fused_mm_relu_node));
 
-    SubParallelComputationGraphData correct_graph_data = SubParallelComputationGraphData{
-      std::unordered_map<parallel_layer_guid_t, ParallelLayerAttrs>{
-        {
-          result_fused_mm_relu_node,
-          ParallelLayerAttrs{
-            PCGOperatorAttrs{correct_result_fused_mm_relu_attrs},
-            /*name=*/std::nullopt,
+      SubParallelComputationGraphData correct_graph_data = SubParallelComputationGraphData{
+        std::unordered_map<parallel_layer_guid_t, ParallelLayerAttrs>{
+          {
+            result_fused_mm_relu_node,
+            ParallelLayerAttrs{
+              PCGOperatorAttrs{correct_result_fused_mm_relu_attrs},
+              /*name=*/std::nullopt,
+            },
+          }
+        },
+        std::unordered_set<OpenDataflowEdge>{
+          OpenDataflowEdge{
+            DataflowInputEdge{
+              output_i_activation,
+              DataflowInput{
+                result_fused_mm_relu_node.raw_graph_node,
+                0,
+              },
+            },
           },
-        }
-      },
-      std::unordered_set<OpenDataflowEdge>{
-        OpenDataflowEdge{
-          DataflowInputEdge{
-            output_i_activation,
-            DataflowInput{
-              result_fused_mm_relu_node.raw_graph_node,
-              0,
+          OpenDataflowEdge{
+            DataflowInputEdge{
+              output_i_weights,
+              DataflowInput{
+                result_fused_mm_relu_node.raw_graph_node,
+                1,
+              },
             },
           },
         },
-        OpenDataflowEdge{
-          DataflowInputEdge{
-            output_i_weights,
-            DataflowInput{
-              result_fused_mm_relu_node.raw_graph_node,
-              1,
-            },
+        std::unordered_set<DataflowGraphInput>{
+          output_i_activation,  // TODO(@lockshaw) should probably generate new input ids too
+          output_i_weights,
+        },
+        std::unordered_map<open_parallel_tensor_guid_t, ParallelTensorAttrs>{
+          {
+            open_parallel_tensor_guid_t{OpenDataflowValue{output_i_activation}},
+            correct_result_i_activation_attrs,
           },
-        },
-      },
-      std::unordered_set<DataflowGraphInput>{
-        output_i_activation,  // TODO(@lockshaw) should probably generate new input ids too
-        output_i_weights,
-      },
-      std::unordered_map<open_parallel_tensor_guid_t, ParallelTensorAttrs>{
-        {
-          open_parallel_tensor_guid_t{OpenDataflowValue{output_i_activation}},
-          correct_result_i_activation_attrs,
-        },
-        {
-          open_parallel_tensor_guid_t{OpenDataflowValue{output_i_weights}},
-          correct_result_i_weights_attrs,
-        },
-        {
-          open_parallel_tensor_guid_from_closed(result_fused_mm_relu_output),
-          correct_result_fused_mm_relu_output_attrs,                     
+          {
+            open_parallel_tensor_guid_t{OpenDataflowValue{output_i_weights}},
+            correct_result_i_weights_attrs,
+          },
+          {
+            open_parallel_tensor_guid_from_closed(result_fused_mm_relu_output),
+            correct_result_fused_mm_relu_output_attrs,                     
+          }
         }
-      }
-    };
+      };
 
-    SubParallelComputationGraphData result_graph_data = get_graph_data(result_graph);
+      SubParallelComputationGraphData result_graph_data = get_graph_data(result_graph);
 
-    CHECK(result_graph_data == correct_graph_data);
+      CHECK(result_graph_data == correct_graph_data);
+    }
+
+    SUBCASE("apply_substitution") {
+      SubParallelComputationGraph result = apply_substitution(pcg, sub, match);
+    }
   }
+
 }
