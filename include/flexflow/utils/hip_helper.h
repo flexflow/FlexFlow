@@ -75,8 +75,8 @@ inline int GET_BLOCKS(int const N) {
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
 
-__global__ void
-    scale_kernel(float *ptr, Legion::coord_t size, float a, float b);
+template <typename DT>
+__global__ void scale_kernel(DT *ptr, Legion::coord_t size, DT a, DT b);
 
 __global__ void ones_kernel(float *ptr, Legion::coord_t size);
 
@@ -156,7 +156,8 @@ miopenStatus_t
 
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
-                                               Legion::Domain domain);
+                                               Legion::Domain domain,
+                                               DataType data_type = DT_FLOAT);
 
 hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 

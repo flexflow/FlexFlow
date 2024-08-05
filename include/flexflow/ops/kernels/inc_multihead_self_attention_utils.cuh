@@ -385,6 +385,25 @@ inline __device__ void zero(T &dst) {
   dst = tmp.raw;
 }
 
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL(unsigned mask, T var, int srcLane, int width=warpSize) {
+#ifndef __HIP_PLATFORM_HCC__
+  return __shfl_sync(mask, var, srcLane, width);
+#else
+  return __shfl(var, srcLane, width);
+#endif
+}
+
+template <typename T>
+__device__ __forceinline__ T WARP_SHFL_XOR(unsigned mask, T var, int laneMask, int width=warpSize) {
+#ifndef __HIP_PLATFORM_HCC__
+  return __shfl_xor_sync(mask, var, laneMask, width);
+#else
+  return __shfl_xor(var, laneMask, width);
+#endif
+}
+
+
 template <int THREADS_PER_KEY, typename K_vec, int N>
 inline __device__ float qk_dot_(K_vec const (&q)[N], K_vec const (&k)[N]) {
   // use float32 to get better accuracy
@@ -401,7 +420,7 @@ inline __device__ float qk_dot_(K_vec const (&q)[N], K_vec const (&k)[N]) {
   float qk = sum(qk_vec);
 #pragma unroll
   for (int mask = THREADS_PER_KEY / 2; mask >= 1; mask /= 2) {
-    qk += __shfl_xor_sync(uint32_t(-1), qk, mask);
+    qk += WARP_SHFL_XOR(uint32_t(-1), qk, mask);
   }
   return qk;
 }
@@ -423,7 +442,7 @@ inline __device__ float block_sum(float *red_smem, float sum) {
 // Compute the sum per warp.
 #pragma unroll
   for (int mask = WARP_SIZE / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+    sum += WARP_SHFL_XOR(uint32_t(-1), sum, mask);
   }
 
   // Warp leaders store the data to shared memory.
@@ -442,11 +461,11 @@ inline __device__ float block_sum(float *red_smem, float sum) {
 // Parallel reduction inside the warp.
 #pragma unroll
   for (int mask = WARPS_PER_BLOCK / 2; mask >= 1; mask /= 2) {
-    sum += __shfl_xor_sync(uint32_t(-1), sum, mask);
+    sum += WARP_SHFL_XOR(uint32_t(-1), sum, mask);
   }
 
   // Broadcast to other threads.
-  return __shfl_sync(uint32_t(-1), sum, 0);
+  return WARP_SHFL(uint32_t(-1), sum, 0);
 }
 
 template <typename DT>

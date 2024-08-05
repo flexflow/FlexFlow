@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -150,19 +151,18 @@ void LayerNorm::forward_kernel(LayerNormMeta const *m,
                                T const *beta_ptr,
                                hipStream_t stream) {
 
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(LayerNormFusedForwardKernel<T>),
-                     m->effective_batch_size,
-                     std::min(CUDA_NUM_THREADS, (int)m->effective_num_elements),
-                     0,
-                     stream,
-                     m->effective_num_elements,
-                     m->eps,
-                     in_ptr,
-                     static_cast<T *>(m->mean_ptr),
-                     static_cast<T *>(m->rstd_ptr),
-                     gamma_ptr,
-                     beta_ptr,
-                     out_ptr);
+  LayerNormFusedForwardKernel<T>
+      <<<m->effective_batch_size,
+         std::min(CUDA_NUM_THREADS, (int)m->effective_num_elements),
+         0,
+         stream>>>(m->effective_num_elements,
+                   m->eps,
+                   in_ptr,
+                   static_cast<T *>(m->mean_ptr),
+                   static_cast<T *>(m->rstd_ptr),
+                   gamma_ptr,
+                   beta_ptr,
+                   out_ptr);
 }
 
 /*static*/
@@ -567,83 +567,65 @@ void LayerNorm::backward_kernel(LayerNormMeta const *m,
                                 hipStream_t stream) {
   const int64_t M = m->effective_batch_size;
   const int64_t N = m->effective_num_elements;
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeInternalGradientsCUDAKernel<T>),
-                     M,
-                     kCUDABlockReduceNumThreads,
-                     0,
-                     stream,
-                     N,
-                     output_grad_ptr,
-                     input_ptr,
-                     gamma_ptr,
-                     static_cast<T *>(m->ds_ptr),
-                     static_cast<T *>(m->db_ptr));
+  ComputeInternalGradientsCUDAKernel<T>
+      <<<M, kCUDABlockReduceNumThreads, 0, stream>>>(
+          N,
+          output_grad_ptr,
+          input_ptr,
+          gamma_ptr,
+          static_cast<T *>(m->ds_ptr),
+          static_cast<T *>(m->db_ptr));
   const int64_t B = (M + kCUDANumThreads - 1) / kCUDANumThreads;
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(ComputeGradientFusedParamsCUDAKernel<T>),
-                     B,
-                     kCUDANumThreads,
-                     0,
-                     stream,
-                     M,
-                     N,
-                     static_cast<T *>(m->mean_ptr),
-                     static_cast<T *>(m->rstd_ptr),
-                     static_cast<T *>(m->ds_ptr),
-                     static_cast<T *>(m->db_ptr),
-                     static_cast<T *>(m->scale_ptr),
-                     static_cast<T *>(m->bias_ptr));
+  ComputeGradientFusedParamsCUDAKernel<T>
+      <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                          N,
+                                          static_cast<T *>(m->mean_ptr),
+                                          static_cast<T *>(m->rstd_ptr),
+                                          static_cast<T *>(m->ds_ptr),
+                                          static_cast<T *>(m->db_ptr),
+                                          static_cast<T *>(m->scale_ptr),
+                                          static_cast<T *>(m->bias_ptr));
   int const warp_size = C10_WARP_SIZE;
   int const num_threads = 128;
   const dim3 blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(layer_norm_grad_input_kernel),
-                     blocks,
-                     num_threads,
-                     nshared,
-                     stream,
-                     output_grad_ptr,
-                     input_ptr,
-                     static_cast<T *>(m->mean_ptr),
-                     static_cast<T *>(m->rstd_ptr),
-                     gamma_ptr,
-                     input_grad_ptr,
-                     N);
+  layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
+      output_grad_ptr,
+      input_ptr,
+      static_cast<T *>(m->mean_ptr),
+      static_cast<T *>(m->rstd_ptr),
+      gamma_ptr,
+      input_grad_ptr,
+      N);
 
   if (gamma_grad_ptr != NULL || beta_grad_ptr != NULL) {
     if (M < 512) {
       // For small batch size, do colwise reduce directly
       const int64_t B = (N + kCUDANumThreads - 1) / kCUDANumThreads;
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(GammaBetaBackwardSimpleCUDAKernel<T>),
-                         B,
-                         kCUDANumThreads,
-                         0,
-                         stream,
-                         M,
-                         N,
-                         output_grad_ptr,
-                         input_ptr,
-                         static_cast<T *>(m->mean_ptr),
-                         static_cast<T *>(m->rstd_ptr),
-                         gamma_grad_ptr,
-                         beta_grad_ptr);
+      GammaBetaBackwardSimpleCUDAKernel<T>
+          <<<B, kCUDANumThreads, 0, stream>>>(M,
+                                              N,
+                                              output_grad_ptr,
+                                              input_ptr,
+                                              static_cast<T *>(m->mean_ptr),
+                                              static_cast<T *>(m->rstd_ptr),
+                                              gamma_grad_ptr,
+                                              beta_grad_ptr);
     } else {
       const int64_t B =
           (N + kColwiseReduceTileSize - 1) / kColwiseReduceTileSize;
       constexpr int kThreadX = kColwiseReduceTileSize;
       constexpr int kThreadY = kColwiseReduceTileSize / 2;
-      hipLaunchKernelGGL(HIP_KERNEL_NAME(GammaBetaBackwardCUDAKernel<T>),
-                         B,
-                         dim3(kThreadX, kThreadY),
-                         0,
-                         stream,
-                         M,
-                         N,
-                         output_grad_ptr,
-                         input_ptr,
-                         static_cast<T *>(m->mean_ptr),
-                         static_cast<T *>(m->rstd_ptr),
-                         gamma_grad_ptr,
-                         beta_grad_ptr);
+      GammaBetaBackwardCUDAKernel<T>
+          <<<B, dim3(kThreadX, kThreadY), 0, stream>>>(
+              M,
+              N,
+              output_grad_ptr,
+              input_ptr,
+              static_cast<T *>(m->mean_ptr),
+              static_cast<T *>(m->rstd_ptr),
+              gamma_grad_ptr,
+              beta_grad_ptr);
     }
   }
 }
@@ -661,18 +643,14 @@ void LayerNorm::peft_bwd_kernel(LayerNormMeta const *m,
   int const num_threads = 128;
   const dim3 blocks(M);
   int nshared = (num_threads / warp_size) * sizeof(T);
-  hipLaunchKernelGGL(HIP_KERNEL_NAME(layer_norm_grad_input_kernel<T>),
-                     blocks,
-                     num_threads,
-                     nshared,
-                     stream,
-                     output_grad_ptr,
-                     static_cast<T *>(m->input_activation),
-                     static_cast<T *>(m->mean_ptr),
-                     static_cast<T *>(m->rstd_ptr),
-                     gamma_ptr,
-                     input_grad_ptr,
-                     N);
+  layer_norm_grad_input_kernel<<<blocks, num_threads, nshared, stream>>>(
+      output_grad_ptr,
+      static_cast<T *>(m->input_activation),
+      static_cast<T *>(m->mean_ptr),
+      static_cast<T *>(m->rstd_ptr),
+      gamma_ptr,
+      input_grad_ptr,
+      N);
 }
 
 /*static*/

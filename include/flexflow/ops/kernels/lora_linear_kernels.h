@@ -53,7 +53,7 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
 
 namespace Internal {
 template <typename DT>
-void init_kernel(LoraLinearMeta *m, int seed, cudaStream_t stream);
+void init_kernel(LoraLinearMeta *m, int seed, ffStream_t stream);
 template <typename DT>
 void inference_kernel(LoraLinearMeta *m,
                       BatchConfig const *bc,

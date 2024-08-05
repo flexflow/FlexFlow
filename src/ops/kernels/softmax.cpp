@@ -46,7 +46,6 @@ void forward_kernel_wrapper(SoftmaxMeta const *m,
                             GenericTensorAccessorW const &output) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-
   hipEvent_t t_start, t_end;
   if (m->profiling) {
     checkCUDA(hipEventCreate(&t_start));
@@ -130,9 +129,9 @@ void inference_kernel_wrapper(SoftmaxMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   int num_classes = output.domain.hi()[0] - output.domain.lo()[0] + 1;
   if (m->output_type[0] == DT_FLOAT) {
@@ -167,15 +166,15 @@ void inference_kernel_wrapper(SoftmaxMeta const *m,
     assert(false && "Unsupported data type");
   }
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(),
     // "[Softmax:forward:input]"); print_tensor<float>(acc_output.ptr,
     // acc_output.rect.volume(), "[Softmax:forward:output]");
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     log_measure.debug(
         "%s [Softmax] inference time = %.2fms\n", m->op_name, elapsed);
   }
@@ -189,9 +188,9 @@ void peft_bwd_kernel_wrapper(SoftmaxMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   int num_classes = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
@@ -213,15 +212,15 @@ void peft_bwd_kernel_wrapper(SoftmaxMeta const *m,
     assert(false && "Unsupported data type");
   }
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     // print_tensor<float>(acc_input.ptr, acc_input.rect.volume(),
     // "[Softmax:forward:input]"); print_tensor<float>(acc_output.ptr,
     // acc_output.rect.volume(), "[Softmax:forward:output]");
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     log_measure.debug(
         "%s [Softmax] inference time = %.2fms\n", m->op_name, elapsed);
   }
@@ -270,17 +269,16 @@ void inference_kernel(SoftmaxMeta const *m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
-  checkCUDNN(cudnnSetTensor4dDescriptor(m->outputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        cudnn_data_type,
-                                        bc->num_active_tokens(),
-                                        num_classes,
-                                        1,
-                                        1));
+  miopenDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
+  checkCUDNN(miopenSet4dTensorDescriptor(m->outputTensor,
+                                         cudnn_data_type,
+                                         bc->num_active_tokens(),
+                                         num_classes,
+                                         1,
+                                         1));
   checkCUDNN(miopenSoftmaxForward_V2(m->handle.dnn,
                                      &alpha,
-                                     m->inputTensor,
+                                     m->outputTensor,
                                      input_ptr,
                                      &beta,
                                      m->outputTensor,
@@ -345,7 +343,7 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
                              hipMemcpyHostToDevice,
                              stream));
     hipLaunchKernelGGL(
-        HIP_KERNEL_NAME(sparse_categorical_crossentropy_loss_peft_backward<T>),
+        HIP_KERNEL_NAME(sparse_categorical_crossentropy_loss_peft_backward<DT>),
         GET_BLOCKS(num_bwd_tokens * num_classes),
         CUDA_NUM_THREADS,
         0,
@@ -356,7 +354,7 @@ void peft_bwd_kernel(SoftmaxMeta const *m,
         num_bwd_tokens,
         num_classes);
     // scale
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(scale_kernel<T>),
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(scale_kernel<DT>),
                        GET_BLOCKS(num_bwd_tokens * num_classes),
                        CUDA_NUM_THREADS,
                        0,

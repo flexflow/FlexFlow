@@ -29,7 +29,8 @@ hipError_t get_legion_stream(hipStream_t *stream) {
 
 using FlexFlow::get_legion_stream;
 
-__global__ void scale_kernel(float *ptr, coord_t size, float a, float b) {
+template <typename DT>
+__global__ void scale_kernel(DT *ptr, coord_t size, DT a, DT b) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = (b - a) * ptr[i] + a;
   }
@@ -454,22 +455,23 @@ miopenStatus_t cudnnSetTensorDescriptorFromDomain(
   return miopenStatusBadParm;
 }
 
-miopenStatus_t
-    cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
-                                               Domain domain) {
+miopenStatus_t cudnnSetTensorDescriptorFromDomain4SoftMax(
+    miopenTensorDescriptor_t tensor, Domain domain, DataType data_type) {
   int dims[MAX_TENSOR_DIM];
+  miopenDataType_t cudnn_data_type = ff_to_cudnn_datatype(data_type);
   switch (domain.get_dim()) {
     case 1: {
       Rect<1> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
-      return miopenSet4dTensorDescriptor(tensor, miopenFloat, dims[0], 1, 1, 1);
+      return miopenSet4dTensorDescriptor(
+          tensor, cudnn_data_type, dims[0], 1, 1, 1);
     }
     case 2: {
       Rect<2> rect = domain;
       dims[0] = rect.hi[0] - rect.lo[0] + 1;
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[1], dims[0], 1, 1);
+          tensor, cudnn_data_type, dims[1], dims[0], 1, 1);
     }
     case 3: {
       Rect<3> rect = domain;
@@ -477,7 +479,7 @@ miopenStatus_t
       dims[1] = rect.hi[1] - rect.lo[1] + 1;
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[2] * dims[1], dims[0], 1, 1);
+          tensor, cudnn_data_type, dims[2] * dims[1], dims[0], 1, 1);
     }
     case 4: {
       Rect<4> rect = domain;
@@ -486,7 +488,7 @@ miopenStatus_t
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[3] * dims[2] * dims[1], dims[0], 1, 1);
+          tensor, cudnn_data_type, dims[3] * dims[2] * dims[1], dims[0], 1, 1);
     }
     case 5: {
       Rect<5> rect = domain;
@@ -497,7 +499,7 @@ miopenStatus_t
       dims[2] = rect.hi[2] - rect.lo[2] + 1;
       dims[3] = rect.hi[3] - rect.lo[3] + 1;
       return miopenSet4dTensorDescriptor(
-          tensor, miopenFloat, dims[3], dims[2], dims[1], dims[0]);
+          tensor, cudnn_data_type, dims[3], dims[2], dims[1], dims[0]);
     }
     default:
       assert(false && "Unsupported dim number");
@@ -568,6 +570,13 @@ template __global__ void
     assign_kernel<int32_t>(int32_t *ptr, coord_t size, int32_t value);
 template __global__ void
     assign_kernel<int64_t>(int64_t *ptr, coord_t size, int64_t value);
+
+template __global__ void
+    scale_kernel<half>(half *ptr, coord_t size, half a, half b);
+template __global__ void
+    scale_kernel<float>(float *ptr, coord_t size, float a, float b);
+template __global__ void
+    scale_kernel<double>(double *ptr, coord_t size, double a, double b);
 
 template __global__ void
     add_kernel<half>(half *dst, half const *src, size_t size);

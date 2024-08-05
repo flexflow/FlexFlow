@@ -366,12 +366,12 @@ void peft_bwd_kernel(LinearMeta const *m,
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
 
   DT alpha = 1.0f;
-  hipDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
-  hipDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
-  hipDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
+  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  hipblasDatatype_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   // update input_grad_ptr offset
   input_grad_ptr = static_cast<DT *>(input_grad_ptr) + num_infr_tokens;
-  hipblasDatatype_t compute_type = hipblas_data_type;
+  hipblasDatatype_t compute_type = output_type;
   // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   //   hipblasDatatype_t compute_type = hipblas_data_type;
   // #else
@@ -401,8 +401,8 @@ void peft_bwd_kernel(LinearMeta const *m,
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
     checkCUDA(hipblasGemmEx(m->handle.blas,
-                            CUBLAS_OP_N,
-                            CUBLAS_OP_N,
+                            HIPBLAS_OP_N,
+                            HIPBLAS_OP_N,
                             in_dim,
                             num_peft_tokens,
                             out_dim,
@@ -418,7 +418,7 @@ void peft_bwd_kernel(LinearMeta const *m,
                             input_type,
                             in_dim,
                             compute_type,
-                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+                            HIPBLAS_GEMM_DEFAULT));
   }
 }
 

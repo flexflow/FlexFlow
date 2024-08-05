@@ -12,9 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
-#endif
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
@@ -774,6 +772,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                          ldc,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
   if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
