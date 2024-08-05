@@ -326,7 +326,7 @@ void AllReduce::inference_task(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  AllReduceMeta *m = *((AllReduceMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(

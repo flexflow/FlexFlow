@@ -57,9 +57,9 @@ class CommunicationBuffer {
   int barrier_flag;
 };
 
-CommunicationBuffer create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
+CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
                                                   void* local_ptr, cudaStream_t stream);
 
-void release_comm_buf(CommunicationBuffer comm_buf);
+void release_comm_buf(CommunicationBuffer* comm_buf);
 
 #endif // _COMMUNICATION_BUFFER_H

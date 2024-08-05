@@ -89,14 +89,14 @@ void free_ipc_ptr_group(std::vector<void*> ptr_group, int device_id, bool free_l
 // The CommunicationBuffer contains the local pointer and the IPC memory pointers group.
 // It contains the barrier helpers for synchronization across distributed workers,
 // which is also IPC-based.
-CommunicationBuffer create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
+CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
                                                   void* local_ptr, cudaStream_t stream) {
   assert(local_ptr != nullptr && "Local pointer is nullptr.");
-  CommunicationBuffer comm_buf;
-  comm_buf.num_devices = num_devices;
-  comm_buf.device_id = device_id;
-  comm_buf.local_ptr = local_ptr;
-  comm_buf.comm_ptrs = create_ipc_ptr_group(num_devices, device_id, ncclComm, local_ptr, stream);
+  CommunicationBuffer* comm_buf = new CommunicationBuffer();
+  comm_buf->num_devices = num_devices;
+  comm_buf->device_id = device_id;
+  comm_buf->local_ptr = local_ptr;
+  comm_buf->comm_ptrs = create_ipc_ptr_group(num_devices, device_id, ncclComm, local_ptr, stream);
 
   // Create barrier helpers.
   int barrier_ptr_size = sizeof(uint32_t) * (MAX_ALL_REDUCE_BLOCKS + 2) * MAX_RANKS_PER_NODE;
@@ -114,19 +114,20 @@ CommunicationBuffer create_comm_buf_with_local_ptr(int num_devices, int device_i
   checkCUDA(cudaMalloc(&barrier_out_ptr, barrier_ptr_size));
   checkCUDA(cudaMemset(barrier_out_ptr, 0, barrier_ptr_size));
   checkCUDA(cudaDeviceSynchronize());
-  comm_buf.barrier_in = create_ipc_ptr_group(num_devices, device_id, ncclComm, barrier_in_ptr, stream);
-  comm_buf.barrier_out = create_ipc_ptr_group(num_devices, device_id, ncclComm, barrier_out_ptr, stream);
-  comm_buf.barrier_flag = 1;
+  comm_buf->barrier_in = create_ipc_ptr_group(num_devices, device_id, ncclComm, barrier_in_ptr, stream);
+  comm_buf->barrier_out = create_ipc_ptr_group(num_devices, device_id, ncclComm, barrier_out_ptr, stream);
+  comm_buf->barrier_flag = 1;
 
   return comm_buf;
 }
 
 // Release the CommunicationBuffer.
-void release_comm_buf(CommunicationBuffer comm_buf) {
-  free_ipc_ptr_group(comm_buf.comm_ptrs, comm_buf.device_id, false);
+void release_comm_buf(CommunicationBuffer* comm_buf) {
+  free_ipc_ptr_group(comm_buf->comm_ptrs, comm_buf->device_id, false);
   // The local ptr of barrier_in should be freed,
   // because it is allocated in CommunicationBuffer,
   // not handled by FlexFlow runtime.
-  free_ipc_ptr_group(comm_buf.barrier_in, comm_buf.device_id, true);
-  free_ipc_ptr_group(comm_buf.barrier_out, comm_buf.device_id, true);
+  free_ipc_ptr_group(comm_buf->barrier_in, comm_buf->device_id, true);
+  free_ipc_ptr_group(comm_buf->barrier_out, comm_buf->device_id, true);
+  delete comm_buf;
 }
