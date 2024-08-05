@@ -1,5 +1,4 @@
 #include "compiler/unity_algorithm.h"
-#include "compiler/graph_utils.h"
 #include "compiler/machine_mapping.h"
 #include "pcg/machine_specification.dtg.h"
 #include "substitutions/substitution.h"

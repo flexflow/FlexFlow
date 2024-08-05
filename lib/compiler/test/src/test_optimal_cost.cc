@@ -1,72 +1,56 @@
-// #include "compiler/unity_algorithm.h"
-// #include "doctest/doctest.h"
-// #include "test_cost_estimator.h"
+#include "compiler/unity_algorithm.h"
+#include "doctest/doctest.h"
+#include "test_cost_estimator.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 
-// using namespace FlexFlow;
+using namespace FlexFlow;
 
-// TEST_SUITE(FF_TEST_SUITE) {
-//   // Rapidcheck infrastructures for graphs does not work for now
-//   /*
-//   Tests whether optimal_cost can give a valid result given random PCG,
-//   trivial allowed machine views, trivial cost estimator and random machine
-//   specification.
-//   */
-//   // TEST_CASE("optimal_cost") {
-//   //   auto test_allowed_machine_views = [](Operator const &,
-//   //                                        MachineSpecification const &) {
-//   //     return std::unordered_set<MachineView>{make_1d_machine_view(0, 1,
-//   1)};
-//   //   };
-//   //   RC_SUBCASE([](ParallelComputationGraph const &g,
-//   //                MachineSpecification const &machine_spec) {
-//   //     OptimalCostCache cached_subgraph_costs;
-//   //     OptimalCostResult result = optimal_cost(g,
-//   //                                             test_allowed_machine_views,
-//   //                                             TestCostEstimator{},
-//   //                                             machine_spec,
-//   //                                             cached_subgraph_costs);
-//   //     RC_ASSERT(result.runtime > 0);
-//   //     RC_ASSERT(keys(result.machine_mapping.machine_views) ==
-//   get_nodes(g));
-//   //   });
-//   // }
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("optimal_cost_0") {
+    ParallelComputationGraphBuilder builder;
 
-//   TEST_CASE("optimal_cost_0") {
-//     auto pcg =
-//         OutputLabelledMultiDiGraph<Operator, ParallelTensor>::template
-//         create<
-//             UnorderedOutputLabelledMultiDiGraph<Operator, ParallelTensor>>();
+    ParallelTensorShape input_shape =
+        ParallelTensorShape{ParallelTensorDims{
+                                FFOrdered<ShardParallelDim>{
+                                    ShardParallelDim{32, 2},
+                                    ShardParallelDim{16, 1},
+                                },
+                                ReplicaParallelDimSet{
+                                    SumDegree{1},
+                                    DiscardCopyDegree{1},
+                                },
+                            },
+                            DataType::FLOAT};
 
-//     Node n0 = pcg.add_node(Operator{InputAttrs{}, "input"});
-//     Node n1 = pcg.add_node(Operator{
-//         LinearAttrs{1, false, DataType::FLOAT, Activation::RELU,
-//         std::nullopt}, "linear"});
+    parallel_tensor_guid_t input0 =
+        builder.create_input_tensor(input_shape, true, "input0");
+    parallel_tensor_guid_t dense0 = builder.dense(input0,
+                                                  8,
+                                                  Activation::RELU,
+                                                  true,
+                                                  DataType::FLOAT,
+                                                  std::nullopt,
+                                                  std::nullopt,
+                                                  "dense0");
 
-//     MultiDiEdge e{n1, pcg.add_node_port(), n0, pcg.add_node_port()};
-//     pcg.add_edge(e);
-//     ParallelDim dim = {2, 1, false};
-//     ParallelTensorDims dims = {FFOrdered<ParallelDim>{dim}};
-//     pcg.add_output(e, ParallelTensor(dims, DataType::FLOAT,
-//     CreateGrad::YES));
+    ParallelComputationGraph pcg = builder.pcg;
 
-//     auto test_allowed_machine_views = [](Operator const &,
-//                                          MachineSpecification const &) {
-//       return std::unordered_set<MachineView>{
-//           make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
-//     };
+    auto test_allowed_machine_views = [](ParallelLayerAttrs const &,
+                                         MachineSpecification const &) {
+      return std::unordered_set<MachineView>{
+          make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
+    };
 
-//     CostEstimator estimator = CostEstimator::create<TestCostEstimator>();
+    CostEstimator estimator = CostEstimator::create<TestCostEstimator>();
+    MachineSpecification machine_spec{1, 1, 1, 1, 1};
+    OptimalCostCache cached_results;
+    OptimalCostResult result = optimal_cost(
+        pcg,
+        test_allowed_machine_views,
+        estimator,
+        machine_spec,
+        cached_results);
 
-//     MachineSpecification machine_spec{1, 1, 1, 1, 1};
-
-//     OptimalCostCache cached_results;
-
-//     OptimalCostResult result = optimal_cost(ParallelComputationGraph(pcg),
-//                                             test_allowed_machine_views,
-//                                             estimator,
-//                                             machine_spec,
-//                                             cached_results);
-
-//     CHECK(bool(result.runtime > 0));
-//   }
-// }
+    CHECK(bool(result.runtime > 0));
+  }
+}

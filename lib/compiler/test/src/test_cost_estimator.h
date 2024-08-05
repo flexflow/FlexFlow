@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_TEST_COST_ESTIMATOR_H
 #define _FLEXFLOW_TEST_COST_ESTIMATOR_H
 
-#include "compiler/cost_estimate.h"
+#include "compiler/cost_estimator.h"
 
 namespace FlexFlow {
 

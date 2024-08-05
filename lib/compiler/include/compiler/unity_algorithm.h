@@ -2,7 +2,7 @@
 #define _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 
 #include "compiler/machine_mapping.h"
-#include "cost_estimate.h"
+#include "cost_estimator.h"
 #include "machine_mapping.h"
 #include "pcg/computation_graph.h"
 #include "pcg/machine_specification.dtg.h"

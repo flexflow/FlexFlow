@@ -3,7 +3,7 @@
 
 #include "compiler/machine_mapping.dtg.h"
 #include "compiler/optimal_cost_state.dtg.h"
-#include "cost_estimate.h"
+#include "cost_estimator.h"
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
@@ -29,10 +29,6 @@ struct OptimalCostResult {
 };
 FF_VISITABLE_STRUCT(OptimalCostResult, runtime, machine_mapping);
 
-struct OptimalCostRuntimeCmp {
-  bool operator()(OptimalCostResult const &, OptimalCostResult const &);
-};
-
 class OptimalCostCache {
 public:
   OptimalCostCache() = default;
@@ -54,16 +50,5 @@ OptimalCostResult optimal_cost(
     OptimalCostCache &cached_subgraph_costs);
 
 } // namespace FlexFlow
-
-// namespace std {
-//
-// template <>
-// struct hash<std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping>> {
-//   size_t operator()(
-//       std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g)
-//       const;
-// };
-
-// }; // namespace std
 
 #endif
