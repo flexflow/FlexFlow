@@ -97,12 +97,13 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       indices_offset = indices_lens;
       indices_lens += (kv_len + kPagesize - 1) / kPagesize;
       q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
-      kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+      kv_indptr_h[indptr_idx + 1] = batch_config->requestsInfo[req_idx].num_kv_pages;
       for (int i = indices_offset; i < indices_lens; i++) {
-        kv_indices_h[i] = max_num_pages * req_idx  + (i - indices_offset);
+        // kv_indices_h[i] = max_num_pages * req_idx + (i - indices_offset);
+        kv_indices_h[i] = batch_config->requestsInfo[req_idx].page_indices[i - indices_offset];
       }
       qk_indptr_h[indptr_idx + 1] = qk_lens;
-      // kv_last_page_len_h[indptr_idx] = pm->get_num_slots_in_block(req_idx);
+      kv_last_page_len_h[indptr_idx] = batch_config->requestsInfo[req_idx].kv_last_page_len;
       indptr_idx++;
     }
   }

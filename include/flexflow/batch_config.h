@@ -69,6 +69,12 @@ public:
     int first_token_index_in_request = -1;
     int first_token_offset_in_batch = -1;
     int num_tokens_in_batch = 0;
+
+    // page attention: we need some additional attention information here to allocate physical blocks in load_batch_config
+    // TODO: might need to add more fields here
+    int32_t num_kv_pages; //number of kv pages used
+    int32_t kv_last_page_len;
+    std::vector<int32_t> page_indices; //the indices for each page
   };
 
   struct PerTokenInfo {

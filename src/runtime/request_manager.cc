@@ -499,6 +499,7 @@ void RequestManager::load_pending_request_to_batch() {
 }
 
 void RequestManager::request_complete_clean_up(int batch_index) {
+  // TODO: I think it is better to the logical block cleanup here but I am not sure
   RequestGuid guid = guid_of_requests[batch_index];
   profiling_requests[guid].finish_time =
       Realm::Clock::current_time_in_microseconds();
@@ -507,6 +508,9 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   request_available[batch_index] = false;
   num_available_requests--;
   request.status = Request::COMPLETED;
+
+  // Clean up the logical blocks
+  PageManager::get_page_manager()->free(guid);
 
   // Find the sos and eos in the sequence
   auto bos_it = std::find(
@@ -686,6 +690,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     case LLM_VERIFY:
       if (update_llm_verify_results(result)) {
         // A request completed after the verification
+        // TODO: we should free the blocks here
         if (pending_request_queue.empty()) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
@@ -693,6 +698,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           ssm_completed = false;
         } else {
           request_manager_status = PREFILLING;
+          // TODO: I think we should add prefilling stuff here
           load_pending_request_to_batch();
           prefill_model = SSM;
           current_ssm_step = 0;
@@ -731,6 +737,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
     prefill_completed = true;
 
+    // should always be eos??
     if (prefill_request->tokens.back() == eos_token_id) {
       request_complete_clean_up(prefill_request->batch_index);
     }
@@ -851,6 +858,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   // which means that there is a request in the prefilling phase.
   // This function load its prefilling tokens, constructing a BatchConfig with
   // only one request.
+  // TODO: allocate logical blocks here
   if (verbose) {
     std::cout << "\n############### prepare_llm_prefilling_batch "
                  "##############\n";
@@ -884,6 +892,26 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   prefill_request->first_token_offset_in_batch = 0;
   prefill_request->num_tokens_in_batch =
       bc.requestsInfo[request_index].num_tokens_in_batch;
+
+  // page attention: add logical blocks here
+  // TODO: currently only support specinfer, might need to support incremental
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    _append_tokens_to_blocks(prefill_request, prefill_request->tokens);
+    PageManager *page_manager = PageManager::get_page_manager();
+    // we first need to update the physical block numbers
+    int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
+    assert(diff_block >= 0);
+    for (int i = 0; i < diff_block; i++) {
+      page_manager->allocate_block(guid);
+    }
+    // update last kv len
+    bc.requestsInfo[request_index].last_kv_len = request.blocks.back().get_num_alloc_slots();
+    // update the block table
+    bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
+    // update the num kv pages
+    bc.requestsInfo[request_index].num_kv_pages = new_bc.requestsInfo[request_index].page_indices.size()
+  }
+
 
   // Token Info
   for (int token_idx = 0;
@@ -1243,6 +1271,25 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
         new_bc.num_tokens;
     new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
 
+    // page attention: add metadata here
+    // I think we are now already have updated logical block data in update_results, and 
+    // we need to update the block table here
+
+    // get page manager
+    PageManager *page_manager = PageManager::get_page_manager();
+    // we first need to update the physical block numbers
+    int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
+    assert(diff_block >= 0);
+    for (int i = 0; i < diff_block; i++) {
+      page_manager->allocate_block(guid);
+    }
+    // update last kv len
+    new_bc.requestsInfo[request_index].last_kv_len = request.blocks.back().get_num_alloc_slots();
+    // update the block table
+    new_bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
+    // update the num kv pages
+    new_bc.requestsInfo[request_index].num_kv_pages = new_bc.requestsInfo[request_index].page_indices.size();
+
     // Put the information of the committed tokens into
     // BatchConfig.committed_tokens.
     // Note here, we shouldn't put the last token in request.committed_tokens
@@ -1261,6 +1308,8 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
           committed_token.to_index;
       new_bc.num_tokens_to_commit++;
+      // page attention: add to request's logical block
+      _append_tokens_to_blocks(request, {committed_token.token_id});
     }
 
     // Load the tokens on the token tree that are not yet pruned to
