@@ -185,13 +185,13 @@ python3 ./huggingface_inference.py --model-name "facebook/opt-6.7b" --use-full-p
 # Falcon (full precision)
 python3 ./huggingface_inference.py --model-name "tiiuae/falcon-7b" --use-full-precision --prompt-file "../../inference/prompt/test.json" --output-file "../../inference/output/huggingface_falcon_7B.txt" --max-length 128
 
-diff "../../inference/output/huggingface_llama_160M.txt" <(tail -n +4 "../../inference/output/incr_dec-python-llama-160m-full_prec-1_tp_4_pp.txt")
-diff <( < ../../inference/output/huggingface_llama_160M_half.txt tr -s '[:space:]' '\n' | head -n 20) <(tail -n +4 "../../inference/output/incr_dec-python-llama-160m-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
-diff "../../inference/output/huggingface_llama_7B.txt" <(tail -n +4 "../../inference/output/incr_dec-python-llama-2-7b-hf-full_prec-1_tp_4_pp.txt")
-diff <( < ../../inference/output/huggingface_llama_7B_half.txt tr -s '[:space:]' '\n' | head -n 20) <(tail -n +4 "../../inference/output/incr_dec-python-llama-2-7b-hf-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
+diff "../../inference/output/huggingface_llama_160M.txt" <(tail -n +3 "../../inference/output/incr_dec-python-llama-160m-full_prec-1_tp_4_pp.txt")
+diff <( < ../../inference/output/huggingface_llama_160M_half.txt tr -s '[:space:]' '\n' | head -n 20) <(tail -n +3 "../../inference/output/incr_dec-python-llama-160m-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
+diff "../../inference/output/huggingface_llama_7B.txt" <(tail -n +3 "../../inference/output/incr_dec-python-llama-2-7b-hf-full_prec-1_tp_4_pp.txt")
+diff <( < ../../inference/output/huggingface_llama_7B_half.txt tr -s '[:space:]' '\n' | head -n 20) <(tail -n +3 "../../inference/output/incr_dec-python-llama-2-7b-hf-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
 
-diff "../../inference/output/huggingface_opt_125M.txt" <(tail -n +4 "../../inference/output/incr_dec-python-opt-125m-full_prec-1_tp_4_pp.txt")
-diff <( < ../../inference/output/huggingface_opt_125M_half.txt tr -s '[:space:]' '\n' | head -n 20) <(tail -n +4 "../../inference/output/incr_dec-python-opt-125m-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
-diff "../../inference/output/huggingface_opt_6B.txt" <(tail -n +4 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
-#diff "../../inference/output/huggingface_opt_6B_half.txt" <(tail -n +4 "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt")
-diff "../../inference/output/huggingface_falcon_7B.txt" <(tail -n +4 "../../inference/output/incr_dec-python-falcon-7b-full_prec-1_tp_4_pp.txt")
+diff "../../inference/output/huggingface_opt_125M.txt" <(tail -n +3 "../../inference/output/incr_dec-python-opt-125m-full_prec-1_tp_4_pp.txt")
+diff <( < ../../inference/output/huggingface_opt_125M_half.txt tr -s '[:space:]' '\n' | head -n 20) <(tail -n +3 "../../inference/output/incr_dec-python-opt-125m-half_prec-1_tp_4_pp.txt" | tr -s '[:space:]' '\n' | head -n 20)
+diff "../../inference/output/huggingface_opt_6B.txt" <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-full_prec-1_tp_4_pp.txt")
+#diff "../../inference/output/huggingface_opt_6B_half.txt" <(tail -n +3 "../../inference/output/incr_dec-python-opt-6.7b-half_prec-1_tp_4_pp.txt")
+diff "../../inference/output/huggingface_falcon_7B.txt" <(tail -n +3 "../../inference/output/incr_dec-python-falcon-7b-full_prec-1_tp_4_pp.txt")
