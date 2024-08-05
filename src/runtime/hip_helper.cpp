@@ -57,6 +57,14 @@ __global__ void copy_kernel(DT *dst, const DT *src, coord_t size) {
 }
 
 template <typename DT>
+__global__ void
+    copy_kernel_discrete(DT *dst, const DT *src, coord_t size, size_t *index) {
+  CUDA_KERNEL_LOOP(i, size) {
+    dst[i] = src[index[i]];
+  }
+}
+
+template <typename DT>
 __global__ void reluBackward(DT *grad_ptr, const DT *output, size_t n) {
   CUDA_KERNEL_LOOP(i, n) {
     grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0;
@@ -225,26 +233,62 @@ __host__ void updateGAS(float *para_ptr,
 }
 
 template <typename T>
-__host__ void
-    print_tensor(T const *ptr, size_t num_elements, char const *prefix) {
-  // device synchronize to make sure the data are ready
-  // checkCUDA(hipDeviceSynchronize());
+__host__ void print_tensor(T const *ptr,
+                           size_t num_elements,
+                           char const *prefix,
+                           int shard_id) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
   T *host_ptr;
-  checkCUDA(hipHostMalloc((void **)&host_ptr,
+  checkCUDA(hipHostMalloc(&host_ptr,
                           sizeof(T) * num_elements,
                           hipHostMallocPortable | hipHostMallocMapped));
-  checkCUDA(hipMemcpy(
-      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost));
-  // checkCUDA(hipDeviceSynchronize());
+  checkCUDA(hipMemcpyAsync(
+      host_ptr, ptr, sizeof(T) * num_elements, hipMemcpyDeviceToHost, stream));
+  checkCUDA(hipDeviceSynchronize());
   int idx = 0;
-  printf("%s", prefix);
+  printf("%s, %d---->", prefix, shard_id);
   for (idx = 0; idx < num_elements; idx++) {
-    printf(" %.4lf", (float)host_ptr[idx]);
-    if (idx >= 16) {
+    printf(" %.20lf", (float)host_ptr[idx]);
+    if (idx >= 100) {
       break;
     }
   }
   printf("\n");
+  checkCUDA(hipHostFree(host_ptr));
+}
+
+template <typename T>
+__host__ void print_beam_tensor(T const *ptr,
+                                size_t num_elements,
+                                int skip,
+                                int channel,
+                                char const *prefix) {
+  hipStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  T *host_ptr;
+  checkCUDA(hipHostMalloc(&host_ptr,
+                          sizeof(T) * channel * skip,
+                          hipHostMallocPortable | hipHostMallocMapped));
+  checkCUDA(hipMemcpyAsync(host_ptr,
+                           ptr,
+                           sizeof(T) * channel * skip,
+                           hipMemcpyDeviceToHost,
+                           stream));
+  // checkCUDA(hipDeviceSynchronize());
+  int idx = 0;
+  printf("%s", prefix);
+
+  for (int i = 0; i < channel; i += 1) {
+    for (idx = 0; idx < num_elements; idx++) {
+      printf(" %.20lf", (float)host_ptr[idx + i * skip]);
+      if (idx >= 100) {
+        break;
+      }
+    }
+    printf("\n-----***********------\n");
+  }
+
   checkCUDA(hipHostFree(host_ptr));
 }
 
@@ -559,6 +603,49 @@ void handle_unimplemented_hip_kernel(OperatorType op_type) {
   throw std::runtime_error("Unimplemented hip kernel for Operator: " +
                            FlexFlow::get_operator_type_name(op_type));
 }
+void check_device_vs_host_ptr(void const *maybe_devicePtr) {
+  hipPointerAttribute_t attributes;
+  hipError_t hipStatus = hipPointerGetAttributes(&attributes, maybe_devicePtr);
+
+  if (hipStatus == hipSuccess) {
+    // Check attributes and perform actions accordingly
+    if (attributes.memoryType == hipMemoryTypeDevice) {
+      printf("Pointer is allocated in device memory.\n");
+    } else if (attributes.memoryType == hipMemoryTypeHost) {
+      printf("Pointer is allocated in host memory.\n");
+    } else if (attributes.memoryType == hipMemoryTypeArray) {
+      printf("Pointer points to array memory, physically located on device.\n");
+    } else if (attributes.memoryType == hipMemoryTypeManaged) {
+      printf("Pointer points to managed memory, automaticallly managed by the "
+             "unified memory system.\n");
+    } else if (attributes.memoryType == hipMemoryTypeUnified) {
+      printf("Pointer points to unified memory (not supported currently) \n");
+    } else {
+      printf("Pointer is not allocated in recognized memory type.\n");
+    }
+  } else {
+    fprintf(stderr,
+            "hipPointerGetAttributes failed: %s\n",
+            hipGetErrorString(hipStatus));
+  }
+}
+
+void check_ptr_alignment(void const *ptr) {
+  if (!ptr) {
+    printf("Pointer is NULL\n");
+    return;
+  }
+  bool aligned2 = ((uintptr_t)ptr % 2 == 0);
+  bool aligned4 = ((uintptr_t)ptr % 4 == 0);
+  bool aligned8 = ((uintptr_t)ptr % 8 == 0);
+  bool aligned16 = ((uintptr_t)ptr % 16 == 0);
+  printf("Pointer %p is aligned as follows: 2=%s, 4=%s, 8=%s, 16=%s\n",
+         ptr,
+         (aligned2 ? "yes" : "no"),
+         (aligned4 ? "yes" : "no"),
+         (aligned8 ? "yes" : "no"),
+         (aligned16 ? "yes" : "no"));
+}
 
 template __global__ void
     assign_kernel<half>(half *ptr, coord_t size, half value);
@@ -600,6 +687,15 @@ template __global__ void
 template __global__ void
     copy_kernel<int64_t>(int64_t *dst, int64_t const *src, coord_t size);
 
+template __global__ void copy_kernel_discrete<float>(float *dst,
+                                                     float const *src,
+                                                     coord_t size,
+                                                     size_t *index);
+template __global__ void copy_kernel_discrete<int64_t>(int64_t *dst,
+                                                       int64_t const *src,
+                                                       coord_t size,
+                                                       size_t *index);
+
 template __global__ void apply_add_with_scale<float>(float *data_ptr,
                                                      float const *grad_ptr,
                                                      size_t size,
@@ -617,16 +713,42 @@ template __global__ void apply_add_with_scale<int64_t>(int64_t *data_ptr,
                                                        size_t size,
                                                        int64_t scale);
 
-template __host__ void
-    print_tensor<float>(float const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<double>(double const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<int32_t>(int32_t const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<int64_t>(int64_t const *ptr, size_t rect, char const *prefix);
-template __host__ void
-    print_tensor<half>(half const *ptr, size_t rect, char const *prefix);
+template __host__ void print_tensor<float>(float const *ptr,
+                                           size_t rect,
+                                           char const *prefix,
+                                           int shard_id);
+template __host__ void print_tensor<double>(double const *ptr,
+                                            size_t rect,
+                                            char const *prefix,
+                                            int shard_id);
+template __host__ void print_tensor<int32_t>(int32_t const *ptr,
+                                             size_t rect,
+                                             char const *prefix,
+                                             int shard_id);
+template __host__ void print_tensor<int64_t>(int64_t const *ptr,
+                                             size_t rect,
+                                             char const *prefix,
+                                             int shard_id);
+template __host__ void print_tensor<half>(half const *ptr,
+                                          size_t rect,
+                                          char const *prefix,
+                                          int shard_id);
+
+template __host__ void print_beam_tensor<float>(float const *ptr,
+                                                size_t num_elements,
+                                                int skip,
+                                                int channel,
+                                                char const *prefix);
+template __host__ void print_beam_tensor<int32_t>(int32_t const *ptr,
+                                                  size_t num_elements,
+                                                  int skip,
+                                                  int channel,
+                                                  char const *prefix);
+template __host__ void print_beam_tensor<int64_t>(int64_t const *ptr,
+                                                  size_t num_elements,
+                                                  int skip,
+                                                  int channel,
+                                                  char const *prefix);
 
 template __host__ void
     save_tensor<float>(float const *ptr, size_t rect, char const *file_name);
@@ -652,6 +774,9 @@ template __host__ int64_t *
 template __host__ void copy_tensor_dev_to_host<float>(float const *ptr,
                                                       float *dst,
                                                       size_t num_elements);
+template __host__ void copy_tensor_dev_to_host<half>(half const *ptr,
+                                                     half *dst,
+                                                     size_t num_elements);
 template __host__ void copy_tensor_dev_to_host<double>(double const *ptr,
                                                        double *dst,
                                                        size_t num_elements);

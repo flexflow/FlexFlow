@@ -684,6 +684,34 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
+__global__ void store_kv_cache(DT const *devQKVProjArray,
+                               DT *kCache_ptr,
+                               DT *vCache_ptr,
+                               BatchConfig::PerTokenInfo const *tokenInfos,
+                               int num_tokens,
+                               int max_seq_len,
+                               int hidden_size) {
+  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
+    int token_idx = i / hidden_size;
+    int offset = i % hidden_size;
+
+    size_t val_idx =
+        token_idx * QKV_WEIGHT_NUM * hidden_size + hidden_size + offset;
+
+    DT kVal = devQKVProjArray[val_idx];
+    DT vVal = devQKVProjArray[val_idx + hidden_size];
+    int const req_id = tokenInfos[token_idx].request_index;
+    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
+
+    // key cache
+    kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
+               offset] = kVal;
+    vCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
+               offset] = vVal;
+  }
+}
+
+template <typename DT>
 void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             BatchConfig const *bc,
                             hipStream_t stream) {
@@ -839,11 +867,11 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
   if (m->quantization_type != DT_NONE) {
     // copy weight_ptr to quantized_weight_ptr, do compression and store in
     // m->weight_ptr
-    hipMemcpyAsync(m->quantized_weight_ptr,
-                   weight.get_byte_ptr(),
-                   m->quantized_weightSize,
-                   hipMemcpyHostToDevice,
-                   stream);
+    checkCUDA(hipMemcpyAsync(m->quantized_weight_ptr,
+                             weight.get_byte_ptr(),
+                             m->quantized_weightSize,
+                             hipMemcpyHostToDevice,
+                             stream));
 
     if (m->quantization_type == DT_INT4) {
       int parallelism = m->qProjSize * m->qSize * m->num_q_heads / 2;
@@ -873,17 +901,17 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
     }
   } else {
     if (data_type == DT_FLOAT) {
-      hipMemcpyAsync(m->weight_ptr,
-                     weight.get_float_ptr(),
-                     m->weightSize,
-                     hipMemcpyHostToDevice,
-                     stream);
+      checkCUDA(hipMemcpyAsync(m->weight_ptr,
+                               weight.get_float_ptr(),
+                               m->weightSize,
+                               hipMemcpyHostToDevice,
+                               stream));
     } else if (data_type == DT_HALF) {
-      hipMemcpyAsync(m->weight_ptr,
-                     weight.get_half_ptr(),
-                     m->weightSize,
-                     hipMemcpyHostToDevice,
-                     stream);
+      checkCUDA(hipMemcpyAsync(m->weight_ptr,
+                               weight.get_half_ptr(),
+                               m->weightSize,
+                               hipMemcpyHostToDevice,
+                               stream));
     } else {
       assert(false);
     }
@@ -901,8 +929,8 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       hipStream_t stream) {
 
   if (m->offload && m->biasSize > 0) {
-    hipMemcpyAsync(
-        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream);
+    checkCUDA(hipMemcpyAsync(
+        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
@@ -1170,24 +1198,19 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int c_param = num_tokens;
       int h_param = 1;
       int w_param = num_tokens;
-      checkCUDNN(hipdnnSetTensor4dDescriptor(m->qk_tensor,
-                                             HIPDNN_TENSOR_NCHW,
-                                             cudnn_data_type,
-                                             n_param,
-                                             c_param,
-                                             h_param,
-                                             w_param));
-      checkCUDNN(hipdnnSoftmaxBackward(m->handle.dnn,
-                                       MIOPEN_SOFTMAX_ACCURATE,
-                                       MIOPEN_SOFTMAX_MODE_CHANNEL,
-                                       &alpha,
-                                       m->qk_tensor,
-                                       m->softmax_activation_buffer,
-                                       m->qk_tensor,
-                                       m->qk_prods_softmax,
-                                       &beta,
-                                       m->qk_tensor,
-                                       m->qk_prods));
+      checkCUDNN(miopenSet4dTensorDescriptor(
+          m->qk_tensor, cudnn_data_type, n_param, c_param, h_param, w_param));
+      checkCUDNN(miopenSoftmaxBackward_V2(m->handle.dnn,
+                                          &alpha,
+                                          m->qk_tensor,
+                                          m->softmax_activation_buffer,
+                                          m->qk_tensor,
+                                          m->qk_prods_softmax,
+                                          &beta,
+                                          m->qk_tensor,
+                                          m->qk_prods,
+                                          MIOPEN_SOFTMAX_ACCURATE,
+                                          MIOPEN_SOFTMAX_MODE_CHANNEL));
 
       if (m->inference_debugging) {
         DT *C = static_cast<DT *>(m->qk_prods);
@@ -1442,34 +1465,6 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
 using namespace Kernels::IncMultiHeadAttention;
 
 template <typename DT>
-__global__ void store_kv_cache(DT const *devQKVProjArray,
-                               DT *kCache_ptr,
-                               DT *vCache_ptr,
-                               BatchConfig::PerTokenInfo const *tokenInfos,
-                               int num_tokens,
-                               int max_seq_len,
-                               int hidden_size) {
-  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
-    int token_idx = i / hidden_size;
-    int offset = i % hidden_size;
-
-    size_t val_idx =
-        token_idx * QKV_WEIGHT_NUM * hidden_size + hidden_size + offset;
-
-    DT kVal = devQKVProjArray[val_idx];
-    DT vVal = devQKVProjArray[val_idx + hidden_size];
-    int const req_id = tokenInfos[token_idx].request_index;
-    int const tok_id = tokenInfos[token_idx].abs_depth_in_request;
-
-    // key cache
-    kCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
-               offset] = kVal;
-    vCache_ptr[req_id * (hidden_size * max_seq_len) + tok_id * hidden_size +
-               offset] = vVal;
-  }
-}
-
-template <typename DT>
 __global__ void store_query_cache(DT const *devQKVProjArray,
                                   DT *qCache_ptr,
                                   int num_tokens,
@@ -1666,28 +1661,23 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
       int c_param = total_tokens;
       int h_param = 1;
       int w_param = num_new_tokens;
-      checkCUDNN(hipdnnSetTensor4dDescriptor(m->qk_tensor,
-                                             HIPDNN_TENSOR_NCHW,
-                                             cudnn_data_type,
-                                             n_param,
-                                             c_param,
-                                             h_param,
-                                             w_param));
+      checkCUDNN(miopenSet4dTensorDescriptor(
+          m->qk_tensor, cudnn_data_type, n_param, c_param, h_param, w_param));
       float softmax_alpha = 1.0f, softmax_beta = 0.0f;
       DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
       // The softmax operation below is executed according to the
       // MIOPEN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
       // softmax operation is computed per spatial location (H,W) per image (N)
       // across dimension C.
-      checkCUDNN(hipdnnSoftmaxForward(m->handle.dnn,
-                                      MIOPEN_SOFTMAX_ACCURATE,
-                                      MIOPEN_SOFTMAX_MODE_CHANNEL,
-                                      &softmax_alpha,
-                                      m->qk_tensor,
-                                      C,
-                                      &softmax_beta,
-                                      m->qk_tensor,
-                                      C_softmax));
+      checkCUDNN(miopenSoftmaxForward_V2(m->handle.dnn,
+                                         &softmax_alpha,
+                                         m->qk_tensor,
+                                         C,
+                                         &softmax_beta,
+                                         m->qk_tensor,
+                                         C_softmax,
+                                         MIOPEN_SOFTMAX_ACCURATE,
+                                         MIOPEN_SOFTMAX_MODE_CHANNEL));
     }
     // Copy C_softmax to m->softmax_activation_buffer if we need to compute
     // PEFT backward
@@ -1790,9 +1780,9 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   // assert(input.data_type == weight.data_type);
@@ -1837,12 +1827,12 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("IncMultiHeadSelfAttention forward time = %.9fms\n", elapsed);
   }
 }
@@ -1862,9 +1852,9 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   // assert(input.data_type == weight.data_type);
@@ -1901,12 +1891,12 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     assert(false && "Unspported data type");
   }
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("IncMultiHeadSelfAttention PEFT backward time = %.9fms\n", elapsed);
   }
 }
@@ -1977,7 +1967,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));
-  checkCUDNN(hipdnnCreateTensorDescriptor(&qk_tensor));
+  checkCUDNN(miopenCreateTensorDescriptor(&qk_tensor));
   qSize = _qSize;
   kSize = _kSize;
   vSize = _vSize;
@@ -2184,7 +2174,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   }
   allocated_peft_buffer_size1 = 0;
   allocated_peft_buffer_size2 = 0;
-  hipStreamSynchronize(stream);
+  checkCUDA(hipStreamSynchronize(stream));
 }
 
 IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {

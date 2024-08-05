@@ -86,6 +86,12 @@ __global__ void assign_kernel(DT *ptr, Legion::coord_t size, DT value);
 template <typename DT>
 __global__ void copy_kernel(DT *dst, const DT *src, Legion::coord_t size);
 
+template <typename DT>
+__global__ void copy_kernel_discrete(DT *dst,
+                                     const DT *src,
+                                     Legion::coord_t size,
+                                     size_t *index);
+
 template <typename T>
 __global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size);
 
@@ -135,7 +141,16 @@ __host__ void updateGAS(float *para_ptr,
                         float learning_rate);
 
 template <typename T>
-void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
+void print_tensor(T const *ptr,
+                  size_t num_elements,
+                  char const *prefix,
+                  int shard_id = 0);
+template <typename T>
+void print_beam_tensor(T const *ptr,
+                       size_t num_elements,
+                       int skip,
+                       int channel,
+                       char const *prefix);
 
 template <typename T>
 void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
@@ -168,3 +183,5 @@ ncclDataType_t ff_to_nccl_datatype(DataType type);
 
 void handle_unimplemented_hip_kernel(OperatorType op_type);
 #endif
+void check_device_vs_host_ptr(void const *maybe_devicePtr);
+void check_ptr_alignment(void const *ptr);

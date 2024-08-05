@@ -176,9 +176,9 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   if (m->input_type[0] == DT_FLOAT) {
     LayerNorm::forward_kernel<float>(
@@ -201,12 +201,12 @@ void LayerNorm::forward_kernel_wrapper(LayerNormMeta const *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[LayerNorm] forward time (CF) = %.9fms\n", elapsed);
     // print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
     // print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");
@@ -225,9 +225,9 @@ void LayerNorm::inference_kernel_wrapper(LayerNormMeta *m,
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   // save input activation if needed for PEFT
@@ -311,12 +311,12 @@ void LayerNorm::inference_kernel_wrapper(LayerNormMeta *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[LayerNorm] forward time (CF) = %.9fms\n", elapsed);
     // print_tensor<T>(in_ptr, 32, "[LayerNorm:forward:input]");
     // print_tensor<T>(out_ptr, 32, "[LayerNorm:forward:output]");

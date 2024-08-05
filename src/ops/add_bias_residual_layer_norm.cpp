@@ -194,9 +194,9 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   // save input activation if needed for PEFT
   if (bc->num_active_peft_tokens() > 0) {
@@ -292,12 +292,12 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[AddBiasResidualLayerNorm] forward time (CF) = %.9fms\n", elapsed);
     // if (m->input_type[0] == DT_FLOAT) {
     //   print_tensor<float>(input.get_float_ptr(),
@@ -722,9 +722,9 @@ void AddBiasResidualLayerNorm::backward_kernel_wrapper(
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   if (m->output_type[0] == DT_FLOAT) {
@@ -758,12 +758,12 @@ void AddBiasResidualLayerNorm::backward_kernel_wrapper(
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[AddBiasResidualLayerNorm] backward time (CF) = %.2fms\n", elapsed);
   }
 }
@@ -812,9 +812,9 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   if (m->output_type[0] == DT_FLOAT) {
@@ -836,12 +836,12 @@ void AddBiasResidualLayerNorm::peft_bwd_kernel_wrapper(
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[AddBiasResidualLayerNorm] peft_bwd time (CF) = %.2fms\n", elapsed);
   }
 }

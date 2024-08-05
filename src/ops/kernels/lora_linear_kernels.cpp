@@ -58,9 +58,9 @@ void inference_kernel_wrapper(LoraLinearMeta *m,
   int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
 
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   if (m->input_type[0] == DT_FLOAT) {
     Internal::inference_kernel<float>(m,
@@ -81,12 +81,12 @@ void inference_kernel_wrapper(LoraLinearMeta *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s [LoraLinear] forward time = %.2lfms\n", m->op_name, elapsed);
     // print_tensor<float>((float*)input_ptr, in_dim * batch_size,
     // "[LoraLinear:forward:input]"); print_tensor<float>((float*)weight_ptr,
@@ -105,9 +105,9 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
   int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
@@ -130,12 +130,12 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("%s [LoraLinear] PEFT Bwd time = %.2lfms\n", m->op_name, elapsed);
     // print_tensor<float>((float*)input_ptr, in_dim * batch_size,
     // "[LoraLinear:forward:input]"); print_tensor<float>((float*)weight_ptr,
@@ -209,8 +209,8 @@ void inference_kernel(LoraLinearMeta *m,
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
   DT alpha = 1.0f, beta = 0.0f;
-  hipblasDatatype_t input_type = ff_to_hip_datatype(m->input_type[0]);
-  hipblasDatatype_t output_type = ff_to_hip_datatype(m->input_type[1]);
+  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->input_type[1]);
   hipblasDatatype_t lr_actv_type = output_type;
   assert(input_type == output_type);
   hipblasDatatype_t weight_type = output_type;
@@ -371,8 +371,8 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                      ffStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-  hipblasDatatype_t input_type = ff_to_hip_datatype(m->input_type[0]);
-  hipblasDatatype_t output_type = ff_to_hip_datatype(m->output_type[0]);
+  hipblasDatatype_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  hipblasDatatype_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   assert(input_type == output_type);
   hipblasDatatype_t weight_type = output_type;
   hipblasDatatype_t lr_actv_type = output_type;

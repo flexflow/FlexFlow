@@ -194,9 +194,9 @@ void inference_kernel_wrapper(RMSNormMeta *m,
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
 
   assert(output.data_type == input.data_type);
@@ -278,12 +278,12 @@ void inference_kernel_wrapper(RMSNormMeta *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[RMSNorm] forward time (CF) = %.2fms\n", elapsed);
   }
 }
@@ -408,9 +408,9 @@ void backward_kernel_wrapper(RMSNormMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   assert(input_grad.data_type == input.data_type);
   assert(weight_grad.data_type == weight.data_type);
@@ -438,12 +438,12 @@ void backward_kernel_wrapper(RMSNormMeta const *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[RMSNorm] backward time (CF) = %.2fms\n", elapsed);
   }
 }
@@ -506,9 +506,9 @@ void peft_bwd_kernel_wrapper(RMSNormMeta const *m,
   checkCUDA(get_legion_stream(&stream));
   hipEvent_t t_start, t_end;
   if (m->profiling) {
-    hipEventCreate(&t_start);
-    hipEventCreate(&t_end);
-    hipEventRecord(t_start, stream);
+    checkCUDA(hipEventCreate(&t_start));
+    checkCUDA(hipEventCreate(&t_end));
+    checkCUDA(hipEventRecord(t_start, stream));
   }
   assert(input_grad.data_type == output_grad.data_type);
   assert(output_grad.data_type == weight.data_type);
@@ -532,12 +532,12 @@ void peft_bwd_kernel_wrapper(RMSNormMeta const *m,
   }
 
   if (m->profiling) {
-    hipEventRecord(t_end, stream);
+    checkCUDA(hipEventRecord(t_end, stream));
     checkCUDA(hipEventSynchronize(t_end));
     float elapsed = 0;
     checkCUDA(hipEventElapsedTime(&elapsed, t_start, t_end));
-    hipEventDestroy(t_start);
-    hipEventDestroy(t_end);
+    checkCUDA(hipEventDestroy(t_start));
+    checkCUDA(hipEventDestroy(t_end));
     printf("[RMSNorm] peft_bwd time (CF) = %.2fms\n", elapsed);
   }
 }

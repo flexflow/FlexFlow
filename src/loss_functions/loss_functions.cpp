@@ -86,7 +86,7 @@ void Loss::sparse_categorical_crossentropy_loss_backward_kernel_wrapper(
                      num_classes,
                      k);
   // Scale logit gradients by op->scale_factor
-  hipLaunchKernelGGL(scale_kernel,
+  hipLaunchKernelGGL(scale_kernel<float>,
                      GET_BLOCKS(logit_grad_volume),
                      CUDA_NUM_THREADS,
                      0,
@@ -116,7 +116,7 @@ void Loss::categorical_crossentropy_loss_backward_kernel_wrapper(
                      label_ptr,
                      logit_volume);
   // Scale logit gradients by loss->scale_factor
-  hipLaunchKernelGGL(scale_kernel,
+  hipLaunchKernelGGL(scale_kernel<float>,
                      GET_BLOCKS(logit_grad_volume),
                      CUDA_NUM_THREADS,
                      0,
@@ -146,7 +146,7 @@ void Loss::mean_squared_error_avg_loss_backward_kernel_wrapper(
                      label_ptr,
                      logit_volume);
   // Scale logit gradients by loss->scale_factor
-  hipLaunchKernelGGL(scale_kernel,
+  hipLaunchKernelGGL(scale_kernel<float>,
                      GET_BLOCKS(logit_grad_volume),
                      CUDA_NUM_THREADS,
                      0,
@@ -173,7 +173,7 @@ void Loss::identity_loss_backward_kernel_wrapper(float *loss_grad_ptr,
                      loss_ptr,
                      loss_volume);
   // Scale logit gradients by loss->scale_factor
-  hipLaunchKernelGGL(scale_kernel,
+  hipLaunchKernelGGL(scale_kernel<float>,
                      GET_BLOCKS(loss_grad_volume),
                      CUDA_NUM_THREADS,
                      0,
