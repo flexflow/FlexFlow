@@ -541,6 +541,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                                static_cast<DT *>(weight.w0_ptr));
         // LoRA_B weight is replicated w tensor parallelism, so we need to sync
         // and sum first
+#ifdef FF_USE_NCCL
         ncclDataType_t nccl_data_type = ff_to_nccl_datatype(m->output_type[0]);
         checkCUDA(ncclAllReduce(static_cast<DT const *>(weight.w1_grad_ptr),
                                 static_cast<DT *>(weight.w1_grad_ptr),
@@ -549,6 +550,9 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                                 ncclSum,
                                 m->handle.ncclComm,
                                 stream));
+#else
+        assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
+#endif
         sgd_update<<<GET_BLOCKS(w1_num_elements),
                      CUDA_NUM_THREADS,
                      0,
