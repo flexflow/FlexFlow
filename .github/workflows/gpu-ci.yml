@@ -199,7 +199,17 @@ jobs:
           ./tests/inference_tests.sh
 
           # PEFT tests
-          ./tests/peft_tests.sh
+          ./tests/peft_test.sh
+          python ./tests/peft/peft_alignment_test.py
+      
+      - name: Run PEFT tests
+        run: |
+          export PATH=$CONDA_PREFIX/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+          
+          ./tests/peft_test.sh
           python ./tests/peft/peft_alignment_test.py
       
       - name: Save inference output as an artifact
