@@ -1,4 +1,4 @@
-#include "utils/graph/serial_parallel/sp_ization/critical_path_cost_preserving_sp_ization.h"
+#include "utils/graph/serial_parallel/sp_ization/critical_path_preserving_sp_ization.h"
 #include "utils/containers/as_vector.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
@@ -15,13 +15,13 @@
 
 namespace FlexFlow {
 
-SerialSplit cut_off_head(SerialSplit s) {
+static SerialSplit cut_off_head(SerialSplit s) {
   assert(s.children.size() > 0);
   return SerialSplit{std::vector<std::variant<ParallelSplit, Node>>(
       s.children.begin() + 1, s.children.end())};
 }
 
-SerialParallelDecomposition parallel_composition_with_coalescing(
+static SerialParallelDecomposition parallel_composition_with_coalescing(
     std::vector<SerialSplit> sp_predecessors) {
   if (sp_predecessors.size() == 1) {
     return SerialParallelDecomposition(get_only(sp_predecessors));
@@ -37,20 +37,20 @@ SerialParallelDecomposition parallel_composition_with_coalescing(
     }
   }
 
-  std::vector<SerialParallelDecomposition> sp;
+  std::unordered_set<SerialParallelDecomposition> sp;
   for (auto const &item : coalescable) {
     std::variant<ParallelSplit, Node> head = item.first;
     std::vector<SerialSplit> sp_branches = item.second;
     std::vector<SerialSplit> cut_off = transform(sp_branches, cut_off_head);
     auto p_comp = parallel_composition_with_coalescing(cut_off);
-    sp.push_back(
+    sp.insert(
         serial_composition({widen<SerialParallelDecomposition>(head), p_comp}));
   }
   return parallel_composition(sp);
 }
 
-SerialParallelDecomposition
-    dependency_invariant_sp_ization_unchecked_with_coalescing(
+static SerialParallelDecomposition
+    critical_path_preserving_sp_ization_unchecked_with_coalescing(
         DiGraphView const &g) {
   std::unordered_map<Node, SerialSplit> node_to_sp;
 
@@ -77,15 +77,14 @@ SerialParallelDecomposition
   return normalize(SerialParallelDecomposition(node_to_sp.at(sink)));
 }
 
-
 SerialParallelDecomposition
-    dependency_invariant_sp_ization_with_coalescing(DiGraphView const &g) {
+    critical_path_preserving_sp_ization_with_coalescing(DiGraphView const &g) {
   assert(is_2_terminal_dag(g));
-  return dependency_invariant_sp_ization_unchecked_with_coalescing(g);
+  return critical_path_preserving_sp_ization_unchecked_with_coalescing(g);
 }
 
-SerialParallelDecomposition
-    dependency_invariant_sp_ization_unchecked(DiGraphView const &g) {
+static SerialParallelDecomposition
+    critical_path_preserving_sp_ization_unchecked(DiGraphView const &g) {
   std::unordered_map<Node, SerialParallelDecomposition> node_to_sp;
 
   Node source = get_only(get_sources(g));
@@ -95,15 +94,13 @@ SerialParallelDecomposition
     if (node == source) {
       continue;
     }
-    std::unordered_set<SerialParallelDecomposition> unordered_sp_predecessors =
+    std::unordered_set<SerialParallelDecomposition> sp_predecessors =
         transform(get_predecessors(g, node),
                   [&](Node const &p) { return node_to_sp.at(p); });
-    std::vector<SerialParallelDecomposition> sp_predecessors =
-        as_vector(unordered_sp_predecessors);
 
     SerialParallelDecomposition sp_decomp =
-        serial_composition({parallel_composition(sp_predecessors),
-                            SerialParallelDecomposition(node)});
+        normalize(serial_composition({parallel_composition(sp_predecessors),
+                                      SerialParallelDecomposition(node)}));
 
     node_to_sp.emplace(node, sp_decomp);
   }
@@ -113,9 +110,9 @@ SerialParallelDecomposition
 }
 
 SerialParallelDecomposition
-    dependency_invariant_sp_ization(DiGraphView const &g) {
+    critical_path_preserving_sp_ization(DiGraphView const &g) {
   assert(is_2_terminal_dag(g));
-  return dependency_invariant_sp_ization_unchecked(g);
+  return critical_path_preserving_sp_ization_unchecked(g);
 }
 
 } // namespace FlexFlow

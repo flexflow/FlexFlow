@@ -5,7 +5,17 @@
 
 namespace FlexFlow {
 
-// TODO: add description
+/**
+ * @brief Recursively normalizes a SerialParallelDecomposition.
+ *
+ * @details This function performs the following semantic substitutions:
+ * - Deletes every empty SerialSplit and ParallelSplit item:
+ *   S(P(S()), Node(1), Node(2)) -> S(Node(1), Node(2))
+ *
+ * - Replaces SerialSplit and ParallelSplit of size 1 with their content:
+ *   S(S(Node(1)), P(Node(2))) -> S(Node(1), Node(2))
+ *
+ */
 SerialParallelDecomposition normalize(SerialParallelDecomposition const &sp);
 
 } // namespace FlexFlow

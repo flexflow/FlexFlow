@@ -8,8 +8,6 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 #include <unordered_map>
 
-// TODO: change the getting children split into 2 into a single case
-
 namespace FlexFlow {
 
 std::unordered_map<Node, size_t>
@@ -43,7 +41,7 @@ std::unordered_map<Node, size_t>
   return counter;
 }
 
-// duplicate nodes are counted multiple times
+// duplicate nodes within `sp` are counted multiple times
 size_t num_nodes(SerialParallelDecomposition const &sp) {
   return sum(values(node_frequency_counter(sp)));
 }
@@ -97,9 +95,6 @@ float average_parallelism_degree(
     std::unordered_map<Node, float> const &cost_map) {
   NOT_IMPLEMENTED();
 }
-
-// TODO: delete the graph functions as instead convert SP to graph and then pass
-// it to the other functions
 
 float max_parallelism_degree(SerialParallelDecomposition const &sp,
                              std::unordered_map<Node, float> const &cost_map) {

@@ -139,7 +139,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("nonlinear") {
       g.add_edge({n[1], n[3]});
-      CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the unchecked_dfs
+      CHECK(is_acyclic(g) == true);
     }
 
     SUBCASE("not connected") {

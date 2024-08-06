@@ -40,7 +40,7 @@ static std::vector<Node>
 }
 
 std::vector<Node> get_topological_ordering(DiGraphView const &g) {
-  // assert(is_acyclic(g)); //TODO: FIX (due to is_acyclic signature change)
+  assert(is_acyclic(g));
   return get_unchecked_topological_ordering(g);
 }
 

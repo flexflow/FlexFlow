@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 SerialParallelDecomposition parallel_composition(
-    std::vector<SerialParallelDecomposition> const &sp_compositions);
+    std::unordered_set<SerialParallelDecomposition> const &sp_compositions);
 
 } // namespace FlexFlow
 

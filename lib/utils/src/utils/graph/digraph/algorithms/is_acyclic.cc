@@ -8,7 +8,6 @@
 
 namespace FlexFlow {
 
-// TODO: add acyclic for graphview
 enum class ExplorationStatus { NOT_EXPLORED, BEING_EXPLORED, FULLY_EXPLORED };
 
 static bool
