@@ -125,6 +125,7 @@ private:
     return this->new_node_tofrom_old_node.at_r(old_node).raw_node;
   }
 
+private:
   OpenDataflowGraphView g;
   bidict<NewNode, Node> new_node_tofrom_old_node;
 };

@@ -43,9 +43,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node g2_n2_node = g2_n2_added.node;
   
     
-    bidict<Node, Node> correct_isomorphism = bidict<Node, Node>{
-      {g1_n1_node, g2_n1_node},
-      {g1_n2_node, g2_n2_node},
+    OpenDataflowGraphIsomorphism correct_isomorphism = OpenDataflowGraphIsomorphism{
+      bidict<Node, Node>{
+        {g1_n1_node, g2_n1_node},
+        {g1_n2_node, g2_n2_node},
+      },
+      bidict<DataflowGraphInput, DataflowGraphInput>{
+        {g1_i1, g2_i1},
+      },
     };
 
     bool result = is_isomorphic_under(g1, g2, correct_isomorphism);

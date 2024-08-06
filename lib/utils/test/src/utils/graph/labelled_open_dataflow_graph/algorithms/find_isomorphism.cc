@@ -43,12 +43,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node g2_n2_node = g2_n2_added.node;
   
     
-    std::optional<bidict<Node, Node>> correct_isomorphism = bidict<Node, Node>{
-      {g1_n1_node, g2_n1_node},
-      {g1_n2_node, g2_n2_node},
+    std::optional<OpenDataflowGraphIsomorphism> correct_isomorphism = OpenDataflowGraphIsomorphism{
+      bidict<Node, Node>{
+        {g1_n1_node, g2_n1_node},
+        {g1_n2_node, g2_n2_node},
+      },
+      bidict<DataflowGraphInput, DataflowGraphInput>{
+        {g1_i1, g2_i1},
+      },
     };
 
-    std::optional<bidict<Node, Node>> result = find_isomorphism(g1, g2);
+    std::optional<OpenDataflowGraphIsomorphism> result = find_isomorphism(g1, g2);
 
     CHECK(result == correct_isomorphism);
   }
