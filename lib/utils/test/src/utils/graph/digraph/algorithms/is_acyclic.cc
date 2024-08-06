@@ -6,122 +6,104 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("is_acyclic - empty graph") {
+    TEST_CASE("is_acyclic - empty graph") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+        CHECK(is_acyclic(g));
+    }
 
-    bool correct = true;
-    bool result = is_acyclic(g);
-
-    CHECK(result == correct);
-  }
-
-  TEST_CASE("is_acyclic - single node") {
+    TEST_CASE("is_acyclic - single node") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
-    add_nodes(g, 1);
+        add_nodes(g, 1);
+        CHECK(is_acyclic(g));
+    }
 
-    bool correct = true;
-    bool result = is_acyclic(g);
-
-    CHECK(result == correct);
-  }
-
-  TEST_CASE("is_acyclic - simple acyclic graph") {
+    TEST_CASE("is_acyclic - simple acyclic graph") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+        std::vector<Node> n = add_nodes(g, 3);
+        add_edges(g, {
+            DirectedEdge{n[0], n[1]},
+            DirectedEdge{n[1], n[2]},
+        });
+        CHECK(is_acyclic(g));
+    }
 
-    std::vector<Node> n = add_nodes(g, 3);
-
-    add_edges(g,
-              {
-                  DirectedEdge{n.at(0), n.at(1)},
-                  DirectedEdge{n.at(1), n.at(2)},
-              });
-
-    bool correct = true;
-    bool result = is_acyclic(g);
-
-    CHECK(result == correct);
-  }
-
-  TEST_CASE("is_acyclic - simple cyclic graph") {
+    TEST_CASE("is_acyclic - simple cyclic graph") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+        std::vector<Node> n = add_nodes(g, 3);
+        add_edges(g, {
+            DirectedEdge{n[0], n[1]},
+            DirectedEdge{n[1], n[2]},
+            DirectedEdge{n[2], n[0]},
+        });
+        CHECK_FALSE(is_acyclic(g));
+    }
 
-    std::vector<Node> n = add_nodes(g, 3);
-
-    add_edges(g,
-              {
-                  DirectedEdge{n.at(0), n.at(1)},
-                  DirectedEdge{n.at(1), n.at(2)},
-                  DirectedEdge{n.at(2), n.at(0)},
-              });
-
-    bool correct = false;
-    bool result = is_acyclic(g);
-
-    CHECK(result == correct);
-  }
-
-  TEST_CASE("is_acyclic - 2 parallel chains") {
+    TEST_CASE("is_acyclic - 2 parallel chains") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+        std::vector<Node> n = add_nodes(g, 6);
+        add_edges(g, {
+            DirectedEdge{n[0], n[1]},
+            DirectedEdge{n[0], n[2]},
+            DirectedEdge{n[1], n[3]},
+            DirectedEdge{n[2], n[4]},
+            DirectedEdge{n[3], n[5]},
+            DirectedEdge{n[4], n[5]},
+        });
+        CHECK(is_acyclic(g));
+    }
 
-    std::vector<Node> n = add_nodes(g, 6);
-
-    add_edges(g,
-              {
-                  DirectedEdge{n.at(0), n.at(1)},
-                  DirectedEdge{n.at(0), n.at(2)},
-                  DirectedEdge{n.at(1), n.at(3)},
-                  DirectedEdge{n.at(2), n.at(4)},
-                  DirectedEdge{n.at(3), n.at(5)},
-                  DirectedEdge{n.at(4), n.at(5)},
-              });
-
-    bool correct = true;
-    bool result = is_acyclic(g);
-
-    CHECK(result == correct);
-  }
-
-  TEST_CASE("is_acyclic - complex cyclic graph") {
+    TEST_CASE("is_acyclic - complex cyclic graph") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+        std::vector<Node> n = add_nodes(g, 6);
+        add_edges(g, {
+            DirectedEdge{n[0], n[1]},
+            DirectedEdge{n[0], n[2]},
+            DirectedEdge{n[1], n[3]},
+            DirectedEdge{n[2], n[4]},
+            DirectedEdge{n[3], n[5]},
+            DirectedEdge{n[4], n[5]},
+            DirectedEdge{n[5], n[1]},
+        });
+        CHECK_FALSE(is_acyclic(g));
+    }
 
-    std::vector<Node> n = add_nodes(g, 6);
-
-    add_edges(g,
-              {
-                  DirectedEdge{n.at(0), n.at(1)},
-                  DirectedEdge{n.at(0), n.at(2)},
-                  DirectedEdge{n.at(1), n.at(3)},
-                  DirectedEdge{n.at(2), n.at(4)},
-                  DirectedEdge{n.at(3), n.at(5)},
-                  DirectedEdge{n.at(4), n.at(5)},
-                  DirectedEdge{n.at(5), n.at(1)},
-              });
-
-    bool correct = false;
-    bool result = is_acyclic(g);
-
-    CHECK(result == correct);
-  }
-
-  TEST_CASE("is_acyclic - complex acyclic graph ") {
+    TEST_CASE("is_acyclic - complex cyclic graph 2") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+        std::vector<Node> n = add_nodes(g, 6);
+        add_edges(g, {
+            DirectedEdge{n[0], n[1]},
+            DirectedEdge{n[1], n[2]},
+            DirectedEdge{n[1], n[3]},
+            DirectedEdge{n[1], n[5]},
+            DirectedEdge{n[2], n[4]},
+            DirectedEdge{n[3], n[1]},
+            DirectedEdge{n[3], n[4]},
+        });
+        CHECK_FALSE(is_acyclic(g));
+    }
 
-    std::vector<Node> n = add_nodes(g, 6);
+    TEST_CASE("traversal") {
+    DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+        std::vector<Node> n = add_nodes(g, 5);
+        add_edges(g, {
+            DirectedEdge{n[0], n[1]},
+            DirectedEdge{n[1], n[2]},
+            DirectedEdge{n[2], n[3]}
+        });
 
-    add_edges(g,
-              {
-                  DirectedEdge{n.at(0), n.at(1)},
-                  DirectedEdge{n.at(1), n.at(2)},
-                  DirectedEdge{n.at(1), n.at(3)},
-                  DirectedEdge{n.at(1), n.at(5)},
-                  DirectedEdge{n.at(2), n.at(4)},
-                  DirectedEdge{n.at(3), n.at(1)},
-                  DirectedEdge{n.at(3), n.at(4)},
-              });
+        SUBCASE("with root") {
+            g.add_edge(DirectedEdge{n[3], n[2]});
+            CHECK_FALSE(is_acyclic(g));
+        }
 
-    bool correct = false;
-    bool result = is_acyclic(g);
+        SUBCASE("without root") {
+            g.add_edge(DirectedEdge{n[3], n[0]});
+            CHECK_FALSE(is_acyclic(g));
+        }
 
-    CHECK(result == correct);
-  }
+        SUBCASE("nonlinear") {
+            g.add_edge(DirectedEdge{n[1], n[3]});
+            CHECK(is_acyclic(g));
+        }
+    }
 }

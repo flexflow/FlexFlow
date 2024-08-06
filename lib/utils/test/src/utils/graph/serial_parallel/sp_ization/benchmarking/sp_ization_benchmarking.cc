@@ -5,8 +5,10 @@
 // #include "utils/graph/node/algorithms.h"
 // #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 // #include "utils/graph/serial_parallel/serial_parallel_metrics.h"
-// #include "utils/graph/serial_parallel/sp_ization/critical_path_preserving_sp_ization.h"
-// #include "utils/graph/serial_parallel/sp_ization/work_preserving_sp_ization.h"
+// #include
+// "utils/graph/serial_parallel/sp_ization/critical_path_preserving_sp_ization.h"
+// #include
+// "utils/graph/serial_parallel/sp_ization/work_preserving_sp_ization.h"
 // #include <iostream>
 // #include <string>
 // #include <tuple>
@@ -31,14 +33,15 @@
 //     SerialParallelDecomposition sp3 =
 //         cost_aware_barrier_sync_sp_ization(g, cost_map);
 
-//     critical_path_preserving.first += relative_work_increase(g, sp1, cost_map);
-//     critical_path_preserving.second +=
+//     critical_path_preserving.first += relative_work_increase(g, sp1,
+//     cost_map); critical_path_preserving.second +=
 //         relative_critical_path_cost_increase(g, sp1, cost_map);
 //     barrier_sync.first += relative_work_increase(g, sp2, cost_map);
 //     barrier_sync.second +=
 //         relative_critical_path_cost_increase(g, sp2, cost_map);
 //     cost_aware.first += relative_work_increase(g, sp3, cost_map);
-//     cost_aware.second += relative_critical_path_cost_increase(g, sp3, cost_map);
+//     cost_aware.second += relative_critical_path_cost_increase(g, sp3,
+//     cost_map);
 //   }
 //   std::vector<Result> results = {
 //       critical_path_preserving, barrier_sync, cost_aware};
@@ -240,8 +243,8 @@
 //                  GaussianNoise(1, 0.1),
 //                  10);
 
-//       bench_mark("cifar10, Binary(1, 1000)", g, Binary(1, 1000), NoNoise(), 10);
-//       bench_mark("cifar10, Binary(1, 1000), UniformNoise(0.8, 1.25)",
+//       bench_mark("cifar10, Binary(1, 1000)", g, Binary(1, 1000), NoNoise(),
+//       10); bench_mark("cifar10, Binary(1, 1000), UniformNoise(0.8, 1.25)",
 //                  g,
 //                  Binary(1, 1000),
 //                  UniformNoise(0.8, 1.25),
@@ -262,10 +265,8 @@
 //                  NoNoise(),
 //                  10);
 //       bench_mark(
-//           "random_2_terminal_random_dag, Constant(1), UniformNoise(0.8, 1.25)",
-//           g,
-//           Constant(1),
-//           UniformNoise(0.8, 1.25),
+//           "random_2_terminal_random_dag, Constant(1),
+//           UniformNoise(0.8, 1.25)", g, Constant(1), UniformNoise(0.8, 1.25),
 //           10);
 //       bench_mark(
 //           "random_2_terminal_random_dag, Constant(1), GaussianNoise(1, 0.1)",
@@ -280,17 +281,13 @@
 //                  NoNoise(),
 //                  10);
 //       bench_mark(
-//           "random_2_terminal_random_dag, Uniform(0,1), UniformNoise(0.8, 1.25)",
-//           g,
-//           Uniform(0, 1),
+//           "random_2_terminal_random_dag, Uniform(0,1),
+//           UniformNoise(0.8, 1.25)", g, Uniform(0, 1),
 //           UniformNoise(0.8, 1.25),
 //           10);
 //       bench_mark(
-//           "random_2_terminal_random_dag, Uniform(0,1), GaussianNoise(1, 0.1)",
-//           g,
-//           Uniform(0, 1),
-//           GaussianNoise(1, 0.1),
-//           10);
+//           "random_2_terminal_random_dag, Uniform(0,1), GaussianNoise(1,
+//           0.1)", g, Uniform(0, 1), GaussianNoise(1, 0.1), 10);
 
 //       bench_mark("random_2_terminal_random_dag, Binary(1, 1000)",
 //                  g,
