@@ -14,7 +14,7 @@ class AlignmentTest:
         raise NotImplementedError()
     def check_bwd_pass(self):
         raise NotImplementedError()
-    def check_step(self, step_idx):
+    def check_step(self, step_idx, learning_rate=0.001):
         raise NotImplementedError()
 
 class LllamaAlignmentTest(AlignmentTest):
@@ -597,7 +597,7 @@ class LllamaAlignmentTest(AlignmentTest):
                 # if i > 1:
                 #     compare(hf_tensor, input_layernorm1, label=f"Input layernorm {i} gradient input")
 
-    def check_step(self, step_idx=0):
+    def check_step(self, step_idx=0, learning_rate=0.001):
         hf_weight_folder = os.path.join(hf_path, "weights", f"step_{step_idx}")
         ff_weight_folder = os.path.join(ff_path, "weights", f"step_{step_idx}", "shard_0")
         def convert_hf_filename_to_ff(hf_filename):
@@ -668,7 +668,7 @@ class LllamaAlignmentTest(AlignmentTest):
             hf_original_weight = get_hf_tensor(hf_original_weight_name)
             hf_finetuned_weight_name = f"layers.{i}.mlp.down_proj.lora_B.default.weight_finetuned"
             hf_finetuned_weight = get_hf_tensor(hf_finetuned_weight_name)
-            torch.testing.assert_close(hf_gradient, hf_original_weight-hf_finetuned_weight, rtol=1.3e-6, atol=1e-5)
+            torch.testing.assert_close(hf_gradient, (hf_original_weight-hf_finetuned_weight)/learning_rate, rtol=1.3e-6, atol=1e-5)
             ff_gradient_name = convert_hf_filename_to_ff(hf_gradient_name)
             ff_gradient = get_ff_tensor(ff_gradient_name, hf_gradient.shape, tp_type=TPType.TO_REDUCE)
             compare(hf_gradient, ff_gradient, label=f"LoRA_B {i} gradient")
@@ -697,7 +697,7 @@ class LllamaAlignmentTest(AlignmentTest):
             hf_original_weight = get_hf_tensor(hf_original_weight_name)
             hf_finetuned_weight_name = f"layers.{i}.mlp.down_proj.lora_A.default.weight_finetuned"
             hf_finetuned_weight = get_hf_tensor(hf_finetuned_weight_name)
-            torch.testing.assert_close(hf_gradient, hf_original_weight-hf_finetuned_weight, rtol=1.3e-6, atol=1e-5)
+            torch.testing.assert_close(hf_gradient, (hf_original_weight-hf_finetuned_weight)/learning_rate, rtol=1.3e-6, atol=1e-5)
             ff_gradient_name = convert_hf_filename_to_ff(hf_gradient_name)
             ff_gradient = get_ff_tensor(ff_gradient_name, hf_gradient.shape, tp_type=TPType.TO_REDUCE)
             compare(hf_gradient, ff_gradient, label=f"LoRA_A {i} gradient")
@@ -707,6 +707,7 @@ parser = argparse.ArgumentParser(description='Argument Parser Example')
 parser.add_argument('-m', '--model-name', type=str, default="goliaro/llama-160m-lora", help='Name of the model')
 parser.add_argument('-n', '--num-steps', type=int, default=1, help='Number of finetuning steps')
 parser.add_argument('-tp', '--tensor-parallelism-degree', type=int, default=1, help='The tensor parallelism degree used when running FlexFlow')
+parser.add_argument('-lr', '--learning-rate', type=float, default=0.001, help='The learning rate used at finetuning time')
 
 # Parse the arguments from command line
 args = parser.parse_args()
@@ -717,4 +718,4 @@ if __name__ == "__main__":
     for i in range(args.num_steps):
         llama_alignment.check_fwd_pass(i)
         llama_alignment.check_bwd_pass(i)
-        llama_alignment.check_step(i)
+        llama_alignment.check_step(i, args.learning_rate)

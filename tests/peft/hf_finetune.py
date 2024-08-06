@@ -39,7 +39,7 @@ def main():
         default=0.0,
         help="The dropout rate for LoRA. Set it to -1 to use the original value from the HF config",
     )
-    parser.add_argument("-lr", "--learning-rate", type=float, default=1.0)
+    parser.add_argument("-lr", "--learning-rate", type=float, default=0.001)
     parser.add_argument("-n", "--max-steps", type=int, default=2)
     parser.add_argument(
         "--optimizer", type=str, choices=["sgs", "adam", "adamw"], default="sgd"
@@ -110,7 +110,7 @@ def main():
         data_collator=transformers.DataCollatorForLanguageModeling(
             tokenizer, mlm=False
         ),
-        callbacks=[HFTrainingCallBack],
+        callbacks=[HFTrainingCallBack] if args.save_peft_tensors else None,
     )
     # silence the warnings. Please re-enable for inference!
     model.config.use_cache = False
