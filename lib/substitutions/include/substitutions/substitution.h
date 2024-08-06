@@ -1,11 +1,10 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTION_H
 #define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTION_H
 
-#include "sub_parallel_computation_graph.dtg.h"
+#include "substitutions/sub_parallel_computation_graph.dtg.h"
 #include "substitutions/pcg_pattern_match.dtg.h"
 #include "substitutions/substitution.dtg.h"
-#include "utils/graph/node/algorithms/new_node.dtg.h"
-#include "substitutions/output_graph/output_graph_expr_node.dtg.h"
+#include "substitutions/output_expr_to_result_subpcg_mapping.dtg.h"
 
 namespace FlexFlow {
 
@@ -15,7 +14,7 @@ LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> perform_s
 
 std::pair<
   SubParallelComputationGraph,
-  bidict<parallel_layer_guid_t, OutputGraphExprNode>
+  OutputExprToResultSubPCGMapping
 > evaluate_substitution_output(SubParallelComputationGraph const &spcg,
                                Substitution const &sub,
                                PCGPatternMatch const &match);

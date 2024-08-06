@@ -198,8 +198,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>::create<
         UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>>();
 
-    DataflowGraphInput pattern_i_activation = pattern_g.add_input(tensor_attribute_pattern_match_all());
-    DataflowGraphInput pattern_i_weights = pattern_g.add_input(tensor_attribute_pattern_match_all());
+    PatternInput pattern_i_activation = PatternInput{pattern_g.add_input(tensor_attribute_pattern_match_all())};
+    PatternInput pattern_i_weights = PatternInput{pattern_g.add_input(tensor_attribute_pattern_match_all())};
 
     OperatorAttributePattern mm_pattern = OperatorAttributePattern{{
       op_type_equals_constraint(OperatorType::LINEAR),
@@ -207,7 +207,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                          OperatorAttributeValue{std::optional<Activation>{std::nullopt}}),
     }};
     NodeAddedResult mm_added = pattern_g.add_node(mm_pattern,
-                                    {OpenDataflowValue{pattern_i_activation}, OpenDataflowValue{pattern_i_weights}},
+                                    {OpenDataflowValue{pattern_i_activation.raw_dataflow_graph_input}, 
+                                     OpenDataflowValue{pattern_i_weights.raw_dataflow_graph_input}},
                                     {tensor_attribute_pattern_match_all()});
     PatternNode pattern_mm_node = PatternNode{mm_added.node};
     DataflowOutput mm_output = get_only(mm_added.outputs);
@@ -225,18 +226,20 @@ TEST_SUITE(FF_TEST_SUITE) {
       LabelledOpenDataflowGraph<OutputOperatorAttrsAssignment, std::monostate>::create<
         UnorderedSetLabelledOpenDataflowGraph<OutputOperatorAttrsAssignment, std::monostate>>();
 
-    DataflowGraphInput output_i_activation = output_g.add_input({});
-    DataflowGraphInput output_i_weights = output_g.add_input({});
+    OutputGraphExprInput output_i_activation = OutputGraphExprInput{output_g.add_input({})};
+    OutputGraphExprInput output_i_weights = OutputGraphExprInput{output_g.add_input({})};
 
     OutputOperatorAttrsAssignment fused_mm_relu_attrs_assignment = OutputOperatorAttrsAssignment{{
       set_attr_to_constant(OperatorAttributeKey::OP_TYPE, OperatorAttributeValue{OperatorType::LINEAR}),
+      copy_attr_from_pattern_node(OperatorAttributeKey::OUT_CHANNELS, pattern_mm_node),
       copy_attr_from_pattern_node(OperatorAttributeKey::USE_BIAS, pattern_mm_node),
       copy_attr_from_pattern_node(OperatorAttributeKey::DATA_TYPE, pattern_mm_node),
       set_attr_to_constant(OperatorAttributeKey::ACTIVATION, OperatorAttributeValue{Activation::RELU}),
       copy_attr_from_pattern_node(OperatorAttributeKey::REGULARIZER, pattern_mm_node),
     }};
     NodeAddedResult fused_mm_relu_added = output_g.add_node(fused_mm_relu_attrs_assignment, 
-                                          {OpenDataflowValue{output_i_activation}, OpenDataflowValue{output_i_weights}},
+                                          {OpenDataflowValue{output_i_activation.raw_dataflow_graph_input}, 
+                                           OpenDataflowValue{output_i_weights.raw_dataflow_graph_input}},
                                           {{}});
     OutputGraphExprNode fused_mm_relu_node = OutputGraphExprNode{fused_mm_relu_added.node};
     DataflowOutput fused_mm_relu_output = get_only(fused_mm_relu_added.outputs);
@@ -246,12 +249,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       OutputGraphExpr{output_g},
       bidict<PatternInput, OutputGraphExprInput>{
         {
-          PatternInput{pattern_i_activation},
-          OutputGraphExprInput{output_i_activation},
+          pattern_i_activation,
+          output_i_activation,
         },
         {
-          PatternInput{pattern_i_weights},
-          OutputGraphExprInput{output_i_weights},
+          pattern_i_weights,
+          output_i_weights,
         },
       },
       bidict<PatternNodeOutput, OutputGraphExprNodeOutput>{
@@ -271,8 +274,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape{
         ParallelTensorDims{
           FFOrdered<ShardParallelDim>{
-            ShardParallelDim{batch_size, batch_degree},
-            ShardParallelDim{in_channels, 1},
+            ShardParallelDim{size_t_from_int(batch_size), batch_degree},
+            ShardParallelDim{size_t_from_int(in_channels), 1},
           },
           ReplicaParallelDimSet{
             SumDegree{1},
@@ -331,11 +334,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("evaluate_substitution_output") {
       std::pair<
         SubParallelComputationGraph,
-        bidict<parallel_layer_guid_t, OutputGraphExprNode>
+        OutputExprToResultSubPCGMapping
       > result = evaluate_substitution_output(pcg, sub, match);
 
       SubParallelComputationGraph result_graph = result.first;
-      bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map = result.second;
+      bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map = result.second.node_mapping;
+      bidict<input_parallel_tensor_guid_t, OutputGraphExprInput> result_input_map = result.second.input_mapping;
 
       LinearAttrs correct_result_fused_mm_relu_attrs = LinearAttrs{
         12,
@@ -351,6 +355,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       parallel_layer_guid_t result_fused_mm_relu_node = result_node_map.at_r(fused_mm_relu_node);
       parallel_tensor_guid_t result_fused_mm_relu_output = get_only(get_layer_outputs(result_graph, result_fused_mm_relu_node));
+      input_parallel_tensor_guid_t result_i_activation = result_input_map.at_r(output_i_activation);
+      input_parallel_tensor_guid_t result_i_weights = result_input_map.at_r(output_i_weights);
 
       SubParallelComputationGraphData correct_graph_data = SubParallelComputationGraphData{
         std::unordered_map<parallel_layer_guid_t, ParallelLayerAttrs>{
@@ -365,7 +371,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::unordered_set<OpenDataflowEdge>{
           OpenDataflowEdge{
             DataflowInputEdge{
-              output_i_activation,
+              result_i_activation.raw_dataflow_graph_input,
               DataflowInput{
                 result_fused_mm_relu_node.raw_graph_node,
                 0,
@@ -374,7 +380,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           },
           OpenDataflowEdge{
             DataflowInputEdge{
-              output_i_weights,
+              result_i_weights.raw_dataflow_graph_input,
               DataflowInput{
                 result_fused_mm_relu_node.raw_graph_node,
                 1,
@@ -382,17 +388,17 @@ TEST_SUITE(FF_TEST_SUITE) {
             },
           },
         },
-        std::unordered_set<DataflowGraphInput>{
-          output_i_activation,  // TODO(@lockshaw) should probably generate new input ids too
-          output_i_weights,
+        std::unordered_set<input_parallel_tensor_guid_t>{
+          result_i_activation,
+          result_i_weights,
         },
         std::unordered_map<open_parallel_tensor_guid_t, ParallelTensorAttrs>{
           {
-            open_parallel_tensor_guid_t{OpenDataflowValue{output_i_activation}},
+            open_parallel_tensor_guid_from_input(result_i_activation),
             correct_result_i_activation_attrs,
           },
           {
-            open_parallel_tensor_guid_t{OpenDataflowValue{output_i_weights}},
+            open_parallel_tensor_guid_from_input(result_i_weights),
             correct_result_i_weights_attrs,
           },
           {

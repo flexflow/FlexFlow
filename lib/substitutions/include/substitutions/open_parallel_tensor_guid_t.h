@@ -3,10 +3,12 @@
 
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h"
 #include "substitutions/open_parallel_tensor_guid_t.dtg.h"
+#include "substitutions/input_parallel_tensor_guid_t.dtg.h"
 
 namespace FlexFlow {
 
 open_parallel_tensor_guid_t open_parallel_tensor_guid_from_closed(parallel_tensor_guid_t);
+open_parallel_tensor_guid_t open_parallel_tensor_guid_from_input(input_parallel_tensor_guid_t);
 
 } // namespace FlexFlow
 

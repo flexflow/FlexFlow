@@ -7,7 +7,9 @@
 #include "utils/containers/map_values.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/permute_input_ids.h"
 #include "utils/graph/node/algorithms/generate_new_node_id_permutation.h"
+#include "utils/graph/open_dataflow_graph/algorithms/generate_new_input_id_permutation.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_labels.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_node_labels.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_value_labels.h"
@@ -184,7 +186,7 @@ LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> perform_s
 
 std::pair<
   SubParallelComputationGraph,
-  bidict<parallel_layer_guid_t, OutputGraphExprNode>
+  OutputExprToResultSubPCGMapping
 > evaluate_substitution_output(SubParallelComputationGraph const &spcg,
                                Substitution const &sub,
                                PCGPatternMatch const &match) {
@@ -192,10 +194,13 @@ std::pair<
                                                                             [&](parallel_layer_guid_t const &n) { return get_operator_attrs(spcg, n); });
 
   bidict<NewNode, Node> new_node_id_permutation = generate_new_node_id_permutation(sub.output_graph_expr.raw_graph);
-  LabelledOpenDataflowGraphView<OutputOperatorAttrsAssignment, std::monostate> permuted = permute_node_ids(
-    sub.output_graph_expr.raw_graph,
-    new_node_id_permutation
-  );
+  bidict<NewDataflowGraphInput, DataflowGraphInput> new_input_id_permutation = generate_new_input_id_permutation(sub.output_graph_expr.raw_graph);
+  LabelledOpenDataflowGraphView<OutputOperatorAttrsAssignment, std::monostate> permuted = permute_input_ids(permute_node_ids(
+                                                                                                                             sub.output_graph_expr.raw_graph,
+                                                                                                                             new_node_id_permutation
+                                                                                                                            ),
+                                                                                                            new_input_id_permutation
+                                                                                                           );
 
   LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate> without_shapes = 
     rewrite_node_labels(permuted,
@@ -207,8 +212,17 @@ std::pair<
       }
     );
 
+  bidict<input_parallel_tensor_guid_t, OutputGraphExprInput> result_input_map = map_keys(map_values(new_input_id_permutation,
+                                                                                                    [](DataflowGraphInput const &i) { return OutputGraphExprInput{i}; }),
+                                                                                         [](NewDataflowGraphInput const &i) { return input_parallel_tensor_guid_t{i.raw_input}; });
+
+  bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map = map_keys(map_values(new_node_id_permutation,
+                                                                                           [](Node const &n) { return OutputGraphExprNode{n}; }),
+                                                                                [](NewNode const &n) { return parallel_layer_guid_t{n.raw_node}; });
+
+
   std::unordered_map<DataflowGraphInput, ParallelTensorShape> input_shapes = map_values(map_keys(match.input_assignment,
-                                                                                      [](PatternInput const &i) { return i.raw_dataflow_graph_input; }),
+                                                                                      [&](PatternInput const &i) { return result_input_map.at_r(sub.inputs_mapping.at_l(i)).raw_dataflow_graph_input; }),
                                                                                       [&](open_parallel_tensor_guid_t const &v) { return spcg.raw_graph.at(v.raw_open_dataflow_value).shape; });
   LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> with_shapes = perform_shape_inference(without_shapes, input_shapes);
   LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs> with_attrs = rewrite_value_labels(with_shapes, 
@@ -221,13 +235,12 @@ std::pair<
                                                                                                              };
                                                                                                             });
 
-  bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map = map_keys(map_values(new_node_id_permutation,
-                                                                                           [](Node const &n) { return OutputGraphExprNode{n}; }),
-                                                                                [](NewNode const &n) { return parallel_layer_guid_t{n.raw_node}; });
-
   return std::make_pair(
    SubParallelComputationGraph{with_attrs},
-   result_node_map
+   OutputExprToResultSubPCGMapping{
+     result_node_map,
+     result_input_map,
+    }
   );
 }
 
@@ -237,12 +250,12 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
                           PCGPatternMatch const &match,
                           SubParallelComputationGraph const &spcg,
                           SubParallelComputationGraph const &substitution_result,
-                          bidict<parallel_layer_guid_t, OutputGraphExprNode> const &substitution_result_node_id_permutation)
+                          OutputExprToResultSubPCGMapping const &output_expr_to_result_sub_pcg_mapping)
     : sub(sub),
       match(match),
       spcg(spcg),
       substitution_result(substitution_result),
-      substitution_result_node_id_permutation(substitution_result_node_id_permutation)
+      output_expr_to_result_sub_pcg_mapping(output_expr_to_result_sub_pcg_mapping)
     { }
 
 
@@ -382,7 +395,7 @@ struct SubstitutionAppliedView final : ILabelledOpenDataflowGraphView<ParallelLa
       this->match,
       this->spcg,
       this->substitution_result,
-      this->substitution_result_node_id_permutation
+      this->output_expr_to_result_sub_pcg_mapping
     );
   }
 private:
@@ -390,7 +403,7 @@ private:
   PCGPatternMatch match;
   SubParallelComputationGraph spcg;
   SubParallelComputationGraph substitution_result;
-  bidict<parallel_layer_guid_t, OutputGraphExprNode> substitution_result_node_id_permutation;
+  OutputExprToResultSubPCGMapping output_expr_to_result_sub_pcg_mapping;
 };
 
 SubParallelComputationGraph
@@ -399,7 +412,7 @@ SubParallelComputationGraph
                        PCGPatternMatch const &match) {
   auto substitution_output_result = evaluate_substitution_output(spcg, sub, match);
   SubParallelComputationGraph substitution_output_graph = substitution_output_result.first;
-  bidict<parallel_layer_guid_t, OutputGraphExprNode> substitution_result_node_id_permutation = substitution_output_result.second;
+  OutputExprToResultSubPCGMapping output_expr_to_result_sub_pcg_mapping = substitution_output_result.second;
 
   return SubParallelComputationGraph{
     LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs>::create<SubstitutionAppliedView>(
@@ -407,7 +420,7 @@ SubParallelComputationGraph
       match,
       spcg,
       substitution_output_graph,
-      substitution_result_node_id_permutation
+      output_expr_to_result_sub_pcg_mapping
     )
   };
 }

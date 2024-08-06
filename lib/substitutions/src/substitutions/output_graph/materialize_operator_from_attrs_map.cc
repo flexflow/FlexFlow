@@ -1,4 +1,6 @@
 #include "substitutions/output_graph/materialize_operator_from_attrs_map.h"
+#include "utils/containers/contains_key.h"
+#include "utils/fmt/unordered_map.h"
 
 namespace FlexFlow {
 
@@ -10,7 +12,11 @@ struct Accessor {
 
   template <typename T>
   T const &get(OperatorAttributeKey k) const {
-    return m.at(k).get<T>();
+    if (contains_key(this->m, k)) {
+      return this->m.at(k).get<T>();
+    } else {
+      throw mk_runtime_error(fmt::format("Could not find key {} in attrs map: {}", k, this->m));
+    }
   }
 };
 

@@ -79,7 +79,7 @@ SubParallelComputationGraphData get_graph_data(SubParallelComputationGraph const
   return SubParallelComputationGraphData{
     map_keys(raw_data.node_data, [](Node const &n) { return parallel_layer_guid_t{n}; }),
     raw_data.edges,
-    raw_data.inputs,
+    transform(raw_data.inputs, [](DataflowGraphInput const &i) { return input_parallel_tensor_guid_t{i}; }),
     map_keys(raw_data.value_data, [](OpenDataflowValue const &v) { return open_parallel_tensor_guid_t{v}; }),
   };
 }

@@ -12,6 +12,7 @@ includes = [
   "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h",
   "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
   "substitutions/open_parallel_tensor_guid_t.dtg.h",
+  "substitutions/input_parallel_tensor_guid_t.dtg.h",
   "<unordered_map>",
   "<unordered_set>",
 ]
@@ -33,7 +34,7 @@ type = "std::unordered_set<::FlexFlow::OpenDataflowEdge>"
 
 [[fields]]
 name = "inputs"
-type = "std::unordered_set<::FlexFlow::DataflowGraphInput>"
+type = "std::unordered_set<::FlexFlow::input_parallel_tensor_guid_t>"
 
 [[fields]]
 name = "value_data"
