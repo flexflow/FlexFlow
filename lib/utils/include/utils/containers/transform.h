@@ -34,7 +34,8 @@ std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
 template <typename F,
           typename In,
           typename Out = decltype(std::declval<F>()(std::declval<In>()))>
-std::unordered_multiset<Out> transform(std::unordered_multiset<In> const &v, F const &f) {
+std::unordered_multiset<Out> transform(std::unordered_multiset<In> const &v,
+                                       F const &f) {
   std::unordered_multiset<Out> result;
   for (auto const &e : v) {
     result.insert(f(e));
