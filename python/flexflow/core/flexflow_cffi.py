@@ -1761,13 +1761,57 @@ class LoraLinearConfig(object):
         init_lora_weights: bool = False,
         base_model_name_or_path: str = "",
         precision: str = "fp16",
-        rank: int = 8,
-        lora_alpha: float = 8.0,
-        lora_dropout: float = 0.0,
+        rank: int = None,
+        lora_alpha: float = None,
+        lora_dropout: float = None,
         target_modules: List[str] = [],
         optimizer_type: OptimizerType = OptimizerType.OPTIMIZER_TYPE_NONE,
         optimizer_kwargs: dict = {},
     ):
+        if trainable:
+            if (
+                optimizer_type != OptimizerType.OPTIMIZER_TYPE_SGD
+                and optimizer_type != OptimizerType.OPTIMIZER_TYPE_ADAM
+            ):
+                raise ValueError(
+                    "Please specify optimizer to be used to train LoRA module. Supported optimizers: SGD and Adam"
+                )
+            if init_lora_weights and len(target_modules) == 0:
+                raise ValueError(
+                    "Please specify target modules to be used to train LoRA module"
+                )
+            if not init_lora_weights and len(target_modules) > 0:
+                raise ValueError(
+                    "Target modules can only be specified when init_lora_weights=True"
+                )
+        else:
+            if init_lora_weights:
+                raise ValueError(
+                    "LORA weights initialization from scratch not supported in inference model"
+                )
+            if len(target_modules) > 0:
+                raise ValueError(
+                    "Target modules can only be specified when trainable=True"
+                )
+        
+        # Check rank, lora_alpha, lora_dropout values
+        if rank is not None or lora_alpha is not None or lora_dropout is not None:
+            if not trainable or not init_lora_weights:
+                raise ValueError(
+                    "rank, lora_alpha, and lora_dropout can only be set when trainable=True and init_lora_weights=True"
+                )
+        rank = rank if rank is not None else 8
+        lora_alpha = lora_alpha if lora_alpha is not None else 8.0
+        lora_dropout = lora_dropout if lora_dropout is not None else 0.0
+        
+        # If passed, check if the values of rank, lora_alpha, and lora_dropout are valid
+        if rank < 1 or type(rank) != int:
+            raise ValueError("Rank must be >= 1 and an integer")
+        if lora_alpha <= 0:
+            raise ValueError("Lora_alpha must be > 0")
+        if lora_dropout < 0 or lora_dropout > 1:
+            raise ValueError("Lora_dropout must be in the interval [0, 1]")
+        
         self.ff_initialized = False
         self._cache_folder = cache_folder
         self._peft_model_id = peft_model_id
@@ -1781,29 +1825,6 @@ class LoraLinearConfig(object):
         self._target_modules = target_modules
         self.optimizer_type = optimizer_type
         self.optimizer_kwargs = optimizer_kwargs
-
-        if trainable:
-            if (
-                optimizer_type != OptimizerType.OPTIMIZER_TYPE_SGD
-                and optimizer_type != OptimizerType.OPTIMIZER_TYPE_ADAM
-            ):
-                raise ValueError(
-                    "Please specify optimizer to be used to train LoRA module. Supported optimizers: SGD and Adam"
-                )
-            if init_lora_weights and len(target_modules) == 0:
-                raise ValueError(
-                    "Please specify target modules to be used to train LoRA module"
-                )
-        else:
-            if init_lora_weights:
-                raise ValueError(
-                    "LORA weights initialization from scratch not supported in inference model"
-                )
-
-        if rank < 1 or lora_alpha <= 0 or lora_dropout > 1 or lora_dropout < 0.0:
-            raise ValueError(
-                "Rank must be >= 1, lora_alpha must be > 0, lora_dropout in interval: [0.0, 1.0]"
-            )
 
     def ff_compile(self):
         c_cache_folder = get_c_name(os.path.expanduser(self.cache_folder))

@@ -3395,8 +3395,11 @@ bool FFModel::need_to_add_combine(int layer_idx) const {
   }
   return false;
 }
+
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
+  std::map<const Tensor, ParallelTensor>
+      op_before_allreduce_tensors_to_parallel_tensors;
   // for (auto const &l : layers) {
   for (int layer_idx = 0; layer_idx < layers.size(); layer_idx++) {
     auto const &l = layers[layer_idx];
@@ -3405,7 +3408,14 @@ void FFModel::create_operators_from_layers() {
       // create new input tensors
       assert(tensors_to_parallel_tensors.find(l->inputs[i]) !=
              tensors_to_parallel_tensors.end());
-      inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
+      if (l->op_type == OP_LORA &&
+          op_before_allreduce_tensors_to_parallel_tensors.find(l->inputs[i]) !=
+              op_before_allreduce_tensors_to_parallel_tensors.end()) {
+        inputs.push_back(
+            op_before_allreduce_tensors_to_parallel_tensors[l->inputs[i]]);
+      } else {
+        inputs.push_back(tensors_to_parallel_tensors[l->inputs[i]]);
+      }
     }
     Op *op = nullptr;
     // add a combine before last arg_max / arg_topk or before second-to-last
@@ -3459,11 +3469,24 @@ void FFModel::create_operators_from_layers() {
       AllReduce *allreduce =
           new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
       operators.push_back(allreduce);
+      op_before_allreduce_tensors_to_parallel_tensors[l->outputs[0]] =
+          op->outputs[0];
       op = allreduce;
     }
     assert(op->numOutputs == l->numOutputs);
     for (int i = 0; i < op->numOutputs; i++) {
+      assert(tensors_to_parallel_tensors.find(l->outputs[i]) ==
+             tensors_to_parallel_tensors.end());
       tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
+    }
+    // if the operator has op_type==OP_LORA, and the second-to-last operator in
+    // the operators vector has op_type==OP_ALLREDUCE, move the operator before
+    // the ALLREDUCE
+    if (op->op_type == OP_LORA && operators.size() > 1 &&
+        operators[operators.size() - 2]->op_type == OP_ALLREDUCE) {
+      Op *tmp = operators[operators.size() - 2];
+      operators[operators.size() - 2] = operators[operators.size() - 1];
+      operators[operators.size() - 1] = tmp;
     }
   }
 }

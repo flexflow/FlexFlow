@@ -278,6 +278,8 @@ class LllamaAlignmentTest(AlignmentTest):
             hf_tensor_name = f"layers.{i}.mlp.down_proj"
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
             input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_down_proj_out = get_hf_tensor(hf_tensor_name, output_comparison)
             hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
             ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
             compare(hf_tensor, ff_tensor, label=f"W2 {i} input")
@@ -311,7 +313,8 @@ class LllamaAlignmentTest(AlignmentTest):
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
             output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison) * self.lora_scaling_factor
-            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_down_proj_out.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_down_proj_out, ff_tensor, label=f"W2_out + scaling*LoRA_B_out {i}")
             compare(hf_tensor, ff_tensor, additional_ff_tensor=ff_down_proj_out, label=f"LoRA_B {i} output")
         
         # Norm
@@ -327,7 +330,7 @@ class LllamaAlignmentTest(AlignmentTest):
         ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
         output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
         hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
         compare(hf_tensor, ff_tensor, label="LM head output")
 
     def check_bwd_pass(self, step_idx=0):

@@ -194,7 +194,6 @@ Op *LoraLinear::create_operator_from_layer(
                         inputs[1],
                         _peft_configs,
                         layer->name);
-  ;
 }
 
 LoraLinear::LoraLinear(FFModel &model,
