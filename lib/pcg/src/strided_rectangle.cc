@@ -1,20 +1,13 @@
 #include "pcg/strided_rectangle.h"
 #include "op-attrs/dim_ordered/transform.h"
+#include "pcg/device_coordinates.dtg.h"
+#include "pcg/device_id_t.dtg.h"
+#include "pcg/strided_rectangle_side.h"
+#include "utils/containers/as_vector.h"
 #include "utils/containers/product.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
-
-/* size_t StridedRectangle::at(FFOrdered<num_points_t> const &coord) const { */
-/*   assert(coord.size() == this->num_dims()); */
-
-/*   size_t _1d_stride = 1; */
-/*   size_t idx = 0; */
-/*   for (auto dim : inner_to_outer_idxs(this->sides)) { */
-/*     idx += this->sides.at(dim).at(coord.at(dim)).value() * _1d_stride; */
-/*     _1d_stride *= this->sides.at(dim).get_size().value(); */
-/*   } */
-/*   return idx; */
-/* } */
 
 size_t get_num_dims(StridedRectangle const &rect) {
   return rect.sides.size();
@@ -27,9 +20,10 @@ num_points_t get_num_points(StridedRectangle const &rect) {
       }))};
 }
 
-StridedRectangleSide get_side_at_idx(StridedRectangle const &rect,
-                                     ff_dim_t const &idx) {
-  return rect.sides.at(idx);
+size_t get_size(StridedRectangle const &rect) {
+  return product(transform(rect.sides, [](StridedRectangleSide const &side) {
+    return get_side_size(side).unwrapped;
+  }));
 }
 
 } // namespace FlexFlow

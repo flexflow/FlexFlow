@@ -25,6 +25,17 @@ cpu_id_t unwrap_cpu(device_id_t device_id) {
   return device_id.get<cpu_id_t>();
 }
 
+int get_raw_id(device_id_t device_id) {
+  if (get_device_type(device_id) == DeviceType::GPU) {
+    return unwrap_gpu(device_id).gpu_index;
+  } else if (get_device_type(device_id) == DeviceType::CPU) {
+    return unwrap_cpu(device_id).cpu_index;
+  } else {
+    assert(false && "Unsupported DeviceType");
+    return -1;
+  }
+}
+
 device_id_t device_id_from_index(int, DeviceType) {
   NOT_IMPLEMENTED();
 }

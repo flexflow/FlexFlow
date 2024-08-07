@@ -1,0 +1,19 @@
+# DeviceCoordinates is exclusive to machine_view.cc, must not be used outside of it.
+namespace = "FlexFlow"
+name = "DeviceCoordinates"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "op-attrs/dim_ordered.h",
+]
+
+[[fields]]
+name = "coords"
+type = "::FlexFlow::FFOrdered<std::size_t>"

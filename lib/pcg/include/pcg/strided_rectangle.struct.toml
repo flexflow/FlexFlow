@@ -2,7 +2,7 @@ namespace = "FlexFlow"
 name = "StridedRectangle"
 features = [
   "eq",
-  "ord",
+  # "ord",
   "hash",
   "json",
   "rapidcheck",
@@ -11,9 +11,11 @@ features = [
 
 includes = [
   "pcg/strided_rectangle_side.dtg.h",
-  "op-attrs/dim_ordered.h",
+  "<unordered_set>",
+  "utils/hash/unordered_multiset.h",
+  "utils/fmt/unordered_multiset.h",
 ]
 
 [[fields]]
 name = "sides"
-type = "::FlexFlow::FFOrdered<::FlexFlow::StridedRectangleSide>"
+type = "std::unordered_multiset<::FlexFlow::StridedRectangleSide>"

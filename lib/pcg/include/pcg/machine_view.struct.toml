@@ -2,7 +2,7 @@ namespace = "FlexFlow"
 name = "MachineView"
 features = [
   "eq",
-  "ord",
+  # "ord",
   "hash",
   "json",
   # "rapidcheck",

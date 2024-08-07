@@ -11,6 +11,7 @@ features = [
 
 includes = [
   "pcg/num_points_t.dtg.h",
+  "pcg/stride_t.dtg.h",
 ]
 
 [[fields]]
@@ -19,4 +20,4 @@ type = "::FlexFlow::num_points_t"
 
 [[fields]]
 name = "stride"
-type = "int"
+type = "::FlexFlow::stride_t"
