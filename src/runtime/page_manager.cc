@@ -177,7 +177,7 @@ std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request
 }
 
 int PageManager::get_num_allocated_blocks(const RequestGuid& request_guid) const {
-    printf("called num allocated blocks\n");
+    // printf("called num allocated blocks\n");
     auto it = block_tables.find(request_guid);
     if (it == block_tables.end()) {
         return 0;

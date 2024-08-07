@@ -1539,7 +1539,7 @@ void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<Toke
   }
   // TODO: delete later
   // check the number of logical blocks
-  printf("number of logical blocks: %d\n", request.blocks.size());
+  // printf("number of logical blocks: %d\n", request.blocks.size());
 }
 /* --------- Page Attention Related Functions --------- */
 
