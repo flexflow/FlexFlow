@@ -1,10 +1,10 @@
 #include "compiler/unity_algorithm.h"
+#include "compiler/graph_optimize_state.h"
 #include "compiler/machine_mapping.h"
 #include "pcg/machine_specification.dtg.h"
 #include "substitutions/substitution.h"
 #include "utils/deduplicated_priority_queue.h"
 #include "utils/graph/node/algorithms.h"
-#include "compiler/graph_optimize_state.h"
 namespace FlexFlow {
 
 /*
@@ -32,44 +32,50 @@ GraphOptimizeResult graph_optimize(
         ParallelLayerAttrs const &, MachineSpecification const &)> const
         &allowed_machine_views,
     OptimizerConfig const &opt_config) {
-  std::vector<Substitution> substitutions = get_all_applicable_substitutions(pcg);
+  std::vector<Substitution> substitutions =
+      get_all_applicable_substitutions(pcg);
 
   OptimalCostCache cached_subgraph_costs;
   DeduplicatedPriorityQueue<GraphOptimizeState> candidates;
 
   OptimalCostResult original_pcg_cost = optimal_cost(pcg,
-                                                      allowed_machine_views,
-                                                      cost_estimator,
-                                                      resources,
-                                                      cached_subgraph_costs);
+                                                     allowed_machine_views,
+                                                     cost_estimator,
+                                                     resources,
+                                                     cached_subgraph_costs);
 
-  GraphOptimizeState initial_state = {GraphOptimizeResult(pcg,original_pcg_cost.machine_mapping), original_pcg_cost.runtime};
+  GraphOptimizeState initial_state = {
+      GraphOptimizeResult(pcg, original_pcg_cost.machine_mapping),
+      original_pcg_cost.runtime};
 
   GraphOptimizeState best_state = initial_state;
   candidates.push(initial_state);
 
-  for (int iteration = 0; !candidates.empty() && iteration < opt_config.budget; ++iteration) {
+  for (int iteration = 0; !candidates.empty() && iteration < opt_config.budget;
+       ++iteration) {
     GraphOptimizeState current_state = candidates.top();
     candidates.pop();
 
     if (current_state.runtime < best_state.runtime) {
       best_state = current_state;
-    } else if (current_state.runtime >
-               best_state.runtime * opt_config.alpha) {
+    } else if (current_state.runtime > best_state.runtime * opt_config.alpha) {
       continue;
     }
 
     for (Substitution const &substitution : substitutions) {
-      for (ParallelComputationGraph const &new_pcg : apply_substitution(current_state.graph_optimize_result.pcg, substitution)) {
+      for (ParallelComputationGraph const &new_pcg : apply_substitution(
+               current_state.graph_optimize_result.pcg, substitution)) {
         OptimalCostResult new_pcg_cost = optimal_cost(new_pcg,
-                                          allowed_machine_views,
-                                          cost_estimator,
-                                          resources,
-                                          cached_subgraph_costs);
-        GraphOptimizeState new_state{GraphOptimizeResult(new_pcg, new_pcg_cost.machine_mapping), new_pcg_cost.runtime};
+                                                      allowed_machine_views,
+                                                      cost_estimator,
+                                                      resources,
+                                                      cached_subgraph_costs);
+        GraphOptimizeState new_state{
+            GraphOptimizeResult(new_pcg, new_pcg_cost.machine_mapping),
+            new_pcg_cost.runtime};
         if (new_pcg_cost.runtime <= opt_config.threshold &&
             get_nodes(new_pcg.raw_graph).size() <= opt_config.max_num_ops) {
-            candidates.push(new_state);
+          candidates.push(new_state);
         }
       }
     }

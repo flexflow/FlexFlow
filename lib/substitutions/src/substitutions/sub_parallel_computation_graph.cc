@@ -3,10 +3,10 @@
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/create_lazy_copy_of_labelled_open_dataflow_graph_view.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
-#include "utils/graph/node/algorithms.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
-#include "utils/graph/open_dataflow_graph/algorithms.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/with_labelling.h"
+#include "utils/graph/node/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
 
 namespace FlexFlow {
 
@@ -55,24 +55,23 @@ ParallelComputationGraph pcg_from_sub_pcg_by_dropping_inputs(
 }
 
 SubParallelComputationGraph
-    sub_pcg_from_partial_pcg(ParallelComputationGraph const &pcg, std::unordered_set<Node> const &nodes) {
+    sub_pcg_from_partial_pcg(ParallelComputationGraph const &pcg,
+                             std::unordered_set<Node> const &nodes) {
   auto as_open = view_as_labelled_open_dataflow_graph(pcg.raw_graph);
   OpenDataflowSubgraphResult subgraph_result = get_subgraph(as_open, nodes);
-  return SubParallelComputationGraph{
-    with_labelling(
+  return SubParallelComputationGraph{with_labelling(
       subgraph_result.graph,
       generate_map(nodes, [&](Node const &node) { return as_open.at(node); }),
-      generate_map(
-        get_open_dataflow_values(subgraph_result.graph),
-        [&](OpenDataflowValue const &value) {
-          if (value.has<DataflowGraphInput>()) {
-            return as_open.at(subgraph_result.full_graph_values_to_subgraph_inputs.at_r(value.get<DataflowGraphInput>()));
-          } else {
-            return as_open.at(value);
-          }
-        })
-    )
-  };
+      generate_map(get_open_dataflow_values(subgraph_result.graph),
+                   [&](OpenDataflowValue const &value) {
+                     if (value.has<DataflowGraphInput>()) {
+                       return as_open.at(
+                           subgraph_result.full_graph_values_to_subgraph_inputs
+                               .at_r(value.get<DataflowGraphInput>()));
+                     } else {
+                       return as_open.at(value);
+                     }
+                   }))};
 }
 
 parallel_layer_guid_t

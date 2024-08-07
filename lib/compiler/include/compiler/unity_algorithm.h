@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 #define _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 
+#include "compiler/graph_optimize_result.dtg.h"
 #include "compiler/machine_mapping.h"
 #include "cost_estimator.h"
 #include "pcg/computation_graph.h"
 #include "pcg/machine_specification.dtg.h"
 #include "substitutions/sub_parallel_computation_graph.h"
-#include "compiler/graph_optimize_result.dtg.h"
 
 namespace FlexFlow {
 

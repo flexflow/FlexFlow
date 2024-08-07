@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_COMPILER_MCMC_STATE_H
 #define _FLEXFLOW_COMPILER_MCMC_STATE_H
 
-#include "compiler/machine_mapping.h"
 #include "compiler/graph_optimize_result.dtg.h"
+#include "compiler/machine_mapping.h"
 
 namespace FlexFlow {
 
@@ -15,7 +15,7 @@ struct GraphOptimizeState {
   bool operator<(GraphOptimizeState const &other) const;
 };
 
-}
+} // namespace FlexFlow
 
 namespace std {
 

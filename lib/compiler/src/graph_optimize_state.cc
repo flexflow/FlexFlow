@@ -10,7 +10,8 @@ bool GraphOptimizeState::operator==(GraphOptimizeState const &other) const {
   }
   for (size_t i = 0; i < layers1.size(); ++i) {
     auto inputs1 = get_layer_inputs(graph_optimize_result.pcg, layers1[i]);
-    auto inputs2 = get_layer_inputs(other.graph_optimize_result.pcg, layers2[i]);
+    auto inputs2 =
+        get_layer_inputs(other.graph_optimize_result.pcg, layers2[i]);
     if (inputs1.size() != inputs2.size()) {
       return false;
     }
@@ -27,11 +28,12 @@ bool GraphOptimizeState::operator!=(GraphOptimizeState const &other) const {
   return !(*this == other);
 }
 
-}
+} // namespace FlexFlow
 
 namespace std {
 
-size_t hash<::FlexFlow::GraphOptimizeState>::operator()(::FlexFlow::GraphOptimizeState const &state) const {
+size_t hash<::FlexFlow::GraphOptimizeState>::operator()(
+    ::FlexFlow::GraphOptimizeState const &state) const {
   size_t seed = 0;
   auto layers = topological_ordering(state.graph_optimize_result.pcg);
   ::FlexFlow::hash_combine(seed, layers.size());
@@ -45,4 +47,4 @@ size_t hash<::FlexFlow::GraphOptimizeState>::operator()(::FlexFlow::GraphOptimiz
   return seed;
 }
 
-}
+} // namespace std
