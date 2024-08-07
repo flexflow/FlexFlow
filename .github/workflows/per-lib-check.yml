@@ -80,9 +80,9 @@ jobs:
         run: |
           build_libs.sh substitutions
 
-      # - name: Build compiler
-      #   run: |
-      #     build_libs.sh compiler
+      - name: Build compiler
+        run: |
+          build_libs.sh compiler
 
       - name: Build substitution-generator
         run: |

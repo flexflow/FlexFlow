@@ -9,7 +9,7 @@ build_targets = [
   "kernels",
   "pcg",
   "substitutions",
-  # "compiler",
+  "compiler",
   "substitution-generator",
   "local-execution",
 ]
@@ -20,7 +20,7 @@ test_targets = [
   "op-attrs-tests",
   "pcg-tests",
   "substitutions-tests",
-  # "compiler-tests",
+  "compiler-tests",
   "substitution-generator-tests",
   "local-execution-tests"
 ]
