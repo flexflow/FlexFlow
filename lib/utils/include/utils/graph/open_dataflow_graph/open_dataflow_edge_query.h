@@ -13,6 +13,7 @@ bool open_dataflow_edge_query_includes(OpenDataflowEdgeQuery const &q,
                                        OpenDataflowEdge const &);
 OpenDataflowEdgeQuery open_dataflow_input_edge_query_all_outgoing_from(OpenDataflowValue const &);
 OpenDataflowEdgeQuery open_dataflow_input_edge_query_all_incoming_to(DataflowInput const &);
+std::unordered_set<OpenDataflowEdge> apply_open_dataflow_edge_query(OpenDataflowEdgeQuery const &, std::unordered_set<OpenDataflowEdge> const &);
 
 } // namespace FlexFlow
 

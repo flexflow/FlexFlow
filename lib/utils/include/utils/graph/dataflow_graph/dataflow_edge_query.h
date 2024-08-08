@@ -10,6 +10,7 @@ DataflowEdgeQuery dataflow_edge_query_all();
 DataflowEdgeQuery dataflow_edge_query_none();
 bool dataflow_edge_query_includes_dataflow_edge(DataflowEdgeQuery const &,
                                                 DataflowEdge const &);
+DataflowEdgeQuery dataflow_edge_query_for_edge(DataflowEdge const &);
 DataflowEdgeQuery dataflow_edge_query_all_outgoing_from(DataflowOutput const &);
 DataflowEdgeQuery dataflow_edge_query_all_incoming_to(DataflowInput const &);
 

@@ -3,6 +3,7 @@
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/create_lazy_copy_of_labelled_open_dataflow_graph_view.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/find_isomorphism.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
 
@@ -10,7 +11,7 @@ namespace FlexFlow {
 
 std::unordered_set<parallel_layer_guid_t>
     get_parallel_layers(SubParallelComputationGraph const &sub_pcg) {
-  return get_parallel_layers(pcg_from_sub_pcg_by_dropping_inputs(sub_pcg));
+  return transform(get_nodes(sub_pcg.raw_graph), [](Node const &n) { return parallel_layer_guid_t{n}; });
 }
 
 ParallelLayerAttrs
@@ -82,6 +83,10 @@ SubParallelComputationGraphData get_graph_data(SubParallelComputationGraph const
     transform(raw_data.inputs, [](DataflowGraphInput const &i) { return input_parallel_tensor_guid_t{i}; }),
     map_keys(raw_data.value_data, [](OpenDataflowValue const &v) { return open_parallel_tensor_guid_t{v}; }),
   };
+}
+
+bool are_isomorphic(SubParallelComputationGraph const &lhs, SubParallelComputationGraph const &rhs) {
+  return find_isomorphism(lhs.raw_graph, rhs.raw_graph).has_value();
 }
 
 } // namespace FlexFlow

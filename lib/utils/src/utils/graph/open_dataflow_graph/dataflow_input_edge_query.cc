@@ -23,6 +23,14 @@ bool dataflow_input_edge_query_includes(DataflowInputEdgeQuery const &q,
          includes(q.dst_idxs, e.dst.idx);
 }
 
+DataflowInputEdgeQuery dataflow_input_edge_query_for_edge(DataflowInputEdge const &e) {
+  return DataflowInputEdgeQuery{
+    query_set<DataflowGraphInput>{e.src},
+    query_set<Node>{e.dst.node},
+    query_set<int>{e.dst.idx},
+  };
+}
+
 DataflowInputEdgeQuery dataflow_input_edge_query_all_outgoing_from(DataflowGraphInput const &src) {
   return DataflowInputEdgeQuery{
     query_set<DataflowGraphInput>{src},

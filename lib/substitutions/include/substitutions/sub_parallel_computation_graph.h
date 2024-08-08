@@ -36,6 +36,7 @@ std::vector<parallel_tensor_guid_t>
                       parallel_layer_guid_t const &);
 
 SubParallelComputationGraphData get_graph_data(SubParallelComputationGraph const &);
+bool are_isomorphic(SubParallelComputationGraph const &, SubParallelComputationGraph const &);
 
 } // namespace FlexFlow
 

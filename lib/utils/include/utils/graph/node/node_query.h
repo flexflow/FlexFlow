@@ -8,7 +8,7 @@ namespace FlexFlow {
 NodeQuery node_query_all();
 NodeQuery query_intersection(NodeQuery const &, NodeQuery const &);
 NodeQuery query_union(NodeQuery const &, NodeQuery const &);
-std::unordered_set<Node> apply_node_query(NodeQuery const &, std::unordered_set<NodeQuery> const &);
+std::unordered_set<Node> apply_node_query(NodeQuery const &, std::unordered_set<Node> const &);
 
 } // namespace FlexFlow
 
