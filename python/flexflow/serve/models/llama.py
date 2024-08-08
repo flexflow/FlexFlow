@@ -128,9 +128,17 @@ class FlexFlowLLAMA(FlexFlowModel):
                     name=f"layers.{i}.input_layernorm",
                 )
 
+            qkv_proj = ffmodel.dense(
+                attn_norm,
+                3 * self.llama_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.qkv_proj",
+            )
+
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
                 mha = ffmodel.spec_inc_multiquery_self_attention(
-                    attn_norm,
+                    qkv_proj,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
                     self.llama_config.num_key_value_heads,
@@ -149,7 +157,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
                 mha = ffmodel.inc_multiquery_self_attention_verify(
-                    attn_norm,
+                    qkv_proj,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
                     self.llama_config.num_key_value_heads,
@@ -168,7 +176,7 @@ class FlexFlowLLAMA(FlexFlowModel):
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
                 mha = ffmodel.inc_multiquery_self_attention(
-                    attn_norm,
+                    qkv_proj,
                     self.llama_config.hidden_size,
                     self.llama_config.num_attention_heads,
                     self.llama_config.num_key_value_heads,
@@ -188,9 +196,17 @@ class FlexFlowLLAMA(FlexFlowModel):
             else:
                 assert False
 
+            o_proj = ffmodel.dense(
+                mha,
+                self.llama_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.o_proj"
+            )
+
             token, ff_norm = ffmodel.residual_rms_norm(
                 token,
-                mha,
+                o_proj,
                 self.llama_config.rms_norm_eps,
                 self.llama_config.hidden_size,
                 name=f"layers.{i}.post_attention_layernorm",
