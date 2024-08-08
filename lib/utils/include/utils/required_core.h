@@ -2,7 +2,7 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_CORE_H
 
 #include "fmt.decl.h"
-#include "hash-utils-core.h"
+#include "hash-utils.h"
 #include "test_types.h"
 #include "type_traits_core.h"
 #include <vector>

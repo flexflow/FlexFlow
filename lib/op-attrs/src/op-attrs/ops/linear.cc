@@ -3,6 +3,7 @@
 #include "op-attrs/dim_ordered/transform.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_shape.h"
+#include "utils/containers/product.h"
 #include "utils/integer_conversions.h"
 
 namespace FlexFlow {

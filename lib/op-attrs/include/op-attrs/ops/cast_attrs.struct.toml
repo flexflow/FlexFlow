@@ -10,9 +10,9 @@ features = [
 ]
 
 includes = [
-  "op-attrs/datatype.h"
+  "op-attrs/datatype.dtg.h"
 ]
 
 [[fields]]
 name = "dtype"
-type = "DataType"
+type = "::FlexFlow::DataType"

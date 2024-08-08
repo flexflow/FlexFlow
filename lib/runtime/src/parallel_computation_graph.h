@@ -5,7 +5,7 @@
 #include "op-attrs/operator_attrs.h"
 #include "pcg/operator_guid_t.h"
 #include "pcg/optimizer.h"
-#include "pcg/parallel_computation_graph.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_tensor.h"
 #include "task_spec/op_task_invocation.h"
 #include "utils/graph.h"

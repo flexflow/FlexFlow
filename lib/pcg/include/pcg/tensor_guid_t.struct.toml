@@ -8,9 +8,9 @@ features = [
 ]
 
 includes = [
-  "utils/graph.h"
+  "utils/graph/dataflow_graph/dataflow_output.dtg.h"
 ]
 
 [[fields]]
 name = "raw_graph_output"
-type = "::FlexFlow::MultiDiOutput"
+type = "::FlexFlow::DataflowOutput"

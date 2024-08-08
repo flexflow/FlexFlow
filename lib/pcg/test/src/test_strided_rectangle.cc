@@ -1,6 +1,8 @@
-#include "doctest/doctest.h"
 #include "pcg/strided_rectangle.h"
 #include "pcg/strided_rectangle_side.h"
+#include "test/utils/doctest.h"
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_side_size(StridedRectangleSide)") {

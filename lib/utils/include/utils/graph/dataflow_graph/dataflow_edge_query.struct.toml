@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "DataflowEdgeQuery"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/query_set.h",
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "src_nodes"
+type = "::FlexFlow::query_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "src_idxs"
+type = "::FlexFlow::query_set<int>"
+
+[[fields]]
+name = "dst_nodes"
+type = "::FlexFlow::query_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "dst_idxs"
+type = "::FlexFlow::query_set<int>"

@@ -1,5 +1,4 @@
 #include "doctest/doctest.h"
-#include "utils/containers.decl.h"
 #include "utils/fmt/expected.h"
 #include <fmt/format.h>
 #include <sstream>

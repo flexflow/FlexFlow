@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "UnlabelledGraphPatternSubgraphResult"
+features = [ ]
+
+includes = [
+  "substitutions/unlabelled/unlabelled_graph_pattern.dtg.h",
+  "substitutions/unlabelled/pattern_value.dtg.h",
+  "substitutions/unlabelled/pattern_input.dtg.h",
+  "utils/bidict/bidict.h",
+]
+
+[[fields]]
+name = "subpattern"
+type = "::FlexFlow::UnlabelledGraphPattern"
+
+[[fields]]
+name = "full_pattern_values_to_subpattern_inputs"
+type = "::FlexFlow::bidict<::FlexFlow::PatternValue, ::FlexFlow::PatternInput>"

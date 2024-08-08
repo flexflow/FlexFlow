@@ -6,9 +6,9 @@
 #include "op-attrs/ops/embedding.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "pcg/computation_graph.h"
-#include "utils/containers.h"
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/enumerate_vector.h"
+#include "utils/containers/transform.h"
 #include "utils/expected.h"
 #include "utils/fmt.h"
 
@@ -21,11 +21,10 @@ TensorShape ComputationGraphBuilder::get_shape(tensor_guid_t const &t) const {
   return get_tensor_attrs(this->computation_graph, t).shape;
 }
 
-tensor_guid_t
-    ComputationGraphBuilder::create_tensor(TensorShape const &shape,
-                                           CreateGrad const create_gradients) {
+tensor_guid_t ComputationGraphBuilder::create_tensor(TensorShape const &shape,
+                                                     CreateGrad create_grad) {
   TensorAttrs tensor_attrs =
-      TensorAttrs{shape, std::nullopt, std::nullopt, create_gradients};
+      TensorAttrs{shape, std::nullopt, std::nullopt, create_grad};
   LayerAttrs layer_attrs = LayerAttrs{
       ComputationGraphOpAttrs{InputAttrs{}},
       std::nullopt,
@@ -39,7 +38,7 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
     std::vector<tensor_guid_t> const &inputs,
     std::vector<TensorAttrs> const &weights,
     std::vector<TensorAttrs> const &outputs) {
-  std::vector<MultiDiOutput> raw_weight_tensors;
+  std::vector<DataflowOutput> raw_weight_tensors;
   for (auto const &kv : enumerate_vector(weights)) {
     int weight_idx = kv.first;
     TensorAttrs weight_tensor_attrs = kv.second;
@@ -52,24 +51,24 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
         ComputationGraphOpAttrs{WeightAttrs{}},
         weight_name,
     };
-    std::vector<MultiDiOutput> weight_layer_inputs = {};
+    std::vector<DataflowOutput> weight_layer_inputs = {};
     std::vector<TensorAttrs> weight_output_attrs = {weight_tensor_attrs};
     raw_weight_tensors.push_back(get_only(this->computation_graph.raw_graph
-                                              .add_operator(weight_layer_attrs,
-                                                            weight_layer_inputs,
-                                                            weight_output_attrs)
+                                              .add_node(weight_layer_attrs,
+                                                        weight_layer_inputs,
+                                                        weight_output_attrs)
                                               .outputs));
   }
 
-  std::vector<MultiDiOutput> raw_inputs = transform(
+  std::vector<DataflowOutput> raw_inputs = transform(
       inputs, [](tensor_guid_t const &t) { return t.raw_graph_output; });
-  std::vector<MultiDiOutput> raw_outputs =
+  std::vector<DataflowOutput> raw_outputs =
       this->computation_graph.raw_graph
-          .add_operator(
+          .add_node(
               layer, concat_vectors(raw_inputs, raw_weight_tensors), outputs)
           .outputs;
   return transform(raw_outputs,
-                   [](MultiDiOutput const &o) { return tensor_guid_t{o}; });
+                   [](DataflowOutput const &o) { return tensor_guid_t{o}; });
 }
 
 tensor_guid_t

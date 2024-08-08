@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "SinkSettings"
+features = [
+  "hash",
+  "fmt",
+  "json",
+  "rapidcheck",
+]
+
+[[values]]
+name = "INCLUDE_SINK_NODES"
+
+[[values]]
+name = "EXCLUDE_SINK_NODES"

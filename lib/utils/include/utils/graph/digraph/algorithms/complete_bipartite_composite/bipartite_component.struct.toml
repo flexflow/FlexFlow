@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "BipartiteComponent"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<unordered_set>",
+  "utils/graph/node/node.dtg.h",
+]
+
+src_includes = [
+  "utils/fmt/unordered_set.h",
+  "utils/hash/unordered_set.h",
+]
+
+[[fields]]
+name = "head_nodes"
+type = "std::unordered_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "tail_nodes"
+type = "std::unordered_set<::FlexFlow::Node>"

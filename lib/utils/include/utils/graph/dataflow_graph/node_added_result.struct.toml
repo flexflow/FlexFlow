@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "NodeAddedResult"
+
+features = [
+  "eq",
+  "ord",
+  "fmt",
+]
+
+includes = [
+  "<vector>",
+  "utils/graph/node/node.dtg.h",
+  "utils/fmt/vector.h",
+  "utils/graph/dataflow_graph/dataflow_output.dtg.h",
+]
+
+[[fields]]
+name = "node"
+type = "::FlexFlow::Node"
+
+[[fields]]
+name = "outputs"
+type = "std::vector<::FlexFlow::DataflowOutput>"

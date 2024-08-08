@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "DataflowInput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "node"
+type = "::FlexFlow::Node"
+
+[[fields]]
+name = "idx"
+type = "int"

@@ -3,7 +3,7 @@
 
 #include "pcg/computation_graph.h"
 #include "pcg/optimizer.h"
-#include "pcg/parallel_computation_graph.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/tensor_mapping.h"
 
 namespace FlexFlow {

@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "OpSlotOptions"
+features = [
+  "hash",
+  "fmt",
+  "rapidcheck",
+  "json",
+]
+
+[[values]]
+name = "OPTIONAL"
+
+[[values]]
+name = "UNTRAINABLE"
+
+[[values]]
+name = "OPTIONAL_UNTRAINABLE"
+
+[[values]]
+name = "NECESSARY"
