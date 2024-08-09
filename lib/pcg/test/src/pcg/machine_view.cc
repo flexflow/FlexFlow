@@ -13,7 +13,7 @@ using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
 
-  TEST_CASE("MachineView utility functions") {
+  TEST_CASE("MachineView - utility functions") {
     StridedRectangle rect{{StridedRectangleSide(num_points_t(7), stride_t(5)),
                            StridedRectangleSide(num_points_t(10), stride_t(2)),
                            StridedRectangleSide(num_points_t(1), stride_t(4))}};
@@ -31,16 +31,15 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("get_side_size_per_dim") {
-      std::unordered_multiset<side_size_t> expected = {
-          side_size_t(7 * 5), side_size_t(10 * 2), side_size_t(1 * 4)};
-      std::unordered_multiset<side_size_t> result = get_side_size_per_dim(mv);
+      std::vector<side_size_t> expected = {
+          side_size_t(1 * 4), side_size_t(7 * 5), side_size_t(10 * 2)};
+      std::vector<side_size_t> result = get_side_size_per_dim(mv);
       CHECK(expected == result);
     }
     SUBCASE("get_num_devices_per_dim") {
-      std::unordered_multiset<num_points_t> expected = {
-          num_points_t(7), num_points_t(10), num_points_t(1)};
-      std::unordered_multiset<num_points_t> result =
-          get_num_devices_per_dim(mv);
+      std::vector<num_points_t> expected = {
+          num_points_t(1), num_points_t(7), num_points_t(10)};
+      std::vector<num_points_t> result = get_num_devices_per_dim(mv);
       CHECK(expected == result);
     }
 
@@ -49,8 +48,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE("MachineView - device ids") {
-    SUBCASE("MachineView #1") {
+  TEST_CASE("get_device_ids") {
+
+    SUBCASE("2D MachineView") {
       StridedRectangle rect{{
           StridedRectangleSide(num_points_t(2), stride_t(3)),
           StridedRectangleSide(num_points_t(2), stride_t(2)),
@@ -63,11 +63,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::unordered_multiset<device_id_t> result = get_device_ids(mv);
         CHECK(expected == result);
       }
-      SUBCASE("get_last_device_id") {
-        CHECK(get_last_device_id(mv) == device_id_t(gpu_id_t(14)));
-      }
     }
-    SUBCASE("MachineView #2") {
+    SUBCASE("3D MachineView") {
       StridedRectangle rect{{
           StridedRectangleSide(num_points_t(1), stride_t(3)),
           StridedRectangleSide(num_points_t(2), stride_t(1)),
@@ -80,9 +77,33 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::unordered_multiset<device_id_t> expected =
             make_gpu_device_ids({1, 4, 13, 16});
         std::unordered_multiset<device_id_t> result = get_device_ids(mv);
-
         CHECK(expected == result);
       }
+    }
+  }
+
+  TEST_CASE("get_last_device_id") {
+    SUBCASE("2D MachineView") {
+      StridedRectangle rect{{
+          StridedRectangleSide(num_points_t(2), stride_t(3)),
+          StridedRectangleSide(num_points_t(2), stride_t(2)),
+      }};
+      gpu_id_t start(0);
+      MachineView mv{device_id_t{start}, rect};
+
+      SUBCASE("get_last_device_id") {
+        CHECK(get_last_device_id(mv) == device_id_t(gpu_id_t(14)));
+      }
+    }
+
+    SUBCASE("3D MachineView") {
+      StridedRectangle rect{{
+          StridedRectangleSide(num_points_t(1), stride_t(3)),
+          StridedRectangleSide(num_points_t(2), stride_t(1)),
+          StridedRectangleSide(num_points_t(2), stride_t(2)),
+      }};
+      gpu_id_t start(1);
+      MachineView mv{device_id_t{start}, rect};
 
       SUBCASE("get_last_device_id") {
         CHECK(get_last_device_id(mv) == device_id_t(gpu_id_t(16)));
@@ -90,7 +111,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE("MachineView make_1d_machine_view - GPU") {
+  TEST_CASE("make_1d_machine_view - GPU") {
 
     StridedRectangle rect{{StridedRectangleSide{num_points_t{7}, stride_t{5}}}};
     device_id_t start_gpu{gpu_id_t{1}};
@@ -111,7 +132,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE("MachineView make_1d_machine_view - CPU") {
+  TEST_CASE("make_1d_machine_view - CPU") {
     StridedRectangle rect{
         {StridedRectangleSide{num_points_t{11}, stride_t{4}}}};
     device_id_t start_cpu{cpu_id_t{2}};

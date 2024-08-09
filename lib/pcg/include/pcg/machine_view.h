@@ -21,10 +21,8 @@ device_id_t get_last_device_id(MachineView const &mv);
 size_t num_dims(MachineView const &mv);
 size_t num_devices(MachineView const &mv);
 size_t get_size(MachineView const &mv);
-std::unordered_multiset<num_points_t>
-    get_num_devices_per_dim(MachineView const &mv);
-std::unordered_multiset<side_size_t>
-    get_side_size_per_dim(MachineView const &mv);
+std::vector<num_points_t> get_num_devices_per_dim(MachineView const &mv);
+std::vector<side_size_t> get_side_size_per_dim(MachineView const &mv);
 
 DeviceType get_device_type(MachineView const &mv);
 

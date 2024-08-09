@@ -9,9 +9,13 @@
 #include "utils/containers.h"
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/as_vector.h"
+#include "utils/containers/cartesian_product.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/keys.h"
+#include "utils/containers/product.h"
+#include "utils/containers/replicate.h"
+#include "utils/containers/zip.h"
 #include "utils/exception.h"
 #include "utils/graph/graph_split.dtg.h"
 #include "utils/graph/node/algorithms.h"
@@ -359,126 +363,108 @@ OptimalCostResult optimal_cost(
 }
 
 // bool is_valid_machine_view(MachineSpecification const &machinespec,
-//  MachineView const &mv) {
-// Note: we're checking the size of the machineview, not the last device id
-// (e.g. consider 2D machine view of size 4x4 with stride 2 along each
-// dimension, technically it could fit into a 3x3 machine spec but the machine
-// view is really describing a 4x4 space)
-// if (get_device_type(mv) == DeviceType::GPU) {
-//   return get_size(mv) <=
-//          machinespec.num_nodes * machinespec.num_gpus_per_node;
-// } else if (get_device_type(mv) == DeviceType::CPU) {
-//   return get_size(mv) <=
-//          machinespec.num_nodes * machinespec.num_cpus_per_node;
-// } else {
-//   assert(false && "Unsupported DeviceType");
-//   return false;
-// }
-
-// Add check that the last one doesn't go over
-// Add other check that you can cram them into the 2D frame (there has to
-// exist a bipartition of the dimension that fits)
+//                            MachineView const &mv) {
+//   auto get_all_bipartition_products = [&](std::vector<int> elements) {
+//     std::unordered_multiset<std::vector<int>> mappings =
+//     transform(cartesian_product(replicate(elements.size(),
+//     std::vector<int>{0,1}))); std::pair<int, int> products; for (const auto
+//     &mapping : mappings) {
+//       int prod1 = product(transform(zip(elements, mapping), [&](auto elem)
+//       {return (elem.second ? 1 : elem.first);})); int prod2 =
+//       product(transform(zip(elements, mapping), [&](auto elem) {return
+//       (!elem.second ? 1 : elem.first);})); products.push_back({prod1
+//       ,prod2}); assert(prod1*prod2 == product(elements));
+//     }
+//     return products;
+//     }
+//   // assert(contains({DeviceType::GPU, DeviceType::CPU},
+//   get_device_type(mv)); int num_devices_per_node = ((get_device_type(mv) ==
+//   DeviceType::GPU) ? machinespec.num_gpus_per_node :
+//   machinespec.num_cpus_per_node); int num_devices = machinespec.num_nodes *
+//   num_devices_per_node; if (num_devices >=
+//   get_raw_id(get_last_device_id(mv))) {return false;} if
+//   (!any_of(get_all_bipartition_products(as_vector(get_num_devices_per_dim(mv))),
+//   [&](auto pair) {return (pair.first <= machinespec.num_nodes) &&
+//   (pair.second <= num_devices_per_node);})) {
+//     return false;
+//   }
+//   return true;
 // }
 
 // bool is_valid_machine_view(MachineView const &mv,
 //                            ParallelTensorShape const &shape) {
-// std::unordered_set<size_t> unordered_mv_degrees =
-//     without_order(get_point_dims(mv));
-// std::unordered_set<size_t> unordered_tensor_degrees =
-//     without_order(ff_ordered_shard_degrees(shape)) + {get_sum_degree(shape)}
-//     + {get_discard_copy_degree(shape)}; // filter for the 1s (no parallelism)
-// return unordered_mv_dims == unordered_tensor_dims;
+//   std::unordered_set<size_t> unordered_mv_degrees =
+//       without_order(get_point_dims(mv));
+//   std::unordered_set<size_t> unordered_tensor_degrees =
+//       without_order(ff_ordered_shard_degrees(shape)) +
+//       {get_sum_degree(shape)} + {get_discard_copy_degree(shape)}; // filter
+//       for the 1s (no parallelism)
+//   return unordered_mv_dims == unordered_tensor_dims;
 // }
 
-// WARNING: some machine_views returned are invalid, get allowed_machine_views
-// for valid ones.
+// // WARNING: some machine_views returned are invalid, get
+// allowed_machine_views
+// // for valid ones.
+
+// //TODO: add support for both CPU and GPU
 // static std::unordered_set<MachineView>
-//     get_all_machine_views(MachineSpecification const &machinespec,
+//     get_all_candidate_machine_views(MachineSpecification const &machinespec,
 //                           ParallelTensorShape const &shape) {
 
-// auto all_possible_strides =
-//     [](std::vector<size_t> tensor_dims,
-//        size_t total_devices,
-//        size_t num_devices_used_by_tensor) {
-//       size_t room_for_stride = total_devices / num_devices_used_by_tensor;
-//       auto x = cartesian_product(replicate(range(1, room_for_stride + 1)),
-//                                  tensor_dims.size());
-//   return filter(x, product((elem-1 for elem in x)) <= room_for_stride);
+//   auto all_possible_strides =
+//       [](std::vector<size_t> tensor_dims,
+//          size_t num_total_devices,
+//          size_t num_devices_used_by_tensor) {
+//         size_t room_for_stride = num_total_devices /
+//         num_devices_used_by_tensor; std::unordered_multiset<std::vector<int>>
+//         strides = cartesian_product(replicate(range(1, room_for_stride + 1)),
+//                                    tensor_dims.size());
+//         return strides;
+//     // return filter(strides, (std::vector<int> const &stride) {return
+//     product((elem-1 for elem in x)) <= room_for_stride);
+//       };
+
+//   size_t num_total_devices = machinespec.num_nodes *
+//   machinespec.num_gpus_per_node; std::unordered_set<MachineView>
+//   machine_views; std::vector<size_t> tensor_dims; size_t
+//   num_devices_used_by_tensor = product(tensor_dims); for (std::vector<int>
+//   stride :
+//        all_possible_strides(tensor_dims, num_total_devices,
+//        num_devices_used_by_tensor)) {
+//     for (int start_id = 0 ;
+//          start_id <= num_total_devices - num_devices_used_by_tensor + 1;
+//          start_id++) {
+//       std::vector<StridedRectangleSide> sides =
+//           transform(zip(tensor_dims, stride));
+//       MachineView mv = {device_id_t(gpu_id_t(start_id)),
+//       StridedRectangle{sides}}; machine_views.insert(mv);
 //     }
-
-// size_t total_devices = machinespec.num_nodes *
-// machinespec.num_gpus_per_nodes; std::unordered_set<MachineView>
-// machine_views; std::vector<size_t> tensor_dims; size_t
-// num_devices_used_by_tensor = product(tensor_dims);
-// std::unordered_set<std::unordered_set<size_t>> stride_sets =
-//     make_stride_sets(tensor_dims, total_devices);
-// for (std::vector<size_t> stride :
-//      all_possible_strides(tensor_dims, total_devices)) {
-//   for (int start_id = 0 :
-//        start_id <= total_devices - num_devices_used_by_tensor + 1;
-//        start_id++) {
-//     std::vector<StridedRectangleSide> sides =
-//         transform(zip(tensor_dims, stride));
-//     MachineView mv = {start, StridedRectangle{sides}};
-//     machine_views.insert(mv);
 //   }
-// }
-// return machine_views;
+//   return machine_views;
 // }
 
-// static std::unordered_set<StartInvariantMachineView>
-//     get_all_start_invariant_machine_views(
-//         MachineSpecification const &machinespec,
-//         ParallelTensorShape const &shape) {
-//   NOT_IMPLEMENTED();
-// }
+// // static std::unordered_set<StartInvariantMachineView>
+// //     get_all_start_invariant_machine_views(
+// //         MachineSpecification const &machinespec,
+// //         ParallelTensorShape const &shape) {
+// //   NOT_IMPLEMENTED();
+// // }
 
 // auto get_all_machine_views_to_tensor_dim_bijections(MachineView const &mv,
 // ParallelTensorShape const &shape) {
 //   NOT_IMPLEMENTED();
 // }
 
-// // do product (total num of devices vs total num of elements in the tensor).
-// bool is_valid_machine_view(ParallelTensorShape const&
-// output_shape, MachineView const& view) {
-//   int is_dim = 0;
-//   for (int i = 0; i < num_dims; i++) {
-//     if (dims[i].parallel_idx != -1) {
-//       is_dim++;
-//       if (dims[i].parallel_idx > view.ndims) {
-//         return false;
-//       }
-//       if (view.dim[dims[i].parallel_idx] != dims[i].degree) {
-//         return false;
-//       }
-//     }
-//   }
-//   if (is_dim == 0) {
-//     is_dim = 1;
-//   }
-//   if (is_dim != view.ndims) {
-//     return false;
-//   }
-//   if (get_total_num_parts() != view.num_parts()) {
-//     return false;
-//   }
-// return true;
-// }
-
 // std::unordered_set<MachineView>
 //     get_allowed_machine_views(MachineSpecification const &machinespec,
 //                               ParallelTensorShape const &shape) {
 //   std::unordered_set<MachineView> operator_views =
-//       get_all_machine_views(machinespec, shape);
-//   // operator_views = filter(operator_views, [&](MachineView const& view)
-//   // {return all_of(outputs(op), [&](ParallelTensorShape const&
-//   output){return
-//   // is_valid_machine_view(op, output, view);});
+//       get_all_candidate_machine_views(machinespec, shape);
 //   operator_views = filter(operator_views, [&](MachineView const &view) {
-//     return is_valid_machine_view(shape, view);
+//     return is_valid_machine_view(view, shape);
 //   });
 //   operator_views = filter(operator_views, [&](MachineView const &view) {
-//     return is_valid_machine_view(machinespec, view);
+//     return is_valid_machine_view(view, machinespec);
 //   });
 //   return operator_views;
 // }

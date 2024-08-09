@@ -1,4 +1,3 @@
-# DeviceCoordinates is exclusive to machine_view.cc, must not be used outside of it.
 namespace = "FlexFlow"
 name = "DeviceCoordinates"
 features = [
@@ -16,4 +15,4 @@ includes = [
 
 [[fields]]
 name = "coords"
-type = "::FlexFlow::FFOrdered<std::size_t>"
+type = "::FlexFlow::FFOrdered<int>"
