@@ -34,13 +34,13 @@ OpTaskInvocation forward(ConcatAttrs const &attrs) {
   binding.bind_arg(PROFILING, profiling_settings());
   binding.bind_arg(ATTRS, attrs);
 
-  return {CONCAT_FWD_TASK_ID, binding};
+  return {task_id_t::CONCAT_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(ConcatAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {CONCAT_BWD_TASK_ID, b};
+  return {task_id_t::CONCAT_BWD_TASK_ID, b};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -79,10 +79,10 @@ static std::optional<float>
 }
 
 TaskImplFunction get_concat_fwd_task_impl() {
-  return TaskImplFunction{forward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_concat_bwd_task_impl() {
-  return TaskImplFunction{backward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_concat_fwd_signature() {
@@ -103,7 +103,7 @@ OpTaskSignature get_concat_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(ConcatAttrs const &) {
-  return {CONCAT_FWD_TASK_ID, CONCAT_BWD_TASK_ID};
+  return {task_id_t::CONCAT_FWD_TASK_ID, task_id_t::CONCAT_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

@@ -7,7 +7,7 @@
 #include "local-execution/serialization.h"
 #include "local-execution/slot_id_t.dtg.h"
 #include "local-execution/slot_type.dtg.h"
-#include "local-execution/tasks.h"
+#include "local-execution/task_id_t.dtg.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 
@@ -94,6 +94,9 @@ struct OpTaskSignature {
 };
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
     OpTaskSignature, type, return_value, task_arg_types, op_tensor_slots);
+
+std::string format_as(OpTaskSignature const &x);
+std::ostream &operator<<(std::ostream &s, OpTaskSignature const &x);
 
 OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 

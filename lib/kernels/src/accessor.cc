@@ -167,22 +167,4 @@ std::pair<ArrayShape, DataType>
   return std::make_pair(accessor.shape, accessor.data_type);
 }
 
-std::string format_as(std::vector<GenericTensorAccessorR> const &x) {
-  return fmt::format("std::vector<GenericTensorAccessorR>");
-}
-
-std::ostream &operator<<(std::ostream &s,
-                         std::vector<GenericTensorAccessorR> const &x) {
-  return (s << fmt::to_string(x));
-}
-
-std::string format_as(std::vector<GenericTensorAccessorW> const &x) {
-  return fmt::format("std::vector<GenericTensorAccessorW>");
-}
-
-std::ostream &operator<<(std::ostream &s,
-                         std::vector<GenericTensorAccessorW> const &x) {
-  return (s << fmt::to_string(x));
-}
-
 } // namespace FlexFlow

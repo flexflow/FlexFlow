@@ -29,7 +29,7 @@ OpTaskInvocation init(ReduceAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {REDUCE_INIT_TASK_ID, binding};
+  return {task_id_t::REDUCE_INIT_TASK_ID, binding};
 }
 
 static DeviceSpecificDeviceStates
@@ -59,7 +59,7 @@ OpTaskInvocation forward(ReduceAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {REDUCE_FWD_TASK_ID, binding};
+  return {task_id_t::REDUCE_FWD_TASK_ID, binding};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -81,7 +81,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
 OpTaskInvocation backward(ReduceAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {REDUCE_BWD_TASK_ID, binding};
+  return {task_id_t::REDUCE_BWD_TASK_ID, binding};
 }
 
 static std::optional<float>
@@ -102,13 +102,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_reduce_init_task_impl() {
-  return TaskImplFunction{init_task_impl};
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_reduce_fwd_task_impl() {
-  return TaskImplFunction{forward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_reduce_bwd_task_impl() {
-  return TaskImplFunction{backward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_reduce_init_signature() {
@@ -136,7 +136,9 @@ OpTaskSignature get_reduce_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(ReduceAttrs const &) {
-  return {REDUCE_INIT_TASK_ID, REDUCE_FWD_TASK_ID, REDUCE_BWD_TASK_ID};
+  return {task_id_t::REDUCE_INIT_TASK_ID,
+          task_id_t::REDUCE_FWD_TASK_ID,
+          task_id_t::REDUCE_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

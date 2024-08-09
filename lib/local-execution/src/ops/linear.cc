@@ -31,7 +31,7 @@ OpTaskInvocation init(LinearAttrs const &attrs) {
   binding.bind(WEIGHT, weight_tensor(0)); // weight
   binding.bind(OUTPUT, output_tensor(0)); // output
 
-  return {LINEAR_INIT_TASK_ID, binding};
+  return {task_id_t::LINEAR_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(LinearAttrs const &attrs) {
@@ -49,13 +49,13 @@ OpTaskInvocation forward(LinearAttrs const &attrs) {
                    per_device_op_state<LinearPerDeviceState>());
   binding.bind_arg(ATTRS, attrs);
 
-  return {LINEAR_FWD_TASK_ID, binding};
+  return {task_id_t::LINEAR_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(LinearAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {LINEAR_BWD_TASK_ID, b};
+  return {task_id_t::LINEAR_BWD_TASK_ID, b};
 }
 
 static DeviceSpecificDeviceStates
@@ -161,13 +161,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_linear_init_task_impl() {
-  return TaskImplFunction{init_task_impl};
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_linear_fwd_task_impl() {
-  return TaskImplFunction{forward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_linear_bwd_task_impl() {
-  return TaskImplFunction{backward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_linear_init_signature() {
@@ -204,7 +204,9 @@ OpTaskSignature get_linear_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(LinearAttrs const &) {
-  return {LINEAR_INIT_TASK_ID, LINEAR_FWD_TASK_ID, LINEAR_BWD_TASK_ID};
+  return {task_id_t::LINEAR_INIT_TASK_ID,
+          task_id_t::LINEAR_FWD_TASK_ID,
+          task_id_t::LINEAR_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

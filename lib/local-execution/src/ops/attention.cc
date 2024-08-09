@@ -57,7 +57,7 @@ OpTaskInvocation init(MultiHeadAttentionAttrs const &attrs) {
   b.bind_arg(VPROJSIZE, get_vProjSize(attrs));
   b.bind_arg(OPROJSIZE, get_oProjSize(attrs));
 
-  return {ATTENTION_INIT_TASK_ID, b};
+  return {task_id_t::ATTENTION_INIT_TASK_ID, b};
 }
 
 OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
@@ -72,13 +72,13 @@ OpTaskInvocation forward(MultiHeadAttentionAttrs const &attrs) {
   b.bind_arg(PROFILING, profiling_settings());
   b.bind_arg(PER_DEVICE_STATE, per_device_op_state<MHAPerDeviceState>());
 
-  return {ATTENTION_FWD_TASK_ID, b};
+  return {task_id_t::ATTENTION_FWD_TASK_ID, b};
 }
 
 OpTaskInvocation backward(MultiHeadAttentionAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {ATTENTION_BWD_TASK_ID, b};
+  return {task_id_t::ATTENTION_BWD_TASK_ID, b};
 }
 
 static DeviceSpecificDeviceStates
@@ -131,7 +131,6 @@ static DeviceSpecificDeviceStates
                                                    qoSeqLength,
                                                    kvSeqLength,
                                                    attrs.add_bias_kv);
-  std::cout << "pre fn return";
   return DeviceSpecificDeviceStates{
       DeviceSpecific<MHAPerDeviceState>::create(per_device_state)};
 }
@@ -203,13 +202,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_attention_init_task_impl() {
-  return TaskImplFunction{init_task_impl};
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_attention_fwd_task_impl() {
-  return TaskImplFunction{forward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_attention_bwd_task_impl() {
-  return TaskImplFunction{backward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_attention_init_signature() {
@@ -251,7 +250,9 @@ OpTaskSignature get_attention_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(MultiHeadAttentionAttrs const &) {
-  return {ATTENTION_INIT_TASK_ID, ATTENTION_FWD_TASK_ID, ATTENTION_BWD_TASK_ID};
+  return {task_id_t::ATTENTION_INIT_TASK_ID,
+          task_id_t::ATTENTION_FWD_TASK_ID,
+          task_id_t::ATTENTION_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

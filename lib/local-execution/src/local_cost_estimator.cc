@@ -31,18 +31,9 @@ CostDetails LocalCostEstimator::estimate_cost(
     std::vector<ParallelTensorAttrs> const &weights,
     std::vector<ParallelTensorAttrs> const &outputs,
     MachineView const &mv) const {
-  // TODO: support machine view for local cost estimation? (do we want to model
-  // parallel ops locally somehow)
-  return this->estimate_cost(op, inputs, weights, outputs);
-}
 
-CostDetails LocalCostEstimator::estimate_cost(
-    PCGOperatorAttrs const &op,
-    std::vector<ParallelTensorShape> const &inputs,
-    std::vector<ParallelTensorAttrs> const &weights,
-    std::vector<ParallelTensorAttrs> const &outputs) const {
-
-  if (is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>()) {
+  if (is_parallel_op(op) || op.has<InputAttrs>() || op.has<NoopAttrs>() ||
+      op.has<WeightAttrs>()) {
     return CostDetails{0, 0};
   }
 

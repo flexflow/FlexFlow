@@ -3,9 +3,9 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_SLOT_REGISTRY_H
 
 #include "kernels/accessor.h"
-#include "local-execution/device_states.h"
 #include "local-execution/local_task_argument_accessor.h"
 #include "local-execution/op_task_invocation.h"
+#include "local-execution/per_device_state.h"
 #include "local-execution/runtime_arg_config.h"
 
 namespace FlexFlow {

@@ -29,9 +29,8 @@ DeviceSpecificDeviceStates
                                               TaskArgumentAccessor const &acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn =
-      task_sig_impl.impl_function.get<std::function<DeviceSpecificDeviceStates(
-          TaskArgumentAccessor const &)>>();
+  auto fn = task_sig_impl.impl_function.get<InitTaskImplFunction>()
+                .init_task_impl_function;
   return fn(acc);
 }
 
@@ -40,8 +39,8 @@ std::optional<float>
                                          TaskArgumentAccessor acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn = task_sig_impl.impl_function.get<
-      std::function<std::optional<float>(TaskArgumentAccessor const &)>>();
+  auto fn = task_sig_impl.impl_function.get<FwdBwdTaskImplFunction>()
+                .fwd_bwd_task_impl_function;
   return fn(acc);
 }
 
@@ -57,7 +56,6 @@ void LocalTrainingBacking::execute_init() {
           this->get_task_arg_accessor(invocation, operator_node);
       DeviceSpecificDeviceStates device_state =
           this->call_init_task_impl(invocation.task_id, accessor);
-      std::cout << "post init";
       this->local_slots_backing.add_per_device_op_state(operator_node,
                                                         device_state);
     }

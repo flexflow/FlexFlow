@@ -2,17 +2,17 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 
 #include "local-execution/device_specific.h"
-#include "local-execution/device_states.dtg.h"
 #include "local-execution/itask_argument_accessor.h"
+#include "local-execution/per_device_state.dtg.h"
 
 namespace FlexFlow {
 
 struct TaskArgumentAccessor {
   template <typename T>
   T const &get_argument(slot_id_t slot) const {
-    if constexpr (DeviceStates::IsPartOfDeviceStates_v<T>) {
-      DeviceStates device_states =
-          this->ptr->get_concrete_arg(slot).get<DeviceStates>();
+    if constexpr (PerDeviceState::IsPartOfPerDeviceState_v<T>) {
+      PerDeviceState device_states =
+          this->ptr->get_concrete_arg(slot).get<PerDeviceState>();
       return device_states.get<T>();
     } else {
       return this->ptr->get_concrete_arg(slot).get<T>();

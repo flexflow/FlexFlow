@@ -1,6 +1,8 @@
 #include "local-execution/local_task_argument_accessor.h"
 #include "utils/containers/contains_key.h"
+#include "utils/containers/transform.h"
 #include "utils/hash/pair.h"
+#include "utils/overload.h"
 
 namespace FlexFlow {
 
@@ -55,82 +57,39 @@ Allocator LocalTaskArgumentAccessor::get_allocator() const {
   return this->allocator;
 }
 
-bool are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
-    TensorSlotsBacking const &slots_1, TensorSlotsBacking const &slots_2) {
-  if (slots_1.size() != slots_2.size()) {
-    return false;
-  }
+TensorSlotsBackingWithoutAddresses
+    get_slots_backing_without_tensor_allocation_addresses(
+        TensorSlotsBacking const &slots_backing) {
+
+  TensorSlotsBackingWithoutAddresses addressless_slots_backing;
 
   using TensorAccessorVariant =
-      std::variant<FlexFlow::GenericTensorAccessorW,
-                   std::vector<FlexFlow::GenericTensorAccessorW>>;
-
-  auto tensors_are_equivalent = [](TensorAccessorVariant const &acc1_variant,
-                                   TensorAccessorVariant const &acc2_variant) {
-    GenericTensorAccessorW acc1 =
-        std::get<GenericTensorAccessorW>(acc1_variant);
-    GenericTensorAccessorW acc2 =
-        std::get<GenericTensorAccessorW>(acc2_variant);
-    return is_shape_and_dtype_equal(acc1, acc2);
-  };
-
-  auto variadic_tensor_are_equivalent =
-      [](TensorAccessorVariant const &acc1_variant,
-         TensorAccessorVariant const &acc2_variant) {
-        std::vector<GenericTensorAccessorW> acc1 =
-            std::get<std::vector<GenericTensorAccessorW>>(acc1_variant);
-        std::vector<GenericTensorAccessorW> acc2 =
-            std::get<std::vector<GenericTensorAccessorW>>(acc2_variant);
-        if (acc1.size() != acc2.size()) {
-          return false;
-        }
-        for (int i = 0; i < acc1.size(); ++i) {
-          if (!is_shape_and_dtype_equal(acc1.at(i), acc2.at(i))) {
-            return false;
-          }
-        }
-        return true;
-      };
-
-  for (auto const &slot_tensor : slots_1) {
-    if (!contains_key(slots_2, slot_tensor.first)) {
-      return false;
-    }
-    auto accessor1_variant = slot_tensor.second;
-    auto accessor2_variant = slots_2.at(slot_tensor.first);
-
-    // first check if they hold the same variant type
-    if (accessor1_variant.index() != accessor2_variant.index()) {
-      return false;
-    }
-    if (std::holds_alternative<GenericTensorAccessorW>(accessor2_variant)) {
-      if (!tensors_are_equivalent(accessor1_variant, accessor2_variant)) {
-        return false;
-      }
-    } else if (std::holds_alternative<std::vector<GenericTensorAccessorW>>(
-                   accessor2_variant)) {
-      if (!variadic_tensor_are_equivalent(accessor1_variant,
-                                          accessor2_variant)) {
-        return false;
-      }
-    } else {
-      throw mk_runtime_error("Unhandled variant type");
-    }
+      std::variant<GenericTensorAccessorW, std::vector<GenericTensorAccessorW>>;
+  for (auto const &slot_tensor : slots_backing) {
+    TensorAccessorVariant accessor_variant = slot_tensor.second;
+    std::visit(
+        overload{
+            [&](GenericTensorAccessorW const &accessor) {
+              addressless_slots_backing.insert(
+                  {slot_tensor.first, get_shape_and_datatype(accessor)});
+            },
+            [&](std::vector<GenericTensorAccessorW> const &variadic_accessor) {
+              std::vector<std::pair<ArrayShape, DataType>>
+                  variadic_addressless_accessor =
+                      transform(variadic_accessor,
+                                [](GenericTensorAccessorW const &accessor) {
+                                  return get_shape_and_datatype(accessor);
+                                });
+              addressless_slots_backing.insert(
+                  {slot_tensor.first, variadic_addressless_accessor});
+            }},
+        accessor_variant);
   }
-  return true;
+  return addressless_slots_backing;
 }
 
 size_t LocalTaskArgumentAccessor::get_device_idx() const {
   return 0;
-}
-
-std::string format_as(std::unordered_map<slot_id_t, ConcreteArgSpec> const &x) {
-  return fmt::format("ArgSlotsBacking");
-}
-std::ostream &
-    operator<<(std::ostream &s,
-               std::unordered_map<slot_id_t, ConcreteArgSpec> const &x) {
-  return (s << fmt::to_string(x));
 }
 
 } // namespace FlexFlow

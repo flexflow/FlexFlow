@@ -14,7 +14,6 @@ struct LocalTrainingBacking {
                        ComputationGraph const &,
                        TensorBackingMap const &,
                        RuntimeArgConfig const &);
-  ~LocalTrainingBacking() = default;
 
   void execute_init();
   PerLayerElapsedTime execute_forward();
@@ -32,6 +31,7 @@ private:
                                                  TaskArgumentAccessor const &);
   std::optional<float> call_task_impl(task_id_t, TaskArgumentAccessor);
 
+private:
   Allocator allocator;
   ComputationGraph computation_graph;
   TaskRegistry task_registry;

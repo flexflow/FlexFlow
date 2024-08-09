@@ -3,8 +3,8 @@
 
 #include "local-execution/arg_ref.h"
 #include "local-execution/device_specific.h"
-#include "local-execution/device_states.h"
 #include "local-execution/op_arg_ref_type.dtg.h"
+#include "local-execution/per_device_state.h"
 #include "op-attrs/parallel_tensor_shape.h"
 
 namespace FlexFlow {
@@ -17,7 +17,7 @@ using OpArgRefSpec = ArgRefSpec<OpArgRefType>;
 template <typename T>
 OpArgRef<DeviceSpecificDeviceStates> per_device_op_state() {
   OpArgRefType op_arg_ref_type = OpArgRefType{PerDeviceOpStateRefType{}};
-  static_assert(DeviceStates::IsPartOfDeviceStates_v<T>);
+  static_assert(PerDeviceState::IsPartOfPerDeviceState_v<T>);
   ArgRef<OpArgRefType, DeviceSpecificDeviceStates> arg_ref = {op_arg_ref_type};
   return arg_ref;
 }

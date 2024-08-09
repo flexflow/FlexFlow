@@ -77,4 +77,13 @@ TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
                      dtype};
 }
 
+std::string format_as(std::pair<ArrayShape, DataType> const &x) {
+  return fmt::format("ArrayShape and DataType");
+}
+
+std::ostream &operator<<(std::ostream &s,
+                         std::pair<ArrayShape, DataType> const &x) {
+  return (s << fmt::to_string(x));
+}
+
 } // namespace FlexFlow

@@ -12,12 +12,6 @@ struct LocalCostEstimator : public ICostEstimator {
   LocalCostEstimator(LocalCostEstimator &&) = delete;
   ~LocalCostEstimator() = default;
 
-  CostDetails estimate_cost(
-      PCGOperatorAttrs const &op,
-      std::vector<ParallelTensorShape> const &inputs,
-      std::vector<ParallelTensorAttrs> const &weights,
-      std::vector<ParallelTensorAttrs> const &outputs) const override;
-
   CostDetails estimate_cost(PCGOperatorAttrs const &op,
                             std::vector<ParallelTensorShape> const &inputs,
                             std::vector<ParallelTensorAttrs> const &weights,

@@ -20,7 +20,7 @@ OpTaskInvocation init(Pool2DAttrs const &attrs) {
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(HANDLE, ff_handle());
 
-  return {POOL2D_INIT_TASK_ID, binding};
+  return {task_id_t::POOL2D_INIT_TASK_ID, binding};
 }
 
 static DeviceSpecificDeviceStates
@@ -95,13 +95,13 @@ OpTaskInvocation forward(Pool2DAttrs const &attrs) {
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<Pool2DPerDeviceState>());
 
-  return {POOL2D_FWD_TASK_ID, binding};
+  return {task_id_t::POOL2D_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(Pool2DAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {POOL2D_BWD_TASK_ID, b};
+  return {task_id_t::POOL2D_BWD_TASK_ID, b};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -142,13 +142,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_pool_2d_init_task_impl() {
-  return TaskImplFunction{init_task_impl};
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_pool_2d_fwd_task_impl() {
-  return TaskImplFunction{forward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_pool_2d_bwd_task_impl() {
-  return TaskImplFunction{backward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_pool_2d_init_signature() {
@@ -179,7 +179,9 @@ OpTaskSignature get_pool_2d_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(Pool2DAttrs const &) {
-  return {POOL2D_INIT_TASK_ID, POOL2D_FWD_TASK_ID, POOL2D_BWD_TASK_ID};
+  return {task_id_t::POOL2D_INIT_TASK_ID,
+          task_id_t::POOL2D_FWD_TASK_ID,
+          task_id_t::POOL2D_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

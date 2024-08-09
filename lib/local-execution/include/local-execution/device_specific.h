@@ -13,7 +13,6 @@ struct DeviceSpecific {
 
   template <typename... Args>
   static DeviceSpecific<T> create(Args &&...args) {
-    // T* base_value = new T(std::forward<Args>(args)...);
     size_t device_idx = 0;
     return DeviceSpecific<T>(std::make_shared<T>(std::forward<Args>(args)...),
                              device_idx);

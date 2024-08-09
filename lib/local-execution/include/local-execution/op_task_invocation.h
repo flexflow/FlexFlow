@@ -11,7 +11,7 @@
 #include "local-execution/profiling.h"
 #include "local-execution/runtime_arg_ref.h"
 #include "local-execution/slot_grad_id.dtg.h"
-#include "local-execution/tasks.h"
+#include "local-execution/task_id_t.dtg.h"
 #include "local-execution/variadic_tensor_ref.h"
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "pcg/computation_graph.h"
@@ -95,9 +95,11 @@ struct OpTaskBinding {
   void bind_from_forward(OpTaskBinding const &fwd);
 
 private:
-  void insert_arg_spec(slot_id_t name, OpArgSpec const &arg_spec);
   std::unordered_map<SlotGradId, OpTensorSpec> tensor_bindings;
   std::unordered_map<slot_id_t, OpArgSpec> arg_bindings;
+
+private:
+  void insert_arg_spec(slot_id_t name, OpArgSpec const &arg_spec);
   std::tuple<decltype(tensor_bindings) const &, decltype(arg_bindings) const &>
       tie() const;
 };
@@ -105,7 +107,7 @@ private:
 struct OpTaskInvocation {
 public:
   OpTaskInvocation() = delete;
-  OpTaskInvocation(task_id_t const &task_id, OpTaskBinding const &binding)
+  OpTaskInvocation(task_id_t task_id, OpTaskBinding const &binding)
       : task_id(task_id), binding(binding) {}
 
 public:

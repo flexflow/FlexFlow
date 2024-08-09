@@ -33,13 +33,13 @@ OpTaskInvocation forward(ReductionAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {REDUCTION_FWD_TASK_ID, binding};
+  return {task_id_t::REDUCTION_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(ReductionAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {REDUCTION_BWD_TASK_ID, binding};
+  return {task_id_t::REDUCTION_BWD_TASK_ID, binding};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -74,10 +74,10 @@ static std::optional<float>
 }
 
 TaskImplFunction get_reduction_fwd_task_impl() {
-  return TaskImplFunction{forward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_reduction_bwd_task_impl() {
-  return TaskImplFunction{backward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_reduction_fwd_signature() {
@@ -96,7 +96,7 @@ OpTaskSignature get_reduction_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(ReductionAttrs const &) {
-  return {REDUCTION_FWD_TASK_ID, REDUCTION_BWD_TASK_ID};
+  return {task_id_t::REDUCTION_FWD_TASK_ID, task_id_t::REDUCTION_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

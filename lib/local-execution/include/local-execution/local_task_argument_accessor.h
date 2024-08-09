@@ -39,15 +39,16 @@ private:
   ArgSlotsBacking arg_slots_backing;
 };
 
-bool are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
-    TensorSlotsBacking const &slots_1, TensorSlotsBacking const &slots_2);
+using TensorSlotsBackingWithoutAddresses = std::unordered_map<
+    SlotGradId,
+    std::variant<std::pair<ArrayShape, DataType>,
+                 std::vector<std::pair<ArrayShape, DataType>>>>;
+
+TensorSlotsBackingWithoutAddresses
+    get_slots_backing_without_tensor_allocation_addresses(
+        TensorSlotsBacking const &);
 
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(LocalTaskArgumentAccessor);
-
-std::string format_as(std::unordered_map<slot_id_t, ConcreteArgSpec> const &x);
-std::ostream &
-    operator<<(std::ostream &s,
-               std::unordered_map<slot_id_t, ConcreteArgSpec> const &x);
 
 } // namespace FlexFlow
 

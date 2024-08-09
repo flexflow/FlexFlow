@@ -5,11 +5,14 @@
 #include "local-execution/local_slots_backing.h"
 #include "pcg/computation_graph_builder.h"
 #include "test_utils.h"
+#include "utils/fmt/unordered_map.h"
+#include "utils/fmt/variant.h"
+#include "utils/fmt/vector.h"
 
 namespace FlexFlow {
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Local Slots Backing -- Attention Op") {
+  TEST_CASE("LocalSlotsBacking -- Attention Op") {
     // allocate input memory
     Allocator allocator = create_local_cpu_memory_allocator();
     int embed_dim = 32;
@@ -24,20 +27,21 @@ TEST_SUITE(FF_TEST_SUITE) {
         TensorDims{FFOrdered<size_t>{batch_size, seq_len, feature_size}},
         DataType::FLOAT,
     };
-    GenericTensorAccessorW query =
-        allocator.allocate_tensor(input_tensor_shape);
-    GenericTensorAccessorW key = allocator.allocate_tensor(input_tensor_shape);
-    GenericTensorAccessorW value =
-        allocator.allocate_tensor(input_tensor_shape);
+    TensorShape query_shape = input_tensor_shape;
+    TensorShape key_shape = input_tensor_shape;
+    TensorShape value_shape = input_tensor_shape;
+    GenericTensorAccessorW query = allocator.allocate_tensor(query_shape);
+    GenericTensorAccessorW key = allocator.allocate_tensor(key_shape);
+    GenericTensorAccessorW value = allocator.allocate_tensor(value_shape);
 
     // build graph
     ComputationGraphBuilder cg_builder;
     tensor_guid_t query_guid =
-        cg_builder.create_tensor(input_tensor_shape, CreateGrad::YES);
+        cg_builder.create_tensor(query_shape, CreateGrad::YES);
     tensor_guid_t key_guid =
-        cg_builder.create_tensor(input_tensor_shape, CreateGrad::YES);
+        cg_builder.create_tensor(key_shape, CreateGrad::YES);
     tensor_guid_t value_guid =
-        cg_builder.create_tensor(input_tensor_shape, CreateGrad::YES);
+        cg_builder.create_tensor(value_shape, CreateGrad::YES);
 
     std::string layer_name = "attn1";
     tensor_guid_t output_guid =
@@ -77,49 +81,60 @@ TEST_SUITE(FF_TEST_SUITE) {
       local_slots_backing.allocate_tensors(
           node, cg_builder.computation_graph, allocator);
     }
-    SUBCASE("Allocate and insert new tensors into slots") {
+    SUBCASE("LocalSlotsBacking::allocate_tensors") {
       SUBCASE("Tensor allocation") {
-        std::pair<ArrayShape, DataType> correct_input =
-            std::make_pair(ArrayShape{input_tensor_shape}, dtype);
+        auto get_result_shape_and_dtype_for_tensor_guid_and_map =
+            [&](tensor_guid_t t,
+                TensorBackingMap m) -> std::pair<ArrayShape, DataType> {
+          GenericTensorAccessorW accessor = m.at(t);
+          return get_shape_and_datatype(accessor);
+        };
         SUBCASE("Query grad") {
-          GenericTensorAccessorW query_grad =
-              local_slots_backing.gradient_tensor_mapping.at(query_guid);
           std::pair<ArrayShape, DataType> result =
-              get_shape_and_datatype(query_grad);
-          CHECK(result == correct_input);
+              get_result_shape_and_dtype_for_tensor_guid_and_map(
+                  query_guid, local_slots_backing.gradient_tensor_mapping);
+          std::pair<ArrayShape, DataType> correct = {ArrayShape{query_shape},
+                                                     dtype};
+          CHECK(result == correct);
         }
         SUBCASE("Key grad") {
-          GenericTensorAccessorW key_grad =
-              local_slots_backing.gradient_tensor_mapping.at(key_guid);
           std::pair<ArrayShape, DataType> result =
-              get_shape_and_datatype(key_grad);
-          CHECK(result == correct_input);
+              get_result_shape_and_dtype_for_tensor_guid_and_map(
+                  key_guid, local_slots_backing.gradient_tensor_mapping);
+          std::pair<ArrayShape, DataType> correct = {ArrayShape{key_shape},
+                                                     dtype};
+          CHECK(result == correct);
         }
         SUBCASE("Value grad") {
-          GenericTensorAccessorW value_grad =
-              local_slots_backing.gradient_tensor_mapping.at(value_guid);
           std::pair<ArrayShape, DataType> result =
-              get_shape_and_datatype(value_grad);
-          CHECK(result == correct_input);
+              get_result_shape_and_dtype_for_tensor_guid_and_map(
+                  value_guid, local_slots_backing.gradient_tensor_mapping);
+          std::pair<ArrayShape, DataType> correct = {ArrayShape{value_shape},
+                                                     dtype};
+          CHECK(result == correct);
         }
 
-        TensorAttrs output_attrs =
-            get_tensor_attrs(cg_builder.computation_graph, output_guid);
-        std::pair<ArrayShape, DataType> correct_output =
-            std::make_pair(ArrayShape{output_attrs.shape}, dtype);
         SUBCASE("Output") {
-          GenericTensorAccessorW output =
-              local_slots_backing.tensor_mapping.at(output_guid);
           std::pair<ArrayShape, DataType> result =
-              get_shape_and_datatype(output);
-          CHECK(result == correct_output);
+              get_result_shape_and_dtype_for_tensor_guid_and_map(
+                  output_guid, local_slots_backing.tensor_mapping);
+          std::pair<ArrayShape, DataType> correct = {
+              ArrayShape{
+                  get_tensor_attrs(cg_builder.computation_graph, output_guid)
+                      .shape},
+              dtype};
+          CHECK(result == correct);
         }
         SUBCASE("Output grad") {
-          GenericTensorAccessorW output_grad =
-              local_slots_backing.tensor_mapping.at(output_guid);
           std::pair<ArrayShape, DataType> result =
-              get_shape_and_datatype(output_grad);
-          CHECK(result == correct_output);
+              get_result_shape_and_dtype_for_tensor_guid_and_map(
+                  output_guid, local_slots_backing.gradient_tensor_mapping);
+          std::pair<ArrayShape, DataType> correct = {
+              ArrayShape{
+                  get_tensor_attrs(cg_builder.computation_graph, output_guid)
+                      .shape},
+              dtype};
+          CHECK(result == correct);
         }
       }
 
@@ -173,90 +188,63 @@ TEST_SUITE(FF_TEST_SUITE) {
         return b;
       }();
 
-      SUBCASE("Tensor Slots Backing") {
-        TensorSlotsBacking result =
-            local_slots_backing.construct_tensor_slots_backing(binding,
-                                                               layer_guid);
-        TensorShape weights_shape = throw_if_unexpected(get_weights_shape(
-            attrs, input_tensor_shape, input_tensor_shape, input_tensor_shape));
-        GenericTensorAccessorW weights =
-            allocator.allocate_tensor(weights_shape);
+      SUBCASE("LocalSlotsBacking::construct_tensor_slots_backing") {
+        TensorSlotsBackingWithoutAddresses result =
+            get_slots_backing_without_tensor_allocation_addresses(
+                local_slots_backing.construct_tensor_slots_backing(binding,
+                                                                   layer_guid));
+        TensorSlotsBackingWithoutAddresses correct = [&] {
+          TensorShape weights_shape = throw_if_unexpected(
+              get_weights_shape(attrs, query_shape, key_shape, value_shape));
+          GenericTensorAccessorW weights =
+              allocator.allocate_tensor(weights_shape);
 
-        TensorAttrs output_attrs =
-            get_tensor_attrs(cg_builder.computation_graph, output_guid);
-        GenericTensorAccessorW output =
-            allocator.allocate_tensor(output_attrs.shape);
-        TensorSlotsBacking correct = {
-            {SlotGradId{slot_id_t{QUERY}, IsGrad::NO}, query},
-            {SlotGradId{slot_id_t{KEY}, IsGrad::NO}, key},
-            {SlotGradId{slot_id_t{VALUE}, IsGrad::NO}, value},
-            {SlotGradId{slot_id_t{WEIGHTS}, IsGrad::NO}, weights},
-            {SlotGradId{slot_id_t{OUTPUT}, IsGrad::NO}, output},
-            {SlotGradId{slot_id_t{QUERY}, IsGrad::YES}, query}};
+          TensorAttrs output_attrs =
+              get_tensor_attrs(cg_builder.computation_graph, output_guid);
+          GenericTensorAccessorW output =
+              allocator.allocate_tensor(output_attrs.shape);
+          return get_slots_backing_without_tensor_allocation_addresses(
+              TensorSlotsBacking{
+                  {SlotGradId{slot_id_t{QUERY}, IsGrad::NO}, query},
+                  {SlotGradId{slot_id_t{KEY}, IsGrad::NO}, key},
+                  {SlotGradId{slot_id_t{VALUE}, IsGrad::NO}, value},
+                  {SlotGradId{slot_id_t{WEIGHTS}, IsGrad::NO}, weights},
+                  {SlotGradId{slot_id_t{OUTPUT}, IsGrad::NO}, output},
+                  {SlotGradId{slot_id_t{QUERY}, IsGrad::YES}, query}});
+        }();
 
-        CHECK(are_slots_backings_equivalent_up_to_tensor_allocation_addresses(
-            correct, result));
+        CHECK(result == correct);
       }
-      SUBCASE("Arg Slots Backing") {
+      SUBCASE("LocalSlotsBacking::construct_arg_slots_backing") {
         ArgSlotsBacking result =
             local_slots_backing.construct_arg_slots_backing(binding,
                                                             layer_guid);
 
-        ParallelTensorShape query_parallel_tensor_shape =
-            lift_to_parallel(input_tensor_shape);
+        ArgSlotsBacking correct = [&] {
+          ParallelTensorShape query_parallel_tensor_shape =
+              lift_to_parallel(query_shape);
 
-        ArgSlotsBacking correct = {
-            {slot_id_t{QPROJSIZE},
-             ConcreteArgSpec::create(get_qProjSize(attrs))},
-            {slot_id_t{ATTRS}, ConcreteArgSpec::create(attrs)},
-            {slot_id_t{QUERY_PARALLEL_TENSOR_SHAPE},
-             ConcreteArgSpec::create(query_parallel_tensor_shape)},
-            {slot_id_t{PROFILING},
-             ConcreteArgSpec::create(runtime_arg_config.profiling_settings)},
-            {slot_id_t{HANDLE}, ConcreteArgSpec::create(handle)}};
+          return ArgSlotsBacking{
+              {slot_id_t{QPROJSIZE},
+               ConcreteArgSpec::create(get_qProjSize(attrs))},
+              {slot_id_t{ATTRS}, ConcreteArgSpec::create(attrs)},
+              {slot_id_t{QUERY_PARALLEL_TENSOR_SHAPE},
+               ConcreteArgSpec::create(query_parallel_tensor_shape)},
+              {slot_id_t{PROFILING},
+               ConcreteArgSpec::create(runtime_arg_config.profiling_settings)},
+              {slot_id_t{HANDLE}, ConcreteArgSpec::create(handle)}};
+        }();
 
         CHECK(result == correct);
-
-        SUBCASE("FF Handle") {
-          RuntimeArgRefSpec ref_spec = RuntimeArgRefSpec::create(ff_handle());
-          ConcreteArgSpec arg_spec =
-              local_slots_backing.resolve_runtime_arg_ref_spec(ref_spec);
-
-          PerDeviceFFHandle result_handle = arg_spec.get<PerDeviceFFHandle>();
-          CHECK(result_handle == handle);
-        }
       }
 
-      SUBCASE("Device Specific Device States") {
-        MHAPerDeviceState correct = MHAPerDeviceState{
-            /*handle=*/handle,
-            /*weightSize=*/0,
-            /*reserveSpaceSize=*/0,
-            /*attnDesc=*/nullptr,
-            /*qDesc=*/nullptr,
-            /*kDesc=*/nullptr,
-            /*vDesc=*/nullptr,
-            /*oDesc=*/nullptr,
-            /*devQoSeqArray=*/nullptr,
-            /*devKvSeqArray=*/nullptr,
-            /*lowWinIdx=*/nullptr,
-            /*hiWinIdx=*/nullptr,
-            /*reserveSpace=*/nullptr,
-            /*allocator=*/allocator,
-        };
+      SUBCASE("LocalSlotsBacking::resolve_runtime_arg_ref_spec") {
+        RuntimeArgRefSpec ref_spec = RuntimeArgRefSpec::create(ff_handle());
+        ConcreteArgSpec arg_spec =
+            local_slots_backing.resolve_runtime_arg_ref_spec(ref_spec);
 
-        DeviceSpecificDeviceStates device_specific_device_states =
-            DeviceSpecificDeviceStates{
-                DeviceSpecific<MHAPerDeviceState>::create(correct)};
-        DeviceStates device_state = get_device_state_from_device_specific(
-            device_specific_device_states, 0);
-
-        ConcreteArgSpec arg_spec = ConcreteArgSpec::create(device_state);
-        DeviceStates concrete_device_state = arg_spec.get<DeviceStates>();
-        MHAPerDeviceState result =
-            concrete_device_state.get<MHAPerDeviceState>();
-
-        CHECK(result == correct);
+        PerDeviceFFHandle result_handle = arg_spec.get<PerDeviceFFHandle>();
+        CHECK(result_handle == handle);
       }
     }
   }

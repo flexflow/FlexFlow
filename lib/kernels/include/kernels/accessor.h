@@ -169,14 +169,6 @@ static_assert(is_well_behaved_value_type_no_hash<GenericTensorAccessorR>::value,
 static_assert(is_well_behaved_value_type_no_hash<GenericTensorAccessorW>::value,
               "");
 
-std::string format_as(std::vector<GenericTensorAccessorR> const &x);
-std::ostream &operator<<(std::ostream &s,
-                         std::vector<GenericTensorAccessorR> const &x);
-
-std::string format_as(std::vector<GenericTensorAccessorW> const &x);
-std::ostream &operator<<(std::ostream &s,
-                         std::vector<GenericTensorAccessorW> const &x);
-
 } // namespace FlexFlow
 
 #endif

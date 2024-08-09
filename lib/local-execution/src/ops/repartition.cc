@@ -31,7 +31,7 @@ OpTaskInvocation init(RepartitionAttrs const &attrs) {
   binding.bind_arg(HANDLE, ff_handle());
   binding.bind(INPUT, input_tensor(0));
 
-  return {REPARTITION_INIT_TASK_ID, binding};
+  return {task_id_t::REPARTITION_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(RepartitionAttrs const &attrs) {
@@ -44,13 +44,13 @@ OpTaskInvocation forward(RepartitionAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {REPARTITION_FWD_TASK_ID, binding};
+  return {task_id_t::REPARTITION_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(RepartitionAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {REPARTITION_BWD_TASK_ID, binding};
+  return {task_id_t::REPARTITION_BWD_TASK_ID, binding};
 }
 
 static DeviceSpecificDeviceStates
@@ -98,13 +98,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_repartition_init_task_impl() {
-  return TaskImplFunction{init_task_impl};
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_repartition_fwd_task_impl() {
-  return TaskImplFunction{forward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_repartition_bwd_task_impl() {
-  return TaskImplFunction{backward_task_impl};
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_repartition_init_signature() {
@@ -130,9 +130,9 @@ OpTaskSignature get_repartition_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(RepartitionAttrs const &) {
-  return {REPARTITION_INIT_TASK_ID,
-          REPARTITION_FWD_TASK_ID,
-          REPARTITION_BWD_TASK_ID};
+  return {task_id_t::REPARTITION_INIT_TASK_ID,
+          task_id_t::REPARTITION_FWD_TASK_ID,
+          task_id_t::REPARTITION_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow
