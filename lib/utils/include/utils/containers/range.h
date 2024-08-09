@@ -7,26 +7,24 @@
 
 namespace FlexFlow {
 
-template <typename T>
-std::vector<T> range(T start, T end, T step = 1) {
+std::vector<int> range(int start, int end, int step = 1) {
   assert(step != 0);
 
-  std::vector<T> result;
+  std::vector<int> result;
   if (step > 0) {
-    for (T i = start; i < end; i += step) {
+    for (int i = start; i < end; i += step) {
       result.push_back(i);
     }
   } else {
-    for (T i = start; i > end; i += step) {
+    for (int i = start; i > end; i += step) {
       result.push_back(i);
     }
   }
   return result;
 }
 
-template <typename T>
-std::vector<T> range(T end) {
-  return range(T(0), end);
+std::vector<int> range(int end) {
+  return range(0, end);
 }
 
 } // namespace FlexFlow
