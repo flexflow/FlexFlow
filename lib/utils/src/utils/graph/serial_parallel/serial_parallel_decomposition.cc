@@ -1,8 +1,14 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
+#include "utils/containers.h"
+#include "utils/containers/all_of.h"
+#include "utils/containers/extend.h"
+#include "utils/containers/get_only.h"
 #include "utils/containers/set_union.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/unordered_set_of.h"
+#include "utils/containers/values.h"
 #include "utils/graph/serial_parallel/intermediate_sp_decomposition_tree.h"
+#include "utils/graph/serial_parallel/serial_parallel_metrics.h"
 #include "utils/hash/unordered_set.h"
 #include "utils/variant.h"
 
@@ -69,6 +75,63 @@ std::unordered_set<Node> get_nodes(ParallelSplit const &parallel) {
 
 std::unordered_set<Node> get_nodes(Node const &node) {
   return {node};
+}
+
+bool is_empty(Node const &node) {
+  return false;
+}
+
+bool is_empty(SerialSplit const &serial) {
+  return all_of(serial.children, [](auto const &child) {
+    return is_empty(widen<SerialParallelDecomposition>(child));
+  });
+}
+
+bool is_empty(ParallelSplit const &parallel) {
+  return all_of(parallel.children, [](auto const &child) {
+    return is_empty(widen<SerialParallelDecomposition>(child));
+  });
+}
+
+bool is_empty(SerialParallelDecomposition const &sp) {
+  return sp.visit<bool>([](auto const &t) { return is_empty(t); });
+}
+
+size_t num_nodes(SerialParallelDecomposition const &sp) {
+  return sum(values(get_node_frequency_map(sp)));
+}
+
+SerialParallelDecomposition serial_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions) {
+  SerialSplit composition{};
+  for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
+    if (sp_comp.has<SerialSplit>()) {
+      extend(composition.children, sp_comp.get<SerialSplit>().children);
+    } else if (sp_comp.has<ParallelSplit>()) {
+      composition.children.push_back(sp_comp.get<ParallelSplit>());
+    } else {
+      assert(sp_comp.has<Node>());
+      composition.children.push_back(sp_comp.get<Node>());
+    }
+  }
+  return SerialParallelDecomposition(composition);
+}
+
+SerialParallelDecomposition parallel_composition(
+    std::unordered_set<SerialParallelDecomposition> const &sp_compositions) {
+  ParallelSplit composition{};
+  for (SerialParallelDecomposition const &sp_comp : sp_compositions) {
+    if (sp_comp.has<ParallelSplit>()) {
+      composition.children = set_union(composition.children,
+                                       sp_comp.get<ParallelSplit>().children);
+    } else if (sp_comp.has<SerialSplit>()) {
+      composition.children.insert(sp_comp.get<SerialSplit>());
+    } else {
+      assert(sp_comp.has<Node>());
+      composition.children.insert(sp_comp.get<Node>());
+    }
+  }
+  return SerialParallelDecomposition(composition);
 }
 
 } // namespace FlexFlow

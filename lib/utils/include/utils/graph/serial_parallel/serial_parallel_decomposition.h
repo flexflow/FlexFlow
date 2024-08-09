@@ -17,6 +17,19 @@ std::unordered_set<Node> get_nodes(SerialSplit const &);
 std::unordered_set<Node> get_nodes(ParallelSplit const &);
 std::unordered_set<Node> get_nodes(Node const &);
 
+bool is_empty(Node const &node);
+bool is_empty(SerialSplit const &serial);
+bool is_empty(ParallelSplit const &parallel);
+bool is_empty(SerialParallelDecomposition const &sp);
+
+// duplicate nodes within `sp` are counted multiple times
+size_t num_nodes(SerialParallelDecomposition const &sp);
+
+SerialParallelDecomposition serial_composition(
+    std::vector<SerialParallelDecomposition> const &sp_compositions);
+SerialParallelDecomposition parallel_composition(
+    std::unordered_set<SerialParallelDecomposition> const &sp_compositions);
+
 } // namespace FlexFlow
 
 #endif

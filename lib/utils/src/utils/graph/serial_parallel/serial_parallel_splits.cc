@@ -1,4 +1,5 @@
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
+#include "utils/containers/transform.h"
 #include "utils/fmt/unordered_set.h"
 #include "utils/fmt/variant.h"
 #include "utils/fmt/vector.h"
@@ -17,6 +18,11 @@ SerialSplit::SerialSplit(
 SerialSplit::SerialSplit(
     std::initializer_list<std::variant<ParallelSplit, Node>> const &children)
     : children(children) {}
+
+SerialSplit::SerialSplit(std::vector<Node> const &nodes)
+    : children(transform(nodes, [](Node const &node) {
+        return std::variant<ParallelSplit, Node>(node);
+      })) {}
 
 bool SerialSplit::operator==(SerialSplit const &other) const {
   return this->tie() == other.tie();
@@ -47,6 +53,11 @@ ParallelSplit::ParallelSplit(
 ParallelSplit::ParallelSplit(
     std::initializer_list<std::variant<SerialSplit, Node>> const &children)
     : children(children) {}
+
+ParallelSplit::ParallelSplit(std::unordered_set<Node> const &nodes)
+    : children(transform(nodes, [](Node const &node) {
+        return std::variant<SerialSplit, Node>(node);
+      })) {}
 
 bool ParallelSplit::operator==(ParallelSplit const &other) const {
   return this->tie() == other.tie();

@@ -4,68 +4,45 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("ParallelSplit::operator== - base testing") {
-    std::vector<Node> n = {
-        Node(0), Node(1), Node(2), Node(3), Node(4), Node(5)};
+  TEST_CASE("ParallelSplit and SerialSplit equality checks") {
 
-    // The following definitions are equivalent
-    ParallelSplit p1{n[0],
-                     SerialSplit{n[1], n[2]},
-                     SerialSplit{n[3], ParallelSplit{n[4], n[5], n[0]}}};
-    ParallelSplit p2{SerialSplit{n[1], n[2]},
-                     n[0],
-                     SerialSplit{n[3], ParallelSplit{n[4], n[5], n[0]}}};
-    ParallelSplit p3{n[0],
-                     SerialSplit{n[1], n[2]},
-                     SerialSplit{n[3], ParallelSplit{n[0], n[5], n[4]}}};
-    ParallelSplit p4{SerialSplit{n[3], ParallelSplit{n[5], n[4], n[0]}},
-                     SerialSplit{n[1], n[2]},
-                     n[0]};
-    std::vector<ParallelSplit> p = {p1, p2, p3, p4};
-
-    SUBCASE("Checking for reciprocal equality") {
-      std::vector<std::pair<ParallelSplit, ParallelSplit>> pairs = {
-          {p1, p2}, {p1, p3}, {p1, p4}, {p2, p4}, {p3, p4}};
-      for (auto const &[pa, pb] : pairs) {
-        CHECK(pa == pb);
-        CHECK(pb == pa);
-        CHECK_FALSE(pa != pb);
-        CHECK_FALSE(pb != pa);
-      }
+    SUBCASE("ParallelSplit::operator== - commutativity") {
+      ParallelSplit p1 = ParallelSplit{Node(1), Node(2), Node(3)};
+      ParallelSplit p2 = ParallelSplit{Node(2), Node(1), Node(3)};
+      ParallelSplit p3 = ParallelSplit{Node(3), Node(2), Node(1)};
+      CHECK(p1 == p2);
+      CHECK(p2 == p3);
+      CHECK(p1 == p3);
     }
 
-    SUBCASE("Checking for not-equality") {
-      // Not equivalent to the previous: serial order differs
-      ParallelSplit p5{n[0],
-                       SerialSplit{n[2], n[1]},
-                       SerialSplit{n[3], ParallelSplit{n[4], n[5], n[0]}}};
-      ParallelSplit p6{n[0],
-                       SerialSplit{n[1], n[2]},
-                       SerialSplit{ParallelSplit{n[4], n[5], n[0]}, n[3]}};
-
-      for (auto const &pi : p) {
-        CHECK(pi != p5);
-        CHECK(pi != p6);
-      }
+    SUBCASE("SerialSplit::operator== - non-commutativity") {
+      SerialSplit p1 = SerialSplit{Node(1), Node(2), Node(3)};
+      SerialSplit p2 = SerialSplit{Node(2), Node(1), Node(3)};
+      SerialSplit p3 = SerialSplit{Node(3), Node(2), Node(1)};
+      CHECK(p1 != p2);
+      CHECK(p2 != p3);
+      CHECK(p1 != p3);
     }
-  }
 
-  TEST_CASE("ParallelSplit::operator== - nested SP") {
-    std::vector<Node> n = {Node(0), Node(1), Node(2), Node(3)};
+    SUBCASE("operator==, mixed case, nested commutativity") {
+      std::vector<Node> n = {Node(0), Node(1), Node(2), Node(3)};
 
-    // All definitions are equivalent
-    ParallelSplit p1{n[3], SerialSplit{ParallelSplit{n[2], n[1]}, n[2]}};
-    ParallelSplit p2{n[3], SerialSplit{ParallelSplit{n[1], n[2]}, n[2]}};
-    ParallelSplit p3{SerialSplit{ParallelSplit{n[1], n[2]}, n[2]}, n[3]};
-    ParallelSplit p4{SerialSplit{ParallelSplit{n[2], n[1]}, n[2]}, n[3]};
+      // All definitions are equivalent, since ParallelSplit commutes
+      ParallelSplit p1 = ParallelSplit{
+          n.at(3), SerialSplit{ParallelSplit{n.at(2), n.at(1)}, n.at(2)}};
+      ParallelSplit p2 = ParallelSplit{
+          n.at(3), SerialSplit{ParallelSplit{n.at(1), n.at(2)}, n.at(2)}};
+      ParallelSplit p3 = ParallelSplit{
+          SerialSplit{ParallelSplit{n.at(1), n.at(2)}, n.at(2)}, n.at(3)};
+      ParallelSplit p4 = ParallelSplit{
+          SerialSplit{ParallelSplit{n.at(2), n.at(1)}, n.at(2)}, n.at(3)};
 
-    std::vector<std::pair<ParallelSplit, ParallelSplit>> pairs = {
-        {p1, p2}, {p1, p3}, {p1, p4}, {p2, p4}, {p3, p4}};
-    for (auto const &[pa, pb] : pairs) {
-      CHECK(pa == pb);
-      CHECK(pb == pa);
-      CHECK_FALSE(pa != pb);
-      CHECK_FALSE(pb != pa);
+      CHECK(p1 == p2);
+      CHECK(p1 == p3);
+      CHECK(p1 == p4);
+      CHECK(p2 == p3);
+      CHECK(p2 == p4);
+      CHECK(p3 == p4);
     }
   }
 }

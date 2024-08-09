@@ -7,15 +7,14 @@
 
 namespace FlexFlow {
 
-template <typename C>
-auto invert_map(C const &m) {
-  std::unordered_map<typename C::mapped_type,
-                     std::unordered_set<typename C::key_type>>
-      m_inv;
+template <typename K, typename V>
+std::unordered_map<V, std::unordered_set<K>>
+    invert_map(std::unordered_map<K, V> const &m) {
+  std::unordered_map<V, std::unordered_set<K>> result;
   for (auto const &[key, value] : m) {
-    m_inv[value].insert(key);
+    result[value].insert(key);
   }
-  return m_inv;
+  return result;
 }
 } // namespace FlexFlow
 

@@ -156,4 +156,54 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::unordered_set<Node> correct = {input};
     CHECK(result == correct);
   }
+
+  TEST_CASE("is_empty(SerialParallelDecomposition)") {
+    Node n1{1};
+    Node n2{2};
+
+    SUBCASE("Node Decomposition") {
+      SerialParallelDecomposition sp{n1};
+      CHECK_FALSE(is_empty(sp));
+    }
+
+    SUBCASE("Empty Serial") {
+      SerialParallelDecomposition sp{SerialSplit{}};
+      CHECK(is_empty(sp));
+    }
+
+    SUBCASE("Empty Parallel") {
+      SerialParallelDecomposition sp{ParallelSplit{}};
+      CHECK(is_empty(sp));
+    }
+
+    SUBCASE("Serial with Node") {
+      SerialParallelDecomposition sp{SerialSplit{n1}};
+      CHECK_FALSE(is_empty(sp));
+    }
+
+    SUBCASE("Parallel with Node") {
+      SerialParallelDecomposition sp{ParallelSplit{n1}};
+      CHECK_FALSE(is_empty(sp));
+    }
+
+    SUBCASE("Nested Serial") {
+      SerialParallelDecomposition sp{SerialSplit{ParallelSplit{}}};
+      CHECK(is_empty(sp));
+    }
+
+    SUBCASE("Nested Parallel") {
+      SerialParallelDecomposition sp{ParallelSplit{SerialSplit{}}};
+      CHECK(is_empty(sp));
+    }
+
+    SUBCASE("Sparse") {
+      SerialSplit sp{ParallelSplit{}, ParallelSplit{SerialSplit{}}};
+      CHECK(is_empty(sp));
+    }
+
+    SUBCASE("Sparse with Node") {
+      SerialSplit sp{ParallelSplit{}, ParallelSplit{SerialSplit{}, n2}};
+      CHECK_FALSE(is_empty(sp));
+    }
+  }
 }

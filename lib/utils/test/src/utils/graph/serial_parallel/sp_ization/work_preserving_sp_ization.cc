@@ -33,24 +33,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(work_cost(g, cost_map) == 9);
       CHECK(critical_path_cost(g, cost_map) == 7);
 
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      SerialParallelDecomposition sp = stratum_sync_sp_ization(g);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected =
-            SerialSplit{n[0], n[1], ParallelSplit{n[2], n[3]}, n[4], n[5]};
+        SerialParallelDecomposition correct(
+            SerialSplit{n[0], n[1], ParallelSplit{n[2], n[3]}, n[4], n[5]});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = work_cost(g, cost_map);
+        float correct = work_cost(g, cost_map);
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = 7;
+        float correct = 7;
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -73,24 +73,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(work_cost(g, cost_map) == 15);
       CHECK(critical_path_cost(g, cost_map) == 12);
 
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      SerialParallelDecomposition sp = stratum_sync_sp_ization(g);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected =
-            SerialSplit{n[0], ParallelSplit{n[1], n[2]}, n[3], n[4], n[5]};
+        SerialParallelDecomposition correct(
+            SerialSplit{n[0], ParallelSplit{n[1], n[2]}, n[3], n[4], n[5]});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = work_cost(g, cost_map);
+        float correct = work_cost(g, cost_map);
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = 14;
+        float correct = 14;
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -126,33 +126,33 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(work_cost(g, cost_map) == 45);
       CHECK(critical_path_cost(g, cost_map) == 23);
 
-      SerialParallelDecomposition sp = barrier_sync_sp_ization(g);
+      SerialParallelDecomposition sp = stratum_sync_sp_ization(g);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected =
+        SerialParallelDecomposition correct(
             SerialSplit{n[0],
                         ParallelSplit{n[1], n[3]},
                         ParallelSplit{n[2], n[4], n[5]},
                         ParallelSplit{n[6], n[7]},
-                        n[8]};
+                        n[8]});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = work_cost(g, cost_map);
+        float correct = work_cost(g, cost_map);
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = 32;
+        float correct = 32;
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
   }
 
-  TEST_CASE("cost_aware_barrier_sync_sp_ization") {
+  TEST_CASE("cost_aware_stratum_sync_sp_ization") {
 
     SUBCASE("Sample Graph #1") {
       DiGraph g = DiGraph::create<AdjacencyDiGraph>();
@@ -176,24 +176,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(critical_path_cost(g, cost_map) == 7);
 
       SerialParallelDecomposition sp =
-          cost_aware_barrier_sync_sp_ization(g, cost_map);
+          cost_aware_stratum_sync_sp_ization(g, cost_map);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected =
-            SerialSplit{n[0], n[1], ParallelSplit{n[2], n[3]}, n[4], n[5]};
+        SerialParallelDecomposition correct(
+            SerialSplit{n[0], n[1], ParallelSplit{n[2], n[3]}, n[4], n[5]});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = work_cost(g, cost_map);
+        float correct = work_cost(g, cost_map);
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = 7;
+        float correct = 7;
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -217,24 +217,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(critical_path_cost(g, cost_map) == 12);
 
       SerialParallelDecomposition sp =
-          cost_aware_barrier_sync_sp_ization(g, cost_map);
+          cost_aware_stratum_sync_sp_ization(g, cost_map);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected = SerialSplit{
-            n[0], ParallelSplit{SerialSplit{n[1], n[3], n[4]}, n[2]}, n[5]};
+        SerialParallelDecomposition correct(SerialSplit{
+            n[0], ParallelSplit{SerialSplit{n[1], n[3], n[4]}, n[2]}, n[5]});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = work_cost(g, cost_map);
+        float correct = work_cost(g, cost_map);
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = 12;
+        float correct = 12;
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -271,27 +271,27 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(critical_path_cost(g, cost_map) == 25);
 
       SerialParallelDecomposition sp =
-          cost_aware_barrier_sync_sp_ization(g, cost_map);
+          cost_aware_stratum_sync_sp_ization(g, cost_map);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected =
+        SerialParallelDecomposition correct(
             SerialSplit{n[0],
                         ParallelSplit{SerialSplit{n[1], n[2], n[6]}, n[3]},
                         ParallelSplit{n[4], SerialSplit{n[5], n[7]}},
-                        n[8]};
+                        n[8]});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = work_cost(g, cost_map);
+        float correct = work_cost(g, cost_map);
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = 25;
+        float correct = 25;
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -334,30 +334,30 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(critical_path_cost(g, cost_map) == 24);
 
       SerialParallelDecomposition sp =
-          cost_aware_barrier_sync_sp_ization(g, cost_map);
+          cost_aware_stratum_sync_sp_ization(g, cost_map);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected = SerialSplit{
+        SerialParallelDecomposition correct(SerialSplit{
             n[0],
             ParallelSplit{SerialSplit{n[1], ParallelSplit{n[2], n[3]}, n[7]},
                           n[5]},
             ParallelSplit{n[4], n[8], n[10]},
             ParallelSplit{n[6], n[12]},
             ParallelSplit{n[11], SerialSplit{n[9], n[13]}},
-            n[14]};
+            n[14]});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = work_cost(g, cost_map);
+        float correct = work_cost(g, cost_map);
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = 27;
+        float correct = 27;
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
   }

@@ -7,10 +7,13 @@
 
 namespace FlexFlow {
 
+std::unordered_map<Node, size_t> get_node_frequency_map(Node const &node);
 std::unordered_map<Node, size_t>
-    node_frequency_counter(SerialParallelDecomposition const &sp);
-
-size_t num_nodes(SerialParallelDecomposition const &sp);
+    get_node_frequency_map(SerialSplit const &serial);
+std::unordered_map<Node, size_t>
+    get_node_frequency_map(ParallelSplit const &parallel);
+std::unordered_map<Node, size_t>
+    get_node_frequency_map(SerialParallelDecomposition const &sp);
 
 float work_cost(SerialParallelDecomposition const &sp,
                 std::unordered_map<Node, float> cost_map);

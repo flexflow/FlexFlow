@@ -3,7 +3,6 @@ ff_add_test_executable(
     utils-tests
   SRC_PATTERNS
     src/utils/*.cc
-    # src/*.cc
   PRIVATE_INCLUDE
     src/
   DEPS

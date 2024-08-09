@@ -5,7 +5,6 @@ features = [
   "hash",
   "fmt",
 ]
-explicit_constructors = false
 
 includes = [
   "utils/graph/serial_parallel/serial_parallel_splits.h",

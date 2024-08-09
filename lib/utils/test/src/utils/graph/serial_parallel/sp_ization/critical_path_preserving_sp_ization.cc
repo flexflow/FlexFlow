@@ -17,18 +17,22 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<Node> n = add_nodes(g, 6);
       add_edges(g,
                 {
-                    DirectedEdge{n[0], n[1]},
-                    DirectedEdge{n[0], n[2]},
-                    DirectedEdge{n[1], n[2]},
-                    DirectedEdge{n[1], n[3]},
-                    DirectedEdge{n[2], n[4]},
-                    DirectedEdge{n[3], n[4]},
-                    DirectedEdge{n[3], n[5]},
-                    DirectedEdge{n[4], n[5]},
+                    DirectedEdge{n.at(0), n.at(1)},
+                    DirectedEdge{n.at(0), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(3)},
+                    DirectedEdge{n.at(2), n.at(4)},
+                    DirectedEdge{n.at(3), n.at(4)},
+                    DirectedEdge{n.at(3), n.at(5)},
+                    DirectedEdge{n.at(4), n.at(5)},
                 });
 
-      std::unordered_map<Node, float> cost_map = {
-          {n[0], 3}, {n[1], 2}, {n[2], 1}, {n[3], 1}, {n[4], 1}, {n[5], 5}};
+      std::unordered_map<Node, float> cost_map = {{n.at(0), 3},
+                                                  {n.at(1), 2},
+                                                  {n.at(2), 1},
+                                                  {n.at(3), 1},
+                                                  {n.at(4), 1},
+                                                  {n.at(5), 5}};
 
       CHECK(work_cost(g, cost_map) == 13);
       CHECK(critical_path_cost(g, cost_map) == 12);
@@ -36,26 +40,26 @@ TEST_SUITE(FF_TEST_SUITE) {
       SerialParallelDecomposition sp = critical_path_preserving_sp_ization(g);
 
       SUBCASE("structure") {
-        Node sp0 = n[0];
-        SerialSplit sp1 = SerialSplit{sp0, n[1]};
-        SerialSplit sp2 = SerialSplit{ParallelSplit{sp0, sp1}, n[2]};
-        SerialSplit sp3 = SerialSplit{n[0], n[1], n[3]};
-        SerialSplit sp4 = SerialSplit{ParallelSplit{sp2, sp3}, n[4]};
-        SerialSplit sp5 = SerialSplit{ParallelSplit{sp3, sp4}, n[5]};
-        SerialParallelDecomposition expected = sp5;
+        Node sp0 = n.at(0);
+        SerialSplit sp1 = SerialSplit{sp0, n.at(1)};
+        SerialSplit sp2 = SerialSplit{ParallelSplit{sp0, sp1}, n.at(2)};
+        SerialSplit sp3 = SerialSplit{n.at(0), n.at(1), n.at(3)};
+        SerialSplit sp4 = SerialSplit{ParallelSplit{sp2, sp3}, n.at(4)};
+        SerialSplit sp5 = SerialSplit{ParallelSplit{sp3, sp4}, n.at(5)};
+        SerialParallelDecomposition correct(sp5);
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = 3 * 4 + 2 * 3 + 1 * 1 + 1 * 2 + 1 * 1 + 5 * 1;
+        float correct = 3 * 4 + 2 * 3 + 1 * 1 + 1 * 2 + 1 * 1 + 5 * 1;
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = critical_path_cost(g, cost_map);
+        float correct = critical_path_cost(g, cost_map);
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -64,16 +68,20 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<Node> n = add_nodes(g, 6);
       add_edges(g,
                 {
-                    DirectedEdge{n[0], n[1]},
-                    DirectedEdge{n[0], n[2]},
-                    DirectedEdge{n[1], n[3]},
-                    DirectedEdge{n[2], n[5]},
-                    DirectedEdge{n[3], n[4]},
-                    DirectedEdge{n[4], n[5]},
+                    DirectedEdge{n.at(0), n.at(1)},
+                    DirectedEdge{n.at(0), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(3)},
+                    DirectedEdge{n.at(2), n.at(5)},
+                    DirectedEdge{n.at(3), n.at(4)},
+                    DirectedEdge{n.at(4), n.at(5)},
                 });
 
-      std::unordered_map<Node, float> cost_map = {
-          {n[0], 1}, {n[1], 1}, {n[2], 10}, {n[3], 1}, {n[4], 1}, {n[5], 1}};
+      std::unordered_map<Node, float> cost_map = {{n.at(0), 1},
+                                                  {n.at(1), 1},
+                                                  {n.at(2), 10},
+                                                  {n.at(3), 1},
+                                                  {n.at(4), 1},
+                                                  {n.at(5), 1}};
 
       CHECK(work_cost(g, cost_map) == 15);
       CHECK(critical_path_cost(g, cost_map) == 12);
@@ -81,23 +89,23 @@ TEST_SUITE(FF_TEST_SUITE) {
       SerialParallelDecomposition sp = critical_path_preserving_sp_ization(g);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected =
-            SerialSplit{ParallelSplit{SerialSplit{n[0], n[1], n[3], n[4]},
-                                      SerialSplit{n[0], n[2]}},
-                        n[5]};
+        SerialParallelDecomposition correct(SerialSplit{
+            ParallelSplit{SerialSplit{n.at(0), n.at(1), n.at(3), n.at(4)},
+                          SerialSplit{n.at(0), n.at(2)}},
+            n.at(5)});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = 16;
+        float correct = 16;
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = critical_path_cost(g, cost_map);
+        float correct = critical_path_cost(g, cost_map);
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
   }
@@ -109,18 +117,22 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<Node> n = add_nodes(g, 6);
       add_edges(g,
                 {
-                    DirectedEdge{n[0], n[1]},
-                    DirectedEdge{n[0], n[2]},
-                    DirectedEdge{n[1], n[2]},
-                    DirectedEdge{n[1], n[3]},
-                    DirectedEdge{n[2], n[4]},
-                    DirectedEdge{n[3], n[4]},
-                    DirectedEdge{n[3], n[5]},
-                    DirectedEdge{n[4], n[5]},
+                    DirectedEdge{n.at(0), n.at(1)},
+                    DirectedEdge{n.at(0), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(3)},
+                    DirectedEdge{n.at(2), n.at(4)},
+                    DirectedEdge{n.at(3), n.at(4)},
+                    DirectedEdge{n.at(3), n.at(5)},
+                    DirectedEdge{n.at(4), n.at(5)},
                 });
 
-      std::unordered_map<Node, float> cost_map = {
-          {n[0], 1}, {n[1], 1}, {n[2], 2}, {n[3], 3}, {n[4], 1}, {n[5], 1}};
+      std::unordered_map<Node, float> cost_map = {{n.at(0), 1},
+                                                  {n.at(1), 1},
+                                                  {n.at(2), 2},
+                                                  {n.at(3), 3},
+                                                  {n.at(4), 1},
+                                                  {n.at(5), 1}};
 
       CHECK(work_cost(g, cost_map) == 9);
       CHECK(critical_path_cost(g, cost_map) == 7);
@@ -129,24 +141,25 @@ TEST_SUITE(FF_TEST_SUITE) {
           critical_path_preserving_sp_ization_with_coalescing(g);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected = SerialSplit{
-            n[0],
-            n[1],
-            ParallelSplit{SerialSplit{ParallelSplit{n[2], n[3]}, n[4]}, n[3]},
-            n[5]};
+        SerialParallelDecomposition correct(SerialSplit{
+            n.at(0),
+            n.at(1),
+            ParallelSplit{SerialSplit{ParallelSplit{n.at(2), n.at(3)}, n.at(4)},
+                          n.at(3)},
+            n.at(5)});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = 12;
+        float correct = 12;
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = critical_path_cost(g, cost_map);
+        float correct = critical_path_cost(g, cost_map);
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -155,16 +168,20 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<Node> n = add_nodes(g, 6);
       add_edges(g,
                 {
-                    DirectedEdge{n[0], n[1]},
-                    DirectedEdge{n[0], n[2]},
-                    DirectedEdge{n[1], n[3]},
-                    DirectedEdge{n[2], n[5]},
-                    DirectedEdge{n[3], n[4]},
-                    DirectedEdge{n[4], n[5]},
+                    DirectedEdge{n.at(0), n.at(1)},
+                    DirectedEdge{n.at(0), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(3)},
+                    DirectedEdge{n.at(2), n.at(5)},
+                    DirectedEdge{n.at(3), n.at(4)},
+                    DirectedEdge{n.at(4), n.at(5)},
                 });
 
-      std::unordered_map<Node, float> cost_map = {
-          {n[0], 1}, {n[1], 1}, {n[2], 10}, {n[3], 1}, {n[4], 1}, {n[5], 1}};
+      std::unordered_map<Node, float> cost_map = {{n.at(0), 1},
+                                                  {n.at(1), 1},
+                                                  {n.at(2), 10},
+                                                  {n.at(3), 1},
+                                                  {n.at(4), 1},
+                                                  {n.at(5), 1}};
 
       CHECK(work_cost(g, cost_map) == 15);
       CHECK(critical_path_cost(g, cost_map) == 12);
@@ -173,21 +190,23 @@ TEST_SUITE(FF_TEST_SUITE) {
           critical_path_preserving_sp_ization_with_coalescing(g);
 
       SUBCASE("structure") {
-        SerialParallelDecomposition expected = SerialSplit{
-            n[0], ParallelSplit{SerialSplit{n[1], n[3], n[4]}, n[2]}, n[5]};
+        SerialParallelDecomposition correct(SerialSplit{
+            n.at(0),
+            ParallelSplit{SerialSplit{n.at(1), n.at(3), n.at(4)}, n.at(2)},
+            n.at(5)});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
       SUBCASE("work cost") {
-        float expected = 15;
+        float correct = 15;
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = critical_path_cost(g, cost_map);
+        float correct = critical_path_cost(g, cost_map);
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
 
@@ -195,31 +214,31 @@ TEST_SUITE(FF_TEST_SUITE) {
       DiGraph g = DiGraph::create<AdjacencyDiGraph>();
       std::vector<Node> n = add_nodes(g, 10);
       add_edges(g,
-                {DirectedEdge{n[0], n[1]},
-                 DirectedEdge{n[0], n[3]},
-                 DirectedEdge{n[1], n[2]},
-                 DirectedEdge{n[1], n[5]},
-                 DirectedEdge{n[1], n[4]},
-                 DirectedEdge{n[2], n[6]},
-                 DirectedEdge{n[3], n[4]},
-                 DirectedEdge{n[3], n[5]},
-                 DirectedEdge{n[3], n[8]},
-                 DirectedEdge{n[4], n[8]},
-                 DirectedEdge{n[5], n[7]},
-                 DirectedEdge{n[7], n[8]},
-                 DirectedEdge{n[6], n[9]},
-                 DirectedEdge{n[8], n[9]}});
+                {DirectedEdge{n.at(0), n.at(1)},
+                 DirectedEdge{n.at(0), n.at(3)},
+                 DirectedEdge{n.at(1), n.at(2)},
+                 DirectedEdge{n.at(1), n.at(5)},
+                 DirectedEdge{n.at(1), n.at(4)},
+                 DirectedEdge{n.at(2), n.at(6)},
+                 DirectedEdge{n.at(3), n.at(4)},
+                 DirectedEdge{n.at(3), n.at(5)},
+                 DirectedEdge{n.at(3), n.at(8)},
+                 DirectedEdge{n.at(4), n.at(8)},
+                 DirectedEdge{n.at(5), n.at(7)},
+                 DirectedEdge{n.at(7), n.at(8)},
+                 DirectedEdge{n.at(6), n.at(9)},
+                 DirectedEdge{n.at(8), n.at(9)}});
 
-      std::unordered_map<Node, float> cost_map = {{n[0], 1},
-                                                  {n[1], 1},
-                                                  {n[2], 4},
-                                                  {n[3], 10},
-                                                  {n[4], 10},
-                                                  {n[5], 5},
-                                                  {n[6], 4},
-                                                  {n[7], 3},
-                                                  {n[8], 4},
-                                                  {n[9], 1}};
+      std::unordered_map<Node, float> cost_map = {{n.at(0), 1},
+                                                  {n.at(1), 1},
+                                                  {n.at(2), 4},
+                                                  {n.at(3), 10},
+                                                  {n.at(4), 10},
+                                                  {n.at(5), 5},
+                                                  {n.at(6), 4},
+                                                  {n.at(7), 3},
+                                                  {n.at(8), 4},
+                                                  {n.at(9), 1}};
 
       CHECK(work_cost(g, cost_map) == 43);
       CHECK(critical_path_cost(g, cost_map) == 26);
@@ -229,30 +248,31 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("structure") {
 
-        SerialParallelDecomposition expected = SerialSplit{
-            n[0],
+        SerialParallelDecomposition correct(SerialSplit{
+            n.at(0),
             ParallelSplit{
-                SerialSplit{n[1], n[2], n[6]},
+                SerialSplit{n.at(1), n.at(2), n.at(6)},
                 SerialSplit{ParallelSplit{
-                                SerialSplit{ParallelSplit{n[1], n[3]},
+                                SerialSplit{ParallelSplit{n.at(1), n.at(3)},
                                             ParallelSplit{
-                                                n[4], SerialSplit{n[5], n[7]}}},
-                                n[3]},
-                            n[8]}},
-            n[9]};
+                                                n.at(4),
+                                                SerialSplit{n.at(5), n.at(7)}}},
+                                n.at(3)},
+                            n.at(8)}},
+            n.at(9)});
         SerialParallelDecomposition result = sp;
-        CHECK(expected == result);
+        CHECK(correct == result);
       };
       SUBCASE("work cost") {
-        float expected = 54;
+        float correct = 54;
         float result = work_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
 
       SUBCASE("critical path cost") {
-        float expected = critical_path_cost(g, cost_map);
+        float correct = critical_path_cost(g, cost_map);
         float result = critical_path_cost(sp, cost_map);
-        CHECK(expected == result);
+        CHECK(correct == result);
       }
     }
   }
