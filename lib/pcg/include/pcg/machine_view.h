@@ -26,30 +26,35 @@ std::vector<side_size_t> get_side_size_per_dim(MachineView const &mv);
 
 DeviceType get_device_type(MachineView const &mv);
 
-MachineView make_1d_machine_view(gpu_id_t start, gpu_id_t stop, int stride = 1);
-MachineView make_1d_machine_view(cpu_id_t start, cpu_id_t stop, int stride = 1);
-MachineView
-    make_1d_machine_view(device_id_t start, device_id_t stop, int stride = 1);
+MachineView make_1d_machine_view(gpu_id_t start,
+                                 gpu_id_t stop,
+                                 stride_t stride = stride_t{1});
+MachineView make_1d_machine_view(cpu_id_t start,
+                                 cpu_id_t stop,
+                                 stride_t stride = stride_t{1});
+MachineView make_1d_machine_view(device_id_t start,
+                                 device_id_t stop,
+                                 stride_t stride = stride_t{1});
 
 MachineView make_1d_machine_view(cpu_id_t start,
                                  num_points_t num_points,
-                                 int stride = 1);
+                                 stride_t stride = stride_t{1});
 MachineView make_1d_machine_view(gpu_id_t start,
                                  num_points_t num_points,
-                                 int stride = 1);
+                                 stride_t stride = stride_t{1});
 MachineView make_1d_machine_view(device_id_t start,
                                  num_points_t num_points,
-                                 int stride = 1);
+                                 stride_t stride = stride_t{1});
 
 MachineView make_1d_machine_view(cpu_id_t start,
                                  side_size_t interval_size,
-                                 int stride = 1);
+                                 stride_t stride = stride_t{1});
 MachineView make_1d_machine_view(gpu_id_t start,
                                  side_size_t interval_size,
-                                 int stride = 1);
+                                 stride_t stride = stride_t{1});
 MachineView make_1d_machine_view(device_id_t start,
                                  side_size_t interval_size,
-                                 int stride = 1);
+                                 stride_t stride = stride_t{1});
 
 } // namespace FlexFlow
 

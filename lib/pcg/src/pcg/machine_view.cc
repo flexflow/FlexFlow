@@ -84,28 +84,30 @@ DeviceType get_device_type(MachineView const &mv) {
   return get_device_type(mv.start);
 }
 
-static StridedRectangle make_1d_rect(int start, int stop, int stride) {
+static StridedRectangle make_1d_rect(int start, int stop, stride_t stride) {
   assert(stop > start);
-  assert(stride > 0);
-  StridedRectangleSide side = strided_side_from_size_and_stride(
-      side_size_t{stop - start}, stride_t{stride});
+  assert(stride > stride_t(0));
+  StridedRectangleSide side =
+      strided_side_from_size_and_stride(side_size_t{stop - start}, stride);
   StridedRectangle rect =
       StridedRectangle{std::vector<StridedRectangleSide>{side}};
   return rect;
 }
 
-MachineView make_1d_machine_view(gpu_id_t start, gpu_id_t stop, int stride) {
+MachineView
+    make_1d_machine_view(gpu_id_t start, gpu_id_t stop, stride_t stride) {
   StridedRectangle rect = make_1d_rect(start.gpu_index, stop.gpu_index, stride);
   return MachineView{device_id_t{start}, rect};
 }
 
-MachineView make_1d_machine_view(cpu_id_t start, cpu_id_t stop, int stride) {
+MachineView
+    make_1d_machine_view(cpu_id_t start, cpu_id_t stop, stride_t stride) {
   StridedRectangle rect = make_1d_rect(start.cpu_index, stop.cpu_index, stride);
   return MachineView{device_id_t{start}, rect};
 }
 
 MachineView
-    make_1d_machine_view(device_id_t start, device_id_t stop, int stride) {
+    make_1d_machine_view(device_id_t start, device_id_t stop, stride_t stride) {
   assert(get_device_type(start) == get_device_type(stop));
   if (get_device_type(start) == DeviceType::CPU) {
     return make_1d_machine_view(unwrap_cpu(start), unwrap_cpu(stop), stride);
@@ -114,26 +116,31 @@ MachineView
   return make_1d_machine_view(unwrap_gpu(start), unwrap_gpu(stop), stride);
 }
 
+// TODO(@pietro) change from int to stride_t, makes more sense
+
 static StridedRectangle
-    make_1d_rect(int start, num_points_t num_points, int stride) {
-  return make_1d_rect(start, start + num_points.unwrapped * stride, stride);
+    make_1d_rect(int start, num_points_t num_points, stride_t stride) {
+  return make_1d_rect(
+      start, start + num_points.unwrapped * stride.unwrapped, stride);
 }
 
-MachineView
-    make_1d_machine_view(cpu_id_t start, num_points_t num_points, int stride) {
+MachineView make_1d_machine_view(cpu_id_t start,
+                                 num_points_t num_points,
+                                 stride_t stride) {
   StridedRectangle rect = make_1d_rect(start.cpu_index, num_points, stride);
   return MachineView{device_id_t{start}, rect};
 }
 
-MachineView
-    make_1d_machine_view(gpu_id_t start, num_points_t num_points, int stride) {
+MachineView make_1d_machine_view(gpu_id_t start,
+                                 num_points_t num_points,
+                                 stride_t stride) {
   StridedRectangle rect = make_1d_rect(start.gpu_index, num_points, stride);
   return MachineView{device_id_t{start}, rect};
 }
 
 MachineView make_1d_machine_view(device_id_t start,
                                  num_points_t num_points,
-                                 int stride) {
+                                 stride_t stride) {
   if (get_device_type(start) == DeviceType::CPU) {
     return make_1d_machine_view(unwrap_cpu(start), num_points, stride);
   } else {
@@ -143,26 +150,26 @@ MachineView make_1d_machine_view(device_id_t start,
 }
 
 static StridedRectangle
-    make_1d_rect(int start, side_size_t interval_size, int stride) {
+    make_1d_rect(int start, side_size_t interval_size, stride_t stride) {
   return make_1d_rect(start, start + interval_size.unwrapped, stride);
 }
 
 MachineView make_1d_machine_view(cpu_id_t start,
                                  side_size_t interval_size,
-                                 int stride) {
+                                 stride_t stride) {
   StridedRectangle rect = make_1d_rect(start.cpu_index, interval_size, stride);
   return MachineView{device_id_t{start}, rect};
 }
 
 MachineView make_1d_machine_view(gpu_id_t start,
                                  side_size_t interval_size,
-                                 int stride) {
+                                 stride_t stride) {
   StridedRectangle rect = make_1d_rect(start.gpu_index, interval_size, stride);
   return MachineView{device_id_t{start}, rect};
 }
 MachineView make_1d_machine_view(device_id_t start,
                                  side_size_t interval_size,
-                                 int stride) {
+                                 stride_t stride) {
 
   if (get_device_type(start) == DeviceType::CPU) {
     return make_1d_machine_view(unwrap_cpu(start), interval_size, stride);

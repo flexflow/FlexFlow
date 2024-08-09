@@ -14,9 +14,9 @@ using namespace FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("MachineView - utility functions") {
-    StridedRectangle rect{{StridedRectangleSide(num_points_t(7), stride_t(5)),
-                           StridedRectangleSide(num_points_t(10), stride_t(2)),
-                           StridedRectangleSide(num_points_t(1), stride_t(4))}};
+    StridedRectangle rect{{StridedRectangleSide(num_points_t(7), stride_t{5}),
+                           StridedRectangleSide(num_points_t(10), stride_t{2}),
+                           StridedRectangleSide(num_points_t(1), stride_t{4})}};
     gpu_id_t start(1);
     MachineView mv{device_id_t{start}, rect};
 
@@ -52,8 +52,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("2D MachineView") {
       StridedRectangle rect{{
-          StridedRectangleSide(num_points_t(2), stride_t(3)),
-          StridedRectangleSide(num_points_t(2), stride_t(2)),
+          StridedRectangleSide(num_points_t(2), stride_t{3}),
+          StridedRectangleSide(num_points_t(2), stride_t{2}),
       }};
       gpu_id_t start(0);
       MachineView mv{device_id_t{start}, rect};
@@ -66,9 +66,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("3D MachineView") {
       StridedRectangle rect{{
-          StridedRectangleSide(num_points_t(1), stride_t(3)),
-          StridedRectangleSide(num_points_t(2), stride_t(1)),
-          StridedRectangleSide(num_points_t(2), stride_t(2)),
+          StridedRectangleSide(num_points_t(1), stride_t{3}),
+          StridedRectangleSide(num_points_t(2), stride_t{1}),
+          StridedRectangleSide(num_points_t(2), stride_t{2}),
       }};
       gpu_id_t start(1);
       MachineView mv{device_id_t{start}, rect};
@@ -85,8 +85,8 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_last_device_id") {
     SUBCASE("2D MachineView") {
       StridedRectangle rect{{
-          StridedRectangleSide(num_points_t(2), stride_t(3)),
-          StridedRectangleSide(num_points_t(2), stride_t(2)),
+          StridedRectangleSide(num_points_t(2), stride_t{3}),
+          StridedRectangleSide(num_points_t(2), stride_t{2}),
       }};
       gpu_id_t start(0);
       MachineView mv{device_id_t{start}, rect};
@@ -98,9 +98,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("3D MachineView") {
       StridedRectangle rect{{
-          StridedRectangleSide(num_points_t(1), stride_t(3)),
-          StridedRectangleSide(num_points_t(2), stride_t(1)),
-          StridedRectangleSide(num_points_t(2), stride_t(2)),
+          StridedRectangleSide(num_points_t(1), stride_t{3}),
+          StridedRectangleSide(num_points_t(2), stride_t{1}),
+          StridedRectangleSide(num_points_t(2), stride_t{2}),
       }};
       gpu_id_t start(1);
       MachineView mv{device_id_t{start}, rect};
@@ -117,16 +117,18 @@ TEST_SUITE(FF_TEST_SUITE) {
     device_id_t start_gpu{gpu_id_t{1}};
     MachineView gpu_mv{start_gpu, rect};
 
-    SUBCASE("make_1d_machine_view(gpu_id_t start, gpu_id_t stop, int stride)") {
-      MachineView result =
-          make_1d_machine_view(start_gpu, device_id_t{gpu_id_t(1 + 7 * 5)}, 5);
+    SUBCASE("make_1d_machine_view(gpu_id_t start, gpu_id_t stop, stride_t "
+            "stride)") {
+      MachineView result = make_1d_machine_view(
+          start_gpu, device_id_t{gpu_id_t(1 + 7 * 5)}, stride_t{5});
       MachineView correct = gpu_mv;
       CHECK(result == correct);
     }
 
-    SUBCASE("make_1d_machine_view(gpu_id_t start, num_points_t num_points, int "
-            "stride)") {
-      MachineView result = make_1d_machine_view(start_gpu, num_points_t{7}, 5);
+    SUBCASE("make_1d_machine_view(gpu_id_t start, num_points_t num_points, "
+            "stride_t stride)") {
+      MachineView result =
+          make_1d_machine_view(start_gpu, num_points_t{7}, stride_t{5});
       MachineView correct = gpu_mv;
       CHECK(result == correct);
     }
@@ -138,15 +140,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     device_id_t start_cpu{cpu_id_t{2}};
     MachineView cpu_mv{start_cpu, rect};
 
-    SUBCASE("make_1d_machine_view(cpu_id_t start, cpu_id_t stop, int stride)") {
-      MachineView result =
-          make_1d_machine_view(start_cpu, device_id_t{cpu_id_t(2 + 11 * 4)}, 4);
+    SUBCASE("make_1d_machine_view(cpu_id_t start, cpu_id_t stop, stride_t "
+            "stride)") {
+      MachineView result = make_1d_machine_view(
+          start_cpu, device_id_t{cpu_id_t(2 + 11 * 4)}, stride_t{4});
       MachineView correct = cpu_mv;
       CHECK(result == correct);
     }
-    SUBCASE("make_1d_machine_view(cpu_id_t start, num_points_t num_points, int "
-            "stride)") {
-      MachineView result = make_1d_machine_view(start_cpu, num_points_t{11}, 4);
+    SUBCASE("make_1d_machine_view(cpu_id_t start, num_points_t num_points, "
+            "stride_t stride)") {
+      MachineView result =
+          make_1d_machine_view(start_cpu, num_points_t{11}, stride_t{4});
       MachineView correct = cpu_mv;
       CHECK(result == correct);
     }

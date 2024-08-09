@@ -13,9 +13,8 @@ template <typename Container>
 auto cartesian_product(Container const &containers) {
   using ValueType = typename Container::value_type::value_type;
   using VectorType = std::vector<ValueType>;
-  using SetType = std::unordered_multiset<VectorType>;
   auto ordered = as_vector(containers);
-  SetType result;
+  std::unordered_multiset<VectorType> result;
 
   std::function<void(VectorType &, size_t)> recurse = [&](VectorType &current,
                                                           std::size_t depth) {
