@@ -106,7 +106,12 @@ OpMeta *AllReduce::init_task(Task const *task,
                              Runtime *runtime) {
   AllReduce *ar = (AllReduce *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  AllReduceMeta *meta = new AllReduceMeta(handle, ar);
+  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
+                       .only_kind(Memory::GPU_FB_MEM)
+                       .best_affinity_to(task->target_proc)
+                       .first();
+  MemoryAllocator gpu_mem_allocator(gpu_mem);
+  AllReduceMeta *meta = new AllReduceMeta(handle, ar, gpu_mem_allocator);
   meta->input_type[0] = ar->inputs[0]->data_type;
   meta->output_type[0] = ar->outputs[0]->data_type;
   assert(meta->input_type[0] == meta->output_type[0]);

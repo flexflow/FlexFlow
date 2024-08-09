@@ -7,17 +7,20 @@
 #include "flexflow/op_meta.h"
 #include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/utils/communication_buffer.h"
+#include "flexflow/utils/memory_allocator.h"
 #include <unordered_map>
 
 namespace FlexFlow {
 
 class AllReduceMeta : public OpMeta {
 public:
-  AllReduceMeta(FFHandler handle, AllReduce const *reduct);
+  AllReduceMeta(FFHandler handle, AllReduce const *reduct, MemoryAllocator &gpu_mem_allocator);
   ~AllReduceMeta(void);
 
 public:
   std::unordered_map<void*, CommunicationBuffer*> comm_bufs;
+  Realm::RegionInstance reserveInst;
+  void *allgather_src, *allgather_dst;
 };
 
 namespace Kernels {

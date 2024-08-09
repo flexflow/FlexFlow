@@ -58,6 +58,7 @@ class CommunicationBuffer {
 };
 
 CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
+                                                  void* allgather_src, void* allgather_dst,
                                                   void* local_ptr, cudaStream_t stream);
 
 void release_comm_buf(CommunicationBuffer* comm_buf);

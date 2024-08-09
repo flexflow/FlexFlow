@@ -13,14 +13,28 @@
  * limitations under the License.
  */
 
+#include <cuda_runtime.h>
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 #include "tensorrt_llm/custom_allreduce_kernels.h"
 
 namespace FlexFlow {
 
-AllReduceMeta::AllReduceMeta(FFHandler handle, AllReduce const *reduct)
-    : OpMeta(handle) {}
+AllReduceMeta::AllReduceMeta(FFHandler handle,
+                              AllReduce const *reduct,
+                              MemoryAllocator &gpu_mem_allocator)
+    : OpMeta(handle) {
+  gpu_mem_allocator.create_legion_instance(reserveInst,
+                                            CUDA_IPC_HANDLE_SIZE * (handle.num_devices + 1));
+  allgather_src = gpu_mem_allocator.allocate_instance_untyped(CUDA_IPC_HANDLE_SIZE);
+  allgather_dst = gpu_mem_allocator.allocate_instance_untyped(CUDA_IPC_HANDLE_SIZE * handle.num_devices);
+}
+
+AllReduceMeta::~AllReduceMeta() {
+  if (reserveInst != Realm::RegionInstance::NO_INST) {
+    reserveInst.destroy();
+  }
+}
 
 namespace Kernels {
 namespace AllReduce {
@@ -33,7 +47,9 @@ CommunicationBuffer* get_or_create_comm_buffer(AllReduceMeta *m,
     return iter->second;
   } else {
     CommunicationBuffer* comm_buffer = create_comm_buf_with_local_ptr(
-        num_devices, device_id, ncclComm, local_ptr, stream);
+        num_devices, device_id, ncclComm,
+        m->allgather_src, m->allgather_dst,
+        local_ptr, stream);
     m->comm_bufs[local_ptr] = comm_buffer;
     return comm_buffer;
   }

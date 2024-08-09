@@ -25,23 +25,21 @@ using tensorrt_llm::MAX_RANKS_PER_NODE;
 // On each worker, we copy the IPC handle to GPU memory. And nccl AllGather
 // is reused to all-gather the handles. Finally the all-gathered handles
 // on each worker are copied from GPU to CPU.
-std::vector<cudaIpcMemHandle_t> allgather_ipc_handles(int num_devices, int device_id, ncclComm_t ncclComm,
+// P.S. allgather_src should be a device buffer of size CUDA_IPC_HANDLE_SIZE,
+// and allgather_dst should be a device buffer of size CUDA_IPC_HANDLE_SIZE * num_devices.
+std::vector<cudaIpcMemHandle_t> allgather_ipc_handles(int num_devices, ncclComm_t ncclComm,
+                                                  void* allgather_src, void* allgather_dst,
                                                   cudaIpcMemHandle_t local_handle, cudaStream_t stream) {
-  void *d_src, *d_dst;
-  checkCUDA(cudaMalloc(&d_src, CUDA_IPC_HANDLE_SIZE));
-  checkCUDA(cudaMalloc(&d_dst, CUDA_IPC_HANDLE_SIZE * num_devices));
-  checkCUDA(cudaMemcpy(d_src, &local_handle, CUDA_IPC_HANDLE_SIZE, cudaMemcpyHostToDevice));
+  checkCUDA(cudaMemcpyAsync(allgather_src, &local_handle, CUDA_IPC_HANDLE_SIZE, cudaMemcpyHostToDevice, stream));
   checkNCCL(
-      ncclAllGather(d_src, d_dst, CUDA_IPC_HANDLE_SIZE, ncclChar, ncclComm, stream));
+      ncclAllGather(allgather_src, allgather_dst, CUDA_IPC_HANDLE_SIZE, ncclChar, ncclComm, stream));
   std::vector<char> serial_handles(CUDA_IPC_HANDLE_SIZE * num_devices, 0);
-  checkCUDA(cudaMemcpy(serial_handles.data(), d_dst,
-                       CUDA_IPC_HANDLE_SIZE * num_devices, cudaMemcpyDefault));
+  checkCUDA(cudaMemcpyAsync(serial_handles.data(), allgather_dst,
+                       CUDA_IPC_HANDLE_SIZE * num_devices, cudaMemcpyDefault, stream));
   std::vector<cudaIpcMemHandle_t> handles(num_devices);
   for (int i = 0; i < num_devices; ++i) {
     memcpy(handles[i].reserved, &serial_handles[i * CUDA_IPC_HANDLE_SIZE], CUDA_IPC_HANDLE_SIZE);
   }
-  checkCUDA(cudaFree(d_src));
-  checkCUDA(cudaFree(d_dst));
   return handles;
 }
 
@@ -50,12 +48,14 @@ std::vector<cudaIpcMemHandle_t> allgather_ipc_handles(int num_devices, int devic
 // then the returned i-th ptr_group is the local pointer,
 // or otherwise it is an IPC memory pointer.
 std::vector<void*> create_ipc_ptr_group(int num_devices, int device_id, ncclComm_t ncclComm,
+                                        void* allgather_src, void* allgather_dst,
                                         void* local_ptr, cudaStream_t stream) {
   // Create ipc handle
   cudaIpcMemHandle_t local_handle;
   checkCUDA(cudaIpcGetMemHandle(&local_handle, local_ptr));
   // All-gather IPC handles.
-  std::vector<cudaIpcMemHandle_t> handles = allgather_ipc_handles(num_devices, device_id, ncclComm,
+  std::vector<cudaIpcMemHandle_t> handles = allgather_ipc_handles(num_devices, ncclComm,
+                                                                  allgather_src, allgather_dst,
                                                                   local_handle, stream);
   // Collect the all-gather results.
   std::vector<void*> ptr_group(num_devices);
@@ -89,14 +89,19 @@ void free_ipc_ptr_group(std::vector<void*> ptr_group, int device_id, bool free_l
 // The CommunicationBuffer contains the local pointer and the IPC memory pointers group.
 // It contains the barrier helpers for synchronization across distributed workers,
 // which is also IPC-based.
+// The allgather_src and allgather_dst are device buffers,
+// which are used for all-gathering IPC handles across devices.
+// The size of allgather_src should be CUDA_IPC_HANDLE_SIZE, and the size of allgather_dst
+// should be CUDA_IPC_HANDLE_SIZE * num_devices.
 CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
+                                                  void* allgather_src, void* allgather_dst,
                                                   void* local_ptr, cudaStream_t stream) {
   assert(local_ptr != nullptr && "Local pointer is nullptr.");
   CommunicationBuffer* comm_buf = new CommunicationBuffer();
   comm_buf->num_devices = num_devices;
   comm_buf->device_id = device_id;
   comm_buf->local_ptr = local_ptr;
-  comm_buf->comm_ptrs = create_ipc_ptr_group(num_devices, device_id, ncclComm, local_ptr, stream);
+  comm_buf->comm_ptrs = create_ipc_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, local_ptr, stream);
 
   // Create barrier helpers.
   int barrier_ptr_size = sizeof(uint32_t) * (MAX_ALL_REDUCE_BLOCKS + 2) * MAX_RANKS_PER_NODE;
@@ -114,8 +119,8 @@ CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_
   checkCUDA(cudaMalloc(&barrier_out_ptr, barrier_ptr_size));
   checkCUDA(cudaMemset(barrier_out_ptr, 0, barrier_ptr_size));
   checkCUDA(cudaDeviceSynchronize());
-  comm_buf->barrier_in = create_ipc_ptr_group(num_devices, device_id, ncclComm, barrier_in_ptr, stream);
-  comm_buf->barrier_out = create_ipc_ptr_group(num_devices, device_id, ncclComm, barrier_out_ptr, stream);
+  comm_buf->barrier_in = create_ipc_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, barrier_in_ptr, stream);
+  comm_buf->barrier_out = create_ipc_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, barrier_out_ptr, stream);
   comm_buf->barrier_flag = 1;
 
   return comm_buf;
