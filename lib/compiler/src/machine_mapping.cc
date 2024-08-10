@@ -14,7 +14,10 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/product.h"
+#include "utils/containers/range.h"
 #include "utils/containers/replicate.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/without_order.h"
 #include "utils/containers/zip.h"
 #include "utils/exception.h"
 #include "utils/graph/graph_split.dtg.h"
@@ -24,6 +27,7 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
+#
 
 namespace FlexFlow {
 
@@ -362,140 +366,93 @@ OptimalCostResult optimal_cost(
   return searcher.optimal_cost(subpcg, resources, sp_decomposition);
 }
 
-// bool is_valid_machine_view(MachineSpecification const &machinespec,
-//                            MachineView const &mv) {
-//   auto get_all_bipartition_products = [&](std::vector<int> elements) {
-//     std::unordered_multiset<std::vector<int>> mappings =
-//     transform(cartesian_product(replicate(elements.size(),
-//     std::vector<int>{0,1}))); std::pair<int, int> products; for (const auto
-//     &mapping : mappings) {
-//       int prod1 = product(transform(zip(elements, mapping), [&](auto elem)
-//       {return (elem.second ? 1 : elem.first);})); int prod2 =
-//       product(transform(zip(elements, mapping), [&](auto elem) {return
-//       (!elem.second ? 1 : elem.first);})); products.push_back({prod1
-//       ,prod2}); assert(prod1*prod2 == product(elements));
-//     }
-//     return products;
-//     }
-//   // assert(contains({DeviceType::GPU, DeviceType::CPU},
-//   get_device_type(mv)); int num_devices_per_node = ((get_device_type(mv) ==
-//   DeviceType::GPU) ? machinespec.num_gpus_per_node :
-//   machinespec.num_cpus_per_node); int num_devices = machinespec.num_nodes *
-//   num_devices_per_node; if (num_devices >=
-//   get_raw_id(get_last_device_id(mv))) {return false;} if
-//   (!any_of(get_all_bipartition_products(as_vector(get_num_devices_per_dim(mv))),
-//   [&](auto pair) {return (pair.first <= machinespec.num_nodes) &&
-//   (pair.second <= num_devices_per_node);})) {
-//     return false;
-//   }
-//   return true;
-// }
+bool is_valid_machine_view(MachineView const &mv,
+                           MachineSpecification const &machinespec) {
+  int num_devices_per_node = ((get_device_type(mv) == DeviceType::GPU)
+                                  ? machinespec.num_gpus_per_node
+                                  : machinespec.num_cpus_per_node);
+  int num_devices = machinespec.num_nodes * num_devices_per_node;
+  return (num_devices > get_raw_id(get_last_device_id(mv)));
+}
 
-// bool is_valid_machine_view(MachineView const &mv,
-//                            ParallelTensorShape const &shape) {
-//   std::unordered_set<size_t> unordered_mv_degrees =
-//       without_order(get_point_dims(mv));
-//   std::unordered_set<size_t> unordered_tensor_degrees =
-//       without_order(ff_ordered_shard_degrees(shape)) +
-//       {get_sum_degree(shape)} + {get_discard_copy_degree(shape)}; // filter
-//       for the 1s (no parallelism)
-//   return unordered_mv_dims == unordered_tensor_dims;
-// }
+std::vector<int> get_tensor_parallel_degrees(ParallelTensorShape const &shape) {
+  std::vector<int> degrees = as_vector(ff_ordered_shard_degrees(shape));
+  degrees.push_back(get_sum_degree(shape));
+  degrees.push_back(get_discard_copy_degree(shape));
+  return degrees;
+}
 
-// // WARNING: some machine_views returned are invalid, get
-// allowed_machine_views
-// // for valid ones.
+bool is_valid_machine_view(MachineView const &mv,
+                           ParallelTensorShape const &shape) {
+  std::vector<int> mv_degrees =
+      transform(get_num_devices_per_dim(mv),
+                [](num_points_t degree) { return degree.unwrapped; });
+  std::vector<int> tensor_degrees = get_tensor_parallel_degrees(shape);
+  tensor_degrees =
+      filter(tensor_degrees, [](int degree) { return degree != 1; });
+  return without_order(mv_degrees) == without_order(tensor_degrees);
+}
 
-// //TODO: add support for both CPU and GPU
-// static std::unordered_set<MachineView>
-//     get_all_candidate_machine_views(MachineSpecification const &machinespec,
-//                           ParallelTensorShape const &shape) {
+// TODO(@pietro): add support for both CPU and GPU
+static std::unordered_set<MachineView>
+    get_candidate_machine_views(MachineSpecification const &machinespec,
+                                ParallelTensorShape const &shape) {
 
-//   auto all_possible_strides =
-//       [](std::vector<size_t> tensor_dims,
-//          size_t num_total_devices,
-//          size_t num_devices_used_by_tensor) {
-//         size_t room_for_stride = num_total_devices /
-//         num_devices_used_by_tensor; std::unordered_multiset<std::vector<int>>
-//         strides = cartesian_product(replicate(range(1, room_for_stride + 1)),
-//                                    tensor_dims.size());
-//         return strides;
-//     // return filter(strides, (std::vector<int> const &stride) {return
-//     product((elem-1 for elem in x)) <= room_for_stride);
-//       };
+  auto candidate_strides = [](std::vector<int> tensor_dims,
+                              int total_devices) {
+    int max_stride_upper_bound =
+        (total_devices + 1) /
+        product(transform(tensor_dims, [](int degree) { return degree - 1; }));
+    std::unordered_multiset<std::vector<int>> strides = cartesian_product(
+        replicate(tensor_dims.size(), range(1, max_stride_upper_bound + 1)));
+    return strides;
+  };
 
-//   size_t num_total_devices = machinespec.num_nodes *
-//   machinespec.num_gpus_per_node; std::unordered_set<MachineView>
-//   machine_views; std::vector<size_t> tensor_dims; size_t
-//   num_devices_used_by_tensor = product(tensor_dims); for (std::vector<int>
-//   stride :
-//        all_possible_strides(tensor_dims, num_total_devices,
-//        num_devices_used_by_tensor)) {
-//     for (int start_id = 0 ;
-//          start_id <= num_total_devices - num_devices_used_by_tensor + 1;
-//          start_id++) {
-//       std::vector<StridedRectangleSide> sides =
-//           transform(zip(tensor_dims, stride));
-//       MachineView mv = {device_id_t(gpu_id_t(start_id)),
-//       StridedRectangle{sides}}; machine_views.insert(mv);
-//     }
-//   }
-//   return machine_views;
-// }
+  std::vector<int> tensor_dims = filter(get_tensor_parallel_degrees(shape),
+                                        [](int degree) { return degree != 1; });
+  std::unordered_set<MachineView> machine_views;
+  int total_devices = machinespec.num_nodes * machinespec.num_gpus_per_node;
+  for (std::vector<int> stride :
+       candidate_strides(tensor_dims, total_devices)) {
+    for (int start_id = 0; start_id < total_devices; start_id++) {
+      std::vector<StridedRectangleSide> sides =
+          transform(zip(tensor_dims, stride), [&](auto const &pair) {
+            return StridedRectangleSide(num_points_t(pair.first),
+                                        stride_t(pair.second));
+          });
+      MachineView mv =
+          MachineView{device_id_t(gpu_id_t(start_id)), StridedRectangle{sides}};
+      machine_views.insert(mv);
+    }
+  }
+  return machine_views;
+}
 
-// // static std::unordered_set<StartInvariantMachineView>
-// //     get_all_start_invariant_machine_views(
-// //         MachineSpecification const &machinespec,
-// //         ParallelTensorShape const &shape) {
-// //   NOT_IMPLEMENTED();
-// // }
+std::unordered_set<MachineView>
+    get_allowed_machine_views(MachineSpecification const &machinespec,
+                              ParallelTensorShape const &shape) {
 
-// auto get_all_machine_views_to_tensor_dim_bijections(MachineView const &mv,
-// ParallelTensorShape const &shape) {
+  std::unordered_set<MachineView> views =
+      get_candidate_machine_views(machinespec, shape);
+  views = filter(views, [&](MachineView const &view) {
+    return is_valid_machine_view(view, shape);
+  });
+  views = filter(views, [&](MachineView const &view) {
+    return is_valid_machine_view(view, machinespec);
+  });
+  return views;
+}
+
+// static std::unordered_set<StartInvariantMachineView>
+//     get_all_start_invariant_machine_views(
+//         MachineSpecification const &machinespec,
+//         ParallelTensorShape const &shape) {
 //   NOT_IMPLEMENTED();
 // }
 
-// std::unordered_set<MachineView>
-//     get_allowed_machine_views(MachineSpecification const &machinespec,
-//                               ParallelTensorShape const &shape) {
-//   std::unordered_set<MachineView> operator_views =
-//       get_all_candidate_machine_views(machinespec, shape);
-//   operator_views = filter(operator_views, [&](MachineView const &view) {
-//     return is_valid_machine_view(view, shape);
-//   });
-//   operator_views = filter(operator_views, [&](MachineView const &view) {
-//     return is_valid_machine_view(view, machinespec);
-//   });
-//   return operator_views;
-// }
-
-// // Ask the output shapes
-// // Get the PCG
-
-// std::vector<MachineView> SearchHelper::get_valid_machine_views(
-//     Op const *op, MachineResource const &resource) const {
-//   std::vector<MachineView> const cached_op_views;
-//   std::vector<MachineView> valid_views;
-//   for (size_t i = 0; i < this->model->all_valid_views.size(); i++) {
-//     bool valid = true;
-//     for (int j = 0; j < op->numOutputs; j++) {
-//       if (!op->outputs[j]->is_valid_machine_view(
-//               this->model->all_valid_views[i])) {
-//         valid = false;
-//         break;
-//       }
-//     }
-//     if (valid) {
-//       cached_op_views.push_back(this->model->all_valid_views[i]);
-//     }
-//   }
-
-//   for (size_t i = 0; i < cached_op_views->size(); i++) {
-//     if (resource.is_valid_machine_view(view)) {
-//       valid_views.push_back(view);
-//     }
-//   }
-//   return valid_views;
-// }
+auto get_all_machine_views_to_tensor_dim_bijections(
+    MachineView const &mv, ParallelTensorShape const &shape) {
+  NOT_IMPLEMENTED();
+}
 
 } // namespace FlexFlow

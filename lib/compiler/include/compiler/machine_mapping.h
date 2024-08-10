@@ -53,17 +53,10 @@ OptimalCostResult optimal_cost(
     MachineSpecification const &resources,
     OptimalCostCache &cached_subgraph_costs);
 
+std::unordered_set<MachineView>
+    get_allowed_machine_views(MachineSpecification const &machinespec,
+                              ParallelTensorShape const &shape);
+
 } // namespace FlexFlow
-
-// namespace std {
-//
-// template <>
-// struct hash<std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping>> {
-//   size_t operator()(
-//       std::unordered_map<FlexFlow::Node, FlexFlow::MachineMapping> const &g)
-//       const;
-// };
-
-// }; // namespace std
 
 #endif

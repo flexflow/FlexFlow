@@ -20,7 +20,7 @@ static device_id_t get_device_id(MachineView const &mv,
                                  DeviceCoordinates const &point) {
   assert(point.coords.size() == get_num_dims(mv.rect));
   std::vector<int> coefficients =
-      scanl(sorted(mv.rect.sides),
+      scanl(mv.rect.get_sides(),
             1,
             [](size_t const &result, StridedRectangleSide const &side) {
               return result * get_side_size(side).unwrapped;
@@ -37,7 +37,7 @@ static device_id_t get_device_id(MachineView const &mv,
 
 std::unordered_multiset<device_id_t> get_device_ids(MachineView const &mv) {
   std::vector<std::vector<int>> ranges =
-      transform(sorted(mv.rect.sides), [](StridedRectangleSide const &side) {
+      transform(mv.rect.get_sides(), [](StridedRectangleSide const &side) {
         return range(0, get_side_size(side).unwrapped, side.stride.unwrapped);
       });
   std::unordered_multiset<DeviceCoordinates> devices_as_points =
@@ -51,10 +51,10 @@ std::unordered_multiset<device_id_t> get_device_ids(MachineView const &mv) {
 }
 
 device_id_t get_last_device_id(MachineView const &mv) {
-  DeviceCoordinates last_device = DeviceCoordinates(
-      transform(sorted(mv.rect.sides), [](StridedRectangleSide const &s) {
-        return s.stride.unwrapped;
-      }));
+  // DeviceCoordinates last_device = DeviceCoordinates(
+  //     transform(mv.rect.get_sides(), [](StridedRectangleSide const &s) {
+  //       return s.stride.unwrapped;
+  //     }));
   return maximum(get_device_ids(mv));
 }
 
@@ -63,13 +63,13 @@ size_t num_dims(MachineView const &mv) {
 }
 
 std::vector<num_points_t> get_num_devices_per_dim(MachineView const &mv) {
-  return transform(mv.rect.sides, [](StridedRectangleSide const &side) {
+  return transform(mv.rect.get_sides(), [](StridedRectangleSide const &side) {
     return side.num_points;
   });
 }
 
 std::vector<side_size_t> get_side_size_per_dim(MachineView const &mv) {
-  return transform(mv.rect.sides, get_side_size);
+  return transform(mv.rect.get_sides(), get_side_size);
 }
 
 size_t num_devices(MachineView const &mv) {

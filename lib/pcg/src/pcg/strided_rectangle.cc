@@ -15,7 +15,7 @@ namespace FlexFlow {
 
 StridedRectangle::StridedRectangle(
     std::vector<::FlexFlow::StridedRectangleSide> const &sides)
-    : _sides(sorted(sides)), sides(_sides) {}
+    : _sides(sorted(sides)) {}
 
 bool StridedRectangle::operator==(StridedRectangle const &other) const {
   return std::tie(this->_sides) == std::tie(other._sides);
@@ -24,10 +24,14 @@ bool StridedRectangle::operator!=(StridedRectangle const &other) const {
   return std::tie(this->_sides) != std::tie(other._sides);
 }
 
+std::vector<StridedRectangleSide> StridedRectangle::get_sides() const {
+  return _sides;
+}
+
 std::string format_as(StridedRectangle const &x) {
   std::ostringstream oss;
   oss << "<StridedRectangle";
-  oss << " sides=" << x.sides;
+  oss << " sides=" << x.get_sides();
   oss << ">";
   return oss.str();
 }
@@ -37,20 +41,21 @@ std::ostream &operator<<(std::ostream &s, StridedRectangle const &x) {
 }
 
 size_t get_num_dims(StridedRectangle const &rect) {
-  return rect.sides.size();
+  return rect.get_sides().size();
 }
 
 num_points_t get_num_points(StridedRectangle const &rect) {
   return num_points_t{
-      product(transform(rect.sides, [](StridedRectangleSide const &side) {
+      product(transform(rect.get_sides(), [](StridedRectangleSide const &side) {
         return side.num_points.unwrapped;
       }))};
 }
 
 size_t get_size(StridedRectangle const &rect) {
-  return product(transform(rect.sides, [](StridedRectangleSide const &side) {
-    return get_side_size(side).unwrapped;
-  }));
+  return product(
+      transform(rect.get_sides(), [](StridedRectangleSide const &side) {
+        return get_side_size(side).unwrapped;
+      }));
 }
 
 } // namespace FlexFlow
@@ -59,9 +64,9 @@ namespace std {
 size_t hash<FlexFlow::StridedRectangle>::operator()(
     ::FlexFlow::StridedRectangle const &x) const {
   size_t result = 0;
-  result ^=
-      std::hash<std::vector<::FlexFlow::StridedRectangleSide>>{}(x.sides) +
-      0x9e3779b9 + (result << 6) + (result >> 2);
+  result ^= std::hash<std::vector<::FlexFlow::StridedRectangleSide>>{}(
+                x.get_sides()) +
+            0x9e3779b9 + (result << 6) + (result >> 2);
   return result;
 }
 } // namespace std
@@ -76,7 +81,7 @@ namespace nlohmann {
 void adl_serializer<::FlexFlow::StridedRectangle>::to_json(
     json &j, ::FlexFlow::StridedRectangle const &v) {
   j["__type"] = "StridedRectangle";
-  j["sides"] = v.sides;
+  j["sides"] = v.get_sides();
 }
 } // namespace nlohmann
 

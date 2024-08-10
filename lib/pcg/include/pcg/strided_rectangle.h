@@ -7,19 +7,22 @@
 #include "pcg/side_size_t.dtg.h"
 #include "pcg/strided_rectangle_side.dtg.h"
 
+// TODO(@pietro) add get_sides()
+
 namespace FlexFlow {
 
 struct StridedRectangle {
+
+private:
+  std::vector<StridedRectangleSide> _sides;
+
+public:
   StridedRectangle() = delete;
   explicit StridedRectangle(std::vector<StridedRectangleSide> const &sides);
 
   bool operator==(StridedRectangle const &) const;
   bool operator!=(StridedRectangle const &) const;
-
-  std::vector<StridedRectangleSide> const &sides;
-
-private:
-  std::vector<StridedRectangleSide> _sides;
+  std::vector<StridedRectangleSide> get_sides() const;
 };
 std::string format_as(StridedRectangle const &);
 std::ostream &operator<<(std::ostream &, StridedRectangle const &);
