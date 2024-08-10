@@ -120,6 +120,10 @@ jobs:
         run: |
           test_libs.sh substitution-generator
 
+      - name: Test models
+        run: |
+          test_libs.sh models
+
       - name: Generate code coverage
         run: |
           echo "gitwork: $GITHUB_WORKSPACE"
