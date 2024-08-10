@@ -27,7 +27,6 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
-#
 
 namespace FlexFlow {
 
@@ -398,8 +397,7 @@ static std::unordered_set<MachineView>
     get_candidate_machine_views(MachineSpecification const &machinespec,
                                 ParallelTensorShape const &shape) {
 
-  auto candidate_strides = [](std::vector<int> tensor_dims,
-                              int total_devices) {
+  auto candidate_strides = [](std::vector<int> tensor_dims, int total_devices) {
     int max_stride_upper_bound =
         (total_devices + 1) /
         product(transform(tensor_dims, [](int degree) { return degree - 1; }));
