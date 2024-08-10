@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "MachineView"
+name = "StartInvariantMachineView"
 features = [
   "eq",
   "ord",
@@ -10,13 +10,8 @@ features = [
 ]
 
 includes = [ 
-  "pcg/device_id_t.dtg.h",
   "pcg/strided_rectangle.h",
 ]
-
-[[fields]]
-name = "start"
-type = "::FlexFlow::device_id_t"
 
 [[fields]]
 name = "rect"

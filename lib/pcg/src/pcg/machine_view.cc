@@ -11,6 +11,7 @@
 #include "utils/containers/reversed.h"
 #include "utils/containers/scanl.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/containers/zip.h"
 #include "utils/hash/vector.h"
 
@@ -35,15 +36,15 @@ static device_id_t get_device_id(MachineView const &mv,
               : device_id_t(gpu_id_t(raw_id)));
 }
 
-std::unordered_multiset<device_id_t> get_device_ids(MachineView const &mv) {
+std::unordered_set<device_id_t> get_device_ids(MachineView const &mv) {
   std::vector<std::vector<int>> ranges =
       transform(mv.rect.get_sides(), [](StridedRectangleSide const &side) {
         return range(0, get_side_size(side).unwrapped, side.stride.unwrapped);
       });
-  std::unordered_multiset<DeviceCoordinates> devices_as_points =
+  std::unordered_set<DeviceCoordinates> devices_as_points = unordered_set_of(
       transform(cartesian_product(ranges),
-                [](auto const &point) { return DeviceCoordinates(point); });
-  std::unordered_multiset<device_id_t> ids =
+                [](auto const &point) { return DeviceCoordinates(point); }));
+  std::unordered_set<device_id_t> ids =
       transform(devices_as_points, [&](DeviceCoordinates const &dc) {
         return get_device_id(mv, dc);
       });
@@ -115,8 +116,6 @@ MachineView
   assert(get_device_type(start) == DeviceType::GPU);
   return make_1d_machine_view(unwrap_gpu(start), unwrap_gpu(stop), stride);
 }
-
-// TODO(@pietro) change from int to stride_t, makes more sense
 
 static StridedRectangle
     make_1d_rect(int start, num_points_t num_points, stride_t stride) {

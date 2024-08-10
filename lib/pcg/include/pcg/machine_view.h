@@ -1,12 +1,9 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 
-#include "pcg/cpu_id_t.dtg.h"
 #include "pcg/device_coordinates.dtg.h"
 #include "pcg/device_id.h"
-#include "pcg/device_id_t.dtg.h"
 #include "pcg/device_type.dtg.h"
-#include "pcg/gpu_id_t.dtg.h"
 #include "pcg/machine_view.dtg.h"
 #include "pcg/num_points_t.dtg.h"
 #include "pcg/side_size_t.dtg.h"
@@ -15,7 +12,7 @@
 
 namespace FlexFlow {
 
-std::unordered_multiset<device_id_t> get_device_ids(MachineView const &mv);
+std::unordered_set<device_id_t> get_device_ids(MachineView const &mv);
 device_id_t get_last_device_id(MachineView const &mv);
 
 size_t num_dims(MachineView const &mv);

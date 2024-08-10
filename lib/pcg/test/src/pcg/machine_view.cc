@@ -4,8 +4,8 @@
 #include "test/utils/doctest.h"
 #include "utils/containers/transform.h"
 
-std::unordered_multiset<device_id_t>
-    make_gpu_device_ids(std::unordered_multiset<int> ids) {
+std::unordered_set<device_id_t>
+    make_gpu_device_ids(std::unordered_set<int> ids) {
   return transform(ids, [](int id) { return device_id_t(gpu_id_t(id)); });
 }
 
@@ -58,9 +58,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       gpu_id_t start(0);
       MachineView mv{device_id_t{start}, rect};
       SUBCASE("get_device_ids") {
-        std::unordered_multiset<device_id_t> expected =
+        std::unordered_set<device_id_t> expected =
             make_gpu_device_ids({0, 2, 12, 14});
-        std::unordered_multiset<device_id_t> result = get_device_ids(mv);
+        std::unordered_set<device_id_t> result = get_device_ids(mv);
         CHECK(expected == result);
       }
     }
@@ -74,9 +74,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       MachineView mv{device_id_t{start}, rect};
 
       SUBCASE("get_device_ids") {
-        std::unordered_multiset<device_id_t> expected =
+        std::unordered_set<device_id_t> expected =
             make_gpu_device_ids({1, 4, 13, 16});
-        std::unordered_multiset<device_id_t> result = get_device_ids(mv);
+        std::unordered_set<device_id_t> result = get_device_ids(mv);
         CHECK(expected == result);
       }
     }

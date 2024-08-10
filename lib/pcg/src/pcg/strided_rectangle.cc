@@ -24,6 +24,22 @@ bool StridedRectangle::operator!=(StridedRectangle const &other) const {
   return std::tie(this->_sides) != std::tie(other._sides);
 }
 
+bool StridedRectangle::operator<(StridedRectangle const &other) const {
+  return std::tie(this->_sides) < std::tie(other._sides);
+}
+
+bool StridedRectangle::operator>(StridedRectangle const &other) const {
+  return std::tie(this->_sides) > std::tie(other._sides);
+}
+
+bool StridedRectangle::operator<=(StridedRectangle const &other) const {
+  return std::tie(this->_sides) <= std::tie(other._sides);
+}
+
+bool StridedRectangle::operator>=(StridedRectangle const &other) const {
+  return std::tie(this->_sides) >= std::tie(other._sides);
+}
+
 std::vector<StridedRectangleSide> StridedRectangle::get_sides() const {
   return _sides;
 }

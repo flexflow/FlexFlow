@@ -7,9 +7,11 @@
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
+#include "pcg/start_invariant_machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
+
 
 namespace FlexFlow {
 
@@ -56,6 +58,11 @@ OptimalCostResult optimal_cost(
 std::unordered_set<MachineView>
     get_allowed_machine_views(MachineSpecification const &machinespec,
                               ParallelTensorShape const &shape);
+
+std::unordered_set<StartInvariantMachineView>
+    get_allowed_start_invariant_machine_views(
+        MachineSpecification const &machinespec,
+        ParallelTensorShape const &shape);
 
 } // namespace FlexFlow
 

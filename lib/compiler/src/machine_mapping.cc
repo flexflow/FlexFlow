@@ -27,6 +27,7 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
+#include "pcg/start_invariant_machine_view.h"
 
 namespace FlexFlow {
 
@@ -441,12 +442,12 @@ std::unordered_set<MachineView>
   return views;
 }
 
-// static std::unordered_set<StartInvariantMachineView>
-//     get_all_start_invariant_machine_views(
-//         MachineSpecification const &machinespec,
-//         ParallelTensorShape const &shape) {
-//   NOT_IMPLEMENTED();
-// }
+std::unordered_set<StartInvariantMachineView>
+    get_allowed_start_invariant_machine_views(
+        MachineSpecification const &machinespec,
+        ParallelTensorShape const &shape) {
+  return transform(get_allowed_machine_views(machinespec, shape), to_start_invariant);
+}
 
 auto get_all_machine_views_to_tensor_dim_bijections(
     MachineView const &mv, ParallelTensorShape const &shape) {

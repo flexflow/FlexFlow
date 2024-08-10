@@ -3,13 +3,10 @@
 #include "pcg/machine_specification.dtg.h"
 #include "test_generator.h"
 #include "utils/containers/extend.h"
-#include "utils/containers/is_subseteq_of.h"
-#include "utils/containers/set_difference.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("get_allowed_machine_view") {
-    SUBCASE("no parallelism") {}
 
     SUBCASE("1 degree of parallelism") {
       MachineSpecification ms = MachineSpecification(5, 1, 1, 0, 0);
@@ -80,6 +77,70 @@ TEST_SUITE(FF_TEST_SUITE) {
           get_allowed_machine_views(ms, shape);
       CHECK(result == correct);
     }
+
+  }
+
+  TEST_CASE("get_allowed_start_invariant_machine_views") {
+
+    SUBCASE("1 degree of parallelism") {
+      MachineSpecification ms = MachineSpecification(5, 1, 1, 0, 0);
+      ParallelTensorShape shape = ParallelTensorShape{
+          ParallelTensorDims{
+              FFOrdered<ShardParallelDim>{
+                  ShardParallelDim{10, 3},
+              },
+              ReplicaParallelDimSet{
+                  SumDegree{1},
+                  DiscardCopyDegree{1},
+              },
+          },
+          DataType::FLOAT,
+      };
+
+      std::unordered_set<StartInvariantMachineView> correct = {
+        make_1d_start_invariant_machine_view(num_points_t(3), stride_t(1)),
+        make_1d_start_invariant_machine_view(num_points_t(3), stride_t(2))
+      };
+      std::unordered_set<StartInvariantMachineView> result =
+          get_allowed_start_invariant_machine_views(ms, shape);
+      CHECK(correct == result);
+    }
+
+    SUBCASE("2 degrees of parallelism") {
+      MachineSpecification ms = MachineSpecification(18, 1, 1, 0, 0);
+      ParallelTensorShape shape = ParallelTensorShape{
+          ParallelTensorDims{
+              FFOrdered<ShardParallelDim>{
+                  ShardParallelDim{10, 3},
+              },
+              ReplicaParallelDimSet{
+                  SumDegree{2},
+                  DiscardCopyDegree{1},
+              },
+          },
+          DataType::FLOAT,
+      };
+
+      auto make_2d_view = [&](int stride1, int stride2) {
+          StridedRectangle rect = StridedRectangle{
+              {StridedRectangleSide{num_points_t(2), stride_t(stride1)},
+               StridedRectangleSide{num_points_t(3), stride_t(stride2)}}};
+          return StartInvariantMachineView{rect};
+      };
+      std::unordered_set<StartInvariantMachineView> correct = {
+        make_2d_view(/*stride1*/ 1, /*stride2*/ 1),
+        make_2d_view(/*stride1*/ 2, /*stride2*/ 1),
+        make_2d_view(/*stride1*/ 1, /*stride2*/ 2),
+        make_2d_view(/*stride1*/ 3, /*stride2*/ 1),
+        make_2d_view(/*stride1*/ 1, /*stride2*/ 3),
+        make_2d_view(/*stride1*/ 1, /*stride2*/ 4)
+      };
+
+      std::unordered_set<StartInvariantMachineView> result =
+          get_allowed_start_invariant_machine_views(ms, shape);
+      CHECK(result == correct);
+    }
+
   }
 
   // TEST_CASE("MachineMapping::combine") {
