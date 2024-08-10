@@ -6,6 +6,7 @@
 #include "pcg/machine_view.dtg.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
+#include "pcg/start_invariant_machine_view.h"
 #include "utils/containers.h"
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/as_vector.h"
@@ -27,7 +28,6 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
-#include "pcg/start_invariant_machine_view.h"
 
 namespace FlexFlow {
 
@@ -446,7 +446,8 @@ std::unordered_set<StartInvariantMachineView>
     get_allowed_start_invariant_machine_views(
         MachineSpecification const &machinespec,
         ParallelTensorShape const &shape) {
-  return transform(get_allowed_machine_views(machinespec, shape), to_start_invariant);
+  return transform(get_allowed_machine_views(machinespec, shape),
+                   to_start_invariant);
 }
 
 auto get_all_machine_views_to_tensor_dim_bijections(

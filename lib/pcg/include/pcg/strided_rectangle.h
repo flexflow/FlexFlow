@@ -7,7 +7,6 @@
 #include "pcg/side_size_t.dtg.h"
 #include "pcg/strided_rectangle_side.dtg.h"
 
-
 namespace FlexFlow {
 
 struct StridedRectangle {
