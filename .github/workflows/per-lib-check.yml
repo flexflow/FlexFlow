@@ -92,6 +92,10 @@ jobs:
         run: |
           build_libs.sh local-execution
 
+      - name: Build models
+        run: |
+          build_libs.sh models
+
       - name: Test utils
         run: |
           test_libs.sh utils

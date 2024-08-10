@@ -1,0 +1,14 @@
+ff_add_test_executable(
+  NAME
+    models-tests
+  SRC_PATTERNS
+    src/*.cc
+  PRIVATE_INCLUDE
+    src/
+  DEPS
+    pcg
+    models
+    utils
+    doctest
+    utils-test-common
+)

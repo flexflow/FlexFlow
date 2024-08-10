@@ -1,0 +1,35 @@
+namespace = "FlexFlow"
+name = "TransformerConfig"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "hidden_size"
+type = "size_t"
+
+[[fields]]
+name = "embedding_size"
+type = "size_t"
+
+[[fields]]
+name = "num_heads"
+type = "size_t"
+
+[[fields]]
+name = "num_layers"
+type = "size_t"
+
+[[fields]]
+name = "sequence_length"
+type = "size_t"
+
+[[fields]]
+name = "batch_size"
+type = "size_t"
