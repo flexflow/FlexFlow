@@ -40,8 +40,6 @@ protected:
 private:
   IMultiDiGraph &get_interface();
   IMultiDiGraph const &get_interface() const;
-
-  friend struct GraphInternal;
 };
 
 } // namespace FlexFlow

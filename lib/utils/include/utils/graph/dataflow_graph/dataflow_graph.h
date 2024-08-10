@@ -43,8 +43,6 @@ protected:
 private:
   IDataflowGraph &get_interface();
   IDataflowGraph const &get_interface() const;
-
-  friend struct GraphInternal;
 };
 
 } // namespace FlexFlow

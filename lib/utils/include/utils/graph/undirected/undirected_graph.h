@@ -34,8 +34,6 @@ public:
 
   using UndirectedGraphView::UndirectedGraphView;
 
-  friend struct GraphInternal;
-
 private:
   IUndirectedGraph const &get_ptr() const;
   IUndirectedGraph &get_ptr();
