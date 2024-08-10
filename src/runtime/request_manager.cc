@@ -1327,6 +1327,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
 
     // Load the tokens on the token tree that are not yet pruned to
     // BatchConfig.tokensInfo.
+    // page attention: we should also add these tokens to the logical blocks
     TokenTree &token_tree = request.speculative_token_trees[0];
     int token_tree_index = 0;
     int layer_index = 0;

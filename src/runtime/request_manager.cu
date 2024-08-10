@@ -465,16 +465,16 @@ void RequestManager::load_batch_config_task(
 
         int parallelism = batch_size;
 
-        prepare_inference_params_kernel_h(batch_config,
-                                          pm,
-                                          handle,
-                                          stream,
-                                          max_num_pages,
-                                          q_indptr_h,
-                                          kv_indptr_h,
-                                          kv_indices_h,
-                                          kv_last_page_len_h,
-                                          qk_indptr_h);
+        // prepare_inference_params_kernel_h(batch_config,
+        //                                   pm,
+        //                                   handle,
+        //                                   stream,
+        //                                   max_num_pages,
+        //                                   q_indptr_h,
+        //                                   kv_indptr_h,
+        //                                   kv_indices_h,
+        //                                   kv_last_page_len_h,
+        //                                   qk_indptr_h);
         prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
                                           min(CUDA_NUM_THREADS, parallelism),
                                           0,
@@ -508,6 +508,28 @@ void RequestManager::load_batch_config_task(
                                                 request_infos,
                                                 request_available,
                                                 batch_size);
+          // print the updated mask
+          // wait for kernel to finish
+          checkCUDA(cudaStreamSynchronize(stream));
+          // copy the mask back to host
+          size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
+                              ((BatchConfig::max_spec_tree_token_num() *
+                                (BatchConfig::max_spec_tree_token_num() +
+                                BatchConfig::max_sequence_length()) + 7) / 8);
+          uint8_t *custom_mask = new uint8_t[custom_mask_size];
+          checkCUDA(cudaMemcpy(custom_mask,
+                              handle.tree_verify_attention_metadata->custom_mask,
+                              sizeof(uint8_t) * batch_size * max_num_pages,
+                              cudaMemcpyDeviceToHost));
+          printf("------------------------updated mask------------------------\n");
+          for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
+            if (batch_config -> request_available[i]) {
+              for (int j = 0; j < BatchConfig::max_spec_tree_token_num(); j++) {
+                printf("%d ", custom_mask[i * BatchConfig::max_spec_tree_token_num() + j]);
+              }
+              printf("\n");
+            }
+          }
         }
       }
 
@@ -550,8 +572,21 @@ void RequestManager::load_batch_config_task(
             handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
         }
 
+        static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+        q_indptr_h[0] = 0;
+        kv_indptr_h[0] = 0;
+        for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
+          if (batch_config->request_available[req_idx]) {
+            int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
+            int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
+                        batch_config->requestsInfo[req_idx].first_token_index_in_request;
+            q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
+            kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+            indptr_idx++;
+          }
+        }
+
         handler->SetCUDAStream(stream);
-        // printf("here??\n");
         handler->BeginForward<half, int32_t>(static_cast<void*>(
                                               static_cast<char*>(handle.tree_verify_attention_metadata->workspace) +
                                               handle.tree_verify_attention_metadata->workspace_block * batch_size),
