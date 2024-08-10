@@ -11,7 +11,7 @@ features = [
 
 includes = [ 
   "pcg/device_id_t.dtg.h",
-  "pcg/strided_rectangle.dtg.h",
+  "pcg/strided_rectangle.h",
 ]
 
 [[fields]]
