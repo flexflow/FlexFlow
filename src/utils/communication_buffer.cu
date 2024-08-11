@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include <string>
 #include <cuda_runtime.h>
 #include "flexflow/utils/communication_buffer.h"
 #include "flexflow/utils/cuda_helper.h"
@@ -30,16 +31,30 @@ using tensorrt_llm::MAX_RANKS_PER_NODE;
 std::vector<cudaIpcMemHandle_t> allgather_ipc_handles(int num_devices, ncclComm_t ncclComm,
                                                   void* allgather_src, void* allgather_dst,
                                                   cudaIpcMemHandle_t local_handle, cudaStream_t stream) {
-  checkCUDA(cudaMemcpyAsync(allgather_src, &local_handle, CUDA_IPC_HANDLE_SIZE, cudaMemcpyHostToDevice, stream));
-  checkNCCL(
-      ncclAllGather(allgather_src, allgather_dst, CUDA_IPC_HANDLE_SIZE, ncclChar, ncclComm, stream));
-  std::vector<char> serial_handles(CUDA_IPC_HANDLE_SIZE * num_devices, 0);
-  checkCUDA(cudaMemcpyAsync(serial_handles.data(), allgather_dst,
-                       CUDA_IPC_HANDLE_SIZE * num_devices, cudaMemcpyDefault, stream));
+  // int device = 0;
+  // checkCUDA(cudaGetDevice(&device));
+  // unsigned long long streamId;
+  // checkCUDA(cudaStreamGetId(stream, &streamId));
+  // printf("device %d: device_id = %d, stream = %llu\n", device, device_id, streamId);
+  // fflush(stdout);
+
+  // Copy local handle to allgather source
+  checkCUDA(cudaMemcpyAsync(allgather_src, local_handle.reserved,
+                            CUDA_IPC_HANDLE_SIZE, cudaMemcpyHostToDevice, stream));
+
+  // Perform ncclAllGather to exchange handles
+  checkNCCL(ncclAllGather(allgather_src, allgather_dst,
+                          CUDA_IPC_HANDLE_SIZE, ncclChar, ncclComm, stream));
+  // printf("device %d: allgather ipc handles done\n", device);
+  // fflush(stdout);
+
+  // Create vector to store gathered handles
   std::vector<cudaIpcMemHandle_t> handles(num_devices);
-  for (int i = 0; i < num_devices; ++i) {
-    memcpy(handles[i].reserved, &serial_handles[i * CUDA_IPC_HANDLE_SIZE], CUDA_IPC_HANDLE_SIZE);
-  }
+  checkCUDA(cudaMemcpyAsync(handles.data(), allgather_dst,
+                            CUDA_IPC_HANDLE_SIZE * num_devices,
+                            cudaMemcpyDeviceToHost, stream));
+  checkCUDA(cudaStreamSynchronize(stream));
+
   return handles;
 }
 
@@ -51,21 +66,42 @@ std::vector<void*> create_ipc_ptr_group(int num_devices, int device_id, ncclComm
                                         void* allgather_src, void* allgather_dst,
                                         void* local_ptr, cudaStream_t stream) {
   // Create ipc handle
+  checkCUDA(cudaSetDevice(device_id));
   cudaIpcMemHandle_t local_handle;
   checkCUDA(cudaIpcGetMemHandle(&local_handle, local_ptr));
+  // std::string str = "device " + std::to_string(device_id) + " handle: ";
+  // for (int i = 0; i < CUDA_IPC_HANDLE_SIZE / sizeof(char); i++) {
+  //   str += std::to_string(local_handle.reserved[i]);
+  //   str += " ";
+  // }
+  // printf("%s\n", str.c_str());
+  // fflush(stdout);
   // All-gather IPC handles.
   std::vector<cudaIpcMemHandle_t> handles = allgather_ipc_handles(num_devices, ncclComm,
                                                                   allgather_src, allgather_dst,
                                                                   local_handle, stream);
+  // pid_t pid = getpid();
+  // pid_t tid = syscall(SYS_gettid); // Get the thread ID
+  // printf("device %d: pid = %d, tid = %d\n", device_id, pid, tid);
+  // fflush(stdout);
+  // while (true) {
+  //   sleep(1);
+  // }
   // Collect the all-gather results.
   std::vector<void*> ptr_group(num_devices);
   for (size_t node_id = 0; node_id < handles.size(); ++node_id) {
     if (static_cast<int>(node_id) == device_id) {
       ptr_group[node_id] = local_ptr;
     } else {
-      uint8_t* foreign_buffer;
-      checkCUDA(cudaIpcOpenMemHandle(reinterpret_cast<void**>(&foreign_buffer), handles[node_id],
-                                      cudaIpcMemLazyEnablePeerAccess));
+      void* foreign_buffer;
+      // std::string str = "device " + std::to_string(device_id) + ", node " + std::to_string(node_id) + ": ";
+      // for (int i = 0; i < CUDA_IPC_HANDLE_SIZE / sizeof(char); i++) {
+      //   str += std::to_string(handles[node_id].reserved[i]);
+      //   str += " ";
+      // }
+      // printf("%s\n", str.c_str());
+      // fflush(stdout);
+      checkCUDA(cudaIpcOpenMemHandle(&foreign_buffer, handles[node_id], cudaIpcMemLazyEnablePeerAccess));
       ptr_group[node_id] = foreign_buffer;
     }
   }
@@ -102,25 +138,30 @@ CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_
   comm_buf->device_id = device_id;
   comm_buf->local_ptr = local_ptr;
   comm_buf->comm_ptrs = create_ipc_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, local_ptr, stream);
+  // printf("ipc ptr group 0 created\n");
+  // fflush(stdout);
 
   // Create barrier helpers.
   int barrier_ptr_size = sizeof(uint32_t) * (MAX_ALL_REDUCE_BLOCKS + 2) * MAX_RANKS_PER_NODE;
   // Alloc local buffer
   void* barrier_in_ptr;
   checkCUDA(cudaMalloc(&barrier_in_ptr, barrier_ptr_size));
+  checkCUDA(cudaMemset(barrier_in_ptr, 0, barrier_ptr_size));
+  void* barrier_out_ptr;
+  checkCUDA(cudaMalloc(&barrier_out_ptr, barrier_ptr_size));
+  checkCUDA(cudaMemset(barrier_out_ptr, 0, barrier_ptr_size));
   // Reset allocated memory to zero.
   // We explicitly synchronize after memset, to make sure memset finishes
   // before using all-gather to exchange IPC handles.
   // This is important to ensure the memory reset get ordered
   // before any other peers read the memory.
-  checkCUDA(cudaMemset(barrier_in_ptr, 0, barrier_ptr_size));
-  checkCUDA(cudaDeviceSynchronize());
-  void* barrier_out_ptr;
-  checkCUDA(cudaMalloc(&barrier_out_ptr, barrier_ptr_size));
-  checkCUDA(cudaMemset(barrier_out_ptr, 0, barrier_ptr_size));
   checkCUDA(cudaDeviceSynchronize());
   comm_buf->barrier_in = create_ipc_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, barrier_in_ptr, stream);
+  // printf("ipc ptr group 1 created\n");
+  // fflush(stdout);
   comm_buf->barrier_out = create_ipc_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, barrier_out_ptr, stream);
+  // printf("ipc ptr group 2 created\n");
+  // fflush(stdout);
   comm_buf->barrier_flag = 1;
 
   return comm_buf;
