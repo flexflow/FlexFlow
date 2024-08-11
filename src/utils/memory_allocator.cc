@@ -19,10 +19,11 @@ namespace FlexFlow {
 
 using Legion::Machine;
 using Legion::Memory;
+using Legion::Processor;
 
-Memory get_proc_mem(Legion::Processor proc) {
+Memory get_proc_mem(Machine machine, Processor proc) {
     // First try to allocate a managed memory (cudaMallocManaged)
-    Memory proc_mem = Machine::MemoryQuery(Machine::get_machine())
+    Memory proc_mem = Machine::MemoryQuery(machine)
                         .only_kind(Memory::GPU_MANAGED_MEM)
                         .best_affinity_to(proc)
                         .first();
@@ -30,7 +31,7 @@ Memory get_proc_mem(Legion::Processor proc) {
       return proc_mem;
     }
     // If managed memory is not available, try to allocate a framebuffer memory
-    proc_mem = Machine::MemoryQuery(Machine::get_machine())
+    proc_mem = Machine::MemoryQuery(machine)
                         .only_kind(Memory::GPU_FB_MEM)
                         .best_affinity_to(proc)
                         .first();
