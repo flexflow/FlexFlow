@@ -1,5 +1,6 @@
 #include "utils/graph/undirected/undirected_edge.h"
 #include "utils/hash/tuple.h"
+#include <sstream>
 
 namespace FlexFlow {
 
@@ -38,3 +39,17 @@ size_t hash<UndirectedEdge>::operator()(UndirectedEdge const &e) const {
 }
 
 } // namespace std
+
+namespace FlexFlow {
+std::string format_as(UndirectedEdge const &x) {
+  std::ostringstream oss;
+  oss << "<UndirectedEdge";
+  oss << " smaller=" << x.smaller;
+  oss << " bigger=" << x.bigger;
+  oss << ">";
+  return oss.str();
+}
+std::ostream &operator<<(std::ostream &s, UndirectedEdge const &x) {
+  return s << fmt::to_string(x);
+}
+} // namespace FlexFlow

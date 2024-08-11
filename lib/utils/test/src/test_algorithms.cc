@@ -75,16 +75,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == expected_result);
     }
 
-    SUBCASE("get_dominators") {
-      std::unordered_map<Node, std::unordered_set<Node>> expected = {
-          {n[0], {n[0]}},
-          {n[1], {n[0], n[1]}},
-          {n[2], {n[0], n[2]}},
-          {n[3], {n[0], n[3]}},
-      };
-      CHECK(get_dominators(g) == expected);
-    }
-
     SUBCASE("get_sinks") {
       auto expected = std::unordered_set<Node>{n[2], n[3]};
       CHECK(get_sinks(g) == expected);

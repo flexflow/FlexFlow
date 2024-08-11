@@ -31,4 +31,9 @@ struct hash<::FlexFlow::UndirectedEdge> {
 
 } // namespace std
 
+namespace FlexFlow {
+std::string format_as(UndirectedEdge const &);
+std::ostream &operator<<(std::ostream &, UndirectedEdge const &);
+} // namespace FlexFlow
+
 #endif
