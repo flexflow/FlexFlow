@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/record_formatter.h"
+#include "test/utils/doctest.h"
 
 std::string formatRecord(RecordFormatter const &formatter) {
   std::ostringstream oss;

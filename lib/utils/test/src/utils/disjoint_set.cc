@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/disjoint_set.h"
+#include "test/utils/doctest.h"
 
 using namespace FlexFlow;
 
@@ -18,10 +18,10 @@ std::string generate_element<std::string>(int seed) {
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE_TEMPLATE("DisjointSetUnionAndFind", T, int, std::string) {
-    disjoint_set<optional<T>> ds;
+    disjoint_set<std::optional<T>> ds;
 
     SUBCASE("SingleElementSets") {
-      optional<T> element = generate_element<T>(1);
+      std::optional<T> element = generate_element<T>(1);
       CHECK(ds.find(element) == element);
 
       element = generate_element<T>(2);
@@ -29,10 +29,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("UnionAndFind") {
-      optional<T> element1 = generate_element<T>(1);
-      optional<T> element2 = generate_element<T>(2);
-      optional<T> element3 = generate_element<T>(3);
-      optional<T> element4 = generate_element<T>(4);
+      std::optional<T> element1 = generate_element<T>(1);
+      std::optional<T> element2 = generate_element<T>(2);
+      std::optional<T> element3 = generate_element<T>(3);
+      std::optional<T> element4 = generate_element<T>(4);
 
       ds.m_union(element1, element2);
       CHECK(ds.find(element1) == ds.find(element2));
@@ -55,11 +55,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     ds.m_union(1, 4);
     ds.m_union(5, 6);
 
-    std::map<optional<int>, optional<int>, OptionalComparator<int>>
+    std::map<std::optional<int>, std::optional<int>, OptionalComparator<int>>
         expectedMapping = {{1, 4}, {2, 4}, {3, 4}, {4, 4}, {5, 6}, {6, 6}};
 
-    std::map<optional<int>, optional<int>, OptionalComparator<int>> mapping =
-        ds.get_mapping();
+    std::map<std::optional<int>, std::optional<int>, OptionalComparator<int>>
+        mapping = ds.get_mapping();
 
     for (auto const &kv : mapping) {
       CHECK(*kv.second == *expectedMapping[kv.first]); // Compare the values

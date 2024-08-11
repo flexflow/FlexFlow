@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/random_utils.h"
+#include "test/utils/doctest.h"
 #include <algorithm>
 
 void checkProbabilities(std::vector<int> const &counts,

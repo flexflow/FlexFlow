@@ -1,19 +1,19 @@
-#include "test/utils/doctest.h"
 #include "utils/type_index.h"
+#include "test/utils/doctest.h"
 #include <typeindex>
 
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("type_index function") {
+  TEST_CASE("get_type_index_for_type") {
     SUBCASE("int type") {
-      std::type_index idx = type_index<int>();
+      std::type_index idx = get_type_index_for_type<int>();
       std::type_index expected_idx = typeid(int);
       CHECK(idx == expected_idx);
     }
 
     SUBCASE("string type") {
-      std::type_index idx = type_index<std::string>();
+      std::type_index idx = get_type_index_for_type<std::string>();
       std::type_index expected_idx = typeid(std::string);
       CHECK(idx == expected_idx);
     }

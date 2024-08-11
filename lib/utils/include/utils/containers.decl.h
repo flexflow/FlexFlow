@@ -30,16 +30,8 @@ bool contains_l(bidict<K, V> const &m, K const &k);
 template <typename K, typename V>
 bool contains_r(bidict<K, V> const &m, V const &v);
 
-template <typename K, typename V, typename F>
-std::unordered_map<K, V> filter_values(std::unordered_map<K, V> const &m,
-                                       F const &f);
-
 template <typename Container, typename Element>
 std::optional<std::size_t> index_of(Container const &c, Element const &e);
-
-template <typename K, typename V>
-std::unordered_map<K, V> restrict_keys(std::unordered_map<K, V> const &m,
-                                       std::unordered_set<K> const &mask);
 
 template <typename K, typename V>
 std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
@@ -47,9 +39,6 @@ std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
 
 template <typename K, typename V>
 bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs);
-
-template <typename E>
-std::optional<E> at_idx(std::vector<E> const &v, size_t idx);
 
 template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m);
@@ -61,16 +50,8 @@ template <typename L, typename R>
 std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m);
 
 template <typename T>
-bool is_supserseteq_of(std::unordered_set<T> const &l,
-                       std::unordered_set<T> const &r);
-
-template <typename S, typename D>
-std::unordered_set<D>
-    map_over_unordered_set(std::function<D(S const &)> const &f,
-                           std::unordered_set<S> const &input);
-
-template <typename C>
-std::optional<typename C::value_type> maybe_get_only(C const &c);
+bool is_superseteq_of(std::unordered_set<T> const &l,
+                      std::unordered_set<T> const &r);
 
 template <typename Container, typename Function>
 std::optional<bool> optional_all_of(Container const &, Function const &);
@@ -78,14 +59,20 @@ std::optional<bool> optional_all_of(Container const &, Function const &);
 template <typename C>
 bool are_all_same(C const &c);
 
+template <typename In, typename F, typename Out>
+std::vector<Out> flatmap(std::vector<In> const &v, F const &f);
+
+template <typename In, typename F, typename Out>
+std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f);
+template <typename Out, typename In>
+std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
+                                   std::unordered_set<Out> (*f)(In const &));
+
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);
 
 template <typename C>
 typename C::value_type maximum(C const &v);
-
-template <typename T>
-T reversed(T const &t);
 
 template <typename T>
 std::vector<T> value_all(std::vector<std::optional<T>> const &v);

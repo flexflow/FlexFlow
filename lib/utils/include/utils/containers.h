@@ -5,17 +5,21 @@
 #include "required_core.h"
 #include "type_traits_core.h"
 #include "utils/bidict/bidict.h"
+#include "utils/containers/are_disjoint.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/extend.h"
 #include "utils/containers/extend_vector.h"
 #include "utils/containers/filter.h"
 #include "utils/containers/intersection.h"
 #include "utils/containers/is_subseteq_of.h"
+#include "utils/containers/keys.h"
+#include "utils/containers/restrict_keys.h"
 #include "utils/containers/sorted.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/vector_transform.h"
 #include "utils/exception.h"
 #include "utils/hash/pair.h"
+#include "utils/optional.h"
 #include "utils/type_traits.h"
 #include <algorithm>
 #include <cassert>
@@ -135,19 +139,9 @@ std::function<L(R const &)> lookup_in_r(bidict<L, R> const &m) {
 }
 
 template <typename T>
-bool is_supserseteq_of(std::unordered_set<T> const &l,
-                       std::unordered_set<T> const &r) {
+bool is_superseteq_of(std::unordered_set<T> const &l,
+                      std::unordered_set<T> const &r) {
   return is_subseteq_of<T>(r, l);
-}
-
-template <typename S, typename D>
-std::unordered_set<D>
-    map_over_unordered_set(std::function<D(S const &)> const &f,
-                           std::unordered_set<S> const &input) {
-  std::unordered_set<D> result;
-  std::transform(
-      input.cbegin(), input.cend(), std::inserter(result, result.begin()), f);
-  return result;
 }
 
 template <typename Container, typename Function>
