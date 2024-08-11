@@ -62,6 +62,8 @@ public:
   size_t instance_total_size, instance_allocated_size;
 };
 
+Legion::Memory get_proc_mem(Legion::Processor proc);
+
 }; // namespace FlexFlow
 
 #endif // _FLEXFLOW_RUNTIME_H_
