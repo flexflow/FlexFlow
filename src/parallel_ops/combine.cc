@@ -106,6 +106,7 @@ OpMeta *Combine::init_task(Task const *task,
   m->input_type[0] = cmb->inputs[0]->data_type;
   m->output_type[0] = cmb->outputs[0]->data_type;
   assert(m->input_type[0] == m->output_type[0]);
+  std::strcpy(m->op_name, cmb->name);
   return m;
 }
 
@@ -423,6 +424,9 @@ void Combine::forward_task(Task const *task,
   assert(task->regions.size() == 2);
   CombineMeta const *m = *((CombineMeta **)task->local_args);
   DataType data_type = m->input_type[0];
+  if (m->inference_debugging) {
+    std::cout << "INF " << m->op_name << std::endl;
+  }
   if (data_type == DT_HALF) {
     forward_task_with_type<half>(task, regions, ctx, runtime);
   } else if (data_type == DT_FLOAT) {
@@ -476,6 +480,12 @@ void Combine::peft_bwd_task(Task const *task,
       data_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   assert(input_grad.data_type == data_type);
   assert(output_grad.domain == input_grad.domain);
+  CombineMeta const *m = *((CombineMeta **)task->local_args);
+  int shard_id = task->index_point.point_data[0];
+  if (shard_id == 0 && m->inference_debugging) {
+    // m is null when shard_id > 0 for some reason
+    std::cout << "BWD " << m->op_name << std::endl;
+  }
   if (data_type == DT_HALF) {
     backward_kernel<half>(output_grad.get_half_ptr(),
                           input_grad.get_half_ptr(),

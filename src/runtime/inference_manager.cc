@@ -781,6 +781,7 @@ void FFModel::compile_inference() {
     // Only create nccl for allreduce and fusedop for inference
     // (fusedop may include allreduces)
     if (operators[l]->op_type == OP_ALLREDUCE ||
+        operators[l]->op_type == OP_PARALLEL_IDENTITY ||
         operators[l]->op_type == OP_LORA || operators[l]->op_type == OP_FUSED) {
       MachineView view = operators[l]->outputs[0]->machine_view;
       if (view_hash_to_nccl_comms.find(view.hash()) ==

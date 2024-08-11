@@ -671,6 +671,13 @@ void Linear::inference_task(Task const *task,
     }
     Linear::save_inference_tensors_to_file(
         m, shard_id, bc, {input}, weights_accessors, {output});
+    printf("\tin=[%i,%i].T @ w=[%i,%i] -> out=[%i,%i]\n",
+           in_dim,
+           bc->num_tokens,
+           in_dim,
+           out_dim,
+           out_dim,
+           bc->num_tokens);
   }
 }
 
@@ -756,6 +763,13 @@ void Linear::peft_bwd_task(Task const *task,
     int shard_id = task->index_point.point_data[0];
     Linear::save_inference_tensors_to_file(
         m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false, true);
+    printf("\tw=[%i,%i] @ out_grad=[%i,%i] -> in_grad[%i,%i]\n",
+           in_dim,
+           out_dim,
+           out_dim,
+           num_peft_tokens,
+           in_dim,
+           num_peft_tokens);
   }
   peft_bwd_kernel_wrapper(m,
                           input_grad.ptr,

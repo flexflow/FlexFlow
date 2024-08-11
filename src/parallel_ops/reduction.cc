@@ -144,6 +144,7 @@ OpMeta *Reduction::init_task(Task const *task,
   meta->input_type[0] = reduct->inputs[0]->data_type;
   meta->output_type[0] = reduct->outputs[0]->data_type;
   assert(meta->input_type[0] == meta->output_type[0]);
+  std::strcpy(meta->op_name, reduct->name);
   return meta;
 }
 
@@ -378,6 +379,10 @@ void Reduction::forward_task(Task const *task,
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  if (m->inference_debugging) {
+    std::cout << "INF " << m->op_name << std::endl;
+  }
 
   assert(input.data_type == output.data_type);
   if (input.data_type == DT_HALF) {

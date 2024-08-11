@@ -41,6 +41,7 @@
 #include "flexflow/parallel_ops/allreduce_params.h"
 #include "flexflow/parallel_ops/combine_params.h"
 #include "flexflow/parallel_ops/fused_parallel_op_params.h"
+#include "flexflow/parallel_ops/parallel_identity_params.h"
 #include "flexflow/parallel_ops/partition_params.h"
 #include "flexflow/parallel_ops/reduction_params.h"
 #include "flexflow/parallel_ops/replicate_params.h"
@@ -91,6 +92,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        ReductionParams,
                                        CombineParams,
                                        AllReduceParams,
+                                       ParallelIdentityParams,
                                        FusedParallelOpParams>;
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op);

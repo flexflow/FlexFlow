@@ -143,6 +143,7 @@ OpMeta *Replicate::init_task(Task const *task,
   meta->input_type[0] = repl->inputs[0]->data_type;
   meta->output_type[0] = repl->outputs[0]->data_type;
   assert(meta->input_type[0] == meta->output_type[0]);
+  std::strcpy(meta->op_name, repl->name);
   return meta;
 }
 
@@ -401,6 +402,9 @@ void Replicate::forward_task(Task const *task,
   assert(task->regions.size() == 2);
 
   ReplicateMeta const *m = *((ReplicateMeta **)task->local_args);
+  if (m->inference_debugging) {
+    std::cout << "INF " << m->op_name << std::endl;
+  }
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -453,6 +457,11 @@ void Replicate::peft_bwd_task(Task const *task,
       regions[0], task->regions[0], FID_DATA, ctx, runtime);
   float *input_grad_ptr = helperGetTensorPointerRW<float>(
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  ReplicateMeta const *m = *((ReplicateMeta **)task->local_args);
+  if (m->inference_debugging) {
+    std::cout << "BWD " << m->op_name << std::endl;
+  }
 
   backward_kernel<float>(
       output_grad_ptr, input_grad_ptr, num_elements, num_replicas);

@@ -44,6 +44,7 @@
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
+#include "flexflow/parallel_ops/kernels/parallel_identity_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
@@ -650,6 +651,14 @@ __host__ void
             m, bc, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
+      case OP_PARALLEL_IDENTITY: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        ParallelIdentityMeta const *m = (ParallelIdentityMeta *)metas->meta[op];
+        Kernels::ParallelIdentity::inference_kernel_wrapper(
+            m, bc, my_input_accessor[0], my_output_accessor[0]);
+        break;
+      }
       default: {
         fprintf(stderr,
                 "Fusion currently does not support type = %d\n",
@@ -659,6 +668,7 @@ __host__ void
     }
     if (metas->meta[op]->inference_debugging &&
         !(fused->op_op_type[op] == OP_ALLREDUCE ||
+          fused->op_op_type[op] == OP_PARALLEL_IDENTITY ||
           fused->op_op_type[op] == OP_REPLICATE ||
           fused->op_op_type[op] == OP_REPARTITION ||
           fused->op_op_type[op] == OP_COMBINE)) {
@@ -1170,6 +1180,14 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
             m, bc, my_input_grad_accessor[0], my_output_grad_accessor[0]);
         break;
       }
+      case OP_PARALLEL_IDENTITY: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        ParallelIdentityMeta const *m = (ParallelIdentityMeta *)metas->meta[op];
+        Kernels::ParallelIdentity::peft_bwd_kernel_wrapper(
+            m, bc, my_input_grad_accessor[0], my_output_grad_accessor[0]);
+        break;
+      }
       default: {
         fprintf(stderr,
                 "Fusion currently does not support type = %d\n",
@@ -1179,6 +1197,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
     }
     if (metas->meta[op]->inference_debugging &&
         !(fused->op_op_type[op] == OP_ALLREDUCE ||
+          fused->op_op_type[op] == OP_PARALLEL_IDENTITY ||
           fused->op_op_type[op] == OP_REPLICATE ||
           fused->op_op_type[op] == OP_REPARTITION ||
           fused->op_op_type[op] == OP_COMBINE)) {

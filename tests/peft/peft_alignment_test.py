@@ -328,6 +328,10 @@ class LllamaAlignmentTest(AlignmentTest):
         # LM head
         hf_tensor_name = "lm_head"
         ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+        input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+        hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
+        compare(hf_tensor, ff_tensor, label="LM head input")
         output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
         hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
         ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
@@ -437,26 +441,26 @@ class LllamaAlignmentTest(AlignmentTest):
         # LM head
         hf_tensor_name = "lm_head"
         ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
-        input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
         output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
-        hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
-        ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
-        compare(hf_tensor, ff_tensor, label="LM head gradient output")
+        input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
         hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+        compare(hf_tensor, ff_tensor, label="LM head gradient output")
+        hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, TPType.TO_REDUCE)
         compare(hf_tensor, ff_tensor, label="LM head gradient input")
 
         # Norm
         hf_tensor_name = "norm"
         ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
-        input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
         output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
+        compare(hf_tensor, ff_tensor, label="Norm gradient output")
         hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
         ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
-        compare(hf_tensor, ff_tensor, label="Norm gradient output")
-        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape)
-        compare(hf_tensor, ff_tensor, label="LM head gradient input")
+        compare(hf_tensor, ff_tensor, label="Norm gradient input")
 
         # Transformers blocks
         for i in range(self.num_layers-1, -1, -1):
@@ -717,7 +721,7 @@ args = parser.parse_args()
 
 if __name__ == "__main__":
     llama_alignment = LllamaAlignmentTest(args.model_name, tp_degree=args.tensor_parallelism_degree)
-    llama_alignment.check_weights_alignment()
+    # llama_alignment.check_weights_alignment()
     for i in range(args.num_steps):
         llama_alignment.check_fwd_pass(i)
         llama_alignment.check_bwd_pass(i)

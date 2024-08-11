@@ -55,6 +55,7 @@
 #include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/parallel_ops/parallel_identity.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
@@ -2439,6 +2440,13 @@ GraphOptimalViewSerialized
         sez.serialize(allreduce->name, strlen(allreduce->name));
         break;
       }
+      case OP_PARALLEL_IDENTITY: {
+        ParallelIdentity *parallel_identity = (ParallelIdentity *)op;
+        sez.serialize(parallel_identity->parallel_identity_dim);
+        sez.serialize(strlen(parallel_identity->name));
+        sez.serialize(parallel_identity->name, strlen(parallel_identity->name));
+        break;
+      }
       case OP_FUSED_PARALLEL: {
         FusedParallelOp *fused = (FusedParallelOp *)op;
         sez.serialize(fused->num_parallel_ops);
@@ -3104,6 +3112,18 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
         node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
+        break;
+      }
+      case OP_PARALLEL_IDENTITY: {
+        assert(num_inputs == 1);
+        int parallel_identity_dim;
+        dez.deserialize(parallel_identity_dim);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
+        node = get_or_create_node<ParallelIdentity>(inputs[0],
+                                                    {parallel_identity_dim});
         break;
       }
       case OP_FUSED_PARALLEL: {

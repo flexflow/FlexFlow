@@ -259,6 +259,11 @@ enum TaskIDs {
   ALLREDUCE_BWD_TASK_ID,
   ALLREDUCE_INF_TASK_ID,
   ALLREDUCE_PEFT_BWD_TASK_ID,
+  PARALLEL_IDENTITY_INIT_TASK_ID,
+  PARALLEL_IDENTITY_FWD_TASK_ID,
+  PARALLEL_IDENTITY_BWD_TASK_ID,
+  PARALLEL_IDENTITY_INF_TASK_ID,
+  PARALLEL_IDENTITY_PEFT_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
   FUSED_PARALLELOP_FWD_TASK_ID,
   FUSED_PARALLELOP_BWD_TASK_ID,
@@ -371,6 +376,7 @@ class Repartition;
 class Reduction;
 class Replicate;
 class AllReduce;
+class ParallelIdentity;
 class FusedParallelOp;
 class ParallelOpInfo;
 
@@ -1133,6 +1139,8 @@ public:
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;
   bool need_to_add_combine(int layer_idx) const;
+  bool need_to_add_allreduce(int layer_idx) const;
+  bool need_to_add_parallel_identity(int layer_idx) const;
   bool is_mlp_block(int layer_idx) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
@@ -1285,6 +1293,8 @@ public:
                          Combine *>,
       std::unordered_map<std::pair<ParallelTensorShape, AllReduceParams>,
                          AllReduce *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ParallelIdentityParams>,
+                         ParallelIdentity *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
                          FusedParallelOp *>>
       cached_ops;

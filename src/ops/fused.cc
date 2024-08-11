@@ -229,7 +229,8 @@ bool FusedOp::add_operator(
   // op->name, op_config));
   // Cannot fuse parallel operators (except allreduce) since they have different
   // paralel_is in forward and backward
-  assert(!op->is_parallel_op() || op->op_type == OP_ALLREDUCE);
+  assert(!op->is_parallel_op() || op->op_type == OP_ALLREDUCE ||
+         op->op_type == OP_PARALLEL_IDENTITY);
   // Currently don't consider nested fusion
   assert(op->op_type != OP_FUSED);
   MachineView my_view = outputs[0]->machine_view;

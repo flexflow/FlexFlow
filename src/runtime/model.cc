@@ -67,6 +67,7 @@
 #include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/parallel_ops/parallel_identity.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
@@ -1247,7 +1248,8 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
     int idx = 0;                                                               \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
-      if (op_type == OP_ALLREDUCE || op_type == OP_LORA) {                     \
+      if (op_type == OP_ALLREDUCE || op_type == OP_LORA ||                     \
+          op_type == OP_PARALLEL_IDENTITY) {                                   \
         ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
         handle.ncclComm = nccl_comms[idx++];                                   \
       }                                                                        \
@@ -2969,7 +2971,8 @@ bool FFModel::apply_fusion(
     // don't fuse parallel op except allReduce since they have different
     // parallel_is in forward/backward
     if (operators[l]->is_parallel_op() &&
-        operators[l]->op_type != OP_ALLREDUCE) {
+        operators[l]->op_type != OP_ALLREDUCE &&
+        operators[l]->op_type != OP_PARALLEL_IDENTITY) {
       continue;
     }
     size_t start = 0;
@@ -3015,7 +3018,8 @@ bool FFModel::apply_fusion(
           // don't fuse parallel op except allReduce since they have different
           // parallel_is in forward/backward
           if (operators[i]->is_parallel_op() &&
-              operators[i]->op_type != OP_ALLREDUCE) {
+              operators[i]->op_type != OP_ALLREDUCE &&
+              operators[i]->op_type != OP_PARALLEL_IDENTITY) {
             continue;
           }
           fused_op = new FusedOp(*this, operators[i]);
@@ -3396,6 +3400,62 @@ bool FFModel::need_to_add_combine(int layer_idx) const {
   return false;
 }
 
+bool FFModel::need_to_add_allreduce(int layer_idx) const {
+  auto const &l = layers[layer_idx];
+  if (config.computationMode == COMP_MODE_INFERENCE &&
+      config.tensor_parallelism_degree > 1 &&
+      (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+       l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+       // mlp layer
+       is_mlp_block(layer_idx) ||
+       // llama mlp layer
+       (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+        layers[layer_idx - 1]->op_type == OP_GELU &&
+        layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+       // LLAMA without element-wise operator fusion
+       (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+        layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+        layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+        layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+        layers[layer_idx - 4]->op_type == OP_LINEAR &&
+        layers[layer_idx - 5]->op_type == OP_LINEAR) ||
+       // LLAMA with element-wise operator fusion
+       (l->op_type == OP_LINEAR && layer_idx >= 3 &&
+        layers[layer_idx - 1]->op_type == OP_SIGMOID_SILU_MULTI &&
+        layers[layer_idx - 2]->op_type == OP_LINEAR &&
+        layers[layer_idx - 3]->op_type == OP_LINEAR))) {
+    return true;
+  }
+  return false;
+}
+
+bool FFModel::need_to_add_parallel_identity(int layer_idx) const {
+  auto const &l = layers[layer_idx];
+  // add parallel identity (allreduce in the backward pass) before the lm head
+  // we find the lm head by looking for the linear layer right after a residual
+  // rms norm / layer norm, and before a softmax, followed by
+  // argmax/argtopk/sampling
+  if (config.computationMode == COMP_MODE_INFERENCE &&
+      config.tensor_parallelism_degree > 1 &&
+      ((l->op_type == OP_RESIDUAL_RMS_NORM ||
+        l->op_type == OP_RESIDUAL_LAYERNORM) &&
+       // there are at least 2 layers before the norm, and at least 3 following
+       // the norm
+       layer_idx >= 2 && layer_idx < layers.size() - 3 &&
+       // norm is followed by linear layer (lm head)
+       layers[layer_idx + 1]->op_type == OP_LINEAR &&
+       // lm head is followed by softmax
+       layers[layer_idx + 2]->op_type == OP_SOFTMAX &&
+       // softmax is followed by argmax/argtopk/sampling
+       (layers[layer_idx + 3]->op_type == OP_ARG_TOPK ||
+        layers[layer_idx + 3]->op_type == OP_SAMPLING ||
+        layers[layer_idx + 3]->op_type == OP_ARGMAX ||
+        layers[layer_idx + 3]->op_type == OP_SCALAR_TRUE_DIV))) {
+    return true;
+  }
+  return false;
+}
+
 void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
   std::map<const Tensor, ParallelTensor>
@@ -3443,28 +3503,13 @@ void FFModel::create_operators_from_layers() {
       //                                 config.tensor_parallelism_degree);
       // operators.push_back(repl);
       // op = repl;
-    } else if (config.computationMode == COMP_MODE_INFERENCE &&
-               config.tensor_parallelism_degree > 1 &&
-               (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
-                l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-                // mlp layer
-                is_mlp_block(layer_idx) ||
-                // llama mlp layer
-                (l->op_type == OP_LINEAR && layer_idx >= 2 &&
-                 layers[layer_idx - 1]->op_type == OP_GELU &&
-                 layers[layer_idx - 2]->op_type == OP_LINEAR) ||
-                // LLAMA without element-wise operator fusion
-                (l->op_type == OP_LINEAR && layer_idx >= 5 &&
-                 layers[layer_idx - 1]->op_type == OP_EW_MUL &&
-                 layers[layer_idx - 2]->op_type == OP_EW_MUL &&
-                 layers[layer_idx - 3]->op_type == OP_SIGMOID &&
-                 layers[layer_idx - 4]->op_type == OP_LINEAR &&
-                 layers[layer_idx - 5]->op_type == OP_LINEAR) ||
-                // LLAMA with element-wise operator fusion
-                (l->op_type == OP_LINEAR && layer_idx >= 3 &&
-                 layers[layer_idx - 1]->op_type == OP_SIGMOID_SILU_MULTI &&
-                 layers[layer_idx - 2]->op_type == OP_LINEAR &&
-                 layers[layer_idx - 3]->op_type == OP_LINEAR))) {
+      assert(op->numOutputs == l->numOutputs);
+      for (int i = 0; i < op->numOutputs; i++) {
+        assert(tensors_to_parallel_tensors.find(l->outputs[i]) ==
+               tensors_to_parallel_tensors.end());
+        tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
+      }
+    } else if (need_to_add_allreduce(layer_idx)) {
       assert(op->numOutputs == 1);
       AllReduce *allreduce =
           new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
@@ -3472,12 +3517,34 @@ void FFModel::create_operators_from_layers() {
       op_before_allreduce_tensors_to_parallel_tensors[l->outputs[0]] =
           op->outputs[0];
       op = allreduce;
-    }
-    assert(op->numOutputs == l->numOutputs);
-    for (int i = 0; i < op->numOutputs; i++) {
-      assert(tensors_to_parallel_tensors.find(l->outputs[i]) ==
+      assert(op->numOutputs == l->numOutputs);
+      for (int i = 0; i < op->numOutputs; i++) {
+        assert(tensors_to_parallel_tensors.find(l->outputs[i]) ==
+               tensors_to_parallel_tensors.end());
+        tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
+      }
+    } else if (need_to_add_parallel_identity(layer_idx)) {
+      assert(op->numOutputs == 2);
+      ParallelIdentity *parallel_identity = new ParallelIdentity(
+          *this, op->outputs[1], op->outputs[1]->num_dims - 1);
+      operators.push_back(parallel_identity);
+      assert(op->numOutputs == l->numOutputs);
+      // output 0 is taken from the residual rms norm
+      assert(tensors_to_parallel_tensors.find(l->outputs[0]) ==
              tensors_to_parallel_tensors.end());
-      tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
+      tensors_to_parallel_tensors[l->outputs[0]] = op->outputs[0];
+      // output 1 is taken from the parallel identity
+      op = parallel_identity;
+      assert(tensors_to_parallel_tensors.find(l->outputs[1]) ==
+             tensors_to_parallel_tensors.end());
+      tensors_to_parallel_tensors[l->outputs[1]] = op->outputs[0];
+    } else {
+      assert(op->numOutputs == l->numOutputs);
+      for (int i = 0; i < op->numOutputs; i++) {
+        assert(tensors_to_parallel_tensors.find(l->outputs[i]) ==
+               tensors_to_parallel_tensors.end());
+        tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
+      }
     }
     // if the operator has op_type==OP_LORA, and the second-to-last operator in
     // the operators vector has op_type==OP_ALLREDUCE, move the operator before
@@ -7150,6 +7217,86 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<AllReduce::peft_bwd_task>(registrar);
+    }
+  }
+  // ParallelIdentity
+  {
+    TaskVariantRegistrar registrar(PARALLEL_IDENTITY_INIT_TASK_ID,
+                                   "ParallelIdentity Init");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<OpMeta *, ParallelIdentity::init_task>(
+          registrar, "ParallelIdentity init Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<OpMeta *, ParallelIdentity::init_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(PARALLEL_IDENTITY_FWD_TASK_ID,
+                                   "ParallelIdentity Forward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ParallelIdentity::forward_task>(
+          registrar, "ParallelIdentity Forward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ParallelIdentity::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(PARALLEL_IDENTITY_BWD_TASK_ID,
+                                   "ParallelIdentity Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ParallelIdentity::backward_task>(
+          registrar, "ParallelIdentity Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ParallelIdentity::backward_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(PARALLEL_IDENTITY_INF_TASK_ID,
+                                   "ParallelIdentity Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ParallelIdentity::inference_task>(
+          registrar, "ParallelIdentity Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ParallelIdentity::inference_task>(
+          registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(PARALLEL_IDENTITY_PEFT_BWD_TASK_ID,
+                                   "ParallelIdentity PEFT Backward");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<ParallelIdentity::peft_bwd_task>(
+          registrar, "ParallelIdentity PEFT Backward Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<ParallelIdentity::peft_bwd_task>(
+          registrar);
     }
   }
 

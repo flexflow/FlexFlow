@@ -192,6 +192,7 @@ enum OperatorType {
   OP_REDUCTION,
   OP_PIPELINE,
   OP_ALLREDUCE,
+  OP_PARALLEL_IDENTITY,
   OP_FUSED_PARALLEL,
   OP_INVALID,
 };
@@ -206,36 +207,37 @@ enum ModelType {
 };
 
 enum PMParameter {
-  PM_OP_TYPE,            // AnyOp
-  PM_NUM_INPUTS,         // AnyOp
-  PM_NUM_OUTPUTS,        // AnyOp
-  PM_GROUP,              // Conv2D
-  PM_KERNEL_H,           // Conv2D, Pool2D
-  PM_KERNEL_W,           // Conv2D, Pool2D
-  PM_STRIDE_H,           // Conv2D, Pool2D
-  PM_STRIDE_W,           // Conv2D, Pool2D
-  PM_PADDING_H,          // Conv2D, Pool2D
-  PM_PADDING_W,          // Conv2D, Pool2D
-  PM_ACTI,               // Conv2D, Pool2D
-  PM_NUMDIM,             // Concat, Transpose
-  PM_AXIS,               // Concat, Split
-  PM_PERM,               // Transpose
-  PM_OUTSHUFFLE,         // Transpose
-  PM_MERGE_GCONV_COUNT,  // MergeGConv
-  PM_AXES,               // Squeeze, Unsqueeze, Reduce*
-  PM_KEEP_DIMS,          // Reduce*
-  PM_EPSILON,            // BatchNorm
-  PM_REPARTITION_DIM,    // Repartition
-  PM_REPARTITION_DEGREE, // Repartition
-  PM_REPLICATE_DIM,      // Replicate
-  PM_REPLICATE_DEGREE,   // Replicate
-  PM_COMBINE_DIM,        // Combine
-  PM_COMBINE_DEGREE,     // Combine
-  PM_REDUCTION_DIM,      // Reduction
-  PM_REDUCTION_DEGREE,   // Reduction
-  PM_ALLREDUCE_DIM,      // AllReduce
-  PM_SOFTMAX_DIM,        // Softmax
-  PM_NUM_HEADS,          // MultiHeadAttention
+  PM_OP_TYPE,               // AnyOp
+  PM_NUM_INPUTS,            // AnyOp
+  PM_NUM_OUTPUTS,           // AnyOp
+  PM_GROUP,                 // Conv2D
+  PM_KERNEL_H,              // Conv2D, Pool2D
+  PM_KERNEL_W,              // Conv2D, Pool2D
+  PM_STRIDE_H,              // Conv2D, Pool2D
+  PM_STRIDE_W,              // Conv2D, Pool2D
+  PM_PADDING_H,             // Conv2D, Pool2D
+  PM_PADDING_W,             // Conv2D, Pool2D
+  PM_ACTI,                  // Conv2D, Pool2D
+  PM_NUMDIM,                // Concat, Transpose
+  PM_AXIS,                  // Concat, Split
+  PM_PERM,                  // Transpose
+  PM_OUTSHUFFLE,            // Transpose
+  PM_MERGE_GCONV_COUNT,     // MergeGConv
+  PM_AXES,                  // Squeeze, Unsqueeze, Reduce*
+  PM_KEEP_DIMS,             // Reduce*
+  PM_EPSILON,               // BatchNorm
+  PM_REPARTITION_DIM,       // Repartition
+  PM_REPARTITION_DEGREE,    // Repartition
+  PM_REPLICATE_DIM,         // Replicate
+  PM_REPLICATE_DEGREE,      // Replicate
+  PM_COMBINE_DIM,           // Combine
+  PM_COMBINE_DEGREE,        // Combine
+  PM_REDUCTION_DIM,         // Reduction
+  PM_REDUCTION_DEGREE,      // Reduction
+  PM_ALLREDUCE_DIM,         // AllReduce
+  PM_PARALLEL_IDENTITY_DIM, // AllReduce
+  PM_SOFTMAX_DIM,           // Softmax
+  PM_NUM_HEADS,             // MultiHeadAttention
   PM_INVALID,
   PM_PARALLEL_DIM,
   PM_PARALLEL_DEGREE,

@@ -43,6 +43,7 @@
 #include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/parallel_ops/parallel_identity.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
@@ -3795,6 +3796,13 @@ bool FFModel::convert_graph_to_operators(
         assert(inList.size() == 1);
         AllReduce *allreduce = (AllReduce *)node.ptr;
         new_op = new AllReduce(*this, inputs[0], allreduce->allreduce_dim);
+        break;
+      }
+      case OP_PARALLEL_IDENTITY: {
+        assert(inList.size() == 1);
+        ParallelIdentity *parallel_identity = (ParallelIdentity *)node.ptr;
+        new_op = new ParallelIdentity(
+            *this, inputs[0], parallel_identity->parallel_identity_dim);
         break;
       }
       case OP_FUSED_PARALLEL: {

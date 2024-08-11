@@ -13,10 +13,10 @@
  * limitations under the License.
  */
 
-#include "flexflow/parallel_ops/allreduce.h"
+#include "flexflow/parallel_ops/parallel_identity.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
-#include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
+#include "flexflow/parallel_ops/kernels/parallel_identity_kernels.h"
 #include "flexflow/utils/hash_utils.h"
 
 namespace FlexFlow {
@@ -41,55 +41,57 @@ using Legion::Task;
 using Legion::TaskArgument;
 using Legion::TaskLauncher;
 
-using namespace FlexFlow::Kernels::AllReduce;
+using namespace FlexFlow::Kernels::ParallelIdentity;
 
 /* Params */
-bool operator==(AllReduceParams const &lhs, AllReduceParams const &rhs) {
-  return lhs.allreduce_legion_dim == rhs.allreduce_legion_dim;
+bool operator==(ParallelIdentityParams const &lhs,
+                ParallelIdentityParams const &rhs) {
+  return lhs.parallel_identity_legion_dim == rhs.parallel_identity_legion_dim;
 }
 
-bool AllReduceParams::is_valid(ParallelTensorShape const &input) const {
+bool ParallelIdentityParams::is_valid(ParallelTensorShape const &input) const {
   return input.is_valid();
 }
 
-AllReduceParams AllReduce::get_params() const {
-  AllReduceParams params;
-  params.allreduce_legion_dim = this->allreduce_dim;
+ParallelIdentityParams ParallelIdentity::get_params() const {
+  ParallelIdentityParams params;
+  params.parallel_identity_legion_dim = this->parallel_identity_dim;
   if (this->name != nullptr) {
     strcpy(params.name, this->name);
   }
   return params;
 }
 
-AllReduce::AllReduce(FFModel &model,
-                     const ParallelTensor _input,
-                     int _allreduce_legion_dim,
-                     char const *name)
-    : ParallelOp(model, OP_ALLREDUCE, name, _input),
-      allreduce_dim(_allreduce_legion_dim) {
+ParallelIdentity::ParallelIdentity(FFModel &model,
+                                   const ParallelTensor _input,
+                                   int _parallel_identity_legion_dim,
+                                   char const *name)
+    : ParallelOp(model, OP_PARALLEL_IDENTITY, name, _input),
+      parallel_identity_dim(_parallel_identity_legion_dim) {
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
   }
-  assert(dims[allreduce_dim].degree > 1);
+  assert(dims[parallel_identity_dim].degree > 1);
   // ParallelTensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, _input->data_type, this);
 }
 
-AllReduce::AllReduce(FFModel &model,
-                     AllReduceParams const &params,
-                     ParallelTensor const input,
-                     char const *name)
-    : AllReduce(model, input, params.allreduce_legion_dim, params.name) {}
+ParallelIdentity::ParallelIdentity(FFModel &model,
+                                   ParallelIdentityParams const &params,
+                                   ParallelTensor const input,
+                                   char const *name)
+    : ParallelIdentity(
+          model, input, params.parallel_identity_legion_dim, params.name) {}
 
-void AllReduce::create_input_partition(FFModel &ff) {
+void ParallelIdentity::create_input_partition(FFModel &ff) {
   // Do nothing
   return;
 }
 
-void AllReduce::create_input_partition_inference(
+void ParallelIdentity::create_input_partition_inference(
     FFModel &ff,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs) {
@@ -100,13 +102,13 @@ void AllReduce::create_input_partition_inference(
   return;
 }
 
-OpMeta *AllReduce::init_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  AllReduce *ar = (AllReduce *)task->args;
+OpMeta *ParallelIdentity::init_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
+  ParallelIdentity *ar = (ParallelIdentity *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  AllReduceMeta *meta = new AllReduceMeta(handle, ar);
+  ParallelIdentityMeta *meta = new ParallelIdentityMeta(handle, ar);
   meta->input_type[0] = ar->inputs[0]->data_type;
   meta->output_type[0] = ar->outputs[0]->data_type;
   assert(meta->input_type[0] == meta->output_type[0]);
@@ -114,7 +116,7 @@ OpMeta *AllReduce::init_task(Task const *task,
   return meta;
 }
 
-void AllReduce::init(FFModel const &ff) {
+void ParallelIdentity::init(FFModel const &ff) {
   ArgumentMap argmap;
   parallel_is = outputs[0]->parallel_is;
   Context ctx = ff.config.lg_ctx;
@@ -122,9 +124,9 @@ void AllReduce::init(FFModel const &ff) {
   assert(numOutputs == 1);
   assert(numInputs == 1);
   set_argumentmap_for_init(ff, argmap);
-  IndexLauncher launcher(ALLREDUCE_INIT_TASK_ID,
+  IndexLauncher launcher(PARALLEL_IDENTITY_INIT_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(AllReduce)),
+                         TaskArgument(this, sizeof(ParallelIdentity)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -147,7 +149,7 @@ void AllReduce::init(FFModel const &ff) {
   set_opmeta_from_futuremap(ff, fm);
 }
 
-void AllReduce::forward(FFModel const &ff) {
+void ParallelIdentity::forward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -155,7 +157,7 @@ void AllReduce::forward(FFModel const &ff) {
   assert(numOutputs == 1);
   assert(numInputs == 1);
   set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(ALLREDUCE_FWD_TASK_ID,
+  IndexLauncher launcher(PARALLEL_IDENTITY_FWD_TASK_ID,
                          outputs[0]->parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -179,14 +181,14 @@ void AllReduce::forward(FFModel const &ff) {
 }
 
 /*static*/
-void AllReduce::forward_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
+void ParallelIdentity::forward_task(Task const *task,
+                                    std::vector<PhysicalRegion> const &regions,
+                                    Context ctx,
+                                    Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  ParallelIdentityMeta const *m = *((ParallelIdentityMeta **)task->local_args);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -197,13 +199,13 @@ void AllReduce::forward_task(Task const *task,
   forward_kernel_wrapper(m, input, output);
 }
 
-void AllReduce::backward(FFModel const &ff) {
+void ParallelIdentity::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(ALLREDUCE_BWD_TASK_ID,
+  IndexLauncher launcher(PARALLEL_IDENTITY_BWD_TASK_ID,
                          inputs[0]->parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -226,13 +228,13 @@ void AllReduce::backward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-void AllReduce::backward_task(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+void ParallelIdentity::backward_task(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  ParallelIdentityMeta const *m = *((ParallelIdentityMeta **)task->local_args);
 
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -243,10 +245,11 @@ void AllReduce::backward_task(Task const *task,
   backward_kernel_wrapper(m, input_grad, output_grad);
 }
 
-void AllReduce::init_inference(FFModel const &ff,
-                               std::vector<ParallelTensor> const &batch_inputs,
-                               std::vector<ParallelTensor> const &batch_outputs,
-                               MachineView const *mv) {
+void ParallelIdentity::init_inference(
+    FFModel const &ff,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   parallel_is = batch_outputs[0]->parallel_is;
   Context ctx = ff.config.lg_ctx;
@@ -256,9 +259,9 @@ void AllReduce::init_inference(FFModel const &ff,
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   set_argumentmap_for_init_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(ALLREDUCE_INIT_TASK_ID,
+  IndexLauncher launcher(PARALLEL_IDENTITY_INIT_TASK_ID,
                          parallel_is,
-                         TaskArgument(this, sizeof(AllReduce)),
+                         TaskArgument(this, sizeof(ParallelIdentity)),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
@@ -281,11 +284,12 @@ void AllReduce::init_inference(FFModel const &ff,
   set_opmeta_from_futuremap_inference(ff, fm, batch_outputs[0]);
 }
 
-FutureMap AllReduce::inference(FFModel const &ff,
-                               BatchConfigFuture const &bc,
-                               std::vector<ParallelTensor> const &batch_inputs,
-                               std::vector<ParallelTensor> const &batch_outputs,
-                               MachineView const *mv) {
+FutureMap ParallelIdentity::inference(
+    FFModel const &ff,
+    BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -297,7 +301,7 @@ FutureMap AllReduce::inference(FFModel const &ff,
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(ALLREDUCE_INF_TASK_ID,
+  IndexLauncher launcher(PARALLEL_IDENTITY_INF_TASK_ID,
                          batch_outputs[0]->parallel_is,
                          TaskArgument(nullptr, 0),
                          argmap,
@@ -322,14 +326,15 @@ FutureMap AllReduce::inference(FFModel const &ff,
 }
 
 /*static*/
-void AllReduce::inference_task(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
+void ParallelIdentity::inference_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  ParallelIdentityMeta const *m = *((ParallelIdentityMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
@@ -344,11 +349,12 @@ void AllReduce::inference_task(Task const *task,
   inference_kernel_wrapper(m, bc, input, output);
 }
 
-FutureMap AllReduce::peft_bwd(FFModel const &ff,
-                              BatchConfigFuture const &bc,
-                              std::vector<ParallelTensor> const &batch_inputs,
-                              std::vector<ParallelTensor> const &batch_outputs,
-                              MachineView const *mv) {
+FutureMap
+    ParallelIdentity::peft_bwd(FFModel const &ff,
+                               BatchConfigFuture const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
@@ -360,7 +366,7 @@ FutureMap AllReduce::peft_bwd(FFModel const &ff,
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(ALLREDUCE_PEFT_BWD_TASK_ID,
+  IndexLauncher launcher(PARALLEL_IDENTITY_PEFT_BWD_TASK_ID,
                          batch_outputs[0]->parallel_is,
                          TaskArgument(nullptr, 0),
                          argmap,
@@ -387,14 +393,14 @@ FutureMap AllReduce::peft_bwd(FFModel const &ff,
 }
 
 /*static*/
-void AllReduce::peft_bwd_task(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
+void ParallelIdentity::peft_bwd_task(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  ParallelIdentityMeta const *m = *((ParallelIdentityMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_peft_tokens() == 0) {
     return;
@@ -411,9 +417,9 @@ void AllReduce::peft_bwd_task(Task const *task,
   peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
 }
 
-bool AllReduce::measure_operator_cost(Simulator *sim,
-                                      MachineView const &pc,
-                                      CostMetrics &cost_metrics) const {
+bool ParallelIdentity::measure_operator_cost(Simulator *sim,
+                                             MachineView const &pc,
+                                             CostMetrics &cost_metrics) const {
   cost_metrics = CostMetrics();
   cost_metrics.forward_time = 0.0f;
   cost_metrics.backward_time = 0.0f;
@@ -425,22 +431,22 @@ bool AllReduce::measure_operator_cost(Simulator *sim,
   return true;
 }
 
-bool AllReduce::get_int_parameter(PMParameter para, int *value) const {
+bool ParallelIdentity::get_int_parameter(PMParameter para, int *value) const {
   switch (para) {
-    case PM_ALLREDUCE_DIM:
-      *value = allreduce_dim;
+    case PM_PARALLEL_IDENTITY_DIM:
+      *value = parallel_identity_dim;
       return true;
     default:
       return Op::get_int_parameter(para, value);
   }
 }
 
-bool AllReduce::append_parallel_op_info(
+bool ParallelIdentity::append_parallel_op_info(
     std::vector<ParallelOpInfo> &parallel_ops) const {
   ParallelOpInfo ret;
   ret.op_type = op_type;
-  ret.parallel_dim = allreduce_dim;
-  ret.parallel_degree = -1; // AllReduce does not affect parallel degree
+  ret.parallel_dim = parallel_identity_dim;
+  ret.parallel_degree = -1; // ParallelIdentity does not affect parallel degree
   parallel_ops.push_back(ret);
   return true;
 }
@@ -448,10 +454,10 @@ bool AllReduce::append_parallel_op_info(
 }; // namespace FlexFlow
 
 namespace std {
-size_t hash<FlexFlow::AllReduceParams>::operator()(
-    FlexFlow::AllReduceParams const &params) const {
+size_t hash<FlexFlow::ParallelIdentityParams>::operator()(
+    FlexFlow::ParallelIdentityParams const &params) const {
   size_t key = 0;
-  hash_combine(key, params.allreduce_legion_dim);
+  hash_combine(key, params.parallel_identity_legion_dim);
   return key;
 }
 
