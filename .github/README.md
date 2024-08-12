@@ -4,12 +4,6 @@
 
 ---
 
-## News🔥:
-
-* [09/02/2023] Adding AMD GPU support, released Docker images for ROCM 5.3->5.6
-* [08/16/2023] Adding Starcoder model support
-* [08/14/2023] Released Docker images for different CUDA versions
-
 ## What is FlexFlow Serve
   
 The high computational and memory requirements of generative large language
@@ -178,7 +172,7 @@ A C++ example is available at [this folder](../inference/spec_infer/). After bui
 For example, you can use the following command line to serve a LLaMA-7B or LLaMA-13B model on 4 GPUs and use two collectively boost-tuned LLaMA-68M models for speculative inference.
 
 ```bash
-./inference/spec_infer/spec_infer -ll:gpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -ssm-model JackFram/llama-68m -prompt /path/to/prompt.json -tensor-parallelism-degree 4 --fusion
+./inference/spec_infer/spec_infer -ll:gpu 4 -ll:cpu 4 -ll:fsize 14000 -ll:zsize 30000 -llm-model meta-llama/Llama-2-7b-hf -ssm-model JackFram/llama-68m -prompt /path/to/prompt.json -tensor-parallelism-degree 4 --fusion
 ```
 </details>
 
