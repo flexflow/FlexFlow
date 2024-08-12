@@ -4273,8 +4273,8 @@ void FFConfig::parse_args(char **argv, int argc) {
       workersPerNode = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-ll:fsize")) {
-      device_mem = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-ll:fsize")) || (!strcmp(argv[i], "-ll:msize"))) {
+      device_mem += atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--nodes")) {
