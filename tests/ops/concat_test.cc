@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 using namespace Legion;
-LegionRuntime::Logger::Category log_app("concat_test");
+Realm::Logger log_app("concat_test");
 
 struct ConcatTestMeta {
   int batch_size, i_dim, num_channels, projected_num_channels,

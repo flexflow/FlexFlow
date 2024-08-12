@@ -54,8 +54,8 @@ namespace FlexFlow::PCG {
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_xfers("xfers");
-LegionRuntime::Logger::Category log_xfer_matches("xfer_matches");
+Realm::Logger log_xfers("xfers");
+Realm::Logger log_xfer_matches("xfer_matches");
 
 const TensorX TensorX::NO_TX = TensorX();
 

@@ -19,7 +19,7 @@
 
 namespace FlexFlow {
 
-extern LegionRuntime::Logger::Category log_measure;
+extern Realm::Logger log_measure;
 
 class OpMeta;
 class Simulator;

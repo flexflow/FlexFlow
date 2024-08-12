@@ -21,7 +21,7 @@
 using namespace Legion;
 using namespace std;
 
-LegionRuntime::Logger::Category log_app("Candle_Uno");
+Realm::Logger log_app("Candle_Uno");
 
 void parse_input_args(char **argv, int argc, CandleConfig &apConfig);
 

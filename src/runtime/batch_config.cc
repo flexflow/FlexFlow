@@ -21,7 +21,7 @@
 
 namespace FlexFlow {
 
-LegionRuntime::Logger::Category log_bc("BatchConfig");
+Realm::Logger log_bc("BatchConfig");
 using Legion::Future;
 using Legion::Memory;
 

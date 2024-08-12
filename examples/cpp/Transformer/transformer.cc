@@ -17,7 +17,7 @@
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_app("Transformer");
+Realm::Logger log_app("Transformer");
 
 Tensor create_emb(FFModel *model,
                   Tensor const &input,

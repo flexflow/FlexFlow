@@ -82,8 +82,8 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_model("Model");
-LegionRuntime::Logger::Category log_measure("measure");
+Realm::Logger log_model("Model");
+Realm::Logger log_measure("measure");
 
 Op::Op(FFModel &model,
        OperatorType otype,

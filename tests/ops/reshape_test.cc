@@ -6,7 +6,7 @@
 #include <sstream>
 #define PRECISION 16
 using namespace Legion;
-LegionRuntime::Logger::Category log_app("Reshape_test");
+Realm::Logger log_app("Reshape_test");
 
 struct ReshapeTestMeta {
   int i_dim, o_dim;
