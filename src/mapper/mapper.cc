@@ -20,7 +20,7 @@ namespace FlexFlow {
 using namespace Legion;
 using namespace Mapping;
 
-LegionRuntime::Logger::Category log_ff_mapper("Mapper");
+Legion::Logger log_ff_mapper("Mapper");
 
 FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
                                      int _cpus_per_node,
@@ -297,6 +297,7 @@ void FFMapper::select_task_options(MapperContext const ctx,
     // control replicate top level task
     if (enable_control_replication) {
       output.replicate = true;
+      output.map_locally = false;
     }
     return;
   }
@@ -561,6 +562,10 @@ void FFMapper::map_task(MapperContext const ctx,
       assert(output.target_procs[i].address_space() == node_id);
     }
   }
+  if (input.shard_processor.exists()) {
+    output.target_procs = std::vector<Processor>{input.shard_processor};
+  }
+
   // Find instances that still need to be mapped
   std::vector<std::set<FieldID>> missing_fields(task.regions.size());
   runtime->filter_instances(ctx,

@@ -83,8 +83,8 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_model("Model");
-LegionRuntime::Logger::Category log_measure("measure");
+Legion::Logger log_model("Model");
+Legion::Logger log_measure("measure");
 
 Op::Op(FFModel &model,
        OperatorType otype,
@@ -6779,6 +6779,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID, "SGD NCCL Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
           registrar, "SGD NCCL Update Task");
@@ -6929,6 +6930,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "NCCL Init Communicators");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
           registrar, "NCCL Init Communicators Task");

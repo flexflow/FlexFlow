@@ -35,7 +35,7 @@ namespace FlexFlow {
 using namespace Legion;
 using tokenizers::Tokenizer;
 
-LegionRuntime::Logger::Category log_req_mgr("RequestManager");
+Legion::Logger log_req_mgr("RequestManager");
 
 bool operator<(std::shared_ptr<TokenTreeNode> const &lhs,
                std::shared_ptr<TokenTreeNode> const &rhs) {
