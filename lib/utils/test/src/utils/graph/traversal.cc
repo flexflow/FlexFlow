@@ -1,15 +1,16 @@
 #include "utils/graph/traversal.h"
 #include "test/utils/doctest.h"
+#include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/digraph.h"
 #include "utils/graph/instances/adjacency_digraph.h"
-#include "utils/graph/algorithms.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("traversal") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> const n = add_nodes(g, 5);
-    std::vector<DirectedEdge> edges = {
-        DirectedEdge{n[0], n[1]}, DirectedEdge{n[1], n[2]}, DirectedEdge{n[2], n[3]}};
+    std::vector<DirectedEdge> edges = {DirectedEdge{n[0], n[1]},
+                                       DirectedEdge{n[1], n[2]},
+                                       DirectedEdge{n[2], n[3]}};
     add_edges(g, edges);
 
     CHECK(get_unchecked_dfs_ordering(g, {n[0]}) ==

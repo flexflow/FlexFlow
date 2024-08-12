@@ -1,9 +1,9 @@
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "test/utils/doctest.h"
+#include "utils/containers.h"
+#include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/digraph.h"
 #include "utils/graph/instances/adjacency_digraph.h"
-#include "utils/graph/algorithms.h"
-#include "utils/containers.h"
 
 TEST_SUITE(FF_TEST_SUITE) {
 

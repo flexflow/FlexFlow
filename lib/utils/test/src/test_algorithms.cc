@@ -95,7 +95,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-
   TEST_CASE("bfs") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> const n = add_nodes(g, 7);
