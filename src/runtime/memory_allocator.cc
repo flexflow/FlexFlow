@@ -53,18 +53,12 @@ void MemoryAllocator::register_reserved_work_space(void *base, size_t size) {
   reserved_allocated_size = 0;
 }
 
+// Now it's for allocating FB memory, in the future we can
+// add more types of memory allocation if needed
 Memory get_proc_mem(Machine machine, Processor proc) {
-  // First try to allocate a managed memory (cudaMallocManaged)
   Machine::MemoryQuery proc_mem = Machine::MemoryQuery(machine)
-                                      .only_kind(Memory::GPU_MANAGED_MEM)
-                                      .has_affinity_to(proc);
-  if (proc_mem.count() > 0) {
-    return proc_mem.first();
-  }
-  // If managed memory is not available, try to allocate a framebuffer memory
-  proc_mem = Machine::MemoryQuery(machine)
-                 .only_kind(Memory::GPU_FB_MEM)
-                 .has_affinity_to(proc);
+                                      .only_kind(Memory::GPU_FB_MEM)
+                                      .best_affinity_to(proc);
   assert(proc_mem.count() > 0);
   return proc_mem.first();
 }
