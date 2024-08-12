@@ -1,7 +1,10 @@
+#include "utils/graph/undirected/undirected_graph.h"
 #include "test/utils/all.h"
 #include "test/utils/rapidcheck/visitable.h"
-#include "utils/graph/hashmap_undirected_graph.h"
-#include "utils/graph/undirected.h"
+#include "utils/containers/repeat.h"
+#include "utils/graph/instances/hashmap_undirected_graph.h"
+#include "utils/graph/node/node_query.h"
+#include "utils/graph/undirected/undirected_edge_query.h"
 
 /* namespace rc { */
 
@@ -50,12 +53,12 @@ TEST_SUITE(FF_TEST_SUITE) {
         g.add_edge(edge);
       }
 
-      CHECK(g.query_nodes(NodeQuery::all()) == unordered_set_of(n));
+      CHECK(g.query_nodes(node_query_all()) == unordered_set_of(n));
 
       auto subset = *rc::subset_of(n);
       CHECK(g.query_nodes(NodeQuery{query_set<Node>{subset}}) == subset);
 
-      CHECK(g.query_edges(UndirectedEdgeQuery::all()) == unordered_set_of(e));
+      CHECK(g.query_edges(undirected_edge_query_all()) == unordered_set_of(e));
     });
   }
 }
