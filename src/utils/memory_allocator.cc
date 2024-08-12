@@ -25,14 +25,14 @@ Memory get_proc_mem(Machine machine, Processor proc) {
     // First try to allocate a managed memory (cudaMallocManaged)
     Machine::MemoryQuery proc_mem = Machine::MemoryQuery(machine)
                         .only_kind(Memory::GPU_MANAGED_MEM)
-                        .best_affinity_to(proc);
+                        .has_affinity_to(proc);
     if (proc_mem.count() > 0) {
       return proc_mem.first();
     }
     // If managed memory is not available, try to allocate a framebuffer memory
     proc_mem = Machine::MemoryQuery(machine)
                         .only_kind(Memory::GPU_FB_MEM)
-                        .best_affinity_to(proc);
+                        .has_affinity_to(proc);
     assert(proc_mem.count() > 0);
     return proc_mem.first();
 }
