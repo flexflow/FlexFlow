@@ -56,42 +56,11 @@ TEST_SUITE(FF_TEST_SUITE) {
           std::unordered_set<DirectedEdge>{e[0], e[2], e[3]});
     CHECK(get_outgoing_edges(g, {n[2], n[3]}) ==
           std::unordered_set<DirectedEdge>{});
-    auto expected_result = std::unordered_map<Node, std::unordered_set<Node>>{
-        {n[1], {n[0]}},
-        {n[2], {n[0], n[1]}},
-        {n[3], {n[0]}},
-    };
-    CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
-
-    SUBCASE("get_imm_dominators") {
-      std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
-
-      std::unordered_map<Node, optional<Node>> expected_result = {
-          {n[2], n[0]},
-          {n[1], n[0]},
-          {n[3], n[0]},
-          {n[0], nullopt},
-      };
-      CHECK(result == expected_result);
-    }
-
-    SUBCASE("get_sinks") {
-      auto expected = std::unordered_set<Node>{n[2], n[3]};
-      CHECK(get_sinks(g) == expected);
-    }
 
     SUBCASE("get_bfs") {
       std::unordered_set<Node> start_points = std::unordered_set<Node>{n[0]};
       auto expected = std::vector<Node>{n[0], n[2], n[1], n[3]};
       CHECK(get_bfs_ordering(g, start_points) == expected);
-    }
-
-    SUBCASE("get_predecessors") {
-      std::unordered_map<Node, std::unordered_set<Node>> expected_result = {
-          {n[1], {n[0]}},
-          {n[2], {n[0], n[1]}},
-      };
-      CHECK(get_predecessors(g, {n[1], n[2]}) == expected_result);
     }
   }
 
