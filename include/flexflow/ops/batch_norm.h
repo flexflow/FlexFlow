@@ -2,6 +2,7 @@
 #define _FLEXFLOW_BATCH_NORM_H
 
 #include "flexflow/model.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 

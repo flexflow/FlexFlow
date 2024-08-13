@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/mapper.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
@@ -81,11 +82,7 @@ FFMapper::FFMapper(MapperRuntime *rt,
       if (it->address_space() == node_id) {
         local_gpus.push_back(*it);
       }
-      Machine::MemoryQuery fb_query(machine);
-      fb_query.only_kind(Memory::GPU_FB_MEM);
-      fb_query.best_affinity_to(*it);
-      assert(fb_query.count() == 1);
-      proc_fbmems[*it] = *(fb_query.begin());
+      proc_fbmems[*it] = get_proc_mem(machine, *it);
       Machine::MemoryQuery zc_query(machine);
       zc_query.only_kind(Memory::Z_COPY_MEM);
       zc_query.has_affinity_to(*it);

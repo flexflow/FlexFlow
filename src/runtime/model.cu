@@ -108,10 +108,7 @@ FFHandler
   //  handle.workSpace = memFBImpl->get_direct_ptr(offset, 0);
   {
     // allocate memory for workspace
-    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                         .only_kind(Memory::GPU_FB_MEM)
-                         .best_affinity_to(task->target_proc)
-                         .first();
+    Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
     Realm::Rect<1, coord_t> bounds(
         Realm::Point<1, coord_t>(0),
         Realm::Point<1, coord_t>(handle.workSpaceSize - 1));
@@ -129,10 +126,7 @@ FFHandler
   }
   if (handle.offload_reserve_space_size > 0) {
     // allocate memory for offload reserve space
-    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                         .only_kind(Memory::GPU_FB_MEM)
-                         .best_affinity_to(task->target_proc)
-                         .first();
+    Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
     Realm::Rect<1, coord_t> bounds(
         Realm::Point<1, coord_t>(0),
         Realm::Point<1, coord_t>(handle.offload_reserve_space_size - 1));
@@ -153,10 +147,7 @@ FFHandler
   }
   if (handle.batch_config_metadata_size > 0) {
     // allocate memory for offload reserve space
-    Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                         .only_kind(Memory::GPU_FB_MEM)
-                         .best_affinity_to(task->target_proc)
-                         .first();
+    Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
     Realm::Rect<1, coord_t> bounds(
         Realm::Point<1, coord_t>(0),
         Realm::Point<1, coord_t>(handle.batch_config_metadata_size - 1));

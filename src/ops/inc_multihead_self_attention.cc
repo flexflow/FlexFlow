@@ -698,10 +698,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
 
   assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   if (attn->offload) {
     // cpu-offload enabled

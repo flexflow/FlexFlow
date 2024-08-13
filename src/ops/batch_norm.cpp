@@ -61,10 +61,7 @@ __host__ OpMeta *
   int output_c = acc_output.rect.hi[2] - acc_output.rect.lo[2] + 1;
   int output_n = acc_output.rect.hi[3] - acc_output.rect.lo[3] + 1;
 
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   BatchNormMeta *m = new BatchNormMeta(
       handle, bm, gpu_mem, output_n, output_c, output_h, output_w);
   return m;
