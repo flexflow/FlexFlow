@@ -21,6 +21,9 @@ public:
   std::unordered_map<void*, CommunicationBuffer*> comm_bufs;
   Realm::RegionInstance reserveInst;
   void *allgather_src, *allgather_dst;
+  // reuse for communication buffer
+  void *barrier_in_ptr, *barrier_out_ptr;
+  int barrier_ptr_size;
 };
 
 namespace Kernels {

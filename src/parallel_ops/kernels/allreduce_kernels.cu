@@ -24,10 +24,23 @@ AllReduceMeta::AllReduceMeta(FFHandler handle,
                               AllReduce const *reduct,
                               MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
+  barrier_ptr_size = sizeof(uint32_t) * (tensorrt_llm::MAX_ALL_REDUCE_BLOCKS + 2) * tensorrt_llm::MAX_RANKS_PER_NODE;
   gpu_mem_allocator.create_legion_instance(reserveInst,
-                                            CUDA_IPC_HANDLE_SIZE * (handle.num_devices + 1));
-  allgather_src = gpu_mem_allocator.allocate_instance_untyped(CUDA_IPC_HANDLE_SIZE);
-  allgather_dst = gpu_mem_allocator.allocate_instance_untyped(CUDA_IPC_HANDLE_SIZE * handle.num_devices);
+                                            sizeof(void*) * (handle.num_devices + 1)
+                                            + barrier_ptr_size * 2);
+  allgather_src = gpu_mem_allocator.allocate_instance_untyped(sizeof(void*));
+  allgather_dst = gpu_mem_allocator.allocate_instance_untyped(sizeof(void*) * handle.num_devices);
+  // Create barrier helpers for all-reduce.
+  barrier_in_ptr = gpu_mem_allocator.allocate_instance_untyped(barrier_ptr_size);
+  barrier_out_ptr = gpu_mem_allocator.allocate_instance_untyped(barrier_ptr_size);
+  checkCUDA(cudaMemset(barrier_in_ptr, 0, barrier_ptr_size));
+  checkCUDA(cudaMemset(barrier_out_ptr, 0, barrier_ptr_size));
+  // Reset allocated memory to zero.
+  // We explicitly synchronize after memset, to make sure memset finishes
+  // before using all-gather to exchange peer pointers.
+  // This is important to ensure the memory reset get ordered
+  // before any other peers read the memory.
+  checkCUDA(cudaDeviceSynchronize());
 }
 
 AllReduceMeta::~AllReduceMeta() {
@@ -49,7 +62,8 @@ CommunicationBuffer* get_or_create_comm_buffer(AllReduceMeta *m,
     CommunicationBuffer* comm_buffer = create_comm_buf_with_local_ptr(
         num_devices, device_id, ncclComm,
         m->allgather_src, m->allgather_dst,
-        local_ptr, stream);
+        local_ptr, m->barrier_in_ptr, m->barrier_out_ptr,
+        stream);
     m->comm_bufs[local_ptr] = comm_buffer;
     return comm_buffer;
   }
@@ -87,7 +101,7 @@ inline bool CanApplyTwoShotAllReduce(int64_t num_elements, DataType dtype, int n
   return (num_elements / num_workers) % (16 / ((get_bits(dtype) + 7) / 8)) == 0;
 }
 
-// Customized all-reduce kernel backed by CUDA IPC memory.
+// Customized all-reduce kernel backed by CUDA Peer memory.
 void inference_kernel_wrapper(AllReduceMeta *m,
                               BatchConfig const *bc,
                               GenericTensorAccessorR const &input,
@@ -147,12 +161,8 @@ void inference_kernel_wrapper(AllReduceMeta *m,
     strategy = tensorrt_llm::AllReduceStrategyType::ONESHOT;
   }
 
-  // printf("start to call custom all reduce\n");
-  // fflush(stdout);
   tensorrt_llm::customAllReduce(params, output.ptr, num_elements, dtype, strategy,
                                 stream);
-  // printf("custom all reduce done\n");
-  // fflush(stdout);
 
   // {
   //   int size = num_elements * ((get_bits(dtype) + 7) / 8);

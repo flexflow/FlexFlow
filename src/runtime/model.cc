@@ -605,6 +605,22 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
   // fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
   //     ncclComm, allRanks, myRank, ncclId);
+
+  // Double check that we already enabled P2P access between all GPUs
+  for (int i = 0; i < allRanks; i++) {
+    if (i == myRank) {
+      continue;
+    }
+    cudaError_t err = cudaDeviceEnablePeerAccess(i, 0);
+    if (err == cudaSuccess) {
+      printf("P2P access successfully enabled between GPU %d and GPU %d\n", myRank, i);
+    } else if (err == cudaErrorPeerAccessAlreadyEnabled) {
+      printf("P2P access is already enabled between GPU %d and GPU %d\n", myRank, i);
+    } else {
+      printf("Failed to enable P2P access between GPU %d and GPU %d: %s\n", myRank, i, cudaGetErrorString(err));
+      assert(false && "Failed to enable P2P access");
+    }
+  }
   return ncclComm;
 }
 

@@ -27,8 +27,8 @@
 
 // adapted from https://github.com/mlc-ai/relax
 
-// The CUDA interprocess communication memory object,
-// which internally contains data pointers to CUDA IPC memory.
+// The CUDA interdevice communication memory object,
+// which internally contains data pointers to other device's peer memory.
 // It is be useful for efficient all-reduce implementation.
 // Right now the class members are closely tied with customized
 // all-reduce kernel. They may also be extended for other uses in
@@ -42,7 +42,7 @@ class CommunicationBuffer {
 
   // The data pointers of all all-reduce inputs.
   // It has "num_devices" pointers. The i-th pointer is the data pointer on worker i.
-  // If "i != device_id", the pointer is an IPC data pointer.
+  // If "i != device_id", the pointer is an peer data pointer of other device.
   // Otherwise, the pointer is a local CUDA data pointer.
   std::vector<void*> comm_ptrs;
 
@@ -59,7 +59,8 @@ class CommunicationBuffer {
 
 CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
                                                   void* allgather_src, void* allgather_dst,
-                                                  void* local_ptr, cudaStream_t stream);
+                                                  void* local_ptr, void* barrier_in_ptr, void* barrier_out_ptr,
+                                                  cudaStream_t stream);
 
 void release_comm_buf(CommunicationBuffer* comm_buf);
 
