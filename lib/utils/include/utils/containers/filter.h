@@ -44,6 +44,14 @@ std::map<K, V> filter(std::map<K, V> const &m, F const &f) {
   return result;
 }
 
+template <typename K, typename V, typename F>
+std::unordered_multiset<K, V> filter(std::unordered_multiset<K, V> const &m,
+                                     F const &f) {
+  std::unordered_multiset<K, V> result;
+  std::copy_if(m.cbegin(), m.cend(), std::inserter(result, result.begin()), f);
+  return result;
+}
+
 } // namespace FlexFlow
 
 #endif

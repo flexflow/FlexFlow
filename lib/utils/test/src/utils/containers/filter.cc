@@ -90,4 +90,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
     CHECK(result == correct);
   }
+
+  TEST_CASE("filter(std::unordered_multiset, F)") {
+    std::unordered_multiset<int> input = {1, 1, 2, 2, 2, 3, 4, 5, 6, 7, 8, 8};
+    auto predicate = [](int x) { return x % 2 == 0; };
+
+    std::unordered_multiset<int> result = filter(input, predicate);
+    std::unordered_multiset<int> correct = {2, 2, 2, 4, 6, 8, 8};
+    CHECK(result == correct);
+  }
 }

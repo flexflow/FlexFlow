@@ -22,6 +22,9 @@ struct bidict {
     }
   }
 
+  bidict(std::vector<std::pair<L, R>> init)
+      : bidict(init.begin(), init.end()) {}
+
   bool contains_l(L const &l) const {
     return fwd_map.find(l) != fwd_map.end();
   }
