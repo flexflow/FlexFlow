@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "machine_view_dim_idx"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "unwrapped"
+type = "int"

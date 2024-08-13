@@ -5,6 +5,7 @@
 #include "pcg/device_id.h"
 #include "pcg/device_type.dtg.h"
 #include "pcg/machine_view.dtg.h"
+#include "pcg/machine_view_dim_idx.dtg.h"
 #include "pcg/num_points_t.dtg.h"
 #include "pcg/side_size_t.dtg.h"
 #include <cstddef>
@@ -14,10 +15,11 @@ namespace FlexFlow {
 
 std::unordered_set<device_id_t> get_device_ids(MachineView const &mv);
 device_id_t get_last_device_id(MachineView const &mv);
+StridedRectangleSide get_side_at_idx(MachineView const &mv,
+                                     machine_view_dim_idx const &idx);
 
 size_t num_dims(MachineView const &mv);
 size_t num_devices(MachineView const &mv);
-size_t get_size(MachineView const &mv);
 std::vector<num_points_t> get_num_devices_per_dim(MachineView const &mv);
 std::vector<side_size_t> get_side_size_per_dim(MachineView const &mv);
 

@@ -30,10 +30,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       SUBCASE("get_num_points") {
         CHECK(get_num_points(rect) == num_points_t{7 * 8 * 10});
       }
-
-      SUBCASE("get_size") {
-        CHECK(get_size(rect) == size_t{(7 * 5) * (10 * 2) * (8 * 1)});
-      }
     }
   }
 }

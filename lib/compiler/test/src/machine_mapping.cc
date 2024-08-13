@@ -6,10 +6,10 @@
 
 TEST_SUITE(FF_TEST_SUITE) {
 
-  TEST_CASE("get_allowed_machine_view") {
+  TEST_CASE("get_allowed_machine_views") {
 
     SUBCASE("1 degree of parallelism") {
-      MachineSpecification ms = MachineSpecification(5, 1, 1, 0, 0);
+      MachineSpecification ms = MachineSpecification{5, 1, 1, 0, 0};
       ParallelTensorShape shape = ParallelTensorShape{
           ParallelTensorDims{
               FFOrdered<ShardParallelDim>{
@@ -34,7 +34,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("2 degrees of parallelism") {
-      MachineSpecification ms = MachineSpecification(18, 1, 1, 0, 0);
+      MachineSpecification ms = MachineSpecification{18, 1, 1, 0, 0};
       ParallelTensorShape shape = ParallelTensorShape{
           ParallelTensorDims{
               FFOrdered<ShardParallelDim>{
@@ -82,7 +82,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_allowed_start_invariant_machine_views") {
 
     SUBCASE("1 degree of parallelism") {
-      MachineSpecification ms = MachineSpecification(5, 1, 1, 0, 0);
+      MachineSpecification ms = MachineSpecification{5, 1, 1, 0, 0};
       ParallelTensorShape shape = ParallelTensorShape{
           ParallelTensorDims{
               FFOrdered<ShardParallelDim>{
@@ -137,6 +137,42 @@ TEST_SUITE(FF_TEST_SUITE) {
           get_allowed_start_invariant_machine_views(ms, shape);
       CHECK(result == correct);
     }
+  }
+
+  TEST_CASE("get_all_tensor_to_machine_view_injections") {
+    ParallelTensorShape shape = ParallelTensorShape{
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                ShardParallelDim{10, 3},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{2},
+                DiscardCopyDegree{2},
+            },
+        },
+        DataType::FLOAT,
+    };
+    MachineView view =
+        MachineView{device_id_from_index(0, DeviceType::GPU),
+                    StridedRectangle{
+                        {StridedRectangleSide{num_points_t(2), stride_t(1)},
+                         StridedRectangleSide{num_points_t(2), stride_t(4)},
+                         StridedRectangleSide{num_points_t(3), stride_t(1)}},
+                    }};
+    bidict<machine_view_dim_idx, parallel_tensor_dim_idx> b1 = {
+        {machine_view_dim_idx(2), ff_dim_t(0)},
+        {machine_view_dim_idx(1), ReplicaType::SUM},
+        {machine_view_dim_idx(0), ReplicaType::DISCARD_COPY}};
+
+    bidict<machine_view_dim_idx, parallel_tensor_dim_idx> b2 = {
+        {machine_view_dim_idx(2), ff_dim_t(0)},
+        {machine_view_dim_idx(0), ReplicaType::SUM},
+        {machine_view_dim_idx(1), ReplicaType::DISCARD_COPY}};
+    std::unordered_set<TensorToMachineViewInjection> correct = {
+        TensorToMachineViewInjection{b1}, TensorToMachineViewInjection{b2}};
+    std::unordered_set<TensorToMachineViewInjection> result =
+        get_all_tensor_to_machine_view_injections(view, shape);
+    CHECK(correct == result);
   }
 
   // TEST_CASE("MachineMapping::combine") {

@@ -26,9 +26,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("num_devices") {
       CHECK(num_devices(mv) == 7 * 10 * 1);
     }
-    SUBCASE("get_size") {
-      CHECK(get_size(mv) == (7 * 5) * (10 * 2) * (1 * 4));
-    }
 
     SUBCASE("get_side_size_per_dim") {
       std::vector<side_size_t> expected = {

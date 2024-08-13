@@ -9,39 +9,51 @@
 #include "utils/containers/sorted.h"
 #include "utils/containers/transform.h"
 #include "utils/fmt/vector.h"
+#include "utils/hash-utils.h"
+#include "utils/hash/tuple.h"
 #include "utils/hash/vector.h"
 
 namespace FlexFlow {
 
 StridedRectangle::StridedRectangle(
     std::vector<::FlexFlow::StridedRectangleSide> const &sides)
-    : _sides(sorted(sides)) {}
+    : sides(sorted(sides)) {}
+
+std::tuple<std::vector<StridedRectangleSide> const &>
+    StridedRectangle::tie() const {
+  return std::tie(sides);
+}
 
 bool StridedRectangle::operator==(StridedRectangle const &other) const {
-  return std::tie(this->_sides) == std::tie(other._sides);
+  return this->tie() == other.tie();
 }
+
 bool StridedRectangle::operator!=(StridedRectangle const &other) const {
-  return std::tie(this->_sides) != std::tie(other._sides);
+  return this->tie() != other.tie();
 }
 
 bool StridedRectangle::operator<(StridedRectangle const &other) const {
-  return std::tie(this->_sides) < std::tie(other._sides);
+  return this->tie() < other.tie();
 }
 
 bool StridedRectangle::operator>(StridedRectangle const &other) const {
-  return std::tie(this->_sides) > std::tie(other._sides);
+  return this->tie() > other.tie();
 }
 
 bool StridedRectangle::operator<=(StridedRectangle const &other) const {
-  return std::tie(this->_sides) <= std::tie(other._sides);
+  return this->tie() <= other.tie();
 }
 
 bool StridedRectangle::operator>=(StridedRectangle const &other) const {
-  return std::tie(this->_sides) >= std::tie(other._sides);
+  return this->tie() >= other.tie();
 }
 
-std::vector<StridedRectangleSide> StridedRectangle::get_sides() const {
-  return _sides;
+std::vector<StridedRectangleSide> const &StridedRectangle::get_sides() const {
+  return sides;
+}
+
+StridedRectangleSide const &StridedRectangle::at(int idx) const {
+  return this->sides.at(idx);
 }
 
 std::string format_as(StridedRectangle const &x) {
@@ -79,11 +91,7 @@ size_t get_size(StridedRectangle const &rect) {
 namespace std {
 size_t hash<FlexFlow::StridedRectangle>::operator()(
     ::FlexFlow::StridedRectangle const &x) const {
-  size_t result = 0;
-  result ^= std::hash<std::vector<::FlexFlow::StridedRectangleSide>>{}(
-                x.get_sides()) +
-            0x9e3779b9 + (result << 6) + (result >> 2);
-  return result;
+  return get_std_hash(x.tie());
 }
 } // namespace std
 

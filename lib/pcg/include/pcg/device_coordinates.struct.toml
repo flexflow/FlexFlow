@@ -10,9 +10,12 @@ features = [
 ]
 
 includes = [ 
-  "op-attrs/dim_ordered.h",
+  "<vector>",
+  "utils/hash/vector.h",
+  "utils/fmt/vector.h",
+  
 ]
 
 [[fields]]
 name = "coords"
-type = "::FlexFlow::FFOrdered<int>"
+type = "std::vector<int>"

@@ -3,12 +3,13 @@
 
 namespace FlexFlow {
 
-MachineView
-    to_start_dependent(StartInvariantMachineView const &start_invariant_mv,
-                       device_id_t const &start_id) {
+MachineView machine_view_from_start_invariant(
+    StartInvariantMachineView const &start_invariant_mv,
+    device_id_t const &start_id) {
   return MachineView{start_id, start_invariant_mv.rect};
 }
-StartInvariantMachineView to_start_invariant(MachineView const &mv) {
+StartInvariantMachineView
+    start_invariant_from_machine_view(MachineView const &mv) {
   return StartInvariantMachineView{mv.rect};
 }
 

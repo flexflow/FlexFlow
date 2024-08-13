@@ -6,9 +6,11 @@
 
 namespace FlexFlow {
 
-MachineView to_start_dependent(StartInvariantMachineView const &mv,
-                               device_id_t const &start_id);
-StartInvariantMachineView to_start_invariant(MachineView const &mv);
+MachineView
+    machine_view_from_start_invariant(StartInvariantMachineView const &mv,
+                                      device_id_t const &start_id);
+StartInvariantMachineView
+    start_invariant_from_machine_view(MachineView const &mv);
 
 StartInvariantMachineView
     make_1d_start_invariant_machine_view(num_points_t num_points,

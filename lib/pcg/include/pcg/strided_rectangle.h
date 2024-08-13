@@ -12,7 +12,9 @@ namespace FlexFlow {
 struct StridedRectangle {
 
 private:
-  std::vector<StridedRectangleSide> _sides;
+  std::vector<StridedRectangleSide> sides;
+  std::tuple<std::vector<StridedRectangleSide> const &> tie() const;
+  friend struct std::hash<StridedRectangle>;
 
 public:
   StridedRectangle() = delete;
@@ -25,7 +27,8 @@ public:
   bool operator<=(StridedRectangle const &) const;
   bool operator>=(StridedRectangle const &) const;
 
-  std::vector<StridedRectangleSide> get_sides() const;
+  StridedRectangleSide const &at(int idx) const;
+  std::vector<StridedRectangleSide> const &get_sides() const;
 };
 std::string format_as(StridedRectangle const &);
 std::ostream &operator<<(std::ostream &, StridedRectangle const &);
@@ -33,8 +36,6 @@ std::ostream &operator<<(std::ostream &, StridedRectangle const &);
 size_t get_num_dims(StridedRectangle const &rect);
 
 num_points_t get_num_points(StridedRectangle const &rect);
-
-size_t get_size(StridedRectangle const &rect);
 
 } // namespace FlexFlow
 

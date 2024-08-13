@@ -1,6 +1,7 @@
 #include "pcg/machine_view.h"
 #include "pcg/device_coordinates.dtg.h"
 #include "pcg/device_id.h"
+#include "pcg/machine_view_dim_idx.dtg.h"
 #include "pcg/strided_rectangle.h"
 #include "pcg/strided_rectangle_side.h"
 #include "utils/containers.h"
@@ -77,12 +78,13 @@ size_t num_devices(MachineView const &mv) {
   return get_num_points(mv.rect).unwrapped;
 }
 
-size_t get_size(MachineView const &mv) {
-  return get_size(mv.rect);
-}
-
 DeviceType get_device_type(MachineView const &mv) {
   return get_device_type(mv.start);
+}
+
+StridedRectangleSide get_side_at_idx(MachineView const &mv,
+                                     machine_view_dim_idx const &idx) {
+  return mv.rect.at(idx.unwrapped);
 }
 
 static StridedRectangle make_1d_rect(int start, int stop, stride_t stride) {
