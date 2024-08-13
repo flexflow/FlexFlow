@@ -73,7 +73,7 @@ void free_peer_ptr_group(std::vector<void*> ptr_group, int device_id, bool free_
 CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
                                                   void* allgather_src, void* allgather_dst,
                                                   void* local_ptr, void* barrier_in_ptr, void* barrier_out_ptr,
-                                                  cudaStream_t stream) {
+                                                  int* barrier_flag, cudaStream_t stream) {
   assert(local_ptr != nullptr && "Local pointer is nullptr.");
   CommunicationBuffer* comm_buf = new CommunicationBuffer();
   comm_buf->num_devices = num_devices;
@@ -82,7 +82,7 @@ CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_
   comm_buf->comm_ptrs = create_peer_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, local_ptr, stream);
   comm_buf->barrier_in = create_peer_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, barrier_in_ptr, stream);
   comm_buf->barrier_out = create_peer_ptr_group(num_devices, device_id, ncclComm, allgather_src, allgather_dst, barrier_out_ptr, stream);
-  comm_buf->barrier_flag = 1;
+  comm_buf->barrier_flag = barrier_flag;
 
   return comm_buf;
 }

@@ -54,13 +54,13 @@ class CommunicationBuffer {
 
   // The integer buffer flag for all-reduce.
   // It will self increment by 1 after each all-reduce operation.
-  int barrier_flag;
+  int* barrier_flag;
 };
 
 CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
                                                   void* allgather_src, void* allgather_dst,
                                                   void* local_ptr, void* barrier_in_ptr, void* barrier_out_ptr,
-                                                  cudaStream_t stream);
+                                                  int* barrier_flag, cudaStream_t stream);
 
 void release_comm_buf(CommunicationBuffer* comm_buf);
 

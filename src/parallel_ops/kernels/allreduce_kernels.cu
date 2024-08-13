@@ -63,7 +63,7 @@ CommunicationBuffer* get_or_create_comm_buffer(AllReduceMeta *m,
         num_devices, device_id, ncclComm,
         m->allgather_src, m->allgather_dst,
         local_ptr, m->barrier_in_ptr, m->barrier_out_ptr,
-        stream);
+        &(m->barrier_flag), stream);
     m->comm_bufs[local_ptr] = comm_buffer;
     return comm_buffer;
   }
@@ -144,7 +144,7 @@ void inference_kernel_wrapper(AllReduceMeta *m,
   params.local_rank = device_id;
   CommunicationBuffer* comm_buffer = get_or_create_comm_buffer(m, num_devices, device_id, ncclComm,
                                                                const_cast<void*>(input.ptr), stream);
-  params.barrier_flag = comm_buffer->barrier_flag++;
+  params.barrier_flag = (*comm_buffer->barrier_flag)++;
   for (int i = 0; i < num_devices; ++i) {
     params.peer_comm_buffer_ptrs[i] = comm_buffer->comm_ptrs[i];
   }
