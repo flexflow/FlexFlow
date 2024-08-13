@@ -18,7 +18,7 @@
 
 using namespace Legion;
 
-Realm::Logger log_app("XDL");
+Legion::Logger log_app("XDL");
 
 void parse_input_args(char **argv, int argc, XDLConfig &apConfig);
 

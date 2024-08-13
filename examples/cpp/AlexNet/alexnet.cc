@@ -26,7 +26,7 @@ using FlexFlow::ParallelTensor;
 using FlexFlow::SGDOptimizer;
 using FlexFlow::Tensor;
 
-Realm::Logger log_app("AlexNet");
+Legion::Logger log_app("AlexNet");
 
 void parse_input_args(char **argv, int argc, AlexNetConfig &config) {
   for (int i = 1; i < argc; i++) {

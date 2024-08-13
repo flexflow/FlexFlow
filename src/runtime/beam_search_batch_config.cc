@@ -24,7 +24,7 @@
 
 namespace FlexFlow {
 
-Realm::Logger log_beam_bc("BeamSearchBatchConfig");
+Legion::Logger log_beam_bc("BeamSearchBatchConfig");
 
 BeamSearchBatchConfig::BeamSearchBatchConfig() : BatchConfig() {
   this->beam_width = DEFAULT_BEAM_WIDTH;

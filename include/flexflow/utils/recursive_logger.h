@@ -26,7 +26,7 @@ private:
 
 class RecursiveLogger {
 public:
-  /* RecursiveLogger(Realm::Logger const &); */
+  /* RecursiveLogger(Legion::Logger const &); */
   RecursiveLogger(std::string const &category_name);
 
   Realm::LoggerMessage info();
@@ -42,7 +42,7 @@ private:
 
   void print_prefix(Realm::LoggerMessage &) const;
 
-  Realm::Logger logger;
+  Legion::Logger logger;
 };
 
 };     // namespace FlexFlow

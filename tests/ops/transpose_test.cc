@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 using namespace Legion;
-Realm::Logger log_app("transpose_test");
+Legion::Logger log_app("transpose_test");
 
 struct TransposeTestMeta {
   int m, k, d;

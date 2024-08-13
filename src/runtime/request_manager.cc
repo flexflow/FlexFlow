@@ -29,7 +29,7 @@ namespace FlexFlow {
 using namespace Legion;
 using tokenizers::Tokenizer;
 
-Realm::Logger log_req_mgr("RequestManager");
+Legion::Logger log_req_mgr("RequestManager");
 
 std::string LoadBytesFromFile(std::string const &path) {
   std::ifstream fs(path, std::ios::in | std::ios::binary);

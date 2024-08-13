@@ -19,7 +19,7 @@
 
 namespace FlexFlow {
 
-extern Realm::Logger log_measure;
+extern Legion::Logger log_measure;
 
 class OpMeta;
 class Simulator;
@@ -233,6 +233,8 @@ public:
                                       std::vector<ParallelTensor> const &,
                                       MachineView const *mv = nullptr) {
     assert(false);
+    Legion::FutureMap empty_map;
+    return empty_map;
   };
   virtual void print_layer(FFModel const &model) = 0;
   template <typename OpMetaType>

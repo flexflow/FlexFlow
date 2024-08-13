@@ -46,7 +46,7 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-Realm::Logger log_inc_mha("IncrementalMHA");
+Legion::Logger log_inc_mha("IncrementalMHA");
 
 bool IncMultiHeadSelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {

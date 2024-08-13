@@ -21,7 +21,7 @@
 
 namespace FlexFlow {
 
-Realm::Logger log_optimizer("optimizer");
+Legion::Logger log_optimizer("optimizer");
 
 __global__ void sgd_update(size_t count,
                            float lr,

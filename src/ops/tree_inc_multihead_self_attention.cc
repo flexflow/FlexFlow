@@ -46,7 +46,7 @@ using Legion::TaskArgument;
 using Legion::TaskLauncher;
 using PCG::Node;
 
-Realm::Logger log_tree_verify("TreeVerifyIncMHA");
+Legion::Logger log_tree_verify("TreeVerifyIncMHA");
 
 bool TreeIncMultiHeadSelfAttentionParams::is_valid(
     ParallelTensorShape const &input) const {

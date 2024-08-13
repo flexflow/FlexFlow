@@ -24,7 +24,7 @@
 #include "legion/legion_utilities.h"
 #include <unordered_set>
 
-extern Realm::Logger log_dp;
+extern Legion::Logger log_dp;
 
 namespace FlexFlow::PCG {
 

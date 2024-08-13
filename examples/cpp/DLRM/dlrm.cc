@@ -19,7 +19,7 @@
 
 using namespace Legion;
 
-Realm::Logger log_app("DLRM");
+Legion::Logger log_app("DLRM");
 
 void parse_input_args(char **argv, int argc, DLRMConfig &apConfig);
 

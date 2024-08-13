@@ -66,8 +66,8 @@ namespace FlexFlow::PCG {
 using namespace Legion;
 using FlexFlow::MachineView;
 
-Realm::Logger log_graph("graph");
-Realm::Logger log_simplify("graph_simplify");
+Legion::Logger log_graph("graph");
+Legion::Logger log_simplify("graph_simplify");
 
 const Node Node::INVALID_NODE = Node();
 
