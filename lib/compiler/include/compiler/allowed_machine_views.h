@@ -2,10 +2,10 @@
 #define _FLEXFLOW_COMPILER_ALLOWED_MACHINE_VIEWS_H
 
 #include "compiler/tensor_to_machine_view_injection.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
 #include "pcg/start_invariant_machine_view.dtg.h"
-#include "op-attrs/parallel_tensor_shape.dtg.h"
 
 namespace FlexFlow {
 
