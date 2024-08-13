@@ -2752,7 +2752,7 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
   std::vector<double> expected_decoded_num(get_max_requests_per_batch());
   std::vector<size_t> tree_sizes(get_max_requests_per_batch(), 0);
   std::vector<size_t> subtree_sizes(get_max_requests_per_batch(), 0);
-  size_t sum_tree_sizes = 0;
+  int sum_tree_sizes = 0;
 
   int B = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
@@ -2783,6 +2783,7 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
     }
     tail->next = nullptr;
     head->in_subtree = true;
+    subtree_sizes[request_index] += 1;
     linked_list_heads[request_index] = head->next;
     if (!speculative_sampling) {
       expected_decoded_num[request_index] = exp(head->log_accumulated_prob);
@@ -2793,7 +2794,7 @@ void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, dou
     B++;
   }
 
-  const int N = min(sum_tree_sizes, get_max_requests_per_batch());
+  const int N = std::min(sum_tree_sizes, get_max_tokens_per_batch());
 
   for (int iter = 0; iter < N - B; ++iter) {
     int chosen_request_index = -1;
