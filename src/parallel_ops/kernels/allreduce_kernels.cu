@@ -163,34 +163,6 @@ void inference_kernel_wrapper(AllReduceMeta *m,
 
   tensorrt_llm::customAllReduce(params, output.ptr, num_elements, dtype, strategy,
                                 stream);
-
-  // {
-  //   int size = num_elements * ((get_bits(dtype) + 7) / 8);
-  //   char* ptr = new char[size], *src = static_cast<char*>(const_cast<void*>(output.ptr)) + size;
-  //   checkCUDA(cudaMemcpy(ptr, src, size, cudaMemcpyDeviceToHost));
-  //   checkCUDA(cudaStreamSynchronize(stream));
-  //   printf("custom: ");
-  //   for (int i = 0; i < 20; ++i) {
-  //     printf("%d ", ptr[i]);
-  //   }
-  //   printf("\n");
-  //   // Dispatch to nccl AllReduce if the customized all-reduce cannot apply.
-  //   ncclDataType_t nccl_data_type = ff_to_nccl_datatype(dtype);
-  //   checkNCCL(ncclAllReduce(input.ptr,
-  //                           output.ptr,
-  //                           num_elements,
-  //                           nccl_data_type,
-  //                           ncclSum,
-  //                           ncclComm,
-  //                           stream));
-  //   checkCUDA(cudaMemcpy(ptr, src, size, cudaMemcpyDeviceToHost));
-  //   checkCUDA(cudaStreamSynchronize(stream));
-  //   printf("nccl: ");
-  //   for (int i = 0; i < 20; ++i) {
-  //     printf("%d ", ptr[i]);
-  //   }
-  //   printf("\n");
-  // }
 }
 
 void forward_kernel_wrapper(AllReduceMeta const *m,
