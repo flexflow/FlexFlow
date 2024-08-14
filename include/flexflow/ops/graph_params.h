@@ -14,7 +14,7 @@ namespace FlexFlow {
       : num_active_requests(num_active_requests), num_active_tokens(num_active_tokens), prompt_phase(prompt_phase) {}
 
     void Print() const {
-      printf("GraphParams, num_active_requests: %d, num_active_tokens: %d, prompt_phase: %d\n \n", num_active_requests, num_active_tokens, prompt_phase);
+      printf("GraphParams, num_active_requests: %d, num_active_tokens: %d, prompt_phase: %d\n\n", num_active_requests, num_active_tokens, prompt_phase);
     }
   };
 

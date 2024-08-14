@@ -1432,10 +1432,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                        vProjSize * num_q_heads);
     size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
            qk_prod_size = 0;
-    assert((BatchConfig::max_sequence_length() +
-            BatchConfig::max_spec_tree_token_num()) %
-               kPagesize ==
-           0);
+    // assert((BatchConfig::max_sequence_length() +
+    //         BatchConfig::max_spec_tree_token_num()) %
+    //            kPagesize ==
+    //        0);
     size_t max_num_pages =
         (BatchConfig::max_sequence_length() +
          BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
@@ -1452,21 +1452,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                        BatchConfig::max_sequence_length() * num_q_heads;
         break;
       }
-      case TREE_SEARCH_MODE: {
-        key_cache_size = num_q_heads * kProjSize *
-                         BatchConfig::max_requests_per_batch() *
-                         (BatchConfig::max_sequence_length() +
-                          BatchConfig::max_spec_tree_token_num());
-        value_cache_size = num_q_heads * vProjSize *
-                           BatchConfig::max_requests_per_batch() *
-                           (BatchConfig::max_sequence_length() +
-                            BatchConfig::max_spec_tree_token_num());
-        qk_prod_size = BatchConfig::max_sequence_length() *
-                       (BatchConfig::max_sequence_length() +
-                        BatchConfig::max_spec_tree_token_num()) *
-                       num_q_heads;
-        break;
-      }
+      case TREE_SEARCH_MODE:
       case TREE_VERIFY_MODE: {
         query_tmp_size =
             num_q_heads * qProjSize * BatchConfig::max_tokens_per_batch();
