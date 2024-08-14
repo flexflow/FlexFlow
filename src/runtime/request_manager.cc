@@ -1447,6 +1447,7 @@ bool RequestManager::update_ssm_inference_results(
         (Realm::Clock::current_time_in_microseconds() -
          profiling.ssm_step_start) *
         1e-3);
+    profiling.ssm_steps.push_back(current_ssm_step);
   }
   return all_request_last_layer_empty;
 }
@@ -2220,6 +2221,15 @@ void RequestManager::terminate_background_server() {
       }
       ssm_step_times_ms += ")";
       str += ssm_step_times_ms;
+    }
+    if (profiling.ssm_steps.size() > 0) {
+      str += "\n ssm_steps(";
+      std::string ssm_steps = " ";
+      for (int nb : profiling.ssm_steps) {
+        ssm_steps += std::to_string(nb) + " ";
+      }
+      ssm_steps += ")";
+      str += ssm_steps;
     }
     str += "\n generated_tokens_per_step(";
     std::string generated_tokens_per_step = " ";

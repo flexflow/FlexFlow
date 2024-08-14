@@ -383,6 +383,7 @@ private:
     // Times for each SSM speculation phase (in ms)
     std::vector<double> ssm_step_times;
     // Number of requests getting decoded at each step
+    std::vector<int> ssm_steps;
     std::vector<int> requests_per_step;
     // Number of generated tokens at each step
     std::vector<int> generated_tokens_per_step;
