@@ -1,5 +1,6 @@
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/algorithms/get_descendants.h"
 #include "utils/graph/digraph/algorithms/get_predecessors.h"
 #include "utils/graph/digraph/algorithms/get_successors.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
@@ -12,23 +13,8 @@ namespace FlexFlow {
 static std::vector<Node> get_unchecked_topological_ordering_from_starting_node(
     DiGraphView const &g, Node const &starting_node) {
 
-  auto get_descendants = [&](DiGraphView const &g, Node const &starting_node) {
-    std::unordered_set<Node> descendants;
-    std::stack<Node> to_visit;
-    to_visit.push(starting_node);
-    while (!to_visit.empty()) {
-      Node current = to_visit.top();
-      to_visit.pop();
-      descendants.insert(current);
-      for (auto const &s :
-           filter(get_successors(g, current),
-                  [&](Node const &n) { return !contains(descendants, n); })) {
-        to_visit.push(s);
-      }
-    }
-    return descendants;
-  };
   std::unordered_set<Node> descendants = get_descendants(g, starting_node);
+  descendants.insert(starting_node);
   return get_topological_ordering(get_subgraph(g, descendants));
 }
 

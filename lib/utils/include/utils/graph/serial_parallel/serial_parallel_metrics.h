@@ -21,6 +21,10 @@ float work_cost(SerialParallelDecomposition const &sp,
 float work_cost(DiGraphView const &g,
                 std::unordered_map<Node, float> const &cost_map);
 
+int num_dependencies(SerialParallelDecomposition const &sp);
+
+int num_dependencies(DiGraphView const &g);
+
 float critical_path_cost(SerialParallelDecomposition const &sp,
                          std::unordered_map<Node, float> const &cost_map);
 
@@ -35,6 +39,9 @@ float relative_critical_path_cost_increase(
     DiGraphView const &g,
     SerialParallelDecomposition const &sp,
     std::unordered_map<Node, float> const &cost_map);
+
+float relative_num_dependencies_increase(DiGraphView const &g,
+                                         SerialParallelDecomposition const &sp);
 
 } // namespace FlexFlow
 

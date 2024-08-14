@@ -2,9 +2,11 @@
 #include "utils/containers.h"
 #include "utils/containers/as_vector.h"
 #include "utils/containers/values.h"
+#include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/digraph/algorithms/get_longest_path_lengths_from_root.h"
 #include "utils/graph/digraph/digraph_view.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/serial_parallel/digraph_generation.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 #include <unordered_map>
 
@@ -95,15 +97,12 @@ float critical_path_cost(DiGraphView const &g,
       values(get_weighted_longest_path_lengths_from_root(g, cost_map)));
 }
 
-float average_parallelism_degree(
-    SerialParallelDecomposition const &sp,
-    std::unordered_map<Node, float> const &cost_map) {
-  NOT_IMPLEMENTED();
+int num_dependencies(SerialParallelDecomposition const &sp) {
+  return num_dependencies(digraph_from_sp_decomposition(sp));
 }
 
-float max_parallelism_degree(SerialParallelDecomposition const &sp,
-                             std::unordered_map<Node, float> const &cost_map) {
-  NOT_IMPLEMENTED();
+int num_dependencies(DiGraphView const &g) {
+  return num_edges(g);
 }
 
 float relative_work_increase(DiGraphView const &g,
@@ -117,6 +116,11 @@ float relative_critical_path_cost_increase(
     SerialParallelDecomposition const &sp,
     std::unordered_map<Node, float> const &cost_map) {
   return critical_path_cost(sp, cost_map) / critical_path_cost(g, cost_map);
+}
+
+float relative_num_dependencies_increase(
+    DiGraphView const &g, SerialParallelDecomposition const &sp) {
+  return static_cast<float>(num_dependencies(sp)) / num_dependencies(g);
 }
 
 } // namespace FlexFlow

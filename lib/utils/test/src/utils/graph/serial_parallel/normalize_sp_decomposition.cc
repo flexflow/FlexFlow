@@ -10,6 +10,15 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n2 = Node(2);
     Node n3 = Node(3);
 
+    SUBCASE("Empty") {
+      SerialParallelDecomposition input = SerialParallelDecomposition{
+          SerialSplit{ParallelSplit{}, ParallelSplit{}}};
+      SerialParallelDecomposition correct =
+          SerialParallelDecomposition{SerialSplit{}};
+      SerialParallelDecomposition result = normalize_sp_decomposition(input);
+      CHECK(correct == result);
+    }
+
     SUBCASE("Node Decomposition") {
       SerialParallelDecomposition input = SerialParallelDecomposition{n1};
       SerialParallelDecomposition correct = SerialParallelDecomposition{n1};
