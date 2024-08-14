@@ -301,13 +301,19 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   BatchPrefillHandler *handler = nullptr;
 
   if (!bc->prompt_phase) {
-    assert(m->handle.tree_verify_attention_metadata->decode_handler_collections.count(batch_size) != 0 &&
+    assert(m->handle.tree_verify_attention_metadata->decode_handler_collections
+                   .count(batch_size) != 0 &&
            "Handler is not initialized");
-    handler = static_cast<BatchPrefillHandler *>(m->handle.tree_verify_attention_metadata->decode_handler_collections[batch_size]);
+    handler = static_cast<BatchPrefillHandler *>(
+        m->handle.tree_verify_attention_metadata
+            ->decode_handler_collections[batch_size]);
   } else {
-    assert(m->handle.tree_verify_attention_metadata->prompt_handler_collections.count(batch_size) != 0 &&
+    assert(m->handle.tree_verify_attention_metadata->prompt_handler_collections
+                   .count(batch_size) != 0 &&
            "Handler is not initialized");
-    handler = static_cast<BatchPrefillHandler *>(m->handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
+    handler = static_cast<BatchPrefillHandler *>(
+        m->handle.tree_verify_attention_metadata
+            ->prompt_handler_collections[batch_size]);
   }
 
   //   cudaEventRecord(t_end, stream);
@@ -324,67 +330,67 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  DISPATCH_HEADDIM(
-    head_dim, HEAD_DIM, {
-      cudaError_t result;
-      if (bc->prompt_phase) {
-        result = BatchPrefillWithPagedKVCacheWrapperDispatched<
-            PageStorage::kIndices,
-            HEAD_DIM,
-            LogitsPostHook::kNone,
-            QKVLayout::kNHD,
-            PosEncodingMode::kNone,
-            false,
-            MaskMode::kCausal,
-            half,
-            half,
-            int32_t>(handler,
-                      q,
-                      m->handle.tree_verify_attention_metadata->q_indptr,
-                      /*q_offset=*/nullptr,
-                      paged_kv,
-                      /*custom_mask=*/nullptr,
-                      /*qk_indptr=*/nullptr,
-                      o,
-                      /*lse=*/nullptr,
-                      num_q_heads,
-                      /*logits_soft_cap=*/0.f,
-                      sm_scale,
-                      /*rope_scale=*/1.f,
-                      /*rope_theta=*/static_cast<float>(1e4),
-                      stream);
-      } else {
-        result = BatchPrefillWithPagedKVCacheWrapperDispatched<
-            PageStorage::kIndices,
-            HEAD_DIM,
-            LogitsPostHook::kNone,
-            QKVLayout::kNHD,
-            PosEncodingMode::kNone,
-            false,
-            MaskMode::kCustom,
-            half,
-            half,
-            int32_t>(handler,
-                      q,
-                      m->handle.tree_verify_attention_metadata->q_indptr,
-                      /*q_offset=*/nullptr,
-                      paged_kv,
-                      m->handle.tree_verify_attention_metadata->custom_mask,
-                      m->handle.tree_verify_attention_metadata->qk_indptr,
-                      o,
-                      /*lse=*/nullptr,
-                      num_q_heads,
-                      /*logits_soft_cap=*/0.f,
-                      sm_scale,
-                      /*rope_scale=*/1.f,
-                      /*rope_theta=*/static_cast<float>(1e4),
-                      stream);
-      }
+  DISPATCH_HEADDIM(head_dim, HEAD_DIM, {
+    cudaError_t result;
+    if (bc->prompt_phase) {
+      result =
+          BatchPrefillWithPagedKVCacheWrapperDispatched<PageStorage::kIndices,
+                                                        HEAD_DIM,
+                                                        LogitsPostHook::kNone,
+                                                        QKVLayout::kNHD,
+                                                        PosEncodingMode::kNone,
+                                                        false,
+                                                        MaskMode::kCausal,
+                                                        half,
+                                                        half,
+                                                        int32_t>(
+              handler,
+              q,
+              m->handle.tree_verify_attention_metadata->q_indptr,
+              /*q_offset=*/nullptr,
+              paged_kv,
+              /*custom_mask=*/nullptr,
+              /*qk_indptr=*/nullptr,
+              o,
+              /*lse=*/nullptr,
+              num_q_heads,
+              /*logits_soft_cap=*/0.f,
+              sm_scale,
+              /*rope_scale=*/1.f,
+              /*rope_theta=*/static_cast<float>(1e4),
+              stream);
+    } else {
+      result =
+          BatchPrefillWithPagedKVCacheWrapperDispatched<PageStorage::kIndices,
+                                                        HEAD_DIM,
+                                                        LogitsPostHook::kNone,
+                                                        QKVLayout::kNHD,
+                                                        PosEncodingMode::kNone,
+                                                        false,
+                                                        MaskMode::kCustom,
+                                                        half,
+                                                        half,
+                                                        int32_t>(
+              handler,
+              q,
+              m->handle.tree_verify_attention_metadata->q_indptr,
+              /*q_offset=*/nullptr,
+              paged_kv,
+              m->handle.tree_verify_attention_metadata->custom_mask,
+              m->handle.tree_verify_attention_metadata->qk_indptr,
+              o,
+              /*lse=*/nullptr,
+              num_q_heads,
+              /*logits_soft_cap=*/0.f,
+              sm_scale,
+              /*rope_scale=*/1.f,
+              /*rope_theta=*/static_cast<float>(1e4),
+              stream);
+    }
     if (result != cudaSuccess) {
-      throw std::runtime_error(
-          "Failed to run "
-          "BatchPrefillWithPagedKVCacheWrapperDispatched" +
-          std::string(cudaGetErrorString(result)));
+      throw std::runtime_error("Failed to run "
+                               "BatchPrefillWithPagedKVCacheWrapperDispatched" +
+                               std::string(cudaGetErrorString(result)));
     }
   });
 
@@ -736,17 +742,17 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BatchConfig::request_available) +
             sizeof(BatchConfig::causalMask));
-    num_tokens_to_commit = 
-        reinterpret_cast<int *>(
-            reinterpret_cast<char *>(committed_token_infos) +
-            sizeof(BatchConfig::committed_tokens));
+    num_tokens_to_commit = reinterpret_cast<int *>(
+        reinterpret_cast<char *>(committed_token_infos) +
+        sizeof(BatchConfig::committed_tokens));
   }
 
   cudaStreamSynchronize(stream);
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
-  // delete static_cast<flashinfer::BatchPrefillHandler *>(batch_prefill_handler);
+  // delete static_cast<flashinfer::BatchPrefillHandler
+  // *>(batch_prefill_handler);
 }
 
 }; // namespace FlexFlow

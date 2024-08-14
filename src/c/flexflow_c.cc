@@ -35,9 +35,7 @@ public:
     t_.impl = const_cast<void *>(static_cast<void const *>(t));                \
     return t_;                                                                 \
   }                                                                            \
-  static T unwrap(T_ t_) {                                                     \
-    return static_cast<T>(t_.impl);                                            \
-  }                                                                            \
+  static T unwrap(T_ t_) { return static_cast<T>(t_.impl); }                   \
   static const T unwrap_const(const T_ t_) {                                   \
     return static_cast<const T>(t_.impl);                                      \
   }

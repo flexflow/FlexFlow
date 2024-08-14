@@ -34,34 +34,41 @@
 // all-reduce kernel. They may also be extended for other uses in
 // the future.
 class CommunicationBuffer {
- public:
+public:
   // The device information for CUDA CommunicationBuffer.
   int num_devices;
   int device_id;
-  void* local_ptr;
+  void *local_ptr;
 
   // The data pointers of all all-reduce inputs.
-  // It has "num_devices" pointers. The i-th pointer is the data pointer on worker i.
-  // If "i != device_id", the pointer is an peer data pointer of other device.
-  // Otherwise, the pointer is a local CUDA data pointer.
-  std::vector<void*> comm_ptrs;
+  // It has "num_devices" pointers. The i-th pointer is the data pointer on
+  // worker i. If "i != device_id", the pointer is an peer data pointer of other
+  // device. Otherwise, the pointer is a local CUDA data pointer.
+  std::vector<void *> comm_ptrs;
 
-  // The barrier helper datas per CommunicationBuffer, which can be used 
-  // by custom collective operations and allow fine-grained synchronization on each buffer.
-  // They have "num_devices" pointers, and the pointer arrangement is the same as "comm_ptrs".
-  std::vector<void*> barrier_in;
-  std::vector<void*> barrier_out;
+  // The barrier helper datas per CommunicationBuffer, which can be used
+  // by custom collective operations and allow fine-grained synchronization on
+  // each buffer. They have "num_devices" pointers, and the pointer arrangement
+  // is the same as "comm_ptrs".
+  std::vector<void *> barrier_in;
+  std::vector<void *> barrier_out;
 
   // The integer buffer flag for all-reduce.
   // It will self increment by 1 after each all-reduce operation.
-  int* barrier_flag;
+  int *barrier_flag;
 };
 
-CommunicationBuffer* create_comm_buf_with_local_ptr(int num_devices, int device_id, ncclComm_t ncclComm,
-                                                  void* allgather_src, void* allgather_dst,
-                                                  void* local_ptr, void* barrier_in_ptr, void* barrier_out_ptr,
-                                                  int* barrier_flag, cudaStream_t stream);
+CommunicationBuffer *create_comm_buf_with_local_ptr(int num_devices,
+                                                    int device_id,
+                                                    ncclComm_t ncclComm,
+                                                    void *allgather_src,
+                                                    void *allgather_dst,
+                                                    void *local_ptr,
+                                                    void *barrier_in_ptr,
+                                                    void *barrier_out_ptr,
+                                                    int *barrier_flag,
+                                                    cudaStream_t stream);
 
-void release_comm_buf(CommunicationBuffer* comm_buf);
+void release_comm_buf(CommunicationBuffer *comm_buf);
 
 #endif // _COMMUNICATION_BUFFER_H

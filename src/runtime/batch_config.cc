@@ -171,8 +171,8 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
     os << "Committed tokens info:\n";
     for (int i = 0; i < bc.num_tokens_to_commit; i++) {
       os << "  Token " << i << ":\n";
-      os << "    Index in kv cache: " << bc.committed_tokens[i].index_in_kv_cache
-         << std::endl;
+      os << "    Index in kv cache: "
+         << bc.committed_tokens[i].index_in_kv_cache << std::endl;
       os << "    Request index: " << bc.committed_tokens[i].request_index
          << std::endl;
       os << "    Token depth: " << bc.committed_tokens[i].token_depth

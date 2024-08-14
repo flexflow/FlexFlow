@@ -1441,7 +1441,8 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  if (all_request_last_layer_empty or current_ssm_step == get_max_tree_depth()) {
+  if (all_request_last_layer_empty or
+      current_ssm_step == get_max_tree_depth()) {
     // Update profiling statistics before returning
     profiling.ssm_step_times.push_back(
         (Realm::Clock::current_time_in_microseconds() -

@@ -14,19 +14,21 @@
  * limitations under the License.
  */
 
-#include <cuda_fp16.h>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <cuda_fp16.h>
 
 #include "custom_allreduce_kernels.h"
 
 namespace tensorrt_llm {
 
-static inline __device__ void st_flag_release(uint32_t& flag, uint32_t* flag_addr) {
+static inline __device__ void st_flag_release(uint32_t &flag,
+                                              uint32_t *flag_addr) {
 #if __CUDA_ARCH__ >= 700
-  asm volatile("st.global.release.sys.b32 [%1], %0;" ::"r"(flag), "l"(flag_addr));
+  asm volatile("st.global.release.sys.b32 [%1], %0;" ::"r"(flag),
+               "l"(flag_addr));
 #else
   __threadfence_system();
   asm volatile("st.global.volatile.b32 [%1], %0;" ::"r"(flag), "l"(flag_addr));
@@ -35,11 +37,16 @@ static inline __device__ void st_flag_release(uint32_t& flag, uint32_t* flag_add
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static inline __device__ void ld_flag_acquire(uint32_t& flag, uint32_t* flag_addr) {
+static inline __device__ void ld_flag_acquire(uint32_t &flag,
+                                              uint32_t *flag_addr) {
 #if __CUDA_ARCH__ >= 700
-  asm volatile("ld.global.acquire.sys.b32 %0, [%1];" : "=r"(flag) : "l"(flag_addr));
+  asm volatile("ld.global.acquire.sys.b32 %0, [%1];"
+               : "=r"(flag)
+               : "l"(flag_addr));
 #else
-  asm volatile("ld.global.volatile.b32 %0, [%1];" : "=r"(flag) : "l"(flag_addr));
+  asm volatile("ld.global.volatile.b32 %0, [%1];"
+               : "=r"(flag)
+               : "l"(flag_addr));
 #endif
 }
 
@@ -84,7 +91,7 @@ struct PackedOn16Bytes<__nv_bfloat16> {
 
 // add two 128b data
 template <typename T>
-inline __device__ int4 add128b(T& a, T& b) {
+inline __device__ int4 add128b(T &a, T &b) {
   T c;
   c.unpacked[0] = a.unpacked[0] + b.unpacked[0];
   c.unpacked[1] = a.unpacked[1] + b.unpacked[1];
@@ -93,12 +100,15 @@ inline __device__ int4 add128b(T& a, T& b) {
   return c.packed;
 }
 
-__inline__ __device__ void multi_gpu_barrier(uint32_t** signals, const uint32_t flag,
-                                             const size_t rank, const size_t world_size,
-                                             int const tidx, int const bidx) {
-  // At the end of the function, we now that has least block 0 from all others GPUs have reached
-  // that point.
-  uint32_t volatile* my_signals = signals[rank];
+__inline__ __device__ void multi_gpu_barrier(uint32_t **signals,
+                                             const uint32_t flag,
+                                             const size_t rank,
+                                             const size_t world_size,
+                                             int const tidx,
+                                             int const bidx) {
+  // At the end of the function, we now that has least block 0 from all others
+  // GPUs have reached that point.
+  uint32_t volatile *my_signals = signals[rank];
   if (tidx < world_size) {
     // The 1st block notifies the other ranks.
     if (bidx == 0) {
@@ -115,8 +125,12 @@ __inline__ __device__ void multi_gpu_barrier(uint32_t** signals, const uint32_t 
 }
 
 __global__ void multiGpuBarrierKernel(AllReduceParams params) {
-  multi_gpu_barrier(params.peer_barrier_ptrs_out, params.barrier_flag, params.local_rank,
-                    params.ranks_per_node, threadIdx.x, blockIdx.x);
+  multi_gpu_barrier(params.peer_barrier_ptrs_out,
+                    params.barrier_flag,
+                    params.local_rank,
+                    params.ranks_per_node,
+                    threadIdx.x,
+                    blockIdx.x);
 }
 
 template <typename T, int RANKS_PER_NODE>
@@ -130,21 +144,27 @@ static __global__ void oneShotAllReduceKernel(AllReduceParams params) {
   // Packed data type for comms
   using PackedStruct = typename PackedOn16Bytes<T>::Type;
 
-  multi_gpu_barrier(params.peer_barrier_ptrs_in, params.barrier_flag, params.local_rank,
-                    RANKS_PER_NODE, tidx, bidx);
+  multi_gpu_barrier(params.peer_barrier_ptrs_in,
+                    params.barrier_flag,
+                    params.local_rank,
+                    RANKS_PER_NODE,
+                    tidx,
+                    bidx);
 
   // The source pointers. Distributed round-robin for the different warps.
-  T const* src_d[RANKS_PER_NODE];
+  T const *src_d[RANKS_PER_NODE];
 #pragma unroll
   for (int ii = 0; ii < RANKS_PER_NODE; ++ii) {
     int rank = (params.local_rank + ii) % RANKS_PER_NODE;
-    src_d[ii] = reinterpret_cast<T*>(params.peer_comm_buffer_ptrs[rank]);
+    src_d[ii] = reinterpret_cast<T *>(params.peer_comm_buffer_ptrs[rank]);
   }
 
-  // The location in the destination array (load 8 fp16 or load 4 fp32 using LDG.128).
+  // The location in the destination array (load 8 fp16 or load 4 fp32 using
+  // LDG.128).
   size_t offset = bidx * params.elts_per_block + tidx * NUM_ELTS;
   // The end of the segment computed by that block.
-  size_t max_offset = min((bidx + 1) * params.elts_per_block, params.elts_per_rank);
+  size_t max_offset =
+      min((bidx + 1) * params.elts_per_block, params.elts_per_rank);
 
   // Each block accumulates the values from the different GPUs on the same node.
   for (size_t iter_offset = offset; iter_offset < max_offset;
@@ -153,7 +173,8 @@ static __global__ void oneShotAllReduceKernel(AllReduceParams params) {
     PackedStruct vals[RANKS_PER_NODE];
 #pragma unroll
     for (int ii = 0; ii < RANKS_PER_NODE; ++ii) {
-      vals[ii].packed = *reinterpret_cast<int4 const*>(&src_d[ii][iter_offset]);
+      vals[ii].packed =
+          *reinterpret_cast<int4 const *>(&src_d[ii][iter_offset]);
     }
 
     // Sum the values from the different ranks.
@@ -165,8 +186,8 @@ static __global__ void oneShotAllReduceKernel(AllReduceParams params) {
     }
 
     // Store to the destination buffer.
-    *reinterpret_cast<int4*>(&reinterpret_cast<T*>(params.local_output_buffer_ptr)[iter_offset]) =
-        sums.packed;
+    *reinterpret_cast<int4 *>(&reinterpret_cast<T *>(
+        params.local_output_buffer_ptr)[iter_offset]) = sums.packed;
   }
 }
 
@@ -183,24 +204,29 @@ static __global__ void twoShotAllReduceKernel(AllReduceParams params) {
   // Packed data type for comms
   using PackedType = typename PackedOn16Bytes<T>::Type;
 
-  // The location in the destination array (load 8 fp16 or load 4 fp32 using LDG.128).
+  // The location in the destination array (load 8 fp16 or load 4 fp32 using
+  // LDG.128).
   const size_t block_offset = bidx * params.elts_per_block + tidx * NUM_ELTS;
   const size_t block_start = params.rank_offset + block_offset;
   // The end of the segment computed by that block.
-  size_t max_offset =
-      min(block_start + params.elts_per_block, params.rank_offset + params.elts_per_rank);
+  size_t max_offset = min(block_start + params.elts_per_block,
+                          params.rank_offset + params.elts_per_rank);
 
-  multi_gpu_barrier(params.peer_barrier_ptrs_in, params.barrier_flag, params.local_rank,
-                    RANKS_PER_NODE, tidx, bidx);
+  multi_gpu_barrier(params.peer_barrier_ptrs_in,
+                    params.barrier_flag,
+                    params.local_rank,
+                    RANKS_PER_NODE,
+                    tidx,
+                    bidx);
 
   // The source pointers. Distributed round-robin for the different warps.
-  T* src_d[RANKS_PER_NODE];
+  T *src_d[RANKS_PER_NODE];
   // The destination ranks for round-robin gathering
   size_t dst_rank[RANKS_PER_NODE];
 #pragma unroll
   for (int ii = 0; ii < RANKS_PER_NODE; ++ii) {
     int rank = (params.local_rank + ii) % RANKS_PER_NODE;
-    src_d[ii] = reinterpret_cast<T*>(params.peer_comm_buffer_ptrs[rank]);
+    src_d[ii] = reinterpret_cast<T *>(params.peer_comm_buffer_ptrs[rank]);
     dst_rank[ii] = rank;
   }
 
@@ -211,7 +237,8 @@ static __global__ void twoShotAllReduceKernel(AllReduceParams params) {
     PackedType vals[RANKS_PER_NODE];
 #pragma unroll
     for (int ii = 0; ii < RANKS_PER_NODE; ++ii) {
-      vals[ii].packed = *reinterpret_cast<int4 const*>(&src_d[ii][local_offset]);
+      vals[ii].packed =
+          *reinterpret_cast<int4 const *>(&src_d[ii][local_offset]);
     }
 
     // Sum the values from the different ranks.
@@ -223,7 +250,7 @@ static __global__ void twoShotAllReduceKernel(AllReduceParams params) {
     }
 
     // Store to the local buffer.
-    *reinterpret_cast<int4*>(&src_d[0][local_offset]) = sums.packed;
+    *reinterpret_cast<int4 *>(&src_d[0][local_offset]) = sums.packed;
   }
 
   // sync threads to make sure all block threads have the sums
@@ -234,12 +261,13 @@ static __global__ void twoShotAllReduceKernel(AllReduceParams params) {
     // The all blocks notifies the other ranks.
     uint32_t flag_block_offset = RANKS_PER_NODE + bidx * RANKS_PER_NODE;
     st_flag_release(params.barrier_flag,
-                    params.peer_barrier_ptrs_in[tidx] + flag_block_offset + params.local_rank);
+                    params.peer_barrier_ptrs_in[tidx] + flag_block_offset +
+                        params.local_rank);
 
     // Busy-wait until all ranks are ready.
     uint32_t rank_barrier = 0;
-    uint32_t* peer_barrier_d =
-        params.peer_barrier_ptrs_in[params.local_rank] + flag_block_offset + tidx;
+    uint32_t *peer_barrier_d = params.peer_barrier_ptrs_in[params.local_rank] +
+                               flag_block_offset + tidx;
     do {
       ld_flag_acquire(rank_barrier, peer_barrier_d);
     } while (rank_barrier != params.barrier_flag);
@@ -248,7 +276,8 @@ static __global__ void twoShotAllReduceKernel(AllReduceParams params) {
   // sync threads to make sure all other ranks has the final partial results
   __syncthreads();
 
-  size_t max_block_offset = min(block_offset + params.elts_per_block, params.elts_per_rank);
+  size_t max_block_offset =
+      min(block_offset + params.elts_per_block, params.elts_per_rank);
   // Gather all needed elts from other intra-node ranks
   for (size_t local_offset = block_offset; local_offset < max_block_offset;
        local_offset += blockDim.x * NUM_ELTS) {
@@ -259,17 +288,21 @@ static __global__ void twoShotAllReduceKernel(AllReduceParams params) {
       if (offset_rank >= params.elts_total) {
         continue;
       }
-      *reinterpret_cast<int4*>(&reinterpret_cast<T*>(params.local_output_buffer_ptr)[offset_rank]) =
-          *reinterpret_cast<int4*>(&src_d[ii][offset_rank]);
+      *reinterpret_cast<int4 *>(
+          &reinterpret_cast<T *>(params.local_output_buffer_ptr)[offset_rank]) =
+          *reinterpret_cast<int4 *>(&src_d[ii][offset_rank]);
     }
   }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-inline int divUp(int a, int b) { return (a + b - 1) / b; }
+inline int divUp(int a, int b) {
+  return (a + b - 1) / b;
+}
 
-std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReduceParams& param,
+std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo,
+                                        AllReduceParams &param,
                                         size_t elts_per_thread) {
   assert(param.elts_total % elts_per_thread == 0);
 
@@ -277,21 +310,23 @@ std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReducePar
 
   const size_t total_threads = param.elts_total / elts_per_thread;
   switch (algo) {
-    case AllReduceStrategyType::ONESHOT: {        // one stage all reduce algo
-      if (total_threads <= DEFAULT_BLOCK_SIZE) {  // local reduce
+    case AllReduceStrategyType::ONESHOT: {       // one stage all reduce algo
+      if (total_threads <= DEFAULT_BLOCK_SIZE) { // local reduce
         threads_per_block = WARP_SIZE * divUp(total_threads, WARP_SIZE);
         blocks_per_grid = 1;
-      } else {  // local reduce
+      } else { // local reduce
         threads_per_block = DEFAULT_BLOCK_SIZE;
         blocks_per_grid = divUp(total_threads, DEFAULT_BLOCK_SIZE);
-        blocks_per_grid = std::min(static_cast<int>(MAX_ALL_REDUCE_BLOCKS), blocks_per_grid);
+        blocks_per_grid =
+            std::min(static_cast<int>(MAX_ALL_REDUCE_BLOCKS), blocks_per_grid);
       }
       param.elts_per_rank = param.elts_total;
       param.elts_per_block =
-          elts_per_thread * divUp(param.elts_per_rank, elts_per_thread * blocks_per_grid);
+          elts_per_thread *
+          divUp(param.elts_per_rank, elts_per_thread * blocks_per_grid);
       break;
     }
-    case AllReduceStrategyType::TWOSHOT: {  // two stage all reduce algo
+    case AllReduceStrategyType::TWOSHOT: { // two stage all reduce algo
       const size_t elts_per_rank = param.elts_total / param.ranks_per_node;
       assert(elts_per_rank % elts_per_thread == 0);
 
@@ -317,7 +352,8 @@ std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReducePar
       }
       param.elts_per_rank = param.elts_total / param.ranks_per_node;
       param.elts_per_block = param.elts_per_rank / blocks_per_grid;
-      param.elts_per_block = elts_per_thread * divUp(param.elts_per_block, elts_per_thread);
+      param.elts_per_block =
+          elts_per_thread * divUp(param.elts_per_block, elts_per_thread);
       param.rank_offset = param.rank * param.elts_per_rank;
       break;
     }
@@ -331,8 +367,11 @@ std::tuple<int, int> kernelLaunchConfig(AllReduceStrategyType algo, AllReducePar
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 template <typename T, int RANKS_PER_NODE>
-void dispatchARKernels(AllReduceStrategyType algo, AllReduceParams& param, int blocks_per_grid,
-                       int threads_per_block, cudaStream_t stream) {
+void dispatchARKernels(AllReduceStrategyType algo,
+                       AllReduceParams &param,
+                       int blocks_per_grid,
+                       int threads_per_block,
+                       cudaStream_t stream) {
   if (algo == AllReduceStrategyType::ONESHOT) {
     oneShotAllReduceKernel<T, RANKS_PER_NODE>
         <<<blocks_per_grid, threads_per_block, 0, stream>>>(param);
@@ -343,9 +382,11 @@ void dispatchARKernels(AllReduceStrategyType algo, AllReduceParams& param, int b
 }
 
 template <typename T>
-void invokeOneOrTwoShotAllReduceKernel(AllReduceParams& param, AllReduceStrategyType strat,
+void invokeOneOrTwoShotAllReduceKernel(AllReduceParams &param,
+                                       AllReduceStrategyType strat,
                                        cudaStream_t stream) {
-  assert(strat == AllReduceStrategyType::ONESHOT || strat == AllReduceStrategyType::TWOSHOT);
+  assert(strat == AllReduceStrategyType::ONESHOT ||
+         strat == AllReduceStrategyType::TWOSHOT);
   auto last_error = cudaGetLastError();
   if (last_error != cudaSuccess) {
     printf("cuda error: %s\n", cudaGetErrorString(last_error));
@@ -353,19 +394,24 @@ void invokeOneOrTwoShotAllReduceKernel(AllReduceParams& param, AllReduceStrategy
   }
 
   size_t elts_per_thread = 16 / sizeof(T);
-  auto [blocks_per_grid, threads_per_block] = kernelLaunchConfig(strat, param, elts_per_thread);
+  auto [blocks_per_grid, threads_per_block] =
+      kernelLaunchConfig(strat, param, elts_per_thread);
   switch (param.ranks_per_node) {
     case 2:
-      dispatchARKernels<T, 2>(strat, param, blocks_per_grid, threads_per_block, stream);
+      dispatchARKernels<T, 2>(
+          strat, param, blocks_per_grid, threads_per_block, stream);
       break;
     case 4:
-      dispatchARKernels<T, 4>(strat, param, blocks_per_grid, threads_per_block, stream);
+      dispatchARKernels<T, 4>(
+          strat, param, blocks_per_grid, threads_per_block, stream);
       break;
     case 6:
-      dispatchARKernels<T, 6>(strat, param, blocks_per_grid, threads_per_block, stream);
+      dispatchARKernels<T, 6>(
+          strat, param, blocks_per_grid, threads_per_block, stream);
       break;
     case 8:
-      dispatchARKernels<T, 8>(strat, param, blocks_per_grid, threads_per_block, stream);
+      dispatchARKernels<T, 8>(
+          strat, param, blocks_per_grid, threads_per_block, stream);
       break;
     default:
       break;
@@ -377,12 +423,16 @@ void invokeOneOrTwoShotAllReduceKernel(AllReduceParams& param, AllReduceStrategy
   }
 }
 
-void invokeMultiGpuBarrier(AllReduceParams& param, cudaStream_t stream) {
+void invokeMultiGpuBarrier(AllReduceParams &param, cudaStream_t stream) {
   multiGpuBarrierKernel<<<1, param.ranks_per_node, 0, stream>>>(param);
 }
 
-void customAllReduce(AllReduceParams& params, void* data, size_t elts, DataType dataType,
-                     AllReduceStrategyType strat, cudaStream_t stream) {
+void customAllReduce(AllReduceParams &params,
+                     void *data,
+                     size_t elts,
+                     DataType dataType,
+                     AllReduceStrategyType strat,
+                     cudaStream_t stream) {
   params.local_output_buffer_ptr = data;
   params.elts_total = elts;
 
@@ -395,4 +445,4 @@ void customAllReduce(AllReduceParams& params, void* data, size_t elts, DataType 
   }
 }
 
-}  // namespace tensorrt_llm
+} // namespace tensorrt_llm

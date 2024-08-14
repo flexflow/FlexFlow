@@ -40,10 +40,10 @@ struct AllReduceParams {
   size_t rank_offset;
   size_t ranks_per_node, rank, local_rank;
   uint32_t barrier_flag;
-  uint32_t* peer_barrier_ptrs_in[MAX_RANKS_PER_NODE];
-  uint32_t* peer_barrier_ptrs_out[MAX_RANKS_PER_NODE];
-  void* peer_comm_buffer_ptrs[MAX_RANKS_PER_NODE];
-  void* local_output_buffer_ptr;
+  uint32_t *peer_barrier_ptrs_in[MAX_RANKS_PER_NODE];
+  uint32_t *peer_barrier_ptrs_out[MAX_RANKS_PER_NODE];
+  void *peer_comm_buffer_ptrs[MAX_RANKS_PER_NODE];
+  void *local_output_buffer_ptr;
 };
 
 inline size_t GetMaxRequiredWorkspaceSize(int world_size) {
@@ -53,7 +53,8 @@ inline size_t GetMaxRequiredWorkspaceSize(int world_size) {
   return 8 * 1000 * 1000;
 }
 
-inline AllReduceStrategyType SelectImplementation(size_t message_size, int world_size) {
+inline AllReduceStrategyType SelectImplementation(size_t message_size,
+                                                  int world_size) {
   const size_t maxWorkspaceSize = GetMaxRequiredWorkspaceSize(world_size);
 
   if (message_size > maxWorkspaceSize) {
@@ -77,7 +78,11 @@ inline AllReduceStrategyType SelectImplementation(size_t message_size, int world
   return AllReduceStrategyType::TWOSHOT;
 }
 
-void customAllReduce(AllReduceParams& params, void* data, size_t elts, DataType dataType,
-                     AllReduceStrategyType strat, cudaStream_t stream);
+void customAllReduce(AllReduceParams &params,
+                     void *data,
+                     size_t elts,
+                     DataType dataType,
+                     AllReduceStrategyType strat,
+                     cudaStream_t stream);
 
-}  // namespace tensorrt_llm
+} // namespace tensorrt_llm

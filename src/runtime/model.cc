@@ -613,11 +613,18 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
     }
     cudaError_t err = cudaDeviceEnablePeerAccess(i, 0);
     if (err == cudaSuccess) {
-      printf("P2P access successfully enabled between GPU %d and GPU %d\n", myRank, i);
+      printf("P2P access successfully enabled between GPU %d and GPU %d\n",
+             myRank,
+             i);
     } else if (err == cudaErrorPeerAccessAlreadyEnabled) {
-      printf("P2P access is already enabled between GPU %d and GPU %d\n", myRank, i);
+      printf("P2P access is already enabled between GPU %d and GPU %d\n",
+             myRank,
+             i);
     } else {
-      printf("Failed to enable P2P access between GPU %d and GPU %d: %s\n", myRank, i, cudaGetErrorString(err));
+      printf("Failed to enable P2P access between GPU %d and GPU %d: %s\n",
+             myRank,
+             i,
+             cudaGetErrorString(err));
       assert(false && "Failed to enable P2P access");
     }
   }

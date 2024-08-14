@@ -14,11 +14,13 @@ namespace FlexFlow {
 
 class AllReduceMeta : public OpMeta {
 public:
-  AllReduceMeta(FFHandler handle, AllReduce const *reduct, MemoryAllocator &gpu_mem_allocator);
+  AllReduceMeta(FFHandler handle,
+                AllReduce const *reduct,
+                MemoryAllocator &gpu_mem_allocator);
   ~AllReduceMeta(void);
 
 public:
-  std::unordered_map<void*, CommunicationBuffer*> comm_bufs;
+  std::unordered_map<void *, CommunicationBuffer *> comm_bufs;
   Realm::RegionInstance reserveInst;
   void *allgather_src, *allgather_dst;
   // reuse for communication buffer

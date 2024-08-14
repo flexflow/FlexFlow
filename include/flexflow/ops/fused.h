@@ -30,13 +30,11 @@ public:
   OpMeta *meta[MAX_NUM_FUSED_OPERATORS];
   FusedOp *fused_op;
   int numOperators;
-  bool graphCaptured=false;
+  bool graphCaptured = false;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
-  std::unordered_map<GraphParams, cudaGraphExec_t>
-      graph_collections;
+  std::unordered_map<GraphParams, cudaGraphExec_t> graph_collections;
 #else
-  std::unordered_map<GraphParams, hipGraphExec_t>
-      graph_collections;
+  std::unordered_map<GraphParams, hipGraphExec_t> graph_collections;
 #endif
 };
 

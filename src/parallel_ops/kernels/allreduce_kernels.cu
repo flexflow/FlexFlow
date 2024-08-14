@@ -13,26 +13,31 @@
  * limitations under the License.
  */
 
-#include <cuda_runtime.h>
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 #include "tensorrt_llm/custom_allreduce_kernels.h"
+#include <cuda_runtime.h>
 
 namespace FlexFlow {
 
 AllReduceMeta::AllReduceMeta(FFHandler handle,
-                              AllReduce const *reduct,
-                              MemoryAllocator &gpu_mem_allocator)
+                             AllReduce const *reduct,
+                             MemoryAllocator &gpu_mem_allocator)
     : OpMeta(handle) {
-  barrier_ptr_size = sizeof(uint32_t) * (tensorrt_llm::MAX_ALL_REDUCE_BLOCKS + 2) * tensorrt_llm::MAX_RANKS_PER_NODE;
-  gpu_mem_allocator.create_legion_instance(reserveInst,
-                                            sizeof(void*) * (handle.num_devices + 1)
-                                            + barrier_ptr_size * 2);
-  allgather_src = gpu_mem_allocator.allocate_instance_untyped(sizeof(void*));
-  allgather_dst = gpu_mem_allocator.allocate_instance_untyped(sizeof(void*) * handle.num_devices);
+  barrier_ptr_size = sizeof(uint32_t) *
+                     (tensorrt_llm::MAX_ALL_REDUCE_BLOCKS + 2) *
+                     tensorrt_llm::MAX_RANKS_PER_NODE;
+  gpu_mem_allocator.create_legion_instance(
+      reserveInst,
+      sizeof(void *) * (handle.num_devices + 1) + barrier_ptr_size * 2);
+  allgather_src = gpu_mem_allocator.allocate_instance_untyped(sizeof(void *));
+  allgather_dst = gpu_mem_allocator.allocate_instance_untyped(
+      sizeof(void *) * handle.num_devices);
   // Create barrier helpers for all-reduce.
-  barrier_in_ptr = gpu_mem_allocator.allocate_instance_untyped(barrier_ptr_size);
-  barrier_out_ptr = gpu_mem_allocator.allocate_instance_untyped(barrier_ptr_size);
+  barrier_in_ptr =
+      gpu_mem_allocator.allocate_instance_untyped(barrier_ptr_size);
+  barrier_out_ptr =
+      gpu_mem_allocator.allocate_instance_untyped(barrier_ptr_size);
   checkCUDA(cudaMemset(barrier_in_ptr, 0, barrier_ptr_size));
   checkCUDA(cudaMemset(barrier_out_ptr, 0, barrier_ptr_size));
   // Reset allocated memory to zero.
@@ -52,18 +57,27 @@ AllReduceMeta::~AllReduceMeta() {
 namespace Kernels {
 namespace AllReduce {
 
-CommunicationBuffer* get_or_create_comm_buffer(AllReduceMeta *m,
-                                                int num_devices, int device_id, ncclComm_t ncclComm,
-                                                void* local_ptr, cudaStream_t stream) {
+CommunicationBuffer *get_or_create_comm_buffer(AllReduceMeta *m,
+                                               int num_devices,
+                                               int device_id,
+                                               ncclComm_t ncclComm,
+                                               void *local_ptr,
+                                               cudaStream_t stream) {
   auto iter = m->comm_bufs.find(local_ptr);
   if (iter != m->comm_bufs.end()) {
     return iter->second;
   } else {
-    CommunicationBuffer* comm_buffer = create_comm_buf_with_local_ptr(
-        num_devices, device_id, ncclComm,
-        m->allgather_src, m->allgather_dst,
-        local_ptr, m->barrier_in_ptr, m->barrier_out_ptr,
-        &(m->barrier_flag), stream);
+    CommunicationBuffer *comm_buffer =
+        create_comm_buf_with_local_ptr(num_devices,
+                                       device_id,
+                                       ncclComm,
+                                       m->allgather_src,
+                                       m->allgather_dst,
+                                       local_ptr,
+                                       m->barrier_in_ptr,
+                                       m->barrier_out_ptr,
+                                       &(m->barrier_flag),
+                                       stream);
     m->comm_bufs[local_ptr] = comm_buffer;
     return comm_buffer;
   }
@@ -96,7 +110,9 @@ inline bool CanApplyCustomAllReduce(int64_t num_elements, DataType dtype) {
 }
 
 // Check if the two-shot customized all-reduce kernel can be applied.
-inline bool CanApplyTwoShotAllReduce(int64_t num_elements, DataType dtype, int num_workers) {
+inline bool CanApplyTwoShotAllReduce(int64_t num_elements,
+                                     DataType dtype,
+                                     int num_workers) {
   // The two-shot customized all-reduce kernel has the following requirement(s).
   return (num_elements / num_workers) % (16 / ((get_bits(dtype) + 7) / 8)) == 0;
 }
@@ -120,8 +136,9 @@ void inference_kernel_wrapper(AllReduceMeta *m,
   ncclComm_t ncclComm = m->handle.ncclComm;
   DataType dtype = input.data_type;
 
-  tensorrt_llm::AllReduceStrategyType strategy = tensorrt_llm::SelectImplementation(
-        num_elements * ((get_bits(dtype) + 7) / 8), num_devices);
+  tensorrt_llm::AllReduceStrategyType strategy =
+      tensorrt_llm::SelectImplementation(
+          num_elements * ((get_bits(dtype) + 7) / 8), num_devices);
 
   if (strategy == tensorrt_llm::AllReduceStrategyType::RING ||
       !CanApplyCustomAllReduce(num_elements, dtype)) {
@@ -142,17 +159,24 @@ void inference_kernel_wrapper(AllReduceMeta *m,
   params.ranks_per_node = num_devices;
   params.rank = device_id;
   params.local_rank = device_id;
-  CommunicationBuffer* comm_buffer = get_or_create_comm_buffer(m, num_devices, device_id, ncclComm,
-                                                               const_cast<void*>(input.ptr), stream);
+  CommunicationBuffer *comm_buffer =
+      get_or_create_comm_buffer(m,
+                                num_devices,
+                                device_id,
+                                ncclComm,
+                                const_cast<void *>(input.ptr),
+                                stream);
   params.barrier_flag = (*comm_buffer->barrier_flag)++;
   for (int i = 0; i < num_devices; ++i) {
     params.peer_comm_buffer_ptrs[i] = comm_buffer->comm_ptrs[i];
   }
   for (int i = 0; i < num_devices; ++i) {
-    params.peer_barrier_ptrs_in[i] = reinterpret_cast<uint32_t*>(comm_buffer->barrier_in[i]);
+    params.peer_barrier_ptrs_in[i] =
+        reinterpret_cast<uint32_t *>(comm_buffer->barrier_in[i]);
   }
   for (int i = 0; i < num_devices; ++i) {
-    params.peer_barrier_ptrs_out[i] = reinterpret_cast<uint32_t*>(comm_buffer->barrier_out[i]);
+    params.peer_barrier_ptrs_out[i] =
+        reinterpret_cast<uint32_t *>(comm_buffer->barrier_out[i]);
   }
 
   if (!CanApplyTwoShotAllReduce(num_elements, dtype, num_devices)) {
@@ -161,8 +185,8 @@ void inference_kernel_wrapper(AllReduceMeta *m,
     strategy = tensorrt_llm::AllReduceStrategyType::ONESHOT;
   }
 
-  tensorrt_llm::customAllReduce(params, output.ptr, num_elements, dtype, strategy,
-                                stream);
+  tensorrt_llm::customAllReduce(
+      params, output.ptr, num_elements, dtype, strategy, stream);
 }
 
 void forward_kernel_wrapper(AllReduceMeta const *m,
