@@ -262,6 +262,7 @@ public:
   int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
+  void set_slo_eps_ms(double eps);
   void set_decoding_mode(DecodingMode mode);
   void set_verbose(bool verbose_);
   void set_alignment_test(bool is_alignment_test);
@@ -341,6 +342,7 @@ private:
   int max_sequence_length;
   int max_tree_depth;
   int max_tree_width;
+  double slo_eps_ms;
   int k;
   State request_manager_status;
   BackgroundServerStatus background_server_status;
@@ -348,6 +350,10 @@ private:
   PrefillModel prefill_model;
   bool speculative_sampling = false;
   bool tpot_slo = false;
+
+  double llm_latency_estimate_ms;
+  double ssm_latency_estimate_ms;
+
   bool alignment_test = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
@@ -418,6 +424,12 @@ private:
     std::vector<int> requests_per_step;
     // Number of generated tokens at each step
     std::vector<int> generated_tokens_per_step;
+    // Number of SSM forward passes in one speculation phase
+    int nb_ssm_step;
+    // All amounts of forward passes in all speculation phases
+    std::vector<int> nb_ssm_steps;
+    // Tree sizes of all speculation phases
+    std::vector<std::vector<int>> tree_sizes;
   };
 
   ProfileInfo profiling;
@@ -468,7 +480,7 @@ private:
       InferenceResult const &ssm_inference_result);
   bool add_tokens_to_spec_token_tree_tpot_slo(
       InferenceResult const &ssm_inference_result);
-  void select_subtrees_on_tpot_slo_constraints(double const L, double const eps);
+  void select_subtrees_on_tpot_slo_constraints();
   /* ---------- Spec Decoding Helper Functions ---------- */
   void renormalize(std::vector<std::pair<TokenId, float>> &D,
                    std::unordered_map<TokenId, float> &R,

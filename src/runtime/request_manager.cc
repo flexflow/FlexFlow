@@ -156,6 +156,11 @@ int RequestManager::get_max_sequence_length() {
   return max_sequence_length;
 }
 
+void RequestManager::set_slo_eps_ms(double eps) {
+  assert(eps >= 0);
+  slo_eps_ms = eps;
+}
+
 void RequestManager::set_decoding_mode(DecodingMode mode) {
   assert(mode == INCREMENTAL_DECODING || mode == SPECULATIVE_DECODING);
   decoding_mode = mode;
@@ -607,6 +612,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
             * 1e-3 / profile_info.nb_tokens_decoded)
           + ")";
 
+    str += " target_tpot_ms(" + std::to_string(request.target_tpot_slo_ms) + ")";
   }
   write_to_output_file(alignment_test ? "" : output_filepath, str);
   if (!alignment_test) {
@@ -630,6 +636,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       if (decoding_mode == SPECULATIVE_DECODING) {
         prefill_model = SSM;
         current_ssm_step = 0;
+        profiling.nb_ssm_step = 0;
       }
     }
     return;
@@ -680,17 +687,20 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
               load_pending_request_to_batch();
               prefill_model = SSM;
               current_ssm_step = 0;
+              profiling.nb_ssm_step = 0;
             } else {
               // No more empty slots, start the speculation
               request_manager_status = SSM_SPEC;
               // Reset the prefill_request
               current_ssm_step = 0;
+              profiling.nb_ssm_step = 0;
               ssm_completed = false;
             }
           } else {
             // Not completed, start the next iteration of prefilling
             prefill_model = SSM;
             current_ssm_step = 0;
+            profiling.nb_ssm_step = 0;
           }
         } else {
           assert(false && "Invalid prefill model.");
@@ -718,16 +728,19 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
           current_ssm_step = 0;
+          profiling.nb_ssm_step = 0;
           ssm_completed = false;
         } else {
           request_manager_status = PREFILLING;
           load_pending_request_to_batch();
           prefill_model = SSM;
           current_ssm_step = 0;
+          profiling.nb_ssm_step = 0;
         }
       } else {
         request_manager_status = SSM_SPEC;
         current_ssm_step = 0;
+        profiling.nb_ssm_step = 0;
         ssm_completed = false;
       }
       break;
@@ -737,10 +750,26 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       // inference
       current_ssm_step++;
       if (!ssm_completed) {
+        profiling.nb_ssm_step += 1;
         ssm_completed = update_ssm_inference_results(result);
       }
 
       if (current_ssm_step == get_max_tree_depth()) {
+        // Save final tree sizes
+        std::vector<int> tree_size_list;
+        for (int request_index = 0; request_index < get_max_requests_per_batch();
+            ++request_index) {
+          if (!request_available[request_index]) {
+            // Request in this slot is unavailable
+            continue;
+          }
+          RequestGuid guid = guid_of_requests[request_index];
+          Request &request = all_requests[guid];
+          assert(request.status == Request::RUNNING);
+
+          tree_size_list.push_back(request.speculative_token_trees[0].tree_size);
+        }
+        profiling.tree_sizes.push_back(tree_size_list);
         request_manager_status = LLM_VERIFY;
       }
       break;
@@ -817,6 +846,15 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
       (Realm::Clock::current_time_in_microseconds() -
        profiling.llm_step_start) *
       1e-3);
+
+  // Update llm forward pass latency estimate
+  int window_size = 20;
+  llm_latency_estimate_ms = 0;
+  for (int idxx=profiling.llm_step_times.size()-1; idxx >= std::max(0, static_cast<int>(profiling.llm_step_times.size())-window_size); --idxx) {
+    llm_latency_estimate_ms += profiling.llm_step_times[idxx];
+  }
+  llm_latency_estimate_ms = llm_latency_estimate_ms / std::min(static_cast<size_t>(window_size), profiling.llm_step_times.size());
+
   profiling.requests_per_step.push_back(nb_requests_decoded);
   profiling.generated_tokens_per_step.push_back(nb_requests_decoded);
   return request_completed;
@@ -1448,7 +1486,7 @@ bool RequestManager::update_ssm_inference_results(
     all_request_last_layer_empty =
       add_tokens_to_spec_token_tree_tpot_slo(ssm_inference_result);
     if (all_request_last_layer_empty or current_ssm_step == get_max_tree_depth()) {
-      select_subtrees_on_tpot_slo_constraints(0.0, 0.0); // TODO: latency and eps
+      select_subtrees_on_tpot_slo_constraints();
     }
   } else {
     all_request_last_layer_empty =
@@ -1484,6 +1522,16 @@ bool RequestManager::update_ssm_inference_results(
         (Realm::Clock::current_time_in_microseconds() -
          profiling.ssm_step_start) *
         1e-3);
+
+    // Update ssm forward passes latency estimate
+    int window_size = 10;
+    ssm_latency_estimate_ms = 0;
+    for (int idxx=profiling.ssm_step_times.size()-1; idxx >= std::max(0, static_cast<int>(profiling.ssm_step_times.size())-window_size); --idxx) {
+      ssm_latency_estimate_ms += profiling.ssm_step_times[idxx];
+    }
+    ssm_latency_estimate_ms = ssm_latency_estimate_ms / std::min(static_cast<size_t>(window_size), profiling.ssm_step_times.size());
+
+    profiling.nb_ssm_steps.push_back(profiling.nb_ssm_step);
   }
   return all_request_last_layer_empty;
 }
@@ -2239,7 +2287,9 @@ void RequestManager::terminate_background_server() {
     assert(profiling.llm_step_times.size() ==
            profiling.requests_per_step.size());
     // Write the last profiling statistics to output file
-    std::string str = "[Profiling Statistics]\n llm_step_times_ms(";
+    std::string str = "[Profiling Statistics - ";
+    str += (tpot_slo ? "" : "NO");
+    str += " SLO]\n llm_step_times_ms(";
     std::string llm_step_times_ms = " ";
     for (double time : profiling.llm_step_times) {
       llm_step_times_ms += std::to_string(time) + " ";
@@ -2263,6 +2313,26 @@ void RequestManager::terminate_background_server() {
       }
       ssm_step_times_ms += ")";
       str += ssm_step_times_ms;
+      
+      str += "\n nb_ssm_steps(";
+      std::string nb_ssm_steps = " ";
+      for (int nb : profiling.nb_ssm_steps) {
+        nb_ssm_steps += std::to_string(nb) + " ";
+      }
+      nb_ssm_steps += ")";
+      str += nb_ssm_steps;
+
+      str += "\n spec_tree_sizes(";
+      std::string spec_tree_sizes = " ";
+      for (const auto sizes : profiling.tree_sizes) {
+        spec_tree_sizes += "{";
+        for (int s : sizes) {
+          spec_tree_sizes += std::to_string(s) + " ";
+        }
+        spec_tree_sizes += "} ";
+      }
+      spec_tree_sizes += ")";
+      str += spec_tree_sizes;
     }
     str += "\n generated_tokens_per_step(";
     std::string generated_tokens_per_step = " ";
@@ -2746,13 +2816,15 @@ bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
   return all_request_last_layer_empty;
 }
 
-void RequestManager::select_subtrees_on_tpot_slo_constraints(double const L, double const eps) {
+void RequestManager::select_subtrees_on_tpot_slo_constraints() {
   
   std::vector<std::shared_ptr<TokenTreeNode>> linked_list_heads(get_max_requests_per_batch(), nullptr);
   std::vector<double> expected_decoded_num(get_max_requests_per_batch());
   std::vector<size_t> tree_sizes(get_max_requests_per_batch(), 0);
   std::vector<size_t> subtree_sizes(get_max_requests_per_batch(), 0);
   int sum_tree_sizes = 0;
+  double const L = llm_latency_estimate_ms+ssm_latency_estimate_ms;
+  double const eps = slo_eps_ms;
 
   int B = 0;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
