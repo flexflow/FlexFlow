@@ -10,12 +10,12 @@
 #include "utils/graph/digraph/algorithms/is_acyclic.h"
 #include "utils/graph/digraph/digraph.h"
 #include "utils/graph/instances/adjacency_digraph.h"
-#include "utils/graph/serial_parallel/graph_generation.h"
+#include "utils/graph/serial_parallel/digraph_generation.h"
 #include <tuple>
 
 namespace FlexFlow {
 
-std::tuple<DiGraph, Node, Node> make_normal_nasnet_cell() {
+std::tuple<DiGraph, Node, Node> make_normal_taso_nasnet_cell() {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> inputs = add_nodes(g, 2);
   std::vector<Node> sep = add_nodes(g, 5);
@@ -56,7 +56,7 @@ std::tuple<DiGraph, Node, Node> make_normal_nasnet_cell() {
   return {g, inputs.at(0), inputs.at(1)};
 }
 
-std::tuple<DiGraph, Node, Node> make_reduction_nasnet_cell() {
+std::tuple<DiGraph, Node, Node> make_reduction_taso_nasnet_cell() {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   std::vector<Node> inputs = add_nodes(g, 2);
   std::vector<Node> sep = add_nodes(g, 5);
@@ -98,16 +98,16 @@ std::tuple<DiGraph, Node, Node> make_reduction_nasnet_cell() {
   return {g, inputs.at(0), inputs.at(1)};
 }
 
-DiGraph make_cifar10(size_t num_reduction_cells, size_t N) {
+DiGraph make_full_taso_nasnet(size_t num_reduction_cells, size_t N) {
   DiGraph g = DiGraph::create<AdjacencyDiGraph>();
   Node input = g.add_node();
   std::deque<Node> outputting = {input, input, input};
   std::deque<Node> inputting;
   size_t num_cells = num_reduction_cells + N * (num_reduction_cells + 1);
   for (int i = 0; i < num_cells; i++) {
-    auto [s, earlier_input, later_input] = (i % (N + 1) == N)
-                                               ? make_reduction_nasnet_cell()
-                                               : make_normal_nasnet_cell();
+    auto [s, earlier_input, later_input] =
+        (i % (N + 1) == N) ? make_reduction_taso_nasnet_cell()
+                           : make_normal_taso_nasnet_cell();
     Node cell_output = get_only(get_sinks(s));
     std::unordered_map<Node, Node> node_map = parallel_extend(g, s);
     later_input = node_map.at(later_input);

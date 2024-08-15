@@ -29,17 +29,14 @@ DirectedEdgeMaskView *DirectedEdgeMaskView::clone() const {
 
 DiGraphView unchecked_transitive_reduction(DiGraphView const &g) {
   std::unordered_set<DirectedEdge> edge_mask = get_edges(g);
-
-  for (Node const &n1 : get_nodes(g)) {
-    std::unordered_set<Node> n1_descendants = get_descendants(g, n1);
-    for (Node const &n2 : get_nodes(g)) {
-      if (contains(n1_descendants, n2)) {
-        std::unordered_set<Node> n2_descendants = get_descendants(g, n2);
-        for (Node const &n3 : get_nodes(g)) {
-          if (contains(n2_descendants, n3)) {
-            edge_mask.erase(DirectedEdge{n1, n3});
-          }
-        }
+  std::unordered_set<Node> nodes = get_nodes(g);
+  for (Node const &n1 : nodes) {
+    for (Node const &n2 : get_descendants(g, n1)) {
+      for (Node const &n3 : get_descendants(g, n2)) {
+        // if there is a path from n1 to n2, and a path from n2 to n3, edge
+        // {n1,n3} is redundant
+        // if edge {n1, n3} does not exist, this is a no-op
+        edge_mask.erase(DirectedEdge{n1, n3});
       }
     }
   }

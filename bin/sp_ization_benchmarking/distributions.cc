@@ -26,6 +26,12 @@ float Binary::operator()() const {
   return (Bernoulli(p)() ? a : b);
 }
 
+Chooser::Chooser(std::vector<float> items) : items(items) {}
+
+float Chooser::operator()() const {
+  return items[std::rand() % items.size()];
+}
+
 UniformNoise::UniformNoise(float lower, float upper)
     : lower(lower), upper(upper) {}
 

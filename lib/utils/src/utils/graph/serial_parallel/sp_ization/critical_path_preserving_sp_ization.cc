@@ -21,7 +21,7 @@ static SerialSplit cut_off_head(SerialSplit const &s) {
 }
 
 /* Performs a parallel composition with coalescing, where components with a
- * common starting child are merged together 
+ * common starting child are merged together
  * Example: to parallel compose S(1, 2, 5), S(1, 3, 4):
  *  without coalescing: P(S(1, 2, 5), S(1, 3, 4))
  *  with coalescing: S(1, P( S(2,5), S(3,4) ))

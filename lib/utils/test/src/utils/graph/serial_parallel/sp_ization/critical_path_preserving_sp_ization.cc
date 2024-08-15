@@ -275,5 +275,25 @@ TEST_SUITE(FF_TEST_SUITE) {
         CHECK(correct == result);
       }
     }
+    SUBCASE("Transitive Reduction") {
+      DiGraph g = DiGraph::create<AdjacencyDiGraph>();
+      std::vector<Node> n = add_nodes(g, 5);
+      add_edges(g,
+                {
+                    DirectedEdge{n.at(0), n.at(1)},
+                    DirectedEdge{n.at(0), n.at(2)},
+                    DirectedEdge{n.at(0), n.at(4)},
+                    DirectedEdge{n.at(1), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(3)},
+                    DirectedEdge{n.at(1), n.at(4)},
+                    DirectedEdge{n.at(2), n.at(4)},
+                    DirectedEdge{n.at(3), n.at(4)},
+                });
+
+      SerialParallelDecomposition result =
+          critical_path_preserving_sp_ization_with_coalescing(g);
+      SerialParallelDecomposition correct = SerialParallelDecomposition{SerialSplit{{n.at(0), n.at(1), ParallelSplit{{n.at(2), n.at(3)}}, n.at(4)}}};
+      CHECK(result == correct);
+    }
   }
 }

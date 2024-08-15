@@ -32,6 +32,12 @@ struct Binary {
   float operator()() const;
 };
 
+struct Chooser {
+  std::vector<float> items;
+  Chooser(std::vector<float>);
+  float operator()() const;
+};
+
 struct UniformNoise {
   float lower, upper;
   UniformNoise(float lower = 0.9, float upper = 1.1);
@@ -48,16 +54,26 @@ struct GaussianNoise {
   float operator()() const;
 };
 
-template <typename Dist, typename Noise>
+template <typename Dist>
 std::unordered_map<Node, float>
     make_cost_map(std::unordered_set<Node> const &nodes,
-                  Dist const &distribution,
-                  Noise const &noise) {
+                  Dist const &distribution) {
   std::unordered_map<Node, float> cost_map;
   for (Node const &node : nodes) {
-    cost_map[node] = distribution() * noise();
+    cost_map[node] = distribution();
   }
   return cost_map;
+}
+
+template <typename Noise>
+std::unordered_map<Node, float>
+    add_noise_to_cost_map(std::unordered_map<Node, float> cost_map,
+                          Noise const &noise) {
+  std::unordered_map<Node, float> noisy_cost_map;
+  for (auto const &[node, cost] : cost_map) {
+    noisy_cost_map[node] = noise() * cost;
+  }
+  return noisy_cost_map;
 }
 
 } // namespace FlexFlow
