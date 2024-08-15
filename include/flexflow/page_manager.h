@@ -47,7 +47,9 @@ public:
     bool is_full() const;
 
     // Method to append tokens
-    void append_tokens(const std::vector<TokenId>& token_ids_to_append);
+    void append_tokens(const std::vector<TokenId>& token_ids_to_append, bool committed);
+
+    void reset_num_spec_tokens();
 
     // Method to get the list of token ids
     std::vector<int> get_token_ids() const;
@@ -58,6 +60,8 @@ public:
     int block_number;
     uint32_t block_size;
     int num_tokens;
+    int num_commit_tokens;
+    int num_spec_tokens; //spec + commit = num_tokens
     std::vector<int> token_ids;
 };
 
@@ -112,6 +116,9 @@ public:
     // get the number of available slots in the current block
     int get_num_allocated_blocks(const RequestGuid& request_guid) const;
 
+    void erase_last_pages(const RequestGuid& request_guid, int num_pages);
+
+    int lookup_index(const RequestGuid& request_guid, int logical_index);
 private:
     uint32_t block_size;
     int num_total_blocks;

@@ -109,26 +109,26 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
   }
 
   // do the copy
-  // checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_indices,
-  //                           kv_indices_h,
-  //                           sizeof(int32_t) * batch_size * max_num_pages,
-  //                           cudaMemcpyHostToDevice,
-  //                           stream));
-  // checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_last_page_len,
-  //                           kv_last_page_len_h,
-  //                           sizeof(int32_t) * batch_size,
-  //                           cudaMemcpyHostToDevice,
-  //                           stream));
+  checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_indices,
+                            kv_indices_h,
+                            sizeof(int32_t) * batch_size * max_num_pages,
+                            cudaMemcpyHostToDevice,
+                            stream));
+  checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_last_page_len,
+                            kv_last_page_len_h,
+                            sizeof(int32_t) * batch_size,
+                            cudaMemcpyHostToDevice,
+                            stream));
   checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->q_indptr,
                             q_indptr_h,
                             sizeof(int32_t) * (batch_size + 1),
                             cudaMemcpyHostToDevice,
                             stream));
-  // checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_indptr,
-  //                           kv_indptr_h,
-  //                           sizeof(int32_t) * (batch_size + 1),
-  //                           cudaMemcpyHostToDevice,
-  //                           stream));
+  checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->kv_indptr,
+                            kv_indptr_h,
+                            sizeof(int32_t) * (batch_size + 1),
+                            cudaMemcpyHostToDevice,
+                            stream));
   checkCUDA(cudaMemcpyAsync(handle.tree_verify_attention_metadata->qk_indptr,
                             qk_indptr_h,
                             sizeof(int32_t) * (batch_size + 1),

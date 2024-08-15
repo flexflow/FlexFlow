@@ -97,26 +97,28 @@ using flashinfer::PageStorage;
 using flashinfer::PosEncodingMode;
 using flashinfer::QKVLayout;
 
-__device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
-                                                     int const token_idx,
-                                                     int const max_num_pages,
+// page_idx: the assigned physical block index for this token
+// token_idx: can be absolute index in the sequence but in there we just use it as an offset
+// hidden_size: the size of the hidden dimension
+__device__ __forceinline__ size_t get_k_entry_offset(int const token_idx,
+                                                     int const page_idx,
                                                      int const hidden_size) {
-  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          token_idx % kPagesize) *
-         hidden_size;
+  // page attention: changed
+  size_t index = ((page_idx - 1) * kPagesize * 2 + (token_idx % kPagesize)) * hidden_size;
+  return index;
 }
 
-__device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
-                                                     int const token_idx,
-                                                     int const max_num_pages,
+__device__ __forceinline__ size_t get_v_entry_offset(int const token_idx,
+                                                     int const page_idx,
                                                      int const hidden_size) {
-  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          kPagesize + token_idx % kPagesize) *
-         hidden_size;
+  size_t index = ((page_idx - 1) * kPagesize * 2 + kPagesize + (token_idx % kPagesize)) * hidden_size;
+  return index;
 }
 
 __global__ void commit_tokens_kernel(
     half *kCache_ptr,
+    int32_t *kv_indptr,
+    int32_t *kv_page_indices,
     BatchConfig::CommittedTokensInfo const *committedTokenInfos,
     bool const *request_available,
     int num_requests,
@@ -135,7 +137,10 @@ __global__ void commit_tokens_kernel(
       cnt_1++;
     }
   }
-
+  // get the starting index of kv page
+  // page attention: WARNING: this implicitly assume that the kv page is stored in the same order as the available requests
+  int start = kv_indptr[requext_idx_in_batch];
+  int end = kv_indptr[requext_idx_in_batch + 1] - 1;
   for (int i = 0; i < num_committed_tokens; i++) {
     if (committedTokenInfos[i].request_index == requext_idx_in_batch) {
       int const index_in_kv_cache = committedTokenInfos[i].index_in_kv_cache;
@@ -145,15 +150,16 @@ __global__ void commit_tokens_kernel(
 
       int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
+      int const page_idx = kv_page_indices[start + (token_depth + kPagesize - 1) / kPagesize];
 
-      size_t from_k_idx = get_k_entry_offset(
-                 req_id, index_in_kv_cache, max_num_pages, hidden_size),
-             from_v_idx = get_v_entry_offset(
-                 req_id, index_in_kv_cache, max_num_pages, hidden_size);
-      size_t to_k_idx =
-                 get_k_entry_offset(req_id, tok_id, max_num_pages, hidden_size),
-             to_v_idx =
-                 get_v_entry_offset(req_id, tok_id, max_num_pages, hidden_size);
+      // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
+      // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory
+      size_t from_k_idx = get_k_entry_offset(index_in_kv_cache, (index_in_kv_cache + kPagesize - 1) / kPagesize, hidden_size),
+             from_v_idx = get_v_entry_offset(index_in_kv_cache, (index_in_kv_cache + kPagesize - 1) / kPagesize, hidden_size);
+
+      // page attention: copy the token to the new position
+      size_t to_k_idx =get_k_entry_offset(tok_id, page_idx, hidden_size),
+             to_v_idx =get_v_entry_offset(tok_id, page_idx, hidden_size);
       assert(to_k_idx <= from_k_idx);
 
       kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
@@ -277,6 +283,8 @@ __global__ void
     update_qkv_cache_kernel(DT *devQKVProjArray,
                             half *qTmp_ptr,
                             half *kCache_ptr,
+                            int32_t *kv_indptr,
+                            int32_t *kv_page_indices,
                             BatchConfig::PerTokenInfo const *tokenInfos,
                             BatchConfig::PerRequestInfo *request_infos,
                             int const max_num_pages,
@@ -292,11 +300,12 @@ __global__ void
   int const req_idx = tokenInfos[token_idx].request_index;
   int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
 
+  // compute the starting index of kv page
+  int start = kv_indptr[req_idx];
+  int page_idx = kv_page_indices[start + (token_abs_idx + kPagesize - 1) / kPagesize];
   size_t from_idx = token_idx * QKV_WEIGHT_NUM * hidden_size;
-  size_t to_k_idx = get_k_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size),
-         to_v_idx = get_v_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size);
+  size_t to_k_idx = get_k_entry_offset(token_abs_idx, page_idx, hidden_size),
+         to_v_idx = get_v_entry_offset(token_abs_idx, page_idx, hidden_size);
 
   // key and value cache should be stored interleaved
   kCache_ptr[to_k_idx + offset] =

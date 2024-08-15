@@ -50,12 +50,23 @@ bool LogicalTokenBlock::is_full() const {
     return num_tokens == block_size;
 }
 
-void LogicalTokenBlock::append_tokens(const std::vector<TokenId>& token_ids_to_append) {
+void reset_num_spec_tokens(){
+    assert(num_spec_tokens + num_commit_tokens == num_tokens);
+    num_tokens -= num_spec_tokens;
+    num_spec_tokens = 0;
+}
+
+void LogicalTokenBlock::append_tokens(const std::vector<TokenId>& token_ids_to_append, bool committed) {
     if (num_tokens + token_ids_to_append.size() > block_size) {
         throw std::runtime_error("Block is full! Cannot append more tokens.");
     }
     token_ids.insert(token_ids.end(), token_ids_to_append.begin(), token_ids_to_append.end());
     num_tokens += token_ids_to_append.size();
+    if (committed) {
+        num_commit_tokens += token_ids_to_append.size();
+    }else{
+        num_spec_tokens += token_ids_to_append.size();
+    }
 }
 
 std::vector<int> LogicalTokenBlock::get_token_ids() const {
@@ -186,12 +197,20 @@ int PageManager::get_num_allocated_blocks(const RequestGuid& request_guid) const
     }
 }
 
-// int PageManager::get_num_slots_in_block(const RequestGuid& request_guid) {
-//     // get the last block in the block table
-//     BlockTable block_table = block_tables.at(request_guid);
-//     // get the number of remaining slots in the last block
-//     return block_table.back().get_num_empty_slots();
-// }
+void erase_last_pages(const RequestGuid& request_guid, int num_pages){
+    assert(num_pages <= block_table.size());
+    auto& block_table = block_tables[request_guid];
+    // erase the last num_pages blocks
+    block_table.erase(block_table.end() - num_pages, block_table.end());
+    block_tables[request_guid] = block_table;
+}
+
+int lookup_index(const RequestGuid& request_guid, int logical_index){
+    auto& block_table = block_tables[request_guid];
+    int block_index = (logical_index + block_size - 1) / block_size;
+    int block_offset = logical_index % block_size;
+    return block_table[block_index].block_number * block_size + block_offset;
+}
 
 PageManager *PageManager::get_page_manager() {
   if (page_manager_singleton == nullptr) {

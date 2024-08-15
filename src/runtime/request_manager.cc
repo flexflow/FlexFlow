@@ -509,7 +509,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
-  // Clean up the logical blocks
+  // page attention: Clean up the logical blocks
   PageManager::get_page_manager()->free(guid);
 
   // Find the sos and eos in the sequence
@@ -896,7 +896,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   // page attention: add logical blocks here
   // TODO: currently only support specinfer, might need to support incremental
   if (decoding_mode == SPECULATIVE_DECODING) {
-    _append_tokens_to_blocks(*prefill_request, prefill_request->tokens);
+    _append_tokens_to_blocks(*prefill_request, prefill_request->tokens, true);
     printf("append block\n");
     printf("prefilling request num_tokens: %d\n", prefill_request->tokens.size());
     PageManager *page_manager = PageManager::get_page_manager();
@@ -936,6 +936,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     bc.tokensInfo[token_idx].abs_depth_in_request = abs_idx;
     bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
 
+    bc.tokensInfo[token_idx].kv_page_index = pm ->lookup_index(guid, abs_idx);
     bc.num_tokens++;
   }
 
@@ -1283,25 +1284,16 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
         new_bc.num_tokens;
     new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
 
-    // page attention: add metadata here
-    // I think we are now already have updated logical block data in update_results, and 
-    // we need to update the block table here
-
-    // get page manager
+    
     PageManager *page_manager = PageManager::get_page_manager();
     assert(page_manager != nullptr);
-    // we first need to update the physical block numbers
-    int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
-    assert(diff_block >= 0);
-    for (int i = 0; i < diff_block; i++) {
-      page_manager->allocate(guid);
+    //page attention:  delete the spec tokens in the logical block
+    if (page_id_commit + 1 < request.blocks.size()) {
+      blocks.erase(blocks.begin() + page_id_commit + 1, blocks.end());
+      page_manager->erase_last_pages(guid, request.blocks.size() - page_id_commit - 1);
     }
-    // update last kv len
-    new_bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
-    // update the block table
-    new_bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
-    // update the num kv pages
-    new_bc.requestsInfo[request_index].num_kv_pages = new_bc.requestsInfo[request_index].page_indices.size();
+    blocks.back().reset();
+
 
     // Put the information of the committed tokens into
     // BatchConfig.committed_tokens.
@@ -1322,8 +1314,9 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
           committed_token.to_index;
       new_bc.num_tokens_to_commit++;
       // page attention: add to request's logical block
-      _append_tokens_to_blocks(request, {committed_token.token_id});
+      _append_tokens_to_blocks(request, {committed_token.token_id}, true);
     }
+
 
     // Load the tokens on the token tree that are not yet pruned to
     // BatchConfig.tokensInfo.
@@ -1342,11 +1335,30 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
           new_bc.tokensInfo[new_bc.num_tokens].token_id = tree_node->id;
           new_bc.num_tokens++;
           token_tree_index++;
+          _append_tokens_to_blocks(request, {tree_node->id}, false);
         }
       }
       layer_index++;
     }
     assert(token_tree_index == token_tree.tree_size);
+    // page attention: add metadata here
+    // I think we are now already have updated logical block data in update_results, and 
+    // we need to update the block table here
+
+    // get page manager
+    // we first need to update the physical block numbers
+    int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
+    assert(diff_block >= 0);
+    for (int i = 0; i < diff_block; i++) {
+      page_manager->allocate(guid);
+    }
+    // update last kv len
+    new_bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
+    // update the block table
+    new_bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
+    // update the num kv pages
+    new_bc.requestsInfo[request_index].num_kv_pages = new_bc.requestsInfo[request_index].page_indices.size();
+    
     new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;
 
     request.first_token_offset_in_batch = new_bc.num_tokens - token_tree_index;
@@ -1515,14 +1527,38 @@ bool RequestManager::update_ssm_inference_results(
 }
 /* --------- Page Attention Related Functions --------- */
 void RequestManager::_append_logical_block_to_request(
-    Request &request) {
+    Request &request, is_commit) {
   // Append the logical block to the request
+  // page attention: in this function we need to remember the last logical block number that still contains committed tokens
   LogicalTokenBlock block(request.blocks.size(),
                                   kPagesize);
   request.blocks.push_back(block);
+  // update page_id_commit
+  if (is_commit) {
+    request.page_id_commit++;
+    assert(request.page_id_commit < request.blocks.size());
+  }
 }
 
-void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens) {
+void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens, bool is_commit) {
+  int cursor = 0;
+  int num_tokens = tokens.size();
+  while (cursor < num_tokens) {
+    if (request.blocks.empty() ||
+      request.blocks.back().is_full()) {
+      // Append a new logical block
+      _append_logical_block_to_request(request, is_commit);
+    }
+    int num_empty_slots = request.blocks.back().get_num_empty_slots();
+    int num_tokens_to_append = std::min(num_empty_slots, num_tokens - cursor);
+    // vector to be appeneded will be [cursor, cursor + num_tokens_to_append)]
+    std::vector<TokenId> tokens_to_append(tokens.begin() + cursor, tokens.begin() + cursor + num_tokens_to_append);
+    request.blocks.back().append_tokens(tokens_to_append, is_commit);
+    cursor += num_tokens_to_append;
+  }
+}
+
+void RequestManager::_append_tmp_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens) {
   int cursor = 0;
   int num_tokens = tokens.size();
   while (cursor < num_tokens) {
@@ -1535,12 +1571,9 @@ void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<Toke
     int num_tokens_to_append = std::min(num_empty_slots, num_tokens - cursor);
     // vector to be appeneded will be [cursor, cursor + num_tokens_to_append)]
     std::vector<TokenId> tokens_to_append(tokens.begin() + cursor, tokens.begin() + cursor + num_tokens_to_append);
-    request.blocks.back().append_tokens(tokens_to_append);
+    request.blocks.back().append_tmp_tokens(tokens_to_append);
     cursor += num_tokens_to_append;
   }
-  // TODO: delete later
-  // check the number of logical blocks
-  // printf("number of logical blocks: %d\n", request.blocks.size());
 }
 /* --------- Page Attention Related Functions --------- */
 
