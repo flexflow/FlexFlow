@@ -292,7 +292,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SerialParallelDecomposition result =
           critical_path_preserving_sp_ization_with_coalescing(g);
-      SerialParallelDecomposition correct = SerialParallelDecomposition{SerialSplit{{n.at(0), n.at(1), ParallelSplit{{n.at(2), n.at(3)}}, n.at(4)}}};
+      SerialParallelDecomposition correct =
+          SerialParallelDecomposition{SerialSplit{
+              {n.at(0), n.at(1), ParallelSplit{{n.at(2), n.at(3)}}, n.at(4)}}};
       CHECK(result == correct);
     }
   }
