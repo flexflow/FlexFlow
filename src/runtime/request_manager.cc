@@ -567,23 +567,23 @@ void RequestManager::request_complete_clean_up(int batch_index) {
       output_file.close();
     }
   }
-  RequestProfileInfo profile_info = profiling_requests[guid];
-  std::string str =
-      "[" + std::to_string(guid) +
-      "] Request completed:" + " decoding_time_ms(" +
-      std::to_string(
-          (profile_info.finish_time - profile_info.start_decoding_time) *
-          1e-3) +
-      ")" + " total_time_ms(" +
-      std::to_string((profile_info.finish_time - profile_info.start_time) *
-                     1e-3) +
-      ")" + " LLM_decoding_steps(" +
-      std::to_string(profile_info.llm_decoding_steps) + ")";
-  if (decoding_mode == SPECULATIVE_DECODING) {
-    str = str + " SSM_decoding_steps(" +
-          std::to_string(profile_info.ssm_decoding_steps) + ")";
-  }
-  write_to_output_file("", str);
+  // RequestProfileInfo profile_info = profiling_requests[guid];
+  // std::string str =
+  //     "[" + std::to_string(guid) +
+  //     "] Request completed:" + " decoding_time_ms(" +
+  //     std::to_string(
+  //         (profile_info.finish_time - profile_info.start_decoding_time) *
+  //         1e-3) +
+  //     ")" + " total_time_ms(" +
+  //     std::to_string((profile_info.finish_time - profile_info.start_time) *
+  //                    1e-3) +
+  //     ")" + " LLM_decoding_steps(" +
+  //     std::to_string(profile_info.llm_decoding_steps) + ")";
+  // if (decoding_mode == SPECULATIVE_DECODING) {
+  //   str = str + " SSM_decoding_steps(" +
+  //         std::to_string(profile_info.ssm_decoding_steps) + ")";
+  // }
+  // write_to_output_file("", str);
 
   trigger_request_completion_future(guid);
 }
@@ -2022,6 +2022,7 @@ void RequestManager::serve_decoding(FFModel *llm) {
   std::queue<InferenceResultFuture> batch_pipeline;
   { batch_pipeline.push(last_irf); }
 
+  reset_profiling_statistics();
   while (!is_background_server_terminated()) {
 
     if (batch_pipeline.size() >= 4) {
@@ -2089,6 +2090,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   std::queue<InferenceResultFuture> infer_result_future_pipeline;
   infer_result_future_pipeline.push(irf_0);
 
+  reset_profiling_statistics();
   while (!is_background_server_terminated()) {
     if (infer_result_future_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
@@ -2198,47 +2200,81 @@ void RequestManager::terminate_background_server() {
     assert(profiling.llm_step_times.size() ==
            profiling.requests_per_step.size());
     // Write the last profiling statistics to output file
-    std::string str = "[Profiling Statistics]\n llm_step_times_ms(";
-    std::string llm_step_times_ms = " ";
-    for (double time : profiling.llm_step_times) {
-      llm_step_times_ms += std::to_string(time) + " ";
+    std::string str = "[Profiling Statistics]";
+
+    long long total_time = Realm::Clock::current_time_in_microseconds() -
+                           profiling.server_start_time;
+    int total_requests = profiling_requests.size();
+    int total_tokens = 0;
+    for (int num_tokens : profiling.generated_tokens_per_step) {
+      total_tokens += num_tokens;
     }
-    llm_step_times_ms += ")";
-    str += llm_step_times_ms;
-    str += "\n requests_per_step(";
-    std::string req_per_step = " ";
+    str += "\n total_time_ms(" + std::to_string(total_time / 1000.0) + ")";
+    str += "\n total_tokens(" + std::to_string(total_tokens) + ")";
+    // throughput
+    str += "\n throughput_requests_per_sec(" +
+           std::to_string(total_requests / (total_time / 1e6)) + ")";
+    str += "\n throughput_tokens_per_sec(" +
+           std::to_string(total_tokens / (total_time / 1e6)) + ")";
+
+    double average_latency_per_request = 0;
+    std::string latency_per_request_ms = "\n latency_per_request_ms( ";
+    for (auto const &profiling_info : profiling_requests) {
+      double latency_ms = (profiling_info.second.finish_time -
+                           profiling_info.second.start_time) /
+                          1000.0;
+      // latency_per_request_ms += "[" + std::to_string(profiling_info.first) +
+      // ","; latency_per_request_ms += std::to_string(latency_ms) + "] ";
+      latency_per_request_ms += std::to_string(latency_ms) + " ";
+      average_latency_per_request += latency_ms;
+    }
+    latency_per_request_ms += ")";
+    str += latency_per_request_ms;
+    average_latency_per_request /= total_requests;
+    str += "\n average_latency_per_request_ms(" +
+           std::to_string(average_latency_per_request) + ")";
+
+    std::string req_per_step = "\n requests_per_step( ";
     for (int nb : profiling.requests_per_step) {
       req_per_step += std::to_string(nb) + " ";
     }
     req_per_step += ")";
     str += req_per_step;
+
     if (profiling.ssm_step_times.size() > 0) {
       // assert(profiling.ssm_step_times.size() ==
       //        profiling.llm_step_times.size());
-      str += "\n ssm_step_times_ms(";
-      std::string ssm_step_times_ms = " ";
+      std::string ssm_step_times_ms = "\n ssm_step_times_ms( ";
       for (double time : profiling.ssm_step_times) {
         ssm_step_times_ms += std::to_string(time) + " ";
       }
       ssm_step_times_ms += ")";
       str += ssm_step_times_ms;
     }
+
     if (profiling.ssm_steps.size() > 0) {
-      str += "\n ssm_steps(";
-      std::string ssm_steps = " ";
+      std::string ssm_steps = "\n ssm_steps( ";
       for (int nb : profiling.ssm_steps) {
         ssm_steps += std::to_string(nb) + " ";
       }
       ssm_steps += ")";
       str += ssm_steps;
     }
-    str += "\n generated_tokens_per_step(";
-    std::string generated_tokens_per_step = " ";
+
+    std::string llm_step_times_ms = "\n llm_step_times_ms( ";
+    for (double time : profiling.llm_step_times) {
+      llm_step_times_ms += std::to_string(time) + " ";
+    }
+    llm_step_times_ms += ")";
+    str += llm_step_times_ms;
+
+    std::string generated_tokens_per_step = "\n generated_tokens_per_step( ";
     for (int nb : profiling.generated_tokens_per_step) {
       generated_tokens_per_step += std::to_string(nb) + " ";
     }
     generated_tokens_per_step += ")";
     str += generated_tokens_per_step;
+
     write_to_output_file("", str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
@@ -2540,4 +2576,17 @@ std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
 }
 
 /* --------- Request Token Tree Related Functions --------- */
+
+/* --------- Profiling Related Functions --------- */
+void RequestManager::reset_profiling_statistics() {
+  profiling.llm_step_times.clear();
+  profiling.requests_per_step.clear();
+  profiling.ssm_step_times.clear();
+  profiling.ssm_steps.clear();
+  profiling.generated_tokens_per_step.clear();
+  profiling.llm_step_start = 0;
+  profiling.ssm_step_start = 0;
+  profiling.server_start_time = Realm::Clock::current_time_in_microseconds();
+}
+/* --------- Profiling Related Functions --------- */
 }; // namespace FlexFlow
