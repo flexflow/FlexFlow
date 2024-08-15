@@ -935,8 +935,6 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     bc.tokensInfo[token_idx].abs_index_in_request = abs_idx;
     bc.tokensInfo[token_idx].abs_depth_in_request = abs_idx;
     bc.tokensInfo[token_idx].token_id = prefill_request->tokens[abs_idx];
-
-    bc.tokensInfo[token_idx].kv_page_index = pm ->lookup_index(guid, abs_idx);
     bc.num_tokens++;
   }
 
@@ -1288,11 +1286,11 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     PageManager *page_manager = PageManager::get_page_manager();
     assert(page_manager != nullptr);
     //page attention:  delete the spec tokens in the logical block
-    if (page_id_commit + 1 < request.blocks.size()) {
-      blocks.erase(blocks.begin() + page_id_commit + 1, blocks.end());
-      page_manager->erase_last_pages(guid, request.blocks.size() - page_id_commit - 1);
+    if (request.page_id_commit + 1 < request.blocks.size()) {
+      request.blocks.erase(request.blocks.begin() + request.page_id_commit + 1, request.blocks.end());
+      page_manager->erase_last_pages(guid, request.blocks.size() - request.page_id_commit - 1);
     }
-    blocks.back().reset();
+    request.blocks.back().reset_num_spec_tokens();
 
 
     // Put the information of the committed tokens into
@@ -1527,7 +1525,7 @@ bool RequestManager::update_ssm_inference_results(
 }
 /* --------- Page Attention Related Functions --------- */
 void RequestManager::_append_logical_block_to_request(
-    Request &request, is_commit) {
+    Request &request, bool is_commit) {
   // Append the logical block to the request
   // page attention: in this function we need to remember the last logical block number that still contains committed tokens
   LogicalTokenBlock block(request.blocks.size(),
@@ -1558,23 +1556,6 @@ void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<Toke
   }
 }
 
-void RequestManager::_append_tmp_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens) {
-  int cursor = 0;
-  int num_tokens = tokens.size();
-  while (cursor < num_tokens) {
-    if (request.blocks.empty() ||
-      request.blocks.back().is_full()) {
-      // Append a new logical block
-      _append_logical_block_to_request(request);
-    }
-    int num_empty_slots = request.blocks.back().get_num_empty_slots();
-    int num_tokens_to_append = std::min(num_empty_slots, num_tokens - cursor);
-    // vector to be appeneded will be [cursor, cursor + num_tokens_to_append)]
-    std::vector<TokenId> tokens_to_append(tokens.begin() + cursor, tokens.begin() + cursor + num_tokens_to_append);
-    request.blocks.back().append_tmp_tokens(tokens_to_append);
-    cursor += num_tokens_to_append;
-  }
-}
 /* --------- Page Attention Related Functions --------- */
 
 /* --------- Bitmask Related Functions --------- */

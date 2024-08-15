@@ -78,6 +78,7 @@ struct Request {
 
   // Used for keeping track of the block information
   std::vector<LogicalTokenBlock> blocks;
+  int32_t page_id_commit;
 
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
@@ -399,8 +400,8 @@ private:
   void request_complete_clean_up(int batch_index);
 
   /* ---------- Page Attention Helper Functions ---------- */
-  void _append_logical_block_to_request(Request &request);
-  void _append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens);
+  void _append_logical_block_to_request(Request &request, bool is_commit);
+  void _append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens, bool is_commit);
   /* ---------- Page Attention Helper Functions ---------- */
 
   /* ---------- Incremental Decoding Helper Functions ---------- */

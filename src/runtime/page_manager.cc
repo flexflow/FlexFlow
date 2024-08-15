@@ -50,7 +50,7 @@ bool LogicalTokenBlock::is_full() const {
     return num_tokens == block_size;
 }
 
-void reset_num_spec_tokens(){
+void LogicalTokenBlock::reset_num_spec_tokens(){
     assert(num_spec_tokens + num_commit_tokens == num_tokens);
     num_tokens -= num_spec_tokens;
     num_spec_tokens = 0;
@@ -197,15 +197,15 @@ int PageManager::get_num_allocated_blocks(const RequestGuid& request_guid) const
     }
 }
 
-void erase_last_pages(const RequestGuid& request_guid, int num_pages){
-    assert(num_pages <= block_table.size());
+void PageManager::erase_last_pages(const RequestGuid& request_guid, int num_pages){
     auto& block_table = block_tables[request_guid];
+    assert(num_pages <= block_table.size());
     // erase the last num_pages blocks
     block_table.erase(block_table.end() - num_pages, block_table.end());
     block_tables[request_guid] = block_table;
 }
 
-int lookup_index(const RequestGuid& request_guid, int logical_index){
+int PageManager::lookup_index(const RequestGuid& request_guid, int logical_index){
     auto& block_table = block_tables[request_guid];
     int block_index = (logical_index + block_size - 1) / block_size;
     int block_offset = logical_index % block_size;

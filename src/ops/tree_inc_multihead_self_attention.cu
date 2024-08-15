@@ -150,7 +150,7 @@ __global__ void commit_tokens_kernel(
 
       int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
-      int const page_idx = kv_page_indices[start + (token_depth + kPagesize - 1) / kPagesize];
+      int const page_idx = kv_page_indices[start + (tok_id + kPagesize - 1) / kPagesize];
 
       // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
       // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory
@@ -187,6 +187,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                          min(CUDA_NUM_THREADS, parallelism),
                          0,
                          stream>>>(static_cast<half *>(m->keyCache),
+                                   m->handle.tree_verify_attention_metadata->kv_indptr,
+                                   m->handle.tree_verify_attention_metadata->kv_indices,
                                    m->committed_token_infos,
                                    m->request_available,
                                    num_requests,
@@ -333,6 +335,8 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
                             stream>>>(static_cast<DT *>(m->devQKVProjArray),
                                       static_cast<half *>(m->queryTmp),
                                       static_cast<half *>(m->keyCache),
+                                      m->handle.tree_verify_attention_metadata->kv_indptr,
+                                      m->handle.tree_verify_attention_metadata->kv_indices,
                                       m->token_infos,
                                       m->request_infos,
                                       max_num_pages,
