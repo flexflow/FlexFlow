@@ -107,14 +107,13 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void
-      inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta *m,
-                               BatchConfig const *bc,
-                               int shard_id,
-                               GenericTensorAccessorR const &input,
-                               GenericTensorAccessorR const &weight,
-                               GenericTensorAccessorW const &output,
-                               GenericTensorAccessorR const &bias);
+  static void inference_kernel_wrapper(SpecIncMultiHeadSelfAttentionMeta *m,
+                                       BatchConfig const *bc,
+                                       int shard_id,
+                                       GenericTensorAccessorR const &input,
+                                       GenericTensorAccessorR const &weight,
+                                       GenericTensorAccessorW const &output,
+                                       GenericTensorAccessorR const &bias);
   Params get_params() const;
 
 public:

@@ -513,11 +513,12 @@ void FusedOp::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-FutureMap FusedOp::inference(FFModel const &ff,
-                             /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
+FutureMap FusedOp::inference(
+    FFModel const &ff,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   // Set iter_config
   iter_config = ff.iter_config;
   ArgumentMap argmap;

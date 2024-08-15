@@ -84,7 +84,7 @@ public:
     mem_size_ = 0;
     enabled_ = false;
   }
-  AttentionMetaData(const AttentionMetaData &rhs) {
+  AttentionMetaData(AttentionMetaData const &rhs) {
     num_q_heads_ = rhs.num_q_heads_;
     num_kv_heads_ = rhs.num_kv_heads_;
     head_dim_ = rhs.head_dim_;
@@ -115,15 +115,19 @@ public:
         (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
                               ((BatchConfig::max_spec_tree_token_num() *
-                                (BatchConfig::max_spec_tree_token_num() +
-                                BatchConfig::max_sequence_length()) + 7) / 8);
+                                    (BatchConfig::max_spec_tree_token_num() +
+                                     BatchConfig::max_sequence_length()) +
+                                7) /
+                               8);
     workspace_block = 16 * 1024 * 1024; // 16MB
 
-    mem_size_ = sizeof(int32_t) * indices_size + sizeof(uint8_t) * custom_mask_size + workspace_block * BatchConfig::max_requests_per_batch();
+    mem_size_ = sizeof(int32_t) * indices_size +
+                sizeof(uint8_t) * custom_mask_size +
+                workspace_block * BatchConfig::max_requests_per_batch();
     return mem_size_;
   }
 
-  void assign_address(void* ptr, int size) {
+  void assign_address(void *ptr, int size) {
     if (ptr == nullptr) {
       q_indptr = nullptr;
       kv_indptr = nullptr;
@@ -134,7 +138,8 @@ public:
       workspace = nullptr;
       return;
     }
-    assert(size >= mem_size() && "Insufficient memory size for attention metadata");
+    assert(size >= mem_size() &&
+           "Insufficient memory size for attention metadata");
     size_t batch_size = BatchConfig::max_requests_per_batch();
     size_t max_num_pages =
         (BatchConfig::max_spec_tree_token_num() +
@@ -144,27 +149,47 @@ public:
         (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
                               ((BatchConfig::max_spec_tree_token_num() *
-                                (BatchConfig::max_spec_tree_token_num() +
-                                BatchConfig::max_sequence_length()) + 7) / 8);
+                                    (BatchConfig::max_spec_tree_token_num() +
+                                     BatchConfig::max_sequence_length()) +
+                                7) /
+                               8);
 
-    q_indptr = static_cast<int32_t*>(ptr);
+    q_indptr = static_cast<int32_t *>(ptr);
     kv_indptr = q_indptr + batch_size + 1;
     kv_indices = kv_indptr + batch_size + 1;
     kv_last_page_len = kv_indices + max_num_pages * batch_size;
     qk_indptr = kv_last_page_len + batch_size + 1;
-    custom_mask = static_cast<uint8_t*>(ptr) + sizeof(int32_t) * indices_size;
-    workspace = static_cast<void*>(static_cast<uint8_t*>(ptr) + sizeof(int32_t) * indices_size + sizeof(uint8_t) * custom_mask_size);
+    custom_mask = static_cast<uint8_t *>(ptr) + sizeof(int32_t) * indices_size;
+    workspace = static_cast<void *>(static_cast<uint8_t *>(ptr) +
+                                    sizeof(int32_t) * indices_size +
+                                    sizeof(uint8_t) * custom_mask_size);
   }
 
-  void set_num_q_heads(uint32_t const num_q_heads) { num_q_heads_ = num_q_heads; }
-  void set_num_kv_heads(uint32_t const num_kv_heads) { num_kv_heads_ = num_kv_heads; }
-  void set_head_dim(uint32_t const head_dim) { head_dim_ = head_dim; }
-  uint32_t num_q_heads() const { return num_q_heads_; }
-  uint32_t num_kv_heads() const { return num_kv_heads_; }
-  uint32_t head_dim() const { return head_dim_; }
+  void set_num_q_heads(uint32_t const num_q_heads) {
+    num_q_heads_ = num_q_heads;
+  }
+  void set_num_kv_heads(uint32_t const num_kv_heads) {
+    num_kv_heads_ = num_kv_heads;
+  }
+  void set_head_dim(uint32_t const head_dim) {
+    head_dim_ = head_dim;
+  }
+  uint32_t num_q_heads() const {
+    return num_q_heads_;
+  }
+  uint32_t num_kv_heads() const {
+    return num_kv_heads_;
+  }
+  uint32_t head_dim() const {
+    return head_dim_;
+  }
 
-  void set_enabled(bool const enabled) { enabled_ = enabled; }
-  bool enabled() const { return enabled_; }
+  void set_enabled(bool const enabled) {
+    enabled_ = enabled;
+  }
+  bool enabled() const {
+    return enabled_;
+  }
 
   uint32_t num_q_heads_;
   uint32_t num_kv_heads_;
@@ -180,11 +205,11 @@ public:
   size_t workspace_block;
 
   size_t mem_size_;
-  
+
   // batchsize -> handler
   bool enabled_;
-  std::unordered_map<int, void*> decode_handler_collections;
-  std::unordered_map<int, void*> prompt_handler_collections;
+  std::unordered_map<int, void *> decode_handler_collections;
+  std::unordered_map<int, void *> prompt_handler_collections;
 };
 
 struct FFHandler {
@@ -198,8 +223,8 @@ struct FFHandler {
   void *workSpace;
   size_t workSpaceSize;
   void *batch_config_metadata;
-  AttentionMetaData* tree_search_attention_metadata;
-  AttentionMetaData* tree_verify_attention_metadata;
+  AttentionMetaData *tree_search_attention_metadata;
+  AttentionMetaData *tree_verify_attention_metadata;
 
   size_t batch_config_metadata_size =
       sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
@@ -212,6 +237,8 @@ struct FFHandler {
   bool allowTensorOpMathConversion;
 #ifdef FF_USE_NCCL
   ncclComm_t ncclComm;
+  int num_devices;
+  int device_id;
 #endif
 };
 

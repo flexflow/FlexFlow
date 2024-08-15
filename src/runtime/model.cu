@@ -91,8 +91,10 @@ FFHandler
   handle.allowTensorOpMathConversion = info->allowTensorOpMathConversion;
   handle.tree_search_attention_metadata = new AttentionMetaData();
   handle.tree_verify_attention_metadata = new AttentionMetaData();
-  assert(handle.tree_search_attention_metadata != nullptr && "Attention metadata must be allocated");
-  assert(handle.tree_verify_attention_metadata != nullptr && "Attention metadata must be allocated");
+  assert(handle.tree_search_attention_metadata != nullptr &&
+         "Attention metadata must be allocated");
+  assert(handle.tree_verify_attention_metadata != nullptr &&
+         "Attention metadata must be allocated");
   checkCUDA(cublasCreate(&handle.blas));
   if (handle.allowTensorOpMathConversion) {
     checkCUDA(cublasSetMathMode(handle.blas, CUBLAS_TENSOR_OP_MATH));
@@ -155,7 +157,10 @@ FFHandler
   } else {
     handle.offload_reserve_space = nullptr;
   }
-  if (handle.batch_config_metadata_size + handle.tree_search_attention_metadata->mem_size() + handle.tree_verify_attention_metadata->mem_size() > 0) {
+  if (handle.batch_config_metadata_size +
+          handle.tree_search_attention_metadata->mem_size() +
+          handle.tree_verify_attention_metadata->mem_size() >
+      0) {
     // allocate memory for offload reserve space
     Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                          .only_kind(Memory::GPU_FB_MEM)
@@ -163,7 +168,10 @@ FFHandler
                          .first();
     Realm::Rect<1, coord_t> bounds(
         Realm::Point<1, coord_t>(0),
-        Realm::Point<1, coord_t>(handle.batch_config_metadata_size + handle.tree_search_attention_metadata->mem_size() + handle.tree_verify_attention_metadata->mem_size() - 1));
+        Realm::Point<1, coord_t>(
+            handle.batch_config_metadata_size +
+            handle.tree_search_attention_metadata->mem_size() +
+            handle.tree_verify_attention_metadata->mem_size() - 1));
     std::vector<size_t> field_sizes;
     field_sizes.push_back(sizeof(char));
     Realm::RegionInstance workspaceInst;
@@ -194,6 +202,8 @@ FFHandler
   // checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL
   handle.ncclComm = NULL;
+  handle.num_devices = 0;
+  handle.device_id = 0;
 #endif
   return handle;
 }

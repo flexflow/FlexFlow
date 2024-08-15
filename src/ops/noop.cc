@@ -258,11 +258,12 @@ void NoOp::init(FFModel const &ff) {
 
 void NoOp::forward(FFModel const &ff) {}
 
-FutureMap NoOp::inference(FFModel const &ff,
-                          /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
-                          std::vector<ParallelTensor> const &batch_inputs,
-                          std::vector<ParallelTensor> const &batch_outputs,
-                          MachineView const *mv) {
+FutureMap NoOp::inference(
+    FFModel const &ff,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   FutureMap empty;
   return empty;
 }

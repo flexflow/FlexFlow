@@ -39,20 +39,20 @@ public:
   using Params = GumbelTopKParams;
   using Input = ParallelTensor;
   GumbelTopK(FFModel &model,
-          LayerID const &layer_guid,
-          ParallelTensor const input,
-          int k,
-          bool sorted,
-          bool speculative_decoding,
-          char const *name);
+             LayerID const &layer_guid,
+             ParallelTensor const input,
+             int k,
+             bool sorted,
+             bool speculative_decoding,
+             char const *name);
   GumbelTopK(FFModel &model,
-          LayerID const &layer_guid,
-          GumbelTopK const &other,
-          ParallelTensor const input);
+             LayerID const &layer_guid,
+             GumbelTopK const &other,
+             ParallelTensor const input);
   GumbelTopK(FFModel &model,
-          Params const &params,
-          Input const input,
-          char const *name = nullptr);
+             Params const &params,
+             Input const input,
+             char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
                       std::vector<ParallelTensor> const &,
@@ -110,13 +110,14 @@ public:
                              bool sorted,
                              BatchConfig const *bc,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(GumbelTopKMeta const *m,
-                                     GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorW const &log_probs,
-                                     GenericTensorAccessorW const &perturbed_log_probs,
-                                     GenericTensorAccessorW const &indices,
-                                     int batch_size,
-                                     BatchConfig const *bc);
+  static void
+      forward_kernel_wrapper(GumbelTopKMeta const *m,
+                             GenericTensorAccessorR const &input,
+                             GenericTensorAccessorW const &log_probs,
+                             GenericTensorAccessorW const &perturbed_log_probs,
+                             GenericTensorAccessorW const &indices,
+                             int batch_size,
+                             BatchConfig const *bc);
   Params get_params() const;
 
 public:
