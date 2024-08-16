@@ -44,7 +44,10 @@ using namespace FlexFlow::Kernels::Repartition;
 /* Params */
 bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
   return lhs.repartition_legion_dim == rhs.repartition_legion_dim &&
-         lhs.repartition_degree == rhs.repartition_degree;
+         lhs.repartition_degree == rhs.repartition_degree &&
+         ((lhs.name == NULL && rhs.name == NULL) ||
+          (lhs.name != NULL && rhs.name != NULL &&
+           std::strcmp(lhs.name, rhs.name) == 0));
 }
 
 bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {

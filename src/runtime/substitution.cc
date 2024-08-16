@@ -3755,14 +3755,17 @@ bool FFModel::convert_graph_to_operators(
         assert(inList.size() == 1);
         Softmax *softmax = (Softmax *)node.ptr;
         new_op = new Softmax(
-            *this, softmax->layer_guid, inputs[0], softmax->dim, NULL);
+            *this, softmax->layer_guid, inputs[0], softmax->dim, softmax->name);
         break;
       }
       case OP_COMBINE: {
         assert(inList.size() == 1);
         Combine *combine = (Combine *)node.ptr;
-        new_op = new Combine(
-            *this, inputs[0], combine->combine_dim, combine->combine_degree);
+        new_op = new Combine(*this,
+                             inputs[0],
+                             combine->combine_dim,
+                             combine->combine_degree,
+                             combine->name);
         break;
       }
       case OP_REPARTITION: {
@@ -3771,7 +3774,8 @@ bool FFModel::convert_graph_to_operators(
         new_op = new Repartition(*this,
                                  inputs[0],
                                  repart->repartition_dim,
-                                 repart->repartition_degree);
+                                 repart->repartition_degree,
+                                 repart->name);
         break;
       }
       case OP_REPLICATE: {
@@ -3780,7 +3784,8 @@ bool FFModel::convert_graph_to_operators(
         new_op = new Replicate(*this,
                                inputs[0],
                                replicate->replicate_dim,
-                               replicate->replicate_degree);
+                               replicate->replicate_degree,
+                               replicate->name);
         break;
       }
       case OP_REDUCTION: {
@@ -3789,20 +3794,24 @@ bool FFModel::convert_graph_to_operators(
         new_op = new Reduction(*this,
                                inputs[0],
                                reduction->reduction_dim,
-                               reduction->reduction_degree);
+                               reduction->reduction_degree,
+                               reduction->name);
         break;
       }
       case OP_ALLREDUCE: {
         assert(inList.size() == 1);
         AllReduce *allreduce = (AllReduce *)node.ptr;
-        new_op = new AllReduce(*this, inputs[0], allreduce->allreduce_dim);
+        new_op = new AllReduce(
+            *this, inputs[0], allreduce->allreduce_dim, allreduce->name);
         break;
       }
       case OP_PARALLEL_IDENTITY: {
         assert(inList.size() == 1);
         ParallelIdentity *parallel_identity = (ParallelIdentity *)node.ptr;
-        new_op = new ParallelIdentity(
-            *this, inputs[0], parallel_identity->parallel_identity_dim);
+        new_op = new ParallelIdentity(*this,
+                                      inputs[0],
+                                      parallel_identity->parallel_identity_dim,
+                                      parallel_identity->name);
         break;
       }
       case OP_FUSED_PARALLEL: {
@@ -3829,7 +3838,7 @@ bool FFModel::convert_graph_to_operators(
                                               abr_ln->eps,
                                               abr_ln->inplace_residual,
                                               true,
-                                              NULL);
+                                              abr_ln->name);
         break;
       }
       case OP_SIGMOID_SILU_MULTI: {
@@ -3837,7 +3846,7 @@ bool FFModel::convert_graph_to_operators(
         SigmoidSiluMulti *ssm = (SigmoidSiluMulti *)node.ptr;
         SigmoidSiluMultiParams params = ssm->get_params();
         new_op = new SigmoidSiluMulti(
-            *this, ssm->layer_guid, inputs[0], inputs[1], NULL);
+            *this, ssm->layer_guid, inputs[0], inputs[1], ssm->name);
         break;
       }
       default: {

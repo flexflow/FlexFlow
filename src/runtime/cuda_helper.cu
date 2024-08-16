@@ -272,18 +272,9 @@ __host__ void print_beam_tensor(T const *ptr,
 template <>
 __host__ void
     save_tensor(float const *ptr, size_t num_elements, char const *file_name) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  float *host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr,
-                          sizeof(float) * num_elements,
-                          cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpyAsync(host_ptr,
-                            ptr,
-                            sizeof(float) * num_elements,
-                            cudaMemcpyDeviceToHost,
-                            stream));
-  checkCUDA(cudaDeviceSynchronize());
+  float *host_ptr = (float *)calloc(num_elements, sizeof(float));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(float) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
@@ -294,26 +285,16 @@ __host__ void
       fprintf(tensor_file, "%.9f", host_ptr[i]);
     }
   }
-
   fclose(tensor_file);
-  checkCUDA(cudaFreeHost(host_ptr));
+  free(host_ptr);
 }
 
 template <>
 __host__ void
     save_tensor(half const *ptr, size_t num_elements, char const *file_name) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  half *host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr,
-                          sizeof(half) * num_elements,
-                          cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpyAsync(host_ptr,
-                            ptr,
-                            sizeof(half) * num_elements,
-                            cudaMemcpyDeviceToHost,
-                            stream));
-  checkCUDA(cudaDeviceSynchronize());
+  half *host_ptr = (half *)calloc(num_elements, sizeof(half));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(half) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
@@ -324,27 +305,17 @@ __host__ void
       fprintf(tensor_file, "%.9f", (float)host_ptr[i]);
     }
   }
-
   fclose(tensor_file);
-  checkCUDA(cudaFreeHost(host_ptr));
+  free(host_ptr);
 }
 
 template <>
 __host__ void save_tensor(int32_t const *ptr,
                           size_t num_elements,
                           char const *file_name) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  int32_t *host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr,
-                          sizeof(int32_t) * num_elements,
-                          cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpyAsync(host_ptr,
-                            ptr,
-                            sizeof(int32_t) * num_elements,
-                            cudaMemcpyDeviceToHost,
-                            stream));
-  checkCUDA(cudaDeviceSynchronize());
+  int32_t *host_ptr = (int32_t *)calloc(num_elements, sizeof(int32_t));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(int32_t) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
@@ -355,27 +326,17 @@ __host__ void save_tensor(int32_t const *ptr,
       fprintf(tensor_file, "%d", host_ptr[i]);
     }
   }
-
   fclose(tensor_file);
-  checkCUDA(cudaFreeHost(host_ptr));
+  free(host_ptr);
 }
 
 template <>
 __host__ void save_tensor(int64_t const *ptr,
                           size_t num_elements,
                           char const *file_name) {
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
-  int64_t *host_ptr;
-  checkCUDA(cudaHostAlloc(&host_ptr,
-                          sizeof(int64_t) * num_elements,
-                          cudaHostAllocPortable | cudaHostAllocMapped));
-  checkCUDA(cudaMemcpyAsync(host_ptr,
-                            ptr,
-                            sizeof(int64_t) * num_elements,
-                            cudaMemcpyDeviceToHost,
-                            stream));
-  checkCUDA(cudaDeviceSynchronize());
+  int64_t *host_ptr = (int64_t *)calloc(num_elements, sizeof(int64_t));
+  checkCUDA(cudaMemcpy(
+      host_ptr, ptr, sizeof(int64_t) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
   assert(tensor_file != NULL);
@@ -386,9 +347,8 @@ __host__ void save_tensor(int64_t const *ptr,
       fprintf(tensor_file, "%ld", host_ptr[i]);
     }
   }
-
   fclose(tensor_file);
-  checkCUDA(cudaFreeHost(host_ptr));
+  free(host_ptr);
 }
 
 template <typename T>

@@ -45,7 +45,10 @@ using namespace FlexFlow::Kernels::AllReduce;
 
 /* Params */
 bool operator==(AllReduceParams const &lhs, AllReduceParams const &rhs) {
-  return lhs.allreduce_legion_dim == rhs.allreduce_legion_dim;
+  return lhs.allreduce_legion_dim == rhs.allreduce_legion_dim &&
+         ((lhs.name == NULL && rhs.name == NULL) ||
+          (lhs.name != NULL && rhs.name != NULL &&
+           std::strcmp(lhs.name, rhs.name) == 0));
 }
 
 bool AllReduceParams::is_valid(ParallelTensorShape const &input) const {
@@ -329,8 +332,11 @@ void AllReduce::inference_task(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  AllReduceMeta *m = *((AllReduceMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
@@ -338,10 +344,13 @@ void AllReduce::inference_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input.data_type == output.data_type);
-  if (m->inference_debugging) {
-    std::cout << "INF " << m->op_name << std::endl;
-  }
   inference_kernel_wrapper(m, bc, input, output);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    AllReduce::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {}, {output});
+  }
 }
 
 FutureMap AllReduce::peft_bwd(FFModel const &ff,
@@ -394,7 +403,7 @@ void AllReduce::peft_bwd_task(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+  AllReduceMeta *m = *((AllReduceMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_peft_tokens() == 0) {
     return;
@@ -405,10 +414,13 @@ void AllReduce::peft_bwd_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input_grad.data_type == output_grad.data_type);
-  if (m->inference_debugging) {
-    std::cout << "BWD " << m->op_name << std::endl;
-  }
   peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    AllReduce::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {}, {output_grad}, false);
+  }
 }
 
 bool AllReduce::measure_operator_cost(Simulator *sim,

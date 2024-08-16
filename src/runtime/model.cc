@@ -138,12 +138,14 @@ Op::Op(FFModel &model,
   std::string pcname;
   if (_name == NULL) {
     pcname = get_operator_type_name(op_type);
+    pcname = pcname + "_" + std::to_string(op_guid);
   } else {
     pcname = std::string(_name);
   }
-  pcname = pcname + "_" + std::to_string(op_guid);
   assert(pcname.length() < MAX_OPNAME);
+  // std::cout << "Creating operator: " << pcname << std::endl;
   std::strcpy(name, pcname.c_str());
+  // std::cout << "copied name into name var: " << this->name << std::endl;
   for (int i = 0; i < numInputs; i++) {
     assert(tensors[i] != NULL);
     inputs[i] = tensors[i];
@@ -3460,7 +3462,8 @@ void FFModel::create_operators_from_layers() {
   std::map<const Tensor, ParallelTensor> tensors_to_parallel_tensors;
   std::map<const Tensor, ParallelTensor>
       op_before_allreduce_tensors_to_parallel_tensors;
-  // for (auto const &l : layers) {
+  std::map<size_t, int> transformer_layer_allreduce_count;
+  std::map<size_t, int> transformer_layer_parallel_identity_count;
   for (int layer_idx = 0; layer_idx < layers.size(); layer_idx++) {
     auto const &l = layers[layer_idx];
     std::vector<ParallelTensor> inputs;
@@ -3511,8 +3514,20 @@ void FFModel::create_operators_from_layers() {
       }
     } else if (need_to_add_allreduce(layer_idx)) {
       assert(op->numOutputs == 1);
-      AllReduce *allreduce =
-          new AllReduce(*this, op->outputs[0], op->outputs[0]->num_dims - 1);
+      size_t transformer_layer_id = op->layer_guid.transformer_layer_id;
+      if (transformer_layer_allreduce_count.find(transformer_layer_id) ==
+          transformer_layer_allreduce_count.end()) {
+        transformer_layer_allreduce_count[transformer_layer_id] = 0;
+      }
+      std::string allreduce_name = std::string(
+          "layers." + std::to_string(transformer_layer_id) + ".allreduce." +
+          std::to_string(
+              transformer_layer_allreduce_count[transformer_layer_id]));
+      transformer_layer_allreduce_count[transformer_layer_id]++;
+      AllReduce *allreduce = new AllReduce(*this,
+                                           op->outputs[0],
+                                           op->outputs[0]->num_dims - 1,
+                                           allreduce_name.c_str());
       operators.push_back(allreduce);
       op_before_allreduce_tensors_to_parallel_tensors[l->outputs[0]] =
           op->outputs[0];
@@ -7014,6 +7029,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
         registrar.global_registration = false;
       }
       runtime->register_task_variant<Combine::forward_task>(registrar);
+    }
+  }
+  {
+    TaskVariantRegistrar registrar(COMBINE_INF_TASK_ID, "Combine Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Combine::inference_task>(
+          registrar, "Combine Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Combine::inference_task>(registrar);
     }
   }
   {

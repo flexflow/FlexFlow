@@ -469,7 +469,7 @@ FutureMap Embedding::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(EMBED_FWD_TASK_ID,
+  IndexLauncher launcher(EMBED_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -559,12 +559,6 @@ void Embedding::forward_task(Task const *task,
   }
   forward_kernel_wrapper(
       m, input, output, kernel, in_dim, out_dim, effective_batch_size);
-  if (m->inference_debugging) {
-    assert(task->index_point.get_dim() == 1);
-    int shard_id = task->index_point.point_data[0];
-    Embedding::save_inference_tensors_to_file(
-        m, shard_id, nullptr, {input}, {kernel}, {output});
-  }
 }
 
 /*

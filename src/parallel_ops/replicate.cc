@@ -44,7 +44,10 @@ using namespace FlexFlow::Kernels::Replicate;
 /* Params */
 bool operator==(ReplicateParams const &lhs, ReplicateParams const &rhs) {
   return lhs.replicate_legion_dim == rhs.replicate_legion_dim &&
-         lhs.replicate_degree == rhs.replicate_degree;
+         lhs.replicate_degree == rhs.replicate_degree &&
+         ((lhs.name == NULL && rhs.name == NULL) ||
+          (lhs.name != NULL && rhs.name != NULL &&
+           std::strcmp(lhs.name, rhs.name) == 0));
 }
 
 bool ReplicateParams::is_valid(ParallelTensorShape const &input) const {

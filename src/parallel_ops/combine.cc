@@ -44,7 +44,10 @@ using namespace FlexFlow::Kernels::Combine;
 /* Params */
 bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
   return lhs.combine_legion_dim == rhs.combine_legion_dim &&
-         lhs.combine_degree == rhs.combine_degree;
+         lhs.combine_degree == rhs.combine_degree &&
+         ((lhs.name == NULL && rhs.name == NULL) ||
+          (lhs.name != NULL && rhs.name != NULL &&
+           std::strcmp(lhs.name, rhs.name) == 0));
 }
 
 bool CombineParams::is_valid(ParallelTensorShape const &input) const {
@@ -238,7 +241,7 @@ FutureMap Combine::inference(FFModel const &ff,
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(COMBINE_FWD_TASK_ID,
+  IndexLauncher launcher(COMBINE_INF_TASK_ID,
                          batch_outputs[0]->parallel_is,
                          TaskArgument(nullptr, 0),
                          argmap,
@@ -246,6 +249,7 @@ FutureMap Combine::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(
       RegionRequirement(inference_input_lps[batch_inputs[0]],
                         0 /*projection id*/,
@@ -416,6 +420,37 @@ tl::optional<RecordFormatter> Combine::as_dot() const {
 }
 
 /*static*/
+void Combine::inference_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  CombineMeta const *m = *((CombineMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
+  DataType data_type = m->input_type[0];
+  if (m->inference_debugging) {
+    std::cout << "INF " << m->op_name << std::endl;
+  }
+  if (data_type == DT_HALF) {
+    forward_task_with_type<half>(task, regions, ctx, runtime);
+  } else if (data_type == DT_FLOAT) {
+    forward_task_with_type<float>(task, regions, ctx, runtime);
+  } else if (data_type == DT_DOUBLE) {
+    forward_task_with_type<double>(task, regions, ctx, runtime);
+  } else if (data_type == DT_INT32) {
+    forward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (data_type == DT_INT64) {
+    forward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Combine forward");
+  }
+}
+
+/*static*/
 void Combine::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
@@ -424,9 +459,6 @@ void Combine::forward_task(Task const *task,
   assert(task->regions.size() == 2);
   CombineMeta const *m = *((CombineMeta **)task->local_args);
   DataType data_type = m->input_type[0];
-  if (m->inference_debugging) {
-    std::cout << "INF " << m->op_name << std::endl;
-  }
   if (data_type == DT_HALF) {
     forward_task_with_type<half>(task, regions, ctx, runtime);
   } else if (data_type == DT_FLOAT) {

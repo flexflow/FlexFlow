@@ -252,7 +252,7 @@ public:
   template <typename OpMetaType>
   static std::string get_op_name_without_uid(OpMetaType *m) {
     std::string op_name_without_uid = std::string(m->op_name);
-    size_t last_underscore = op_name_without_uid.length() - 1;
+    size_t last_underscore = op_name_without_uid.length();
     for (int i = op_name_without_uid.length() - 1; i > 0; i--) {
       if (!(std::isdigit(m->op_name[i]) || m->op_name[i] == '_')) {
         break;
@@ -260,7 +260,9 @@ public:
         last_underscore = i;
       }
     }
-    op_name_without_uid.erase(last_underscore);
+    if (last_underscore < op_name_without_uid.length()) {
+      op_name_without_uid.erase(last_underscore);
+    }
     return op_name_without_uid;
   }
   template <typename OpMetaType>

@@ -57,7 +57,7 @@ void inference_kernel_wrapper(ParallelIdentityMeta const *m,
   assert(input.data_type == output.data_type);
   assert(input.domain == output.domain);
   size_t hidden_dim_size = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-  size_t num_elements = bc->num_active_tokens() * hidden_dim_size;
+  size_t num_elements = bc->num_active_tokens();
   size_t data_size = data_type_size(input.data_type);
   checkCUDA(cudaMemcpyAsync(output.ptr,
                             input.ptr,

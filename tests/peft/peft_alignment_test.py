@@ -469,7 +469,7 @@ class LllamaAlignmentTest(AlignmentTest):
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
             output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
             compare(hf_tensor, ff_tensor, label=f"W2 {i} gradient output")
 
             # LoRA_B
@@ -477,7 +477,7 @@ class LllamaAlignmentTest(AlignmentTest):
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
             output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE) * self.lora_scaling_factor
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE) * self.lora_scaling_factor
             compare(hf_tensor, ff_tensor, label=f"LoRA_B {i} gradient output")
 
             # LoRA_A
@@ -500,7 +500,7 @@ class LllamaAlignmentTest(AlignmentTest):
             hf_w2_input = hf_tensor.clone()
             ff_tensor_name = f"layers.{i}.SigmoidSiluMulti"
             output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
-            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
             compare(hf_w2_input, ff_tensor, label=f"HF W2 {i} output and FF SSM output")
 
             # W1 (gate_proj) output
@@ -510,23 +510,25 @@ class LllamaAlignmentTest(AlignmentTest):
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
             ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
             compare(hf_tensor, ff_tensor, label=f"W1 {i} gradient output")
+            # W1 (gate_proj) input
             # HF W1 in = FF W1 in - HF W1 in (pre)
             input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
-            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
-            ff_tensor_pre = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION, pre=True)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            ff_tensor_pre = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE, pre=True)
             compare(hf_tensor, ff_tensor, additional_ff_tensor=ff_tensor_pre, label=f"W1 {i} gradient input")
 
-            # W3 (up_proj)
+            # W3 (up_proj) output
             hf_tensor_name = f"layers.{i}.mlp.up_proj"
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
             output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
             ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
             compare(hf_tensor, ff_tensor, label=f"W3 {i} gradient output")
+            # W3 (up_proj) input
             input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
-            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
             compare(hf_tensor, ff_tensor, label=f"W3 {i} gradient input")
 
             # Attn O-proj

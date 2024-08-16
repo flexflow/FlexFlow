@@ -3060,8 +3060,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Combine>(inputs[0],
-                                           {combine_dim, combine_degree});
+        CombineParams params;
+        params.combine_legion_dim = combine_dim;
+        params.combine_degree = combine_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Combine>(inputs[0], params);
         break;
       }
       case OP_REPARTITION: {
@@ -3073,8 +3076,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Repartition>(
-            inputs[0], {repartition_dim, repartition_degree});
+        RepartitionParams params;
+        params.repartition_legion_dim = repartition_dim;
+        params.repartition_degree = repartition_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Repartition>(inputs[0], params);
         break;
       }
       case OP_REPLICATE: {
@@ -3086,8 +3092,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Replicate>(inputs[0],
-                                             {replicate_dim, replicate_degree});
+        ReplicateParams params;
+        params.replicate_legion_dim = replicate_dim;
+        params.replicate_degree = replicate_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Replicate>(inputs[0], params);
         break;
       }
       case OP_REDUCTION: {
@@ -3099,8 +3108,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Reduction>(inputs[0],
-                                             {reduction_dim, reduction_degree});
+        ReductionParams params;
+        params.reduction_legion_dim = reduction_dim;
+        params.reduction_degree = reduction_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Reduction>(inputs[0], params);
         break;
       }
       case OP_ALLREDUCE: {
@@ -3111,7 +3123,10 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
+        AllReduceParams params;
+        params.allreduce_legion_dim = allreduce_dim;
+        strcpy(params.name, name);
+        node = get_or_create_node<AllReduce>(inputs[0], params);
         break;
       }
       case OP_PARALLEL_IDENTITY: {
@@ -3122,25 +3137,29 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<ParallelIdentity>(inputs[0],
-                                                    {parallel_identity_dim});
+        ParallelIdentityParams params;
+        params.parallel_identity_legion_dim = parallel_identity_dim;
+        strcpy(params.name, name);
+        node = get_or_create_node<ParallelIdentity>(inputs[0], params);
         break;
       }
       case OP_FUSED_PARALLEL: {
         assert(num_inputs == 1);
-        std::vector<ParallelOpInfo> parallel_ops;
+        FusedParallelOpParams params;
         int num_parallel_ops;
         dez.deserialize(num_parallel_ops);
         for (int i = 0; i < num_parallel_ops; i++) {
           ParallelOpInfo info;
           dez.deserialize(info);
-          parallel_ops.push_back(info);
+          params.parallel_ops.push_back(info);
         }
         size_t name_len;
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<FusedParallelOp>(inputs[0], {parallel_ops});
+        strcpy(params.name, name);
+
+        node = get_or_create_node<FusedParallelOp>(inputs[0], params);
         break;
       }
       default: {

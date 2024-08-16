@@ -46,7 +46,10 @@ using namespace FlexFlow::Kernels::ParallelIdentity;
 /* Params */
 bool operator==(ParallelIdentityParams const &lhs,
                 ParallelIdentityParams const &rhs) {
-  return lhs.parallel_identity_legion_dim == rhs.parallel_identity_legion_dim;
+  return lhs.parallel_identity_legion_dim == rhs.parallel_identity_legion_dim &&
+         ((lhs.name == NULL && rhs.name == NULL) ||
+          (lhs.name != NULL && rhs.name != NULL &&
+           std::strcmp(lhs.name, rhs.name) == 0));
 }
 
 bool ParallelIdentityParams::is_valid(ParallelTensorShape const &input) const {
@@ -336,6 +339,9 @@ void ParallelIdentity::inference_task(
 
   ParallelIdentityMeta const *m = *((ParallelIdentityMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
