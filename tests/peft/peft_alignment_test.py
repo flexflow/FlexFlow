@@ -536,7 +536,7 @@ class LllamaAlignmentTest(AlignmentTest):
             ff_tensor_name = f"layers.{i}.layers.{i}.self_attn"
             output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
             compare(hf_tensor, ff_tensor, label=f"Attn O-proj {i} gradient output")
             ff_tensor_name = f"layers.{i}.layers.{i}.self_attn.o_proj"
             input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)

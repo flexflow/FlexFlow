@@ -3431,6 +3431,7 @@ bool FFModel::need_to_add_allreduce(int layer_idx) const {
   return false;
 }
 
+#ifdef DEADCODE
 bool FFModel::need_to_add_parallel_identity(int layer_idx) const {
   auto const &l = layers[layer_idx];
   // add parallel identity (allreduce in the backward pass) before the lm head
@@ -3453,6 +3454,26 @@ bool FFModel::need_to_add_parallel_identity(int layer_idx) const {
         layers[layer_idx + 3]->op_type == OP_SAMPLING ||
         layers[layer_idx + 3]->op_type == OP_ARGMAX ||
         layers[layer_idx + 3]->op_type == OP_SCALAR_TRUE_DIV))) {
+    return true;
+  }
+  return false;
+}
+#endif
+bool FFModel::need_to_add_parallel_identity(int layer_idx) const {
+  auto const &l = layers[layer_idx];
+  // add parallel identity (allreduce in the backward pass) before the lm head
+  // we find the lm head by looking for the linear layer right after a residual
+  // rms norm / layer norm, and before a softmax, followed by
+  // argmax/argtopk/sampling
+  if (config.computationMode == COMP_MODE_INFERENCE &&
+      config.tensor_parallelism_degree > 1 &&
+      ((l->op_type == OP_RESIDUAL_RMS_NORM ||
+        l->op_type == OP_RESIDUAL_LAYERNORM) &&
+       // there are at least 2 layers before the norm, and at least 1 following
+       // the norm
+       layer_idx >= 2 && layer_idx < layers.size() - 1 &&
+       // norm is followed by linear layer (lm head)
+       layers[layer_idx + 1]->op_type == OP_LINEAR)) {
     return true;
   }
   return false;
