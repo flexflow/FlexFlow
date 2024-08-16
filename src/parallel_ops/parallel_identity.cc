@@ -337,7 +337,7 @@ void ParallelIdentity::inference_task(
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  ParallelIdentityMeta const *m = *((ParallelIdentityMeta **)task->local_args);
+  ParallelIdentityMeta *m = *((ParallelIdentityMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_tokens() == 0) {
     return;
@@ -349,10 +349,13 @@ void ParallelIdentity::inference_task(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input.data_type == output.data_type);
-  if (m->inference_debugging) {
-    std::cout << "INF " << m->op_name << std::endl;
-  }
   inference_kernel_wrapper(m, bc, input, output);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    ParallelIdentity::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {}, {output});
+  }
 }
 
 FutureMap
@@ -406,7 +409,7 @@ void ParallelIdentity::peft_bwd_task(Task const *task,
   assert(regions.size() == 2);
   assert(task->regions.size() == 2);
 
-  ParallelIdentityMeta const *m = *((ParallelIdentityMeta **)task->local_args);
+  ParallelIdentityMeta *m = *((ParallelIdentityMeta **)task->local_args);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_active_peft_tokens() == 0) {
     return;
@@ -417,10 +420,13 @@ void ParallelIdentity::peft_bwd_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input_grad.data_type == output_grad.data_type);
-  if (m->inference_debugging) {
-    std::cout << "BWD " << m->op_name << std::endl;
-  }
   peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    ParallelIdentity::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {}, {output_grad}, false);
+  }
 }
 
 bool ParallelIdentity::measure_operator_cost(Simulator *sim,

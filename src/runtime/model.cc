@@ -3540,8 +3540,23 @@ void FFModel::create_operators_from_layers() {
       }
     } else if (need_to_add_parallel_identity(layer_idx)) {
       assert(op->numOutputs == 2);
-      ParallelIdentity *parallel_identity = new ParallelIdentity(
-          *this, op->outputs[1], op->outputs[1]->num_dims - 1);
+      size_t transformer_layer_id = op->layer_guid.transformer_layer_id;
+      if (transformer_layer_parallel_identity_count.find(
+              transformer_layer_id) ==
+          transformer_layer_parallel_identity_count.end()) {
+        transformer_layer_parallel_identity_count[transformer_layer_id] = 0;
+      }
+      std::string parallel_identity_name = std::string(
+          "layers." + std::to_string(transformer_layer_id) +
+          ".parallel_identity." +
+          std::to_string(
+              transformer_layer_parallel_identity_count[transformer_layer_id]));
+      transformer_layer_parallel_identity_count[transformer_layer_id]++;
+      ParallelIdentity *parallel_identity =
+          new ParallelIdentity(*this,
+                               op->outputs[1],
+                               op->outputs[1]->num_dims - 1,
+                               parallel_identity_name.c_str());
       operators.push_back(parallel_identity);
       assert(op->numOutputs == l->numOutputs);
       // output 0 is taken from the residual rms norm
