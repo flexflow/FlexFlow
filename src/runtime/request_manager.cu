@@ -99,7 +99,6 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
       kv_indptr_h[indptr_idx + 1] = batch_config->requestsInfo[req_idx].num_kv_pages;
       for (int i = indices_offset; i < indices_lens; i++) {
-        // kv_indices_h[i] = max_num_pages * req_idx + (i - indices_offset);
         kv_indices_h[i] = batch_config->requestsInfo[req_idx].page_indices[i - indices_offset];
       }
       qk_indptr_h[indptr_idx + 1] = qk_lens;
@@ -508,28 +507,6 @@ void RequestManager::load_batch_config_task(
                                                 request_infos,
                                                 request_available,
                                                 batch_size);
-          // print the updated mask
-          // wait for kernel to finish
-          checkCUDA(cudaStreamSynchronize(stream));
-          // copy the mask back to host
-          size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
-                              ((BatchConfig::max_spec_tree_token_num() *
-                                (BatchConfig::max_spec_tree_token_num() +
-                                BatchConfig::max_sequence_length()) + 7) / 8);
-          uint8_t *custom_mask = new uint8_t[custom_mask_size];
-          checkCUDA(cudaMemcpy(custom_mask,
-                              handle.tree_verify_attention_metadata->custom_mask,
-                              sizeof(uint8_t) * batch_size * max_num_pages,
-                              cudaMemcpyDeviceToHost));
-          printf("------------------------updated mask------------------------\n");
-          for (int i = 0; i < BatchConfig::max_requests_per_batch(); i++) {
-            if (batch_config -> request_available[i]) {
-              for (int j = 0; j < BatchConfig::max_spec_tree_token_num(); j++) {
-                printf("%d ", custom_mask[i * BatchConfig::max_spec_tree_token_num() + j]);
-              }
-              printf("\n");
-            }
-          }
         }
       }
 
