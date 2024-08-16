@@ -76,6 +76,7 @@ void consume() {
 struct FilePaths {
   std::string cache_folder_path;
   std::string prompt_file_path;
+  std::string warmup_prompt_file_path;
   std::string output_file_path;
 };
 
@@ -116,6 +117,7 @@ void parse_input_args(char **argv,
                       bool &do_sample,
                       int &sampling_seed,
                       bool &tpot_slo,
+                      double &slo_eps_ms,
                       bool &alignment_test,
                       int &max_buckets_to_run,
                       int &bucket_timeframe) {
@@ -145,6 +147,11 @@ void parse_input_args(char **argv,
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // warmup prompts
+    if (!strcmp(argv[i], "-warmup_prompt")) {
+      paths.warmup_prompt_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -204,6 +211,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--tpot-slo")) {
       tpot_slo = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--slo-eps")) {
+      slo_eps_ms = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--alignment-test")) {
@@ -382,6 +393,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool spec_sampling = false;
   bool do_sample = false;
   bool tpot_slo = false;
+  double slo_eps_ms = 0.0;
   bool alignment_test = false;
   int sampling_seed = 0;
   int max_buckets_to_run = 100000;
@@ -407,6 +419,7 @@ void FlexFlow::top_level_task(Task const *task,
                    do_sample,
                    sampling_seed,
                    tpot_slo,
+                   slo_eps_ms,
                    alignment_test,
                    max_buckets_to_run,
                    bucket_timespan);
@@ -435,6 +448,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_decoding_mode(decoding_mode);
   rm->register_output_filepath(file_paths.output_file_path);
   rm->use_tpot_slo(tpot_slo);
+  rm->set_slo_eps_ms(slo_eps_ms);
   rm->set_alignment_test(alignment_test);
 
   // Create LLM model
@@ -522,6 +536,38 @@ void FlexFlow::top_level_task(Task const *task,
 
   rm->start_background_server(&tree_model);
 
+  // Warmup stage
+  std::cout << "======= WARMUP STAGE =======" << std::endl;
+  {
+    using json = nlohmann::json;
+    std::ifstream file_handle(file_paths.warmup_prompt_file_path);
+    assert(file_handle.good() && "Prompt file does not exist.");
+    json prompt_json = json::parse(file_handle,
+                                   /*parser_callback_t */ nullptr,
+                                   /*allow_exceptions */ true,
+                                   /*ignore_comments */ true);
+
+    std::vector<std::pair<std::string, std::optional<double>>> prompts;
+    // The json should be a list of elements, where an element is 
+    // either a string, or a tuple [string, float]. 
+    // The string is the prompt, and the float is an optional tpot SLO.
+    for (auto &prompt : prompt_json) {
+      if (prompt.is_string()) { // The element doesn't contain an SLO
+        std::string text = prompt.get<std::string>();
+        // printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+        prompts.emplace_back(text, std::nullopt);
+      } else { // The element contains an SLO
+        std::string text = prompt[0].get<std::string>();
+        double tpot_slo_ms = prompt[1].get<double>();
+        // printf("Prompt[%d]: tpot_SLO_ms(%f) | %s\n", 
+        //     total_num_requests, tpot_slo_ms, text.c_str());
+        prompts.emplace_back(text, tpot_slo_ms);
+      }
+    }
+    tree_model.generate(prompts, -1 /*not used in this implem*/);
+  }
+  std::cout << "===== END WARMUP STAGE =====" << std::endl;
+
   // Now run online workload!
 
   nb_millisecs = nb_millisecs * bucket_timespan;
@@ -545,19 +591,25 @@ void FlexFlow::top_level_task(Task const *task,
     std::vector<std::vector<std::pair<std::string, std::optional<double>>>> buckets;
 
     size_t index = 0;
+    size_t nb_prompts = 0;
+    size_t prompt_limit = 700;
     for (auto const &list : lists) {
-      if (index >= 30) {
+      if (nb_prompts >= prompt_limit) {
         break;
       }
       if (!list.empty()) {
         bucket_arrival_times_ms.push_back(nb_millisecs * index);
         std::vector<std::pair<std::string, std::optional<double>>> prompts;
         for (auto const prompt : list) {
+          if (nb_prompts >= prompt_limit) {
+            break;
+          }
           if (prompt.is_string()) { // The element doesn't contain an SLO
             prompts.emplace_back(prompt.get<std::string>(), std::nullopt);
           } else { // The element contains an SLO
              prompts.emplace_back(prompt[0].get<std::string>(), prompt[1].get<double>());
           }
+          nb_prompts++;
         }
         buckets.push_back(prompts);
       }

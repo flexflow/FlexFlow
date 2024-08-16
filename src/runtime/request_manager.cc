@@ -856,7 +856,11 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   llm_latency_estimate_ms = llm_latency_estimate_ms / std::min(static_cast<size_t>(window_size), profiling.llm_step_times.size());
 
   profiling.requests_per_step.push_back(nb_requests_decoded);
-  profiling.generated_tokens_per_step.push_back(nb_requests_decoded);
+  std::vector<int> gen_tokens_per_step_per_req;
+  for (int idxx=0; idxx<nb_requests_decoded; ++idxx) {
+    gen_tokens_per_step_per_req.push_back(1);
+  }
+  profiling.generated_tokens_per_step.push_back(gen_tokens_per_step_per_req);
   return request_completed;
 }
 
@@ -1899,7 +1903,7 @@ void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
   // This function maintain the generated token list of the request and the
   // committed tokens.
-  int total_nb_generated_tokens = 0;
+  std::vector<int> total_nb_generated_tokens;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1995,7 +1999,7 @@ void RequestManager::get_verify_results_greedy(
         llm_verify_result
             .token_ids[llm_result_offset + last_accepted_token_index]);
 
-    total_nb_generated_tokens += request.committed_tokens.size() - 1;
+    total_nb_generated_tokens.push_back(request.committed_tokens.size() - 1);
     profiling_requests[guid].nb_tokens_decoded += request.committed_tokens.size() - 1;
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
@@ -2322,12 +2326,14 @@ void RequestManager::terminate_background_server() {
       nb_ssm_steps += ")";
       str += nb_ssm_steps;
 
-      str += "\n spec_tree_sizes(";
+      str += "\n spec_tree_sizes                  (";
       std::string spec_tree_sizes = " ";
       for (const auto sizes : profiling.tree_sizes) {
         spec_tree_sizes += "{";
         for (int s : sizes) {
-          spec_tree_sizes += std::to_string(s) + " ";
+          std::stringstream ss;
+          ss << std::setw(2) << std::setfill(' ') << s;
+          spec_tree_sizes += ss.str() + " ";
         }
         spec_tree_sizes += "} ";
       }
@@ -2336,11 +2342,29 @@ void RequestManager::terminate_background_server() {
     }
     str += "\n generated_tokens_per_step(";
     std::string generated_tokens_per_step = " ";
-    for (int nb : profiling.generated_tokens_per_step) {
-      generated_tokens_per_step += std::to_string(nb) + " ";
+    for (const auto nbs : profiling.generated_tokens_per_step) {
+      int nb_count = 0;
+      for (int nb : nbs) {
+        nb_count += nb;
+      }
+      generated_tokens_per_step += std::to_string(nb_count) + " ";
     }
     generated_tokens_per_step += ")";
     str += generated_tokens_per_step;
+    str += "\n generated_tokens_per_step_per_req(";
+    std::string generated_tokens_per_step_per_req = " ";
+    for (const auto nbs : profiling.generated_tokens_per_step) {
+      generated_tokens_per_step_per_req += "{";
+      for (int nb : nbs) {
+        std::stringstream ss;
+        ss << std::setw(2) << std::setfill(' ') << nb;
+        generated_tokens_per_step_per_req += ss.str() + " ";
+      }
+      generated_tokens_per_step_per_req += "} ";
+    }
+    generated_tokens_per_step_per_req += ")";
+    str += generated_tokens_per_step_per_req;
+
     write_to_output_file(alignment_test ? "" : output_filepath, str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
