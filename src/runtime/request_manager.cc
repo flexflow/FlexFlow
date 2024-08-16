@@ -481,6 +481,7 @@ void RequestManager::load_pending_request_to_batch() {
 
   prefill_request = &all_requests[guid];
   prefill_request->status = Request::RUNNING;
+  prefill_request->page_id_commit = -1;
 
   // Find an empty slot
   int request_index = get_empty_request_index();
@@ -1285,6 +1286,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     
     PageManager *page_manager = PageManager::get_page_manager();
     assert(page_manager != nullptr);
+    
     //page attention:  delete the spec tokens in the logical block
     if (request.page_id_commit + 1 < request.blocks.size()) {
       request.blocks.erase(request.blocks.begin() + request.page_id_commit + 1, request.blocks.end());
@@ -1534,6 +1536,8 @@ void RequestManager::_append_logical_block_to_request(
   // update page_id_commit
   if (is_commit) {
     request.page_id_commit++;
+    printf("page_id_commit: %d\n", request.page_id_commit);
+    printf("blocks size: %d\n", request.blocks.size());
     assert(request.page_id_commit < request.blocks.size());
   }
 }

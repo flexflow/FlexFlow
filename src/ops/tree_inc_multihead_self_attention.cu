@@ -148,18 +148,22 @@ __global__ void commit_tokens_kernel(
         continue;
       }
 
-      int const req_id = committedTokenInfos[i].request_index;
+      // int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
-      int const page_idx = kv_page_indices[start + (tok_id + kPagesize - 1) / kPagesize];
+      int const page_to_idx = kv_page_indices[start + (tok_id + kPagesize - 1) / kPagesize];
+      assert((tok_id + kPagesize - 1) / kPagesize <= end);
+      int const page_from_idx = kv_page_indices[start + (index_in_kv_cache + kPagesize - 1) / kPagesize];
+      assert((index_in_kv_cache + kPagesize - 1) / kPagesize <= end);
 
       // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
       // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory
-      size_t from_k_idx = get_k_entry_offset(index_in_kv_cache, (index_in_kv_cache + kPagesize - 1) / kPagesize, hidden_size),
-             from_v_idx = get_v_entry_offset(index_in_kv_cache, (index_in_kv_cache + kPagesize - 1) / kPagesize, hidden_size);
+      // index_in_kv_cache is actually the flattened index 
+      size_t from_k_idx = get_k_entry_offset(index_in_kv_cache, page_from_idx, hidden_size),
+             from_v_idx = get_v_entry_offset(index_in_kv_cache, page_from_idx, hidden_size);
 
       // page attention: copy the token to the new position
-      size_t to_k_idx =get_k_entry_offset(tok_id, page_idx, hidden_size),
-             to_v_idx =get_v_entry_offset(tok_id, page_idx, hidden_size);
+      size_t to_k_idx =get_k_entry_offset(tok_id, page_to_idx, hidden_size),
+             to_v_idx =get_v_entry_offset(tok_id, page_to_idx, hidden_size);
       assert(to_k_idx <= from_k_idx);
 
       kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
@@ -641,6 +645,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // "\n";
 
   if (!bc->prompt_phase) {
+    printf("commit tokens\n");
     commit_tokens(m, bc, stream);
   }
 
@@ -669,6 +674,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
   // Implement kernel to compute KQV for input tokens
+  printf("compute kernel\n");
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
