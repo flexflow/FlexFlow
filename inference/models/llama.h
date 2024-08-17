@@ -36,6 +36,11 @@ public:
           num_hidden_layers = model_config["num_hidden_layers"];
           vocab_size = model_config["vocab_size"];
           num_attention_heads = model_config["num_attention_heads"];
+          if (model_config.find("num_key_value_heads") != model_config.end()) {
+            num_key_value_heads = model_config["num_key_value_heads"];
+          } else {
+            num_key_value_heads = num_attention_heads;
+          }
           hidden_size = model_config["hidden_size"];
           rms_norm_eps = model_config["rms_norm_eps"];
           intermediate_size = model_config["intermediate_size"];
@@ -58,6 +63,8 @@ public:
       std::cout << "\tvocab_size: " << vocab_size << std::endl;
       std::cout << "\tnum_attention_heads: " << num_attention_heads
                 << std::endl;
+      std::cout << "\tnum_key_value_heads: " << num_key_value_heads
+                << std::endl;
       std::cout << "\thidden_size: " << hidden_size << std::endl;
       std::cout << "\trms_norm_eps: " << rms_norm_eps << std::endl;
       std::cout << "\tintermediate_size: " << intermediate_size << std::endl;
@@ -69,8 +76,8 @@ public:
 
     // int max_seq_len, max_num_tokens;
     int k_of_arg_topk;
-    int num_hidden_layers, vocab_size, num_attention_heads, hidden_size,
-        intermediate_size;
+    int num_hidden_layers, vocab_size, num_attention_heads, num_key_value_heads,
+        hidden_size, intermediate_size;
     float rms_norm_eps;
   };
 
