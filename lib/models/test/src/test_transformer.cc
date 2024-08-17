@@ -6,13 +6,14 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_transformer_computation_graph") {
-    TransformerConfig config = TransformerConfig{1024, 1024, 16, 12, 512, 64};
+    TransformerConfig config =
+        TransformerConfig{1024, 1024, 16, 12, 512, 64, 1e-05};
 
     ComputationGraph result = get_transformer_computation_graph(config);
 
     SUBCASE("num layers") {
       int result_num_layers = get_layers(result).size();
-      int correct_num_layers = 75;
+      int correct_num_layers = 88;
       CHECK(result_num_layers == correct_num_layers);
     }
   }

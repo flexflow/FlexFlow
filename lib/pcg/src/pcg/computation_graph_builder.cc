@@ -117,9 +117,11 @@ tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,
   }
 }
 
-tensor_guid_t ComputationGraphBuilder::broadcast(tensor_guid_t const &,
-                                                 TensorShape const &) {
-  NOT_IMPLEMENTED();
+tensor_guid_t ComputationGraphBuilder::broadcast(tensor_guid_t const &input,
+                                                 TensorShape const &shape) {
+  // NOT_IMPLEMENTED
+  tensor_guid_t dummy_copy = input;
+  return dummy_copy;
 }
 
 tensor_guid_t
@@ -504,7 +506,8 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
 
 TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
     std::vector<tensor_guid_t> const &) {
-  NOT_IMPLEMENTED();
+  // NOT_IMPLEMENTED
+  return TensorShape(TensorDims{FFOrdered<size_t>{1}}, DataType::FLOAT);
 }
 
 TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
@@ -576,8 +579,34 @@ tensor_guid_t ComputationGraphBuilder::dense(
   TensorAttrs kernel_attrs =
       make_weight_attrs(kernel_shape, kernel_initializer);
 
-  return this->add_layer(
-      layer, std::vector<tensor_guid_t>{input}, {kernel_attrs}, output_shape);
+  TensorShape bias_shape =
+      throw_if_unexpected(get_bias_shape(attrs, get_shape(input)));
+  TensorAttrs bias_attrs = make_weight_attrs(bias_shape, bias_initializer);
+
+  return this->add_layer(layer,
+                         std::vector<tensor_guid_t>{input},
+                         {kernel_attrs, bias_attrs},
+                         output_shape);
+}
+
+tensor_guid_t ComputationGraphBuilder::layer_norm(
+    tensor_guid_t const &input,
+    std::vector<int> const &axes,
+    bool elementwise_affine,
+    float eps,
+    std::optional<std::string> const &maybe_name) {
+  // NOT_IMPLEMENTED
+  tensor_guid_t dummy_copy = input;
+  return dummy_copy;
+}
+
+tensor_guid_t ComputationGraphBuilder::softmax(
+    tensor_guid_t const &input,
+    int dim,
+    std::optional<std::string> const &maybe_name) {
+  // NOT_IMPLEMENTED
+  tensor_guid_t dummy_copy = input;
+  return dummy_copy;
 }
 
 } // namespace FlexFlow

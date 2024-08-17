@@ -4,9 +4,11 @@ namespace FlexFlow {
 
 ComputationGraph
     get_transformer_computation_graph(TransformerConfig const &tfConfig) {
+
   ComputationGraphBuilder cgb;
   int kdim = tfConfig.hidden_size / tfConfig.num_heads;
   int vdim = tfConfig.hidden_size / tfConfig.num_heads;
+  std::vector<int> layer_norm_axis{2}; // Normalize the last dim
 
   /**
    * @brief Helper to create an attention encoder layer
@@ -20,11 +22,16 @@ ComputationGraph
                                               tfConfig.num_heads,
                                               kdim,
                                               vdim);
-    return cgb.dense(
-        cgb.dense(t, tfConfig.hidden_size, Activation::RELU, false /*bias*/),
-        tfConfig.hidden_size,
-        std::nullopt,
-        false /*bias*/);
+    tensor_guid_t normalized_t = cgb.layer_norm(
+        cgb.add(t, input), layer_norm_axis, true, tfConfig.layer_norm_eps);
+    return cgb.layer_norm(cgb.add(normalized_t,
+                                  cgb.dense(normalized_t,
+                                            tfConfig.hidden_size,
+                                            Activation::RELU,
+                                            true)),
+                          layer_norm_axis,
+                          true,
+                          tfConfig.layer_norm_eps);
   };
 
   TensorShape input_shape = TensorShape{
@@ -38,7 +45,7 @@ ComputationGraph
   for (int i = 0; i < tfConfig.num_layers; i++) {
     t = create_attention_encoder(t);
   }
-  t = cgb.dense(t, 1, std::nullopt, false /*bias*/);
+  t = cgb.softmax(cgb.dense(t, 1, Activation::RELU, true));
 
   return cgb.computation_graph;
 }

@@ -33,3 +33,7 @@ type = "size_t"
 [[fields]]
 name = "batch_size"
 type = "size_t"
+
+[[fields]]
+name = "layer_norm_eps"
+type = "float"
