@@ -20,7 +20,7 @@
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_app("MoE");
+Legion::Logger log_app("MoE");
 
 void parse_input_args(char **argv, int argc, MoeConfig &config) {
   for (int i = 1; i < argc; i++) {

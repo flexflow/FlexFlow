@@ -514,10 +514,7 @@ OpMeta *
          acc_output.rect.hi[1] - acc_output.rect.lo[1] + 1);
   assert(attn->oProjSize == acc_output.rect.hi[0] - acc_output.rect.lo[0] + 1);
 
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MultiHeadAttentionMeta *m =
       new MultiHeadAttentionMeta(handle, attn, gpu_mem, num_samples, num_heads);
   m->profiling = attn->profiling;
