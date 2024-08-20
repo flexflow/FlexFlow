@@ -113,7 +113,7 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
+  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta *m,
                                        BatchConfig const *bc,
                                        int shard_id,
                                        GenericTensorAccessorR const &input,

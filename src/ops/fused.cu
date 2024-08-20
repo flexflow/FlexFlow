@@ -908,7 +908,7 @@ __host__ void
           case OP_INC_MULTIHEAD_SELF_ATTENTION: {
             assert(fused->op_num_inputs[op] == 1);
             assert(fused->op_num_outputs[op] == 1);
-            IncMultiHeadSelfAttentionMeta const *m =
+            IncMultiHeadSelfAttentionMeta *m =
                 (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
             assert(fused->op_num_weights[op] ==
                    (1 + (int)(*m->qkv_bias || *m->final_bias)));

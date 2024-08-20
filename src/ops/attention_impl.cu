@@ -497,4 +497,90 @@ template cudaError_t
         float rope_scale,
         float rope_theta,
         cudaStream_t stream);
+
+/********** batch decode instantiations for half precision **********/
+template cudaError_t
+    BatchDecodeWithPagedKVCacheDispatched<64,
+                                          PageStorage::kIndices,
+                                          LogitsPostHook::kNone,
+                                          QKVLayout::kNHD,
+                                          PosEncodingMode::kNone,
+                                          half,
+                                          half,
+                                          half,
+                                          int32_t>(
+        half *q,
+        int32_t *q_offset,
+        paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t>
+            paged_kv,
+        kv_partition_info_t<int32_t> kv_partition_info,
+        half *o,
+        half *tmp_v,
+        float *tmp_s,
+        float *lse,
+        bool *block_valid_mask,
+        uint32_t padded_batch_size,
+        uint32_t num_qo_heads,
+        float logits_soft_cap,
+        float sm_scale,
+        float rope_scale,
+        float rope_theta,
+        cudaStream_t stream);
+
+template cudaError_t
+    BatchDecodeWithPagedKVCacheDispatched<128,
+                                          PageStorage::kIndices,
+                                          LogitsPostHook::kNone,
+                                          QKVLayout::kNHD,
+                                          PosEncodingMode::kNone,
+                                          half,
+                                          half,
+                                          half,
+                                          int32_t>(
+        half *q,
+        int32_t *q_offset,
+        paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t>
+            paged_kv,
+        kv_partition_info_t<int32_t> kv_partition_info,
+        half *o,
+        half *tmp_v,
+        float *tmp_s,
+        float *lse,
+        bool *block_valid_mask,
+        uint32_t padded_batch_size,
+        uint32_t num_qo_heads,
+        float logits_soft_cap,
+        float sm_scale,
+        float rope_scale,
+        float rope_theta,
+        cudaStream_t stream);
+
+template cudaError_t
+    BatchDecodeWithPagedKVCacheDispatched<256,
+                                          PageStorage::kIndices,
+                                          LogitsPostHook::kNone,
+                                          QKVLayout::kNHD,
+                                          PosEncodingMode::kNone,
+                                          half,
+                                          half,
+                                          half,
+                                          int32_t>(
+        half *q,
+        int32_t *q_offset,
+        paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t>
+            paged_kv,
+        kv_partition_info_t<int32_t> kv_partition_info,
+        half *o,
+        half *tmp_v,
+        float *tmp_s,
+        float *lse,
+        bool *block_valid_mask,
+        uint32_t padded_batch_size,
+        uint32_t num_qo_heads,
+        float logits_soft_cap,
+        float sm_scale,
+        float rope_scale,
+        float rope_theta,
+        cudaStream_t stream);
+
 } // namespace flashinfer

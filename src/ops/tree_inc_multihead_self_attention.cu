@@ -25,30 +25,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#define DISPATCH_HEADDIM(head_dim, HEAD_DIM, ...)                              \
-  switch (head_dim) {                                                          \
-    case 64: {                                                                 \
-      constexpr size_t HEAD_DIM = 64;                                          \
-      __VA_ARGS__                                                              \
-      break;                                                                   \
-    }                                                                          \
-    case 128: {                                                                \
-      constexpr size_t HEAD_DIM = 128;                                         \
-      __VA_ARGS__                                                              \
-      break;                                                                   \
-    }                                                                          \
-    case 256: {                                                                \
-      constexpr size_t HEAD_DIM = 256;                                         \
-      __VA_ARGS__                                                              \
-      break;                                                                   \
-    }                                                                          \
-    default: {                                                                 \
-      std::ostringstream err_msg;                                              \
-      err_msg << "Unsupported head_dim: " << head_dim;                         \
-      throw std::invalid_argument(err_msg.str());                              \
-    }                                                                          \
-  }
-
 namespace FlexFlow {
 
 // declare Legion names

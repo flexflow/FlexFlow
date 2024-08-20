@@ -15,12 +15,6 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
-void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
-                                         BatchConfig const *bc,
-                                         DT *output_ptr,
-                                         ffStream_t stream);
-
-template <typename DT>
 void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
                          int shard_id,
