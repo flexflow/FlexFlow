@@ -6,7 +6,7 @@ python_packages=$(python -c "from distutils import sysconfig; print(sysconfig.ge
 pylib_path="$(python "$python_packages"/flexflow/findpylib.py)"
 pylib_dir="$(dirname "$pylib_path")"
 export PATH="${python_packages}/flexflow/bin:${PATH}"
-export LD_LIBRARY_PATH="${python_packages}/flexflow/lib:${pylib_dir}:${PATH}"
+export LD_LIBRARY_PATH="${python_packages}/flexflow/lib:${pylib_dir}:${LD_LIBRARY_PATH}"
 legion_python_args=("$@" "-ll:py" "1")
 
 legion_python "${legion_python_args[@]}"
