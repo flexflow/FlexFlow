@@ -192,7 +192,7 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
        *kv = static_cast<half *>(m->keyCache),
        *o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
-      num_kv_heads,
+      num_q_heads,
       kPagesize,
       head_dim,
       batch_size,

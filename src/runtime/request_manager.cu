@@ -366,7 +366,7 @@ void RequestManager::load_batch_config_task(
             static_cast<int32_t *>(kv_indptr_h),
             batch_size,
             handle.tree_search_attention_metadata->num_q_heads(),
-            handle.tree_search_attention_metadata->num_kv_heads(),
+            handle.tree_search_attention_metadata->num_q_heads(),
             handle.tree_search_attention_metadata->head_dim(),
             kPagesize);
       }
@@ -532,7 +532,7 @@ void RequestManager::load_batch_config_task(
             static_cast<int32_t *>(kv_indptr_h),
             batch_size,
             handle.tree_verify_attention_metadata->num_q_heads(),
-            handle.tree_verify_attention_metadata->num_kv_heads(),
+            handle.tree_verify_attention_metadata->num_q_heads(),
             handle.tree_verify_attention_metadata->head_dim(),
             kPagesize);
       }
