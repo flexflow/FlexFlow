@@ -2698,7 +2698,7 @@ flexflow_file_data_loader_t
                                      int num_q_heads,
                                      int num_kv_heads,
                                      int hidden_dim,
-                                     int qkv_inner_dim,
+                                     int head_dim,
                                      int tensor_parallelism_degree,
                                      bool use_full_precision) {
   assert(weight_file_path != nullptr &&
@@ -2709,7 +2709,7 @@ flexflow_file_data_loader_t
                                               num_q_heads,
                                               num_kv_heads,
                                               hidden_dim,
-                                              qkv_inner_dim,
+                                              head_dim,
                                               tensor_parallelism_degree,
                                               use_full_precision);
   DEBUG_PRINT("[FileDataLoader] new %p", handle);
