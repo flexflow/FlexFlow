@@ -142,7 +142,7 @@ void LLAMA::create_llama_model(FFModel &ff,
         break;
       }
       case INC_DECODING_MODE: {
-        mha = ff.inc_multiquery_self_attention(
+        mha = ff.groupquery_self_attention(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,

@@ -173,7 +173,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multiquery_self_attention(
+                mha = ffmodel.groupquery_self_attention(
                     att_norm,
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,

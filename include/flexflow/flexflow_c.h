@@ -490,7 +490,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
     bool position_bias,
     char const *name);
 
-flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
+flexflow_tensor_t flexflow_model_add_groupquery_self_attention(
     flexflow_model_t handle_,
     flexflow_tensor_t const input_,
     int embed_dim,

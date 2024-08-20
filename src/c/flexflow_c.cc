@@ -1314,7 +1314,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
   return FFCObjectWrapper::wrap(tensor);
 }
 
-flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
+flexflow_tensor_t flexflow_model_add_groupquery_self_attention(
     flexflow_model_t handle_,
     flexflow_tensor_t const input_,
     int embed_dim,
@@ -1338,7 +1338,7 @@ flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention(
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
-  Tensor tensor = handle->inc_multiquery_self_attention(input,
+  Tensor tensor = handle->groupquery_self_attention(input,
                                                         embed_dim,
                                                         num_q_heads,
                                                         num_kv_heads,
