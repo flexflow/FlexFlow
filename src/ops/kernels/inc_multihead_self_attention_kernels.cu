@@ -517,6 +517,26 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
 using namespace Kernels::IncMultiHeadAttention;
 
+template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    int shard_id,
+    float const *input_ptr,
+    float const *weight_ptr,
+    float *output_ptr,
+    float const *bias_ptr,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    int shard_id,
+    half const *input_ptr,
+    half const *weight_ptr,
+    half *output_ptr,
+    half const *bias_ptr,
+    cudaStream_t stream);
+
 template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     GenericTensorAccessorR const weight,
