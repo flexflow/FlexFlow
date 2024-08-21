@@ -389,9 +389,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     : IncMultiHeadSelfAttentionMeta(handler,
                                     INC_DECODING_MODE,
                                     attn,
-                                    attn->qSize,
-                                    attn->kSize,
-                                    attn->vSize,
+                                    attn->hidden_size,
                                     attn->qProjSize,
                                     attn->kProjSize,
                                     attn->vProjSize,
@@ -417,9 +415,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     InferenceMode infer_mode,
     Op const *attn,
-    int _qSize,
-    int _kSize,
-    int _vSize,
+    int _hidden_size,
     int _qProjSize,
     int _kProjSize,
     int _vProjSize,
@@ -445,12 +441,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
   checkCUDNN(cudnnCreateTensorDescriptor(&qk_tensor));
-  qSize = _qSize;
-  kSize = _kSize;
-  vSize = _vSize;
-  // assume dimensions match for now
-  assert(qSize == kSize);
-  assert(kSize == vSize);
+  hidden_size = _hidden_size;
   qProjSize = _qProjSize;
   kProjSize = _kProjSize;
   assert(qProjSize == kProjSize); // required for attention QK.T matmul
@@ -467,9 +458,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   local_hidden_size = num_q_heads * qProjSize;
 
   weightSize =
-      ((qSize * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : vSize)) *
+      ((hidden_size * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : hidden_size)) *
            num_q_heads +
-       (kSize * kProjSize + vSize * vProjSize) * num_q_heads) *
+       (hidden_size * kProjSize + hidden_size * vProjSize) * num_q_heads) *
       size_of_dt;
   if (quantization_type != DT_NONE) {
     quantized_weightSize = get_quantization_to_byte_size(

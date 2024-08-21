@@ -151,11 +151,11 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
   // Compute weight size
   int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
       oProjSize = embed_dim;
-  int qSize = input->dims[0], kSize = input->dims[0], vSize = input->dims[0];
-  int qParas = qProjSize * qSize;
-  int kParas = kProjSize * kSize;
-  int vParas = vProjSize * vSize;
-  int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
+  int hidden_size = input->dims[0];
+  int qParas = qProjSize * hidden_size;
+  int kParas = kProjSize * hidden_size;
+  int vParas = vProjSize * hidden_size;
+  int oParas = oProjSize * (vProjSize > 0 ? vProjSize : hidden_size);
   int one_head_size = qParas + kParas + vParas + oParas;
   int weight_size = qParas * num_q_heads + kParas * num_q_heads +
                     vParas * num_q_heads + oParas * num_q_heads;
@@ -312,8 +312,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
-      qSize(_input->dims[0].size), kSize(_input->dims[0].size),
-      vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
+      hidden_size(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
@@ -336,11 +335,11 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     // Create weight tensor
     int num_dims = inputs[0]->num_dims;
     // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = this->kProjSize * this->kSize;
-    int vParas = this->vProjSize * this->vSize;
+    int qParas = this->qProjSize * this->hidden_size;
+    int kParas = this->kProjSize * this->hidden_size;
+    int vParas = this->vProjSize * this->hidden_size;
     int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
+        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->hidden_size);
     ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
@@ -428,8 +427,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
-      qSize(_input->dims[0].size), kSize(_input->dims[0].size),
-      vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
+      hidden_size(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
@@ -451,11 +449,11 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     // Create weight tensor
     int num_dims = inputs[0]->num_dims;
     // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = this->kProjSize * this->kSize;
-    int vParas = this->vProjSize * this->vSize;
+    int qParas = this->qProjSize * this->hidden_size;
+    int kParas = this->kProjSize * this->hidden_size;
+    int vParas = this->vProjSize * this->hidden_size;
     int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
+        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->hidden_size);
     ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;

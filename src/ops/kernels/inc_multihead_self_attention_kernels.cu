@@ -244,7 +244,6 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  assert(m->qSize == m->vSize && m->qSize == m->kSize);
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
 #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
@@ -274,14 +273,14 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
     int m_v = m->vProjSize * m->num_q_heads;
     assert(m_q == m_k && m_k == m_v); // keep things simple for now
     int n = bc->num_active_tokens();
-    int k = m->qSize;
+    int k = m->hidden_size;
     int m_ = m_q * QKV_WEIGHT_NUM;
     // before transpositions
     int lda = k, ldb = k, ldc = m_;
     // matrix A: QKV weights
-    // matrix A's layout: [qSize (hidden_dim), qProjSize, num_heads, 3]
+    // matrix A's layout: [hidden_size (hidden_dim), qProjSize, num_heads, 3]
     // matrix B: input
-    // matrix B's layout: [qSize (hidden_dim), num_new_tokens]
+    // matrix B's layout: [hidden_size (hidden_dim), num_new_tokens]
     // matrix C: devQKVProjArray
     // matrix B's layout: [qProjSize, num_heads, 3, num_new_tokens]
     checkCUDA(cublasGemmEx(m->handle.blas,
@@ -506,7 +505,7 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
     int lda = k, ldb = k, ldc = m_;
     // matrix A: output projection weight
     // matrix A's layout: [vProjSize * num_heads, oProjSize]
-    DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+    DT const *A = weight_ptr + m->hidden_size * (m->qProjSize * m->num_q_heads +
                                            m->kProjSize * m->num_q_heads +
                                            m->vProjSize * m->num_q_heads);
     // matrix B: attn heads
@@ -568,7 +567,7 @@ void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
                     stream);
 
     if (m->quantization_type == DT_INT4) {
-      int parallelism = m->qProjSize * m->qSize * m->num_q_heads / 2;
+      int parallelism = m->qProjSize * m->hidden_size * m->num_q_heads / 2;
       decompress_int4_attention_weights<<<GET_BLOCKS(parallelism),
                                           min(CUDA_NUM_THREADS, parallelism),
                                           0,
@@ -576,11 +575,11 @@ void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
           m->quantized_weight_ptr,
           static_cast<DT *>(m->weight_ptr),
           m->qProjSize,
-          m->qSize,
+          m->hidden_size,
           m->num_q_heads);
     } else {
       assert(m->quantization_type == DT_INT8);
-      int parallelism = m->qProjSize * m->qSize * m->num_q_heads;
+      int parallelism = m->qProjSize * m->hidden_size * m->num_q_heads;
       decompress_int8_attention_weights<<<GET_BLOCKS(parallelism),
                                           min(CUDA_NUM_THREADS, parallelism),
                                           0,
@@ -588,7 +587,7 @@ void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
           m->quantized_weight_ptr,
           static_cast<DT *>(m->weight_ptr),
           m->qProjSize,
-          m->qSize,
+          m->hidden_size,
           m->num_q_heads);
     }
   } else {

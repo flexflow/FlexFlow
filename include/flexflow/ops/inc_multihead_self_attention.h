@@ -128,7 +128,7 @@ public:
   bool qkv_bias;
   bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
       qk_prod_scaling, position_bias;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
   bool offload;
@@ -146,9 +146,7 @@ public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 InferenceMode infer_mode,
                                 Op const *attn,
-                                int _qSize,
-                                int _kSize,
-                                int _vSize,
+                                int _hidden_size,
                                 int _qProjSize,
                                 int _kProjSize,
                                 int _vProjSize,
@@ -175,7 +173,7 @@ public:
   Realm::RegionInstance reserveInst;
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qProjSize, kProjSize, vProjSize, oProjSize;
   int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads,
       local_hidden_size;
   bool *has_load_weights;
