@@ -27,7 +27,9 @@ namespace FlexFlow {
 
 class FFModel;
 class TokenTree;
+class TokenTreeNode;
 class RequestManager;
+struct CompareSharedTokenTreeNodePtr;
 using tokenizers::Tokenizer;
 
 class InferenceManager {
@@ -75,8 +77,15 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
+  // Required average time-per-output-token service-level objective of this request, in milliseconds
+  double target_tpot_slo_ms = 1000.0; // Default Time-Per-Output-Token SLO is 1 second.
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
+  // Node pool of each TokenTree, ordered in ascending order of probabilities
+  std::vector<std::priority_queue<
+      std::shared_ptr<TokenTreeNode>,
+      std::vector<std::shared_ptr<TokenTreeNode>>,
+      CompareSharedTokenTreeNodePtr>> ordered_nodes_per_tree;
   // To make request manager stateful, we need to store the causal mask here
   BatchConfig::BitMask causal_mask;
   // Here we maintain a struct CommittedToken which has a field `from_index` and
@@ -127,17 +136,22 @@ public:
   BatchConfig::TokenId id;
   float log_accumulated_prob;
   int parent_pos;
+  int layer_idx;
   bool pruned = false;
   bool gumbel = false;
   float gumbel_logit = 0.0f;
+  bool in_subtree = false;
+  std::shared_ptr<TokenTreeNode> next;
 
   TokenTreeNode(BatchConfig::TokenId id,
                 float log_accumulated_prob,
                 int parent_pos,
+                int layer_idx,
                 bool gumbel = false,
-                float gumbel_logit = 0.0f)
-      : id(id), log_accumulated_prob(log_accumulated_prob),
-        parent_pos(parent_pos), gumbel(gumbel), gumbel_logit(gumbel_logit) {}
+                float gumbel_logit = 0.0f,
+                bool in_subtree = false)
+      : id(id), log_accumulated_prob(log_accumulated_prob), parent_pos(parent_pos),
+        layer_idx(layer_idx), gumbel(gumbel), gumbel_logit(gumbel_logit), in_subtree(in_subtree) {}
 };
 
 bool operator<(std::shared_ptr<TokenTreeNode> const &lhs,
@@ -153,7 +167,13 @@ struct CompareSharedTokenTreeNodePtr {
                   std::shared_ptr<TokenTreeNode> const &rhs) const {
     if (lhs->gumbel) {
       assert(rhs->gumbel);
+      if (lhs->gumbel_logit == rhs->gumbel_logit) {
+        return lhs->layer_idx < rhs->layer_idx;
+      }
       return lhs->gumbel_logit < rhs->gumbel_logit;
+    }
+    if (lhs->log_accumulated_prob == rhs->log_accumulated_prob) {
+      return lhs->layer_idx < rhs->layer_idx;
     }
     return lhs->log_accumulated_prob < rhs->log_accumulated_prob;
   }
@@ -168,7 +188,13 @@ struct CompareSharedTokenTreeNodePtrRequestGuidPair {
                             BatchConfig::RequestGuid> const &rhs) const {
     if (lhs.first->gumbel) {
       assert(rhs.first->gumbel);
+      if (lhs.first->gumbel_logit == rhs.first->gumbel_logit) {
+        return lhs.first->layer_idx > rhs.first->layer_idx;
+      }
       return lhs.first->gumbel_logit > rhs.first->gumbel_logit;
+    }
+    if (lhs.first->log_accumulated_prob == rhs.first->log_accumulated_prob) {
+      return lhs.first->layer_idx > rhs.first->layer_idx;
     }
     return lhs.first->log_accumulated_prob > rhs.first->log_accumulated_prob;
   }
@@ -221,6 +247,7 @@ public:
   using TokenId = BatchConfig::TokenId;
 
   inline static RequestGuid const INVALID_GUID = 0;
+  inline static double const NO_SLO = -1.0;
   RequestManager();
   static RequestManager *get_request_manager();
   size_t get_num_processed_requests();
@@ -235,8 +262,10 @@ public:
   int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
+  void set_slo_eps_ms(double eps);
   void set_decoding_mode(DecodingMode mode);
   void set_verbose(bool verbose_);
+  void set_alignment_test(bool is_alignment_test);
   int get_k();
   void set_k(int k);
   int get_max_tree_depth();
@@ -244,12 +273,14 @@ public:
   int get_max_tree_width();
   void set_max_tree_width(int max_tree_width);
   void set_speculative_sampling(bool speculative_sampling);
+  void use_tpot_slo(bool tpot_slo);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
+  void reset_profiling_stats();
 
   FFModel *get_ssm_model(int model_id);
 
@@ -257,8 +288,8 @@ public:
   void serve_spec_infer_sync(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt);
+  RequestGuid register_new_request(std::string const &prompt, double tpot_slo=NO_SLO);
+  RequestGuid register_new_request(std::vector<TokenId> const &prompt, double tpot_slo=NO_SLO);
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();
@@ -312,12 +343,19 @@ private:
   int max_sequence_length;
   int max_tree_depth;
   int max_tree_width;
+  double slo_eps_ms;
   int k;
   State request_manager_status;
   BackgroundServerStatus background_server_status;
   DecodingMode decoding_mode;
   PrefillModel prefill_model;
   bool speculative_sampling = false;
+  bool tpot_slo = false;
+
+  double llm_latency_estimate_ms;
+  double ssm_latency_estimate_ms;
+
+  bool alignment_test = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -371,12 +409,13 @@ private:
     int ssm_prefilling_steps = 0;
     int llm_decoding_steps = 0;
     int ssm_decoding_steps = 0;
+    int nb_tokens_decoded = 0;
     long long start_time = 0, start_decoding_time = 0, finish_time = 0;
   };
   struct ProfileInfo {
     // For SpecInfer: One step is comprised of one ssm speculation phase + a
-    // single llm verification phase (forward pass + verification) For Incr
-    // Decoding: One step is one LLM decoding phase
+    // single llm verification phase (forward pass + verification)
+    // For Incremental Decoding: One step is one LLM decoding phase
     long long llm_step_start = 0, ssm_step_start = 0;
     // Times for each LLM verification phase (in ms)
     std::vector<double> llm_step_times;
@@ -384,10 +423,12 @@ private:
     std::vector<int> requests_per_step;
     // Times for each SSM speculation phase (in ms)
     std::vector<double> ssm_step_times;
-    // Number of requests getting decoded at each step
-    std::vector<int> ssm_steps;
-    // Number of generated tokens at each step
-    std::vector<int> generated_tokens_per_step;
+    // Number of generated tokens at each step for each request
+    std::vector<std::vector<int>> generated_tokens_per_step;
+    // All amounts of forward passes in all speculation phases
+    std::vector<int> nb_ssm_steps;
+    // Tree sizes of all speculation phases
+    std::vector<std::vector<int>> tree_sizes;
     // To calculate the E2E time of serving
     long long server_start_time = 0;
   };
@@ -438,6 +479,9 @@ private:
                                    BatchConfig::TokenId token_id);
   bool add_tokens_to_spec_token_tree(
       InferenceResult const &ssm_inference_result);
+  bool add_tokens_to_spec_token_tree_tpot_slo(
+      InferenceResult const &ssm_inference_result);
+  void select_subtrees_on_tpot_slo_constraints();
   /* ---------- Spec Decoding Helper Functions ---------- */
   void renormalize(std::vector<std::pair<TokenId, float>> &D,
                    std::unordered_map<TokenId, float> &R,

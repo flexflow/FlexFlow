@@ -25,6 +25,7 @@
 #include <random>
 #include <stack>
 #include <stdexcept>
+#include <optional>
 
 namespace FlexFlow {
 
@@ -155,6 +156,11 @@ int RequestManager::get_max_sequence_length() {
   return max_sequence_length;
 }
 
+void RequestManager::set_slo_eps_ms(double eps) {
+  assert(eps >= 0);
+  slo_eps_ms = eps;
+}
+
 void RequestManager::set_decoding_mode(DecodingMode mode) {
   assert(mode == INCREMENTAL_DECODING || mode == SPECULATIVE_DECODING);
   decoding_mode = mode;
@@ -162,6 +168,10 @@ void RequestManager::set_decoding_mode(DecodingMode mode) {
 
 void RequestManager::set_verbose(bool verbose_) {
   verbose = verbose_;
+}
+
+void RequestManager::set_alignment_test(bool is_alignment_test) {
+  alignment_test = is_alignment_test;
 }
 
 int RequestManager::get_k() {
@@ -204,6 +214,10 @@ void RequestManager::set_max_tree_width(int max_tree_width) {
 
 void RequestManager::set_speculative_sampling(bool speculative_sampling_) {
   speculative_sampling = speculative_sampling_;
+}
+
+void RequestManager::use_tpot_slo(bool tpot_slo) {
+  this->tpot_slo = tpot_slo;
 }
 
 void RequestManager::register_tokenizer(ModelType type,
@@ -257,6 +271,10 @@ void RequestManager::register_output_filepath(
   this->output_filepath = _output_filepath;
 }
 
+void RequestManager::reset_profiling_stats() {
+  reset_profiling_statistics();
+}
+
 int RequestManager::register_ssm_model(FFModel *model) {
   int model_id = ssm_models.size();
   ssm_models.push_back(model);
@@ -274,13 +292,16 @@ size_t RequestManager::get_num_ssms() {
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt) {
+    RequestManager::register_new_request(std::vector<TokenId> const &prompt, double tpot_slo) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
 
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
+  if (tpot_slo >= 0) {
+    request.target_tpot_slo_ms = tpot_slo;
+  }
 
   if (prompt.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
@@ -329,12 +350,16 @@ RequestManager::RequestGuid
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::string const &prompt) {
+    RequestManager::register_new_request(std::string const &prompt, double tpot_slo) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
+  if (tpot_slo >= 0) {
+    request.target_tpot_slo_ms = tpot_slo;
+  }
+
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
@@ -376,7 +401,7 @@ RequestManager::RequestGuid
       output = output + " " + std::to_string(request.tokens[i]);
     }
     log_req_mgr.print("%s", output.c_str());
-    write_to_output_file("", output);
+    write_to_output_file(alignment_test ? "" : output_filepath, output);
   }
 
   GenerationResult gr;
@@ -508,82 +533,95 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
-  // Find the sos and eos in the sequence
-  auto bos_it = std::find(
-      request.tokens.begin(), request.tokens.end(), this->bos_token_id);
-  auto eos_rit = std::find(
-      request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
-  std::vector<int>::iterator eos_it;
-  if (eos_rit != request.tokens.rend()) {
-    eos_it = eos_rit.base();
-  } else {
-    eos_it = request.tokens.end();
-  }
-  std::string output =
-      this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
+  if (alignment_test) {
+    // Find the sos and eos in the sequence
+    auto bos_it = std::find(
+        request.tokens.begin(), request.tokens.end(), this->bos_token_id);
+    auto eos_rit = std::find(
+        request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
+    std::vector<int>::iterator eos_it;
+    if (eos_rit != request.tokens.rend()) {
+      eos_it = eos_rit.base();
+    } else {
+      eos_it = request.tokens.end();
+    }
+    std::string output =
+        this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
 
-  std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
-  std::cout << "<bos>" << output;
-  if (eos_rit != request.tokens.rend()) {
-    std::cout << "<eos>";
-  }
-  std::cout << std::endl << std::endl;
-  {
-    RequestProfileInfo profile_info = profiling_requests[guid];
+    std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
+    std::cout << "<bos>" << output;
+    if (eos_rit != request.tokens.rend()) {
+      std::cout << "<eos>";
+    }
+    std::cout << std::endl << std::endl;
+    {
+      RequestProfileInfo profile_info = profiling_requests[guid];
 
-    std::ostream *os = &std::cout;
-    std::ofstream output_file;
-    if (!output_filepath.empty()) {
-      output_file.open(output_filepath, std::ios::app);
-      if (output_file.is_open()) {
-        os = &output_file;
+      std::ostream *os = &std::cout;
+      std::ofstream output_file;
+      if (!output_filepath.empty()) {
+        output_file.open(output_filepath, std::ios::app);
+        if (output_file.is_open()) {
+          os = &output_file;
+        } else {
+          std::cout << "Unable to open the output file: " << output_filepath
+                    << std::endl;
+          assert(false);
+        }
+      }
+      *os << "Request " << guid << " profiling: " << std::endl;
+      if (profile_info.start_decoding_time != 0) {
+        *os << "Decoding time: "
+            << (profile_info.finish_time - profile_info.start_decoding_time) *
+                  1e-3
+            << " ms" << std::endl;
       } else {
-        std::cout << "Unable to open the output file: " << output_filepath
-                  << std::endl;
-        assert(false);
+        *os << "Decoding time: 0 ms" << std::endl;
+      }
+      *os << "Total time: "
+          << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
+          << std::endl;
+      *os << "LLM decoding steps: " << profile_info.llm_decoding_steps
+          << std::endl;
+      if (decoding_mode == SPECULATIVE_DECODING) {
+        *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
+            << std::endl;
+      }
+      *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
+
+      if (!output_filepath.empty()) {
+        output_file.close();
       }
     }
-    *os << "Request " << guid << " profiling: " << std::endl;
-    if (profile_info.start_decoding_time != 0) {
-      *os << "Decoding time: "
-          << (profile_info.finish_time - profile_info.start_decoding_time) *
-                 1e-3
-          << " ms" << std::endl;
-    } else {
-      *os << "Decoding time: 0 ms" << std::endl;
-    }
-    *os << "Total time: "
-        << (profile_info.finish_time - profile_info.start_time) * 1e-3 << " ms"
-        << std::endl;
-    *os << "LLM decoding steps: " << profile_info.llm_decoding_steps
-        << std::endl;
-    if (decoding_mode == SPECULATIVE_DECODING) {
-      *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
-          << std::endl;
-    }
-    *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
-
-    if (!output_filepath.empty()) {
-      output_file.close();
-    }
   }
-  // RequestProfileInfo profile_info = profiling_requests[guid];
-  // std::string str =
-  //     "[" + std::to_string(guid) +
-  //     "] Request completed:" + " decoding_time_ms(" +
-  //     std::to_string(
-  //         (profile_info.finish_time - profile_info.start_decoding_time) *
-  //         1e-3) +
-  //     ")" + " total_time_ms(" +
-  //     std::to_string((profile_info.finish_time - profile_info.start_time) *
-  //                    1e-3) +
-  //     ")" + " LLM_decoding_steps(" +
-  //     std::to_string(profile_info.llm_decoding_steps) + ")";
-  // if (decoding_mode == SPECULATIVE_DECODING) {
-  //   str = str + " SSM_decoding_steps(" +
-  //         std::to_string(profile_info.ssm_decoding_steps) + ")";
-  // }
-  // write_to_output_file("", str);
+
+  RequestProfileInfo profile_info = profiling_requests[guid];
+  std::string str =
+      "[" + std::to_string(guid) +
+      "] Request completed:" + " decoding_time_ms(" +
+      std::to_string(
+          (profile_info.finish_time - profile_info.start_decoding_time) *
+          1e-3) +
+      ")" + " total_time_ms(" +
+      std::to_string((profile_info.finish_time - profile_info.start_time) *
+                     1e-3) +
+      ")" + " LLM_decoding_steps(" +
+      std::to_string(profile_info.llm_decoding_steps) + ")";
+  if (decoding_mode == SPECULATIVE_DECODING) {
+    str = str + " SSM_decoding_steps(" +
+          std::to_string(profile_info.ssm_decoding_steps) + ")" +
+          " tpot_ms(" + std::to_string(
+          (profile_info.finish_time-
+            profile_info.start_time)
+            * 1e-3 / profile_info.nb_tokens_decoded)
+          + ")";
+
+    str += " target_tpot_ms(" + std::to_string(request.target_tpot_slo_ms) + ")";
+  }
+  write_to_output_file(alignment_test ? "" : output_filepath, str);
+  if (!alignment_test) {
+    std::cout << str << std::endl;
+  }
 
   trigger_request_completion_future(guid);
 }
@@ -713,6 +751,21 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       }
 
       if (current_ssm_step == get_max_tree_depth()) {
+        // Save final tree sizes
+        std::vector<int> tree_size_list;
+        for (int request_index = 0; request_index < get_max_requests_per_batch();
+            ++request_index) {
+          if (!request_available[request_index]) {
+            // Request in this slot is unavailable
+            continue;
+          }
+          RequestGuid guid = guid_of_requests[request_index];
+          Request &request = all_requests[guid];
+          assert(request.status == Request::RUNNING);
+
+          tree_size_list.push_back(request.speculative_token_trees[0].tree_size);
+        }
+        profiling.tree_sizes.push_back(tree_size_list);
         request_manager_status = LLM_VERIFY;
       }
       break;
@@ -789,8 +842,21 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
       (Realm::Clock::current_time_in_microseconds() -
        profiling.llm_step_start) *
       1e-3);
+
+  // Update llm forward pass latency estimate
+  int window_size = 20;
+  llm_latency_estimate_ms = 0;
+  for (int idxx=profiling.llm_step_times.size()-1; idxx >= std::max(0, static_cast<int>(profiling.llm_step_times.size())-window_size); --idxx) {
+    llm_latency_estimate_ms += profiling.llm_step_times[idxx];
+  }
+  llm_latency_estimate_ms = llm_latency_estimate_ms / std::min(static_cast<size_t>(window_size), profiling.llm_step_times.size());
+
   profiling.requests_per_step.push_back(nb_requests_decoded);
-  profiling.generated_tokens_per_step.push_back(nb_requests_decoded);
+  std::vector<int> gen_tokens_per_step_per_req;
+  for (int idxx=0; idxx<nb_requests_decoded; ++idxx) {
+    gen_tokens_per_step_per_req.push_back(1);
+  }
+  profiling.generated_tokens_per_step.push_back(gen_tokens_per_step_per_req);
   return request_completed;
 }
 
@@ -1415,8 +1481,17 @@ bool RequestManager::update_ssm_inference_results(
   // Here we assume that the order of the tokens in the last
   // BatchConfig and hence the last InferenceResult is equal to
   // the order of the request in the last BatchConfig
-  bool all_request_last_layer_empty =
+  bool all_request_last_layer_empty = false;
+  if (tpot_slo) {
+    all_request_last_layer_empty =
+      add_tokens_to_spec_token_tree_tpot_slo(ssm_inference_result);
+    if (all_request_last_layer_empty or current_ssm_step == get_max_tree_depth()) {
+      select_subtrees_on_tpot_slo_constraints();
+    }
+  } else {
+    all_request_last_layer_empty =
       add_tokens_to_spec_token_tree(ssm_inference_result);
+  }
 
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
@@ -1448,7 +1523,16 @@ bool RequestManager::update_ssm_inference_results(
         (Realm::Clock::current_time_in_microseconds() -
          profiling.ssm_step_start) *
         1e-3);
-    profiling.ssm_steps.push_back(current_ssm_step);
+
+    // Update ssm forward passes latency estimate
+    int window_size = 10;
+    ssm_latency_estimate_ms = 0;
+    for (int idxx=profiling.ssm_step_times.size()-1; idxx >= std::max(0, static_cast<int>(profiling.ssm_step_times.size())-window_size); --idxx) {
+      ssm_latency_estimate_ms += profiling.ssm_step_times[idxx];
+    }
+    ssm_latency_estimate_ms = ssm_latency_estimate_ms / std::min(static_cast<size_t>(window_size), profiling.ssm_step_times.size());
+
+    profiling.nb_ssm_steps.push_back(current_ssm_step);
   }
   return all_request_last_layer_empty;
 }
@@ -1816,7 +1900,7 @@ void RequestManager::get_verify_results_greedy(
     InferenceResult const &llm_verify_result) {
   // This function maintain the generated token list of the request and the
   // committed tokens.
-  int total_nb_generated_tokens = 0;
+  std::vector<int> total_nb_generated_tokens;
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1912,7 +1996,8 @@ void RequestManager::get_verify_results_greedy(
         llm_verify_result
             .token_ids[llm_result_offset + last_accepted_token_index]);
 
-    total_nb_generated_tokens += request.committed_tokens.size() - 1;
+    total_nb_generated_tokens.push_back(request.committed_tokens.size() - 1);
+    profiling_requests[guid].nb_tokens_decoded += request.committed_tokens.size() - 1;
     if (verbose) {
       std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
@@ -1929,11 +2014,16 @@ void RequestManager::get_verify_results_greedy(
 
 // TODO: the max_seq_length is not used in the current implementation
 std::vector<GenerationResult>
-    FFModel::generate(std::vector<std::string> &prompts, int max_seq_length) {
+    FFModel::generate(std::vector<std::pair<std::string, std::optional<double>>> &prompts, int max_seq_length) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (int i = 0; i < prompts.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i));
+    RequestManager::RequestGuid guid = RequestManager::INVALID_GUID;
+    if (prompts.at(i).second) {
+      guid = rm->register_new_request(prompts.at(i).first, *prompts.at(i).second);
+    } else {
+      guid = rm->register_new_request(prompts.at(i).first);
+    }
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
@@ -2200,14 +2290,18 @@ void RequestManager::terminate_background_server() {
     assert(profiling.llm_step_times.size() ==
            profiling.requests_per_step.size());
     // Write the last profiling statistics to output file
-    std::string str = "[Profiling Statistics]";
-
+    std::string str = "[Profiling Statistics - ";
+    str += (tpot_slo ? "" : "NO");
+    str += " SLO]";
+    
     long long total_time = Realm::Clock::current_time_in_microseconds() -
                            profiling.server_start_time;
     int total_requests = profiling_requests.size();
     int total_tokens = 0;
-    for (int num_tokens : profiling.generated_tokens_per_step) {
-      total_tokens += num_tokens;
+    for (const auto &num_tokens : profiling.generated_tokens_per_step) {
+      for (int num_token : num_tokens) {
+        total_tokens += num_token;
+      }
     }
     str += "\n total_time_ms(" + std::to_string(total_time / 1000.0) + ")";
     str += "\n total_tokens(" + std::to_string(total_tokens) + ")";
@@ -2216,7 +2310,7 @@ void RequestManager::terminate_background_server() {
            std::to_string(total_requests / (total_time / 1e6)) + ")";
     str += "\n throughput_tokens_per_sec(" +
            std::to_string(total_tokens / (total_time / 1e6)) + ")";
-
+    
     double average_latency_per_request = 0;
     std::string latency_per_request_ms = "\n latency_per_request_ms( ";
     for (auto const &profiling_info : profiling_requests) {
@@ -2233,8 +2327,16 @@ void RequestManager::terminate_background_server() {
     average_latency_per_request /= total_requests;
     str += "\n average_latency_per_request_ms(" +
            std::to_string(average_latency_per_request) + ")";
-
-    std::string req_per_step = "\n requests_per_step( ";
+    
+    str += "\n llm_step_times_ms(";
+    std::string llm_step_times_ms = " ";
+    for (double time : profiling.llm_step_times) {
+      llm_step_times_ms += std::to_string(time) + " ";
+    }
+    llm_step_times_ms += ")";
+    str += llm_step_times_ms;
+    str += "\n requests_per_step(";
+    std::string req_per_step = " ";
     for (int nb : profiling.requests_per_step) {
       req_per_step += std::to_string(nb) + " ";
     }
@@ -2250,32 +2352,56 @@ void RequestManager::terminate_background_server() {
       }
       ssm_step_times_ms += ")";
       str += ssm_step_times_ms;
-    }
-
-    if (profiling.ssm_steps.size() > 0) {
-      std::string ssm_steps = "\n ssm_steps( ";
-      for (int nb : profiling.ssm_steps) {
-        ssm_steps += std::to_string(nb) + " ";
+      
+      str += "\n nb_ssm_steps(";
+      std::string nb_ssm_steps = " ";
+      for (int nb : profiling.nb_ssm_steps) {
+        nb_ssm_steps += std::to_string(nb) + " ";
       }
-      ssm_steps += ")";
-      str += ssm_steps;
-    }
+      nb_ssm_steps += ")";
+      str += nb_ssm_steps;
 
-    std::string llm_step_times_ms = "\n llm_step_times_ms( ";
-    for (double time : profiling.llm_step_times) {
-      llm_step_times_ms += std::to_string(time) + " ";
+      str += "\n spec_tree_sizes                  (";
+      std::string spec_tree_sizes = " ";
+      for (const auto sizes : profiling.tree_sizes) {
+        spec_tree_sizes += "{";
+        for (int s : sizes) {
+          std::stringstream ss;
+          ss << std::setw(2) << std::setfill(' ') << s;
+          spec_tree_sizes += ss.str() + " ";
+        }
+        spec_tree_sizes += "} ";
+      }
+      spec_tree_sizes += ")";
+      str += spec_tree_sizes;
     }
-    llm_step_times_ms += ")";
-    str += llm_step_times_ms;
-
-    std::string generated_tokens_per_step = "\n generated_tokens_per_step( ";
-    for (int nb : profiling.generated_tokens_per_step) {
-      generated_tokens_per_step += std::to_string(nb) + " ";
+    str += "\n generated_tokens_per_step(";
+    std::string generated_tokens_per_step = " ";
+    for (const auto nbs : profiling.generated_tokens_per_step) {
+      int nb_count = 0;
+      for (int nb : nbs) {
+        nb_count += nb;
+      }
+      generated_tokens_per_step += std::to_string(nb_count) + " ";
     }
     generated_tokens_per_step += ")";
     str += generated_tokens_per_step;
+    str += "\n generated_tokens_per_step_per_req(";
+    std::string generated_tokens_per_step_per_req = " ";
+    for (const auto nbs : profiling.generated_tokens_per_step) {
+      generated_tokens_per_step_per_req += "{";
+      for (int nb : nbs) {
+        std::stringstream ss;
+        ss << std::setw(2) << std::setfill(' ') << nb;
+        generated_tokens_per_step_per_req += ss.str() + " ";
+      }
+      generated_tokens_per_step_per_req += "} ";
+    }
+    generated_tokens_per_step_per_req += ")";
+    str += generated_tokens_per_step_per_req;
 
-    write_to_output_file("", str);
+    write_to_output_file(alignment_test ? "" : output_filepath, str);
+
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
@@ -2302,8 +2428,10 @@ RequestManager *RequestManager::get_request_manager() {
 void RequestManager::init_token_tree(RequestGuid guid) {
   Request &request = all_requests[guid];
   request.speculative_token_trees.clear();
+  request.ordered_nodes_per_tree.clear();
   // Assume we only use one small model for speculation
   request.speculative_token_trees.emplace_back();
+  request.ordered_nodes_per_tree.emplace_back();
 }
 
 void RequestManager::add_root_to_spec_token_tree(
@@ -2318,13 +2446,14 @@ void RequestManager::add_root_to_spec_token_tree(
   Request &request = all_requests[guid];
   TokenTree &speculative_token_tree = request.speculative_token_trees[0];
   speculative_token_tree.add_layer();
-  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, 0.0, -1);
+  auto node_ptr = std::make_shared<TokenTreeNode>(token_id, 0.0, -1, 0);
   if (speculative_sampling) {
     node_ptr->gumbel = true;
   }
   token_tree_node_pool.push(std::make_pair(node_ptr, guid));
   speculative_token_tree.tree_layers.front().push_back(node_ptr);
   speculative_token_tree.tree_size++;
+  request.ordered_nodes_per_tree[0].push(node_ptr);
 }
 
 bool RequestManager::add_tokens_to_spec_token_tree(
@@ -2366,6 +2495,7 @@ bool RequestManager::add_tokens_to_spec_token_tree(
         spec_token_tree.tree_layers.back();
     std::set<std::shared_ptr<TokenTreeNode>, CompareSharedTokenTreeNodePtr>
         tokens;
+    int layer_idx = spec_token_tree.tree_layers.size();
     int parent_pos = 0;
     for (auto const &parent_ptr : last_layer) {
       if (!parent_ptr->pruned) {
@@ -2464,13 +2594,15 @@ bool RequestManager::add_tokens_to_spec_token_tree(
                   ssm_inference_result.token_ids[result_idx],
                   accumulated_log_prob,
                   parent_pos,
+                  layer_idx,
                   true,
                   gumbel_logit);
             } else {
               node_ptr = std::make_shared<TokenTreeNode>(
                   ssm_inference_result.token_ids[result_idx],
                   accumulated_log_prob,
-                  parent_pos);
+                  parent_pos,
+                  layer_idx);
             }
             // if (tokens.size() == empty_slots_in_layer and
             //     cmp_value > (speculative_sampling
@@ -2480,8 +2612,8 @@ bool RequestManager::add_tokens_to_spec_token_tree(
             if (tokens.size() == empty_slots_in_layer and
                 *tokens.begin() < node_ptr) {
               // The token tree is full, and the new token has a higher compare
-              // value than the minimum node in the pool, we need to remove the
-              // minimum node from the pool and add the new token to the tree
+              // value than the minimum node in the last layer, we need to remove the
+              // minimum node from the last layer and add the new token to the tree
               tokens.erase(tokens.begin());
             }
             tokens.insert(node_ptr);
@@ -2556,6 +2688,316 @@ bool RequestManager::add_tokens_to_spec_token_tree(
   return all_request_last_layer_empty;
 }
 
+bool RequestManager::add_tokens_to_spec_token_tree_tpot_slo(
+    InferenceResult const &ssm_inference_result) {
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    int parent_num = request.num_tokens_in_batch;
+    if (parent_num == 0) {
+      // The request has no committed tokens, we don't need to add tokens to
+      // the token tree
+      continue;
+    }
+    int result_offset = request.first_token_offset_in_batch *
+                        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+    int current_tree_size = request.causal_mask.tree_or_prompt_size;
+    int new_layer_max_size = min(get_max_spec_tree_token_num() - current_tree_size,
+            get_max_tree_width());
+
+    if (new_layer_max_size == 0) {
+      // The token tree is full, we don't need to add tokens to it
+      continue;
+    }
+
+    TokenTree &spec_token_tree = request.speculative_token_trees[0];
+    std::priority_queue<
+      std::shared_ptr<TokenTreeNode>,
+      std::vector<std::shared_ptr<TokenTreeNode>>,
+      CompareSharedTokenTreeNodePtr> &ordered_nodes = request.ordered_nodes_per_tree[0];
+    std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
+        spec_token_tree.tree_layers.back();
+    std::set<std::shared_ptr<TokenTreeNode>, CompareSharedTokenTreeNodePtr>
+        tokens;
+    int layer_idx = spec_token_tree.tree_layers.size();
+    int parent_pos = 0;
+    for (auto const &parent_ptr : last_layer) {
+      if (!parent_ptr->pruned) {
+        // TODO: parameterize MAX_SPECULATIVE_TREE_BRANCHES
+        float parent_log_prob = parent_ptr->log_accumulated_prob;
+        int child_start_idx =
+            result_offset +
+            parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+        // TODO: rename child_probs to child_logits after change the output of
+        // argmax from prob to logprob
+        std::vector<std::pair<float, int>> child_probs(
+            BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
+        for (int child_pos = 0;
+             child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+             child_pos++) {
+          int result_idx = child_start_idx + child_pos;
+          if (!speculative_sampling) {
+            // TODO: the argmax will return log prob instead of prob
+            if (log(ssm_inference_result.probs[result_idx]) !=
+                -std::numeric_limits<float>::infinity()) {
+              child_probs[child_pos] = std::make_pair(
+                  log(ssm_inference_result.probs[result_idx]), result_idx);
+            }
+          } else {
+            // Use gumbel perturbed logits here
+            child_probs[child_pos] = std::make_pair(
+                ssm_inference_result.gumbel_logits[result_idx], result_idx);
+          }
+        }
+        // Sort in descending order
+        std::sort(child_probs.begin(),
+                  child_probs.end(),
+                  std::greater<std::pair<float, int>>());
+        if (speculative_sampling) {
+          // Condition the gumbel perturbed logits on the maximum
+          gumbel_conditioned_on_max(parent_ptr->gumbel_logit, child_probs);
+        }
+        for (auto const &child_prob : child_probs) {
+
+          float logit = child_prob.first;
+          // The value used to compare between tokens
+          float accumulated_log_prob = logit + parent_log_prob;
+          float gumbel_logit = 0.0f;
+          float cmp_value;
+          if (speculative_sampling) {
+            cmp_value = gumbel_logit = logit;
+          } else {
+            cmp_value = accumulated_log_prob;
+          }
+          int result_idx = child_prob.second;
+
+          assert(logit != -std::numeric_limits<float>::infinity() &&
+                 "Child log probability should not be -inf.");
+
+          bool tree_full = (current_tree_size + tokens.size() == get_max_spec_tree_token_num());
+          bool layer_full = (tokens.size() == new_layer_max_size);
+          bool child_leq_tree = (cmp_value <= (speculative_sampling
+                                ? ordered_nodes.top()->gumbel_logit
+                                : ordered_nodes.top()->log_accumulated_prob));
+          bool child_leq_layer = (tokens.size() > 0 && (cmp_value <= (speculative_sampling
+                                ? (*tokens.begin())->gumbel_logit
+                                : (*tokens.begin())->log_accumulated_prob)));
+
+          if (layer_full and child_leq_layer) {
+            // The layer is full, and that child node (and all subsequent children nodes) have smaller acc prob than nodes in layer
+            // Note that when the tree is full, the layer is full. 
+            break;
+          } else if (tree_full and child_leq_tree and child_leq_layer) {
+            // The layer is not full, but the tree is full, and all nodes from the tree and from the layer have higher acc prob than that child node (and all subsequent children nodes)
+            break;
+          } else {
+            // The child node can be added somewhere
+            std::shared_ptr<TokenTreeNode> node_ptr(nullptr);
+            if (speculative_sampling) {
+              node_ptr = std::make_shared<TokenTreeNode>(
+                  ssm_inference_result.token_ids[result_idx],
+                  accumulated_log_prob,
+                  parent_pos,
+                  layer_idx,
+                  true,
+                  gumbel_logit);
+            } else {
+              node_ptr = std::make_shared<TokenTreeNode>(
+                  ssm_inference_result.token_ids[result_idx],
+                  accumulated_log_prob,
+                  parent_pos,
+                  layer_idx);
+            }
+            if (layer_full or (tree_full and child_leq_tree)) {
+              // The layer is full OR the tree is full and no node from the tree has a smaller acc prob than child node, 
+              // But the child node acc prob is larger than the lowest acc prob node in layer
+              // Can replace the node with lowest acc prob in the layer by this child node
+              tokens.erase(tokens.begin());
+              tokens.insert(node_ptr);
+            } else if (tree_full) {
+              // The layer is not full, but the tree is full and the child node acc prob is larger than the lowest acc prob node in tree
+              // Can remove the node with lowest acc prob in the tree and add this child node to layer
+              ordered_nodes.top()->pruned = true;
+              spec_token_tree.tree_size--;
+              ordered_nodes.pop();
+              tokens.insert(node_ptr);
+            } else {
+              // The layer is not full and the tree is not full, can add child node to layer
+              tokens.insert(node_ptr);
+            }
+          }
+        }
+      }
+      parent_pos++;
+    }
+
+    // Now add tokens to the tree
+    spec_token_tree.add_layer();
+    for (auto token_it = tokens.crbegin(); token_it != tokens.crend();
+         token_it++) {
+      ordered_nodes.push((*token_it));
+      spec_token_tree.tree_layers.back().push_back((*token_it));
+    }
+    spec_token_tree.tree_size += tokens.size();
+  }
+
+  bool all_request_last_layer_empty = true;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    TokenTree &spec_token_tree = request.speculative_token_trees[0];
+
+    if (spec_token_tree.tree_layers.size() <= current_ssm_step) {
+      // This request has no token added in this layer, skip it
+      continue;
+    }
+
+    std::list<std::shared_ptr<TokenTreeNode>> &last_layer =
+        spec_token_tree.tree_layers.back();
+    all_request_last_layer_empty &= last_layer.empty();
+
+    if (last_layer.empty()) {
+      spec_token_tree.tree_layers.pop_back();
+    }
+  }
+  return all_request_last_layer_empty;
+}
+
+void RequestManager::select_subtrees_on_tpot_slo_constraints() {
+  
+  std::vector<std::shared_ptr<TokenTreeNode>> linked_list_heads(get_max_requests_per_batch(), nullptr);
+  std::vector<double> expected_decoded_num(get_max_requests_per_batch());
+  std::vector<size_t> tree_sizes(get_max_requests_per_batch(), 0);
+  std::vector<size_t> subtree_sizes(get_max_requests_per_batch(), 0);
+  int sum_tree_sizes = 0;
+  double const L = llm_latency_estimate_ms+ssm_latency_estimate_ms;
+  double const eps = slo_eps_ms;
+
+  int B = 0;
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    std::priority_queue<
+      std::shared_ptr<TokenTreeNode>,
+      std::vector<std::shared_ptr<TokenTreeNode>>,
+      CompareSharedTokenTreeNodePtr> &ordered_nodes = request.ordered_nodes_per_tree[0];
+    tree_sizes[request_index] = ordered_nodes.size();
+    sum_tree_sizes += ordered_nodes.size();
+
+    // From the ordered_nodes, create the linked-list
+    std::shared_ptr<TokenTreeNode> head = ordered_nodes.top();
+    std::shared_ptr<TokenTreeNode> tail = ordered_nodes.top();
+    ordered_nodes.pop();
+    while(ordered_nodes.size() > 0) {
+      tail->next = ordered_nodes.top();
+      tail = ordered_nodes.top();
+      ordered_nodes.pop();
+    }
+    tail->next = nullptr;
+    head->in_subtree = true;
+    subtree_sizes[request_index] += 1;
+    linked_list_heads[request_index] = head->next;
+    if (!speculative_sampling) {
+      expected_decoded_num[request_index] = exp(head->log_accumulated_prob);
+    } else {
+      // TODO: support gumbel logits
+      assert(false && "Gumbel logits not yet supported here.");
+    }
+    B++;
+  }
+
+  const int N = std::min(sum_tree_sizes, get_max_tokens_per_batch());
+
+  for (int iter = 0; iter < N - B; ++iter) {
+    int chosen_request_index = -1;
+    double chosen_request_score = -1.0;
+    for (int request_index = 0; request_index < get_max_requests_per_batch();
+          ++request_index) {
+      if (!request_available[request_index]) {
+        // Request in this slot is unavailable
+        continue;
+      }
+      RequestGuid guid = guid_of_requests[request_index];
+      Request &request = all_requests[guid];
+      assert(request.status == Request::RUNNING);
+      double score = -1.0;
+      if (subtree_sizes[request_index] < tree_sizes[request_index]) {
+        if (expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps < 0) {
+          score = 1-(expected_decoded_num[request_index] * request.target_tpot_slo_ms - L - eps);
+        } else {
+          if (!speculative_sampling) {
+            score = exp(linked_list_heads[request_index]->log_accumulated_prob);
+          } else {
+            // TODO: support gumbel logits
+            assert(false && "Gumbel logits not yet supported here.");
+          }
+        }
+      }
+      if (score > chosen_request_score) {
+        chosen_request_index = request_index;
+        chosen_request_score = score;
+      }
+    }
+    assert(chosen_request_index >= 0);
+
+    std::shared_ptr<TokenTreeNode> v = linked_list_heads[chosen_request_index];
+    if (!speculative_sampling) {
+      expected_decoded_num[chosen_request_index] += exp(v->log_accumulated_prob);
+    } else {
+      // TODO: support gumbel logits
+      assert(false && "Gumbel logits not yet supported here.");
+    }
+    v->in_subtree = true;
+    subtree_sizes[chosen_request_index] += 1;
+    linked_list_heads[chosen_request_index] = v->next;
+  }
+
+  // At this point, nodes with 'in_subtree' set to true are nodes belonging to the subtrees
+  // Prune all nodes that do not belong to the subtree
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    TokenTree &token_tree = request.speculative_token_trees[0];
+    for (auto const &tree_layer : token_tree.tree_layers) {
+      for (auto const &tree_node : tree_layer) {
+        if (!tree_node->in_subtree) {
+          tree_node->pruned = true;
+          token_tree.tree_size--;
+        } else {
+          assert(tree_node->pruned == false && "Tree node in the subtree cannot be pruned");
+        }
+      }
+    }
+  }
+}
+
 std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
   os << "Token tree: " << std::endl;
   int layer_idx = 0;
@@ -2582,8 +3024,9 @@ void RequestManager::reset_profiling_statistics() {
   profiling.llm_step_times.clear();
   profiling.requests_per_step.clear();
   profiling.ssm_step_times.clear();
-  profiling.ssm_steps.clear();
+  profiling.nb_ssm_steps.clear();
   profiling.generated_tokens_per_step.clear();
+  profiling.tree_sizes.clear();
   profiling.llm_step_start = 0;
   profiling.ssm_step_start = 0;
   profiling.server_start_time = Realm::Clock::current_time_in_microseconds();

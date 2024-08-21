@@ -21,6 +21,9 @@
 #include <filesystem>
 #include <nlohmann/json.hpp>
 #include <wordexp.h>
+#include <chrono>
+#include <mutex>
+#include <thread>
 #include <optional>
 
 using namespace FlexFlow;
@@ -29,9 +32,51 @@ using json = nlohmann::json;
 
 LegionRuntime::Logger::Category log_app("llama");
 
+class ConcurrentQueue {
+public:
+  std::queue<RequestManager::RequestGuid> inf_queue;
+  std::mutex request_queue_mutex;
+  bool producer_finished = false;
+};
+
+ConcurrentQueue *common_guids_singleton = nullptr;
+int nb_millisecs = 1000; // Default bucket timeframe is 1 second
+
+ConcurrentQueue *get_common_guids_queue() {
+  if (common_guids_singleton == nullptr) {
+    common_guids_singleton = new ConcurrentQueue();
+  }
+  return common_guids_singleton;
+}
+
+void consume() {
+  RequestManager *rm = RequestManager::get_request_manager();
+  ConcurrentQueue *guids = get_common_guids_queue();
+  bool producer_is_finished = false;
+  bool queue_is_empty = false;
+  while (!producer_is_finished || !queue_is_empty) {
+    RequestManager::RequestGuid guid = RequestManager::INVALID_GUID;
+    {
+      const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
+      queue_is_empty = guids->inf_queue.empty();
+      producer_is_finished = guids->producer_finished;
+      if (!queue_is_empty) {
+        guid = guids->inf_queue.front();
+        guids->inf_queue.pop();
+      }
+    }
+    if (guid != RequestManager::INVALID_GUID) {
+      GenerationResult result = rm->get_generation_result(guid);
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(nb_millisecs));
+    }
+  }
+}
+
 struct FilePaths {
   std::string cache_folder_path;
   std::string prompt_file_path;
+  std::string warmup_prompt_file_path;
   std::string output_file_path;
 };
 
@@ -71,8 +116,12 @@ void parse_input_args(char **argv,
                       bool &spec_sampling,
                       bool &do_sample,
                       int &sampling_seed,
+                      bool &offline_mode,
                       bool &tpot_slo,
-                      bool &alignment_test) {
+                      double &slo_eps_ms,
+                      bool &alignment_test,
+                      int &max_buckets_to_run,
+                      int &bucket_timeframe) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -99,6 +148,11 @@ void parse_input_args(char **argv,
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // warmup prompts
+    if (!strcmp(argv[i], "-warmup_prompt")) {
+      paths.warmup_prompt_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -156,12 +210,28 @@ void parse_input_args(char **argv,
       do_sample = true;
       continue;
     }
+    if (!strcmp(argv[i], "--offline-mode")) {
+      offline_mode = true;
+      continue;
+    }
     if (!strcmp(argv[i], "--tpot-slo")) {
       tpot_slo = true;
       continue;
     }
+    if (!strcmp(argv[i], "--slo-eps")) {
+      slo_eps_ms = std::stoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--alignment-test")) {
       alignment_test = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-buckets-to-run")) {
+      max_buckets_to_run = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--bucket-timeframe")) {
+      bucket_timeframe = std::stoi(argv[++i]);
       continue;
     }
   }
@@ -327,9 +397,13 @@ void FlexFlow::top_level_task(Task const *task,
       RequestManager::SPECULATIVE_DECODING;
   bool spec_sampling = false;
   bool do_sample = false;
-  int sampling_seed = 0;
+  bool offline_mode = false;
   bool tpot_slo = false;
+  double slo_eps_ms = 0.0;
   bool alignment_test = false;
+  int sampling_seed = 0;
+  int max_buckets_to_run = 100000;
+  int bucket_timespan = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -350,8 +424,12 @@ void FlexFlow::top_level_task(Task const *task,
                    spec_sampling,
                    do_sample,
                    sampling_seed,
+                   offline_mode,
                    tpot_slo,
-                   alignment_test);
+                   slo_eps_ms,
+                   alignment_test,
+                   max_buckets_to_run,
+                   bucket_timespan);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -362,7 +440,6 @@ void FlexFlow::top_level_task(Task const *task,
   // Create SentencePiece tokenizer or OPT tokenizer
   srand(sampling_seed);
   GenerationConfig generationConfig(do_sample, 0.8, 0.6, spec_sampling, 16);
-  InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(max_requests_per_batch);
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
@@ -378,6 +455,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_decoding_mode(decoding_mode);
   rm->register_output_filepath(file_paths.output_file_path);
   rm->use_tpot_slo(tpot_slo);
+  rm->set_slo_eps_ms(slo_eps_ms);
   rm->set_alignment_test(alignment_test);
 
   // Create LLM model
@@ -465,11 +543,11 @@ void FlexFlow::top_level_task(Task const *task,
 
   rm->start_background_server(&tree_model);
 
-  // Register requests from prompt file
-  int total_num_requests = 0;
+  // Warmup stage
+  std::cout << "======= WARMUP STAGE =======" << std::endl;
   {
     using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
+    std::ifstream file_handle(file_paths.warmup_prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
     json prompt_json = json::parse(file_handle,
                                    /*parser_callback_t */ nullptr,
@@ -483,18 +561,119 @@ void FlexFlow::top_level_task(Task const *task,
     for (auto &prompt : prompt_json) {
       if (prompt.is_string()) { // The element doesn't contain an SLO
         std::string text = prompt.get<std::string>();
-        printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
         prompts.emplace_back(text, std::nullopt);
       } else { // The element contains an SLO
         std::string text = prompt[0].get<std::string>();
         double tpot_slo_ms = prompt[1].get<double>();
-        printf("Prompt[%d]: tpot_SLO_ms(%f) | %s\n", 
-            total_num_requests, tpot_slo_ms, text.c_str());
         prompts.emplace_back(text, tpot_slo_ms);
       }
-      total_num_requests++;
     }
-    tree_model.generate(prompts, 128 /*max_sequence_length*/);
+    tree_model.generate(prompts, -1 /*not used in this implem*/);
+  }
+  std::cout << "===== END WARMUP STAGE =====" << std::endl;
+  rm->reset_profiling_stats();
+
+  // Now run workload!
+
+  // Load all requests in advance
+  nb_millisecs = nb_millisecs * bucket_timespan;
+  using json = nlohmann::json;
+  std::ifstream file_handle(file_paths.prompt_file_path);
+  assert(file_handle.good() && "Prompt file does not exist.");
+  json prompt_json = json::parse(file_handle,
+                                /*parser_callback_t */ nullptr,
+                                /*allow_exceptions */ true,
+                                /*ignore_comments */ true);
+
+  auto const &lists = prompt_json.get<std::vector<std::vector<json>>>();
+  std::vector<size_t> bucket_arrival_times_ms;
+  std::vector<std::vector<std::pair<std::string, std::optional<double>>>> buckets;
+
+  size_t index = 0;
+  size_t nb_prompts = 0;
+  size_t prompt_limit = 10;
+  for (auto const &list : lists) {
+    if (nb_prompts >= prompt_limit) {
+      break;
+    }
+    if (!list.empty()) {
+      bucket_arrival_times_ms.push_back(nb_millisecs * index);
+      std::vector<std::pair<std::string, std::optional<double>>> prompts;
+      for (auto const prompt : list) {
+        if (nb_prompts >= prompt_limit) {
+          break;
+        }
+        if (prompt.is_string()) { // The element doesn't contain an SLO
+          prompts.emplace_back(prompt.get<std::string>(), std::nullopt);
+        } else { // The element contains an SLO
+          prompts.emplace_back(prompt[0].get<std::string>(), prompt[1].get<double>());
+        }
+        nb_prompts++;
+      }
+      buckets.push_back(prompts);
+    }
+    index++;
+  }
+  assert(bucket_arrival_times_ms.size() == buckets.size() &&
+        "Bucket arrival times and buckets are not the same size");
+
+  if (offline_mode) {
+
+    std::vector<std::pair<std::string, std::optional<double>>> grouped_prompts;
+    // The json should be a list of elements, where an element is 
+    // either a string, or a tuple [string, float]. 
+    // The string is the prompt, and the float is an optional tpot SLO.
+    for (auto &bckt : buckets) {
+      for (auto &prompt : bckt) {
+        grouped_prompts.emplace_back(prompt.first, prompt.second);
+      }
+    }
+    tree_model.generate(grouped_prompts, -1 /*not used in this implem*/);
+
+  } else {
+
+    ConcurrentQueue *guids = get_common_guids_queue();
+    std::thread consumer{consume};
+    {
+
+      // Replay the trace of inference requests
+      auto start_time = std::chrono::steady_clock::now();
+      for (int i = 0; i < bucket_arrival_times_ms.size(); i++) {
+        if (bucket_arrival_times_ms[i] >= max_buckets_to_run * nb_millisecs) {
+          break;
+        }
+        // sleep until bucket arrives
+        auto bucket_arrival_time =
+            start_time +
+            std::chrono::milliseconds(bucket_arrival_times_ms[i]);
+        std::this_thread::sleep_until(bucket_arrival_time);
+
+        // create inference requests for the bucket
+        {
+          const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
+          for (auto const prompt : buckets[i]) {
+            RequestManager::RequestGuid guid = RequestManager::INVALID_GUID;
+            if (prompt.second) { // Contains SLO
+              guid = rm->register_new_request(prompt.first, *prompt.second);
+            } else {
+              guid = rm->register_new_request(prompt.first);
+            }
+            if (guid != RequestManager::INVALID_GUID) {
+              guids->inf_queue.push(guid);
+            }
+          }
+        }
+      }
+
+      { // Notify the consumer that no more requests are incoming
+        const std::lock_guard<std::mutex> lock(guids->request_queue_mutex);
+        guids->producer_finished = true;
+      }
+    }
+
+    // Wait for consumer to finish
+    consumer.join();
+
   }
 
   // terminate the request manager by stopping the background thread
