@@ -244,7 +244,7 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
 }
 
 template <typename DT>
-void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
                         DT const *input_ptr,
@@ -376,7 +376,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
                              GenericTensorAccessorR const weight,
                              DataType data_type,
                              hipStream_t stream) {
@@ -458,7 +458,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            hipMemcpyHostToDevice,
                            stream));
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
+  compute_qkv(m,
                      bc,
                      shard_id,
                      input_ptr,
@@ -774,7 +774,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   if (input.data_type == DT_HALF) {
     if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+      pre_build_weight<half>(m, weight, input.data_type, stream);
     }
     half const *bias_ptr =
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
@@ -789,7 +789,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+      pre_build_weight<float>(m, weight, input.data_type, stream);
     }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
@@ -1087,13 +1087,13 @@ IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
   }
 }
 
-template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(
+template void Kernels::IncMultiHeadAttention::pre_build_weight<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     GenericTensorAccessorR const weight,
     DataType data_type,
     hipStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
+template void Kernels::IncMultiHeadAttention::pre_build_weight<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     GenericTensorAccessorR const weight,
     DataType data_type,

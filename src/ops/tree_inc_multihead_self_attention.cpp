@@ -490,7 +490,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                            hipMemcpyHostToDevice,
                            stream));
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
+  compute_qkv(m,
                      bc,
                      shard_id,
                      input_ptr,
@@ -540,7 +540,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   if (input.data_type == DT_HALF) {
     if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+      pre_build_weight<half>(m, weight, input.data_type, stream);
     }
 
     half const *bias_ptr =
@@ -556,7 +556,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+      pre_build_weight<float>(m, weight, input.data_type, stream);
     }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);

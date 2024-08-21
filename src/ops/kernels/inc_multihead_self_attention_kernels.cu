@@ -233,7 +233,7 @@ __global__ void
 }
 
 template <typename DT>
-void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
                         DT const *input_ptr,
@@ -379,6 +379,104 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   //   }
 }
 
+__device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
+                                                     int const token_idx,
+                                                     int const max_num_pages,
+                                                     int const hidden_size) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
+          token_idx % kPagesize) *
+         hidden_size;
+}
+
+__device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
+                                                     int const token_idx,
+                                                     int const max_num_pages,
+                                                     int const hidden_size) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
+          kPagesize + token_idx % kPagesize) *
+         hidden_size;
+}
+
+template <typename DT>
+__global__ void
+    update_qkv_cache_kernel(DT *devQKVProjArray,
+                            half *qTmp_ptr,
+                            half *kCache_ptr,
+                            BatchConfig::PerTokenInfo const *tokenInfos,
+                            BatchConfig::PerRequestInfo *request_infos,
+                            int const max_num_pages,
+                            int hidden_size,
+                            int num_new_tokens) {
+  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int const token_idx = thread_idx / hidden_size;
+  int const offset = thread_idx % hidden_size;
+  if (token_idx >= num_new_tokens) {
+    return;
+  }
+
+  int const req_idx = tokenInfos[token_idx].request_index;
+  int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
+
+  size_t from_idx = token_idx * QKV_WEIGHT_NUM * hidden_size;
+  size_t to_k_idx = get_k_entry_offset(
+             req_idx, token_abs_idx, max_num_pages, hidden_size),
+         to_v_idx = get_v_entry_offset(
+             req_idx, token_abs_idx, max_num_pages, hidden_size);
+
+  // key and value cache should be stored interleaved
+  kCache_ptr[to_k_idx + offset] =
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
+  kCache_ptr[to_v_idx + offset] =
+      static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
+  qTmp_ptr[token_idx * hidden_size + offset] =
+      static_cast<half>(devQKVProjArray[from_idx + offset]);
+}
+
+template <typename DT>
+void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
+                      BatchConfig const *bc,
+                      cudaStream_t stream) {
+  // update the kv cache, compact the q array
+  int num_new_tokens = bc->num_active_tokens();
+  int parallelism = m->hidden_size * num_new_tokens;
+  int const max_num_pages =
+      (BatchConfig::max_sequence_length() +
+       BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
+      kPagesize;
+  update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
+                            min(CUDA_NUM_THREADS, parallelism),
+                            0,
+                            stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                                      static_cast<half *>(m->queryTmp),
+                                      static_cast<half *>(m->keyCache),
+                                      m->token_infos,
+                                      m->request_infos,
+                                      max_num_pages,
+                                      m->hidden_size,
+                                      num_new_tokens);
+}
+
+template <typename DT>
+__global__ void produce_output_kernel(half const *input_ptr,
+                                      DT *output_ptr,
+                                      int parallelism) {
+  CUDA_KERNEL_LOOP(idx, parallelism) {
+    output_ptr[idx] = static_cast<DT>(input_ptr[idx]);
+  }
+}
+
+template <typename DT>
+void produce_output(IncMultiHeadSelfAttentionMeta const *m,
+                    BatchConfig const *bc,
+                    DT *output_ptr,
+                    cudaStream_t stream) {
+  int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
+  produce_output_kernel<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(m->outputTmp, output_ptr, parallelism);
+}
+
 template <typename DT>
 void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
@@ -453,7 +551,7 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
                              GenericTensorAccessorR const weight,
                              DataType data_type,
                              cudaStream_t stream) {
@@ -517,7 +615,19 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
 using namespace Kernels::IncMultiHeadAttention;
 
-template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<float>(
+template void Kernels::IncMultiHeadAttention::pre_build_weight<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::pre_build_weight<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    GenericTensorAccessorR const weight,
+    DataType data_type,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::compute_qkv<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     int shard_id,
@@ -527,7 +637,7 @@ template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<float>(
     float const *bias_ptr,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<half>(
+template void Kernels::IncMultiHeadAttention::compute_qkv<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     int shard_id,
@@ -537,16 +647,26 @@ template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<half>(
     half const *bias_ptr,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(
+template void Kernels::IncMultiHeadAttention::update_qkv_cache<float>(
     IncMultiHeadSelfAttentionMeta const *m,
-    GenericTensorAccessorR const weight,
-    DataType data_type,
+    BatchConfig const *bc,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
+template void Kernels::IncMultiHeadAttention::update_qkv_cache<half>(
     IncMultiHeadSelfAttentionMeta const *m,
-    GenericTensorAccessorR const weight,
-    DataType data_type,
+    BatchConfig const *bc,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::produce_output<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    float *output_ptr,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::produce_output<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    half *output_ptr,
     cudaStream_t stream);
 
 template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<float>(

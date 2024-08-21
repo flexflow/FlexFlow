@@ -495,7 +495,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       hipMemcpyHostToDevice,
       stream));
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
+  compute_qkv(m,
                      bc,
                      shard_id,
                      input_ptr,

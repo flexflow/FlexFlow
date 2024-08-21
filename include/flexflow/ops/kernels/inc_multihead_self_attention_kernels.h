@@ -15,17 +15,13 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
-void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
-                         BatchConfig const *bc,
-                         int shard_id,
-                         DT *output_ptr,
-                         DT const *weight_ptr,
-                         DT const *bias_ptr,
-                         int num_tokens,
-                         ffStream_t stream);
+void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
+                             GenericTensorAccessorR const weight,
+                             DataType data_type,
+                             ffStream_t stream);
 
 template <typename DT>
-void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
                         DT const *input_ptr,
@@ -35,10 +31,25 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         ffStream_t stream);
 
 template <typename DT>
-void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                             GenericTensorAccessorR const weight,
-                             DataType data_type,
-                             ffStream_t stream);
+void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
+                      BatchConfig const *bc,
+                      cudaStream_t stream);
+
+template <typename DT>
+void produce_output(IncMultiHeadSelfAttentionMeta const *m,
+                    BatchConfig const *bc,
+                    DT *output_ptr,
+                    cudaStream_t stream);
+
+template <typename DT>
+void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
+                         BatchConfig const *bc,
+                         int shard_id,
+                         DT *output_ptr,
+                         DT const *weight_ptr,
+                         DT const *bias_ptr,
+                         int num_tokens,
+                         ffStream_t stream);
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 } // namespace FlexFlow

@@ -146,74 +146,6 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-__global__ void
-    update_qkv_cache_kernel(DT *devQKVProjArray,
-                            half *qTmp_ptr,
-                            half *kCache_ptr,
-                            BatchConfig::PerTokenInfo const *tokenInfos,
-                            BatchConfig::PerRequestInfo *request_infos,
-                            int const max_num_pages,
-                            int hidden_size,
-                            int num_new_tokens) {
-  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int const token_idx = thread_idx / hidden_size;
-  int const offset = thread_idx % hidden_size;
-  if (token_idx >= num_new_tokens) {
-    return;
-  }
-
-  int const req_idx = tokenInfos[token_idx].request_index;
-  int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
-
-  size_t from_idx = token_idx * QKV_WEIGHT_NUM * hidden_size;
-  size_t to_k_idx = get_k_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size),
-         to_v_idx = get_v_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size);
-
-  // key and value cache should be stored interleaved
-  kCache_ptr[to_k_idx + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
-  kCache_ptr[to_v_idx + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
-  qTmp_ptr[token_idx * hidden_size + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + offset]);
-}
-
-template <typename DT>
-void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
-                      BatchConfig const *bc,
-                      cudaStream_t stream) {
-  // update the kv cache, compact the q array
-  int num_new_tokens = bc->num_active_tokens();
-  int parallelism = m->hidden_size * num_new_tokens;
-  int const max_num_pages =
-      (BatchConfig::max_sequence_length() +
-       BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-      kPagesize;
-  update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
-                            min(CUDA_NUM_THREADS, parallelism),
-                            0,
-                            stream>>>(static_cast<DT *>(m->devQKVProjArray),
-                                      static_cast<half *>(m->queryTmp),
-                                      static_cast<half *>(m->keyCache),
-                                      m->token_infos,
-                                      m->request_infos,
-                                      max_num_pages,
-                                      m->hidden_size,
-                                      num_new_tokens);
-}
-
-template <typename DT>
-__global__ void produce_output_kernel(half const *input_ptr,
-                                      DT *output_ptr,
-                                      int parallelism) {
-  CUDA_KERNEL_LOOP(idx, parallelism) {
-    output_ptr[idx] = static_cast<DT>(input_ptr[idx]);
-  }
-}
-
-template <typename DT>
 void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
                            BatchConfig const *bc,
                            DT *output_ptr,
@@ -384,13 +316,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  {
-    int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
-    produce_output_kernel<<<GET_BLOCKS(parallelism),
-                            min(CUDA_NUM_THREADS, parallelism),
-                            0,
-                            stream>>>(m->outputTmp, output_ptr, parallelism);
-  }
+  produce_output(m, bc, output_ptr, stream);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -473,7 +399,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
   // Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
+  compute_qkv(m,
                      bc,
                      shard_id,
                      input_ptr,
@@ -618,7 +544,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   if (input.data_type == DT_HALF) {
     if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+      pre_build_weight<half>(m, weight, input.data_type, stream);
     }
 
     half const *bias_ptr =
@@ -634,7 +560,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+      pre_build_weight<float>(m, weight, input.data_type, stream);
     }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
