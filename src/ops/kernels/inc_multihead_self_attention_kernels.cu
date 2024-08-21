@@ -373,24 +373,6 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
   //   }
 }
 
-__device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
-                                                     int const token_idx,
-                                                     int const max_num_pages,
-                                                     int const hidden_size) {
-  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          token_idx % kPagesize) *
-         hidden_size;
-}
-
-__device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
-                                                     int const token_idx,
-                                                     int const max_num_pages,
-                                                     int const hidden_size) {
-  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          kPagesize + token_idx % kPagesize) *
-         hidden_size;
-}
-
 template <typename DT>
 __global__ void
     update_qkv_cache_kernel(DT *devQKVProjArray,

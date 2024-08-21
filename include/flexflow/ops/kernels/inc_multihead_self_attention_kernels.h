@@ -14,21 +14,41 @@ namespace FlexFlow {
 namespace Kernels {
 namespace IncMultiHeadAttention {
 
+// kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
+
+__device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
+                                                     int const token_idx,
+                                                     int const max_num_pages,
+                                                     int const hidden_size) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
+          token_idx % kPagesize) *
+         hidden_size;
+}
+
+__device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
+                                                     int const token_idx,
+                                                     int const max_num_pages,
+                                                     int const hidden_size) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
+          kPagesize + token_idx % kPagesize) *
+         hidden_size;
+}
+
 template <typename DT>
 void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
-                             GenericTensorAccessorR const weight,
-                             DataType data_type,
-                             ffStream_t stream);
+                      GenericTensorAccessorR const weight,
+                      DataType data_type,
+                      ffStream_t stream);
 
 template <typename DT>
 void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        int shard_id,
-                        DT const *input_ptr,
-                        DT const *weight_ptr,
-                        DT *output_ptr,
-                        DT const *bias_ptr,
-                        ffStream_t stream);
+                 BatchConfig const *bc,
+                 int shard_id,
+                 DT const *input_ptr,
+                 DT const *weight_ptr,
+                 DT *output_ptr,
+                 DT const *bias_ptr,
+                 ffStream_t stream);
 
 template <typename DT>
 void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
