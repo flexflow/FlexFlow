@@ -280,6 +280,7 @@ public:
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
+  void reset_profiling_stats();
 
   FFModel *get_ssm_model(int model_id);
 
@@ -422,8 +423,6 @@ private:
     std::vector<int> requests_per_step;
     // Times for each SSM speculation phase (in ms)
     std::vector<double> ssm_step_times;
-    // Number of requests getting decoded at each step
-    std::vector<int> requests_per_step;
     // Number of generated tokens at each step for each request
     std::vector<std::vector<int>> generated_tokens_per_step;
     // All amounts of forward passes in all speculation phases

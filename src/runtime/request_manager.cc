@@ -271,6 +271,10 @@ void RequestManager::register_output_filepath(
   this->output_filepath = _output_filepath;
 }
 
+void RequestManager::reset_profiling_stats() {
+  reset_profiling_statistics();
+}
+
 int RequestManager::register_ssm_model(FFModel *model) {
   int model_id = ssm_models.size();
   ssm_models.push_back(model);
@@ -636,7 +640,6 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       if (decoding_mode == SPECULATIVE_DECODING) {
         prefill_model = SSM;
         current_ssm_step = 0;
-        profiling.nb_ssm_step = 0;
       }
     }
     return;
@@ -687,20 +690,17 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
               load_pending_request_to_batch();
               prefill_model = SSM;
               current_ssm_step = 0;
-              profiling.nb_ssm_step = 0;
             } else {
               // No more empty slots, start the speculation
               request_manager_status = SSM_SPEC;
               // Reset the prefill_request
               current_ssm_step = 0;
-              profiling.nb_ssm_step = 0;
               ssm_completed = false;
             }
           } else {
             // Not completed, start the next iteration of prefilling
             prefill_model = SSM;
             current_ssm_step = 0;
-            profiling.nb_ssm_step = 0;
           }
         } else {
           assert(false && "Invalid prefill model.");
@@ -728,19 +728,16 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
           current_ssm_step = 0;
-          profiling.nb_ssm_step = 0;
           ssm_completed = false;
         } else {
           request_manager_status = PREFILLING;
           load_pending_request_to_batch();
           prefill_model = SSM;
           current_ssm_step = 0;
-          profiling.nb_ssm_step = 0;
         }
       } else {
         request_manager_status = SSM_SPEC;
         current_ssm_step = 0;
-        profiling.nb_ssm_step = 0;
         ssm_completed = false;
       }
       break;
@@ -750,7 +747,6 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       // inference
       current_ssm_step++;
       if (!ssm_completed) {
-        profiling.nb_ssm_step += 1;
         ssm_completed = update_ssm_inference_results(result);
       }
 
@@ -2302,8 +2298,10 @@ void RequestManager::terminate_background_server() {
                            profiling.server_start_time;
     int total_requests = profiling_requests.size();
     int total_tokens = 0;
-    for (int num_tokens : profiling.generated_tokens_per_step) {
-      total_tokens += num_tokens;
+    for (const auto &num_tokens : profiling.generated_tokens_per_step) {
+      for (int num_token : num_tokens) {
+        total_tokens += num_token;
+      }
     }
     str += "\n total_time_ms(" + std::to_string(total_time / 1000.0) + ")";
     str += "\n total_tokens(" + std::to_string(total_tokens) + ")";
@@ -3026,8 +3024,9 @@ void RequestManager::reset_profiling_statistics() {
   profiling.llm_step_times.clear();
   profiling.requests_per_step.clear();
   profiling.ssm_step_times.clear();
-  profiling.ssm_steps.clear();
+  profiling.nb_ssm_steps.clear();
   profiling.generated_tokens_per_step.clear();
+  profiling.tree_sizes.clear();
   profiling.llm_step_start = 0;
   profiling.ssm_step_start = 0;
   profiling.server_start_time = Realm::Clock::current_time_in_microseconds();

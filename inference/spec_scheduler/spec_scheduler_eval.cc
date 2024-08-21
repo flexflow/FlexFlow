@@ -567,6 +567,7 @@ void FlexFlow::top_level_task(Task const *task,
     tree_model.generate(prompts, -1 /*not used in this implem*/);
   }
   std::cout << "===== END WARMUP STAGE =====" << std::endl;
+  rm->reset_profiling_stats();
 
   // Now run online workload!
 
@@ -592,7 +593,7 @@ void FlexFlow::top_level_task(Task const *task,
 
     size_t index = 0;
     size_t nb_prompts = 0;
-    size_t prompt_limit = 700;
+    size_t prompt_limit = 4;
     for (auto const &list : lists) {
       if (nb_prompts >= prompt_limit) {
         break;
