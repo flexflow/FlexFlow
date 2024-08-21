@@ -122,7 +122,7 @@ public:
   bool qkv_bias;
   bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
       qk_prod_scaling, position_bias;
-  int hidden_size, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qk_dim, v_dim, o_dim;
   int qoSeqLength, kvSeqLength;
 };
 

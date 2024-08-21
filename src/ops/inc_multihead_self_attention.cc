@@ -147,13 +147,13 @@ Tensor FFModel::groupquery_self_attention(const Tensor input,
         numdims, dims, data_type, li, 0, true /*create_grad*/);
   }
   // Compute weight size
-  int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
-      oProjSize = embed_dim;
+  int qk_dim = kdim, v_dim = kdim,
+      o_dim = embed_dim;
   int hidden_size = input->dims[0];
-  int qParas = qProjSize * hidden_size;
-  int kParas = kProjSize * hidden_size;
-  int vParas = vProjSize * hidden_size;
-  int oParas = oProjSize * (vProjSize > 0 ? vProjSize : hidden_size);
+  int qParas = qk_dim * hidden_size;
+  int kParas = qk_dim * hidden_size;
+  int vParas = v_dim * hidden_size;
+  int oParas = o_dim * (v_dim > 0 ? v_dim : hidden_size);
 
   // allocate num_q_heads for key, value for replication
   int weight_size = qParas * num_q_heads + kParas * num_q_heads +
@@ -179,9 +179,9 @@ Tensor FFModel::groupquery_self_attention(const Tensor input,
   if (qkv_bias || final_bias) {
     // q, k, v, o
     int qkv_bias_size =
-        qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
+        qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
     int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
-                   (final_bias ? oProjSize : 0)};
+                   (final_bias ? o_dim : 0)};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -315,8 +315,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
-      hidden_size(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
-      vProjSize(_vdim), oProjSize(_embed_dim),
+      hidden_size(_input->dims[0].size), qk_dim(_kdim),
+      v_dim(_vdim), o_dim(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
       qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias),
@@ -339,11 +339,11 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     // Create weight tensor
     int num_dims = inputs[0]->num_dims;
     // Compute weight size
-    int qParas = this->qProjSize * this->hidden_size;
-    int kParas = this->kProjSize * this->hidden_size;
-    int vParas = this->vProjSize * this->hidden_size;
+    int qParas = this->qk_dim * this->hidden_size;
+    int kParas = this->qk_dim * this->hidden_size;
+    int vParas = this->v_dim * this->hidden_size;
     int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->hidden_size);
+        this->o_dim * (this->v_dim > 0 ? this->v_dim : this->hidden_size);
     ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
@@ -368,9 +368,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       int qkv_bias_size =
-          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
+          qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
       bias_shape.dims[0].size =
-          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
+          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? o_dim : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -429,8 +429,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
-      hidden_size(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
-      vProjSize(_vdim), oProjSize(_embed_dim),
+      hidden_size(_input->dims[0].size), qk_dim(_kdim),
+      v_dim(_vdim), o_dim(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
       qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias),
@@ -451,11 +451,11 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     // Create weight tensor
     int num_dims = inputs[0]->num_dims;
     // Compute weight size
-    int qParas = this->qProjSize * this->hidden_size;
-    int kParas = this->kProjSize * this->hidden_size;
-    int vParas = this->vProjSize * this->hidden_size;
+    int qParas = this->qk_dim * this->hidden_size;
+    int kParas = this->qk_dim * this->hidden_size;
+    int vParas = this->v_dim * this->hidden_size;
     int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->hidden_size);
+        this->o_dim * (this->v_dim > 0 ? this->v_dim : this->hidden_size);
     ParallelDim dims[2];
     dims[0] = inputs[0]->dims[num_dims - 2];
     dims[0].size = dims[0].degree;
@@ -481,9 +481,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
       int qkv_bias_size =
-          qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
+          qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
       bias_shape.dims[0].size =
-          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
+          (qkv_bias ? qkv_bias_size : 0) + (final_bias ? o_dim : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
       weights[1] =
           model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
@@ -516,11 +516,11 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     : IncMultiHeadSelfAttention(model,
                                 other.layer_guid,
                                 input,
-                                other.oProjSize,
+                                other.o_dim,
                                 other.num_q_heads,
                                 other.num_kv_heads,
-                                other.qProjSize,
-                                other.vProjSize,
+                                other.qk_dim,
+                                other.v_dim,
                                 other.dropout,
                                 other.qkv_bias,
                                 other.final_bias,
@@ -694,7 +694,7 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       attn->num_kv_heads / attn->tensor_parallelism_degree +
       (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
 
-  assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
+  assert(attn->o_dim == output.domain.hi()[0] - output.domain.lo()[0] + 1);
 
   Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
                        .only_kind(Memory::GPU_FB_MEM)
@@ -910,10 +910,10 @@ bool operator==(IncMultiHeadSelfAttentionParams const &lhs,
 IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   IncMultiHeadSelfAttentionParams params;
   params.layer_guid = this->layer_guid;
-  params.embed_dim = this->oProjSize;
+  params.embed_dim = this->o_dim;
   params.num_q_heads = this->num_q_heads;
-  params.kdim = this->kProjSize;
-  params.vdim = this->vProjSize;
+  params.kdim = this->qk_dim;
+  params.vdim = this->v_dim;
   params.dropout = this->dropout;
   params.qkv_bias = this->qkv_bias;
   params.final_bias = this->final_bias;

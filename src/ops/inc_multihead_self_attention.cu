@@ -61,10 +61,10 @@ void incr_attention(IncMultiHeadSelfAttentionMeta *m,
   // global constant parameters
   uint32_t const num_q_heads = m->num_q_heads;
   uint32_t const num_kv_heads = m->num_kv_heads;
-  uint32_t const head_dim = m->qProjSize;
+  uint32_t const head_dim = m->qk_dim;
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
-      (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+      (*m->qk_prod_scaling) ? 1.0f / sqrt(m->qk_dim) : 1.0f;
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -390,10 +390,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     INC_DECODING_MODE,
                                     attn,
                                     attn->hidden_size,
-                                    attn->qProjSize,
-                                    attn->kProjSize,
-                                    attn->vProjSize,
-                                    attn->oProjSize,
+                                    attn->qk_dim,
+                                    attn->v_dim,
+                                    attn->o_dim,
                                     attn->apply_rotary_embedding,
                                     attn->qkv_bias,
                                     attn->scaling_query,
@@ -416,10 +415,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     InferenceMode infer_mode,
     Op const *attn,
     int _hidden_size,
-    int _qProjSize,
-    int _kProjSize,
-    int _vProjSize,
-    int _oProjSize,
+    int _qk_dim,
+    int _v_dim,
+    int _o_dim,
     bool _apply_rotary_embedding,
     bool _qkv_bias,
     bool _scaling_query,
@@ -442,11 +440,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
   checkCUDNN(cudnnCreateTensorDescriptor(&qk_tensor));
   hidden_size = _hidden_size;
-  qProjSize = _qProjSize;
-  kProjSize = _kProjSize;
-  assert(qProjSize == kProjSize); // required for attention QK.T matmul
-  vProjSize = _vProjSize;
-  oProjSize = _oProjSize;
+  qk_dim = _qk_dim;
+  v_dim = _v_dim;
+  o_dim = _o_dim;
   size_t size_of_dt = data_type_size(attn->data_type);
   quantization_type = _quantization_type;
   offload = _offload;
@@ -455,22 +451,22 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   global_num_kv_heads = _global_num_kv_heads;
   num_q_heads = _num_q_heads;
   num_kv_heads = _num_kv_heads;
-  local_hidden_size = num_q_heads * qProjSize;
+  local_hidden_size = num_q_heads * qk_dim;
 
   weightSize =
-      ((hidden_size * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : hidden_size)) *
+      ((hidden_size * qk_dim + o_dim * (v_dim > 0 ? v_dim : hidden_size)) *
            num_q_heads +
-       (hidden_size * kProjSize + hidden_size * vProjSize) * num_q_heads) *
+       (hidden_size * qk_dim + hidden_size * v_dim) * num_q_heads) *
       size_of_dt;
   if (quantization_type != DT_NONE) {
     quantized_weightSize = get_quantization_to_byte_size(
         attn->data_type, quantization_type, weightSize);
   }
-  // biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
+  // biasSize = _bias ? o_dim * size_of_dt * 4 : 0;
 
   int qkv_bias_size =
-      qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-  int final_bias_size = oProjSize;
+      qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
+  int final_bias_size = o_dim;
   biasSize =
       (_qkv_bias ? qkv_bias_size : 0) + (final_bias ? final_bias_size : 0);
 
@@ -499,9 +495,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
     int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
-    size_t qkv_max_proj_size = max_tokens_per_batch * (qProjSize * num_q_heads +
-                                                       kProjSize * num_q_heads +
-                                                       vProjSize * num_q_heads);
+    size_t qkv_max_proj_size = max_tokens_per_batch * (qk_dim * num_q_heads +
+                                                       qk_dim * num_q_heads +
+                                                       v_dim * num_q_heads);
     size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
            qk_prod_size = 0;
     // assert((BatchConfig::max_sequence_length() +
@@ -517,12 +513,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       case TREE_SEARCH_MODE:
       case TREE_VERIFY_MODE: {
         query_tmp_size =
-            num_q_heads * qProjSize * BatchConfig::max_tokens_per_batch();
+            num_q_heads * qk_dim * BatchConfig::max_tokens_per_batch();
         // a K-ary tree max node is (k^n - 1) / 2
-        key_cache_size = num_q_heads * kProjSize *
+        key_cache_size = num_q_heads * qk_dim *
                          BatchConfig::max_requests_per_batch() * max_num_pages *
                          kPagesize;
-        value_cache_size = num_q_heads * vProjSize *
+        value_cache_size = num_q_heads * v_dim *
                            BatchConfig::max_requests_per_batch() *
                            max_num_pages * kPagesize;
         qk_prod_size = BatchConfig::max_sequence_length() * max_num_pages *
@@ -532,10 +528,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       default:
         assert(false && "Unkown inference mode");
     }
-    size_t attn_heads_size = max_tokens_per_batch * num_q_heads * vProjSize;
-    size_t output_tmp_size = max_tokens_per_batch * num_q_heads * vProjSize;
-    size_t complex_size = (max_tokens_per_batch * (qProjSize * num_q_heads +
-                                                   kProjSize * num_q_heads)) /
+    size_t attn_heads_size = max_tokens_per_batch * num_q_heads * v_dim;
+    size_t output_tmp_size = max_tokens_per_batch * num_q_heads * v_dim;
+    size_t complex_size = (max_tokens_per_batch * (qk_dim * num_q_heads +
+                                                   qk_dim * num_q_heads)) /
                           2;
     size_t totalSize =
         (qkv_max_proj_size + query_tmp_size + key_cache_size +
@@ -655,7 +651,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   handler.incr_attention_metadata->set_enabled(true);
   handler.incr_attention_metadata->set_num_q_heads(num_q_heads);
   handler.incr_attention_metadata->set_num_kv_heads(num_kv_heads);
-  handler.incr_attention_metadata->set_head_dim(qProjSize);
+  handler.incr_attention_metadata->set_head_dim(qk_dim);
 
   cudaStreamSynchronize(stream);
 }

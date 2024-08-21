@@ -160,10 +160,10 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   // global constant parameters
   uint32_t const num_q_heads = m->num_q_heads;
   uint32_t const num_kv_heads = m->num_kv_heads;
-  uint32_t const head_dim = m->qProjSize;
+  uint32_t const head_dim = m->qk_dim;
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
-      (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+      (*m->qk_prod_scaling) ? 1.0f / sqrt(m->qk_dim) : 1.0f;
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -497,11 +497,11 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //     std::cout << "Compute output proj time: " << elapsed << " ms\n";
   //   }
   // {
-  //   int size = m->oProjSize;
+  //   int size = m->o_dim;
   //   DT *temp_output = new DT[size];
   //   cudaDeviceSynchronize();
   //   cudaMemcpy(
-  //       temp_output, output_ptr + m->oProjSize * (bc->num_active_tokens() -
+  //       temp_output, output_ptr + m->o_dim * (bc->num_active_tokens() -
   //       1), size * sizeof(DT), cudaMemcpyDeviceToHost);
   //   printf("Output :");
   //   for (int i = 0; i < size; ++i) {
@@ -602,10 +602,9 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     TREE_VERIFY_MODE,
                                     attn,
                                     attn->hidden_size,
-                                    attn->qProjSize,
-                                    attn->kProjSize,
-                                    attn->vProjSize,
-                                    attn->oProjSize,
+                                    attn->qk_dim,
+                                    attn->v_dim,
+                                    attn->o_dim,
                                     attn->apply_rotary_embedding,
                                     attn->qkv_bias,
                                     attn->scaling_query,
@@ -631,7 +630,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   handler.tree_verify_attention_metadata->set_enabled(true);
   handler.tree_verify_attention_metadata->set_num_q_heads(num_q_heads);
   handler.tree_verify_attention_metadata->set_num_kv_heads(num_kv_heads);
-  handler.tree_verify_attention_metadata->set_head_dim(qProjSize);
+  handler.tree_verify_attention_metadata->set_head_dim(qk_dim);
 
   // allocate memory for the seqArray and reserve space
   {

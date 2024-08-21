@@ -63,9 +63,9 @@ __global__ void apply_proj_bias_w(DT *input_ptr,
                                   DT const *bias_ptr,
                                   int num_tokens,
                                   int qkv_weight_size,
-                                  int oProjSize) {
-  CUDA_KERNEL_LOOP(i, num_tokens * oProjSize) {
-    int bias_idx = qkv_weight_size + i % oProjSize;
+                                  int o_dim) {
+  CUDA_KERNEL_LOOP(i, num_tokens * o_dim) {
+    int bias_idx = qkv_weight_size + i % o_dim;
     input_ptr[i] += bias_ptr[bias_idx];
   }
 }
@@ -75,9 +75,8 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
                                     DT const *bias_ptr,
                                     int shard_id,
                                     int num_tokens,
-                                    int qProjSize,
-                                    int kProjSize,
-                                    int vProjSize,
+                                    int qk_dim,
+                                    int v_dim,
                                     int global_num_q_heads,
                                     int num_q_heads,
                                     bool scaling_query,
@@ -86,14 +85,14 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size * QKV_WEIGHT_NUM) {
     // for simplicity, assume q, k, v is in same shape
     // 0->q, 1->k, 2->v
-    // int qkv_index = i / (num_tokens * qProjSize) % 3;
+    // int qkv_index = i / (num_tokens * qk_dim) % 3;
 
     int token_idx = i / (hidden_size * QKV_WEIGHT_NUM);
     size_t in_token_idx = i - token_idx * hidden_size * QKV_WEIGHT_NUM;
 
     int qkv_index = in_token_idx / hidden_size;
 
-    int proj_size = qkv_index == 0 ? qProjSize : kProjSize;
+    int proj_size = qkv_index == 0 ? qk_dim : qk_dim;
 
     int head_idx =
         (in_token_idx - qkv_index * num_q_heads * proj_size) / proj_size;
@@ -102,8 +101,8 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
     size_t pre_length =
         qkv_index == 0
             ? 0
-            : (qkv_index == 1 ? qProjSize * global_num_q_heads
-                              : qProjSize * global_num_q_heads * KV_WEIGHT_NUM);
+            : (qkv_index == 1 ? qk_dim * global_num_q_heads
+                              : qk_dim * global_num_q_heads * KV_WEIGHT_NUM);
 
     size_t bias_idx = pre_length + global_head_idx * proj_size + i % proj_size;
 
@@ -117,7 +116,7 @@ __global__ void apply_proj_bias_qkv(DT *input_ptr,
 
 template <typename DT>
 __global__ void scaling_query_kernel(DT *input_ptr,
-                                     int qProjSize,
+                                     int qk_dim,
                                      int num_tokens,
                                      int num_q_heads,
                                      float scaling_factor,
@@ -134,8 +133,7 @@ __global__ void
     apply_rotary_embedding_native(DT *input_ptr,
                                   cuFloatComplex *complex_input,
                                   BatchConfig::PerTokenInfo const *tokenInfos,
-                                  int qProjSize,
-                                  int kProjSize,
+                                  int qk_dim,
                                   int num_q_heads,
                                   int num_tokens,
                                   int num_kv_heads,
@@ -144,10 +142,10 @@ __global__ void
                                   int q_array_size) {
   CUDA_KERNEL_LOOP(
       i,
-      num_tokens * (qProjSize * num_q_heads + kProjSize * num_kv_heads) / 2) {
+      num_tokens * (qk_dim * num_q_heads + qk_dim * num_kv_heads) / 2) {
     // create complex number
     bool q_tensor = i < (q_array_size / 2);
-    int proj_size = q_tensor ? qProjSize : kProjSize;
+    int proj_size = q_tensor ? qk_dim : qk_dim;
     int real_i = q_tensor ? i : i - q_array_size / 2;
 
     int head_idx = real_i / (num_tokens * proj_size / 2);
@@ -183,15 +181,14 @@ __global__ void
     apply_rotary_embedding_hf(DT *input_ptr,
                               cuFloatComplex *complex_input,
                               BatchConfig::PerTokenInfo const *tokenInfos,
-                              int qProjSize,
-                              int kProjSize,
+                              int qk_dim,
                               int num_tokens,
                               size_t q_array_size,
                               int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     // create complex number
     bool q_tensor = i < (q_array_size / 2);
-    int proj_size = q_tensor ? qProjSize : kProjSize;
+    int proj_size = q_tensor ? qk_dim : qk_dim;
     int real_i = q_tensor ? i : i - q_array_size / 2;
 
     int token_idx = real_i / (hidden_size / 2);
@@ -208,7 +205,7 @@ __global__ void
     cuFloatComplex cii = {input_ptr[real_part_index],
                           input_ptr[complex_part_index]};
 
-    // get the freq_cis: shape 1 * (qProjSize/2) = 1 * 64
+    // get the freq_cis: shape 1 * (qk_dim/2) = 1 * 64
     // apply a Cartesian coordinate transformation
     // multiple with input & /copy back to q/k
 
@@ -268,9 +265,9 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
   {
     DT alpha = 1.0f, beta = 0.0f;
     // after transpositions
-    int m_q = m->qProjSize * m->num_q_heads;
-    int m_k = m->kProjSize * m->num_q_heads;
-    int m_v = m->vProjSize * m->num_q_heads;
+    int m_q = m->qk_dim * m->num_q_heads;
+    int m_k = m->qk_dim * m->num_q_heads;
+    int m_v = m->v_dim * m->num_q_heads;
     assert(m_q == m_k && m_k == m_v); // keep things simple for now
     int n = bc->num_active_tokens();
     int k = m->hidden_size;
@@ -278,11 +275,11 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
     // before transpositions
     int lda = k, ldb = k, ldc = m_;
     // matrix A: QKV weights
-    // matrix A's layout: [hidden_size (hidden_dim), qProjSize, num_heads, 3]
+    // matrix A's layout: [hidden_size (hidden_dim), qk_dim, num_heads, 3]
     // matrix B: input
     // matrix B's layout: [hidden_size (hidden_dim), num_new_tokens]
     // matrix C: devQKVProjArray
-    // matrix B's layout: [qProjSize, num_heads, 3, num_new_tokens]
+    // matrix B's layout: [qk_dim, num_heads, 3, num_new_tokens]
     checkCUDA(cublasGemmEx(m->handle.blas,
                            CUBLAS_OP_T,
                            CUBLAS_OP_N,
@@ -315,8 +312,8 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
   //   }
 
   int num_tokens = bc->num_active_tokens();
-  int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
-  size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
+  int parallelism = m->qk_dim * num_tokens * m->num_q_heads;
+  size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
 
   // Step 2: apply bias for QKV, or scale the query
   if (*m->qkv_bias) {
@@ -327,9 +324,8 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                                     bias_ptr,
                                     shard_id,
                                     num_tokens,
-                                    m->qProjSize,
-                                    m->kProjSize,
-                                    m->vProjSize,
+                                    m->qk_dim,
+                                    m->v_dim,
                                     m->global_num_q_heads,
                                     m->num_q_heads,
                                     *m->scaling_query,
@@ -342,7 +338,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                            stream>>>(output_ptr,
                                      num_tokens,
                                      m->num_q_heads,
-                                     m->qProjSize,
+                                     m->qk_dim,
                                      m->scaling_factor,
                                      m->local_hidden_size);
   }
@@ -361,8 +357,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                                 stream>>>(output_ptr,
                                           m->complex_input,
                                           m->token_infos,
-                                          m->qProjSize,
-                                          m->kProjSize,
+                                          m->qk_dim,
                                           num_tokens,
                                           q_array_size,
                                           m->local_hidden_size);
@@ -469,7 +464,7 @@ void produce_output(IncMultiHeadSelfAttentionMeta const *m,
                     BatchConfig const *bc,
                     DT *output_ptr,
                     cudaStream_t stream) {
-  int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
+  int parallelism = m->v_dim * m->num_q_heads * bc->num_active_tokens();
   produce_output_kernel<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
@@ -498,21 +493,21 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
   {
     DT alpha = 1.0f, beta = 0.0f;
     // after transpositions
-    int m_ = m->oProjSize;
-    int k = m->vProjSize * m->num_q_heads;
+    int m_ = m->o_dim;
+    int k = m->v_dim * m->num_q_heads;
     int n = num_tokens;
     // before transpositions
     int lda = k, ldb = k, ldc = m_;
     // matrix A: output projection weight
-    // matrix A's layout: [vProjSize * num_heads, oProjSize]
-    DT const *A = weight_ptr + m->hidden_size * (m->qProjSize * m->num_q_heads +
-                                           m->kProjSize * m->num_q_heads +
-                                           m->vProjSize * m->num_q_heads);
+    // matrix A's layout: [v_dim * num_heads, o_dim]
+    DT const *A = weight_ptr + m->hidden_size * (m->qk_dim * m->num_q_heads +
+                                           m->qk_dim * m->num_q_heads +
+                                           m->v_dim * m->num_q_heads);
     // matrix B: attn heads
-    // matrix B's layout: [vProjSize * num_heads, num_new_tokens]
+    // matrix B's layout: [v_dim * num_heads, num_new_tokens]
     DT const *B = static_cast<DT *>(m->attn_heads);
     // matrix B: output
-    // matrix B's layout: [oProjSize, num_new_tokens]
+    // matrix B's layout: [o_dim, num_new_tokens]
     DT *C = static_cast<DT *>(output_ptr);
 
     checkCUDA(cublasGemmEx(m->handle.blas,
@@ -537,15 +532,15 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
   }
   // Add final output bias
   if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * num_tokens;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
+    int parallelism = m->o_dim * num_tokens;
+    int qkv_weight_size = m->qk_dim * m->global_num_q_heads +
+                          m->qk_dim * m->global_num_q_heads +
+                          m->v_dim * m->global_num_q_heads;
     apply_proj_bias_w<<<GET_BLOCKS(parallelism),
                         min(CUDA_NUM_THREADS, parallelism),
                         0,
                         stream>>>(
-        output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->oProjSize);
+        output_ptr, bias_ptr, num_tokens, qkv_weight_size, m->o_dim);
   }
 }
 
@@ -567,26 +562,26 @@ void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
                     stream);
 
     if (m->quantization_type == DT_INT4) {
-      int parallelism = m->qProjSize * m->hidden_size * m->num_q_heads / 2;
+      int parallelism = m->qk_dim * m->hidden_size * m->num_q_heads / 2;
       decompress_int4_attention_weights<<<GET_BLOCKS(parallelism),
                                           min(CUDA_NUM_THREADS, parallelism),
                                           0,
                                           stream>>>(
           m->quantized_weight_ptr,
           static_cast<DT *>(m->weight_ptr),
-          m->qProjSize,
+          m->qk_dim,
           m->hidden_size,
           m->num_q_heads);
     } else {
       assert(m->quantization_type == DT_INT8);
-      int parallelism = m->qProjSize * m->hidden_size * m->num_q_heads;
+      int parallelism = m->qk_dim * m->hidden_size * m->num_q_heads;
       decompress_int8_attention_weights<<<GET_BLOCKS(parallelism),
                                           min(CUDA_NUM_THREADS, parallelism),
                                           0,
                                           stream>>>(
           m->quantized_weight_ptr,
           static_cast<DT *>(m->weight_ptr),
-          m->qProjSize,
+          m->qk_dim,
           m->hidden_size,
           m->num_q_heads);
     }

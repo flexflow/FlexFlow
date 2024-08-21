@@ -128,7 +128,7 @@ public:
   bool qkv_bias;
   bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
       qk_prod_scaling, position_bias;
-  int hidden_size, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qk_dim, v_dim, o_dim;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
   bool offload;
@@ -147,10 +147,9 @@ public:
                                 InferenceMode infer_mode,
                                 Op const *attn,
                                 int _hidden_size,
-                                int _qProjSize,
-                                int _kProjSize,
-                                int _vProjSize,
-                                int _oProjSize,
+                                int _qk_dim,
+                                int _v_dim,
+                                int _o_dim,
                                 bool _apply_rotary_embedding,
                                 bool _qkv_bias,
                                 bool _scaling_query,
@@ -173,7 +172,7 @@ public:
   Realm::RegionInstance reserveInst;
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
-  int hidden_size, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qk_dim, v_dim, o_dim;
   int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads,
       local_hidden_size;
   bool *has_load_weights;
