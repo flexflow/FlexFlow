@@ -134,7 +134,7 @@ ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
     assert(contains_key(per_device_op_states, op_guid));
     DeviceSpecificDeviceStates device_specific =
         per_device_op_states.at(op_guid);
-    PerDeviceState device_state =
+    PerDeviceOpState device_state =
         get_device_state_from_device_specific(device_specific, 0);
     return ConcreteArgSpec::create(device_state);
   } else if (op_arg_ref_spec.holds<ParallelTensorShape>()) {

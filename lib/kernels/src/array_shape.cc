@@ -77,12 +77,15 @@ TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
                      dtype};
 }
 
-std::string format_as(std::pair<ArrayShape, DataType> const &x) {
-  return fmt::format("ArrayShape and DataType");
+std::string format_as(ArrayShape const &x) {
+  std::ostringstream oss;
+  oss << "<ArrayShape";
+  oss << " dims=" << x.dims;
+  oss << ">";
+  return oss.str();
 }
 
-std::ostream &operator<<(std::ostream &s,
-                         std::pair<ArrayShape, DataType> const &x) {
+std::ostream &operator<<(std::ostream &s, ArrayShape const &x) {
   return (s << fmt::to_string(x));
 }
 

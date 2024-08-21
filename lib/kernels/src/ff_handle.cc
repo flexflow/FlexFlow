@@ -7,6 +7,7 @@ std::string format_as(PerDeviceFFHandle const &x) {
   oss << "<PerDeviceFFHandle";
   oss << " workSpaceSize=" << x.workSpaceSize;
   oss << " allowTensorOpMathConversion=" << x.allowTensorOpMathConversion;
+  oss << ">";
   return oss.str();
 }
 

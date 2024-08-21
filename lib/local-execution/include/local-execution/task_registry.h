@@ -15,13 +15,14 @@ struct TaskRegistry {
   void register_tasks_for_layer(layer_guid_t const &,
                                 ComputationGraphOpAttrs const &attrs);
 
+  bool operator==(TaskRegistry const &other) const;
+  bool operator!=(TaskRegistry const &other) const;
+
+public:
   std::unordered_map<layer_guid_t, std::optional<task_id_t>> init_task_ids;
   std::unordered_map<layer_guid_t, std::optional<task_id_t>> forward_task_ids;
   std::unordered_map<layer_guid_t, std::optional<task_id_t>> backward_task_ids;
   std::unordered_map<task_id_t, TaskSignatureAndImpl> task_mapping;
-
-  bool operator==(TaskRegistry const &other) const;
-  bool operator!=(TaskRegistry const &other) const;
 
 private:
   std::tuple<decltype(init_task_ids) const &,

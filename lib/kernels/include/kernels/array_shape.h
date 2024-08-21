@@ -55,9 +55,8 @@ size_t get_volume(ArrayShape const &);
 
 TensorShape get_tensor_shape(ArrayShape const &, DataType);
 
-std::string format_as(std::pair<ArrayShape, DataType> const &);
-std::ostream &operator<<(std::ostream &,
-                         std::pair<ArrayShape, DataType> const &);
+std::string format_as(ArrayShape const &);
+std::ostream &operator<<(std::ostream &, ArrayShape const &);
 
 } // namespace FlexFlow
 

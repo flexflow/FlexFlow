@@ -29,8 +29,8 @@ DeviceSpecificDeviceStates
                                               TaskArgumentAccessor const &acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn = task_sig_impl.impl_function.get<InitTaskImplFunction>()
-                .init_task_impl_function;
+  auto fn =
+      task_sig_impl.impl_function.get<InitTaskImplFunction>().function_ptr;
   return fn(acc);
 }
 
@@ -39,8 +39,8 @@ std::optional<float>
                                          TaskArgumentAccessor acc) {
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
-  auto fn = task_sig_impl.impl_function.get<FwdBwdTaskImplFunction>()
-                .fwd_bwd_task_impl_function;
+  auto fn =
+      task_sig_impl.impl_function.get<FwdBwdTaskImplFunction>().function_ptr;
   return fn(acc);
 }
 

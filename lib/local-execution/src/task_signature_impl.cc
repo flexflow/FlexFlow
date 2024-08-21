@@ -12,6 +12,7 @@
 #include "ops/embedding.h"
 #include "ops/flat.h"
 #include "ops/gather.h"
+#include "ops/input.h"
 #include "ops/layer_norm.h"
 #include "ops/linear.h"
 #include "ops/noop.h"
@@ -26,6 +27,7 @@
 #include "ops/split.h"
 #include "ops/topk.h"
 #include "ops/transpose.h"
+#include "ops/weight.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {

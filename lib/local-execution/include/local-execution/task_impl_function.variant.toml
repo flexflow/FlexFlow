@@ -2,12 +2,11 @@ namespace = "FlexFlow"
 name = "TaskImplFunction"
 features = [
   "eq",
-  "fmt"
+  "fmt",
+  "hash"
 ]
 
 includes = [
-  "local-execution/per_device_state.h",
-  "local-execution/task_argument_accessor.h",
   "local-execution/init_task_impl_function.h",
   "local-execution/fwd_bwd_task_impl_function.h",
 ]
