@@ -381,11 +381,16 @@ __global__ void
                             BatchConfig::PerTokenInfo const *tokenInfos,
                             BatchConfig::PerRequestInfo *request_infos,
                             int const max_num_pages,
-                            int hidden_size,
+                            int num_q_heads,
+                            int num_kv_heads,
+                            int head_dim,
                             int num_new_tokens) {
+  int const q_hidden_size = num_q_heads * head_dim;
+  int const temp_kv_hidden_size = num_q_heads * head_dim; // temporary hard code
+  int const kv_hidden_size = num_kv_heads * head_dim;
   int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int const token_idx = thread_idx / hidden_size;
-  int const offset = thread_idx % hidden_size;
+  int const token_idx = thread_idx / q_hidden_size;
+  int const offset = thread_idx % q_hidden_size;
   if (token_idx >= num_new_tokens) {
     return;
   }
@@ -393,19 +398,24 @@ __global__ void
   int const req_idx = tokenInfos[token_idx].request_index;
   int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
 
-  size_t from_idx = token_idx * QKV_WEIGHT_NUM * hidden_size;
-  size_t to_k_idx = get_k_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size),
-         to_v_idx = get_v_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size);
-
-  // key and value cache should be stored interleaved
-  kCache_ptr[to_k_idx + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
-  kCache_ptr[to_v_idx + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
-  qTmp_ptr[token_idx * hidden_size + offset] =
+  size_t from_idx = token_idx * (q_hidden_size + temp_kv_hidden_size * 2);
+  qTmp_ptr[token_idx * q_hidden_size + offset] =
       static_cast<half>(devQKVProjArray[from_idx + offset]);
+
+  if (offset < kv_hidden_size) {
+    size_t to_k_idx = get_k_entry_offset(
+              req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim),
+          to_v_idx = get_v_entry_offset(
+              req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim);
+    // key and value cache should be stored interleaved
+    int const stride = num_q_heads / num_kv_heads; // temporary hard code
+    int const kv_offset = offset / head_dim * stride * head_dim +
+                      offset % head_dim; // temporary hard code
+    kCache_ptr[to_k_idx + offset] =
+        static_cast<half>(devQKVProjArray[from_idx + q_hidden_size + kv_offset]);
+    kCache_ptr[to_v_idx + offset] =
+        static_cast<half>(devQKVProjArray[from_idx + q_hidden_size + temp_kv_hidden_size + kv_offset]);
+  }
 }
 
 template <typename DT>
@@ -428,7 +438,9 @@ void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
                                       m->token_infos,
                                       m->request_infos,
                                       max_num_pages,
-                                      m->local_hidden_size,
+                                      m->num_q_heads,
+                                      m->num_kv_heads,
+                                      m->qk_dim,
                                       num_new_tokens);
 }
 

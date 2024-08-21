@@ -84,7 +84,7 @@ void incr_attention(IncMultiHeadSelfAttentionMeta *m,
        *kv = static_cast<half *>(m->keyCache),
        *o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
-      num_q_heads,
+      num_kv_heads,
       kPagesize,
       head_dim,
       batch_size,

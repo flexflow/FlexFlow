@@ -52,12 +52,14 @@ __global__ void commit_tokens_kernel(
     BatchConfig::CommittedTokensInfo const *committedTokenInfos,
     bool const *request_available,
     int num_requests,
-    int hidden_size,
+    int num_kv_heads,
+    int head_dim,
     int const *num_committed_tokens,
     int const max_num_pages) {
+  int const kv_hidden_size = num_kv_heads * head_dim;
   int const idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int const request_compact_idx = idx / hidden_size;
-  int const offset = idx % hidden_size;
+  int const request_compact_idx = idx / kv_hidden_size;
+  int const offset = idx % kv_hidden_size;
   // request id in batch config
   int requext_idx_in_batch = -1;
   int cnt_1 = 0;
@@ -79,13 +81,13 @@ __global__ void commit_tokens_kernel(
       int const tok_id = committedTokenInfos[i].token_depth;
 
       size_t from_k_idx = get_k_entry_offset(
-                 req_id, index_in_kv_cache, max_num_pages, hidden_size),
+                 req_id, index_in_kv_cache, max_num_pages, num_kv_heads, head_dim),
              from_v_idx = get_v_entry_offset(
-                 req_id, index_in_kv_cache, max_num_pages, hidden_size);
+                 req_id, index_in_kv_cache, max_num_pages, num_kv_heads, head_dim);
       size_t to_k_idx =
-                 get_k_entry_offset(req_id, tok_id, max_num_pages, hidden_size),
+                 get_k_entry_offset(req_id, tok_id, max_num_pages, num_kv_heads, head_dim),
              to_v_idx =
-                 get_v_entry_offset(req_id, tok_id, max_num_pages, hidden_size);
+                 get_v_entry_offset(req_id, tok_id, max_num_pages, num_kv_heads, head_dim);
       assert(to_k_idx <= from_k_idx);
 
       kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
@@ -107,7 +109,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
        BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
       kPagesize;
   int const num_requests = bc->num_active_requests();
-  int parallelism = m->local_hidden_size * num_requests;
+  int parallelism = m->num_kv_heads * m->qk_dim * num_requests;
   commit_tokens_kernel<<<GET_BLOCKS(parallelism),
                          min(CUDA_NUM_THREADS, parallelism),
                          0,
@@ -115,7 +117,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                                    m->committed_token_infos,
                                    m->request_available,
                                    num_requests,
-                                   m->local_hidden_size,
+                                   m->num_kv_heads,
+                                   m->qk_dim,
                                    m->num_tokens_to_commit,
                                    max_num_pages);
   //   cudaEventRecord(t_end, stream);
@@ -165,7 +168,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
        *kv = static_cast<half *>(m->keyCache),
        *o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
-      num_q_heads,
+      num_kv_heads,
       kPagesize,
       head_dim,
       batch_size,

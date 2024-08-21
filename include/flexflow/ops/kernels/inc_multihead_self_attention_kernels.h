@@ -15,23 +15,27 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 // kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
-
 __device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
                                                      int const token_idx,
                                                      int const max_num_pages,
-                                                     int const hidden_size) {
+                                                     int const num_heads,
+                                                     int const head_dim) {
   return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          token_idx % kPagesize) *
-         hidden_size;
+          token_idx % kPagesize) * /* page slot index */
+         num_heads *
+         head_dim;
 }
 
+// kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
 __device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
                                                      int const token_idx,
                                                      int const max_num_pages,
-                                                     int const hidden_size) {
+                                                     int const num_heads,
+                                                     int const head_dim) {
   return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          kPagesize + token_idx % kPagesize) *
-         hidden_size;
+          kPagesize + token_idx % kPagesize) * /* page slot index */
+         num_heads *
+         head_dim;
 }
 
 template <typename DT>
