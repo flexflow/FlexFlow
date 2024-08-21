@@ -94,10 +94,11 @@ void LLAMA::create_llama_model(FFModel &ff,
     Tensor mha;
     switch (mode) {
       case TREE_SEARCH_MODE: {
-        mha = ff.spec_inc_multihead_self_attention(
+        mha = ff.spec_inc_multiquery_self_attention(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
+            llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
@@ -117,10 +118,11 @@ void LLAMA::create_llama_model(FFModel &ff,
         break;
       }
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multihead_self_attention_verify(
+        mha = ff.inc_multiquery_self_attention_verify(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
+            llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
@@ -140,10 +142,11 @@ void LLAMA::create_llama_model(FFModel &ff,
         break;
       }
       case INC_DECODING_MODE: {
-        mha = ff.inc_multihead_self_attention(
+        mha = ff.groupquery_self_attention(
             att_norm,
             llama_config.hidden_size,
             llama_config.num_attention_heads,
+            llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             0.0f,    /*dropout*/
@@ -180,47 +183,47 @@ void LLAMA::create_llama_model(FFModel &ff,
     token = token_ff_norm[0];
     Tensor ff_norm = token_ff_norm[1];
 
-    Tensor w1 =
-        ff.dense(ff_norm,
-                 llama_config.intermediate_size,
-                 AC_MODE_NONE,
-                 false,
-                 DT_NONE,
-                 nullptr,
-                 nullptr,
-                 nullptr,
-                 REG_MODE_NONE,
-                 0.0f,
+    Tensor w1 = ff.dense(
+        ff_norm,
+        llama_config.intermediate_size,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w1")
                      .c_str());
 
-    Tensor w3 =
-        ff.dense(ff_norm,
-                 llama_config.intermediate_size,
-                 AC_MODE_NONE,
-                 false,
-                 DT_NONE,
-                 nullptr,
-                 nullptr,
-                 nullptr,
-                 REG_MODE_NONE,
-                 0.0f,
+    Tensor w3 = ff.dense(
+        ff_norm,
+        llama_config.intermediate_size,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w3")
                      .c_str());
 
     Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
-    w2 =
-        ff.dense(multi,
-                 llama_config.hidden_size,
-                 AC_MODE_NONE,
-                 false,
-                 DT_NONE,
-                 nullptr,
-                 nullptr,
-                 nullptr,
-                 REG_MODE_NONE,
-                 0.0f,
+    w2 = ff.dense(
+        multi,
+        llama_config.hidden_size,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w2")
                      .c_str());
   }
@@ -275,7 +278,7 @@ void LLAMA::create_llama_model(FFModel &ff,
       "",
       weight_file_path,
       llama_config.num_attention_heads,
-      llama_config.num_attention_heads,
+      llama_config.num_key_value_heads,
       llama_config.hidden_size,
       llama_config.hidden_size / llama_config.num_attention_heads,
       ff.config.tensor_parallelism_degree,

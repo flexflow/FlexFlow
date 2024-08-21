@@ -762,7 +762,7 @@ public:
       bool qk_prod_scaling = true,
       bool position_bias = false,
       char const *name = NULL);
-  Tensor inc_multiquery_self_attention(Tensor const input,
+  Tensor groupquery_self_attention(Tensor const input,
                                        int embed_dim,
                                        int num_q_heads,
                                        int num_kv_heads,

@@ -2972,7 +2972,7 @@ class FFModel(object):
         self.add_layer(OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION, name)
         return Tensor(handle, owner_op_type=OpType.TREE_INC_MULTIHEAD_SELF_ATTENTION)
 
-    def inc_multiquery_self_attention(
+    def groupquery_self_attention(
         self,
         input,
         embed_dim,
@@ -3056,7 +3056,7 @@ class FFModel(object):
         c_name = get_c_name(name)
         kernel_init_handle = self.__get_initializer_handle(kernel_initializer)
         c_data_type = enum_to_int(DataType, data_type)
-        handle = ffc().flexflow_model_add_inc_multiquery_self_attention(
+        handle = ffc().flexflow_model_add_groupquery_self_attention(
             self.handle,
             input.handle,
             embed_dim,

@@ -148,7 +148,7 @@ void FALCON::create_falcon_model(FFModel &ff,
       }
 
       case INC_DECODING_MODE: {
-        mha = ff.inc_multiquery_self_attention(
+        mha = ff.groupquery_self_attention(
             att_norm,
             falcon_config.hidden_size,
             falcon_config.n_head,

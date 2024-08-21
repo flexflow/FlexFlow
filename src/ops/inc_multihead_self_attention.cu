@@ -858,10 +858,10 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
 
-  cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start, stream);
+  // cudaEvent_t t_start, t_end;
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end);
+  // cudaEventRecord(t_start, stream);
 
   if (m->offload && m->biasSize > 0) {
     cudaMemcpyAsync(
@@ -880,17 +880,17 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
-  cudaEventRecord(t_end, stream);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  std::cout << "Prepare attn time: " << elapsed << " ms\n";
+  // cudaEventRecord(t_end, stream);
+  // checkCUDA(cudaEventSynchronize(t_end));
+  // float elapsed = 0;
+  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end);
+  // std::cout << "Prepare attn time: " << elapsed << " ms\n";
 
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start, stream);
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end);
+  // cudaEventRecord(t_start, stream);
 
   if (bc->prompt_phase) {
     // phase 3: Compute attention score for prompt tokens;
@@ -902,13 +902,13 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
         m, bc, static_cast<DT *>(m->attn_heads), stream);
   }
 
-  cudaEventRecord(t_end, stream);
-  checkCUDA(cudaEventSynchronize(t_end));
-  elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  std::cout << "Attn time: " << elapsed << " ms\n";
+  // cudaEventRecord(t_end, stream);
+  // checkCUDA(cudaEventSynchronize(t_end));
+  // elapsed = 0;
+  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end);
+  // std::cout << "Attn time: " << elapsed << " ms\n";
 
   // Debug output:
   //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
@@ -1242,10 +1242,10 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
   checkCUDA(get_legion_stream(&stream));
   bool use_bias = *m->qkv_bias || *m->final_bias;
 
-  cudaEvent_t t_start, t_end;
-  cudaEventCreate(&t_start);
-  cudaEventCreate(&t_end);
-  cudaEventRecord(t_start, stream);
+  // cudaEvent_t t_start, t_end;
+  // cudaEventCreate(&t_start);
+  // cudaEventCreate(&t_end);
+  // cudaEventRecord(t_start, stream);
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
@@ -1288,13 +1288,13 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     assert(false && "Unspported data type");
   }
 
-  cudaEventRecord(t_end, stream);
-  checkCUDA(cudaEventSynchronize(t_end));
-  float elapsed = 0;
-  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  cudaEventDestroy(t_start);
-  cudaEventDestroy(t_end);
-  printf("IncMultiHeadSelfAttention forward time = %.9fms\n", elapsed);
+  // cudaEventRecord(t_end, stream);
+  // checkCUDA(cudaEventSynchronize(t_end));
+  // float elapsed = 0;
+  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  // cudaEventDestroy(t_start);
+  // cudaEventDestroy(t_end);
+  // printf("IncMultiHeadSelfAttention forward time = %.9fms\n", elapsed);
 }
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
@@ -1432,10 +1432,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                                        vProjSize * num_q_heads);
     size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
            qk_prod_size = 0;
-    assert((BatchConfig::max_sequence_length() +
-            BatchConfig::max_spec_tree_token_num()) %
-               kPagesize ==
-           0);
+    // assert((BatchConfig::max_sequence_length() +
+    //         BatchConfig::max_spec_tree_token_num()) %
+    //            kPagesize ==
+    //        0);
     size_t max_num_pages =
         (BatchConfig::max_sequence_length() +
          BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
@@ -1452,21 +1452,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                        BatchConfig::max_sequence_length() * num_q_heads;
         break;
       }
-      case TREE_SEARCH_MODE: {
-        key_cache_size = num_q_heads * kProjSize *
-                         BatchConfig::max_requests_per_batch() *
-                         (BatchConfig::max_sequence_length() +
-                          BatchConfig::max_spec_tree_token_num());
-        value_cache_size = num_q_heads * vProjSize *
-                           BatchConfig::max_requests_per_batch() *
-                           (BatchConfig::max_sequence_length() +
-                            BatchConfig::max_spec_tree_token_num());
-        qk_prod_size = BatchConfig::max_sequence_length() *
-                       (BatchConfig::max_sequence_length() +
-                        BatchConfig::max_spec_tree_token_num()) *
-                       num_q_heads;
-        break;
-      }
+      case TREE_SEARCH_MODE:
       case TREE_VERIFY_MODE: {
         query_tmp_size =
             num_q_heads * qProjSize * BatchConfig::max_tokens_per_batch();

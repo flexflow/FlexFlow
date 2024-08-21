@@ -24,23 +24,6 @@
 
 #include <sstream>
 #include <stdexcept>
-#include <vector>
-
-#define DISPATCH_GROUPSIZE(group_size, GROUP_SIZE, ...)                        \
-  if (group_size == 1) {                                                       \
-    constexpr size_t GROUP_SIZE = 1;                                           \
-    __VA_ARGS__                                                                \
-  } else if (group_size == 4) {                                                \
-    constexpr size_t GROUP_SIZE = 4;                                           \
-    __VA_ARGS__                                                                \
-  } else if (group_size == 8) {                                                \
-    constexpr size_t GROUP_SIZE = 8;                                           \
-    __VA_ARGS__                                                                \
-  } else {                                                                     \
-    std::ostringstream err_msg;                                                \
-    err_msg << "Unsupported group_size: " << group_size;                       \
-    throw std::invalid_argument(err_msg.str());                                \
-  }
 
 #define DISPATCH_HEADDIM(head_dim, HEAD_DIM, ...)                              \
   switch (head_dim) {                                                          \
@@ -66,16 +49,6 @@
     }                                                                          \
   }
 
-#define DISPATCH_PAGESIZE(page_size, PAGE_SIZE, ...)                           \
-  if (page_size == kPagesize) {                                                \
-    constexpr size_t PAGE_SIZE = kPagesize;                                    \
-    __VA_ARGS__                                                                \
-  } else {                                                                     \
-    std::ostringstream err_msg;                                                \
-    err_msg << "Unsupported page_size: " << page_size;                         \
-    throw std::invalid_argument(err_msg.str());                                \
-  }
-
 namespace FlexFlow {
 
 // declare Legion names
@@ -91,6 +64,7 @@ namespace TreeIncMultiHeadAttention {
 
 using flashinfer::BatchPrefillHandler;
 using flashinfer::BatchPrefillWithPagedKVCacheWrapperDispatched;
+using flashinfer::LogitsPostHook;
 using flashinfer::MaskMode;
 using flashinfer::paged_kv_t;
 using flashinfer::PageStorage;
@@ -121,7 +95,7 @@ __global__ void commit_tokens_kernel(
     bool const *request_available,
     int num_requests,
     int hidden_size,
-    int num_committed_tokens,
+    int const *num_committed_tokens,
     int const max_num_pages) {
   int const idx = blockIdx.x * blockDim.x + threadIdx.x;
   int const request_compact_idx = idx / hidden_size;
@@ -136,7 +110,7 @@ __global__ void commit_tokens_kernel(
     }
   }
 
-  for (int i = 0; i < num_committed_tokens; i++) {
+  for (int i = 0; i < *num_committed_tokens; i++) {
     if (committedTokenInfos[i].request_index == requext_idx_in_batch) {
       int const index_in_kv_cache = committedTokenInfos[i].index_in_kv_cache;
       if (index_in_kv_cache == -1) {
@@ -170,7 +144,6 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  int num_tokens_to_commit = bc->num_tokens_to_commit;
   int const max_num_pages =
       (BatchConfig::max_sequence_length() +
        BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
@@ -185,7 +158,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                                    m->request_available,
                                    num_requests,
                                    m->hidden_size,
-                                   num_tokens_to_commit,
+                                   m->num_tokens_to_commit,
                                    max_num_pages);
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -194,82 +167,6 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   printf("Commit token time: %.2f ms\n", elapsed);
   //   cudaEventDestroy(t_start);
   //   cudaEventDestroy(t_end);
-}
-
-__global__ void
-    update_custom_mask_kernel(float *custom_mask,
-                              BatchConfig::BitMask *causalMask,
-                              BatchConfig::PerRequestInfo *request_infos,
-                              bool *request_available,
-                              int const num_requests,
-                              int const max_q_length,
-                              int const max_kv_length,
-                              float mask_value) {
-  // get thread idx in [0, num_requests * max_q_length)
-  int const idx = blockIdx.x * blockDim.x + threadIdx.x;
-  // get (request_idx, q_idx) from thread idx
-  int const request_idx = idx / max_q_length / max_kv_length;
-  int const q_idx = (idx % (max_q_length * max_kv_length)) / max_kv_length;
-  int const kv_idx = idx % max_kv_length;
-
-  // request id in batch config
-  int requext_idx_in_batch = -1;
-  int cnt_1 = 0, mask_offset = 0, mask_lens = 0;
-  while (cnt_1 < request_idx + 1) {
-    requext_idx_in_batch++;
-    if (request_available[requext_idx_in_batch]) {
-      cnt_1++;
-      mask_offset = mask_lens;
-      int q_len = request_infos[requext_idx_in_batch].num_tokens_in_batch,
-          k_len =
-              q_len +
-              request_infos[requext_idx_in_batch].first_token_index_in_request;
-      mask_lens += q_len * k_len;
-    }
-  }
-
-  int const q_length = request_infos[requext_idx_in_batch].num_tokens_in_batch;
-  int const q_start =
-      request_infos[requext_idx_in_batch].first_token_index_in_request;
-  if (q_idx >= q_length) {
-    return;
-  }
-  if (kv_idx >= q_start + q_length) {
-    return;
-  }
-  assert(q_start + q_length <= max_kv_length);
-
-  float *mask = custom_mask + mask_offset + q_idx * (q_start + q_length);
-  if (kv_idx < q_start) {
-    mask[kv_idx] = 0.0f;
-  } else {
-    mask[kv_idx] = test_bit_orig(causalMask[requext_idx_in_batch].bit_mask,
-                                 q_idx,
-                                 kv_idx - q_start)
-                       ? 0.0f
-                       : mask_value;
-  }
-}
-
-void update_custom_mask(TreeIncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        cudaStream_t stream) {
-  int const num_requests = bc->num_active_requests();
-  int const max_q_length = BatchConfig::max_spec_tree_token_num();
-  int const max_kv_length = BatchConfig::max_spec_tree_token_num() +
-                            BatchConfig::max_sequence_length();
-  int parallelism = num_requests * max_q_length * max_kv_length;
-  update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
-                              min(CUDA_NUM_THREADS, parallelism),
-                              0,
-                              stream>>>(m->custom_mask,
-                                        m->causalMask,
-                                        m->request_infos,
-                                        m->request_available,
-                                        num_requests,
-                                        max_q_length,
-                                        max_kv_length,
-                                        -5e4);
 }
 
 template <typename DT>
@@ -331,54 +228,6 @@ void update_qkv_cache(TreeIncMultiHeadSelfAttentionMeta const *m,
                                       num_new_tokens);
 }
 
-__global__ void
-    prepare_inference_params_kernel(int const num_requests,
-                                    BatchConfig::PerRequestInfo *request_infos,
-                                    bool *request_available,
-                                    uint32_t const max_num_pages,
-                                    int32_t *q_indptr,
-                                    int32_t *kv_indptr,
-                                    int32_t *kv_indices,
-                                    int32_t *kv_last_page_len,
-                                    int32_t *qk_indptr) {
-  int const request_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  if (request_idx >= num_requests) {
-    return;
-  }
-
-  // request id in batch config
-  int requext_idx_in_batch = -1;
-  int cnt_1 = 0, q_lens = 0, qk_len = 0;
-  int indices_offset = 0, indices_lens = 0, kv_len = 0;
-  while (cnt_1 < request_idx + 1) {
-    requext_idx_in_batch++;
-    if (request_available[requext_idx_in_batch]) {
-      cnt_1++;
-      int q_len = request_infos[requext_idx_in_batch].num_tokens_in_batch;
-      q_lens += q_len;
-      kv_len = request_infos[requext_idx_in_batch].num_tokens_in_batch +
-               request_infos[requext_idx_in_batch].first_token_index_in_request;
-      qk_len += q_len * kv_len;
-      indices_offset = indices_lens;
-      indices_lens += (kv_len + kPagesize - 1) / kPagesize;
-    }
-  }
-
-  if (request_idx == 0) {
-    q_indptr[0] = 0;
-    kv_indptr[0] = 0;
-    qk_indptr[0] = 0;
-  }
-  __syncthreads();
-  q_indptr[request_idx + 1] = q_lens;
-  kv_indptr[request_idx + 1] = indices_lens;
-  for (int i = indices_offset; i < indices_lens; i++) {
-    kv_indices[i] = max_num_pages * requext_idx_in_batch + (i - indices_offset);
-  }
-  kv_last_page_len[request_idx] = (kv_len - 1) % kPagesize + 1;
-  qk_indptr[request_idx + 1] = qk_len;
-}
-
 template <typename DT>
 __global__ void produce_output_kernel(half const *input_ptr,
                                       DT *output_ptr,
@@ -389,7 +238,7 @@ __global__ void produce_output_kernel(half const *input_ptr,
 }
 
 template <typename DT>
-void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
+void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
                            BatchConfig const *bc,
                            DT *output_ptr,
                            cudaStream_t stream) {
@@ -403,51 +252,37 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   // global constant parameters
   uint32_t const num_q_heads = m->num_q_heads;
   uint32_t const num_kv_heads = m->num_kv_heads;
-  uint32_t const group_size = num_q_heads / num_kv_heads;
   uint32_t const head_dim = m->qProjSize;
-  uint32_t const max_num_pages =
-      (BatchConfig::max_sequence_length() +
-       BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-      kPagesize;
   uint32_t const batch_size = bc->num_active_requests();
   float const sm_scale =
       (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
-  std::vector<int32_t> q_indptr_h{0};
 
-  {
-    int parallelism = batch_size;
-    prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
-                                      min(CUDA_NUM_THREADS, parallelism),
-                                      0,
-                                      stream>>>(batch_size,
-                                                m->request_infos,
-                                                m->request_available,
-                                                max_num_pages,
-                                                m->q_indptr,
-                                                m->kv_indptr,
-                                                m->kv_indices,
-                                                m->kv_last_page_len,
-                                                m->qk_indptr);
-    for (int req_idx = 0; req_idx < bc->max_requests_per_batch(); req_idx++) {
-      if (bc->request_available[req_idx]) {
-        int q_len = bc->requestsInfo[req_idx].num_tokens_in_batch;
-        q_indptr_h.push_back(q_indptr_h.back() + q_len);
-      }
-    }
-  }
+  //   cudaEventCreate(&t_start);
+  //   cudaEventCreate(&t_end);
+  //   cudaEventRecord(t_start, stream);
+
+  //   cudaEventRecord(t_end, stream);
+  //   checkCUDA(cudaEventSynchronize(t_end));
+  //   elapsed = 0;
+  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  //   cudaEventDestroy(t_start);
+  //   cudaEventDestroy(t_end);
+  //   if (device == 0) {
+  //     std::cout << "Update custom mask time: " << elapsed << " ms\n";
+  //   }
 
   half *q = static_cast<half *>(m->queryTmp),
        *kv = static_cast<half *>(m->keyCache),
        *o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
-      num_kv_heads,
+      num_q_heads,
       kPagesize,
       head_dim,
       batch_size,
       kv,
-      m->kv_indices,
-      m->kv_indptr,
-      m->kv_last_page_len);
+      m->handle.tree_verify_attention_metadata->kv_indices,
+      m->handle.tree_verify_attention_metadata->kv_indptr,
+      m->handle.tree_verify_attention_metadata->kv_last_page_len);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -463,16 +298,23 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  BatchPrefillHandler *handler =
-      static_cast<BatchPrefillHandler *>(m->batch_prefill_handler);
-  handler->SetCUDAStream(stream);
-  handler->BeginForward(m->workspace,
-                        m->workspace_size,
-                        q_indptr_h.data(),
-                        batch_size,
-                        num_q_heads,
-                        num_kv_heads,
-                        head_dim);
+  BatchPrefillHandler *handler = nullptr;
+
+  if (!bc->prompt_phase) {
+    assert(m->handle.tree_verify_attention_metadata->decode_handler_collections
+                   .count(batch_size) != 0 &&
+           "Handler is not initialized");
+    handler = static_cast<BatchPrefillHandler *>(
+        m->handle.tree_verify_attention_metadata
+            ->decode_handler_collections[batch_size]);
+  } else {
+    assert(m->handle.tree_verify_attention_metadata->prompt_handler_collections
+                   .count(batch_size) != 0 &&
+           "Handler is not initialized");
+    handler = static_cast<BatchPrefillHandler *>(
+        m->handle.tree_verify_attention_metadata
+            ->prompt_handler_collections[batch_size]);
+  }
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -488,70 +330,69 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  DISPATCH_GROUPSIZE(
-      group_size,
-      GROUP_SIZE,
-      {DISPATCH_HEADDIM(
-          head_dim, HEAD_DIM, {DISPATCH_PAGESIZE(kPagesize, PAGE_SIZE, {
-            cudaError_t result;
-            if (bc->prompt_phase) {
-              result = BatchPrefillWithPagedKVCacheWrapperDispatched<
-                  PageStorage::kIndices,
-                  QKVLayout::kNHD,
-                  PAGE_SIZE,
-                  GROUP_SIZE,
-                  HEAD_DIM,
-                  PosEncodingMode::kNone,
-                  false,
-                  MaskMode::kCausal,
-                  half,
-                  half,
-                  int32_t>(handler,
-                           q,
-                           m->q_indptr,
-                           /*q_offset=*/nullptr,
-                           paged_kv,
-                           /*custom_mask=*/nullptr,
-                           /*qk_indptr=*/nullptr,
-                           o,
-                           /*lse=*/nullptr,
-                           sm_scale,
-                           /*rope_scale=*/1.f,
-                           /*rope_theta=*/static_cast<float>(1e4),
-                           stream);
-            } else {
-              result = BatchPrefillWithPagedKVCacheWrapperDispatched<
-                  PageStorage::kIndices,
-                  QKVLayout::kNHD,
-                  PAGE_SIZE,
-                  GROUP_SIZE,
-                  HEAD_DIM,
-                  PosEncodingMode::kNone,
-                  false,
-                  MaskMode::kCustom,
-                  half,
-                  half,
-                  int32_t>(handler,
-                           q,
-                           m->q_indptr,
-                           /*q_offset=*/nullptr,
-                           paged_kv,
-                           m->custom_mask,
-                           m->qk_indptr,
-                           o,
-                           /*lse=*/nullptr,
-                           sm_scale,
-                           /*rope_scale=*/1.f,
-                           /*rope_theta=*/static_cast<float>(1e4),
-                           stream);
-            }
-            if (result != cudaSuccess) {
-              throw std::runtime_error(
-                  "Failed to run "
-                  "BatchPrefillWithPagedKVCacheWrapperDispatched" +
-                  std::string(cudaGetErrorString(result)));
-            }
-          })})});
+  DISPATCH_HEADDIM(head_dim, HEAD_DIM, {
+    cudaError_t result;
+    if (bc->prompt_phase) {
+      result =
+          BatchPrefillWithPagedKVCacheWrapperDispatched<PageStorage::kIndices,
+                                                        HEAD_DIM,
+                                                        LogitsPostHook::kNone,
+                                                        QKVLayout::kNHD,
+                                                        PosEncodingMode::kNone,
+                                                        false,
+                                                        MaskMode::kCausal,
+                                                        half,
+                                                        half,
+                                                        int32_t>(
+              handler,
+              q,
+              m->handle.tree_verify_attention_metadata->q_indptr,
+              /*q_offset=*/nullptr,
+              paged_kv,
+              /*custom_mask=*/nullptr,
+              /*qk_indptr=*/nullptr,
+              o,
+              /*lse=*/nullptr,
+              num_q_heads,
+              /*logits_soft_cap=*/0.f,
+              sm_scale,
+              /*rope_scale=*/1.f,
+              /*rope_theta=*/static_cast<float>(1e4),
+              stream);
+    } else {
+      result =
+          BatchPrefillWithPagedKVCacheWrapperDispatched<PageStorage::kIndices,
+                                                        HEAD_DIM,
+                                                        LogitsPostHook::kNone,
+                                                        QKVLayout::kNHD,
+                                                        PosEncodingMode::kNone,
+                                                        false,
+                                                        MaskMode::kCustom,
+                                                        half,
+                                                        half,
+                                                        int32_t>(
+              handler,
+              q,
+              m->handle.tree_verify_attention_metadata->q_indptr,
+              /*q_offset=*/nullptr,
+              paged_kv,
+              m->handle.tree_verify_attention_metadata->custom_mask,
+              m->handle.tree_verify_attention_metadata->qk_indptr,
+              o,
+              /*lse=*/nullptr,
+              num_q_heads,
+              /*logits_soft_cap=*/0.f,
+              sm_scale,
+              /*rope_scale=*/1.f,
+              /*rope_theta=*/static_cast<float>(1e4),
+              stream);
+    }
+    if (result != cudaSuccess) {
+      throw std::runtime_error("Failed to run "
+                               "BatchPrefillWithPagedKVCacheWrapperDispatched" +
+                               std::string(cudaGetErrorString(result)));
+    }
+  });
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -673,25 +514,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventDestroy(t_end);
   //   if (device == 0) {
   //     std::cout << "Compute qkv time: " << elapsed << " ms\n";
-  //   }
-
-  //   cudaEventCreate(&t_start);
-  //   cudaEventCreate(&t_end);
-  //   cudaEventRecord(t_start, stream);
-
-  // Update gpu-side custom mask referring from CaualMask
-  if (!bc->prompt_phase) {
-    update_custom_mask(m, bc, stream);
-  }
-
-  //   cudaEventRecord(t_end, stream);
-  //   checkCUDA(cudaEventSynchronize(t_end));
-  //   elapsed = 0;
-  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  //   cudaEventDestroy(t_start);
-  //   cudaEventDestroy(t_end);
-  //   if (device == 0) {
-  //     std::cout << "Update custom mask time: " << elapsed << " ms\n";
   //   }
 
   //   cudaEventCreate(&t_start);
@@ -905,43 +727,14 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
 
-  {
-    size_t batch_size = BatchConfig::max_requests_per_batch();
-    size_t max_num_pages =
-        (BatchConfig::max_spec_tree_token_num() +
-         BatchConfig::max_sequence_length() + kPagesize - 1) /
-        kPagesize;
-    size_t indices_size = std::max(
-        (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
-    size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
-                              BatchConfig::max_spec_tree_token_num() *
-                              (BatchConfig::max_spec_tree_token_num() +
-                               BatchConfig::max_sequence_length());
-    workspace_size = 32 * 1024 * 1024; // 32MB
-
-    gpu_mem_allocator.create_legion_instance(
-        flashinfer_reserve_inst,
-        sizeof(int32_t) * indices_size + sizeof(float) * custom_mask_size +
-            workspace_size);
-
-    q_indptr = gpu_mem_allocator.allocate_instance<int32_t>(indices_size);
-    kv_indptr = q_indptr + batch_size + 1;
-    kv_indices = kv_indptr + batch_size + 1;
-    kv_last_page_len = kv_indices + max_num_pages * batch_size;
-    qk_indptr = kv_last_page_len + batch_size + 1;
-    custom_mask = gpu_mem_allocator.allocate_instance<float>(custom_mask_size);
-    workspace = static_cast<void *>(
-        gpu_mem_allocator.allocate_instance<char>(workspace_size));
-    batch_prefill_handler =
-        static_cast<void *>(new flashinfer::BatchPrefillHandler);
-  }
+  // set attention constants
+  handler.tree_verify_attention_metadata->set_enabled(true);
+  handler.tree_verify_attention_metadata->set_num_q_heads(num_q_heads);
+  handler.tree_verify_attention_metadata->set_num_kv_heads(num_kv_heads);
+  handler.tree_verify_attention_metadata->set_head_dim(qProjSize);
 
   // allocate memory for the seqArray and reserve space
   {
-    causalMask = reinterpret_cast<BatchConfig::BitMask *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BatchConfig::request_available));
     committed_token_infos =
         reinterpret_cast<BatchConfig::CommittedTokensInfo *>(
             reinterpret_cast<char *>(handler.batch_config_metadata) +
@@ -949,16 +742,17 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BatchConfig::request_available) +
             sizeof(BatchConfig::causalMask));
+    num_tokens_to_commit = reinterpret_cast<int *>(
+        reinterpret_cast<char *>(committed_token_infos) +
+        sizeof(BatchConfig::committed_tokens));
   }
 
   cudaStreamSynchronize(stream);
 }
 
 TreeIncMultiHeadSelfAttentionMeta::~TreeIncMultiHeadSelfAttentionMeta(void) {
-  if (flashinfer_reserve_inst != Realm::RegionInstance::NO_INST) {
-    flashinfer_reserve_inst.destroy();
-  }
-  delete static_cast<flashinfer::BatchPrefillHandler *>(batch_prefill_handler);
+  // delete static_cast<flashinfer::BatchPrefillHandler
+  // *>(batch_prefill_handler);
 }
 
 }; // namespace FlexFlow

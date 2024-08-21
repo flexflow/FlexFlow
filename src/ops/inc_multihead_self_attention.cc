@@ -71,7 +71,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                              bool qk_prod_scaling,
                                              bool position_bias,
                                              char const *name) {
-  return inc_multiquery_self_attention(input,
+  return groupquery_self_attention(input,
                                        embed_dim,
                                        num_heads,
                                        num_heads,
@@ -91,7 +91,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                        name);
 }
 
-Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
+Tensor FFModel::groupquery_self_attention(const Tensor input,
                                               int embed_dim,
                                               int num_q_heads,
                                               int num_kv_heads,
@@ -741,7 +741,7 @@ void IncMultiHeadSelfAttention::forward(FFModel const &ff) {
 
 FutureMap IncMultiHeadSelfAttention::inference(
     FFModel const &ff,
-    /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
     std::vector<ParallelTensor> const &batch_inputs,
     std::vector<ParallelTensor> const &batch_outputs,
     MachineView const *mv) {

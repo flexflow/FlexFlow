@@ -1520,7 +1520,8 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  if (all_request_last_layer_empty or current_ssm_step == get_max_tree_depth()) {
+  if (all_request_last_layer_empty or
+      current_ssm_step == get_max_tree_depth()) {
     // Update profiling statistics before returning
     profiling.ssm_step_times.push_back(
         (Realm::Clock::current_time_in_microseconds() -
@@ -1535,7 +1536,7 @@ bool RequestManager::update_ssm_inference_results(
     }
     ssm_latency_estimate_ms = ssm_latency_estimate_ms / std::min(static_cast<size_t>(window_size), profiling.ssm_step_times.size());
 
-    profiling.nb_ssm_steps.push_back(profiling.nb_ssm_step);
+    profiling.nb_ssm_steps.push_back(current_ssm_step);
   }
   return all_request_last_layer_empty;
 }
@@ -2115,6 +2116,7 @@ void RequestManager::serve_decoding(FFModel *llm) {
   std::queue<InferenceResultFuture> batch_pipeline;
   { batch_pipeline.push(last_irf); }
 
+  reset_profiling_statistics();
   while (!is_background_server_terminated()) {
 
     if (batch_pipeline.size() >= 4) {
@@ -2182,6 +2184,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   std::queue<InferenceResultFuture> infer_result_future_pipeline;
   infer_result_future_pipeline.push(irf_0);
 
+  reset_profiling_statistics();
   while (!is_background_server_terminated()) {
     if (infer_result_future_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
@@ -2293,7 +2296,41 @@ void RequestManager::terminate_background_server() {
     // Write the last profiling statistics to output file
     std::string str = "[Profiling Statistics - ";
     str += (tpot_slo ? "" : "NO");
-    str += " SLO]\n llm_step_times_ms(";
+    str += " SLO]";
+    
+    long long total_time = Realm::Clock::current_time_in_microseconds() -
+                           profiling.server_start_time;
+    int total_requests = profiling_requests.size();
+    int total_tokens = 0;
+    for (int num_tokens : profiling.generated_tokens_per_step) {
+      total_tokens += num_tokens;
+    }
+    str += "\n total_time_ms(" + std::to_string(total_time / 1000.0) + ")";
+    str += "\n total_tokens(" + std::to_string(total_tokens) + ")";
+    // throughput
+    str += "\n throughput_requests_per_sec(" +
+           std::to_string(total_requests / (total_time / 1e6)) + ")";
+    str += "\n throughput_tokens_per_sec(" +
+           std::to_string(total_tokens / (total_time / 1e6)) + ")";
+    
+    double average_latency_per_request = 0;
+    std::string latency_per_request_ms = "\n latency_per_request_ms( ";
+    for (auto const &profiling_info : profiling_requests) {
+      double latency_ms = (profiling_info.second.finish_time -
+                           profiling_info.second.start_time) /
+                          1000.0;
+      // latency_per_request_ms += "[" + std::to_string(profiling_info.first) +
+      // ","; latency_per_request_ms += std::to_string(latency_ms) + "] ";
+      latency_per_request_ms += std::to_string(latency_ms) + " ";
+      average_latency_per_request += latency_ms;
+    }
+    latency_per_request_ms += ")";
+    str += latency_per_request_ms;
+    average_latency_per_request /= total_requests;
+    str += "\n average_latency_per_request_ms(" +
+           std::to_string(average_latency_per_request) + ")";
+    
+    str += "\n llm_step_times_ms(";
     std::string llm_step_times_ms = " ";
     for (double time : profiling.llm_step_times) {
       llm_step_times_ms += std::to_string(time) + " ";
@@ -2307,11 +2344,11 @@ void RequestManager::terminate_background_server() {
     }
     req_per_step += ")";
     str += req_per_step;
+
     if (profiling.ssm_step_times.size() > 0) {
       // assert(profiling.ssm_step_times.size() ==
       //        profiling.llm_step_times.size());
-      str += "\n ssm_step_times_ms(";
-      std::string ssm_step_times_ms = " ";
+      std::string ssm_step_times_ms = "\n ssm_step_times_ms( ";
       for (double time : profiling.ssm_step_times) {
         ssm_step_times_ms += std::to_string(time) + " ";
       }
@@ -2366,6 +2403,7 @@ void RequestManager::terminate_background_server() {
     str += generated_tokens_per_step_per_req;
 
     write_to_output_file(alignment_test ? "" : output_filepath, str);
+
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
@@ -2982,4 +3020,17 @@ std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
 }
 
 /* --------- Request Token Tree Related Functions --------- */
+
+/* --------- Profiling Related Functions --------- */
+void RequestManager::reset_profiling_statistics() {
+  profiling.llm_step_times.clear();
+  profiling.requests_per_step.clear();
+  profiling.ssm_step_times.clear();
+  profiling.ssm_steps.clear();
+  profiling.generated_tokens_per_step.clear();
+  profiling.llm_step_start = 0;
+  profiling.ssm_step_start = 0;
+  profiling.server_start_time = Realm::Clock::current_time_in_microseconds();
+}
+/* --------- Profiling Related Functions --------- */
 }; // namespace FlexFlow

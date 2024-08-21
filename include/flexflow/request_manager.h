@@ -418,18 +418,20 @@ private:
     long long llm_step_start = 0, ssm_step_start = 0;
     // Times for each LLM verification phase (in ms)
     std::vector<double> llm_step_times;
+    // Number of requests in batch at each step
+    std::vector<int> requests_per_step;
     // Times for each SSM speculation phase (in ms)
     std::vector<double> ssm_step_times;
     // Number of requests getting decoded at each step
     std::vector<int> requests_per_step;
     // Number of generated tokens at each step for each request
     std::vector<std::vector<int>> generated_tokens_per_step;
-    // Number of SSM forward passes in one speculation phase
-    int nb_ssm_step;
     // All amounts of forward passes in all speculation phases
     std::vector<int> nb_ssm_steps;
     // Tree sizes of all speculation phases
     std::vector<std::vector<int>> tree_sizes;
+    // To calculate the E2E time of serving
+    long long server_start_time = 0;
   };
 
   ProfileInfo profiling;
@@ -491,6 +493,9 @@ private:
                       int k);
   void gumbel_conditioned_on_max(float target_max,
                                  std::vector<std::pair<float, int>> &logits);
+
+  // Profiling related functions
+  void reset_profiling_statistics();
 };
 
 }; // namespace FlexFlow

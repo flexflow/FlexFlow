@@ -104,7 +104,7 @@ void STARCODER::create_starcoder_model(
     Tensor mha;
     switch (mode) {
       case INC_DECODING_MODE: {
-        mha = ff.inc_multiquery_self_attention(
+        mha = ff.groupquery_self_attention(
             ln_1,
             startcoder_config.hidden_size,
             startcoder_config.num_attention_heads,

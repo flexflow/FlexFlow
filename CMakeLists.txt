@@ -301,6 +301,12 @@ if(NOT BUILD_LEGION_ONLY)
       LIST_DIRECTORIES False
       ${FLEXFLOW_ROOT}/src/*.cu)
 
+    # tensorrt_llm custom allreduce
+    if(FF_USE_NCCL)
+      list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/tensorrt_llm)
+      list(APPEND FLEXFLOW_GPU_SRC ${CMAKE_CURRENT_SOURCE_DIR}/deps/tensorrt_llm/tensorrt_llm/custom_allreduce_kernels.cu)
+    endif()
+
     add_compile_definitions(FF_USE_CUDA)
 
     if(BUILD_SHARED_LIBS)

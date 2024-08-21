@@ -438,11 +438,12 @@ void LayerNorm::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
-FutureMap LayerNorm::inference(FFModel const &ff,
-                               /* Reserved: BatchConfig Updated */BatchConfigFuture const &bc,
-                               std::vector<ParallelTensor> const &batch_inputs,
-                               std::vector<ParallelTensor> const &batch_outputs,
-                               MachineView const *mv) {
+FutureMap LayerNorm::inference(
+    FFModel const &ff,
+    /* Reserved: BatchConfig Updated */ BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;

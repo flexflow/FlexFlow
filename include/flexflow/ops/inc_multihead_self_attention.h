@@ -18,10 +18,6 @@
 #include <hip/hip_complex.h>
 #endif
 
-// kPagesize also defined in tree_inc_multihead_self_attention_impl.cu
-// for template instantiation
-constexpr uint32_t kPagesize = 64;
-
 namespace FlexFlow {
 
 class IncMultiHeadSelfAttentionMeta;

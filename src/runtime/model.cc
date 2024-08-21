@@ -605,6 +605,29 @@ ncclComm_t Op::init_nccl_comms_task(Task const *task,
   checkNCCL(ncclCommInitRank(&ncclComm, allRanks, ncclId, myRank));
   // fprintf(stderr, "ncclComm(%p) allRanks(%d) myRank(%d) ncclId(%p)\n",
   //     ncclComm, allRanks, myRank, ncclId);
+
+  // Double check that we already enabled P2P access between all GPUs
+  for (int i = 0; i < allRanks; i++) {
+    if (i == myRank) {
+      continue;
+    }
+    cudaError_t err = cudaDeviceEnablePeerAccess(i, 0);
+    if (err == cudaSuccess) {
+      printf("P2P access successfully enabled between GPU %d and GPU %d\n",
+             myRank,
+             i);
+    } else if (err == cudaErrorPeerAccessAlreadyEnabled) {
+      printf("P2P access is already enabled between GPU %d and GPU %d\n",
+             myRank,
+             i);
+    } else {
+      printf("Failed to enable P2P access between GPU %d and GPU %d: %s\n",
+             myRank,
+             i,
+             cudaGetErrorString(err));
+      assert(false && "Failed to enable P2P access");
+    }
+  }
   return ncclComm;
 }
 
@@ -1243,12 +1266,15 @@ void Op::set_argumentmap_for_init_inference(FFModel const &ff,
 #define DIMFUNC(DIM)                                                           \
   case DIM: {                                                                  \
     Rect<DIM> rect = domain;                                                   \
-    int idx = 0;                                                               \
+    int idx = 0, num_devices = rect.volume();                                  \
     for (PointInRectIterator<DIM> it(rect); it(); it++) {                      \
       FFHandler handle = ff.handlers[view.get_device_id(*it)];                 \
       if (op_type == OP_ALLREDUCE) {                                           \
         ncclComm_t *nccl_comms = ff.find_nccl_comms(view);                     \
-        handle.ncclComm = nccl_comms[idx++];                                   \
+        handle.ncclComm = nccl_comms[idx];                                     \
+        handle.num_devices = num_devices;                                      \
+        handle.device_id = idx;                                                \
+        idx++;                                                                 \
       }                                                                        \
       argmap.set_point(*it, TaskArgument(&handle, sizeof(FFHandler)));         \
     }                                                                          \
