@@ -18,6 +18,7 @@
 #include "ffconst.h"
 #include "flexflow/batch_config.h"
 #include "legion.h"
+#include <cstddef>
 #include <cstring>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include <cublas_v2.h>
@@ -104,7 +105,11 @@ public:
     qk_indptr = nullptr;
     custom_mask = nullptr;
     workspace = nullptr;
-    workspace_block = 0;
+    workspace_size = 0;
+    float_workspace = nullptr;
+    float_workspace_size = 0;
+    int_workspace = nullptr;
+    int_workspace_size = 0;
     mem_size_ = 0;
     enabled_ = false;
   }
@@ -119,7 +124,11 @@ public:
     qk_indptr = rhs.qk_indptr;
     custom_mask = rhs.custom_mask;
     workspace = rhs.workspace;
-    workspace_block = rhs.workspace_block;
+    workspace_size = rhs.workspace_size;
+    float_workspace = rhs.float_workspace;
+    float_workspace_size = rhs.float_workspace_size;
+    int_workspace = rhs.int_workspace;
+    int_workspace_size = rhs.int_workspace_size;
     mem_size_ = rhs.mem_size_;
     enabled_ = rhs.enabled_;
     decode_handler_collections = rhs.decode_handler_collections;
@@ -143,11 +152,14 @@ public:
                                      BatchConfig::max_sequence_length()) +
                                 7) /
                                8);
-    workspace_block = 16 * 1024 * 1024; // 16MB
+
+    float_workspace_size = 32 * 1024 * 1024; // 32MB
+    int_workspace_size = 8 * 1024 * 1024;    // 8MB
+    workspace_size = float_workspace_size + int_workspace_size; // float + int workspace
 
     mem_size_ = sizeof(int32_t) * indices_size +
                 sizeof(uint8_t) * custom_mask_size +
-                workspace_block * BatchConfig::max_requests_per_batch();
+                workspace_size * BatchConfig::max_requests_per_batch();
     return mem_size_;
   }
 
@@ -160,6 +172,8 @@ public:
       qk_indptr = nullptr;
       custom_mask = nullptr;
       workspace = nullptr;
+      float_workspace = nullptr;
+      int_workspace = nullptr;
       return;
     }
     assert(size >= mem_size() &&
@@ -187,6 +201,9 @@ public:
     workspace = static_cast<void *>(static_cast<uint8_t *>(ptr) +
                                     sizeof(int32_t) * indices_size +
                                     sizeof(uint8_t) * custom_mask_size);
+    float_workspace = workspace;
+    int_workspace = static_cast<void *>(static_cast<uint8_t *>(workspace) +
+                                        float_workspace_size);
   }
 
   void set_num_q_heads(uint32_t const num_q_heads) {
@@ -226,7 +243,11 @@ public:
   int32_t *qk_indptr;
   uint8_t *custom_mask;
   void *workspace;
-  size_t workspace_block;
+  size_t workspace_size;
+  void * float_workspace;
+  size_t float_workspace_size;
+  void * int_workspace;
+  size_t int_workspace_size;
 
   size_t mem_size_;
 
