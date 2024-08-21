@@ -125,7 +125,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
        BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
       kPagesize;
   int const num_requests = bc->num_active_requests();
-  int parallelism = m->hidden_size * num_requests;
+  int parallelism = m->local_hidden_size * num_requests;
   commit_tokens_kernel<<<GET_BLOCKS(parallelism),
                          min(CUDA_NUM_THREADS, parallelism),
                          0,
@@ -133,7 +133,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                                    m->committed_token_infos,
                                    m->request_available,
                                    num_requests,
-                                   m->hidden_size,
+                                   m->local_hidden_size,
                                    m->num_tokens_to_commit,
                                    max_num_pages);
   //   cudaEventRecord(t_end, stream);
@@ -454,7 +454,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   // Debug output:
   // {
-  //   int size = m->hidden_size * bc->num_active_tokens();
+  //   int size = m->local_hidden_size * bc->num_active_tokens();
   //   float *temp_output = new float[size];
   //   cudaDeviceSynchronize();
   //   cudaMemcpy(
@@ -463,8 +463,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   printf("Output (flashinfer attention) :");
   //   for (int i = 0; i < 1; ++i) {
   //     float temp = 0;
-  //     for (int j = 0; j < m->hidden_size; ++j) {
-  //       temp += temp_output[i * m->hidden_size + j];
+  //     for (int j = 0; j < m->local_hidden_size; ++j) {
+  //       temp += temp_output[i * m->local_hidden_size + j];
   //     }
   //     printf("%.6f ", temp);
   //   }

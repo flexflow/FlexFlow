@@ -320,7 +320,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                        m->num_q_heads,
                        *m->scaling_query,
                        m->scaling_factor,
-                       m->hidden_size);
+                       m->local_hidden_size);
   } else if (m->scaling_query) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(scaling_query_kernel<DT>),
                        GET_BLOCKS(parallelism),
@@ -332,11 +332,11 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                        m->num_q_heads,
                        m->qProjSize,
                        m->scaling_factor,
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
   if (*m->apply_rotary_embedding) {
     /*q&k*/
-    parallelism = num_tokens * m->hidden_size;
+    parallelism = num_tokens * m->local_hidden_size;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_rotary_embedding_hf<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -349,7 +349,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                        m->kProjSize,
                        num_tokens,
                        q_array_size,
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
 }
 
@@ -359,7 +359,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             hipStream_t stream) {
   int num_tokens = bc->num_active_tokens();
   if (num_tokens > 0) {
-    int parallelism = m->hidden_size * num_tokens;
+    int parallelism = m->local_hidden_size * num_tokens;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(store_kv_cache<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -371,7 +371,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        m->token_infos,
                        num_tokens,
                        BatchConfig::max_sequence_length(),
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
 }
 
@@ -907,7 +907,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   global_num_kv_heads = _global_num_kv_heads;
   num_q_heads = _num_q_heads;
   num_kv_heads = _num_kv_heads;
-  hidden_size = num_q_heads * qProjSize;
+  local_hidden_size = num_q_heads * qProjSize;
 
   weightSize =
       ((qSize * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : vSize)) *

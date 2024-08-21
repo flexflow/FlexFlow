@@ -281,7 +281,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   // std::cout << "Attn time: " << elapsed << " ms\n";
 
   // Debug output:
-  //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
+  //   int size = m->local_hidden_size * BatchConfig::max_tokens_per_batch();
   //   float *temp_output = new float[size];
   //   cudaDeviceSynchronize();
   //   cudaMemcpy(
@@ -290,8 +290,8 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   //   printf("Output: ");
   //   float temp = 0;
   //   for (int i = 0; i < 1; ++i) {
-  //     for (int j = 0; j < m->hidden_size; ++j) {
-  //       temp += temp_output[i * m->hidden_size + j];
+  //     for (int j = 0; j < m->local_hidden_size; ++j) {
+  //       temp += temp_output[i * m->local_hidden_size + j];
   //     }
   //     printf("%.6f ", temp);
   //   }
@@ -464,7 +464,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   global_num_kv_heads = _global_num_kv_heads;
   num_q_heads = _num_q_heads;
   num_kv_heads = _num_kv_heads;
-  hidden_size = num_q_heads * qProjSize;
+  local_hidden_size = num_q_heads * qProjSize;
 
   weightSize =
       ((qSize * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : vSize)) *

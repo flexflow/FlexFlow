@@ -75,7 +75,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    hipStream_t stream) {
   int num_tokens_to_commit = bc->num_tokens_to_commit;
   if (num_tokens_to_commit > 0) {
-    int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens_to_commit;
+    int parallelism = m->local_hidden_size * KV_WEIGHT_NUM * num_tokens_to_commit;
     hipLaunchKernelGGL(
         HIP_KERNEL_NAME(commit_tokens_kernel<DT>),
         GET_BLOCKS(parallelism),
@@ -92,7 +92,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         num_tokens_to_commit,
         m->num_active_tokens, // number of active tokens in previous batch
         BatchConfig::max_sequence_length(),
-        m->hidden_size);
+        m->local_hidden_size);
   }
 }
 
@@ -198,7 +198,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       assert(num_new_tokens >= 1 && total_tokens_in_request >= num_new_tokens);
       {
         // update K-V cache
-        int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_new_tokens;
+        int parallelism = m->local_hidden_size * KV_WEIGHT_NUM * num_new_tokens;
         hipLaunchKernelGGL(
             HIP_KERNEL_NAME(update_tree_branch_kv_cache<DT>),
             GET_BLOCKS(parallelism),
@@ -216,7 +216,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             processed_tokens_in_batch, // num_processed_tokens_in_batch
             m->num_active_tokens,      // total_tokens_in_batch
             BatchConfig::max_sequence_length(),
-            m->hidden_size);
+            m->local_hidden_size);
       }
 
       // bc->token_last_available_idx[i] + 1;

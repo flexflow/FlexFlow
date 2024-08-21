@@ -147,7 +147,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // printf("curr depth: %d\n", curr_depth);
   // assert(curr_depth < 3);
   if (num_tokens > 0) {
-    int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens;
+    int parallelism = m->local_hidden_size * KV_WEIGHT_NUM * num_tokens;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(spec_store_kv_cache<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -167,7 +167,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                        BatchConfig::max_sequence_length(),
                        TreeSearchBatchConfig::MAX_BEAM_WIDTH,
                        /*root*/ curr_depth == 0,
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
 }
 

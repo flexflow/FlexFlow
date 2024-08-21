@@ -177,7 +177,7 @@ public:
       quantized_weightSize;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads,
-      hidden_size;
+      local_hidden_size;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *qkv_bias;

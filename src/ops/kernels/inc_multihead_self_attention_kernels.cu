@@ -335,7 +335,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                                     m->num_q_heads,
                                     *m->scaling_query,
                                     m->scaling_factor,
-                                    m->hidden_size);
+                                    m->local_hidden_size);
   } else if (m->scaling_query) {
     scaling_query_kernel<<<GET_BLOCKS(parallelism),
                            min(CUDA_NUM_THREADS, parallelism),
@@ -345,7 +345,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                                      m->num_q_heads,
                                      m->qProjSize,
                                      m->scaling_factor,
-                                     m->hidden_size);
+                                     m->local_hidden_size);
   }
 
   //   checkCUDA(cudaEventCreate(&t_start));
@@ -355,7 +355,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
   // Step 3: apply rotary embedding if needed
   if (*m->apply_rotary_embedding) {
     /*q&k*/
-    parallelism = num_tokens * m->hidden_size;
+    parallelism = num_tokens * m->local_hidden_size;
     apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
                                 min(CUDA_NUM_THREADS, parallelism),
                                 0,
@@ -366,7 +366,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                                           m->kProjSize,
                                           num_tokens,
                                           q_array_size,
-                                          m->hidden_size);
+                                          m->local_hidden_size);
   }
   //   checkCUDA(cudaEventRecord(t_end, stream));
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -438,7 +438,7 @@ void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
                       cudaStream_t stream) {
   // update the kv cache, compact the q array
   int num_new_tokens = bc->num_active_tokens();
-  int parallelism = m->hidden_size * num_new_tokens;
+  int parallelism = m->local_hidden_size * num_new_tokens;
   int const max_num_pages =
       (BatchConfig::max_sequence_length() +
        BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
@@ -452,7 +452,7 @@ void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
                                       m->token_infos,
                                       m->request_infos,
                                       max_num_pages,
-                                      m->hidden_size,
+                                      m->local_hidden_size,
                                       num_new_tokens);
 }
 

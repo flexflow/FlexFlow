@@ -256,7 +256,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
   tree_search_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
-  //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
+  //   int size = m->local_hidden_size * BatchConfig::max_tokens_per_batch();
   //   float *temp_output = new float[size];
   //   cudaDeviceSynchronize();
   //   cudaMemcpy(
@@ -266,8 +266,8 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
   //   printf("Output: ");
   //   for (int i = 0; i < bc->num_tokens; ++i) {
   //     float temp = 0;
-  //     for (int j = 0; j < m->hidden_size; ++j) {
-  //       temp += temp_output[i * m->hidden_size + j];
+  //     for (int j = 0; j < m->local_hidden_size; ++j) {
+  //       temp += temp_output[i * m->local_hidden_size + j];
   //     }
   //     printf("%.6f ", temp);
   //   }
