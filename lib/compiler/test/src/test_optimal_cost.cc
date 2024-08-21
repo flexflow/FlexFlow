@@ -6,7 +6,7 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("optimal_cost_0") {
+  TEST_CASE("optimal_cost does not crash on minimal inputs") {
     ParallelComputationGraphBuilder builder;
 
     ParallelTensorShape input_shape =

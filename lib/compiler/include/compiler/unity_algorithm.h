@@ -4,18 +4,12 @@
 #include "compiler/graph_optimize_result.dtg.h"
 #include "compiler/machine_mapping.h"
 #include "cost_estimator.h"
+#include "optimizer_config.dtg.h"
 #include "pcg/computation_graph.h"
 #include "pcg/machine_specification.dtg.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 
 namespace FlexFlow {
-
-struct OptimizerConfig {
-  float alpha;
-  int budget;
-  float threshold;
-  int max_num_ops;
-};
 
 GraphOptimizeResult graph_optimize(
     ParallelComputationGraph &pcg,

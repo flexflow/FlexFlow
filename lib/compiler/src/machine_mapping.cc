@@ -123,24 +123,13 @@ GraphSplit
                     get_nodes(post_decomposition)};
 }
 
-float estimate_cost(
+float base_case_estimate_cost(
     SubParallelComputationGraph const &g,
     CostEstimator const &estimator,
     std::unordered_map<OpenDataflowValue, MachineView> const &machine_views) {
-  // TODO: Consider parallelism
-  float cost = 1.;
-  // for (Node const &node : get_nodes(g.raw_graph)) {
-  //   std::vector<OpenDataflowEdge> incoming_edges =
-  //       get_incoming_edges(g.raw_graph, node);
-  //   std::vector<ParallelTensorShape> inputs =
-  //       transform(incoming_edges,
-  //                 [&](OpenDataflowEdge const &input_edge) {
-  //                   return g.raw_graph.at(input_edge).get_shape();
-  //                 });
-  //   cost += estimator.estimate_cost(
-  //       g.raw_graph.at(node).op_attrs, inputs,
-  //       device_mapping.machine_views.at(node));
-  // }
+  // In the base case, all the operators are executed sequentially.
+  float cost = 0.1;
+  // TODO(@wmdi)
   return cost;
 }
 
@@ -218,13 +207,12 @@ struct MachineMappingSearcher {
     std::unordered_set<DataflowOutput> split_outputs;
     for (auto const &[value, _] :
          subgraph_res2.full_graph_values_to_subgraph_inputs) {
-      assert(value.has<DataflowOutput>());
       split_outputs.insert(value.get<DataflowOutput>());
     }
 
     for (std::unordered_map<DataflowOutput, MachineView> const
              &split_machine_views :
-         enumerate_machine_views(split_outputs, resource)) {
+         allowed_machine_mappings(split_outputs, resource)) {
       std::unordered_map<OpenDataflowValue, MachineView> fixed_machine_views1 =
           restrict_keys(fixed_machine_views,
                         get_open_dataflow_values(subgraph_res1.graph));
@@ -240,14 +228,11 @@ struct MachineMappingSearcher {
         fixed_machine_views2.emplace(OpenDataflowValue(split_input), mv);
       }
 
-      minimize_runtime(optimal_result,
-                       OptimalCostResult::sequential_combine(
-                           std::visit(OptimalCostFunctor(
-                                          this, resource, fixed_machine_views1),
-                                      decompn1.raw_variant),
-                           std::visit(OptimalCostFunctor(
-                                          this, resource, fixed_machine_views2),
-                                      decompn2.raw_variant)));
+      minimize_runtime(
+          optimal_result,
+          OptimalCostResult::sequential_combine(
+              optimal_cost(decompn1, resource, fixed_machine_views1),
+              optimal_cost(decompn2, resource, fixed_machine_views2)));
     }
 
     return optimal_result;
@@ -275,24 +260,29 @@ struct MachineMappingSearcher {
                       get_open_dataflow_values(subgraph_res2.graph));
 
     OptimalCostResult optimal_result = OptimalCostResult::sequential_combine(
-        std::visit(OptimalCostFunctor(this, resource, fixed_machine_views1),
-                   decompn1.raw_variant),
-        std::visit(OptimalCostFunctor(this, resource, fixed_machine_views1),
-                   decompn2.raw_variant));
+        optimal_cost(decompn1, resource, fixed_machine_views1),
+        optimal_cost(decompn2, resource, fixed_machine_views2));
 
     for (auto const &resource_split : get_resource_split(resource)) {
       minimize_runtime(
           optimal_result,
           OptimalCostResult::parallel_combine(
-              std::visit(OptimalCostFunctor(
-                             this, resource_split.first, fixed_machine_views1),
-                         decompn1.raw_variant),
-              std::visit(OptimalCostFunctor(
-                             this, resource_split.second, fixed_machine_views1),
-                         decompn2.raw_variant)));
+              optimal_cost(
+                  decompn1, resource_split.first, fixed_machine_views1),
+              optimal_cost(
+                  decompn2, resource_split.second, fixed_machine_views2)));
     }
 
     return optimal_result;
+  }
+
+  OptimalCostResult
+      optimal_cost(SerialParallelDecomposition const &decompn,
+                   MachineSpecification const &resource,
+                   std::unordered_map<OpenDataflowValue, MachineView> const
+                       &fixed_machine_views) {
+    return std::visit(OptimalCostFunctor(this, resource, fixed_machine_views),
+                      decompn.raw_variant);
   }
 
   OptimalCostResult
@@ -310,12 +300,12 @@ struct MachineMappingSearcher {
                       fixed_machine_views.at(any_output)));
       MachineView mv = fixed_machine_views.at(any_output);
       MachineMapping mv_map{{{node, mv}}};
-      return {estimate_cost(subgraph, cost_estimator, fixed_machine_views),
+      return {base_case_estimate_cost(subgraph, cost_estimator, fixed_machine_views),
               mv_map};
     } else {
       OptimalCostResult optimal_result = OptimalCostResult::infinity();
       for (std::unordered_map<Node, MachineView> node_machine_views :
-           enumerate_machine_views({node}, resource)) {
+           allowed_machine_mappings({node}, resource)) {
         MachineMapping mv_map{{{node, node_machine_views.at(node)}}};
         std::unordered_map<OpenDataflowValue, MachineView> machine_views =
             fixed_machine_views;
@@ -324,21 +314,21 @@ struct MachineMappingSearcher {
         }
         minimize_runtime(
             optimal_result,
-            {estimate_cost(subgraph, cost_estimator, machine_views), mv_map});
+            {base_case_estimate_cost(subgraph, cost_estimator, machine_views), mv_map});
       }
       return optimal_result;
     }
   }
 
   std::vector<std::unordered_map<Node, MachineView>>
-      enumerate_machine_views(std::unordered_set<Node> const &nodes,
-                              MachineSpecification const &resource) {
+      allowed_machine_mappings(std::unordered_set<Node> const &nodes,
+                               MachineSpecification const &resource) {
     if (nodes.empty()) {
       return {{}};
     }
     Node node = get_first(nodes);
     std::vector<std::unordered_map<Node, MachineView>> partial_enumeration =
-        enumerate_machine_views(set_minus(nodes, {node}), resource);
+        allowed_machine_mappings(set_minus(nodes, {node}), resource);
     std::unordered_set<MachineView> allowed_machine_views_for_node =
         this->allowed_machine_views(pcg.raw_graph.at(node), resource);
     std::vector<std::unordered_map<Node, MachineView>> enumeration;
@@ -353,15 +343,15 @@ struct MachineMappingSearcher {
   }
 
   std::vector<std::unordered_map<DataflowOutput, MachineView>>
-      enumerate_machine_views(std::unordered_set<DataflowOutput> const &values,
-                              MachineSpecification const &resource) {
+      allowed_machine_mappings(std::unordered_set<DataflowOutput> const &values,
+                               MachineSpecification const &resource) {
     std::unordered_set<Node> nodes;
     for (DataflowOutput const &v : values) {
       nodes.insert(v.node);
     }
 
     std::vector<std::unordered_map<Node, MachineView>> node_enumeration =
-        enumerate_machine_views(nodes, resource);
+        allowed_machine_mappings(nodes, resource);
     std::vector<std::unordered_map<DataflowOutput, MachineView>> enumeration;
 
     for (std::unordered_map<Node, MachineView> _node_enumeration :
