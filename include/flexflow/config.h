@@ -81,7 +81,8 @@ struct FFHandler {
   size_t batch_config_metadata_size =
       sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
       sizeof(BatchConfig::request_available) + sizeof(BatchConfig::causalMask) +
-      sizeof(BatchConfig::committed_tokens);
+      sizeof(BatchConfig::committed_tokens) + sizeof(int);
+
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
   DataType quantization_type;

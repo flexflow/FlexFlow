@@ -74,7 +74,6 @@ public:
     // TODO: might need to add more fields here
     int32_t num_kv_pages; //number of kv pages used
     int32_t kv_last_page_len;
-    std::vector<int32_t> page_indices; //the indices for each page
   };
 
   struct PerTokenInfo {
@@ -87,6 +86,8 @@ public:
     int abs_depth_in_request = -1;
     int request_index = -1;
   };
+
+  std::vector<int32_t> page_indices; //the indices for each page
 
   struct CommittedTokensInfo {
     int index_in_kv_cache = -1; // the index in the temporary key-value cache
@@ -156,6 +157,7 @@ public:
 
   BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
+  std::vector<int32_t> requestsIndices[MAX_NUM_REQUESTS]; //for kv cache
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
   CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
   bool request_available[MAX_NUM_REQUESTS];

@@ -215,7 +215,9 @@ int PageManager::lookup_index(const RequestGuid& request_guid, int logical_index
 PageManager *PageManager::get_page_manager() {
   if (page_manager_singleton == nullptr) {
     // FIXME: These values are hardcoded for now
-    page_manager_singleton = new PageManager(kPagesize, 10000);
+    page_manager_singleton = new PageManager(kPagesize, (BatchConfig::max_spec_tree_token_num() +
+        BatchConfig::max_sequence_length() + kPagesize - 1) /
+        kPagesize * BatchConfig::max_requests_per_batch());
   }
   return page_manager_singleton;
 }
