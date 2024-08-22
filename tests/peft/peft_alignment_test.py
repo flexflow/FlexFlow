@@ -679,7 +679,7 @@ class LllamaAlignmentTest(AlignmentTest):
             hf_finetuned_weight = get_hf_tensor(hf_finetuned_weight_name)
             torch.testing.assert_close(hf_gradient, (hf_original_weight-hf_finetuned_weight)/learning_rate, rtol=1.3e-6, atol=1e-5)
             ff_gradient_name = convert_hf_filename_to_ff(hf_gradient_name)
-            ff_gradient = get_ff_tensor(ff_gradient_name, hf_gradient.shape, tp_type=TPType.TO_REDUCE)
+            ff_gradient = get_ff_tensor(ff_gradient_name, hf_gradient.shape, tp_type=TPType.REPLICATE)
             compare(hf_gradient, ff_gradient, label=f"LoRA_B {i} gradient")
             # ff_out_gradient_name = f"layers.{i}.layers.{i}.mlp.down_proj.lora.output_gradient_0"
             # ff_fwd_folder = os.path.join(ff_path, "fwd", f"step_{step_idx}", "shard_0")
@@ -708,7 +708,7 @@ class LllamaAlignmentTest(AlignmentTest):
             hf_finetuned_weight = get_hf_tensor(hf_finetuned_weight_name)
             torch.testing.assert_close(hf_gradient, (hf_original_weight-hf_finetuned_weight)/learning_rate, rtol=1.3e-6, atol=1e-5)
             ff_gradient_name = convert_hf_filename_to_ff(hf_gradient_name)
-            ff_gradient = get_ff_tensor(ff_gradient_name, hf_gradient.shape, tp_type=TPType.TO_REDUCE)
+            ff_gradient = get_ff_tensor(ff_gradient_name, hf_gradient.shape, tp_type=TPType.PARTITION)
             compare(hf_gradient, ff_gradient, label=f"LoRA_A {i} gradient")
 
 parser = argparse.ArgumentParser(description='Argument Parser Example') 
