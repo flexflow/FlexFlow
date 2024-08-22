@@ -19,9 +19,9 @@ struct LocalSlotsBacking {
 public:
   void add_per_device_op_state(layer_guid_t const &,
                                DeviceSpecificDeviceStates const &);
-  void allocate_tensors(layer_guid_t const &,
-                        ComputationGraph const &,
-                        Allocator &);
+  void allocate_outgoing_tensors(layer_guid_t const &,
+                                 ComputationGraph const &,
+                                 Allocator &);
   TensorSlotsBacking construct_tensor_slots_backing(OpTaskBinding const &,
                                                     layer_guid_t const &) const;
   ArgSlotsBacking construct_arg_slots_backing(OpTaskBinding const &,

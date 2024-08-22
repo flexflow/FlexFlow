@@ -10,6 +10,22 @@ bool InitTaskImplFunction::operator!=(InitTaskImplFunction const &other) const {
   return this->function_ptr != other.function_ptr;
 }
 
+bool InitTaskImplFunction::operator<(InitTaskImplFunction const &other) const {
+  return this->function_ptr < other.function_ptr;
+}
+
+bool InitTaskImplFunction::operator>(InitTaskImplFunction const &other) const {
+  return this->function_ptr > other.function_ptr;
+}
+
+bool InitTaskImplFunction::operator<=(InitTaskImplFunction const &other) const {
+  return this->function_ptr <= other.function_ptr;
+}
+
+bool InitTaskImplFunction::operator>=(InitTaskImplFunction const &other) const {
+  return this->function_ptr >= other.function_ptr;
+}
+
 std::string format_as(InitTaskImplFunction const &x) {
   std::ostringstream oss;
   oss << "<InitTaskImplFunction";

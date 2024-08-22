@@ -15,7 +15,7 @@ void LocalSlotsBacking::add_per_device_op_state(
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
-void LocalSlotsBacking::allocate_tensors(
+void LocalSlotsBacking::allocate_outgoing_tensors(
     layer_guid_t const &layer_guid,
     ComputationGraph const &computation_graph,
     Allocator &allocator) {
@@ -83,7 +83,6 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     switch (tensor_spec.role) {
       case TensorRole::INPUT:
       case TensorRole::WEIGHT:
-
         assert(contains_key(this->input_tensor_slots, op_guid));
         tensor_guids = this->input_tensor_slots.at(op_guid);
         break;

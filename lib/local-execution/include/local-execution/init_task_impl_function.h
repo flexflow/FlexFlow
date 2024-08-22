@@ -12,6 +12,10 @@ struct InitTaskImplFunction {
 
   bool operator==(InitTaskImplFunction const &) const;
   bool operator!=(InitTaskImplFunction const &) const;
+  bool operator<(InitTaskImplFunction const &) const;
+  bool operator>(InitTaskImplFunction const &) const;
+  bool operator<=(InitTaskImplFunction const &) const;
+  bool operator>=(InitTaskImplFunction const &) const;
 };
 
 std::string format_as(InitTaskImplFunction const &x);

@@ -20,9 +20,6 @@ struct LocalTrainingBacking {
   PerLayerElapsedTime execute_backward();
   void execute_update();
 
-  TaskRegistry const &get_task_registry() const;
-  LocalSlotsBacking const &get_local_slots_backing() const;
-
   TaskArgumentAccessor get_task_arg_accessor(OpTaskInvocation const &,
                                              layer_guid_t const &) const;
 

@@ -10,17 +10,19 @@ LocalTrainingBacking::LocalTrainingBacking(
     TensorBackingMap const &tensor_backing_mapping,
     RuntimeArgConfig const &runtime_arg_config)
     : allocator(allocator), computation_graph(computation_graph),
-      local_slots_backing(tensor_backing_mapping, runtime_arg_config) {
+      local_slots_backing(tensor_backing_mapping, runtime_arg_config),
+      task_registry(TaskRegistry{{}, {}, {}, {}}) {
+
   for (layer_guid_t const &node : topological_ordering(computation_graph)) {
     ComputationGraphOpAttrs attrs =
         get_layer_attrs(computation_graph, node).attrs;
 
     // allocate outgoing tensors
-    this->local_slots_backing.allocate_tensors(
+    this->local_slots_backing.allocate_outgoing_tensors(
         node, computation_graph, this->allocator);
 
     // register tasks
-    this->task_registry.register_tasks_for_layer(node, attrs);
+    register_tasks_for_layer(this->task_registry, node, attrs);
   }
 }
 
@@ -115,14 +117,6 @@ TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
 
   return TaskArgumentAccessor::create<LocalTaskArgumentAccessor>(
       this->allocator, tensor_slots_backing, arg_slots_backing);
-}
-
-TaskRegistry const &LocalTrainingBacking::get_task_registry() const {
-  return this->task_registry;
-}
-
-LocalSlotsBacking const &LocalTrainingBacking::get_local_slots_backing() const {
-  return this->local_slots_backing;
 }
 
 } // namespace FlexFlow

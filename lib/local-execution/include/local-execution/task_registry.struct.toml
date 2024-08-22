@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "TaskRegistry"
+features = [
+  "eq",
+  "fmt",
+]
+
+includes = [
+  "local-execution/task_signature_impl.h",
+  "local-execution/task_id_t.dtg.h",
+  "pcg/layer_guid_t.dtg.h",
+]
+
+[[fields]]
+name = "init_task_ids"
+type = "std::unordered_map<::FlexFlow::layer_guid_t, std::optional<::FlexFlow::task_id_t>>"
+
+[[fields]]
+name = "forward_task_ids"
+type = "std::unordered_map<::FlexFlow::layer_guid_t, std::optional<::FlexFlow::task_id_t>>"
+
+[[fields]]
+name = "backward_task_ids"
+type = "std::unordered_map<::FlexFlow::layer_guid_t, std::optional<::FlexFlow::task_id_t>>"
+
+[[fields]]
+name = "task_mapping"
+type = "std::unordered_map<::FlexFlow::task_id_t, ::FlexFlow::TaskSignatureAndImpl>"

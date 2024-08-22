@@ -3,7 +3,8 @@ name = "TaskImplFunction"
 features = [
   "eq",
   "fmt",
-  "hash"
+  "hash",
+  "ord"
 ]
 
 includes = [
