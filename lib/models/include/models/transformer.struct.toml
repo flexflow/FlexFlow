@@ -37,3 +37,7 @@ type = "size_t"
 [[fields]]
 name = "layer_norm_eps"
 type = "float"
+
+[[fields]]
+name = "vocab_size"
+type = "size_t"

@@ -7,7 +7,7 @@ using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_transformer_computation_graph") {
     TransformerConfig config =
-        TransformerConfig{1024, 1024, 16, 12, 512, 64, 1e-05};
+        TransformerConfig{1024, 1024, 16, 12, 512, 64, 1e-05, 10};
 
     ComputationGraph result = get_transformer_computation_graph(config);
 

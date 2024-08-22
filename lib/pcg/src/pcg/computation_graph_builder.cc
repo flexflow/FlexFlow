@@ -574,19 +574,19 @@ tensor_guid_t ComputationGraphBuilder::dense(
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, get_shape(input)));
 
+  std::vector<FlexFlow::TensorAttrs> weights;
   TensorShape kernel_shape =
       throw_if_unexpected(get_kernel_shape(attrs, get_shape(input)));
-  TensorAttrs kernel_attrs =
-      make_weight_attrs(kernel_shape, kernel_initializer);
+  weights.push_back(make_weight_attrs(kernel_shape, kernel_initializer));
 
-  TensorShape bias_shape =
-      throw_if_unexpected(get_bias_shape(attrs, get_shape(input)));
-  TensorAttrs bias_attrs = make_weight_attrs(bias_shape, bias_initializer);
+  if (use_bias) {
+    TensorShape bias_shape =
+        throw_if_unexpected(get_bias_shape(attrs, get_shape(input)));
+    weights.push_back(make_weight_attrs(bias_shape, bias_initializer));
+  }
 
-  return this->add_layer(layer,
-                         std::vector<tensor_guid_t>{input},
-                         {kernel_attrs, bias_attrs},
-                         output_shape);
+  return this->add_layer(
+      layer, std::vector<tensor_guid_t>{input}, weights, output_shape);
 }
 
 tensor_guid_t ComputationGraphBuilder::layer_norm(
