@@ -178,11 +178,19 @@ int PageManager::get_num_free_blocks() const {
     return gpu_allocator.get_num_free_blocks();
 }
 
-std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request_guid) const {
-    std::vector<int> indices;
+std::vector<int32_t> PageManager::get_block_table_indices(const RequestGuid& request_guid) const {
+    std::vector<int32_t> indices;
+    try {
     const auto& block_table = block_tables.at(request_guid);
     for (const auto& block : block_table) {
+        printf("get block indice block number is: %d\n", block.block_number);
         indices.push_back(block.block_number);
+    }
+    } catch (const std::out_of_range& e) {
+        std::cerr << "Request GUID not found in block tables: " << e.what() << std::endl;
+        // Handle error appropriately
+        std::cout << "request ID is: " << request_guid << std::endl;
+        exit(1);
     }
     return indices;
 }

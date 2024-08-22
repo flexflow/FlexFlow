@@ -98,8 +98,11 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       indices_lens += (kv_len + kPagesize - 1) / kPagesize;
       q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
       kv_indptr_h[indptr_idx + 1] = batch_config->requestsInfo[req_idx].num_kv_pages;
+      std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
       for (int i = indices_offset; i < indices_lens; i++) {
-        kv_indices_h[i] = batch_config->requestsInfo[req_idx].page_indices[i - indices_offset];
+        kv_indices_h[i] = kv_indices[i - indices_offset];
+        printf("indices offset = %d, indices_lens = %d\n", indices_offset, indices_lens);
+        printf("kv_indices_h[%d] = %d\n", i, kv_indices_h[i]);
       }
       qk_indptr_h[indptr_idx + 1] = qk_lens;
       kv_last_page_len_h[indptr_idx] = batch_config->requestsInfo[req_idx].kv_last_page_len;
@@ -464,28 +467,28 @@ void RequestManager::load_batch_config_task(
 
         int parallelism = batch_size;
 
-        // prepare_inference_params_kernel_h(batch_config,
-        //                                   pm,
-        //                                   handle,
-        //                                   stream,
-        //                                   max_num_pages,
-        //                                   q_indptr_h,
-        //                                   kv_indptr_h,
-        //                                   kv_indices_h,
-        //                                   kv_last_page_len_h,
-        //                                   qk_indptr_h);
-        prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
-                                          min(CUDA_NUM_THREADS, parallelism),
-                                          0,
-                                          stream>>>(batch_size,
-                                                    request_infos,
-                                                    request_available,
-                                                    max_num_pages,
-                                                    handle.tree_verify_attention_metadata->q_indptr,
-                                                    handle.tree_verify_attention_metadata->kv_indptr,
-                                                    handle.tree_verify_attention_metadata->kv_indices,
-                                                    handle.tree_verify_attention_metadata->kv_last_page_len,
-                                                    handle.tree_verify_attention_metadata->qk_indptr);
+        prepare_inference_params_kernel_h(batch_config,
+                                          pm,
+                                          handle,
+                                          stream,
+                                          max_num_pages,
+                                          q_indptr_h,
+                                          kv_indptr_h,
+                                          kv_indices_h,
+                                          kv_last_page_len_h,
+                                          qk_indptr_h);
+        // prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
+        //                                   min(CUDA_NUM_THREADS, parallelism),
+        //                                   0,
+        //                                   stream>>>(batch_size,
+        //                                             request_infos,
+        //                                             request_available,
+        //                                             max_num_pages,
+        //                                             handle.tree_verify_attention_metadata->q_indptr,
+        //                                             handle.tree_verify_attention_metadata->kv_indptr,
+        //                                             handle.tree_verify_attention_metadata->kv_indices,
+        //                                             handle.tree_verify_attention_metadata->kv_last_page_len,
+        //                                             handle.tree_verify_attention_metadata->qk_indptr);
 
         // Update gpu-side custom mask referring from CaualMask
         if (!batch_config->prompt_phase) {

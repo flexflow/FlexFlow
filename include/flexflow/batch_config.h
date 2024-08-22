@@ -74,6 +74,7 @@ public:
     // TODO: might need to add more fields here
     int32_t num_kv_pages; //number of kv pages used
     int32_t kv_last_page_len;
+    RequestGuid request_guid;
   };
 
   struct PerTokenInfo {

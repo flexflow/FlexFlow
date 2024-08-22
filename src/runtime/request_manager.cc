@@ -920,8 +920,10 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     // bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
     bc.requestsIndices[request_index] = page_manager->get_block_table_indices(guid);
     printf("page_indices size: %d\n", bc.requestsIndices[request_index].size());
+    printf("first page index: %d\n", bc.requestsIndices[request_index][0]);
     // update the num kv pages
     bc.requestsInfo[request_index].num_kv_pages = bc.requestsIndices[request_index].size();
+    bc.requestsInfo[request_index].request_guid = guid;
     printf("after num_kv_pages\n");
   }
 
@@ -1359,6 +1361,8 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     new_bc.requestsIndices[request_index] = page_manager->get_block_table_indices(guid);
     // update the num kv pages
     new_bc.requestsInfo[request_index].num_kv_pages = new_bc.requestsIndices[request_index].size();
+
+    new_bc.requestsInfo[request_index].request_guid = guid;
     
     new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;
 

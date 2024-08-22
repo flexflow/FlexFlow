@@ -109,7 +109,7 @@ public:
 
     int get_num_free_blocks() const;
 
-    std::vector<int> get_block_table_indices(const RequestGuid& request_guid) const;
+    std::vector<int32_t> get_block_table_indices(const RequestGuid& request_guid) const;
 
     int get_num_slots_in_block(const RequestGuid& request_guid);
 
