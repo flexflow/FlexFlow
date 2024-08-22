@@ -11,6 +11,7 @@ struct FwdBwdTaskImplFunction {
 
   bool operator==(FwdBwdTaskImplFunction const &) const;
   bool operator!=(FwdBwdTaskImplFunction const &) const;
+  bool operator<(FwdBwdTaskImplFunction const &) const;
 };
 
 std::string format_as(FwdBwdTaskImplFunction const &x);

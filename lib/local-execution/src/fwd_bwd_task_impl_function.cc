@@ -12,10 +12,15 @@ bool FwdBwdTaskImplFunction::operator!=(
   return this->function_ptr != other.function_ptr;
 }
 
+bool FwdBwdTaskImplFunction::operator<(
+    FwdBwdTaskImplFunction const &other) const {
+  return this->function_ptr < other.function_ptr;
+}
+
 std::string format_as(FwdBwdTaskImplFunction const &x) {
   std::ostringstream oss;
   oss << "<FwdBwdTaskImplFunction";
-  oss << " function_ptr=" << (void *)x.function_ptr;
+  oss << " function_ptr=" << reinterpret_cast<void *>(x.function_ptr);
   oss << ">";
   return oss.str();
 }

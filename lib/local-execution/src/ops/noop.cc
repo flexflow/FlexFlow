@@ -14,7 +14,6 @@
  */
 
 #include "noop.h"
-#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 

@@ -13,7 +13,7 @@ bool InitTaskImplFunction::operator!=(InitTaskImplFunction const &other) const {
 std::string format_as(InitTaskImplFunction const &x) {
   std::ostringstream oss;
   oss << "<InitTaskImplFunction";
-  oss << " function_ptr=" << (void *)x.function_ptr;
+  oss << " function_ptr=" << reinterpret_cast<void *>(x.function_ptr);
   oss << ">";
   return oss.str();
 }
