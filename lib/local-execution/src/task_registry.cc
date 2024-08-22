@@ -1,4 +1,5 @@
 #include "local-execution/task_registry.h"
+#include "local-execution/task_signature_impl.h"
 
 namespace FlexFlow {
 

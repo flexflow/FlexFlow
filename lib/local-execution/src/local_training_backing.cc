@@ -1,4 +1,5 @@
 #include "local-execution/local_training_backing.h"
+#include "local-execution/task_signature_impl.h"
 #include "utils/containers/reversed.h"
 #include "utils/exception.h"
 

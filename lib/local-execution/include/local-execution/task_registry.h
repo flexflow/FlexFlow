@@ -3,8 +3,7 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_REGISTRY_H
 
 #include "local-execution/task_registry.dtg.h"
-#include "local-execution/task_signature_impl.h"
-#include "op-attrs/operator_attrs.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 
 namespace FlexFlow {
 
