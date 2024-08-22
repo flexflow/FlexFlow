@@ -11,11 +11,6 @@ includes = [
   "local-execution/op_task_signature.h",
 ]
 
-src_includes = [
-  "utils/hash/unordered_map.h",
-  "utils/hash/unordered_set.h",
-]
-
 [[fields]]
 name = "impl_function"
 type = "::FlexFlow::TaskImplFunction"

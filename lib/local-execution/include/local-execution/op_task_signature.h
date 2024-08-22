@@ -8,6 +8,8 @@
 #include "local-execution/slot_id_t.dtg.h"
 #include "local-execution/slot_type.dtg.h"
 #include "local-execution/task_id_t.dtg.h"
+#include "utils/hash/unordered_map.h"
+#include "utils/hash/unordered_set.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 
