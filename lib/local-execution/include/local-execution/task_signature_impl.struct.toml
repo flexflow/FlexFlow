@@ -3,11 +3,19 @@ name = "TaskSignatureAndImpl"
 features = [
   "eq",
   "fmt",
+  "hash"
 ]
 
 includes = [
   "local-execution/task_impl_function.dtg.h",
   "local-execution/op_task_signature.h",
+]
+
+src_includes = [
+  "utils/hash/unordered_map.h",
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_map.h",
+  "utils/fmt/unordered_set.h",
 ]
 
 [[fields]]

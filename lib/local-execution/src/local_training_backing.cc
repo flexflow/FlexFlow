@@ -11,7 +11,7 @@ LocalTrainingBacking::LocalTrainingBacking(
     RuntimeArgConfig const &runtime_arg_config)
     : allocator(allocator), computation_graph(computation_graph),
       local_slots_backing(tensor_backing_mapping, runtime_arg_config),
-      task_registry(TaskRegistry{{}, {}, {}, {}}) {
+      task_registry(empty_task_registry()) {
 
   for (layer_guid_t const &node : topological_ordering(computation_graph)) {
     ComputationGraphOpAttrs attrs =

@@ -3,12 +3,18 @@ name = "TaskRegistry"
 features = [
   "eq",
   "fmt",
+  "hash"
 ]
 
 includes = [
-  "local-execution/task_signature_impl.h",
+  "local-execution/task_signature_impl.dtg.h",
   "local-execution/task_id_t.dtg.h",
   "pcg/layer_guid_t.dtg.h",
+]
+
+src_includes = [
+  "utils/hash/unordered_map.h",
+  "utils/fmt/unordered_map.h",
 ]
 
 [[fields]]

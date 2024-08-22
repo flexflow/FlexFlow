@@ -2,6 +2,10 @@
 
 namespace FlexFlow {
 
+TaskRegistry empty_task_registry() {
+  return TaskRegistry{{}, {}, {}, {}};
+}
+
 void register_tasks_for_layer(TaskRegistry &task_registry,
                               layer_guid_t const &op_id,
                               ComputationGraphOpAttrs const &attrs) {

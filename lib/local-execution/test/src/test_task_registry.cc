@@ -11,7 +11,7 @@ namespace FlexFlow {
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Task Registry") {
-    TaskRegistry task_registry = TaskRegistry{{}, {}, {}, {}};
+    TaskRegistry task_registry = empty_task_registry();
 
     layer_guid_t layer_guid = layer_guid_t{Node{0}};
     int embed_dim = 32;
@@ -96,7 +96,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("equality") {
-      TaskRegistry other_task_registry = TaskRegistry{{}, {}, {}, {}};
+      TaskRegistry other_task_registry = empty_task_registry();
       SUBCASE("different attrs is still equal") {
         int embed_dim = 100;
         ComputationGraphOpAttrs other_attrs =
