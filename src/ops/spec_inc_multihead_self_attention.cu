@@ -79,7 +79,7 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
   //   }
 
   half *q = static_cast<half *>(m->queryTmp),
-       *kv = static_cast<half *>(m->keyCache),
+       *kv = static_cast<half *>(m->kvCache),
        *o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, half, int32_t> paged_kv(
       num_kv_heads,

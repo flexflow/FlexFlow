@@ -113,7 +113,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   commit_tokens_kernel<<<GET_BLOCKS(parallelism),
                          min(CUDA_NUM_THREADS, parallelism),
                          0,
-                         stream>>>(static_cast<half *>(m->keyCache),
+                         stream>>>(static_cast<half *>(m->kvCache),
                                    m->committed_token_infos,
                                    m->request_available,
                                    num_requests,
@@ -165,7 +165,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   //   }
 
   half *q = static_cast<half *>(m->queryTmp),
-       *kv = static_cast<half *>(m->keyCache),
+       *kv = static_cast<half *>(m->kvCache),
        *o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, half, int32_t> paged_kv(
       num_kv_heads,

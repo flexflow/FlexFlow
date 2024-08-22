@@ -81,7 +81,7 @@ void incr_attention(IncMultiHeadSelfAttentionMeta *m,
   //   }
 
   half *q = static_cast<half *>(m->queryTmp),
-       *kv = static_cast<half *>(m->keyCache),
+       *kv = static_cast<half *>(m->kvCache),
        *o = static_cast<half *>(m->outputTmp);
   paged_kv_t<PageStorage::kIndices, half, int32_t> paged_kv(
       num_kv_heads,
@@ -585,10 +585,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       queryTmp = gpu_mem_allocator.allocate_instance_untyped(query_tmp_size *
                                                              size_of_dt);
     }
-    keyCache = gpu_mem_allocator.allocate_instance_untyped(
+    kvCache = gpu_mem_allocator.allocate_instance_untyped(
         (key_cache_size + value_cache_size) * size_of_dt);
-    valueCache = static_cast<void *>(static_cast<char *>(keyCache) +
-                                     key_cache_size * size_of_dt);
     outputTmp = gpu_mem_allocator.allocate_instance<half>(output_tmp_size);
 
     token_infos =
