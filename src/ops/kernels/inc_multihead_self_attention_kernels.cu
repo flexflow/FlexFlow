@@ -407,9 +407,9 @@ __global__ void
            to_v_idx = get_v_entry_offset(
                req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim);
     // key and value cache should be stored interleaved
-    int const stride = num_q_heads / num_kv_heads; // temporary hard code
-    int const kv_offset = offset / head_dim * stride * head_dim +
-                          offset % head_dim; // temporary hard code
+    int const stride = num_q_heads / num_kv_heads;
+    int const kv_offset =
+        offset / head_dim * stride * head_dim + offset % head_dim;
     kCache_ptr[to_k_idx + offset] = static_cast<half>(
         devQKVProjArray[from_idx + q_hidden_size + kv_offset]);
     kCache_ptr[to_v_idx + offset] =
