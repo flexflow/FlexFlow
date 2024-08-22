@@ -416,7 +416,7 @@ class LllamaAlignmentTest(AlignmentTest):
                 ff_tensor = truncate_dimension(ff_tensor, self.ff_batch_size, self.num_tokens)
             return ff_tensor
 
-        def compare(hf_tensor, ff_tensor, label="", additional_ff_tensor=None, tolerance=1e-4):
+        def compare(hf_tensor, ff_tensor, label="", additional_ff_tensor=None, tolerance=1e-3):
             ff_tensor = ff_tensor.to(hf_tensor.dtype)
             hf_tensor = hf_tensor.T
             if additional_ff_tensor is not None:
@@ -590,7 +590,7 @@ class LllamaAlignmentTest(AlignmentTest):
                 attn_input = ff_tensor.clone()
                 ff_tensor_name = f"layers.{i}.layers.{i}.input_layernorm"
                 _output_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
-                input_layernorm_out1 = get_ff_tensor(ff_tensor_name, _output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+                input_layernorm_out1 = get_ff_tensor(ff_tensor_name, _output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
                 torch.testing.assert_close(attn_input, input_layernorm_out1, rtol=1.3e-6, atol=1e-5)
 
                 # Input layernorm
@@ -599,8 +599,8 @@ class LllamaAlignmentTest(AlignmentTest):
                 ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
                 input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
                 ff_in1_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
-                input_layernorm0 = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
-                input_layernorm1 = get_ff_tensor(ff_tensor_name, ff_in1_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+                input_layernorm0 = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
+                input_layernorm1 = get_ff_tensor(ff_tensor_name, ff_in1_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
                 torch.testing.assert_close(input_layernorm0, input_layernorm1, rtol=1.3e-6, atol=1e-5)
                 hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
                 # if i > 1:

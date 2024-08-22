@@ -3467,13 +3467,18 @@ bool FFModel::need_to_add_parallel_identity(int layer_idx) const {
   // argmax/argtopk/sampling
   if (config.computationMode == COMP_MODE_INFERENCE &&
       config.tensor_parallelism_degree > 1 &&
-      ((l->op_type == OP_RESIDUAL_RMS_NORM ||
-        l->op_type == OP_RESIDUAL_LAYERNORM) &&
+      ((l->op_type == OP_RMS_NORM || l->op_type == OP_RESIDUAL_RMS_NORM ||
+        l->op_type == OP_LAYERNORM || l->op_type == OP_RESIDUAL_LAYERNORM) &&
        // there are at least 2 layers before the norm, and at least 1 following
        // the norm
        layer_idx >= 2 && layer_idx < layers.size() - 1 &&
-       // norm is followed by linear layer (lm head)
-       layers[layer_idx + 1]->op_type == OP_LINEAR)) {
+       // norm is followed by linear layer or attention
+       (layers[layer_idx + 1]->op_type == OP_LINEAR ||
+        layers[layer_idx + 1]->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+        layers[layer_idx + 1]->op_type ==
+            OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+        layers[layer_idx + 1]->op_type ==
+            OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION))) {
     return true;
   }
   return false;
@@ -3560,7 +3565,7 @@ void FFModel::create_operators_from_layers() {
         tensors_to_parallel_tensors[l->outputs[i]] = op->outputs[i];
       }
     } else if (need_to_add_parallel_identity(layer_idx)) {
-      assert(op->numOutputs == 2);
+      assert(op->numOutputs == 1 || op->numOutputs == 2);
       size_t transformer_layer_id = op->layer_guid.transformer_layer_id;
       if (transformer_layer_parallel_identity_count.find(
               transformer_layer_id) ==
@@ -3573,22 +3578,35 @@ void FFModel::create_operators_from_layers() {
           std::to_string(
               transformer_layer_parallel_identity_count[transformer_layer_id]));
       transformer_layer_parallel_identity_count[transformer_layer_id]++;
-      ParallelIdentity *parallel_identity =
-          new ParallelIdentity(*this,
-                               op->outputs[1],
-                               op->outputs[1]->num_dims - 1,
-                               parallel_identity_name.c_str());
+      ParallelIdentity *parallel_identity = nullptr;
+      if (op->numOutputs == 1) {
+        parallel_identity =
+            new ParallelIdentity(*this,
+                                 op->outputs[0],
+                                 op->outputs[0]->num_dims - 1,
+                                 parallel_identity_name.c_str());
+      } else if (op->numOutputs == 2) {
+        parallel_identity =
+            new ParallelIdentity(*this,
+                                 op->outputs[1],
+                                 op->outputs[1]->num_dims - 1,
+                                 parallel_identity_name.c_str());
+        // output 0 is taken from the residual rms norm
+        assert(tensors_to_parallel_tensors.find(l->outputs[0]) ==
+               tensors_to_parallel_tensors.end());
+        tensors_to_parallel_tensors[l->outputs[0]] = op->outputs[0];
+      } else {
+        assert(false &&
+               "Op needing ParallelIdentity has unexpected number of outputs");
+      }
       operators.push_back(parallel_identity);
       assert(op->numOutputs == l->numOutputs);
-      // output 0 is taken from the residual rms norm
-      assert(tensors_to_parallel_tensors.find(l->outputs[0]) ==
+      // last output is taken from the parallel identity
+      assert(tensors_to_parallel_tensors.find(l->outputs[op->numOutputs - 1]) ==
              tensors_to_parallel_tensors.end());
-      tensors_to_parallel_tensors[l->outputs[0]] = op->outputs[0];
-      // output 1 is taken from the parallel identity
+      tensors_to_parallel_tensors[l->outputs[l->numOutputs - 1]] =
+          parallel_identity->outputs[0];
       op = parallel_identity;
-      assert(tensors_to_parallel_tensors.find(l->outputs[1]) ==
-             tensors_to_parallel_tensors.end());
-      tensors_to_parallel_tensors[l->outputs[1]] = op->outputs[0];
     } else {
       assert(op->numOutputs == l->numOutputs);
       for (int i = 0; i < op->numOutputs; i++) {
