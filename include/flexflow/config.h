@@ -159,7 +159,7 @@ public:
 
     mem_size_ = sizeof(int32_t) * indices_size +
                 sizeof(uint8_t) * custom_mask_size +
-                workspace_size * BatchConfig::max_requests_per_batch();
+                workspace_size;
     return mem_size_;
   }
 

@@ -314,16 +314,10 @@ void RequestManager::load_batch_config_task(
                                             half,
                                             int32_t>(
                 static_cast<void *>(
-                    static_cast<char *>(
-                        handle.incr_attention_metadata->float_workspace) +
-                    handle.incr_attention_metadata->workspace_size *
-                        batch_size),
+                        handle.incr_attention_metadata->float_workspace),
                 handle.incr_attention_metadata->float_workspace_size,
                 static_cast<void *>(
-                    static_cast<char *>(
-                        handle.incr_attention_metadata->int_workspace) +
-                    handle.incr_attention_metadata->workspace_size *
-                        batch_size),
+                        handle.incr_attention_metadata->int_workspace),
                 handle.incr_attention_metadata->int_workspace_size,
                 static_cast<int32_t *>(kv_indptr_h),
                 static_cast<int32_t *>(kv_last_page_len_h),
@@ -347,16 +341,10 @@ void RequestManager::load_batch_config_task(
           handler->SetCUDAStream(stream);
           handler->BeginForward<half, int32_t>(
               static_cast<void *>(
-                  static_cast<char *>(
-                      handle.incr_attention_metadata->float_workspace) +
-                  handle.incr_attention_metadata->workspace_size *
-                      batch_size),
+                      handle.incr_attention_metadata->float_workspace),
               handle.incr_attention_metadata->float_workspace_size,
               static_cast<void *>(
-                  static_cast<char *>(
-                      handle.incr_attention_metadata->int_workspace) +
-                  handle.incr_attention_metadata->workspace_size *
-                      batch_size),
+                      handle.incr_attention_metadata->int_workspace),
               handle.incr_attention_metadata->int_workspace_size,
               static_cast<int32_t *>(q_indptr_h),
               static_cast<int32_t *>(kv_indptr_h),
@@ -501,16 +489,10 @@ void RequestManager::load_batch_config_task(
         handler->SetCUDAStream(stream);
         handler->BeginForward<half, int32_t>(
             static_cast<void *>(
-                static_cast<char *>(
-                    handle.tree_search_attention_metadata->float_workspace) +
-                handle.tree_search_attention_metadata->workspace_size *
-                    batch_size),
+                    handle.tree_search_attention_metadata->float_workspace),
             handle.tree_search_attention_metadata->float_workspace_size,
             static_cast<void *>(
-                static_cast<char *>(
-                    handle.tree_search_attention_metadata->int_workspace) +
-                handle.tree_search_attention_metadata->workspace_size *
-                    batch_size),
+                    handle.tree_search_attention_metadata->int_workspace),
             handle.tree_search_attention_metadata->int_workspace_size,
             static_cast<int32_t *>(q_indptr_h),
             static_cast<int32_t *>(kv_indptr_h),
@@ -673,16 +655,10 @@ void RequestManager::load_batch_config_task(
         handler->SetCUDAStream(stream);
         handler->BeginForward<half, int32_t>(
             static_cast<void *>(
-                static_cast<char *>(
-                    handle.tree_verify_attention_metadata->float_workspace) +
-                handle.tree_verify_attention_metadata->workspace_size *
-                    batch_size),
+                    handle.tree_verify_attention_metadata->float_workspace),
             handle.tree_verify_attention_metadata->float_workspace_size,
             static_cast<void *>(
-                static_cast<char *>(
-                    handle.tree_verify_attention_metadata->int_workspace) +
-                handle.tree_verify_attention_metadata->workspace_size *
-                    batch_size),
+                    handle.tree_verify_attention_metadata->int_workspace),
             handle.tree_verify_attention_metadata->int_workspace_size,
             static_cast<int32_t *>(q_indptr_h),
             static_cast<int32_t *>(kv_indptr_h),
