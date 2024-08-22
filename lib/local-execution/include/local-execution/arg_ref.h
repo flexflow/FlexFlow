@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_ARG_REF_H
 
 #include "kernels/ff_handle.h"
-#include "local-execution/profiling.h"
 // #include "local-execution/serialization.h
 #include "utils/type_index.h"
 #include "utils/visitable.h"
@@ -32,6 +31,14 @@ public:
     return this->type_idx;
   }
 
+  bool operator==(ArgRefSpec const &other) const {
+    return this->tie() == other.tie();
+  }
+
+  bool operator!=(ArgRefSpec const &other) const {
+    return this->tie() != other.tie();
+  }
+
   template <typename T>
   static ArgRefSpec create(ArgRef<LABEL_TYPE, T> const &r) {
     // static_assert(is_serializable<T>::value, "Type must be serializeable");
@@ -46,6 +53,10 @@ private:
   std::type_index type_idx;
   LABEL_TYPE ref_type;
 
+  std::tuple<decltype(type_idx) const &, decltype(ref_type) const &>
+      tie() const {
+    return std::tie(this->type_idx, this->ref_type);
+  }
   friend struct std::hash<ArgRefSpec<LABEL_TYPE>>;
 };
 

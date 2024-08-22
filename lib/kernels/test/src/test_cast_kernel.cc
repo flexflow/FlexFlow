@@ -1,6 +1,5 @@
 #include "doctest/doctest.h"
 #include "kernels/cast_kernels.h"
-#include "kernels/cast_kernels_cpu.h"
 #include "test_utils.h"
 #include <type_traits>
 

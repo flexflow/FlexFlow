@@ -35,13 +35,13 @@ OpTaskInvocation forward(SplitAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {SPLIT_FWD_TASK_ID, binding};
+  return {task_id_t::SPLIT_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(SplitAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {SPLIT_BWD_TASK_ID, binding};
+  return {task_id_t::SPLIT_BWD_TASK_ID, binding};
 }
 
 void calc_block_size(coord_t &num_blocks,
@@ -114,10 +114,10 @@ static std::optional<float>
 }
 
 TaskImplFunction get_split_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_split_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_split_fwd_signature() {
@@ -135,7 +135,7 @@ OpTaskSignature get_split_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(SplitAttrs const &) {
-  return {SPLIT_FWD_TASK_ID, SPLIT_BWD_TASK_ID};
+  return {task_id_t::SPLIT_FWD_TASK_ID, task_id_t::SPLIT_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

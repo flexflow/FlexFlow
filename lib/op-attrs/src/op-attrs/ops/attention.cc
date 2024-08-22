@@ -43,28 +43,52 @@ int get_vSize(TensorShape const &value_shape) {
   return dim_at_idx(value_shape, ff_dim_t(0));
 }
 
-int get_qSize(MultiHeadAttentionParallelInputs const &) {
-  NOT_IMPLEMENTED();
+int get_qSize(MultiHeadAttentionParallelInputs const &inputs) {
+  return inputs.query_dim.size;
 }
 
-int get_qSize(MultiHeadAttentionInputs const &) {
-  NOT_IMPLEMENTED();
+int get_qSize(MultiHeadAttentionInputs const &inputs) {
+  return inputs.query_size;
 }
 
-int get_kSize(MultiHeadAttentionParallelInputs const &) {
-  NOT_IMPLEMENTED();
+int get_kSize(MultiHeadAttentionParallelInputs const &inputs) {
+  return inputs.key_dim.size;
 }
 
-int get_kSize(MultiHeadAttentionInputs const &) {
-  NOT_IMPLEMENTED();
+int get_kSize(MultiHeadAttentionInputs const &inputs) {
+  return inputs.key_size;
 }
 
-int get_vSize(MultiHeadAttentionParallelInputs const &) {
-  NOT_IMPLEMENTED();
+int get_vSize(MultiHeadAttentionParallelInputs const &inputs) {
+  return inputs.value_dim.size;
 }
 
-int get_vSize(MultiHeadAttentionInputs const &) {
-  NOT_IMPLEMENTED();
+int get_vSize(MultiHeadAttentionInputs const &inputs) {
+  return inputs.value_size;
+}
+
+int get_kvSeqLength(MultiHeadAttentionParallelInputs const &inputs) {
+  return inputs.sequence_dim.size;
+}
+
+int get_kvSeqLength(MultiHeadAttentionInputs const &inputs) {
+  return inputs.sequence_length;
+}
+
+int get_qoSeqLength(MultiHeadAttentionParallelInputs const &inputs) {
+  return inputs.sequence_dim.size; // FIXME -- assumes only prefill
+}
+
+int get_qoSeqLength(MultiHeadAttentionInputs const &inputs) {
+  return inputs.sequence_length; // FIXME -- assumes only prefil
+}
+
+int get_num_samples(MultiHeadAttentionParallelInputs const &inputs) {
+  return inputs.batch_dim.size;
+}
+
+int get_num_samples(MultiHeadAttentionInputs const &inputs) {
+  return inputs.batch_size;
 }
 
 tl::expected<TensorShape, std::string>

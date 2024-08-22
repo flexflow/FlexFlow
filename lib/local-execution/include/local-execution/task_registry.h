@@ -2,25 +2,16 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_TASK_REGISTRY_H
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_REGISTRY_H
 
-#include "local-execution/op_task_invocation.h"
-#include "local-execution/task_signature_impl.h"
-#include "op-attrs/operator_attrs.h"
-#include "pcg/computation_graph.h"
+#include "local-execution/task_registry.dtg.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 
 namespace FlexFlow {
 
-struct TaskRegistry {
-  TaskRegistry() = default;
+TaskRegistry empty_task_registry();
 
-  void register_task(task_id_t const &,
-                     layer_guid_t const &,
-                     ComputationGraphOpAttrs const &attrs);
-
-  std::unordered_map<layer_guid_t, task_id_t> init_task_ids;
-  std::unordered_map<layer_guid_t, task_id_t> forward_task_ids;
-  std::unordered_map<layer_guid_t, task_id_t> backward_task_ids;
-  std::unordered_map<task_id_t, TaskSignatureAndImpl> task_mapping;
-};
+void register_tasks_for_layer(TaskRegistry &,
+                              layer_guid_t const &,
+                              ComputationGraphOpAttrs const &attrs);
 
 } // namespace FlexFlow
 

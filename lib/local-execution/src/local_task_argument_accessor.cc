@@ -1,5 +1,8 @@
 #include "local-execution/local_task_argument_accessor.h"
+#include "utils/containers/contains_key.h"
+#include "utils/containers/transform.h"
 #include "utils/hash/pair.h"
+#include "utils/overload.h"
 
 namespace FlexFlow {
 
@@ -52,6 +55,37 @@ VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
 
 Allocator LocalTaskArgumentAccessor::get_allocator() const {
   return this->allocator;
+}
+
+TensorSlotsBackingWithoutAddresses
+    get_slots_backing_without_tensor_allocation_addresses(
+        TensorSlotsBacking const &slots_backing) {
+
+  TensorSlotsBackingWithoutAddresses addressless_slots_backing;
+
+  using TensorAccessorVariant =
+      std::variant<GenericTensorAccessorW, std::vector<GenericTensorAccessorW>>;
+  for (auto const &slot_tensor : slots_backing) {
+    TensorAccessorVariant accessor_variant = slot_tensor.second;
+    std::visit(
+        overload{
+            [&](GenericTensorAccessorW const &accessor) {
+              addressless_slots_backing.insert(
+                  {slot_tensor.first, get_shape_and_datatype(accessor)});
+            },
+            [&](std::vector<GenericTensorAccessorW> const &variadic_accessor) {
+              std::vector<std::pair<ArrayShape, DataType>>
+                  variadic_addressless_accessor =
+                      transform(variadic_accessor,
+                                [](GenericTensorAccessorW const &accessor) {
+                                  return get_shape_and_datatype(accessor);
+                                });
+              addressless_slots_backing.insert(
+                  {slot_tensor.first, variadic_addressless_accessor});
+            }},
+        accessor_variant);
+  }
+  return addressless_slots_backing;
 }
 
 size_t LocalTaskArgumentAccessor::get_device_idx() const {

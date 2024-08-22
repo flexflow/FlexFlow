@@ -28,7 +28,7 @@ OpTaskInvocation init(ReshapeAttrs const &attrs) {
 
   binding.bind_arg(ATTRS, attrs);
 
-  return {RESHAPE_INIT_TASK_ID, binding};
+  return {task_id_t::RESHAPE_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(ReshapeAttrs const &attrs) {
@@ -40,21 +40,22 @@ OpTaskInvocation forward(ReshapeAttrs const &attrs) {
 
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
-  return {RESHAPE_FWD_TASK_ID, binding};
+  return {task_id_t::RESHAPE_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(ReshapeAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {RESHAPE_BWD_TASK_ID, binding};
+  return {task_id_t::RESHAPE_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<ReshapeAttrs>(ATTRS);
 
   ReshapePerDeviceState per_device_state = init_kernel(attrs.shape.data_type);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<ReshapePerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -91,13 +92,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_reshape_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_reshape_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_reshape_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_reshape_init_signature() {
@@ -124,7 +125,9 @@ OpTaskSignature get_reshape_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(ReshapeAttrs const &) {
-  return {RESHAPE_INIT_TASK_ID, RESHAPE_FWD_TASK_ID, RESHAPE_BWD_TASK_ID};
+  return {task_id_t::RESHAPE_INIT_TASK_ID,
+          task_id_t::RESHAPE_FWD_TASK_ID,
+          task_id_t::RESHAPE_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

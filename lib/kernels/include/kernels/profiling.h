@@ -2,19 +2,10 @@
 #define _FLEXFLOW_KERNELS_PROFILING_H
 
 #include "device.h"
+#include "kernels/profiling_settings.dtg.h"
 #include "utils/visitable.h"
 
 namespace FlexFlow {
-
-struct ProfilingSettings : public use_visitable_cmp<ProfilingSettings> {
-public:
-  ProfilingSettings() = delete;
-  ProfilingSettings(int warmup_iters, int measure_iters);
-
-public:
-  int warmup_iters;
-  int measure_iters;
-};
 
 template <typename F, typename... Ts>
 std::optional<float>
@@ -58,8 +49,5 @@ std::optional<float> profiling_wrapper(F const &f,
 }
 
 } // namespace FlexFlow
-
-VISITABLE_STRUCT(::FlexFlow::ProfilingSettings, warmup_iters, measure_iters);
-MAKE_VISIT_HASHABLE(::FlexFlow::ProfilingSettings);
 
 #endif

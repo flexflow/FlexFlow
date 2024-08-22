@@ -46,7 +46,7 @@ OpTaskInvocation init(LayerNormAttrs const &attrs) {
   b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(ATTRS, attrs);
 
-  return {LAYERNORM_INIT_TASK_ID, b};
+  return {task_id_t::LAYERNORM_INIT_TASK_ID, b};
 }
 
 OpTaskInvocation forward(LayerNormAttrs const &attrs) {
@@ -59,13 +59,13 @@ OpTaskInvocation forward(LayerNormAttrs const &attrs) {
   b.bind_arg(PROFILING, profiling_settings());
   b.bind_arg(PER_DEVICE_STATE, per_device_op_state<LayerNormPerDeviceState>());
 
-  return {LAYERNORM_FWD_TASK_ID, b};
+  return {task_id_t::LAYERNORM_FWD_TASK_ID, b};
 }
 
 OpTaskInvocation backward(LayerNormAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {LAYERNORM_BWD_TASK_ID, b};
+  return {task_id_t::LAYERNORM_BWD_TASK_ID, b};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -112,7 +112,7 @@ static std::optional<float>
                  beta_grad);
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LayerNormAttrs>(ATTRS);
   Allocator allocator = acc.get_allocator();
@@ -141,17 +141,18 @@ static DeviceSpecific<DeviceStates>
                   effective_batch_size,
                   effective_num_elements,
                   attrs.eps);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<LayerNormPerDeviceState>::create(per_device_state)};
 }
 
 TaskImplFunction get_layer_norm_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_layer_norm_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_layer_norm_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_layer_norm_fwd_signature() {
@@ -184,7 +185,9 @@ OpTaskSignature get_layer_norm_init_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(LayerNormAttrs const &) {
-  return {LAYERNORM_INIT_TASK_ID, LAYERNORM_FWD_TASK_ID, LAYERNORM_BWD_TASK_ID};
+  return {task_id_t::LAYERNORM_INIT_TASK_ID,
+          task_id_t::LAYERNORM_FWD_TASK_ID,
+          task_id_t::LAYERNORM_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow
