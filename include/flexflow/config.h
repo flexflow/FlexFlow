@@ -154,12 +154,12 @@ public:
                                8);
 
     float_workspace_size = 128 * 1024 * 1024; // 128 MB
-    int_workspace_size = 8 * 1024 * 1024;    // 8 MB
-    workspace_size = float_workspace_size + int_workspace_size; // float + int workspace
+    int_workspace_size = 8 * 1024 * 1024;     // 8 MB
+    workspace_size =
+        float_workspace_size + int_workspace_size; // float + int workspace
 
     mem_size_ = sizeof(int32_t) * indices_size +
-                sizeof(uint8_t) * custom_mask_size +
-                workspace_size;
+                sizeof(uint8_t) * custom_mask_size + workspace_size;
     return mem_size_;
   }
 
@@ -244,9 +244,9 @@ public:
   uint8_t *custom_mask;
   void *workspace;
   size_t workspace_size;
-  void * float_workspace;
+  void *float_workspace;
   size_t float_workspace_size;
-  void * int_workspace;
+  void *int_workspace;
   size_t int_workspace_size;
 
   size_t mem_size_;

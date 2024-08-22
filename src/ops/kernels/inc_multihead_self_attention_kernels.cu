@@ -141,8 +141,7 @@ __global__ void
                                   int k_block_size,
                                   int q_array_size) {
   CUDA_KERNEL_LOOP(
-      i,
-      num_tokens * (qk_dim * num_q_heads + qk_dim * num_kv_heads) / 2) {
+      i, num_tokens * (qk_dim * num_q_heads + qk_dim * num_kv_heads) / 2) {
     // create complex number
     bool q_tensor = i < (q_array_size / 2);
     int proj_size = q_tensor ? qk_dim : qk_dim;
@@ -231,13 +230,13 @@ __global__ void
 
 template <typename DT>
 void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        int shard_id,
-                        DT const *input_ptr,
-                        DT const *weight_ptr,
-                        DT *output_ptr,
-                        DT const *bias_ptr,
-                        cudaStream_t stream) {
+                 BatchConfig const *bc,
+                 int shard_id,
+                 DT const *input_ptr,
+                 DT const *weight_ptr,
+                 DT *output_ptr,
+                 DT const *bias_ptr,
+                 cudaStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -404,17 +403,18 @@ __global__ void
 
   if (offset < kv_hidden_size) {
     size_t to_k_idx = get_k_entry_offset(
-              req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim),
-          to_v_idx = get_v_entry_offset(
-              req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim);
+               req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim),
+           to_v_idx = get_v_entry_offset(
+               req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim);
     // key and value cache should be stored interleaved
     int const stride = num_q_heads / num_kv_heads; // temporary hard code
     int const kv_offset = offset / head_dim * stride * head_dim +
-                      offset % head_dim; // temporary hard code
-    kCache_ptr[to_k_idx + offset] =
-        static_cast<half>(devQKVProjArray[from_idx + q_hidden_size + kv_offset]);
+                          offset % head_dim; // temporary hard code
+    kCache_ptr[to_k_idx + offset] = static_cast<half>(
+        devQKVProjArray[from_idx + q_hidden_size + kv_offset]);
     kCache_ptr[to_v_idx + offset] =
-        static_cast<half>(devQKVProjArray[from_idx + q_hidden_size + temp_kv_hidden_size + kv_offset]);
+        static_cast<half>(devQKVProjArray[from_idx + q_hidden_size +
+                                          temp_kv_hidden_size + kv_offset]);
   }
 }
 
@@ -495,8 +495,8 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
     // matrix A: output projection weight
     // matrix A's layout: [v_dim * num_heads, o_dim]
     DT const *A = weight_ptr + m->hidden_size * (m->qk_dim * m->num_q_heads +
-                                           m->qk_dim * m->num_q_heads +
-                                           m->v_dim * m->num_q_heads);
+                                                 m->qk_dim * m->num_q_heads +
+                                                 m->v_dim * m->num_q_heads);
     // matrix B: attn heads
     // matrix B's layout: [v_dim * num_heads, num_new_tokens]
     DT const *B = static_cast<DT *>(m->attn_heads);
@@ -540,9 +540,9 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
-                             GenericTensorAccessorR const weight,
-                             DataType data_type,
-                             cudaStream_t stream) {
+                      GenericTensorAccessorR const weight,
+                      DataType data_type,
+                      cudaStream_t stream) {
   // additional processing for weight uploading
   // Note that we update weight_ptr and bias_ptr when uploading weight and
   // bias

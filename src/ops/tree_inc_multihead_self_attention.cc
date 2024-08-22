@@ -149,8 +149,7 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
         numdims, dims, data_type, li, 0, true /*create_grad*/);
   }
   // Compute weight size
-  int qk_dim = kdim, v_dim = kdim,
-      o_dim = embed_dim;
+  int qk_dim = kdim, v_dim = kdim, o_dim = embed_dim;
   int hidden_size = input->dims[0];
   int qParas = qk_dim * hidden_size;
   int kParas = qk_dim * hidden_size;
@@ -178,10 +177,8 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
   }
   if (qkv_bias || final_bias) {
     // q, k, v, o
-    int qkv_bias_size =
-        qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
-    int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
-                   (final_bias ? o_dim : 0)};
+    int qkv_bias_size = qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
+    int dims[1] = {(qkv_bias ? qkv_bias_size : 0) + (final_bias ? o_dim : 0)};
     li->weights[1] = create_weight_legion_ordering(1,
                                                    dims,
                                                    data_type,
@@ -312,13 +309,12 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
-      hidden_size(_input->dims[0].size), qk_dim(_kdim),
-      v_dim(_vdim), o_dim(_embed_dim),
-      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
-      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias),
-      quantization_type(_quantization_type), offload(_offload),
-      tensor_parallelism_degree(_tensor_parallelism_degree) {
+      hidden_size(_input->dims[0].size), qk_dim(_kdim), v_dim(_vdim),
+      o_dim(_embed_dim), qoSeqLength(_input->dims[1].size),
+      kvSeqLength(_input->dims[1].size), scaling_query(_scaling_query),
+      scaling_factor(_scaling_factor), qk_prod_scaling(_qk_prod_scaling),
+      position_bias(_position_bias), quantization_type(_quantization_type),
+      offload(_offload), tensor_parallelism_degree(_tensor_parallelism_degree) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
@@ -365,8 +361,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         CHOSEN_SYNC_TYPE);
     if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      int qkv_bias_size =
-          qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
+      int qkv_bias_size = qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
       bias_shape.dims[0].size =
           (qkv_bias ? qkv_bias_size : 0) + (final_bias ? o_dim : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
@@ -427,13 +422,12 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       apply_rotary_embedding(_apply_rotary_embedding),
-      hidden_size(_input->dims[0].size), qk_dim(_kdim),
-      v_dim(_vdim), o_dim(_embed_dim),
-      qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
-      scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias),
-      quantization_type(_quantization_type), offload(_offload),
-      tensor_parallelism_degree(_tensor_parallelism_degree)
+      hidden_size(_input->dims[0].size), qk_dim(_kdim), v_dim(_vdim),
+      o_dim(_embed_dim), qoSeqLength(_input->dims[1].size),
+      kvSeqLength(_input->dims[1].size), scaling_query(_scaling_query),
+      scaling_factor(_scaling_factor), qk_prod_scaling(_qk_prod_scaling),
+      position_bias(_position_bias), quantization_type(_quantization_type),
+      offload(_offload), tensor_parallelism_degree(_tensor_parallelism_degree)
 // bias_initializer(_bias_initializer)
 {
   numOutputs = 1;
@@ -477,8 +471,7 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
         CHOSEN_SYNC_TYPE);
     if (qkv_bias || final_bias) {
       ParallelTensorShape bias_shape = _input->get_shape();
-      int qkv_bias_size =
-          qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
+      int qkv_bias_size = qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
       bias_shape.dims[0].size =
           (qkv_bias ? qkv_bias_size : 0) + (final_bias ? o_dim : 0);
       bias_shape.dims[1].size = bias_shape.dims[2].size = 1;

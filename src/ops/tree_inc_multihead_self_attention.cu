@@ -80,14 +80,20 @@ __global__ void commit_tokens_kernel(
       int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
 
-      size_t from_k_idx = get_k_entry_offset(
-                 req_id, index_in_kv_cache, max_num_pages, num_kv_heads, head_dim),
-             from_v_idx = get_v_entry_offset(
-                 req_id, index_in_kv_cache, max_num_pages, num_kv_heads, head_dim);
-      size_t to_k_idx =
-                 get_k_entry_offset(req_id, tok_id, max_num_pages, num_kv_heads, head_dim),
-             to_v_idx =
-                 get_v_entry_offset(req_id, tok_id, max_num_pages, num_kv_heads, head_dim);
+      size_t from_k_idx = get_k_entry_offset(req_id,
+                                             index_in_kv_cache,
+                                             max_num_pages,
+                                             num_kv_heads,
+                                             head_dim),
+             from_v_idx = get_v_entry_offset(req_id,
+                                             index_in_kv_cache,
+                                             max_num_pages,
+                                             num_kv_heads,
+                                             head_dim);
+      size_t to_k_idx = get_k_entry_offset(
+                 req_id, tok_id, max_num_pages, num_kv_heads, head_dim),
+             to_v_idx = get_v_entry_offset(
+                 req_id, tok_id, max_num_pages, num_kv_heads, head_dim);
       assert(to_k_idx <= from_k_idx);
 
       kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
@@ -147,8 +153,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
   uint32_t const num_kv_heads = m->num_kv_heads;
   uint32_t const head_dim = m->qk_dim;
   uint32_t const batch_size = bc->num_active_requests();
-  float const sm_scale =
-      (*m->qk_prod_scaling) ? 1.0f / sqrt(m->qk_dim) : 1.0f;
+  float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->qk_dim) : 1.0f;
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -388,13 +393,13 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   }
   // Implement kernel to compute KQV for input tokens
   compute_qkv(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));

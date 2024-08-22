@@ -296,36 +296,37 @@ void RequestManager::load_batch_config_task(
           if (handle.incr_attention_metadata->decode_handler_collections.count(
                   batch_size) == 0) {
             handle.incr_attention_metadata
-                ->decode_handler_collections[batch_size] =
-                static_cast<void *>(new flashinfer::BatchDecodeHandler(true, batch_size));
+                ->decode_handler_collections[batch_size] = static_cast<void *>(
+                new flashinfer::BatchDecodeHandler(true, batch_size));
           }
           handler = static_cast<BatchDecodeHandler *>(
               handle.incr_attention_metadata
                   ->decode_handler_collections[batch_size]);
 
           handler->SetCUDAStream(stream);
-          DISPATCH_HEADDIM(handle.incr_attention_metadata->head_dim(), HEAD_DIM, {
-            handler->BeginForwardDispatched<HEAD_DIM,
-                                            PageStorage::kIndices,
-                                            LogitsPostHook::kNone,
-                                            PosEncodingMode::kNone,
-                                            half,
-                                            half,
-                                            half,
-                                            int32_t>(
-                static_cast<void *>(
+          DISPATCH_HEADDIM(
+              handle.incr_attention_metadata->head_dim(), HEAD_DIM, {
+                handler->BeginForwardDispatched<HEAD_DIM,
+                                                PageStorage::kIndices,
+                                                LogitsPostHook::kNone,
+                                                PosEncodingMode::kNone,
+                                                half,
+                                                half,
+                                                half,
+                                                int32_t>(
+                    static_cast<void *>(
                         handle.incr_attention_metadata->float_workspace),
-                handle.incr_attention_metadata->float_workspace_size,
-                static_cast<void *>(
+                    handle.incr_attention_metadata->float_workspace_size,
+                    static_cast<void *>(
                         handle.incr_attention_metadata->int_workspace),
-                handle.incr_attention_metadata->int_workspace_size,
-                static_cast<int32_t *>(kv_indptr_h),
-                static_cast<int32_t *>(kv_last_page_len_h),
-                batch_size,
-                handle.incr_attention_metadata->num_q_heads(),
-                handle.incr_attention_metadata->num_kv_heads(),
-                kPagesize);
-          });
+                    handle.incr_attention_metadata->int_workspace_size,
+                    static_cast<int32_t *>(kv_indptr_h),
+                    static_cast<int32_t *>(kv_last_page_len_h),
+                    batch_size,
+                    handle.incr_attention_metadata->num_q_heads(),
+                    handle.incr_attention_metadata->num_kv_heads(),
+                    kPagesize);
+              });
         } else {
           BatchPrefillHandler *handler = nullptr;
           if (handle.incr_attention_metadata->prompt_handler_collections.count(
@@ -341,10 +342,10 @@ void RequestManager::load_batch_config_task(
           handler->SetCUDAStream(stream);
           handler->BeginForward<half, int32_t>(
               static_cast<void *>(
-                      handle.incr_attention_metadata->float_workspace),
+                  handle.incr_attention_metadata->float_workspace),
               handle.incr_attention_metadata->float_workspace_size,
               static_cast<void *>(
-                      handle.incr_attention_metadata->int_workspace),
+                  handle.incr_attention_metadata->int_workspace),
               handle.incr_attention_metadata->int_workspace_size,
               static_cast<int32_t *>(q_indptr_h),
               static_cast<int32_t *>(kv_indptr_h),
@@ -489,10 +490,10 @@ void RequestManager::load_batch_config_task(
         handler->SetCUDAStream(stream);
         handler->BeginForward<half, int32_t>(
             static_cast<void *>(
-                    handle.tree_search_attention_metadata->float_workspace),
+                handle.tree_search_attention_metadata->float_workspace),
             handle.tree_search_attention_metadata->float_workspace_size,
             static_cast<void *>(
-                    handle.tree_search_attention_metadata->int_workspace),
+                handle.tree_search_attention_metadata->int_workspace),
             handle.tree_search_attention_metadata->int_workspace_size,
             static_cast<int32_t *>(q_indptr_h),
             static_cast<int32_t *>(kv_indptr_h),
@@ -655,10 +656,10 @@ void RequestManager::load_batch_config_task(
         handler->SetCUDAStream(stream);
         handler->BeginForward<half, int32_t>(
             static_cast<void *>(
-                    handle.tree_verify_attention_metadata->float_workspace),
+                handle.tree_verify_attention_metadata->float_workspace),
             handle.tree_verify_attention_metadata->float_workspace_size,
             static_cast<void *>(
-                    handle.tree_verify_attention_metadata->int_workspace),
+                handle.tree_verify_attention_metadata->int_workspace),
             handle.tree_verify_attention_metadata->int_workspace_size,
             static_cast<int32_t *>(q_indptr_h),
             static_cast<int32_t *>(kv_indptr_h),

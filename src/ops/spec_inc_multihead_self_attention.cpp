@@ -496,13 +496,13 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 

@@ -75,7 +75,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    hipStream_t stream) {
   int num_tokens_to_commit = bc->num_tokens_to_commit;
   if (num_tokens_to_commit > 0) {
-    int parallelism = m->local_hidden_size * KV_WEIGHT_NUM * num_tokens_to_commit;
+    int parallelism =
+        m->local_hidden_size * KV_WEIGHT_NUM * num_tokens_to_commit;
     hipLaunchKernelGGL(
         HIP_KERNEL_NAME(commit_tokens_kernel<DT>),
         GET_BLOCKS(parallelism),
@@ -491,13 +492,13 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                            stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(

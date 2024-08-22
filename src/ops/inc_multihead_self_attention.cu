@@ -63,8 +63,7 @@ void incr_attention(IncMultiHeadSelfAttentionMeta *m,
   uint32_t const num_kv_heads = m->num_kv_heads;
   uint32_t const head_dim = m->qk_dim;
   uint32_t const batch_size = bc->num_active_requests();
-  float const sm_scale =
-      (*m->qk_prod_scaling) ? 1.0f / sqrt(m->qk_dim) : 1.0f;
+  float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->qk_dim) : 1.0f;
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -249,13 +248,13 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
 
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
   // phase 2: Update key/val cache
   update_qkv_cache<DT>(m, bc, stream);
 
@@ -466,8 +465,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   }
   // biasSize = _bias ? o_dim * size_of_dt * 4 : 0;
 
-  int qkv_bias_size =
-      qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
+  int qkv_bias_size = qk_dim * num_q_heads + (qk_dim + v_dim) * num_q_heads;
   int final_bias_size = o_dim;
   biasSize =
       (_qkv_bias ? qkv_bias_size : 0) + (final_bias ? final_bias_size : 0);
@@ -497,9 +495,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
     int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
-    size_t qkv_max_proj_size = max_tokens_per_batch * (qk_dim * num_q_heads +
-                                                       qk_dim * num_q_heads +
-                                                       v_dim * num_q_heads);
+    size_t qkv_max_proj_size =
+        max_tokens_per_batch *
+        (qk_dim * num_q_heads + qk_dim * num_q_heads + v_dim * num_q_heads);
     size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
            qk_prod_size = 0;
     // assert((BatchConfig::max_sequence_length() +
@@ -532,9 +530,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     }
     size_t attn_heads_size = max_tokens_per_batch * num_q_heads * v_dim;
     size_t output_tmp_size = max_tokens_per_batch * num_q_heads * v_dim;
-    size_t complex_size = (max_tokens_per_batch * (qk_dim * num_q_heads +
-                                                   qk_dim * num_q_heads)) /
-                          2;
+    size_t complex_size =
+        (max_tokens_per_batch * (qk_dim * num_q_heads + qk_dim * num_q_heads)) /
+        2;
     size_t totalSize =
         (qkv_max_proj_size + query_tmp_size + key_cache_size +
          value_cache_size + 2 * qk_prod_size + attn_heads_size) *

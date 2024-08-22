@@ -245,13 +245,13 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
 
 template <typename DT>
 void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        int shard_id,
-                        DT const *input_ptr,
-                        DT const *weight_ptr,
-                        DT *output_ptr,
-                        DT const *bias_ptr,
-                        hipStream_t stream) {
+                 BatchConfig const *bc,
+                 int shard_id,
+                 DT const *input_ptr,
+                 DT const *weight_ptr,
+                 DT *output_ptr,
+                 DT const *bias_ptr,
+                 hipStream_t stream) {
 
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
@@ -377,9 +377,9 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
-                             GenericTensorAccessorR const weight,
-                             DataType data_type,
-                             hipStream_t stream) {
+                      GenericTensorAccessorR const weight,
+                      DataType data_type,
+                      hipStream_t stream) {
   // additional processing for weight uploading
   // Note that we update weight_ptr and bias_ptr when uploading weight and
   // bias
@@ -459,13 +459,13 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            stream));
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
 
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);

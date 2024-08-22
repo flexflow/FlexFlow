@@ -1339,23 +1339,23 @@ flexflow_tensor_t flexflow_model_add_groupquery_self_attention(
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
   Tensor tensor = handle->groupquery_self_attention(input,
-                                                        embed_dim,
-                                                        num_q_heads,
-                                                        num_kv_heads,
-                                                        kdim,
-                                                        vdim,
-                                                        dropout,
-                                                        bias,
-                                                        add_bias_kv,
-                                                        add_zero_attn,
-                                                        data_type,
-                                                        kernel_initializer,
-                                                        apply_rotary_embedding,
-                                                        scaling_query,
-                                                        scaling_factor,
-                                                        qk_prod_scaling,
-                                                        position_bias,
-                                                        name);
+                                                    embed_dim,
+                                                    num_q_heads,
+                                                    num_kv_heads,
+                                                    kdim,
+                                                    vdim,
+                                                    dropout,
+                                                    bias,
+                                                    add_bias_kv,
+                                                    add_zero_attn,
+                                                    data_type,
+                                                    kernel_initializer,
+                                                    apply_rotary_embedding,
+                                                    scaling_query,
+                                                    scaling_factor,
+                                                    qk_prod_scaling,
+                                                    position_bias,
+                                                    name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
