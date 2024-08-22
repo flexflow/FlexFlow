@@ -34,13 +34,13 @@ OpTaskInvocation forward(CastAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {CAST_FWD_TASK_ID, binding};
+  return {task_id_t::CAST_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(CastAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {CAST_BWD_TASK_ID, binding};
+  return {task_id_t::CAST_BWD_TASK_ID, binding};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -79,10 +79,10 @@ static std::optional<float>
 }
 
 TaskImplFunction get_cast_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_cast_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_cast_fwd_signature() {
@@ -104,7 +104,7 @@ OpTaskSignature get_cast_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(CastAttrs const &) {
-  return {CAST_FWD_TASK_ID, CAST_BWD_TASK_ID};
+  return {task_id_t::CAST_FWD_TASK_ID, task_id_t::CAST_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

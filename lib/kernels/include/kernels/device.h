@@ -95,11 +95,13 @@ using coord_t = long long;
     exit(1);                                                                   \
   } while (0)
 
+char const *getCudaErrorString(cudaError_t status);
+
 #define checkCUDA(status)                                                      \
   do {                                                                         \
     std::stringstream _error;                                                  \
     if (status != 0) {                                                         \
-      _error << "CUDA failure: " << cudaGetErrorString(status) << " ("         \
+      _error << "CUDA failure: " << getCudaErrorString(status) << " ("         \
              << status << ")";                                                 \
       FatalError(_error.str());                                                \
     }                                                                          \

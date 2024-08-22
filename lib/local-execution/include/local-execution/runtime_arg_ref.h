@@ -4,6 +4,7 @@
 #include "local-execution/arg_ref.h"
 #include "local-execution/config.h"
 #include "local-execution/device_specific.h"
+#include "local-execution/profiling.h"
 
 namespace FlexFlow {
 

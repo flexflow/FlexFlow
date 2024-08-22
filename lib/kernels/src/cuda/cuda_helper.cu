@@ -220,25 +220,14 @@ __host__ void
 ffStatus_t
     cudnnSetTensorDescriptorFromArrayShape(cudnnTensorDescriptor_t tensor,
                                            ArrayShape const &shape) {
-  std::vector<std::size_t> reversed_dims(shape.dims.begin(), shape.dims.end());
-  reversed(reversed_dims);
-  ArrayShape flipped(reversed_dims);
-
-  if (flipped.get_dim() == 5) {
-    assert(flipped[legion_dim_t(0)] == 1);
-    flipped = flipped.sub_shape(legion_dim_t(1), std::nullopt);
-  }
-
-  assert(flipped.get_dim() > 0);
-  assert(flipped.get_dim() < 4);
-
-  return cudnnSetTensor4dDescriptor(tensor,
-                                    CUDNN_TENSOR_NCHW,
-                                    CUDNN_DATA_FLOAT,
-                                    flipped.at_maybe(0).value_or(1),
-                                    flipped.at_maybe(1).value_or(2),
-                                    flipped.at_maybe(2).value_or(3),
-                                    flipped.at_maybe(3).value_or(3));
+  return cudnnSetTensor4dDescriptor(
+      tensor,
+      CUDNN_TENSOR_NCHW,
+      CUDNN_DATA_FLOAT,
+      shape.at_maybe(legion_dim_t{0}).value_or(1),
+      shape.at_maybe(legion_dim_t{1}).value_or(1),
+      shape.at_maybe(legion_dim_t{2}).value_or(1),
+      shape.at_maybe(legion_dim_t{3}).value_or(1));
 }
 
 cudnnDataType_t ff_to_cudnn_datatype(DataType type) {

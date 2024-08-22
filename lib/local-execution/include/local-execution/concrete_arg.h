@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_CONCRETE_ARG_H
 #define _FLEXFLOW_LOCAL_EXECUTION_CONCRETE_ARG_H
 
+#include "fmt/format.h"
 #include "local-execution/serialization.h"
 #include "utils/type_index.h"
 #include <memory>
@@ -22,6 +23,9 @@ public:
     return this->type_idx;
   }
 
+  bool operator==(ConcreteArgSpec const &other) const;
+  bool operator!=(ConcreteArgSpec const &other) const;
+
   template <typename T>
   static ConcreteArgSpec create(T const &t) {
     // static_assert(is_serializable<T>::value, "Type must be serializable");
@@ -40,7 +44,12 @@ private:
 
   std::type_index type_idx;
   std::shared_ptr<void const> ptr;
+
+  std::tuple<decltype(type_idx) const &> tie() const;
 };
+
+std::string format_as(ConcreteArgSpec const &);
+std::ostream &operator<<(std::ostream &, ConcreteArgSpec const &);
 
 } // namespace FlexFlow
 

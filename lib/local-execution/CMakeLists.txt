@@ -14,3 +14,5 @@ ff_add_library(
     pcg
     spdlog
 )
+
+add_subdirectory(test)

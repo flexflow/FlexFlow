@@ -7,7 +7,9 @@
 #include "local-execution/serialization.h"
 #include "local-execution/slot_id_t.dtg.h"
 #include "local-execution/slot_type.dtg.h"
-#include "local-execution/tasks.h"
+#include "local-execution/task_id_t.dtg.h"
+#include "utils/hash/unordered_map.h"
+#include "utils/hash/unordered_set.h"
 #include "utils/type_index.h"
 #include "utils/visitable.h"
 
@@ -40,10 +42,9 @@ struct OpTaskSignature {
   void add_output_slot(int, SlotType slot_type = SlotType::TENSOR);
   void add_output_slot(slot_id_t, SlotType slot_type = SlotType::TENSOR);
 
-  void add_bwd_necessary_output_slot(int,
-                                     SlotType slot_type = SlotType::TENSOR);
-  void add_bwd_necessary_output_slot(slot_id_t,
-                                     SlotType slot_type = SlotType::TENSOR);
+  void add_bwd_optional_output_slot(int, SlotType slot_type = SlotType::TENSOR);
+  void add_bwd_optional_output_slot(slot_id_t,
+                                    SlotType slot_type = SlotType::TENSOR);
 
   void add_weight_slot(int, SlotType slot_type = SlotType::TENSOR);
   void add_weight_slot(slot_id_t, SlotType slot_type = SlotType::TENSOR);
@@ -96,27 +97,10 @@ struct OpTaskSignature {
 FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
     OpTaskSignature, type, return_value, task_arg_types, op_tensor_slots);
 
-template <typename F>
-void register_task(task_id_t,
-                   std::string const &name,
-                   OpTaskSignature const &,
-                   F const &func);
+std::string format_as(OpTaskSignature const &x);
+std::ostream &operator<<(std::ostream &s, OpTaskSignature const &x);
 
-template <typename F>
-void register_task(task_id_t,
-                   std::string const &name,
-                   OpTaskSignature const &,
-                   F const &func,
-                   F const &cpu_func);
-
-template <task_id_t>
-OpTaskSignature init_signature();
-
-template <task_id_t>
-OpTaskSignature fwd_signature();
-
-template <task_id_t>
-OpTaskSignature bwd_signature();
+OpTaskSignature infer_bwd_signature(OpTaskSignature const &fwd);
 
 } // namespace FlexFlow
 

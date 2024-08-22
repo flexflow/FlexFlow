@@ -138,4 +138,33 @@ GenericTensorAccessorR read_only_accessor_from_write_accessor(
       writable.data_type, writable.shape, req<void const *>(writable.ptr)};
 }
 
+bool is_shape_and_dtype_equal(GenericTensorAccessorW const &acc1,
+                              GenericTensorAccessorW const &acc2) {
+  return acc1.shape == acc2.shape && acc1.data_type == acc2.data_type;
+}
+
+bool shape_and_dtype_matches(GenericTensorAccessorW const &accessor,
+                             ArrayShape const &expected_shape,
+                             DataType const &expected_dtype) {
+  return accessor.shape == expected_shape &&
+         accessor.data_type == expected_dtype;
+}
+
+bool shape_and_dtype_matches(GenericTensorAccessorR const &accessor,
+                             ArrayShape const &expected_shape,
+                             DataType const &expected_dtype) {
+  return accessor.shape == expected_shape &&
+         accessor.data_type == expected_dtype;
+}
+
+std::pair<ArrayShape, DataType>
+    get_shape_and_datatype(GenericTensorAccessorR const &accessor) {
+  return std::make_pair(accessor.shape, accessor.data_type);
+}
+
+std::pair<ArrayShape, DataType>
+    get_shape_and_datatype(GenericTensorAccessorW const &accessor) {
+  return std::make_pair(accessor.shape, accessor.data_type);
+}
+
 } // namespace FlexFlow
