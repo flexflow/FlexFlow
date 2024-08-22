@@ -145,6 +145,22 @@ std::vector<real_type<DT> const *>
 GenericTensorAccessorR read_only_accessor_from_write_accessor(
     GenericTensorAccessorW const &write_accessor);
 
+bool is_shape_and_dtype_equal(GenericTensorAccessorW const &acc1,
+                              GenericTensorAccessorW const &acc2);
+
+bool shape_and_dtype_matches(GenericTensorAccessorW const &accessor,
+                             ArrayShape const &expected_shape,
+                             DataType const &expected_dtype);
+
+bool shape_and_dtype_matches(GenericTensorAccessorR const &accessor,
+                             ArrayShape const &expected_shape,
+                             DataType const &expected_dtype);
+
+std::pair<ArrayShape, DataType>
+    get_shape_and_datatype(GenericTensorAccessorR const &accessor);
+std::pair<ArrayShape, DataType>
+    get_shape_and_datatype(GenericTensorAccessorW const &accessor);
+
 } // namespace FlexFlow
 
 namespace FlexFlow {
@@ -152,6 +168,7 @@ static_assert(is_well_behaved_value_type_no_hash<GenericTensorAccessorR>::value,
               "");
 static_assert(is_well_behaved_value_type_no_hash<GenericTensorAccessorW>::value,
               "");
+
 } // namespace FlexFlow
 
 #endif

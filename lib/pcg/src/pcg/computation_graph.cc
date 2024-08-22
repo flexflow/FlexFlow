@@ -1,4 +1,5 @@
 #include "pcg/computation_graph.h"
+#include "utils/containers/get_only.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
@@ -52,6 +53,15 @@ std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n) {
   return cg.raw_graph.at(n.raw_node);
+}
+
+layer_guid_t get_layer_by_name(ComputationGraph const &cg,
+                               std::string const &name) {
+  std::unordered_set<layer_guid_t> found =
+      filter(get_layers(cg), [&](layer_guid_t const &l) {
+        return get_layer_attrs(cg, l).name == name;
+      });
+  return get_only(found);
 }
 
 } // namespace FlexFlow

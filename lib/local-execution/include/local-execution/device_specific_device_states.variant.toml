@@ -1,0 +1,90 @@
+namespace = "FlexFlow"
+name = "DeviceSpecificDeviceStates"
+features = [
+  "eq",
+]
+
+includes = [
+  "kernels/attention_kernels.h",
+  "kernels/batch_norm_kernels.h",
+  "kernels/conv_2d_kernels.h",
+  "kernels/dropout_kernels.h",
+  "kernels/element_binary_kernels.h",
+  "kernels/element_unary_kernels.h",
+  "kernels/gather_kernels.h",
+  "kernels/layer_norm_kernels.h",
+  "kernels/linear_kernels.h",
+  "kernels/partition_kernels.h",
+  "kernels/pool_2d_kernels.h",
+  "kernels/reduce_kernels.h",
+  "kernels/reduction_kernels.h",
+  "kernels/reshape_kernels.h",
+  "kernels/softmax_kernels.h",
+  "kernels/topk_kernels.h",
+  "kernels/transpose_kernels.h",
+  "local-execution/device_specific.h",
+]
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::MHAPerDeviceState>"
+key = "device_specific_mha_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::BatchNormPerDeviceState>"
+key = "device_specific_batch_norm_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::Conv2DPerDeviceState>"
+key = "device_specific_conv2d_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::DropoutPerDeviceState>"
+key = "device_specific_dropout_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::ElementBinaryPerDeviceState>"
+key = "device_specific_element_binary_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::ElementUnaryPerDeviceState>"
+key = "device_specific_element_unary_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::GatherPerDeviceState>"
+key = "device_specific_gather_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::LayerNormPerDeviceState>"
+key = "device_specific_layer_norm_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::LinearPerDeviceState>"
+key = "device_specific_linear_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::Pool2DPerDeviceState>"
+key = "device_specific_pool_2d_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::ReducePerDeviceState>"
+key = "device_specific_reduce_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::RepartitionPerDeviceState>"
+key = "device_specific_repartition_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::ReshapePerDeviceState>"
+key = "device_specific_reshape_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::SoftmaxPerDeviceState>"
+key = "device_specific_softmax_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::TopKPerDeviceState>"
+key = "device_specific_topk_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DeviceSpecific<::FlexFlow::TransposePerDeviceState>"
+key = "device_specific_transpose_per_device_state"

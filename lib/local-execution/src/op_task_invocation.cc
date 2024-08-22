@@ -36,6 +36,20 @@ void OpTaskBinding::insert_arg_spec(slot_id_t name, OpArgSpec const &arg_spec) {
   this->arg_bindings.insert({name, arg_spec});
 }
 
+bool OpTaskBinding::operator==(OpTaskBinding const &other) const {
+  return this->tie() == other.tie();
+}
+
+bool OpTaskBinding::operator!=(OpTaskBinding const &other) const {
+  return this->tie() != other.tie();
+}
+
+std::tuple<std::unordered_map<SlotGradId, OpTensorSpec> const &,
+           std::unordered_map<slot_id_t, OpArgSpec> const &>
+    OpTaskBinding::tie() const {
+  return std::tie(this->tensor_bindings, this->arg_bindings);
+}
+
 std::unordered_map<SlotGradId, OpTensorSpec> const &
     OpTaskBinding::get_tensor_bindings() const {
   return this->tensor_bindings;
@@ -82,6 +96,9 @@ bool is_tensor_invocation_valid(OpTaskSignature const &sig,
       return false;
     }
   }
+
+  // FIXME -- make sure invocation doesn't contain MORE than signature
+  // https://github.com/flexflow/FlexFlow/issues/1442
   return true;
 }
 
@@ -93,13 +110,13 @@ bool is_arg_type_invalid(std::type_index expected_arg_type,
 
 bool is_arg_invocation_valid(OpTaskSignature const &sig,
                              OpTaskInvocation const &inv) {
-  auto sig_arg_types = sig.get_arg_types();
-  for (auto arg_binding : inv.binding.get_arg_bindings()) {
-    std::type_index arg_type = sig_arg_types.at(arg_binding.first);
-    if (is_arg_type_invalid(arg_type, arg_binding.second)) {
-      return false;
-    }
-  }
+  // FIXME -- arg signature/invocation checking
+  // https://github.com/flexflow/FlexFlow/issues/1442
+  // auto sig_arg_types = sig.get_arg_types();
+  // for (auto arg_binding : inv.binding.get_arg_bindings()) {
+  //   std::type_index arg_type = sig_arg_types.at(arg_binding.first);
+  //   assert (!is_arg_type_invalid(arg_type, arg_binding.second));
+  // }
 
   return true;
 }

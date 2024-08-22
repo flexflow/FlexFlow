@@ -2,6 +2,10 @@
 
 namespace FlexFlow {
 
+char const *getCudaErrorString(cudaError_t status) {
+  return cudaGetErrorString(status);
+}
+
 ffError_t ffEventCreate(ffEvent_t *e) {
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
   return cudaEventCreate(e);

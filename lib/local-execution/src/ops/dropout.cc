@@ -18,7 +18,7 @@ OpTaskInvocation init(DropoutAttrs const &attrs) {
   binding.bind_arg(FF_HANDLE, ff_handle());
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {DROPOUT_INIT_TASK_ID, binding};
+  return {task_id_t::DROPOUT_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(DropoutAttrs const &attrs) {
@@ -31,16 +31,16 @@ OpTaskInvocation forward(DropoutAttrs const &attrs) {
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<DropoutPerDeviceState>());
 
-  return {DROPOUT_FWD_TASK_ID, binding};
+  return {task_id_t::DROPOUT_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(DropoutAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {DROPOUT_BWD_TASK_ID, b};
+  return {task_id_t::DROPOUT_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   Allocator allocator = acc.get_allocator();
@@ -49,7 +49,8 @@ static DeviceSpecific<DeviceStates>
 
   DropoutPerDeviceState per_device_state =
       init_kernel(handle, attrs.rate, attrs.seed, output.shape, allocator);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<DropoutPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -86,13 +87,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_dropout_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_dropout_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_dropout_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_dropout_init_signature() {
@@ -126,7 +127,9 @@ OpTaskSignature get_dropout_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(DropoutAttrs const &) {
-  return {DROPOUT_INIT_TASK_ID, DROPOUT_FWD_TASK_ID, DROPOUT_BWD_TASK_ID};
+  return {task_id_t::DROPOUT_INIT_TASK_ID,
+          task_id_t::DROPOUT_FWD_TASK_ID,
+          task_id_t::DROPOUT_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

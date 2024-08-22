@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "ParallelTensorShapeRefType"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+[[fields]]
+name = "idx"
+type = "int"
