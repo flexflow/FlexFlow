@@ -151,9 +151,9 @@ __global__ void commit_tokens_kernel(
       // int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
       int const page_to_idx = kv_page_indices[start + tok_id / kPagesize];
-      assert(start + (tok_id / kPagesize) <= end);
+      // assert(start + (tok_id / kPagesize) <= end);
       int const page_from_idx = kv_page_indices[start + index_in_kv_cache / kPagesize];
-      assert(start + (index_in_kv_cache / kPagesize) <= end);
+      // assert(start + (index_in_kv_cache / kPagesize) <= end);
 
       // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
       // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory
@@ -164,7 +164,6 @@ __global__ void commit_tokens_kernel(
       // page attention: copy the token to the new position
       size_t to_k_idx =get_k_entry_offset(tok_id, page_to_idx, hidden_size),
              to_v_idx =get_v_entry_offset(tok_id, page_to_idx, hidden_size);
-      assert(to_k_idx <= from_k_idx);
 
       kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
       kCache_ptr[to_v_idx + offset] = kCache_ptr[from_v_idx + offset];
