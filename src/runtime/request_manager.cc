@@ -1248,7 +1248,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     std::cout
         << "\n############### prepare_verify_batch_config ###############\n";
   }
-  printf("prepare_verify_batch_config_lalala\n");
+  // printf("prepare_verify_batch_config_lalala\n");
   // This method does the following:
   // 1. Commit the verified tokens in the last iteration through the
   // BatchConfig. We can do this request by request.
@@ -1305,7 +1305,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     // into new_bc. Because the LLM don't have that token's KV cache.
     std::vector<Request::CommittedToken> &committed_tokens =
         request.committed_tokens;
-    printf("number of committed tokens: %d\n", committed_tokens.size());
+    // printf("number of committed tokens: %d\n", committed_tokens.size());
     for (int committed_token_index = 0;
          committed_token_index < committed_tokens.size() - 1;
          committed_token_index++) {
@@ -1322,7 +1322,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       _append_tokens_to_blocks(request, {committed_token.token_id}, true);
     }
 
-    printf("num tokens currently in the last page: %d\n", request.blocks.back().get_num_alloc_slots());
+    // printf("num tokens currently in the last page: %d\n", request.blocks.back().get_num_alloc_slots());
 
 
     // Load the tokens on the token tree that are not yet pruned to
@@ -1356,9 +1356,9 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     // we first need to update the physical block numbers
     int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
     assert(diff_block >= 0);
-    printf("diff block: %d\n", diff_block);
-    printf("request.blocks.size(): %d\n", request.blocks.size());
-    printf("page_manager->get_num_allocated_blocks(guid): %d\n", page_manager->get_num_allocated_blocks(guid));
+    // printf("diff block: %d\n", diff_block);
+    // printf("request.blocks.size(): %d\n", request.blocks.size());
+    // printf("page_manager->get_num_allocated_blocks(guid): %d\n", page_manager->get_num_allocated_blocks(guid));
     for (int i = 0; i < diff_block; i++) {
       page_manager->allocate(guid);
     }
@@ -1425,7 +1425,7 @@ bool RequestManager::update_llm_verify_results(
 
   // Process the LLM results greedily
   if (speculative_sampling) {
-    printf("i think we are using spec sampling\n");
+    // printf("i think we are using spec sampling\n");
     get_verify_results_sample(llm_verify_result);
   } else {
     get_verify_results_greedy(llm_verify_result);
@@ -1949,9 +1949,9 @@ void RequestManager::get_verify_results_greedy(
     assert(request.status == Request::RUNNING);
 
     // traverse the llm_verify_result
-    for (int i = 0; i < 100; i++) {
-      printf("llm_verify_result[%d]: %d\n", i, llm_verify_result.token_ids[i]);
-    }
+    // for (int i = 0; i < 100; i++) {
+      // printf("llm_verify_result[%d]: %d\n", i, llm_verify_result.token_ids[i]);
+    // }
 
     int llm_result_offset = request.first_token_offset_in_batch;
     int llm_cache_size = request.tokens.size() - 1;
@@ -1996,9 +1996,9 @@ void RequestManager::get_verify_results_greedy(
         } else {
           // The token's parent is accepted, and no token has been accepted in
           // this layer yet
-          printf("llm_result_offset: %d\n", llm_result_offset);
-          printf("last_accepted_token_index: %d\n", last_accepted_token_index);
-          printf("the target token here is: %d\n", llm_verify_result.token_ids[llm_result_offset + last_accepted_token_index]);
+          // printf("llm_result_offset: %d\n", llm_result_offset);
+          // printf("last_accepted_token_index: %d\n", last_accepted_token_index);
+          // printf("the target token here is: %d\n", llm_verify_result.token_ids[llm_result_offset + last_accepted_token_index]);
           if (node_ptr->id ==
               llm_verify_result
                   .token_ids[llm_result_offset + last_accepted_token_index]) {
@@ -2025,7 +2025,7 @@ void RequestManager::get_verify_results_greedy(
       }
       if (!token_accepted_this_layer) {
         // No token is accepted in this layer, we should stop the traversal
-        printf("no token is accepted in this layer\n");
+        // printf("no token is accepted in this layer\n");
         break;
       }
     }
