@@ -7,6 +7,8 @@
 #include "substitutions/open_parallel_tensor_guid_t.dtg.h"
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
 #include "substitutions/sub_parallel_computation_graph_data.dtg.h"
+#include "substitutions/sub_parallel_computation_graph_edge.dtg.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph_edge.dtg.h"
 
 namespace FlexFlow {
 
@@ -35,7 +37,11 @@ std::vector<parallel_tensor_guid_t>
     get_layer_outputs(SubParallelComputationGraph const &,
                       parallel_layer_guid_t const &);
 
-SubParallelComputationGraphData get_graph_data(SubParallelComputationGraph const &);
+std::unordered_set<SubParallelComputationGraphEdge> get_incoming_edges(SubParallelComputationGraph const &, std::unordered_set< parallel_layer_guid_t> const &);
+std::unordered_set<ParallelComputationGraphEdge> get_outgoing_edges(SubParallelComputationGraph const &, std::unordered_set<parallel_layer_guid_t> const &);
+
+SubParallelComputationGraphData get_sub_pcg_data(SubParallelComputationGraph const &);
+SubParallelComputationGraph sub_pcg_from_graph_data(SubParallelComputationGraphData const &);
 bool are_isomorphic(SubParallelComputationGraph const &, SubParallelComputationGraph const &);
 
 } // namespace FlexFlow

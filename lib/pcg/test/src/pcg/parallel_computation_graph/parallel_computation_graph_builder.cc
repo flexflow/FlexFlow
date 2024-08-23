@@ -2,6 +2,7 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_layer_attrs.h"
+#include "pcg/parallel_computation_graph/parallel_tensor_guid_t.h"
 #include "test/utils/doctest.h"
 #include "utils/containers/count.h"
 #include "utils/containers/generate_map.h"
@@ -39,7 +40,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t rhs = b.create_input_tensor(rhs_shape);
 
     parallel_tensor_guid_t out = b.add(lhs, rhs);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, out);
+    parallel_layer_guid_t layer = get_source_layer(out);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -102,7 +103,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t b_tensor = b.create_input_tensor(b_shape);
 
     parallel_tensor_guid_t out = b.batch_matmul(a_tensor, b_tensor);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, out);
+    parallel_layer_guid_t layer = get_source_layer(out);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -145,7 +146,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     DataType output_datatype = DataType::DOUBLE;
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
     parallel_tensor_guid_t output = b.cast(input, output_datatype);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -307,7 +308,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                             Activation::RELU,
                                             /*use_bias=*/true,
                                             DataType::FLOAT);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -350,7 +351,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                 /*outDim=*/8,
                                                 AggregateOp::SUM,
                                                 DataType::FLOAT);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -400,7 +401,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t value = b.create_input_tensor(value_shape);
     parallel_tensor_guid_t output =
         b.multihead_attention(query, key, value, embed_dim, num_heads);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -441,7 +442,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
     parallel_tensor_guid_t output = b.relu(input);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -480,7 +481,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
     parallel_tensor_guid_t output = b.parallel_partition(input, ff_dim_t{0}, 2);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -519,7 +520,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
     parallel_tensor_guid_t output = b.parallel_combine(input, ff_dim_t{0}, 2);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -558,7 +559,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
     parallel_tensor_guid_t output = b.parallel_replicate(input, 2);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =
@@ -597,7 +598,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     parallel_tensor_guid_t input = b.create_input_tensor(input_shape);
     parallel_tensor_guid_t output = b.parallel_reduce(input, 2);
-    parallel_layer_guid_t layer = get_source_layer(b.pcg, output);
+    parallel_layer_guid_t layer = get_source_layer(output);
 
     SUBCASE("inputs") {
       std::vector<parallel_tensor_guid_t> result =

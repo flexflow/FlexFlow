@@ -4,7 +4,7 @@
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
 #include "substitutions/pcg_pattern_match.dtg.h"
 #include "substitutions/substitution.dtg.h"
-#include "substitutions/output_expr_to_result_subpcg_mapping.dtg.h"
+#include "substitutions/output_expr_to_result_sub_pcg_mapping.dtg.h"
 
 namespace FlexFlow {
 

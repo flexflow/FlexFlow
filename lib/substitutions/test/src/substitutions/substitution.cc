@@ -369,22 +369,26 @@ TEST_SUITE(FF_TEST_SUITE) {
             },
           }
         },
-        std::unordered_set<OpenDataflowEdge>{
-          OpenDataflowEdge{
-            DataflowInputEdge{
-              result_i_activation.raw_dataflow_graph_input,
-              DataflowInput{
-                result_fused_mm_relu_node.raw_graph_node,
-                0,
+        std::unordered_set<SubParallelComputationGraphEdge>{
+          SubParallelComputationGraphEdge{
+            OpenDataflowEdge{
+              DataflowInputEdge{
+                result_i_activation.raw_dataflow_graph_input,
+                DataflowInput{
+                  result_fused_mm_relu_node.raw_graph_node,
+                  0,
+                },
               },
             },
           },
-          OpenDataflowEdge{
-            DataflowInputEdge{
-              result_i_weights.raw_dataflow_graph_input,
-              DataflowInput{
-                result_fused_mm_relu_node.raw_graph_node,
-                1,
+          SubParallelComputationGraphEdge{
+            OpenDataflowEdge{
+              DataflowInputEdge{
+                result_i_weights.raw_dataflow_graph_input,
+                DataflowInput{
+                  result_fused_mm_relu_node.raw_graph_node,
+                  1,
+                },
               },
             },
           },
@@ -409,7 +413,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         }
       };
 
-      SubParallelComputationGraphData result_graph_data = get_graph_data(result_graph);
+      SubParallelComputationGraphData result_graph_data = get_sub_pcg_data(result_graph);
 
       CHECK(result_graph_data == correct_graph_data);
     }

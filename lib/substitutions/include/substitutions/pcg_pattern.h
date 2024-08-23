@@ -24,6 +24,8 @@ TensorAttributePattern get_tensor_pattern(PCGPattern const &,
 OperatorAttributePattern get_operator_pattern(PCGPattern const &,
                                               PatternNode const &);
 std::unordered_set<PatternInput> get_inputs(PCGPattern const &);
+std::vector<PatternNodeOutput> get_pattern_node_outputs(PCGPattern const &,
+                                                PatternNode const &);
 
 bool assignment_satisfies(SubParallelComputationGraph const &,
                           PCGPattern const &,

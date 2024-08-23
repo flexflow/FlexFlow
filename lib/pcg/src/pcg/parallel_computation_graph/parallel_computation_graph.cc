@@ -56,11 +56,6 @@ std::vector<parallel_tensor_guid_t>
       [](DataflowOutput const &o) { return parallel_tensor_guid_t{o}; });
 }
 
-parallel_layer_guid_t get_source_layer(ParallelComputationGraph const &g,
-                                       parallel_tensor_guid_t const &t) {
-  return parallel_layer_guid_t{t.raw_graph_output.node};
-}
-
 ParallelLayerAttrs get_parallel_layer_attrs(ParallelComputationGraph const &pcg,
                                             parallel_layer_guid_t const &l) {
   return pcg.raw_graph.at(l.raw_graph_node);

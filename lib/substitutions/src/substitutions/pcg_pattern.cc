@@ -5,6 +5,7 @@
 #include "substitutions/unlabelled/pattern_value.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/transform.h"
+#include "utils/graph/dataflow_graph/algorithms.h"
 
 namespace FlexFlow {
 
@@ -54,6 +55,13 @@ TensorAttributePattern get_tensor_pattern(PCGPattern const &p,
 OperatorAttributePattern get_operator_pattern(PCGPattern const &p,
                                               PatternNode const &n) {
   return p.raw_graph.at(n.raw_node);
+}
+
+std::vector<PatternNodeOutput> get_pattern_node_outputs(PCGPattern const &pattern,
+                                                PatternNode const &node) {
+  std::vector<DataflowOutput> raw_outputs = get_outputs(pattern.raw_graph, node.raw_node);
+
+  return transform(raw_outputs, [](DataflowOutput const &o) { return PatternNodeOutput{o}; });
 }
 
 bool assignment_satisfies(
