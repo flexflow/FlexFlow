@@ -101,8 +101,8 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
       for (int i = indices_offset; i < indices_lens; i++) {
         kv_indices_h[i] = kv_indices[i - indices_offset];
-        printf("indices offset = %d, indices_lens = %d\n", indices_offset, indices_lens);
-        printf("kv_indices_h[%d] = %d\n", i, kv_indices_h[i]);
+        // printf("indices offset = %d, indices_lens = %d\n", indices_offset, indices_lens);
+        // printf("kv_indices_h[%d] = %d\n", i, kv_indices_h[i]);
       }
       qk_indptr_h[indptr_idx + 1] = qk_lens;
       kv_last_page_len_h[indptr_idx] = batch_config->requestsInfo[req_idx].kv_last_page_len;

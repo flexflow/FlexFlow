@@ -898,33 +898,33 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   // TODO: currently only support specinfer, might need to support incremental
   if (decoding_mode == SPECULATIVE_DECODING) {
     _append_tokens_to_blocks(*prefill_request, prefill_request->tokens, true);
-    printf("append block\n");
-    printf("prefilling request num_tokens: %d\n", prefill_request->tokens.size());
+    // printf("append block\n");
+    // printf("prefilling request num_tokens: %d\n", prefill_request->tokens.size());
     PageManager *page_manager = PageManager::get_page_manager();
-    printf("page manager address prepare: %p\n", page_manager);
+    // printf("page manager address prepare: %p\n", page_manager);
     assert(page_manager != nullptr);
     // we first need to update the physical block numbers
     int num_allocated_blocks = page_manager->get_num_allocated_blocks(guid);
-    printf("num allocated blocks: %d\n", num_allocated_blocks);
+    // printf("num allocated blocks: %d\n", num_allocated_blocks);
     int diff_block = request.blocks.size() - num_allocated_blocks;
-    printf("diff block: %d\n", diff_block);
+    // printf("diff block: %d\n", diff_block);
     assert(diff_block >= 0);
     for (int i = 0; i < diff_block; i++) {
       page_manager->allocate(guid);
     }
-    printf("after allocate\n");
+    // printf("after allocate\n");
     // update last kv len
     bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
-    printf("after kv_last_page_len\n");
+    // printf("after kv_last_page_len\n");
     // update the block table
     // bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
     bc.requestsIndices[request_index] = page_manager->get_block_table_indices(guid);
-    printf("page_indices size: %d\n", bc.requestsIndices[request_index].size());
-    printf("first page index: %d\n", bc.requestsIndices[request_index][0]);
+    // printf("page_indices size: %d\n", bc.requestsIndices[request_index].size());
+    // printf("first page index: %d\n", bc.requestsIndices[request_index][0]);
     // update the num kv pages
     bc.requestsInfo[request_index].num_kv_pages = bc.requestsIndices[request_index].size();
     bc.requestsInfo[request_index].request_guid = guid;
-    printf("after num_kv_pages\n");
+    // printf("after num_kv_pages\n");
   }
 
 
@@ -944,9 +944,9 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
 
   if (verbose) {
     std::cout << "prepare_llm_prefilling_batch NEW batchconfig:" << std::endl;
-    // bc.print();
+    bc.print();
   }
-  printf("end of prepare_llm_prefilling_batch\n");
+  // printf("end of prepare_llm_prefilling_batch\n");
   return bc;
 }
 
@@ -1248,6 +1248,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     std::cout
         << "\n############### prepare_verify_batch_config ###############\n";
   }
+  printf("prepare_verify_batch_config_lalala\n");
   // This method does the following:
   // 1. Commit the verified tokens in the last iteration through the
   // BatchConfig. We can do this request by request.
@@ -1304,6 +1305,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     // into new_bc. Because the LLM don't have that token's KV cache.
     std::vector<Request::CommittedToken> &committed_tokens =
         request.committed_tokens;
+    printf("number of committed tokens: %d\n", committed_tokens.size());
     for (int committed_token_index = 0;
          committed_token_index < committed_tokens.size() - 1;
          committed_token_index++) {
@@ -1319,6 +1321,8 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       // page attention: add to request's logical block
       _append_tokens_to_blocks(request, {committed_token.token_id}, true);
     }
+
+    printf("num tokens currently in the last page: %d\n", request.blocks.back().get_num_alloc_slots());
 
 
     // Load the tokens on the token tree that are not yet pruned to
@@ -1352,6 +1356,9 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     // we first need to update the physical block numbers
     int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
     assert(diff_block >= 0);
+    printf("diff block: %d\n", diff_block);
+    printf("request.blocks.size(): %d\n", request.blocks.size());
+    printf("page_manager->get_num_allocated_blocks(guid): %d\n", page_manager->get_num_allocated_blocks(guid));
     for (int i = 0; i < diff_block; i++) {
       page_manager->allocate(guid);
     }
@@ -1418,6 +1425,7 @@ bool RequestManager::update_llm_verify_results(
 
   // Process the LLM results greedily
   if (speculative_sampling) {
+    printf("i think we are using spec sampling\n");
     get_verify_results_sample(llm_verify_result);
   } else {
     get_verify_results_greedy(llm_verify_result);
@@ -1541,8 +1549,8 @@ void RequestManager::_append_logical_block_to_request(
   // update page_id_commit
   if (is_commit) {
     request.page_id_commit++;
-    printf("page_id_commit: %d\n", request.page_id_commit);
-    printf("blocks size: %d\n", request.blocks.size());
+    // printf("page_id_commit: %d\n", request.page_id_commit);
+    // printf("blocks size: %d\n", request.blocks.size());
     assert(request.page_id_commit < request.blocks.size());
   }
 }
@@ -1914,7 +1922,7 @@ void RequestManager::get_verify_results_sample(
     }
 
     if (verbose) {
-      std::cout << "Request " << request.guid << " committed tokens: ";
+      std::cout << "Request_s " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
         std::cout << committed_token.token_id << " ("
                   << tokenizer_->Decode({committed_token.token_id}) << ") ";
@@ -1939,6 +1947,11 @@ void RequestManager::get_verify_results_greedy(
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
+
+    // traverse the llm_verify_result
+    for (int i = 0; i < 100; i++) {
+      printf("llm_verify_result[%d]: %d\n", i, llm_verify_result.token_ids[i]);
+    }
 
     int llm_result_offset = request.first_token_offset_in_batch;
     int llm_cache_size = request.tokens.size() - 1;
@@ -1983,6 +1996,9 @@ void RequestManager::get_verify_results_greedy(
         } else {
           // The token's parent is accepted, and no token has been accepted in
           // this layer yet
+          printf("llm_result_offset: %d\n", llm_result_offset);
+          printf("last_accepted_token_index: %d\n", last_accepted_token_index);
+          printf("the target token here is: %d\n", llm_verify_result.token_ids[llm_result_offset + last_accepted_token_index]);
           if (node_ptr->id ==
               llm_verify_result
                   .token_ids[llm_result_offset + last_accepted_token_index]) {
@@ -2009,6 +2025,7 @@ void RequestManager::get_verify_results_greedy(
       }
       if (!token_accepted_this_layer) {
         // No token is accepted in this layer, we should stop the traversal
+        printf("no token is accepted in this layer\n");
         break;
       }
     }
@@ -2028,7 +2045,7 @@ void RequestManager::get_verify_results_greedy(
 
     total_nb_generated_tokens += request.committed_tokens.size() - 1;
     if (verbose) {
-      std::cout << "Request " << request.guid << " committed tokens: ";
+      std::cout << "Request_g " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
         std::cout << committed_token.token_id << " ("
                   << tokenizer_->Decode({committed_token.token_id}) << ") ";

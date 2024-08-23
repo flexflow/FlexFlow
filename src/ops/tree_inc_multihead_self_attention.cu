@@ -150,10 +150,10 @@ __global__ void commit_tokens_kernel(
 
       // int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
-      int const page_to_idx = kv_page_indices[start + (tok_id + kPagesize - 1) / kPagesize];
-      assert((tok_id + kPagesize - 1) / kPagesize <= end);
-      int const page_from_idx = kv_page_indices[start + (index_in_kv_cache + kPagesize - 1) / kPagesize];
-      assert((index_in_kv_cache + kPagesize - 1) / kPagesize <= end);
+      int const page_to_idx = kv_page_indices[start + tok_id / kPagesize];
+      assert(start + (tok_id / kPagesize) <= end);
+      int const page_from_idx = kv_page_indices[start + index_in_kv_cache / kPagesize];
+      assert(start + (index_in_kv_cache / kPagesize) <= end);
 
       // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
       // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory
@@ -308,7 +308,7 @@ __global__ void
 
   // compute the starting index of kv page
   int start = kv_indptr[req_idx];
-  int page_idx = kv_page_indices[start + (token_abs_idx + kPagesize - 1) / kPagesize];
+  int page_idx = kv_page_indices[start + (token_abs_idx / kPagesize)];
   size_t from_idx = token_idx * QKV_WEIGHT_NUM * hidden_size;
   size_t to_k_idx = get_k_entry_offset(token_abs_idx, page_idx, hidden_size),
          to_v_idx = get_v_entry_offset(token_abs_idx, page_idx, hidden_size);
@@ -475,14 +475,14 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
               sizeof(int32_t) * BatchConfig::MAX_NUM_REQUESTS,
               cudaMemcpyDeviceToHost);
   //print the request information
-  for (int i = 0; i < bc->num_active_requests(); i++) {
-    printf("request %d: ", i);
-    for (int j = kv_indptr_tmp[i]; j < kv_indptr_tmp[i + 1]; j++) {
-      printf("%d ", kv_indices_tmp[j]);
-    }
-    printf("\n");
-  }
-  printf("last page length: %d\n", kv_last_page_len_tmp[0]);
+  // for (int i = 0; i < bc->num_active_requests(); i++) {
+  //   printf("request %d: ", i);
+  //   for (int j = kv_indptr_tmp[i]; j < kv_indptr_tmp[i + 1]; j++) {
+  //     printf("%d ", kv_indices_tmp[j]);
+  //   }
+  //   printf("\n");
+  // }
+  // printf("last page length: %d\n", kv_last_page_len_tmp[0]);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
       num_kv_heads,
       kPagesize,
@@ -672,7 +672,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // "\n";
 
   if (!bc->prompt_phase) {
-    printf("commit tokens\n");
     commit_tokens(m, bc, stream);
   }else{
     printf("prompt phase in attention\n");
@@ -703,7 +702,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
   // Implement kernel to compute KQV for input tokens
-  printf("compute kernel\n");
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
@@ -712,7 +710,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                      static_cast<DT *>(m->devQKVProjArray),
                      bias_ptr,
                      stream);
-  printf("finish compute kernel\n");
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
