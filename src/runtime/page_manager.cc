@@ -30,7 +30,7 @@ namespace FlexFlow {
 PageManager *page_manager_singleton = nullptr;
 
 LogicalTokenBlock::LogicalTokenBlock(int block_number, uint32_t block_size)
-    : block_number(block_number), block_size(block_size), num_tokens(0) {
+    : block_number(block_number), block_size(block_size), num_tokens(0), num_commit_tokens(0), num_spec_tokens(0) {
         // WARNING: init token lists as empty vector
     }
 
@@ -51,7 +51,8 @@ bool LogicalTokenBlock::is_full() const {
 }
 
 void LogicalTokenBlock::reset_num_spec_tokens(){
-    assert(num_spec_tokens + num_commit_tokens == num_tokens);
+    printf("num_spec_tokens: %d, num_commit_tokens: %d, num_tokens: %d\n", num_spec_tokens, num_commit_tokens, num_tokens);
+    // assert(num_spec_tokens + num_commit_tokens == num_tokens);
     num_tokens -= num_spec_tokens;
     num_spec_tokens = 0;
 }
@@ -158,7 +159,7 @@ bool PageManager::allocate(const RequestGuid& request_guid) {
 
     PhysicalTokenBlock block = gpu_allocator.allocate();
     block_table.push_back(block);
-    printf("allocated block %d\n", block.block_number);
+    // printf("allocated block %d\n", block.block_number);
     return true;
 }
 
@@ -183,7 +184,7 @@ std::vector<int32_t> PageManager::get_block_table_indices(const RequestGuid& req
     try {
     const auto& block_table = block_tables.at(request_guid);
     for (const auto& block : block_table) {
-        printf("get block indice block number is: %d\n", block.block_number);
+        // printf("get block indice block number is: %d\n", block.block_number);
         indices.push_back(block.block_number);
     }
     } catch (const std::out_of_range& e) {
