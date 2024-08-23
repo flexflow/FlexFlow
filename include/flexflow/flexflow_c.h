@@ -1027,7 +1027,7 @@ flexflow_file_data_loader_t
                                      int num_q_heads,
                                      int num_kv_heads,
                                      int hidden_dim,
-                                     int qkv_inner_dim,
+                                     int head_dim,
                                      int tensor_parallelism_degree,
                                      bool use_full_precision);
 

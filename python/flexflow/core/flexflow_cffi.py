@@ -4257,7 +4257,7 @@ class FileDataLoader(object):
         num_q_heads,
         num_kv_heads,
         hidden_dim,
-        qkv_inner_dim,
+        head_dim,
         tensor_parallelism_degree,
         use_full_precision
     ):
@@ -4267,7 +4267,7 @@ class FileDataLoader(object):
             num_q_heads,
             num_kv_heads,
             hidden_dim,
-            qkv_inner_dim,
+            head_dim,
             tensor_parallelism_degree,
             use_full_precision
         )

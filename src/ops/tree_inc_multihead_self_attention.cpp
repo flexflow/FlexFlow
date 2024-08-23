@@ -75,7 +75,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
                    hipStream_t stream) {
   int num_tokens_to_commit = bc->num_tokens_to_commit;
   if (num_tokens_to_commit > 0) {
-    int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens_to_commit;
+    int parallelism =
+        m->local_hidden_size * KV_WEIGHT_NUM * num_tokens_to_commit;
     hipLaunchKernelGGL(
         HIP_KERNEL_NAME(commit_tokens_kernel<DT>),
         GET_BLOCKS(parallelism),
@@ -92,7 +93,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         num_tokens_to_commit,
         m->num_active_tokens, // number of active tokens in previous batch
         BatchConfig::max_sequence_length(),
-        m->hidden_size);
+        m->local_hidden_size);
   }
 }
 
@@ -198,7 +199,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
       assert(num_new_tokens >= 1 && total_tokens_in_request >= num_new_tokens);
       {
         // update K-V cache
-        int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_new_tokens;
+        int parallelism = m->local_hidden_size * KV_WEIGHT_NUM * num_new_tokens;
         hipLaunchKernelGGL(
             HIP_KERNEL_NAME(update_tree_branch_kv_cache<DT>),
             GET_BLOCKS(parallelism),
@@ -216,7 +217,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             processed_tokens_in_batch, // num_processed_tokens_in_batch
             m->num_active_tokens,      // total_tokens_in_batch
             BatchConfig::max_sequence_length(),
-            m->hidden_size);
+            m->local_hidden_size);
       }
 
       // bc->token_last_available_idx[i] + 1;
@@ -490,14 +491,14 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                            hipMemcpyHostToDevice,
                            stream));
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  compute_qkv(m,
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
 
   // phase 2: No need to update key/val cache
   // IncMultiHeadSelfAttention::update_kv_cache_kernel(
@@ -540,7 +541,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   if (input.data_type == DT_HALF) {
     if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+      pre_build_weight<half>(m, weight, input.data_type, stream);
     }
 
     half const *bias_ptr =
@@ -556,7 +557,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
         stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+      pre_build_weight<float>(m, weight, input.data_type, stream);
     }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);

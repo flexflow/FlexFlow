@@ -244,14 +244,14 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
 }
 
 template <typename DT>
-void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        int shard_id,
-                        DT const *input_ptr,
-                        DT const *weight_ptr,
-                        DT *output_ptr,
-                        DT const *bias_ptr,
-                        hipStream_t stream) {
+void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
+                 BatchConfig const *bc,
+                 int shard_id,
+                 DT const *input_ptr,
+                 DT const *weight_ptr,
+                 DT *output_ptr,
+                 DT const *bias_ptr,
+                 hipStream_t stream) {
 
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
@@ -320,7 +320,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        m->num_q_heads,
                        *m->scaling_query,
                        m->scaling_factor,
-                       m->hidden_size);
+                       m->local_hidden_size);
   } else if (m->scaling_query) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(scaling_query_kernel<DT>),
                        GET_BLOCKS(parallelism),
@@ -332,11 +332,11 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        m->num_q_heads,
                        m->qProjSize,
                        m->scaling_factor,
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
   if (*m->apply_rotary_embedding) {
     /*q&k*/
-    parallelism = num_tokens * m->hidden_size;
+    parallelism = num_tokens * m->local_hidden_size;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_rotary_embedding_hf<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -349,7 +349,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        m->kProjSize,
                        num_tokens,
                        q_array_size,
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
 }
 
@@ -359,7 +359,7 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             hipStream_t stream) {
   int num_tokens = bc->num_active_tokens();
   if (num_tokens > 0) {
-    int parallelism = m->hidden_size * num_tokens;
+    int parallelism = m->local_hidden_size * num_tokens;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(store_kv_cache<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -371,15 +371,15 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                        m->token_infos,
                        num_tokens,
                        BatchConfig::max_sequence_length(),
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
 }
 
 template <typename DT>
-void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                             GenericTensorAccessorR const weight,
-                             DataType data_type,
-                             hipStream_t stream) {
+void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
+                      GenericTensorAccessorR const weight,
+                      DataType data_type,
+                      hipStream_t stream) {
   // additional processing for weight uploading
   // Note that we update weight_ptr and bias_ptr when uploading weight and
   // bias
@@ -458,14 +458,14 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            hipMemcpyHostToDevice,
                            stream));
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  compute_qkv(m,
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
 
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
@@ -774,7 +774,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   if (input.data_type == DT_HALF) {
     if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
+      pre_build_weight<half>(m, weight, input.data_type, stream);
     }
     half const *bias_ptr =
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
@@ -789,7 +789,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
+      pre_build_weight<float>(m, weight, input.data_type, stream);
     }
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
@@ -907,7 +907,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   global_num_kv_heads = _global_num_kv_heads;
   num_q_heads = _num_q_heads;
   num_kv_heads = _num_kv_heads;
-  hidden_size = num_q_heads * qProjSize;
+  local_hidden_size = num_q_heads * qProjSize;
 
   weightSize =
       ((qSize * qProjSize + oProjSize * (vProjSize > 0 ? vProjSize : vSize)) *
@@ -1087,13 +1087,13 @@ IncMultiHeadSelfAttentionMeta::~IncMultiHeadSelfAttentionMeta(void) {
   }
 }
 
-template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<float>(
+template void Kernels::IncMultiHeadAttention::pre_build_weight<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     GenericTensorAccessorR const weight,
     DataType data_type,
     hipStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
+template void Kernels::IncMultiHeadAttention::pre_build_weight<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     GenericTensorAccessorR const weight,
     DataType data_type,

@@ -183,47 +183,47 @@ void LLAMA::create_llama_model(FFModel &ff,
     token = token_ff_norm[0];
     Tensor ff_norm = token_ff_norm[1];
 
-    Tensor w1 = ff.dense(
-        ff_norm,
-        llama_config.intermediate_size,
-        AC_MODE_NONE,
-        false,
-        DT_NONE,
-        nullptr,
-        nullptr,
-        nullptr,
-        REG_MODE_NONE,
-        0.0f,
+    Tensor w1 =
+        ff.dense(ff_norm,
+                 llama_config.intermediate_size,
+                 AC_MODE_NONE,
+                 false,
+                 DT_NONE,
+                 nullptr,
+                 nullptr,
+                 nullptr,
+                 REG_MODE_NONE,
+                 0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w1")
                      .c_str());
 
-    Tensor w3 = ff.dense(
-        ff_norm,
-        llama_config.intermediate_size,
-        AC_MODE_NONE,
-        false,
-        DT_NONE,
-        nullptr,
-        nullptr,
-        nullptr,
-        REG_MODE_NONE,
-        0.0f,
+    Tensor w3 =
+        ff.dense(ff_norm,
+                 llama_config.intermediate_size,
+                 AC_MODE_NONE,
+                 false,
+                 DT_NONE,
+                 nullptr,
+                 nullptr,
+                 nullptr,
+                 REG_MODE_NONE,
+                 0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w3")
                      .c_str());
 
     Tensor multi = ff.sigmoid_silu_multi(w1, w3);
 
-    w2 = ff.dense(
-        multi,
-        llama_config.hidden_size,
-        AC_MODE_NONE,
-        false,
-        DT_NONE,
-        nullptr,
-        nullptr,
-        nullptr,
-        REG_MODE_NONE,
-        0.0f,
+    w2 =
+        ff.dense(multi,
+                 llama_config.hidden_size,
+                 AC_MODE_NONE,
+                 false,
+                 DT_NONE,
+                 nullptr,
+                 nullptr,
+                 nullptr,
+                 REG_MODE_NONE,
+                 0.0f,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w2")
                      .c_str());
   }

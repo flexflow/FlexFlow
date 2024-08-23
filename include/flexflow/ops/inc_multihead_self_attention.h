@@ -113,7 +113,7 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
+  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta *m,
                                        BatchConfig const *bc,
                                        int shard_id,
                                        GenericTensorAccessorR const &input,
@@ -128,7 +128,7 @@ public:
   bool qkv_bias;
   bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
       qk_prod_scaling, position_bias;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qk_dim, v_dim, o_dim;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
   bool offload;
@@ -146,13 +146,10 @@ public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 InferenceMode infer_mode,
                                 Op const *attn,
-                                int _qSize,
-                                int _kSize,
-                                int _vSize,
-                                int _qProjSize,
-                                int _kProjSize,
-                                int _vProjSize,
-                                int _oProjSize,
+                                int _hidden_size,
+                                int _qk_dim,
+                                int _v_dim,
+                                int _o_dim,
                                 bool _apply_rotary_embedding,
                                 bool _qkv_bias,
                                 bool _scaling_query,
@@ -175,9 +172,9 @@ public:
   Realm::RegionInstance reserveInst;
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qk_dim, v_dim, o_dim;
   int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads,
-      hidden_size;
+      local_hidden_size;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *qkv_bias;
@@ -187,7 +184,7 @@ public:
   bool *position_bias;
   float scaling_factor;
   void *weight_ptr, *bias_ptr; // for weight offload
-  void *devQKVProjArray, *queryTmp, *keyCache, *valueCache;
+  void *devQKVProjArray, *queryTmp, *kvCache;
   half *outputTmp;
   void *qk_prods, *qk_prods_softmax;
   void *attn_heads;
