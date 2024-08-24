@@ -20,6 +20,7 @@ public:
       create(Args &&...args) {
     return OpenDataflowGraph(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
+
 protected:
   using OpenDataflowGraphView::OpenDataflowGraphView;
 

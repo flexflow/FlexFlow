@@ -24,7 +24,6 @@ struct DataflowGraphView : virtual public DiGraphView {
     return DataflowGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
-  void debug_print_dot() const;
 protected:
   using DiGraphView::DiGraphView;
 

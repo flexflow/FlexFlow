@@ -168,10 +168,11 @@ public:
                      DataType dtype,
                      std::optional<std::string> const &name = std::nullopt);
   // Add a concat layer
-  tensor_guid_t concat(int n,
-                       std::vector<tensor_guid_t> const &tensors,
-                       int axis,
-                       std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      concat(int n,
+             std::vector<tensor_guid_t> const &tensors,
+             int axis,
+             std::optional<std::string> const &maybe_name = std::nullopt);
   // Add a mean layer
   tensor_guid_t mean(tensor_guid_t const &input,
                      std::vector<int> const &dims,
@@ -224,7 +225,7 @@ public:
       bool add_bias_kv = false,
       bool add_zero_attn = false,
       std::optional<InitializerAttrs> initializer = std::nullopt,
-      std::optional<std::string> const &name = std::nullopt);
+      std::optional<std::string> const &maybe_name = std::nullopt);
   tensor_guid_t create_tensor(TensorShape const &, CreateGrad);
   tensor_guid_t create_weight(
       TensorShape const &,

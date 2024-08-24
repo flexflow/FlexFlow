@@ -1,19 +1,27 @@
 #ifndef _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 #define _FLEXFLOW_LOCAL_EXECUTION_TASK_ARGUMENT_ACCESSOR_H
 
+#include "local-execution/device_specific.h"
 #include "local-execution/itask_argument_accessor.h"
+#include "local-execution/per_device_op_state.dtg.h"
 
 namespace FlexFlow {
 
 struct TaskArgumentAccessor {
   template <typename T>
-  T const &get_argument(int slot) const {
-    return this->get_argument<T>(slot_id_t{slot});
+  T const &get_argument(slot_id_t slot) const {
+    if constexpr (PerDeviceOpState::IsPartOfPerDeviceOpState_v<T>) {
+      PerDeviceOpState device_states =
+          this->ptr->get_concrete_arg(slot).get<PerDeviceOpState>();
+      return device_states.get<T>();
+    } else {
+      return this->ptr->get_concrete_arg(slot).get<T>();
+    }
   }
 
   template <typename T>
-  T const &get_argument(slot_id_t slot) const {
-    return this->ptr->get_concrete_arg(slot).get<T>();
+  T const &get_argument(int slot) const {
+    return this->get_argument<T>(slot_id_t{slot});
   }
 
   template <Permissions PRIV>

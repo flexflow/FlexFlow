@@ -1,63 +1,70 @@
-#include "graph_utils.h"
-
+#include "compiler/graph_utils.h"
+#include "pcg/computation_graph.dtg.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph.h"
+#include "substitutions/sub_parallel_computation_graph.dtg.h"
+#include "utils/containers/without_order.h"
+#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 namespace FlexFlow {
 
 SerialParallelDecomposition
     get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
-  return get_serial_parallel_decomposition(pcg.value());
+  NOT_IMPLEMENTED();
+  // return get_serial_parallel_decomposition(pcg.raw_graph);
 }
 
 ParallelComputationGraph cg_to_pcg(ComputationGraph const &g) {
   NOT_IMPLEMENTED();
 }
 
-SubParallelComputationGraphView
-    pcg_to_subpcg(ParallelComputationGraph const &pcg) {
-  return view_output_labelled_as_output_labelled_open(pcg.value());
+SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &pcg) {
+  NOT_IMPLEMENTED();
+  // return view_output_labelled_as_output_labelled_open(pcg.raw_graph);
 }
 
-std::vector<MultiDiEdge>
-    get_sorted_node_input_edges(ParallelComputationGraph const &pcg,
-                                Node const &n) {
-  std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>> incoming_edges =
-      get_incoming_edges_by_idx(pcg, n);
+// std::vector<MultiDiEdge>
+//     get_sorted_node_input_edges(ParallelComputationGraph const &pcg,
+//                                 Node const &n) {
+//   std::unordered_map<NodePort, std::unordered_set<MultiDiEdge>>
+//   incoming_edges =
+//       get_incoming_edges_by_idx(pcg, n);
 
-  std::vector<MultiDiEdge> result;
-  for (auto const &p_id_edge_set : incoming_edges) {
-    result.push_back(get_only(p_id_edge_set.second));
-  }
+//   std::vector<MultiDiEdge> result;
+//   for (auto const &p_id_edge_set : incoming_edges) {
+//     result.push_back(get_only(p_id_edge_set.second));
+//   }
 
-  return result;
-}
+//   return result;
+// }
 
-std::unordered_map<MultiDiEdge, ParallelTensorShape>
-    infer_tensor_shapes(ParallelComputationGraph const &pcg) {
-  std::unordered_map<MultiDiEdge, ParallelTensorShape> result;
-  for (Node const &n : get_topological_ordering(pcg)) {
-    PCGOperatorAttrs op = pcg.value().at(n);
+// std::unordered_map<MultiDiEdge, ParallelTensorShape>
+//     infer_tensor_shapes(ParallelComputationGraph const &pcg) {
+//   std::unordered_map<MultiDiEdge, ParallelTensorShape> result;
+//   for (Node const &n : get_topological_ordering(pcg)) {
+//     PCGOperatorAttrs op = pcg.raw_graph.at(n);
 
-    std::vector<ParallelTensorShape> input_tensor_shapes =
-        vector_transform([&](MultiDiEdge const &e) { return result.at(e); },
-                         get_sorted_node_input_edges(pcg, n));
+//     std::vector<ParallelTensorShape> input_tensor_shapes =
+//         vector_transform([&](MultiDiEdge const &e) { return result.at(e); },
+//                          get_sorted_node_input_edges(pcg, n));
 
-    std::vector<ParallelTensorShape> output_tensor_shapes =
-        get_output_shapes(op, input_tensor_shapes);
+//     std::vector<ParallelTensorShape> output_tensor_shapes =
+//         get_output_shapes(op, input_tensor_shapes);
 
-    auto outgoing_edges = get_outgoing_edges_by_idx(pcg, n);
+//     auto outgoing_edges = get_outgoing_edges_by_idx(pcg, n);
 
-    int i = 0;
+//     int i = 0;
 
-    for (auto const &[node_port, edges] : outgoing_edges) {
-      for (MultiDiEdge const &e : edges) {
-        result.insert({e, output_tensor_shapes[i++]});
-      }
-    }
-  }
+//     for (auto const &[node_port, edges] : outgoing_edges) {
+//       for (MultiDiEdge const &e : edges) {
+//         result.insert({e, output_tensor_shapes[i++]});
+//       }
+//     }
+//   }
 
-  assert(result.size() == get_edges(pcg.value()).size());
+//   assert(result.size() == get_edges(pcg.raw_graph).size());
 
-  return result;
-}
+//   return result;
+// }
 
 /* template <typename NodeLabel, */
 /*           typename EdgeLabel, */
@@ -112,33 +119,35 @@ std::unordered_map<MultiDiEdge, ParallelTensorShape>
 /*   } */
 /* } */
 
-struct GetNodes {
-  template <typename T>
-  std::unordered_set<Node> operator()(T const &t) {
-    return get_nodes(t);
-  }
-};
+// struct GetNodes {
+//   template <typename T>
+//   std::unordered_set<Node> operator()(T const &t) {
+//     return get_nodes(t);
+//   }
+// };
 
-std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
-  return visit(GetNodes{}, sp);
-}
+// std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
+//   return std::visit(GetNodes{}, sp.raw_variant);
+// }
 
-std::unordered_set<Node> get_nodes(Serial const &serial) {
-  return set_union(
-      transform(serial.children, [](std::variant<Parallel, Node> const child) {
-        return visit(GetNodes{}, child);
-      }));
-}
+// std::unordered_set<Node> get_nodes(SerialSplit const &serial) {
+//   return set_union(
+//       transform(serial.children, [](std::variant<ParallelSplit, Node> const
+//       child) {
+//         return std::visit(GetNodes{}, child);
+//       }));
+// }
 
-std::unordered_set<Node> get_nodes(Parallel const &parallel) {
-  return set_union(
-      transform(parallel.children, [](std::variant<Serial, Node> const child) {
-        return visit(GetNodes{}, child);
-      }));
-}
+// std::unordered_set<Node> get_nodes(ParallelSplit const &parallel) {
+//   return set_union(
+//       transform(parallel.children, [](std::variant<SerialSplit, Node> const
+//       child) {
+//         return std::visit(GetNodes{}, child);
+//       }));
+// }
 
-std::unordered_set<Node> get_nodes(Node const &node) {
-  return {node};
-}
+// std::unordered_set<Node> get_nodes(Node const &node) {
+//   return {node};
+// }
 
 } // namespace FlexFlow
