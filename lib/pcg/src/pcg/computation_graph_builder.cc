@@ -17,6 +17,7 @@
 #include "op-attrs/ops/dropout.h"
 #include "op-attrs/ops/gather.h"
 #include "op-attrs/ops/batch_norm.h"
+#include "op-attrs/ops/attention.h"
 
 namespace FlexFlow {
 
