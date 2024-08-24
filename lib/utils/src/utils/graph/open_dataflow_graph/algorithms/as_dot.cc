@@ -8,15 +8,29 @@
 
 namespace FlexFlow {
 
+std::string as_dot(OpenDataflowGraphView const &g) {
+  std::function<std::string(Node const &)> get_node_label = [](Node const &n) { 
+    return fmt::format("n{}", n.raw_uid);
+  };
+
+  std::function<std::string(DataflowGraphInput const &)> get_input_label = [](DataflowGraphInput const &i) {
+    return fmt::format("i{}", i.idx);
+  };
+
+  return as_dot(g, get_node_label, get_input_label);
+}
+
 // WARN(@lockshaw): doing this all with string ids is ugly and error prone,
 // as it requires duplicating the stringification logic across functions. 
 //
 // Fixing this is tracked in issue 
-std::string as_dot(OpenDataflowGraphView const &g) {
+std::string as_dot(OpenDataflowGraphView const &g, 
+                   std::function<std::string(Node const &)> const &get_node_label,
+                   std::function<std::string(DataflowGraphInput const &)> const &get_input_label) {
   std::ostringstream oss;
   DotFile<std::string> dot = DotFile<std::string>{oss};
 
-  as_dot(dot, static_cast<DataflowGraphView>(g));
+  as_dot(dot, static_cast<DataflowGraphView>(g), get_node_label);
 
   auto get_node_name = [](Node n) { 
     return fmt::format("n{}", n.raw_uid);
@@ -35,7 +49,7 @@ std::string as_dot(OpenDataflowGraphView const &g) {
   };
 
   for (DataflowGraphInput const &i : get_inputs(g)) {
-    dot.add_node(get_graph_input_name(i), {{"style", "dashed"}});
+    dot.add_node(get_graph_input_name(i), {{"style", "dashed"}, {"label", get_input_label(i)}});
   }
 
   for (DataflowInputEdge const &e : get_incoming_edges(g)) {

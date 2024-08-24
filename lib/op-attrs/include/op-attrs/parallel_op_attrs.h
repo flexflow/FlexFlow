@@ -4,6 +4,7 @@
 #include "op-attrs/parallel_op_attrs.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/pcg_operator_attrs.dtg.h"
+#include "utils/record_formatter.h"
 
 namespace FlexFlow {
 

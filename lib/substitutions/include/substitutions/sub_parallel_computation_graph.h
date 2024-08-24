@@ -54,6 +54,8 @@ SubParallelComputationGraphData get_sub_pcg_data(SubParallelComputationGraph con
 SubParallelComputationGraph sub_pcg_from_graph_data(SubParallelComputationGraphData const &);
 bool are_isomorphic(SubParallelComputationGraph const &, SubParallelComputationGraph const &);
 
+SubParallelComputationGraph without_layer_names(SubParallelComputationGraph const &);
+
 std::string as_dot(SubParallelComputationGraph const &);
 void debug_print_dot(SubParallelComputationGraph const &);
 

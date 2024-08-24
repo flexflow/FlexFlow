@@ -14,13 +14,16 @@ std::string as_dot(DataflowGraphView const &g) {
   std::ostringstream oss;
   DotFile<std::string> dot = DotFile<std::string>{oss};
 
-  as_dot(dot, g);
+  std::function<std::string(Node const &)> get_node_label = [](Node const &n) -> std::string { return fmt::format("n{}", n.raw_uid); };
+  as_dot(dot, g, get_node_label);
 
   dot.close();
   return oss.str();
 }
 
-void as_dot(DotFile<std::string> &dot, DataflowGraphView const &g) {
+void as_dot(DotFile<std::string> &dot, 
+            DataflowGraphView const &g,
+            std::function<std::string(Node const &)> const &get_node_label) {
   auto get_node_name = [](Node n) { 
     return fmt::format("n{}", n.raw_uid);
   };
@@ -49,7 +52,7 @@ void as_dot(DotFile<std::string> &dot, DataflowGraphView const &g) {
 
     RecordFormatter rec;
     rec << inputs_record
-        << get_node_name(n)
+        << get_node_label(n)
         << outputs_record;
 
     dot.add_record_node(get_node_name(n), rec);

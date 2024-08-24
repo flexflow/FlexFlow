@@ -10,6 +10,7 @@ bool is_parallel_op(PCGOperatorAttrs const &);
 OperatorType get_op_type(PCGOperatorAttrs const &);
 ComputationGraphOpAttrs
     compgraph_op_attrs_from_pcg_op_attrs(PCGOperatorAttrs const &);
+RecordFormatter as_dot(PCGOperatorAttrs const &);
 
 } // namespace FlexFlow
 

@@ -8,6 +8,24 @@
 
 namespace FlexFlow {
 
+RecordFormatter as_dot(LinearAttrs const &attrs) {
+  RecordFormatter r;
+
+  auto kv = [](std::string const &label, auto const &val) {
+    RecordFormatter rr;
+    rr << label << fmt::to_string(val);
+    return rr;
+  };
+
+  r << kv("out_channels", attrs.out_channels)
+    << kv("use_bias", attrs.use_bias)
+    << kv("data_type", attrs.data_type)
+    << kv("activation", attrs.activation)
+    << kv("regularizer", attrs.regularizer);
+    
+  return r;
+}
+
 tl::expected<TensorShape, std::string>
     get_kernel_shape(LinearAttrs const &attrs, TensorShape const &input_shape) {
   size_t in_channels = dim_at_idx(input_shape, ff_dim_t{-1});

@@ -1,6 +1,7 @@
 #include "op-attrs/pcg_operator_attrs.h"
 #include "op-attrs/get_op_type.h"
 #include "utils/overload.h"
+#include "op-attrs/ops/linear.h"
 
 namespace FlexFlow {
 
@@ -63,5 +64,17 @@ ComputationGraphOpAttrs
       },
   });
 }
+
+RecordFormatter as_dot(PCGOperatorAttrs const &attrs) {
+  return attrs.visit<RecordFormatter>(overload {
+    [](LinearAttrs const &l) { return as_dot(l); },
+    [&](auto const &) { 
+      RecordFormatter r;
+      r << fmt::to_string(get_op_type(attrs));
+      return r;
+    },
+  });
+}
+
 
 } // namespace FlexFlow

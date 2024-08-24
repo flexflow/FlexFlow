@@ -6,13 +6,15 @@
 #include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/find_isomorphism.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/from_labelled_open_dataflow_graph_data.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_node_labels.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
 #include "utils/graph/dataflow_graph/algorithms/get_outgoing_edges.h"
-#include "utils/graph/open_dataflow_graph/algorithms/as_dot.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/as_dot.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_value_uses.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_input_edges.h"
+#include "op-attrs/pcg_operator_attrs.h"
 
 namespace FlexFlow {
 
@@ -134,12 +136,47 @@ SubParallelComputationGraph sub_pcg_from_graph_data(SubParallelComputationGraphD
   };
 }
 
+SubParallelComputationGraph without_layer_names(SubParallelComputationGraph const &spcg) {
+  return SubParallelComputationGraph{
+    rewrite_node_labels(spcg.raw_graph, 
+                        [](Node const &n, ParallelLayerAttrs const &old_attrs) {
+                          ParallelLayerAttrs new_attrs = old_attrs;
+                          new_attrs.name = std::nullopt;
+                          return new_attrs;
+                        }),
+  };
+}
+
 bool are_isomorphic(SubParallelComputationGraph const &lhs, SubParallelComputationGraph const &rhs) {
-  return find_isomorphism(lhs.raw_graph, rhs.raw_graph).has_value();
+  return find_isomorphism(without_layer_names(lhs).raw_graph, without_layer_names(rhs).raw_graph).has_value();
 }
 
 std::string as_dot(SubParallelComputationGraph const &spcg) {
-  return as_dot(static_cast<OpenDataflowGraphView>(spcg.raw_graph));
+  std::function<std::string(ParallelLayerAttrs const &)> get_node_label = [](ParallelLayerAttrs const &a) -> std::string { 
+    RecordFormatter r = as_dot(a.op_attrs);
+
+    if (a.name.has_value()) {
+      RecordFormatter rr;
+      rr << "Name" << a.name.value();
+      r << rr;
+    }
+
+    std::ostringstream oss;
+    oss << r;
+    return oss.str();
+  };
+
+  std::function<std::string(ParallelTensorAttrs const &)> get_input_label = [](ParallelTensorAttrs const &a) -> std::string {
+    RecordFormatter r;
+
+    r << fmt::to_string(a.shape);
+
+    std::ostringstream oss;
+    oss << r;
+    return oss.str();
+  };
+
+  return as_dot(spcg.raw_graph, get_node_label, get_input_label);
 }
 
 void debug_print_dot(SubParallelComputationGraph const &spcg) {
