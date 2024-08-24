@@ -449,7 +449,7 @@ SubParallelComputationGraph
                                                                     DataflowEdge dfe = e.raw_edge.get<DataflowEdge>();
                                                                     parallel_layer_guid_t src = parallel_layer_guid_t{dfe.src.node};
                                                                     parallel_layer_guid_t dst = parallel_layer_guid_t{dfe.dst.node};
-                                                                    return (contains(matched_nodes, src) || contains(matched_nodes, dst));
+                                                                    return !(contains(matched_nodes, src) || contains(matched_nodes, dst));
                                                                   }
                                                                 });
 
@@ -458,19 +458,28 @@ SubParallelComputationGraph
                                                                         return !e.raw_edge.has<DataflowInputEdge>();
                                                                       });
 
+    bidict<PatternNodeOutput, parallel_tensor_guid_t> output_orig_pattern_mapping = get_output_mapping_for_pcg_pattern_match(match, sub.pcg_pattern, spcg);
+    bidict<parallel_tensor_guid_t, OutputGraphExprNodeOutput> output_post_outexpr_mapping = get_output_graph_expr_output_mapping(output_expr_to_result_sub_pcg_mapping, sub.output_graph_expr, substitution_output_graph);
+
+    // for (SubParallelComputationGraphEdge const &incoming_edge : get_subgraph_incoming_edges(spcg, matched_nodes)) {
+    //   open_parallel_tensor_guid_t original_tensor = get_parallel_tensor(incoming_edge);
+    //   PatternInput pattern_input = match.input_assignment.at_r(original_tensor);
+    // }
+  
+
     std::unordered_set<SubParallelComputationGraphEdge> incoming_to_sub_edges;
-    for (auto const &[pattern_input, base_graph_value] : match.input_assignment) {
+    for (auto const &[pattern_input, base_graph_tensor] : match.input_assignment) {
       OutputGraphExprInput output_expr_input = sub.inputs_mapping.at_l(pattern_input);
-      for (DataflowInput const &use : get_open_dataflow_value_uses(substitution_output_graph.raw_graph, OpenDataflowValue{pattern_input.raw_dataflow_graph_input})) {
-        SubParallelComputationGraphEdge new_edge = SubParallelComputationGraphEdge{open_dataflow_edge_from_src_and_dst(base_graph_value.raw_open_dataflow_value, use)};
+      input_parallel_tensor_guid_t output_graph_input = output_expr_to_result_sub_pcg_mapping.input_mapping.at_r(output_expr_input);
+      std::unordered_set<parallel_tensor_use_t> uses = get_parallel_tensor_uses(substitution_output_graph, open_parallel_tensor_guid_from_input(output_graph_input));
+      for (parallel_tensor_use_t const &use : uses) {
+        SubParallelComputationGraphEdge new_edge = subpcg_edge_from_tensor_and_use(base_graph_tensor, use);
         incoming_to_sub_edges.insert(new_edge);
       }
     }
 
     std::unordered_set<SubParallelComputationGraphEdge> outgoing_from_sub_edges;
-    bidict<PatternNodeOutput, parallel_tensor_guid_t> output_orig_pattern_mapping = get_output_mapping_for_pcg_pattern_match(match, sub.pcg_pattern, spcg);
-    bidict<parallel_tensor_guid_t, OutputGraphExprNodeOutput> output_post_outexpr_mapping = get_output_graph_expr_output_mapping(output_expr_to_result_sub_pcg_mapping, sub.output_graph_expr, substitution_output_graph);
-    for (ParallelComputationGraphEdge const &outgoing_edge : get_outgoing_edges(spcg, matched_nodes)) {
+    for (ParallelComputationGraphEdge const &outgoing_edge : get_outgoing_edges(spcg, matched_nodes, IncludeInternalEdges::NO)) {
       parallel_tensor_guid_t original_tensor = get_parallel_tensor(outgoing_edge);
       PatternNodeOutput pattern_tensor = output_orig_pattern_mapping.at_r(original_tensor);
       OutputGraphExprNodeOutput output_graph_tensor = sub.outputs_mapping.at_l(pattern_tensor);

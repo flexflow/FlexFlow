@@ -23,6 +23,10 @@ struct bidict {
     }
   }
 
+  bool contains(L const &l, R const &r) const {
+    return this->contains_l(l) && this->at_l(l) == r;
+  }
+
   bool contains_l(L const &l) const {
     return fwd_map.find(l) != fwd_map.end();
   }

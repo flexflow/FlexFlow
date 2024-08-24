@@ -32,7 +32,7 @@ bool open_dataflow_edge_query_includes(OpenDataflowEdgeQuery const &q,
   });
 }
 
-OpenDataflowEdgeQuery open_dataflow_input_edge_query_all_outgoing_from(OpenDataflowValue const &src) {
+OpenDataflowEdgeQuery open_dataflow_edge_query_all_outgoing_from(OpenDataflowValue const &src) {
   return src.visit<OpenDataflowEdgeQuery>(overload {
     [](DataflowOutput const &o) { 
       return OpenDataflowEdgeQuery{
@@ -49,7 +49,7 @@ OpenDataflowEdgeQuery open_dataflow_input_edge_query_all_outgoing_from(OpenDataf
   });
 }
 
-OpenDataflowEdgeQuery open_dataflow_input_edge_query_all_incoming_to(DataflowInput const &dst) {
+OpenDataflowEdgeQuery open_dataflow_edge_query_all_incoming_to(DataflowInput const &dst) {
   return OpenDataflowEdgeQuery{
     dataflow_input_edge_query_all_incoming_to(dst),
     dataflow_edge_query_all_incoming_to(dst),

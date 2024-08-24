@@ -94,13 +94,28 @@ public:
     this->get_ostream() << "}" << std::endl;
   }
 
-  void add_edge(T const &src, T const &dst) {
+  void add_edge(T const &src, 
+                T const &dst,
+                std::optional<std::string> const &src_field = std::nullopt,
+                std::optional<std::string> const &dst_field = std::nullopt) {
     this->reserve_node(src);
     this->reserve_node(dst);
-    auto src_name = this->get_node_name(this->node_ids.at(src));
-    auto dst_name = this->get_node_name(this->node_ids.at(dst));
-    this->get_ostream() << "  " << src_name << " -> " << dst_name << ";"
-                        << std::endl;
+
+    auto get_field_suffix = [](std::optional<std::string> const &field) -> std::string {
+      if (field.has_value()) {
+        return (":" + field.value());
+      } else {
+        return "";
+      }
+    };
+
+    std::string src_name = this->get_node_name(this->node_ids.at(src));
+
+    std::string dst_name = this->get_node_name(this->node_ids.at(dst));
+
+    this->get_ostream() << "  " << src_name << get_field_suffix(src_field)
+                        << " -> " << dst_name << get_field_suffix(dst_field) 
+                        << ";" << std::endl;
   }
   void close() {
     for (size_t subgraph = 0; subgraph < this->subgraph_id; subgraph++) {

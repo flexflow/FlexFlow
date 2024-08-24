@@ -23,6 +23,7 @@ public:
     return OpenDataflowGraphView(make_cow_ptr<T>(std::forward<Args>(args)...));
   }
 
+  void debug_print_dot() const;
 protected:
   using DataflowGraphView::DataflowGraphView;
 

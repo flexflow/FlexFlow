@@ -5,6 +5,8 @@
 #include "substitutions/unlabelled/pattern_split.h"
 #include "substitutions/unlabelled/standard_pattern_edge.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
+#include "utils/bidict/algorithms/right_entries.h"
+#include "utils/bidict/algorithms/left_entries.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
@@ -24,7 +26,7 @@ OpenDataflowSubgraphResult
     subgraph_matched(OpenDataflowGraphView const &g,
                      UnlabelledDataflowGraphPatternMatch const &match) {
   std::unordered_set<Node> matched_nodes =
-      keys(match.node_assignment.reversed());
+      right_entries(match.node_assignment);
   return get_subgraph(g, matched_nodes);
 }
 
@@ -150,8 +152,8 @@ bool unlabelled_pattern_does_match(
   OpenDataflowSubgraphResult subgraph_result = subgraph_matched(graph, match);
   OpenDataflowGraphView matched_subgraph = subgraph_result.graph;
 
-  assert(keys(match.node_assignment) == get_nodes(pattern));
-  assert(keys(match.node_assignment.reversed()) == get_nodes(matched_subgraph));
+  assert(left_entries(match.node_assignment) == get_nodes(pattern));
+  assert(right_entries(match.node_assignment) == get_nodes(matched_subgraph));
 
   MatchAdditionalCriterion through_subgraph_operation =
       MatchAdditionalCriterion{

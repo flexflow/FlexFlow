@@ -11,6 +11,7 @@
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
 #include "utils/integer_conversions.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
+#include "utils/graph/open_dataflow_graph/algorithms/are_isomorphic.h"
 
 using namespace ::FlexFlow;
 
@@ -459,7 +460,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       CHECK(get_parallel_layers(result).size() == get_parallel_layers(correct).size());
       CHECK(get_edges(result.raw_graph).size() == get_edges(correct.raw_graph).size());
-      // CHECK(are_isomorphic(result, correct));
+      CHECK(are_isomorphic(static_cast<OpenDataflowGraphView>(result.raw_graph), static_cast<OpenDataflowGraphView>(correct.raw_graph)));
+      CHECK(are_isomorphic(result, correct));
     }
   }
 }

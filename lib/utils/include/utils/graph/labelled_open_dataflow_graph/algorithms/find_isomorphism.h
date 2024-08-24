@@ -6,34 +6,25 @@
 #include "utils/containers/get_all_permutations.h"
 #include "utils/graph/labelled_open_dataflow_graph/labelled_open_dataflow_graph_view.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/is_isomorphic_under.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/open_dataflow_graph_isomorphism.dtg.h"
+#include "utils/graph/open_dataflow_graph/algorithms/open_dataflow_graph_isomorphism.dtg.h"
+#include "utils/graph/open_dataflow_graph/algorithms/find_isomorphism.h"
 
 namespace FlexFlow {
 
 template <typename NodeLabel, typename EdgeLabel>
 std::optional<OpenDataflowGraphIsomorphism> find_isomorphism(LabelledOpenDataflowGraphView<NodeLabel, EdgeLabel> const &src,
                                                              LabelledOpenDataflowGraphView<NodeLabel, EdgeLabel> const &dst) {
-  std::vector<Node> src_nodes = as_vector(get_nodes(src));
-  std::vector<DataflowGraphInput> src_inputs = as_vector(get_inputs(src));
-  for (std::vector<Node> const &dst_nodes : get_all_permutations(get_nodes(dst))) {
-    for (std::vector<DataflowGraphInput> const &dst_inputs : get_all_permutations(get_inputs(dst))) {
-      std::vector<std::pair<Node, Node>> zipped_nodes = zip(src_nodes, dst_nodes);
-      bidict<Node, Node> node_mapping{zipped_nodes.cbegin(), zipped_nodes.cend()};
+  std::unordered_set<OpenDataflowGraphIsomorphism> unlabelled_isomorphisms = find_isomorphisms(
+    static_cast<OpenDataflowGraphView>(src),
+    static_cast<OpenDataflowGraphView>(dst)
+  );
 
-      std::vector<std::pair<DataflowGraphInput, DataflowGraphInput>> zipped_inputs = zip(src_inputs, dst_inputs);
-      bidict<DataflowGraphInput, DataflowGraphInput> input_mapping{zipped_inputs.cbegin(), zipped_inputs.cend()};
-
-      OpenDataflowGraphIsomorphism candidate_isomorphism = OpenDataflowGraphIsomorphism{
-        node_mapping, 
-        input_mapping,
-      };
-
-      if (is_isomorphic_under(src, dst, candidate_isomorphism)) {
-        return candidate_isomorphism;
-      }
+  for (OpenDataflowGraphIsomorphism const &candidate_isomorphism : unlabelled_isomorphisms) {
+    if (is_isomorphic_under(src, dst, candidate_isomorphism)) {
+      return candidate_isomorphism;
     }
   }
-  
+
   return std::nullopt;
 }
 

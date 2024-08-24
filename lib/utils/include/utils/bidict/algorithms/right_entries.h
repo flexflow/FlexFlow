@@ -9,7 +9,7 @@ namespace FlexFlow {
 template <typename L, typename R>
 std::unordered_set<R> right_entries(bidict<L, R> const &b) {
   std::unordered_set<R> result;
-  for (auto const &[l, r] : b) {
+  for (auto const &[_, r] : b) {
     result.insert(r);
   }
   return result;
