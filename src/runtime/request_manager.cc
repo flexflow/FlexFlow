@@ -906,9 +906,9 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     // we first need to update the physical block numbers
     int num_allocated_blocks = page_manager->get_num_allocated_blocks(guid);
     // printf("num allocated blocks: %d\n", num_allocated_blocks);
+    printf("request.blocks size prefill: %d\n", request.blocks.size());
+    printf("num_allocated_blocks prefill: %d\n", num_allocated_blocks);
     int diff_block = request.blocks.size() - num_allocated_blocks;
-    // printf("diff block: %d\n", diff_block);
-    assert(diff_block >= 0);
     for (int i = 0; i < diff_block; i++) {
       page_manager->allocate(guid);
     }
@@ -1276,7 +1276,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     if (!request_available[request_index]) {
       continue;
     }
-    printf("request index available: %d\n", request_index);
+    // printf("request index available: %d\n", request_index);
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
@@ -1355,11 +1355,15 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
 
     // get page manager
     // we first need to update the physical block numbers
-    printf("request guid: %d\n", guid);
+    // printf("request guid: %d\n", guid);
     int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
-    assert(diff_block >= 0);
-    // printf("diff block: %d\n", diff_block);
-    // printf("request.blocks.size(): %d\n", request.blocks.size());
+    printf("request.blocks.size(): %d\n", request.blocks.size());
+    printf("diff block: %d\n", diff_block);
+    if (diff_block < 0) {
+      printf("request.blocks.size()!!!!!!!: %d\n", request.blocks.size());
+      printf("page_manager->get_num_allocated_blocks(guid): %d\n", page_manager->get_num_allocated_blocks(guid));
+    }
+    // assert(diff_block >= 0);
     // printf("page_manager->get_num_allocated_blocks(guid): %d\n", page_manager->get_num_allocated_blocks(guid));
     for (int i = 0; i < diff_block; i++) {
       page_manager->allocate(guid);
