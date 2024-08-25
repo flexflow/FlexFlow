@@ -76,13 +76,22 @@ GenericTensorAccessorW const &
 TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
   TensorSlotsBacking mapping;
+  int num_inputs = 0;
+  for (auto const &tensor_binding : binding.get_tensor_bindings()) {
+    if (tensor_binding.first.is_grad == IsGrad::NO && tensor_binding.second.role == TensorRole::INPUT) {
+      num_inputs += 1;
+    }
+  }
+
   for (auto const &tensor_binding : binding.get_tensor_bindings()) {
     SlotGradId slot_grad_id = tensor_binding.first;
     OpTensorSpec tensor_spec = tensor_binding.second;
     std::vector<tensor_guid_t> tensor_guids;
+    int weight_adjusted_idx = 0;
     switch (tensor_spec.role) {
-      case TensorRole::INPUT:
       case TensorRole::WEIGHT:
+	weight_adjusted_idx = num_inputs;
+      case TensorRole::INPUT:
         assert(contains_key(this->input_tensor_slots, op_guid));
         tensor_guids = this->input_tensor_slots.at(op_guid);
         break;
@@ -96,10 +105,9 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
                                                 // "type_is_unformattable" error
     }
 
-    assert(tensor_guids.size() > tensor_spec.idx);
     IsGrad is_grad = slot_grad_id.is_grad;
     GenericTensorAccessorW tensor_backing =
-        this->get_tensor_backing(tensor_guids.at(tensor_spec.idx), is_grad);
+        this->get_tensor_backing(tensor_guids.at(weight_adjusted_idx + tensor_spec.idx), is_grad);
 
     mapping.insert({slot_grad_id, tensor_backing});
   }

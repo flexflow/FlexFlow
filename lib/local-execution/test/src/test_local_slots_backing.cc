@@ -188,7 +188,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         b.bind(QUERY, input_tensor(0));
         b.bind(KEY, input_tensor(1));
         b.bind(VALUE, input_tensor(2));
-        b.bind(WEIGHTS, weight_tensor(3));
+        b.bind(WEIGHTS, weight_tensor(0));
         b.bind(OUTPUT, output_tensor(0));
 
         b.bind_grad(QUERY, input_tensor(0));
