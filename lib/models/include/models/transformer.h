@@ -6,6 +6,22 @@
 
 namespace FlexFlow {
 
+class Transformer {
+public:
+  Transformer(TransformerConfig const &config) : config_(config) {
+    init_model();
+  }
+
+  void init_model();
+
+  [[nodiscard]] ComputationGraph get_computation_graph() const;
+
+private:
+private:
+  TransformerConfig config_;
+  ComputationGraphBuilder cgb_;
+};
+
 ComputationGraph get_transformer_computation_graph(TransformerConfig const &);
 
 } // namespace FlexFlow
