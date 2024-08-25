@@ -176,59 +176,6 @@ __global__ void
 }
 
 template <typename DT>
-__global__ void
-    apply_rotary_embedding_hf(DT *input_ptr,
-                              cuFloatComplex *complex_input,
-                              BatchConfig::PerTokenInfo const *tokenInfos,
-                              int qk_dim,
-                              int num_tokens,
-                              size_t q_array_size,
-                              int hidden_size) {
-  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
-    // create complex number
-    bool q_tensor = i < (q_array_size / 2);
-    int proj_size = q_tensor ? qk_dim : qk_dim;
-    int real_i = q_tensor ? i : i - q_array_size / 2;
-
-    int token_idx = real_i / (hidden_size / 2);
-    int idx = real_i % (proj_size / 2);
-    int head_idx = (real_i - (token_idx * (hidden_size / 2))) / (proj_size / 2);
-
-    int real_part_index = idx + head_idx * proj_size +
-                          token_idx * hidden_size * QKV_WEIGHT_NUM +
-                          hidden_size * (q_tensor ? 0 : 1);
-    int complex_part_index = real_part_index + (proj_size / 2);
-
-    // complex_input[i] = {input_ptr[real_part_index],
-    //                     input_ptr[complex_part_index]};
-    cuFloatComplex cii = {input_ptr[real_part_index],
-                          input_ptr[complex_part_index]};
-
-    // get the freq_cis: shape 1 * (qk_dim/2) = 1 * 64
-    // apply a Cartesian coordinate transformation
-    // multiple with input & /copy back to q/k
-
-    // get position of token
-
-    // size_t pos = id_map[token_idx].token_position;
-    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
-
-    // float before_real = complex_input[i].x, before_complex =
-    int pos_i = real_i % (proj_size / 2);
-    float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
-    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
-
-    // complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-    // input_ptr[real_part_index] = complex_input[i].x;
-    // input_ptr[complex_part_index] = complex_input[i].y;
-
-    cii = cuCmulf(cii, complex_pos);
-    input_ptr[real_part_index] = cii.x;
-    input_ptr[complex_part_index] = cii.y;
-  }
-}
-
-template <typename DT>
 void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                  BatchConfig const *bc,
                  int shard_id,
@@ -312,7 +259,6 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
 
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->qk_dim * num_tokens * m->num_q_heads;
-  size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
 
   // Step 2: apply bias for QKV, or scale the query
   if (*m->qkv_bias) {
@@ -341,35 +287,83 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                                      m->scaling_factor,
                                      m->local_hidden_size);
   }
+}
 
-  //   checkCUDA(cudaEventCreate(&t_start));
-  //   checkCUDA(cudaEventCreate(&t_end));
-  //   checkCUDA(cudaEventRecord(t_start, stream));
+template <typename DT>
+__global__ void
+    apply_pos_encoding_kernel(DT *input_ptr,
+                              cuFloatComplex *complex_input,
+                              BatchConfig::PerTokenInfo const *tokenInfos,
+                              int qk_dim,
+                              int num_tokens,
+                              size_t q_array_size,
+                              int hidden_size) {
+  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
+    // create complex number
+    bool q_tensor = i < (q_array_size / 2);
+    int proj_size = q_tensor ? qk_dim : qk_dim;
+    int real_i = q_tensor ? i : i - q_array_size / 2;
 
-  // Step 3: apply rotary embedding if needed
-  if (*m->apply_rotary_embedding) {
-    /*q&k*/
-    parallelism = num_tokens * m->local_hidden_size;
-    apply_rotary_embedding_hf<<<GET_BLOCKS(parallelism),
-                                min(CUDA_NUM_THREADS, parallelism),
-                                0,
-                                stream>>>(output_ptr,
-                                          m->complex_input,
-                                          m->token_infos,
-                                          m->qk_dim,
-                                          num_tokens,
-                                          q_array_size,
-                                          m->local_hidden_size);
+    int token_idx = real_i / (hidden_size / 2);
+    int idx = real_i % (proj_size / 2);
+    int head_idx = (real_i - (token_idx * (hidden_size / 2))) / (proj_size / 2);
+
+    int real_part_index = idx + head_idx * proj_size +
+                          token_idx * hidden_size * QKV_WEIGHT_NUM +
+                          hidden_size * (q_tensor ? 0 : 1);
+    int complex_part_index = real_part_index + (proj_size / 2);
+
+    // complex_input[i] = {input_ptr[real_part_index],
+    //                     input_ptr[complex_part_index]};
+    cuFloatComplex cii = {input_ptr[real_part_index],
+                          input_ptr[complex_part_index]};
+
+    // get the freq_cis: shape 1 * (qk_dim/2) = 1 * 64
+    // apply a Cartesian coordinate transformation
+    // multiple with input & /copy back to q/k
+
+    // get position of token
+
+    // size_t pos = id_map[token_idx].token_position;
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
+
+    // float before_real = complex_input[i].x, before_complex =
+    int pos_i = real_i % (proj_size / 2);
+    float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
+    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
+
+    // complex_input[i] = cuCmulf(complex_input[i], complex_pos);
+    // input_ptr[real_part_index] = complex_input[i].x;
+    // input_ptr[complex_part_index] = complex_input[i].y;
+
+    cii = cuCmulf(cii, complex_pos);
+    input_ptr[real_part_index] = cii.x;
+    input_ptr[complex_part_index] = cii.y;
   }
-  //   checkCUDA(cudaEventRecord(t_end, stream));
-  //   checkCUDA(cudaEventSynchronize(t_end));
-  //   elapsed = 0;
-  //   checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  //   cudaEventDestroy(t_start);
-  //   cudaEventDestroy(t_end);
-  //   if (bc->inference_mode == TREE_VERIFY_MODE and device == 0) {
-  //     std::cout << "Rotary time: " << elapsed << " ms\n";
-  //   }
+}
+
+template <typename DT>
+void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        DT *output_ptr,
+                        cudaStream_t stream) {
+  // apply rotary embedding if needed
+  if (!*m->apply_rotary_embedding) {
+    return;
+  }
+  int num_tokens = bc->num_active_tokens();
+  int parallelism = num_tokens * m->local_hidden_size;
+  size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
+  apply_pos_encoding_kernel<<<GET_BLOCKS(parallelism),
+                              min(CUDA_NUM_THREADS, parallelism),
+                              0,
+                              stream>>>(output_ptr,
+                                        m->complex_input,
+                                        m->token_infos,
+                                        m->qk_dim,
+                                        num_tokens,
+                                        q_array_size,
+                                        m->local_hidden_size);
 }
 
 template <typename DT>
@@ -633,6 +627,18 @@ template void Kernels::IncMultiHeadAttention::compute_qkv<half>(
     half const *weight_ptr,
     half *output_ptr,
     half const *bias_ptr,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::apply_pos_encoding<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    float *output_ptr,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::apply_pos_encoding<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    half *output_ptr,
     cudaStream_t stream);
 
 template void Kernels::IncMultiHeadAttention::update_qkv_cache<float>(

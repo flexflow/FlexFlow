@@ -401,6 +401,11 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
               bias_ptr,
               stream);
 
+  apply_pos_encoding(m,
+                     bc,
+                     static_cast<DT *>(m->devQKVProjArray),
+                     stream);
+
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
   //   elapsed = 0;

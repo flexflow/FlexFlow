@@ -255,6 +255,12 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
               static_cast<DT *>(m->devQKVProjArray),
               bias_ptr,
               stream);
+
+  apply_pos_encoding(m,
+                     bc,
+                     static_cast<DT *>(m->devQKVProjArray),
+                     stream);
+
   // phase 2: Update key/val cache
   update_qkv_cache<DT>(m, bc, stream);
 

@@ -55,6 +55,12 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                  ffStream_t stream);
 
 template <typename DT>
+void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        DT *output_ptr,
+                        cudaStream_t stream);
+
+template <typename DT>
 void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
                       BatchConfig const *bc,
                       cudaStream_t stream);
