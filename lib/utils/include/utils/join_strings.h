@@ -18,7 +18,7 @@ std::string join_strings(InputIt first,
     if (!first_iter) {
       oss << delimiter;
     }
-    oss << *first;
+    oss << f(*first);
     /* break; */
     first_iter = false;
     /* i++; */

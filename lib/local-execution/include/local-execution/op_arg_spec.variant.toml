@@ -1,7 +1,7 @@
 namespace = "FlexFlow"
 name = "OpArgSpec"
 features = [
-  # "eq",
+  "eq",
   # "ord",
   # "hash",
   # "json",

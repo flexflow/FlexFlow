@@ -27,7 +27,7 @@ OpTaskInvocation init(ElementBinaryAttrs const &attrs) {
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(HANDLE, ff_handle());
 
-  return {ELEMENTBINARY_INIT_TASK_ID, binding};
+  return {task_id_t::ELEMENTBINARY_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(ElementBinaryAttrs const &attrs) {
@@ -42,16 +42,16 @@ OpTaskInvocation forward(ElementBinaryAttrs const &attrs) {
                    per_device_op_state<ElementBinaryPerDeviceState>());
   binding.bind_arg(HANDLE, ff_handle());
 
-  return {ELEMENTBINARY_FWD_TASK_ID, binding};
+  return {task_id_t::ELEMENTBINARY_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(ElementBinaryAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {ELEMENTBINARY_BWD_TASK_ID, b};
+  return {task_id_t::ELEMENTBINARY_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto input_lhs = acc.get_tensor<Permissions::RO>(LHS_INPUT);
   auto input_rhs = acc.get_tensor<Permissions::RO>(RHS_INPUT);
@@ -68,7 +68,8 @@ static DeviceSpecific<DeviceStates>
                   input_lhs.shape,
                   input_rhs.shape,
                   output.shape);
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<ElementBinaryPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -125,15 +126,15 @@ static std::optional<float>
 }
 
 TaskImplFunction get_element_binary_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 
 TaskImplFunction get_element_binary_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 
 TaskImplFunction get_element_binary_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_element_binary_init_signature() {
@@ -172,9 +173,9 @@ OpTaskSignature get_element_binary_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(ElementBinaryAttrs const &) {
-  return {ELEMENTBINARY_INIT_TASK_ID,
-          ELEMENTBINARY_FWD_TASK_ID,
-          ELEMENTBINARY_BWD_TASK_ID};
+  return {task_id_t::ELEMENTBINARY_INIT_TASK_ID,
+          task_id_t::ELEMENTBINARY_FWD_TASK_ID,
+          task_id_t::ELEMENTBINARY_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

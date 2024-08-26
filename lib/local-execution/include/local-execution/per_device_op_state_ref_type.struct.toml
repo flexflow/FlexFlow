@@ -1,0 +1,12 @@
+namespace = "FlexFlow"
+name = "PerDeviceOpStateRefType"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+fields = []

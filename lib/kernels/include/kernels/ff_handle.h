@@ -40,6 +40,9 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(PerDeviceFFHandle,
                                              allowTensorOpMathConversion);
 #endif
 
+std::string format_as(PerDeviceFFHandle const &x);
+std::ostream &operator<<(std::ostream &s, PerDeviceFFHandle const &x);
+
 } // namespace FlexFlow
 
 #endif
