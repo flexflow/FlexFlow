@@ -401,7 +401,7 @@ private:
 
   /* ---------- Page Attention Helper Functions ---------- */
   void _append_logical_block_to_request(Request &request, bool is_commit);
-  void _append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens, bool is_commit);
+  void _append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens, bool is_commit, int start = 0, int end = -1);
   /* ---------- Page Attention Helper Functions ---------- */
 
   /* ---------- Incremental Decoding Helper Functions ---------- */

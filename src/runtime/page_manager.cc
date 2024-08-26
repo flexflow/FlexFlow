@@ -205,11 +205,13 @@ int PageManager::get_num_allocated_blocks(const RequestGuid& request_guid) const
     }
 }
 
-void PageManager::erase_last_pages(const RequestGuid& request_guid, int num_pages){
+void PageManager::erase_last_pages(const RequestGuid& request_guid, int last_commit_page){
     auto& block_table = block_tables[request_guid];
-    assert(num_pages <= block_table.size());
+    assert(last_commit_page <= block_table.size());
+    // std::cerr << "inside function block_table size is: " << block_table.size() << std::endl;
+    // std::cerr << "inside function last_commit_page is: " << last_commit_page << std::endl;
     // erase the last num_pages blocks
-    block_table.erase(block_table.end() - num_pages, block_table.end());
+    block_table.erase(block_table.begin() + last_commit_page + 1, block_table.end());
     block_tables[request_guid] = block_table;
 }
 
