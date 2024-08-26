@@ -21,9 +21,11 @@ TEST_SUITE(FF_TEST_SUITE) {
   //   FAIL("TODO");
   // }
 
-  TEST_CASE("evaluate_substitution_output(SubParallelComputationGraph, Substituion, PCGPatternMatch)") {
-    // Currently Substitution creation is very verbose. 
-    // This is being addressed in https://github.com/flexflow/FlexFlow/issues/1473.
+  TEST_CASE("evaluate_substitution_output(SubParallelComputationGraph, "
+            "Substituion, PCGPatternMatch)") {
+    // Currently Substitution creation is very verbose.
+    // This is being addressed in
+    // https://github.com/flexflow/FlexFlow/issues/1473.
     auto pattern_g = LabelledOpenDataflowGraph<OperatorAttributePattern,
                                                TensorAttributePattern>::
         create<UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern,

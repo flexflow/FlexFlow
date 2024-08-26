@@ -1,21 +1,22 @@
-#include <doctest/doctest.h>
+#include "substitutions/substitution_internal/evaluate_substitution_output.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "substitutions/open_parallel_tensor_guid_t.h"
+#include "substitutions/operator_pattern/operator_attribute_constraint.h"
 #include "substitutions/output_graph/output_operator_attrs_assignment.h"
 #include "substitutions/sub_parallel_computation_graph.h"
-#include "substitutions/substitution_internal/evaluate_substitution_output.h"
+#include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
-#include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
-#include "substitutions/operator_pattern/operator_attribute_constraint.h"
 #include "utils/integer_conversions.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("evaluate_substitution_output") {
-    // Currently Substitution creation is very verbose. 
-    // This is being addressed in https://github.com/flexflow/FlexFlow/issues/1473.
+    // Currently Substitution creation is very verbose.
+    // This is being addressed in
+    // https://github.com/flexflow/FlexFlow/issues/1473.
     auto pattern_g = LabelledOpenDataflowGraph<OperatorAttributePattern,
                                                TensorAttributePattern>::
         create<UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern,

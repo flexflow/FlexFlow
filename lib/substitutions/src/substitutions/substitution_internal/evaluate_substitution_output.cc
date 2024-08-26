@@ -1,6 +1,8 @@
 #include "substitutions/substitution_internal/evaluate_substitution_output.h"
 #include "substitutions/output_graph/output_operator_attrs_assignment.h"
 #include "substitutions/sub_parallel_computation_graph.h"
+#include "substitutions/substitution_internal/perform_shape_inference.h"
+#include "utils/containers/map_keys.h"
 #include "utils/containers/map_values.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/permute_input_ids.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/permute_node_ids.h"
@@ -10,8 +12,6 @@
 #include "utils/graph/node/algorithms/new_node.dtg.h"
 #include "utils/graph/open_dataflow_graph/algorithms/generate_new_input_id_permutation.h"
 #include "utils/graph/open_dataflow_graph/algorithms/new_dataflow_graph_input.dtg.h"
-#include "utils/containers/map_keys.h"
-#include "substitutions/substitution_internal/perform_shape_inference.h"
 
 namespace FlexFlow {
 
@@ -90,6 +90,5 @@ std::pair<SubParallelComputationGraph, OutputExprToResultSubPCGMapping>
                             result_input_map,
                         });
 }
-
 
 } // namespace FlexFlow

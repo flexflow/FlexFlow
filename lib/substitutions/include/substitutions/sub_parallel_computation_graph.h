@@ -38,12 +38,12 @@ std::vector<parallel_tensor_guid_t>
     get_layer_outputs(SubParallelComputationGraph const &,
                       parallel_layer_guid_t const &);
 
-std::unordered_set<SubParallelComputationGraphEdge>
-    get_subgraph_incoming_edges(SubParallelComputationGraph const &,
-                       std::unordered_set<parallel_layer_guid_t> const &);
-std::unordered_set<ParallelComputationGraphEdge>
-    get_subgraph_outgoing_edges(SubParallelComputationGraph const &,
-                       std::unordered_set<parallel_layer_guid_t> const &);
+std::unordered_set<SubParallelComputationGraphEdge> get_subgraph_incoming_edges(
+    SubParallelComputationGraph const &,
+    std::unordered_set<parallel_layer_guid_t> const &);
+std::unordered_set<ParallelComputationGraphEdge> get_subgraph_outgoing_edges(
+    SubParallelComputationGraph const &,
+    std::unordered_set<parallel_layer_guid_t> const &);
 
 std::unordered_set<SubParallelComputationGraphEdge> get_subgraph_incoming_edges(
     SubParallelComputationGraph const &,

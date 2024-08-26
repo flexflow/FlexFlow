@@ -1,17 +1,19 @@
-#include <doctest/doctest.h>
 #include "substitutions/substitution_internal/perform_shape_inference.h"
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
 #include "utils/graph/labelled_open_dataflow_graph/labelled_open_dataflow_graph.h"
 #include "utils/integer_conversions.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("perform_shape_inference") {
-    auto g = LabelledOpenDataflowGraph<ParallelLayerAttrs, std::monostate>::create<
-            UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs, std::monostate>>();
+    auto g =
+        LabelledOpenDataflowGraph<ParallelLayerAttrs, std::monostate>::create<
+            UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs,
+                                                  std::monostate>>();
 
     int in_channels = 24;
     int out_channels = 16;

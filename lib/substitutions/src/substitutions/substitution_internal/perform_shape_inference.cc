@@ -1,11 +1,11 @@
 #include "substitutions/substitution_internal/perform_shape_inference.h"
 #include "utils/containers/map_keys.h"
+#include "utils/containers/transform.h"
 #include "utils/containers/zip.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_value_labels.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_inputs.h"
-#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 
@@ -41,6 +41,5 @@ LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape>
         return inferred.at(v);
       });
 }
-
 
 } // namespace FlexFlow
