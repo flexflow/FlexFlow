@@ -1276,7 +1276,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     if (!request_available[request_index]) {
       continue;
     }
-    printf("request index available: %d\n", request_index);
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
@@ -1355,7 +1354,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
 
     // get page manager
     // we first need to update the physical block numbers
-    printf("request guid: %d\n", guid);
     int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
     assert(diff_block >= 0);
     // printf("diff block: %d\n", diff_block);

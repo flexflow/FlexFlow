@@ -24,7 +24,6 @@
 #include <random>
 #include <stack>
 #include <stdexcept>
-#include <algorithm>
 
 namespace FlexFlow {
 
@@ -86,11 +85,9 @@ PhysicalTokenBlock::PhysicalTokenBlock(int block_number, uint32_t block_size)
     : block_number(block_number), block_size(block_size), ref_count(0) {}
 
 BlockAllocator::BlockAllocator(uint32_t block_size, int num_total_blocks) {
-    for (int block_number = num_total_blocks - 1; block_number >= 0; block_number--) {
+    for (int block_number = 0; block_number < num_total_blocks; ++block_number) {
         free_blocks.push_back(PhysicalTokenBlock(block_number, block_size));
     }
-    // page attention: will do the shuffle later for testing
-    std::shuffle(free_blocks.begin(), free_blocks.end(), std::mt19937(std::random_device()()));
 }
 
 // Allocate a block
