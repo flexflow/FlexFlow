@@ -1,145 +1,25 @@
 #include "substitutions/substitution.h"
-#include "op-attrs/get_output_shapes.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.h"
 #include "substitutions/open_parallel_tensor_guid_t.h"
-#include "substitutions/output_expr_to_result_sub_pcg_mapping.dtg.h"
-#include "substitutions/output_expr_to_result_sub_pcg_mapping.h"
+#include "substitutions/substitution_internal/evaluate_substitution_output.h"
+#include "substitutions/substitution_internal/output_expr_to_result_sub_pcg_mapping.h"
 #include "substitutions/output_graph/output_operator_attrs_assignment.h"
 #include "substitutions/pcg_pattern_match.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "substitutions/sub_parallel_computation_graph_edge.h"
-#include "utils/bidict/algorithms/right_entries.h"
-#include "utils/containers/map_values.h"
 #include "utils/containers/merge_maps.h"
 #include "utils/containers/restrict_keys.h"
 #include "utils/containers/set_minus.h"
-#include "utils/containers/transform.h"
 #include "utils/containers/values.h"
-#include "utils/graph/digraph/algorithms/get_topological_ordering.h"
-#include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/permute_input_ids.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/permute_node_ids.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_labels.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_node_labels.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_value_labels.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
 #include "utils/graph/node/algorithms.h"
-#include "utils/graph/node/algorithms/generate_new_node_id_permutation.h"
-#include "utils/graph/open_dataflow_graph/algorithms/generate_new_input_id_permutation.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_value_uses.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {
 
 bool is_valid_substitution(Substitution const &) {
   NOT_IMPLEMENTED();
-}
-
-LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape>
-    perform_shape_inference(
-        LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate> const
-            &g,
-        std::unordered_map<DataflowGraphInput, ParallelTensorShape> const
-            &input_shapes) {
-
-  std::unordered_map<OpenDataflowValue, ParallelTensorShape> inferred =
-      map_keys(input_shapes, [](DataflowGraphInput const &i) {
-        return OpenDataflowValue{i};
-      });
-
-  for (Node const &n : get_topological_ordering(g)) {
-    std::vector<ParallelTensorShape> input_shapes =
-        transform(get_inputs(g, n),
-                  [&](OpenDataflowValue const &v) { return inferred.at(v); });
-    std::vector<ParallelTensorShape> output_shapes =
-        get_output_shapes(g.at(n).op_attrs, input_shapes);
-    std::vector<DataflowOutput> outputs = get_outputs(g, n);
-
-    for (auto const &[output, shape] : zip(outputs, output_shapes)) {
-      inferred.insert({OpenDataflowValue{output}, shape});
-    }
-  }
-
-  return rewrite_value_labels(
-      g, [&](OpenDataflowValue const &v, std::monostate const &) {
-        return inferred.at(v);
-      });
-}
-
-std::pair<SubParallelComputationGraph, OutputExprToResultSubPCGMapping>
-    evaluate_substitution_output(SubParallelComputationGraph const &spcg,
-                                 Substitution const &sub,
-                                 PCGPatternMatch const &match) {
-  std::unordered_map<PatternNode, PCGOperatorAttrs> node_match =
-      map_values(match.node_assignment.as_unordered_map(),
-                 [&](parallel_layer_guid_t const &n) {
-                   return get_operator_attrs(spcg, n);
-                 });
-
-  bidict<NewNode, Node> new_node_id_permutation =
-      generate_new_node_id_permutation(sub.output_graph_expr.raw_graph);
-  bidict<NewDataflowGraphInput, DataflowGraphInput> new_input_id_permutation =
-      generate_new_input_id_permutation(sub.output_graph_expr.raw_graph);
-  LabelledOpenDataflowGraphView<OutputOperatorAttrsAssignment, std::monostate>
-      permuted =
-          permute_input_ids(permute_node_ids(sub.output_graph_expr.raw_graph,
-                                             new_node_id_permutation),
-                            new_input_id_permutation);
-
-  LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate>
-      without_shapes = rewrite_node_labels(
-          permuted,
-          [&](Node const &n, OutputOperatorAttrsAssignment const &attrs) {
-            return ParallelLayerAttrs{
-                materialize_output_operator_from_attrs_assignment(attrs,
-                                                                  node_match),
-                std::nullopt,
-            };
-          });
-
-  bidict<input_parallel_tensor_guid_t, OutputGraphExprInput> result_input_map =
-      map_keys(map_values(new_input_id_permutation,
-                          [](DataflowGraphInput const &i) {
-                            return OutputGraphExprInput{i};
-                          }),
-               [](NewDataflowGraphInput const &i) {
-                 return input_parallel_tensor_guid_t{i.raw_input};
-               });
-
-  bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map = map_keys(
-      map_values(new_node_id_permutation,
-                 [](Node const &n) { return OutputGraphExprNode{n}; }),
-      [](NewNode const &n) { return parallel_layer_guid_t{n.raw_node}; });
-
-  std::unordered_map<DataflowGraphInput, ParallelTensorShape> input_shapes =
-      map_values(map_keys(match.input_assignment,
-                          [&](PatternInput const &i) {
-                            return result_input_map
-                                .at_r(sub.inputs_mapping.at_l(i))
-                                .raw_dataflow_graph_input;
-                          }),
-                 [&](open_parallel_tensor_guid_t const &v) {
-                   return spcg.raw_graph.at(v.raw_open_dataflow_value).shape;
-                 });
-  LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape>
-      with_shapes = perform_shape_inference(without_shapes, input_shapes);
-  LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorAttrs>
-      with_attrs = rewrite_value_labels(
-          with_shapes,
-          [](OpenDataflowValue const &, ParallelTensorShape const &s) {
-            return ParallelTensorAttrs{
-                s,
-                std::nullopt,
-                std::nullopt,
-                CreateGrad::YES,
-            };
-          });
-
-  return std::make_pair(SubParallelComputationGraph{with_attrs},
-                        OutputExprToResultSubPCGMapping{
-                            result_node_map,
-                            result_input_map,
-                        });
 }
 
 SubParallelComputationGraph
@@ -224,7 +104,7 @@ SubParallelComputationGraph
 
     std::unordered_set<SubParallelComputationGraphEdge> outgoing_from_sub_edges;
     for (ParallelComputationGraphEdge const &outgoing_edge :
-         get_outgoing_edges(spcg, matched_nodes, IncludeInternalEdges::NO)) {
+         get_subgraph_outgoing_edges(spcg, matched_nodes)) {
       parallel_tensor_guid_t original_tensor =
           get_parallel_tensor(outgoing_edge);
       PatternNodeOutput pattern_tensor =

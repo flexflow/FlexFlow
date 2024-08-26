@@ -10,7 +10,6 @@
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
 #include "substitutions/sub_parallel_computation_graph_data.dtg.h"
 #include "substitutions/sub_parallel_computation_graph_edge.dtg.h"
-#include "utils/graph/dataflow_graph/algorithms/include_internal_edges.dtg.h"
 
 namespace FlexFlow {
 
@@ -40,12 +39,11 @@ std::vector<parallel_tensor_guid_t>
                       parallel_layer_guid_t const &);
 
 std::unordered_set<SubParallelComputationGraphEdge>
-    get_incoming_edges(SubParallelComputationGraph const &,
+    get_subgraph_incoming_edges(SubParallelComputationGraph const &,
                        std::unordered_set<parallel_layer_guid_t> const &);
 std::unordered_set<ParallelComputationGraphEdge>
-    get_outgoing_edges(SubParallelComputationGraph const &,
-                       std::unordered_set<parallel_layer_guid_t> const &,
-                       IncludeInternalEdges);
+    get_subgraph_outgoing_edges(SubParallelComputationGraph const &,
+                       std::unordered_set<parallel_layer_guid_t> const &);
 
 std::unordered_set<SubParallelComputationGraphEdge> get_subgraph_incoming_edges(
     SubParallelComputationGraph const &,

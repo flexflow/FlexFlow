@@ -1,4 +1,4 @@
-#include "substitutions/output_expr_to_result_sub_pcg_mapping.h"
+#include "substitutions/substitution_internal/output_expr_to_result_sub_pcg_mapping.h"
 #include "substitutions/output_graph/output_graph_expr.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "utils/bidict/algorithms/bidict_from_keys_and_values.h"

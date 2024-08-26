@@ -2,7 +2,7 @@
 #include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "utils/containers/values.h"
-#include "utils/graph/dataflow_graph/algorithms/get_outgoing_edges.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/create_lazy_copy_of_labelled_open_dataflow_graph_view.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
@@ -12,9 +12,9 @@
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_node_labels.h"
 #include "utils/graph/node/algorithms.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_value_uses.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_input_edges.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
 
 namespace FlexFlow {
 
@@ -87,32 +87,15 @@ std::vector<parallel_tensor_guid_t>
       [](DataflowOutput const &o) { return parallel_tensor_guid_t{o}; });
 }
 
-std::unordered_set<SubParallelComputationGraphEdge> get_incoming_edges(
-    SubParallelComputationGraph const &spcg,
-    std::unordered_set<parallel_layer_guid_t> const &layers) {
-  std::unordered_map<Node, std::vector<OpenDataflowEdge>> found_edges =
-      get_incoming_edges(spcg.raw_graph,
-                         transform(layers, [](parallel_layer_guid_t const &l) {
-                           return l.raw_graph_node;
-                         }));
-  std::unordered_set<OpenDataflowEdge> all_found_edges =
-      set_union(values(found_edges));
-  return transform(all_found_edges, [](OpenDataflowEdge const &e) {
-    return SubParallelComputationGraphEdge{e};
-  });
-}
-
 std::unordered_set<ParallelComputationGraphEdge>
-    get_outgoing_edges(SubParallelComputationGraph const &spcg,
-                       std::unordered_set<parallel_layer_guid_t> const &layers,
-                       IncludeInternalEdges include_internal_edges) {
+    get_subgraph_outgoing_edges(SubParallelComputationGraph const &spcg,
+                       std::unordered_set<parallel_layer_guid_t> const &layers) {
   std::unordered_set<DataflowEdge> raw_edges =
-      get_outgoing_edges(spcg.raw_graph,
+      get_subgraph_outgoing_edges(spcg.raw_graph,
                          transform(layers,
                                    [](parallel_layer_guid_t const &l) {
                                      return l.raw_graph_node;
-                                   }),
-                         include_internal_edges);
+                                   }));
   return transform(raw_edges, [](DataflowEdge const &e) {
     return ParallelComputationGraphEdge{e};
   });

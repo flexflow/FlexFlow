@@ -1,27 +1,19 @@
-#include "substitutions/substitution.h"
+#include <doctest/doctest.h>
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "substitutions/open_parallel_tensor_guid_t.h"
-#include "substitutions/operator_pattern/operator_attribute_constraint.h"
-#include "substitutions/output_graph/output_graph_expr_node.dtg.h"
 #include "substitutions/output_graph/output_operator_attrs_assignment.h"
-#include "substitutions/pcg_pattern_builder.h"
 #include "substitutions/sub_parallel_computation_graph.h"
-#include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
+#include "substitutions/substitution_internal/evaluate_substitution_output.h"
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
-#include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
-#include "utils/graph/open_dataflow_graph/algorithms/are_isomorphic.h"
+#include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
+#include "substitutions/operator_pattern/operator_attribute_constraint.h"
 #include "utils/integer_conversions.h"
-#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  // TEST_CASE("is_valid_substitution") {
-  //   FAIL("TODO");
-  // }
-
-  TEST_CASE("evaluate_substitution_output(SubParallelComputationGraph, Substituion, PCGPatternMatch)") {
+  TEST_CASE("evaluate_substitution_output") {
     // Currently Substitution creation is very verbose. 
     // This is being addressed in https://github.com/flexflow/FlexFlow/issues/1473.
     auto pattern_g = LabelledOpenDataflowGraph<OperatorAttributePattern,
@@ -157,72 +149,125 @@ TEST_SUITE(FF_TEST_SUITE) {
       return sub_pcg_from_full_pcg(b.pcg);
     }();
 
-    PCGPatternMatch match = [&] {
-      parallel_layer_guid_t mm_match_layer =
-          get_parallel_layer_by_name(pcg, mm_match);
-      parallel_layer_guid_t relu_match_layer =
-          get_parallel_layer_by_name(pcg, relu_match);
-      open_parallel_tensor_guid_t mm_match_layer_input_activations =
-          get_layer_inputs(pcg, mm_match_layer).at(0);
-      open_parallel_tensor_guid_t mm_match_layer_input_weights =
-          get_layer_inputs(pcg, mm_match_layer).at(1);
+    parallel_layer_guid_t mm_match_layer =
+        get_parallel_layer_by_name(pcg, mm_match);
+    parallel_layer_guid_t relu_match_layer =
+        get_parallel_layer_by_name(pcg, relu_match);
+    open_parallel_tensor_guid_t mm_match_layer_input_activations =
+        get_layer_inputs(pcg, mm_match_layer).at(0);
+    open_parallel_tensor_guid_t mm_match_layer_input_weights =
+        get_layer_inputs(pcg, mm_match_layer).at(1);
 
-      return PCGPatternMatch{
-          bidict<PatternNode, parallel_layer_guid_t>{
-              {pattern_mm_node, mm_match_layer},
-              {pattern_relu_node, relu_match_layer},
-          },
-          std::unordered_map<PatternInput, open_parallel_tensor_guid_t>{
-              {
-                  PatternInput{pattern_i_activation},
-                  mm_match_layer_input_activations,
-              },
-              {
-                  PatternInput{pattern_i_weights},
-                  mm_match_layer_input_weights,
-              }},
-      };
-    }();
+    PCGPatternMatch match = PCGPatternMatch{
+        bidict<PatternNode, parallel_layer_guid_t>{
+            {pattern_mm_node, mm_match_layer},
+            {pattern_relu_node, relu_match_layer},
+        },
+        std::unordered_map<PatternInput, open_parallel_tensor_guid_t>{
+            {
+                PatternInput{pattern_i_activation},
+                mm_match_layer_input_activations,
+            },
+            {
+                PatternInput{pattern_i_weights},
+                mm_match_layer_input_weights,
+            }},
+    };
 
-    SubParallelComputationGraph result = apply_substitution(pcg, sub, match);
+    SUBCASE("evaluate_substitution_output") {
+      std::pair<SubParallelComputationGraph, OutputExprToResultSubPCGMapping>
+          result = evaluate_substitution_output(pcg, sub, match);
 
-    SubParallelComputationGraph correct = [&] {
-      ParallelComputationGraphBuilder b;
-      parallel_tensor_guid_t t = b.create_input_tensor(ParallelTensorShape{
-          ParallelTensorDims{
-              FFOrdered<ShardParallelDim>{
-                  ShardParallelDim{size_t_from_int(batch_size), batch_degree},
-                  ShardParallelDim{size_t_from_int(in_channels), 1},
-              },
-              ReplicaParallelDimSet{
-                  SumDegree{1},
-                  DiscardCopyDegree{1},
-              },
-          },
+      SubParallelComputationGraph result_graph = result.first;
+      bidict<parallel_layer_guid_t, OutputGraphExprNode> result_node_map =
+          result.second.node_mapping;
+      bidict<input_parallel_tensor_guid_t, OutputGraphExprInput>
+          result_input_map = result.second.input_mapping;
+
+      LinearAttrs correct_result_fused_mm_relu_attrs = LinearAttrs{
+          12,
+          /*use_bias=*/false,
           DataType::FLOAT,
-      });
-      t = b.dense(t,
-                  /*outDim=*/16,
-                  /*activation=*/std::nullopt);
-      t = b.gelu(t);
-      t = b.dense(t,
-                  /*outDim=*/12,
-                  /*activation=*/Activation::RELU,
-                  /*use_bias=*/false,
-                  /*data_type=*/DataType::FLOAT,
-                  /*kernel_initializer=*/std::nullopt,
-                  /*bias_initializer=*/std::nullopt,
-                  /*name=*/std::nullopt);
-      t = b.dense(t,
-                  /*outDim=*/8,
-                  /*activation=*/Activation::RELU);
+          Activation::RELU,
+          /*regularizer=*/std::nullopt,
+      };
 
-      return sub_pcg_from_full_pcg(b.pcg);
-    }();
+      ParallelTensorAttrs correct_result_i_activation_attrs =
+          get_parallel_tensor_attrs(pcg, mm_match_layer_input_activations);
+      ParallelTensorAttrs correct_result_i_weights_attrs =
+          get_parallel_tensor_attrs(pcg, mm_match_layer_input_weights);
+      ParallelTensorAttrs correct_result_fused_mm_relu_output_attrs =
+          get_parallel_tensor_attrs(
+              pcg,
+              open_parallel_tensor_guid_from_closed(
+                  get_only(get_layer_outputs(pcg, relu_match_layer))));
 
-    // since the new nodes produced by the substitution have new ids, it's
-    // easier/more correct to check that the graphs are isomorphic rather than
-    // checking their exact graph data
-    CHECK(are_isomorphic(result, correct));
+      parallel_layer_guid_t result_fused_mm_relu_node =
+          result_node_map.at_r(fused_mm_relu_node);
+      parallel_tensor_guid_t result_fused_mm_relu_output =
+          get_only(get_layer_outputs(result_graph, result_fused_mm_relu_node));
+      input_parallel_tensor_guid_t result_i_activation =
+          result_input_map.at_r(output_i_activation);
+      input_parallel_tensor_guid_t result_i_weights =
+          result_input_map.at_r(output_i_weights);
+
+      SubParallelComputationGraphData correct_graph_data =
+          SubParallelComputationGraphData{
+              std::unordered_map<parallel_layer_guid_t, ParallelLayerAttrs>{{
+                  result_fused_mm_relu_node,
+                  ParallelLayerAttrs{
+                      PCGOperatorAttrs{correct_result_fused_mm_relu_attrs},
+                      /*name=*/std::nullopt,
+                  },
+              }},
+              std::unordered_set<SubParallelComputationGraphEdge>{
+                  SubParallelComputationGraphEdge{
+                      OpenDataflowEdge{
+                          DataflowInputEdge{
+                              result_i_activation.raw_dataflow_graph_input,
+                              DataflowInput{
+                                  result_fused_mm_relu_node.raw_graph_node,
+                                  0,
+                              },
+                          },
+                      },
+                  },
+                  SubParallelComputationGraphEdge{
+                      OpenDataflowEdge{
+                          DataflowInputEdge{
+                              result_i_weights.raw_dataflow_graph_input,
+                              DataflowInput{
+                                  result_fused_mm_relu_node.raw_graph_node,
+                                  1,
+                              },
+                          },
+                      },
+                  },
+              },
+              std::unordered_set<input_parallel_tensor_guid_t>{
+                  result_i_activation,
+                  result_i_weights,
+              },
+              std::unordered_map<open_parallel_tensor_guid_t,
+                                 ParallelTensorAttrs>{
+                  {
+                      open_parallel_tensor_guid_from_input(result_i_activation),
+                      correct_result_i_activation_attrs,
+                  },
+                  {
+                      open_parallel_tensor_guid_from_input(result_i_weights),
+                      correct_result_i_weights_attrs,
+                  },
+                  {
+                      open_parallel_tensor_guid_from_closed(
+                          result_fused_mm_relu_output),
+                      correct_result_fused_mm_relu_output_attrs,
+                  }}};
+
+      SubParallelComputationGraphData result_graph_data =
+          get_sub_pcg_data(result_graph);
+
+      CHECK(result_graph_data == correct_graph_data);
+    }
   }
 }
