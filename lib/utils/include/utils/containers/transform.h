@@ -4,9 +4,9 @@
 #include "utils/containers/vector_transform.h"
 #include "utils/required_core.h"
 #include <algorithm>
+#include <set>
 #include <type_traits>
 #include <vector>
-#include <set>
 
 namespace FlexFlow {
 

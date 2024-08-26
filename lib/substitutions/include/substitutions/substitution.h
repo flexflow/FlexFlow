@@ -1,23 +1,24 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTION_H
 #define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTION_H
 
-#include "substitutions/sub_parallel_computation_graph.dtg.h"
-#include "substitutions/pcg_pattern_match.dtg.h"
-#include "substitutions/substitution.dtg.h"
 #include "substitutions/output_expr_to_result_sub_pcg_mapping.dtg.h"
+#include "substitutions/pcg_pattern_match.dtg.h"
+#include "substitutions/sub_parallel_computation_graph.dtg.h"
+#include "substitutions/substitution.dtg.h"
 
 namespace FlexFlow {
 
-LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape> perform_shape_inference(
-  LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate> const &g,
-  std::unordered_map<DataflowGraphInput, ParallelTensorShape> const &input_shapes);
+LabelledOpenDataflowGraphView<ParallelLayerAttrs, ParallelTensorShape>
+    perform_shape_inference(
+        LabelledOpenDataflowGraphView<ParallelLayerAttrs, std::monostate> const
+            &g,
+        std::unordered_map<DataflowGraphInput, ParallelTensorShape> const
+            &input_shapes);
 
-std::pair<
-  SubParallelComputationGraph,
-  OutputExprToResultSubPCGMapping
-> evaluate_substitution_output(SubParallelComputationGraph const &spcg,
-                               Substitution const &sub,
-                               PCGPatternMatch const &match);
+std::pair<SubParallelComputationGraph, OutputExprToResultSubPCGMapping>
+    evaluate_substitution_output(SubParallelComputationGraph const &spcg,
+                                 Substitution const &sub,
+                                 PCGPatternMatch const &match);
 
 /**
  * @brief Checks that all internal invariants of the given substitution hold
@@ -35,8 +36,8 @@ std::pair<
 bool is_valid_substitution(Substitution const &);
 
 /**
- * @brief Applies \p substitution to \p sub_pcg at the location specified by \p match,
- * returning the resulting SubParallelComputationGraph
+ * @brief Applies \p substitution to \p sub_pcg at the location specified by \p
+ * match, returning the resulting SubParallelComputationGraph
  *
  * @param sub_pcg
  * @param substitution

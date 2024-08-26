@@ -2,8 +2,9 @@
 
 namespace FlexFlow {
 
-parallel_tensor_guid_t get_parallel_tensor(ParallelComputationGraphEdge const &e) {
-  return parallel_tensor_guid_t{e.raw_edge.src}; 
+parallel_tensor_guid_t
+    get_parallel_tensor(ParallelComputationGraphEdge const &e) {
+  return parallel_tensor_guid_t{e.raw_edge.src};
 }
 
 parallel_layer_guid_t get_src_layer(ParallelComputationGraphEdge const &e) {

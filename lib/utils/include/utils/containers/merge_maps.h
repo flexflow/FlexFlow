@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_MERGE_MAPS_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_MERGE_MAPS_H
 
-#include <unordered_map>
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/keys.h"
+#include <unordered_map>
 
 namespace FlexFlow {
 

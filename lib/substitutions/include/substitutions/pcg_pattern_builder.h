@@ -15,9 +15,10 @@ struct PCGPatternBuilder {
   PatternValue add_input();
   PatternValue add_input(TensorAttributePattern const &);
 
-  std::vector<PatternValue> add_operator(OperatorAttributePattern const &,
-                                         std::vector<PatternValue> const &inputs,
-                                         std::vector<TensorAttributePattern> const &outputs);
+  std::vector<PatternValue>
+      add_operator(OperatorAttributePattern const &,
+                   std::vector<PatternValue> const &inputs,
+                   std::vector<TensorAttributePattern> const &outputs);
   PatternValue add_operator(OperatorAttributePattern const &,
                             std::vector<PatternValue> const &inputs,
                             TensorAttributePattern const &output);

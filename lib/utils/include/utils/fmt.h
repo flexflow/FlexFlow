@@ -1,14 +1,14 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_FMT_H
 #define _FLEXFLOW_UTILS_INCLUDE_FMT_H
 
+#include "utils/check_fmtable.h"
 #include "utils/test_types.h"
 #include "utils/type_traits_core.h"
+#include <fmt/format.h>
 #include <iomanip>
 #include <unordered_set>
 #include <variant>
 #include <vector>
-#include <fmt/format.h>
-#include "utils/check_fmtable.h"
 
 #define DELEGATE_OSTREAM(...)                                                  \
   template <>                                                                  \

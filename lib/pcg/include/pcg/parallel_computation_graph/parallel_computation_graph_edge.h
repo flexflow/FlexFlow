@@ -7,7 +7,8 @@
 
 namespace FlexFlow {
 
-parallel_tensor_guid_t get_parallel_tensor(ParallelComputationGraphEdge const &);
+parallel_tensor_guid_t
+    get_parallel_tensor(ParallelComputationGraphEdge const &);
 parallel_layer_guid_t get_src_layer(ParallelComputationGraphEdge const &);
 parallel_layer_guid_t get_dst_layer(ParallelComputationGraphEdge const &);
 int get_dst_layer_input_idx(ParallelComputationGraphEdge const &);

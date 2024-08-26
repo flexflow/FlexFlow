@@ -6,18 +6,19 @@
 
 namespace FlexFlow {
 
-template <
-    typename NodeLabel,
-    typename ValueLabel,
-    typename F,
-    typename NewNodeLabel =
-        std::invoke_result_t<F, Node const &, NodeLabel const &>>
+template <typename NodeLabel,
+          typename ValueLabel,
+          typename F,
+          typename NewNodeLabel =
+              std::invoke_result_t<F, Node const &, NodeLabel const &>>
 LabelledOpenDataflowGraphView<NewNodeLabel, ValueLabel> rewrite_node_labels(
     LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &g, F f) {
-  return rewrite_labels(g, overload {
-    [&](Node const &n, NodeLabel const &l) { return f(n, l); },
-    [](OpenDataflowValue const &v, ValueLabel const &l) { return l; },
-  });
+  return rewrite_labels(
+      g,
+      overload{
+          [&](Node const &n, NodeLabel const &l) { return f(n, l); },
+          [](OpenDataflowValue const &v, ValueLabel const &l) { return l; },
+      });
 }
 
 } // namespace FlexFlow

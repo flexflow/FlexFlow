@@ -6,20 +6,25 @@
 
 namespace FlexFlow {
 
-struct FromOpenDataflowGraphDataView final : virtual public IOpenDataflowGraphView {
-  FromOpenDataflowGraphDataView(OpenDataflowGraphData const &);  
+struct FromOpenDataflowGraphDataView final
+    : virtual public IOpenDataflowGraphView {
+  FromOpenDataflowGraphDataView(OpenDataflowGraphData const &);
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-  std::unordered_set<OpenDataflowEdge> query_edges(OpenDataflowEdgeQuery const &) const override;
-  std::unordered_set<DataflowOutput> query_outputs(DataflowOutputQuery const &) const override;
+  std::unordered_set<OpenDataflowEdge>
+      query_edges(OpenDataflowEdgeQuery const &) const override;
+  std::unordered_set<DataflowOutput>
+      query_outputs(DataflowOutputQuery const &) const override;
   std::unordered_set<DataflowGraphInput> get_inputs() const override;
 
   FromOpenDataflowGraphDataView *clone() const override;
+
 private:
   OpenDataflowGraphData data;
 };
 
-OpenDataflowGraphView from_open_dataflow_graph_data(OpenDataflowGraphData const &);
+OpenDataflowGraphView
+    from_open_dataflow_graph_data(OpenDataflowGraphData const &);
 
 } // namespace FlexFlow
 

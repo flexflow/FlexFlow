@@ -6,8 +6,12 @@
 
 namespace FlexFlow {
 
-std::unordered_set<OpenDataflowGraphIsomorphism> find_isomorphisms(OpenDataflowGraphView const &, OpenDataflowGraphView const &);
-std::optional<OpenDataflowGraphIsomorphism> find_isomorphism(OpenDataflowGraphView const &, OpenDataflowGraphView const &);
+std::unordered_set<OpenDataflowGraphIsomorphism>
+    find_isomorphisms(OpenDataflowGraphView const &,
+                      OpenDataflowGraphView const &);
+std::optional<OpenDataflowGraphIsomorphism>
+    find_isomorphism(OpenDataflowGraphView const &,
+                     OpenDataflowGraphView const &);
 
 } // namespace FlexFlow
 

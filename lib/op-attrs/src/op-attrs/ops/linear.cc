@@ -17,12 +17,10 @@ RecordFormatter as_dot(LinearAttrs const &attrs) {
     return rr;
   };
 
-  r << kv("out_channels", attrs.out_channels)
-    << kv("use_bias", attrs.use_bias)
-    << kv("data_type", attrs.data_type)
-    << kv("activation", attrs.activation)
+  r << kv("out_channels", attrs.out_channels) << kv("use_bias", attrs.use_bias)
+    << kv("data_type", attrs.data_type) << kv("activation", attrs.activation)
     << kv("regularizer", attrs.regularizer);
-    
+
   return r;
 }
 

@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-bidict<NewDataflowGraphInput, DataflowGraphInput> generate_new_input_id_permutation(OpenDataflowGraphView const &);
+bidict<NewDataflowGraphInput, DataflowGraphInput>
+    generate_new_input_id_permutation(OpenDataflowGraphView const &);
 
 } // namespace FlexFlow
 

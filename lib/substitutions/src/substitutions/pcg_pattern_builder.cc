@@ -7,10 +7,12 @@
 
 namespace FlexFlow {
 
-PCGPatternBuilder::PCGPatternBuilder() 
-  : g(LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>
-    ::create<UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>>())
-{ }
+PCGPatternBuilder::PCGPatternBuilder()
+    : g(LabelledOpenDataflowGraph<OperatorAttributePattern,
+                                  TensorAttributePattern>::
+            create<UnorderedSetLabelledOpenDataflowGraph<
+                OperatorAttributePattern,
+                TensorAttributePattern>>()) {}
 
 // PatternValue add_input() {
 //   return tensor_attribute_pattern_match_all();
@@ -20,18 +22,25 @@ PCGPatternBuilder::PCGPatternBuilder()
 //   return PatternValue{PatternInput{this->g.add_input(p)}};
 // }
 //
-// std::vector<PatternValue> PCGPatternBuilder::add_operator(OperatorAttributePattern const &p,
-//                                              std::vector<PatternValue> const &inputs,
-//                                              std::vector<TensorAttributePattern> const &outputs) {
-//   NodeAddedResult node_added_result = this->g.add_node(p, 
-//                                                        transform(inputs, raw_open_dataflow_value_from_pattern_value),
+// std::vector<PatternValue>
+// PCGPatternBuilder::add_operator(OperatorAttributePattern const &p,
+//                                              std::vector<PatternValue> const
+//                                              &inputs,
+//                                              std::vector<TensorAttributePattern>
+//                                              const &outputs) {
+//   NodeAddedResult node_added_result = this->g.add_node(p,
+//                                                        transform(inputs,
+//                                                        raw_open_dataflow_value_from_pattern_value),
 //                                                        outputs);
-//   return transform(node_added_result.outputs, pattern_value_from_raw_open_dataflow_value);
+//   return transform(node_added_result.outputs,
+//   pattern_value_from_raw_open_dataflow_value);
 // }
 //
-// PatternValue PCGPatternBuilder::add_operator(OperatorAttributePattern const &p,
-//                                              std::vector<PatternValue> const &inputs,
-//                                              TensorAttributePattern const &output) {
+// PatternValue PCGPatternBuilder::add_operator(OperatorAttributePattern const
+// &p,
+//                                              std::vector<PatternValue> const
+//                                              &inputs, TensorAttributePattern
+//                                              const &output) {
 //   return get_only(this->add_operator(p, inputs, {output}));
 // }
 //

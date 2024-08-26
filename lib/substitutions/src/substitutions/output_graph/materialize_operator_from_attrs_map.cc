@@ -5,8 +5,9 @@
 namespace FlexFlow {
 
 struct Accessor {
-  Accessor(std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &m)
-    : m(m) {}
+  Accessor(
+      std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &m)
+      : m(m) {}
 
   std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &m;
 
@@ -15,38 +16,44 @@ struct Accessor {
     if (contains_key(this->m, k)) {
       return this->m.at(k).get<T>();
     } else {
-      throw mk_runtime_error(fmt::format("Could not find key {} in attrs map: {}", k, this->m));
+      throw mk_runtime_error(
+          fmt::format("Could not find key {} in attrs map: {}", k, this->m));
     }
   }
 };
 
-PCGOperatorAttrs materialize_operator_from_attrs_map(std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &attrs) {
-  OperatorType op_type = attrs.at(OperatorAttributeKey::OP_TYPE).get<OperatorType>(); 
+PCGOperatorAttrs materialize_operator_from_attrs_map(
+    std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const
+        &attrs) {
+  OperatorType op_type =
+      attrs.at(OperatorAttributeKey::OP_TYPE).get<OperatorType>();
 
   Accessor acc = Accessor{attrs};
 
   switch (op_type) {
     case OperatorType::MULTIHEAD_ATTENTION:
       return PCGOperatorAttrs{MultiHeadAttentionAttrs{
-        /*embed_dim=*/acc.get<int>(OperatorAttributeKey::EMBED_DIM),
-        /*num_heads=*/acc.get<int>(OperatorAttributeKey::NUM_HEADS),
-        /*kdim=*/acc.get<int>(OperatorAttributeKey::KDIM),
-        /*vdim=*/acc.get<int>(OperatorAttributeKey::VDIM),
-        /*dropout=*/acc.get<float>(OperatorAttributeKey::DROPOUT),
-        /*bias=*/acc.get<bool>(OperatorAttributeKey::BIAS),
-        /*add_bias_kv=*/acc.get<bool>(OperatorAttributeKey::ADD_BIAS_KV),
-        /*add_zero_attn=*/acc.get<bool>(OperatorAttributeKey::ADD_ZERO_ATTN),
+          /*embed_dim=*/acc.get<int>(OperatorAttributeKey::EMBED_DIM),
+          /*num_heads=*/acc.get<int>(OperatorAttributeKey::NUM_HEADS),
+          /*kdim=*/acc.get<int>(OperatorAttributeKey::KDIM),
+          /*vdim=*/acc.get<int>(OperatorAttributeKey::VDIM),
+          /*dropout=*/acc.get<float>(OperatorAttributeKey::DROPOUT),
+          /*bias=*/acc.get<bool>(OperatorAttributeKey::BIAS),
+          /*add_bias_kv=*/acc.get<bool>(OperatorAttributeKey::ADD_BIAS_KV),
+          /*add_zero_attn=*/acc.get<bool>(OperatorAttributeKey::ADD_ZERO_ATTN),
       }};
     case OperatorType::POOL2D:
       return PCGOperatorAttrs{Pool2DAttrs{
-        /*kernel_h=*/acc.get<int>(OperatorAttributeKey::KERNEL_H),
-        /*kernel_w=*/acc.get<int>(OperatorAttributeKey::KERNEL_W),
-        /*stride_h=*/acc.get<int>(OperatorAttributeKey::STRIDE_H),
-        /*stride_w=*/acc.get<int>(OperatorAttributeKey::STRIDE_W),
-        /*padding_h=*/acc.get<int>(OperatorAttributeKey::PADDING_H),
-        /*padding_w=*/acc.get<int>(OperatorAttributeKey::PADDING_W),
-        /*pool_type=*/acc.get<PoolOp>(OperatorAttributeKey::POOL_TYPE),
-        /*activation=*/acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION).value(),
+          /*kernel_h=*/acc.get<int>(OperatorAttributeKey::KERNEL_H),
+          /*kernel_w=*/acc.get<int>(OperatorAttributeKey::KERNEL_W),
+          /*stride_h=*/acc.get<int>(OperatorAttributeKey::STRIDE_H),
+          /*stride_w=*/acc.get<int>(OperatorAttributeKey::STRIDE_W),
+          /*padding_h=*/acc.get<int>(OperatorAttributeKey::PADDING_H),
+          /*padding_w=*/acc.get<int>(OperatorAttributeKey::PADDING_W),
+          /*pool_type=*/acc.get<PoolOp>(OperatorAttributeKey::POOL_TYPE),
+          /*activation=*/
+          acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION)
+              .value(),
       }};
     case OperatorType::NOOP:
     case OperatorType::INPUT:
@@ -55,11 +62,12 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(std::unordered_map<Operator
     case OperatorType::DROPOUT:
     case OperatorType::LINEAR:
       return PCGOperatorAttrs{LinearAttrs{
-        acc.get<int>(OperatorAttributeKey::OUT_CHANNELS),
-        acc.get<bool>(OperatorAttributeKey::USE_BIAS),
-        acc.get<DataType>(OperatorAttributeKey::DATA_TYPE),
-        acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION),
-        acc.get<std::optional<RegularizerAttrs>>(OperatorAttributeKey::REGULARIZER),
+          acc.get<int>(OperatorAttributeKey::OUT_CHANNELS),
+          acc.get<bool>(OperatorAttributeKey::USE_BIAS),
+          acc.get<DataType>(OperatorAttributeKey::DATA_TYPE),
+          acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION),
+          acc.get<std::optional<RegularizerAttrs>>(
+              OperatorAttributeKey::REGULARIZER),
       }};
     case OperatorType::BATCHMATMUL:
     case OperatorType::SCALAR_MULTIPLY:
@@ -137,7 +145,8 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(std::unordered_map<Operator
     case OperatorType::PIPELINE:
     case OperatorType::FUSED_PARALLEL:
     default:
-      throw mk_runtime_error(fmt::format("Unsupported operator type {}", op_type));
+      throw mk_runtime_error(
+          fmt::format("Unsupported operator type {}", op_type));
   }
 }
 

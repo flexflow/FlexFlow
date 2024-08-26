@@ -7,7 +7,8 @@
 
 namespace FlexFlow {
 
-PCGOperatorAttrs materialize_operator_from_attrs_map(std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &);
+PCGOperatorAttrs materialize_operator_from_attrs_map(
+    std::unordered_map<OperatorAttributeKey, OperatorAttributeValue> const &);
 
 } // namespace FlexFlow
 

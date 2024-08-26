@@ -11,7 +11,9 @@ DataflowOutputQuery dataflow_output_query_none();
 bool dataflow_output_query_includes_dataflow_output(DataflowOutputQuery const &,
                                                     DataflowOutput const &);
 DataflowOutputQuery dataflow_output_query_for_output(DataflowOutput const &);
-std::unordered_set<DataflowOutput> apply_dataflow_output_query(DataflowOutputQuery const &, std::unordered_set<DataflowOutput> const &);
+std::unordered_set<DataflowOutput>
+    apply_dataflow_output_query(DataflowOutputQuery const &,
+                                std::unordered_set<DataflowOutput> const &);
 
 } // namespace FlexFlow
 

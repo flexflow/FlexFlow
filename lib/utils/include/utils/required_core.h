@@ -4,8 +4,8 @@
 #include "hash-utils.h"
 #include "test_types.h"
 #include "type_traits_core.h"
-#include <vector>
 #include <fmt/format.h>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -192,7 +192,7 @@ using req = required<T>;
 
 template <typename T>
 std::ostream &operator<<(std::ostream &s, required<T> const &t) {
-  return (s << fmt::to_string(t)); 
+  return (s << fmt::to_string(t));
 }
 
 template <typename T>

@@ -5,7 +5,9 @@
 
 namespace FlexFlow {
 
-template <typename C, typename L = typename C::value_type::first_type, typename R = typename C::value_type::second_type>
+template <typename C,
+          typename L = typename C::value_type::first_type,
+          typename R = typename C::value_type::second_type>
 bidict<L, R> bidict_from_pairs(C const &c) {
   return bidict<L, R>{c.begin(), c.end()};
 }

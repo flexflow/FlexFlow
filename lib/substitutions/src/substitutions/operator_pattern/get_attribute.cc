@@ -190,7 +190,7 @@ std::optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p,
     case OperatorAttributeKey::OUT_CHANNELS:
       return p.out_channels;
     case OperatorAttributeKey::USE_BIAS:
-      return p.use_bias; 
+      return p.use_bias;
     case OperatorAttributeKey::DATA_TYPE:
       return p.data_type;
     case OperatorAttributeKey::ACTIVATION:

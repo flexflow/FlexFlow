@@ -1,6 +1,6 @@
 #include "utils/graph/open_dataflow_graph/algorithms/get_inputs.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
 #include "utils/containers/transform.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 
 namespace FlexFlow {

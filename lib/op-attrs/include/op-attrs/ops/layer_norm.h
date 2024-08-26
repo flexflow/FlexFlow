@@ -8,8 +8,7 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(LayerNormAttrs const &,
-                             TensorShape const &);
+TensorShape get_output_shape(LayerNormAttrs const &, TensorShape const &);
 ParallelTensorShape get_output_shape(LayerNormAttrs const &,
                                      ParallelTensorShape const &);
 

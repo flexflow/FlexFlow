@@ -6,5 +6,4 @@ parallel_layer_guid_t get_source_layer(parallel_tensor_guid_t const &t) {
   return parallel_layer_guid_t{t.raw_graph_output.node};
 }
 
-
 } // namespace FlexFlow

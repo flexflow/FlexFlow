@@ -2,9 +2,9 @@
 #define _FLEXFLOW_UTILS_INCLUDE_EXCEPTION_H
 
 #include "utils/fmt.h"
+#include <fmt/format.h>
 #include <stdexcept>
 #include <tl/expected.hpp>
-#include <fmt/format.h>
 
 namespace FlexFlow {
 

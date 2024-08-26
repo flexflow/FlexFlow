@@ -1,5 +1,6 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
+#include "op-attrs/parallel_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/parallel_computation_graph/generate_weight_transform.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
@@ -7,7 +8,6 @@
 #include "utils/containers/enumerate_vector.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
-#include "op-attrs/parallel_op_attrs.h"
 
 namespace FlexFlow {
 
@@ -332,10 +332,8 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
     parallel_tensor_guid_t const &input,
     bool relu,
     std::optional<std::string> const &maybe_name) {
-  
-  BatchNormAttrs attrs = BatchNormAttrs{
-    relu
-  };
+
+  BatchNormAttrs attrs = BatchNormAttrs{relu};
 
   std::string name =
       maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
@@ -369,10 +367,10 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::relu(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-    OperatorType::RELU,
-    std::nullopt,
+      OperatorType::RELU,
+      std::nullopt,
   };
-   
+
   return this->element_unary(attrs, input, maybe_name);
 }
 
@@ -381,23 +379,22 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::identity(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-    OperatorType::IDENTITY,
-    std::nullopt,
+      OperatorType::IDENTITY,
+      std::nullopt,
   };
-   
+
   return this->element_unary(attrs, input, maybe_name);
 }
-
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::gelu(
     parallel_tensor_guid_t const &input,
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-    OperatorType::GELU,
-    std::nullopt,
+      OperatorType::GELU,
+      std::nullopt,
   };
-   
+
   return this->element_unary(attrs, input, maybe_name);
 }
 
@@ -406,10 +403,10 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::sigmoid(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-    OperatorType::SIGMOID,
-    std::nullopt,
+      OperatorType::SIGMOID,
+      std::nullopt,
   };
-   
+
   return this->element_unary(attrs, input, maybe_name);
 }
 
@@ -418,10 +415,10 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::tanh(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-    OperatorType::TANH,
-    std::nullopt,
+      OperatorType::TANH,
+      std::nullopt,
   };
-   
+
   return this->element_unary(attrs, input, maybe_name);
 }
 
@@ -430,10 +427,10 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::elu(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-    OperatorType::TANH,
-    std::nullopt,
+      OperatorType::TANH,
+      std::nullopt,
   };
-   
+
   return this->element_unary(attrs, input, maybe_name);
 }
 
@@ -535,8 +532,9 @@ ParallelTensorShape ParallelComputationGraphBuilder::get_shape(
   return get_parallel_tensor_attrs(this->pcg, t).shape;
 }
 
-parallel_tensor_guid_t ParallelComputationGraphBuilder::add_weight(ParallelTensorAttrs const &weight_tensor_attrs,
-                                                                   std::optional<std::string> const &weight_name) {
+parallel_tensor_guid_t ParallelComputationGraphBuilder::add_weight(
+    ParallelTensorAttrs const &weight_tensor_attrs,
+    std::optional<std::string> const &weight_name) {
   ParallelTensorShape par_weight_shape = weight_tensor_attrs.shape;
   TensorShape unpar_weight_shape = get_reduced_shape(weight_tensor_attrs.shape);
 
@@ -546,33 +544,38 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::add_weight(ParallelTenso
   };
 
   std::vector<DataflowOutput> weight_layer_inputs = {};
-  std::vector<ParallelTensorAttrs> weight_output_attrs = {
-      weight_tensor_attrs};
+  std::vector<ParallelTensorAttrs> weight_output_attrs = {weight_tensor_attrs};
 
-  DataflowOutput current_raw_weight_tensor = get_only(this->pcg.raw_graph.add_node(weight_layer_attrs, weight_layer_inputs, weight_output_attrs).outputs);
+  DataflowOutput current_raw_weight_tensor = get_only(
+      this->pcg.raw_graph
+          .add_node(
+              weight_layer_attrs, weight_layer_inputs, weight_output_attrs)
+          .outputs);
   ParallelTensorShape current_shape = lift_to_parallel(unpar_weight_shape);
 
-  for (ParallelOpAttrs const &parallel_op_attr : generate_weight_transform(unpar_weight_shape, par_weight_shape)) {
-    ParallelTensorShape output_shape = get_output_shape(parallel_op_attr, current_shape);
+  for (ParallelOpAttrs const &parallel_op_attr :
+       generate_weight_transform(unpar_weight_shape, par_weight_shape)) {
+    ParallelTensorShape output_shape =
+        get_output_shape(parallel_op_attr, current_shape);
     ParallelTensorAttrs output_attrs = ParallelTensorAttrs{
-      output_shape,
-      std::nullopt,
-      std::nullopt,
-      CreateGrad::YES,
+        output_shape,
+        std::nullopt,
+        std::nullopt,
+        CreateGrad::YES,
     };
-    
+
     ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
-      pcg_op_attrs_from_parallel_op_attrs(parallel_op_attr),
-      std::nullopt,
+        pcg_op_attrs_from_parallel_op_attrs(parallel_op_attr),
+        std::nullopt,
     };
-    current_raw_weight_tensor = get_only(this->pcg.raw_graph.add_node(
-                                 layer_attrs,
-                                 {current_raw_weight_tensor},
-                                 {output_attrs}).outputs);
+    current_raw_weight_tensor = get_only(
+        this->pcg.raw_graph
+            .add_node(layer_attrs, {current_raw_weight_tensor}, {output_attrs})
+            .outputs);
     current_shape = output_shape;
   }
 
-  assert (current_shape == par_weight_shape);
+  assert(current_shape == par_weight_shape);
 
   return parallel_tensor_guid_t{current_raw_weight_tensor};
 }
@@ -592,7 +595,8 @@ std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
           return fmt::format("{}.weights[{}]", layer_name, weight_idx);
         });
 
-    raw_weight_tensors.push_back(this->add_weight(weight_tensor_attrs, weight_name).raw_graph_output);
+    raw_weight_tensors.push_back(
+        this->add_weight(weight_tensor_attrs, weight_name).raw_graph_output);
   }
 
   std::vector<DataflowOutput> raw_inputs =

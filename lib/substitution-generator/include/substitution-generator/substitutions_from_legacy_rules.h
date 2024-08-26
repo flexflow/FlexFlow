@@ -6,10 +6,12 @@
 
 namespace FlexFlow {
 
-std::unordered_map<std::string, Substitution> substitutions_from_legacy_rules(LegacyRuleCollection const &);
+std::unordered_map<std::string, Substitution>
+    substitutions_from_legacy_rules(LegacyRuleCollection const &);
 Substitution substitution_from_legacy_rule(LegacyRule const &);
 
-OperatorAttributeConstraint operator_attribute_constraint_from_legacy(LegacyParameter const &);
+OperatorAttributeConstraint
+    operator_attribute_constraint_from_legacy(LegacyParameter const &);
 OperatorAttributeKey operator_attribute_key_from_legacy(LegacyPMParameter);
 OperatorType operator_type_from_legacy(LegacyOperatorType);
 } // namespace FlexFlow

@@ -1,20 +1,24 @@
 #include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
 #include "utils/containers/generate_map.h"
 #include "utils/containers/sorted_by.h"
+#include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/dataflow_edge_query.h"
 #include "utils/graph/open_dataflow_graph/dataflow_input_edge_query.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
-#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 
-std::unordered_set<DataflowInputEdge> get_incoming_edges(OpenDataflowGraphView const &g) {
-  std::unordered_set<OpenDataflowEdge> raw_edges = g.query_edges(OpenDataflowEdgeQuery{
-    dataflow_input_edge_query_all(),
-    dataflow_edge_query_none(),
-  });
+std::unordered_set<DataflowInputEdge>
+    get_incoming_edges(OpenDataflowGraphView const &g) {
+  std::unordered_set<OpenDataflowEdge> raw_edges =
+      g.query_edges(OpenDataflowEdgeQuery{
+          dataflow_input_edge_query_all(),
+          dataflow_edge_query_none(),
+      });
 
-  return transform(raw_edges, [](OpenDataflowEdge const &e) { return e.get<DataflowInputEdge>(); });
+  return transform(raw_edges, [](OpenDataflowEdge const &e) {
+    return e.get<DataflowInputEdge>();
+  });
 }
 
 std::vector<OpenDataflowEdge> get_incoming_edges(OpenDataflowGraphView const &g,

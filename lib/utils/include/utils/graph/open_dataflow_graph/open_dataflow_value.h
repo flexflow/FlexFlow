@@ -6,8 +6,10 @@
 
 namespace FlexFlow {
 
-std::optional<DataflowOutput> try_get_dataflow_output(OpenDataflowValue const &);
-std::optional<DataflowGraphInput> try_get_dataflow_graph_input(OpenDataflowValue const &);
+std::optional<DataflowOutput>
+    try_get_dataflow_output(OpenDataflowValue const &);
+std::optional<DataflowGraphInput>
+    try_get_dataflow_graph_input(OpenDataflowValue const &);
 
 } // namespace FlexFlow
 

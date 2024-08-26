@@ -16,12 +16,14 @@ std::vector<DataflowEdge> get_incoming_edges(DataflowGraphView const &g,
                    });
 }
 
-std::unordered_set<DataflowEdge> get_incoming_edges(DataflowGraphView const &g, std::unordered_set<Node> const &ns) {
+std::unordered_set<DataflowEdge>
+    get_incoming_edges(DataflowGraphView const &g,
+                       std::unordered_set<Node> const &ns) {
   DataflowEdgeQuery query = DataflowEdgeQuery{
-    query_set<Node>::matchall(),
-    query_set<int>::matchall(),
-    query_set<Node>{ns},
-    query_set<int>::matchall(),
+      query_set<Node>::matchall(),
+      query_set<int>::matchall(),
+      query_set<Node>{ns},
+      query_set<int>::matchall(),
   };
   return g.query_edges(query);
 }

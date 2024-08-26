@@ -22,9 +22,10 @@ std::optional<UnlabelledDataflowGraphPatternMatch>
         bidict<PatternValue, PatternInput> const
             &merged_graph_values_to_inputs_of_2);
 
-std::unordered_map<OpenDataflowValue, PatternValue> get_output_assignment(SubParallelComputationGraph const &,
-                                                                          PCGPattern const &,
-                                                                          UnlabelledDataflowGraphPatternMatch const &);
+std::unordered_map<OpenDataflowValue, PatternValue>
+    get_output_assignment(SubParallelComputationGraph const &,
+                          PCGPattern const &,
+                          UnlabelledDataflowGraphPatternMatch const &);
 
 } // namespace FlexFlow
 

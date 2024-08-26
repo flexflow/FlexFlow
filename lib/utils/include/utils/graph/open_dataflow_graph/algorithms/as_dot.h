@@ -6,9 +6,11 @@
 namespace FlexFlow {
 
 std::string as_dot(OpenDataflowGraphView const &);
-std::string as_dot(OpenDataflowGraphView const &,
-                   std::function<std::string(Node const &)> const &get_node_label, 
-                   std::function<std::string(DataflowGraphInput const &)> const &get_input_label);
+std::string
+    as_dot(OpenDataflowGraphView const &,
+           std::function<std::string(Node const &)> const &get_node_label,
+           std::function<std::string(DataflowGraphInput const &)> const
+               &get_input_label);
 
 } // namespace FlexFlow
 

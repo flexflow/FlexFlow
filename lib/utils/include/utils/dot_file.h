@@ -94,14 +94,15 @@ public:
     this->get_ostream() << "}" << std::endl;
   }
 
-  void add_edge(T const &src, 
+  void add_edge(T const &src,
                 T const &dst,
                 std::optional<std::string> const &src_field = std::nullopt,
                 std::optional<std::string> const &dst_field = std::nullopt) {
     this->reserve_node(src);
     this->reserve_node(dst);
 
-    auto get_field_suffix = [](std::optional<std::string> const &field) -> std::string {
+    auto get_field_suffix =
+        [](std::optional<std::string> const &field) -> std::string {
       if (field.has_value()) {
         return (":" + field.value());
       } else {
@@ -114,7 +115,7 @@ public:
     std::string dst_name = this->get_node_name(this->node_ids.at(dst));
 
     this->get_ostream() << "  " << src_name << get_field_suffix(src_field)
-                        << " -> " << dst_name << get_field_suffix(dst_field) 
+                        << " -> " << dst_name << get_field_suffix(dst_field)
                         << ";" << std::endl;
   }
   void close() {

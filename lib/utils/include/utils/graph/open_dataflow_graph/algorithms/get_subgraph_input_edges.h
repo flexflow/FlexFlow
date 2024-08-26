@@ -7,7 +7,7 @@ namespace FlexFlow {
 
 std::unordered_set<OpenDataflowEdge>
     get_subgraph_incoming_edges(OpenDataflowGraphView const &,
-                             std::unordered_set<Node> const &);
+                                std::unordered_set<Node> const &);
 
 } // namespace FlexFlow
 

@@ -11,7 +11,7 @@ namespace FlexFlow {
 /*   return valid; */
 /* } */
 
-TensorShape get_output_shape(ConcatAttrs const &, 
+TensorShape get_output_shape(ConcatAttrs const &,
                              std::vector<TensorShape> const &) {
   NOT_IMPLEMENTED();
 }

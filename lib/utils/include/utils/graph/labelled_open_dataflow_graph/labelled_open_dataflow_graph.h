@@ -35,8 +35,10 @@ public:
   }
 
   template <typename T>
-  static std::enable_if_t<std::is_base_of_v<Interface, T>, LabelledOpenDataflowGraph>
-    create_copy_of(LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &view) {
+  static std::enable_if_t<std::is_base_of_v<Interface, T>,
+                          LabelledOpenDataflowGraph>
+      create_copy_of(
+          LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &view) {
     cow_ptr_t<T> impl = make_cow_ptr<T>();
     impl.get_mutable()->inplace_materialize_from(view);
     return LabelledOpenDataflowGraph(std::move(impl));

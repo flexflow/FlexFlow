@@ -8,8 +8,7 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(DropoutAttrs const &,
-                             TensorShape const &);
+TensorShape get_output_shape(DropoutAttrs const &, TensorShape const &);
 ParallelTensorShape get_output_shape(DropoutAttrs const &,
                                      ParallelTensorShape const &);
 

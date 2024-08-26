@@ -19,7 +19,8 @@ struct ILabelledOpenDataflowGraph
 
   virtual DataflowGraphInput add_input(ValueLabel const &value_label) = 0;
 
-  virtual void inplace_materialize_from(LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &) = 0;
+  virtual void inplace_materialize_from(
+      LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &) = 0;
 
   // NodeAddedResult add_node(NodeLabel const &node_label,
   //                          std::vector<DataflowOutput> const &inputs,

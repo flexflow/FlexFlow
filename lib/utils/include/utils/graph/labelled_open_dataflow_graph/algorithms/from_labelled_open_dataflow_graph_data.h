@@ -12,22 +12,23 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
-LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> from_labelled_open_dataflow_graph_data(LabelledOpenDataflowGraphData<NodeLabel, ValueLabel> const &data) {
+LabelledOpenDataflowGraphView<NodeLabel, ValueLabel>
+    from_labelled_open_dataflow_graph_data(
+        LabelledOpenDataflowGraphData<NodeLabel, ValueLabel> const &data) {
   std::unordered_set<OpenDataflowValue> values = keys(data.value_data);
-  std::unordered_set<DataflowOutput> outputs = filtrans(values, try_get_dataflow_output);
+  std::unordered_set<DataflowOutput> outputs =
+      filtrans(values, try_get_dataflow_output);
 
   OpenDataflowGraphData unlabelled_data = OpenDataflowGraphData{
-    keys(data.node_data),
-    data.edges,
-    data.inputs,
-    outputs,
+      keys(data.node_data),
+      data.edges,
+      data.inputs,
+      outputs,
   };
 
-  return with_labelling(
-    from_open_dataflow_graph_data(unlabelled_data),
-    data.node_data, 
-    data.value_data
-  );
+  return with_labelling(from_open_dataflow_graph_data(unlabelled_data),
+                        data.node_data,
+                        data.value_data);
 }
 
 } // namespace FlexFlow

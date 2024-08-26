@@ -7,8 +7,8 @@
 
 namespace FlexFlow {
 
-std::vector<OutputGraphExprNodeOutput> get_node_outputs(OutputGraphExpr const &,
-                                                        OutputGraphExprNode const &);
+std::vector<OutputGraphExprNodeOutput>
+    get_node_outputs(OutputGraphExpr const &, OutputGraphExprNode const &);
 
 } // namespace FlexFlow
 

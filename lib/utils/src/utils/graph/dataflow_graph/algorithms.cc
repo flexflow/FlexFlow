@@ -17,7 +17,8 @@ std::vector<DataflowOutput> get_inputs(DataflowGraphView const &g,
                    [](DataflowEdge const &e) { return e.src; });
 }
 
-std::vector<DataflowInput> get_dataflow_inputs(DataflowGraphView const &g, Node const &n) {
+std::vector<DataflowInput> get_dataflow_inputs(DataflowGraphView const &g,
+                                               Node const &n) {
   return transform(get_incoming_edges(g, n),
                    [](DataflowEdge const &e) { return e.dst; });
 }

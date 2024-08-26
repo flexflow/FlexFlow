@@ -2,9 +2,9 @@
 #define _FLEXFLOW_OPATTRS_INCLUDE_OPATTRS_FF_STACK_VECTOR_H
 
 #include "op-attrs/ff_dim.dtg.h"
+#include "utils/containers/count.h"
 #include "utils/json.h"
 #include "utils/stack_vector.h"
-#include "utils/containers/count.h"
 
 namespace FlexFlow {
 

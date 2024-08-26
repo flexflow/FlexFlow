@@ -9,9 +9,11 @@
 
 namespace FlexFlow {
 
-bidict<parallel_tensor_guid_t, OutputGraphExprNodeOutput> get_output_graph_expr_output_mapping(OutputExprToResultSubPCGMapping const &,
-                                                                                               OutputGraphExpr const &,
-                                                                                               SubParallelComputationGraph const &);
+bidict<parallel_tensor_guid_t, OutputGraphExprNodeOutput>
+    get_output_graph_expr_output_mapping(
+        OutputExprToResultSubPCGMapping const &,
+        OutputGraphExpr const &,
+        SubParallelComputationGraph const &);
 
 } // namespace FlexFlow
 

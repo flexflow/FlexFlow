@@ -14,10 +14,12 @@ template <
         std::invoke_result_t<F, OpenDataflowValue const &, ValueLabel const &>>
 LabelledOpenDataflowGraphView<NodeLabel, NewValueLabel> rewrite_value_labels(
     LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &g, F f) {
-  return rewrite_labels(g, overload {
-    [](Node const &n, NodeLabel const &l) { return l; },
-    [&](OpenDataflowValue const &v, ValueLabel const &l) { return f(v, l); },
-  });
+  return rewrite_labels(g,
+                        overload{
+                            [](Node const &n, NodeLabel const &l) { return l; },
+                            [&](OpenDataflowValue const &v,
+                                ValueLabel const &l) { return f(v, l); },
+                        });
 }
 
 } // namespace FlexFlow

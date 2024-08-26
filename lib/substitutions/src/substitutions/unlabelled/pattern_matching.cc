@@ -5,8 +5,8 @@
 #include "substitutions/unlabelled/pattern_split.h"
 #include "substitutions/unlabelled/standard_pattern_edge.h"
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
-#include "utils/bidict/algorithms/right_entries.h"
 #include "utils/bidict/algorithms/left_entries.h"
+#include "utils/bidict/algorithms/right_entries.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
@@ -25,8 +25,7 @@ namespace FlexFlow {
 OpenDataflowSubgraphResult
     subgraph_matched(OpenDataflowGraphView const &g,
                      UnlabelledDataflowGraphPatternMatch const &match) {
-  std::unordered_set<Node> matched_nodes =
-      right_entries(match.node_assignment);
+  std::unordered_set<Node> matched_nodes = right_entries(match.node_assignment);
   return get_subgraph(g, matched_nodes);
 }
 

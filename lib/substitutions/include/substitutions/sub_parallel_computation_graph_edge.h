@@ -9,13 +9,15 @@
 
 namespace FlexFlow {
 
-SubParallelComputationGraphEdge subpcg_edge_from_tensor_and_dst(parallel_tensor_guid_t const &tensor, 
-                                                                parallel_layer_guid_t const &layer,
-                                                                int input_idx);
-SubParallelComputationGraphEdge subpcg_edge_from_tensor_and_use(open_parallel_tensor_guid_t const &tensor,
-                                                                parallel_tensor_use_t const &use);
-open_parallel_tensor_guid_t get_parallel_tensor(SubParallelComputationGraphEdge const &);
-
+SubParallelComputationGraphEdge
+    subpcg_edge_from_tensor_and_dst(parallel_tensor_guid_t const &tensor,
+                                    parallel_layer_guid_t const &layer,
+                                    int input_idx);
+SubParallelComputationGraphEdge
+    subpcg_edge_from_tensor_and_use(open_parallel_tensor_guid_t const &tensor,
+                                    parallel_tensor_use_t const &use);
+open_parallel_tensor_guid_t
+    get_parallel_tensor(SubParallelComputationGraphEdge const &);
 
 } // namespace FlexFlow
 

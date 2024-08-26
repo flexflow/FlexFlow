@@ -2,11 +2,11 @@
 #define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_PCG_PATTERN_H
 
 #include "substitutions/pcg_pattern.dtg.h"
+#include "substitutions/pcg_pattern_match.dtg.h"
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
 #include "substitutions/unlabelled/pattern_matching.h"
 #include "substitutions/unlabelled/pattern_node.dtg.h"
 #include "substitutions/unlabelled/pattern_value.dtg.h"
-#include "substitutions/pcg_pattern_match.dtg.h"
 
 namespace FlexFlow {
 
@@ -25,7 +25,7 @@ OperatorAttributePattern get_operator_pattern(PCGPattern const &,
                                               PatternNode const &);
 std::unordered_set<PatternInput> get_inputs(PCGPattern const &);
 std::vector<PatternNodeOutput> get_pattern_node_outputs(PCGPattern const &,
-                                                PatternNode const &);
+                                                        PatternNode const &);
 
 bool assignment_satisfies(SubParallelComputationGraph const &,
                           PCGPattern const &,

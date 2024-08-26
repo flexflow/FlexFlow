@@ -15,7 +15,8 @@ LossFunction
 }
 
 LossFunction get_loss_type(LossAttrs const &attrs) {
-  return attrs.visit<LossFunction>([](auto const &t) { return get_loss_type(t); });
+  return attrs.visit<LossFunction>(
+      [](auto const &t) { return get_loss_type(t); });
 }
 
 LossFunction parse_loss_name(std::string const &raw_name) {

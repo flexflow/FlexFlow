@@ -9,8 +9,9 @@ OperatorAttributeConstraint op_type_equals_constraint(OperatorType);
 
 OperatorAttributeConstraint op_attr_key_equals(OperatorAttributeKey,
                                                OperatorAttributeValue const &);
-OperatorAttributeConstraint make_equals_constraint(OperatorAttributeExpr const &,
-                                                   OperatorAttributeValue const &);
+OperatorAttributeConstraint
+    make_equals_constraint(OperatorAttributeExpr const &,
+                           OperatorAttributeValue const &);
 
 } // namespace FlexFlow
 

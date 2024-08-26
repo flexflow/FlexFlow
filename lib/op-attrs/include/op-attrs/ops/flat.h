@@ -10,8 +10,7 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(FlatAttrs);
 
-TensorShape get_output_shape(FlatAttrs const &,
-                             TensorShape const &);
+TensorShape get_output_shape(FlatAttrs const &, TensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &,
                                      ParallelTensorShape const &);
 

@@ -11,5 +11,4 @@ ParallelTensorShape get_output_parallel_tensor_shape(WeightAttrs const &attrs) {
   return lift_to_parallel(attrs.tensor_shape);
 }
 
-
 } // namespace FlexFlow

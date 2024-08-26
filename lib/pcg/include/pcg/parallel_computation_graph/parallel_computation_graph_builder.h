@@ -84,10 +84,10 @@ public:
       std::optional<InitializerAttrs> output_bias_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
 
-  parallel_tensor_guid_t batch_norm(
-      parallel_tensor_guid_t const &input,
-      bool relu = true,
-      std::optional<std::string> const &name = std::nullopt);
+  parallel_tensor_guid_t
+      batch_norm(parallel_tensor_guid_t const &input,
+                 bool relu = true,
+                 std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
       relu(parallel_tensor_guid_t const &x,
@@ -95,15 +95,15 @@ public:
 
   parallel_tensor_guid_t
       identity(parallel_tensor_guid_t const &x,
-           std::optional<std::string> const &name = std::nullopt);
+               std::optional<std::string> const &name = std::nullopt);
 
-  parallel_tensor_guid_t 
+  parallel_tensor_guid_t
       gelu(parallel_tensor_guid_t const &x,
            std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
       sigmoid(parallel_tensor_guid_t const &x,
-           std::optional<std::string> const &name = std::nullopt);
+              std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
       tanh(parallel_tensor_guid_t const &x,
@@ -111,7 +111,7 @@ public:
 
   parallel_tensor_guid_t
       elu(parallel_tensor_guid_t const &x,
-           std::optional<std::string> const &name = std::nullopt);
+          std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
       parallel_partition(parallel_tensor_guid_t const &x,
@@ -162,8 +162,8 @@ private:
                 std::vector<ParallelTensorAttrs> const &weights,
                 ParallelTensorShape const &output);
 
-  parallel_tensor_guid_t 
-      add_weight(ParallelTensorAttrs const &weight_tensor_attrs, 
+  parallel_tensor_guid_t
+      add_weight(ParallelTensorAttrs const &weight_tensor_attrs,
                  std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t

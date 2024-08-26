@@ -11,19 +11,24 @@ OperatorType operator_type_from_legacy(LegacyOperatorType) {
   NOT_IMPLEMENTED();
 }
 
-OperatorAttributeConstraint operator_attribute_constraint_from_legacy(LegacyParameter const &) {
+OperatorAttributeConstraint
+    operator_attribute_constraint_from_legacy(LegacyParameter const &) {
   NOT_IMPLEMENTED();
 }
 
-std::unordered_map<std::string, Substitution> substitutions_from_legacy_rules(LegacyRuleCollection const &legacy) {
+std::unordered_map<std::string, Substitution>
+    substitutions_from_legacy_rules(LegacyRuleCollection const &legacy) {
   NOT_IMPLEMENTED();
 }
 
 Substitution substitution_from_legacy_rule(LegacyRule const &legacy) {
   NOT_IMPLEMENTED();
-  // LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern> pattern_g = 
-  //   LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>
-  //   ::create<UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>>();
+  // LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>
+  // pattern_g =
+  //   LabelledOpenDataflowGraph<OperatorAttributePattern,
+  //   TensorAttributePattern>
+  //   ::create<UnorderedSetLabelledOpenDataflowGraph<OperatorAttributePattern,
+  //   TensorAttributePattern>>();
   //
   // for (LegacyOperator const &legacy_op : legacy.srcOp) {
   //   OperatorAttributePattern op_pattern = OperatorAttributePattern{{

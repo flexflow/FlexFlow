@@ -7,8 +7,10 @@ namespace FlexFlow {
 
 bidict<NewNode, Node> generate_new_node_id_permutation(GraphView const &g) {
   NodeSource node_source;
-  return generate_bidict(get_nodes(g),
-                         [&](Node const &) { return NewNode{node_source.new_node()}; }).reversed();
+  return generate_bidict(
+             get_nodes(g),
+             [&](Node const &) { return NewNode{node_source.new_node()}; })
+      .reversed();
 }
 
 } // namespace FlexFlow

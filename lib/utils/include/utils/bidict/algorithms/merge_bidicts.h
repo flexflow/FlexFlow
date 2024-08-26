@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_BIDICTS_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_BIDICTS_H
 
-#include "utils/bidict/bidict.h"
-#include "utils/containers/are_disjoint.h"
 #include "utils/bidict/algorithms/left_entries.h"
 #include "utils/bidict/algorithms/right_entries.h"
+#include "utils/bidict/bidict.h"
+#include "utils/containers/are_disjoint.h"
 
 namespace FlexFlow {
 

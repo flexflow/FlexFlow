@@ -6,11 +6,9 @@
 
 namespace FlexFlow {
 
-Substitution create_replicate_linear_combine(int num_dims,
-                                             int result_degree);
+Substitution create_replicate_linear_combine(int num_dims, int result_degree);
 
 Substitution create_linear_relu_merge(int num_dims);
-
 
 } // namespace FlexFlow
 

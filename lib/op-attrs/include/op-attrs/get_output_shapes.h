@@ -7,8 +7,9 @@
 
 namespace FlexFlow {
 
-std::vector<ParallelTensorShape> get_output_shapes(PCGOperatorAttrs const &,
-                                                   std::vector<ParallelTensorShape> const &);
+std::vector<ParallelTensorShape>
+    get_output_shapes(PCGOperatorAttrs const &,
+                      std::vector<ParallelTensorShape> const &);
 
 } // namespace FlexFlow
 
