@@ -206,7 +206,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                      [&](parallel_layer_guid_t const &l) {
                        return get_parallel_layer_attrs(b.pcg, l);
                      });
-    CHECK_MESSAGE(layers.size() == 4, "Incorrect layers ", layers);
+    CHECK_MESSAGE(layers.size() == 6, "Incorrect layers ", layers);
 
     auto num_attrs_of_type = [&](OperatorType op_type) -> int {
       return count(values(layers), [&](ParallelLayerAttrs const &l) {
@@ -222,6 +222,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     int num_conv_attrs = num_attrs_of_type(OperatorType::CONV2D);
     CHECK(num_conv_attrs == 1);
+
+    int num_replicate_attrs = num_attrs_of_type(OperatorType::REPLICATE);
+    CHECK(num_replicate_attrs == 2);
 
     parallel_layer_guid_t conv_guid = get_only(without_nullopts(transform(
         as_vector(items(layers)),
