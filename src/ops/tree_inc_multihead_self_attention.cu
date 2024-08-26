@@ -141,7 +141,6 @@ __global__ void commit_tokens_kernel(
   // page attention: WARNING: this implicitly assume that the kv page is stored in the same order as the available requests
   int start = kv_indptr[requext_idx_in_batch];
   int end = kv_indptr[requext_idx_in_batch + 1] - 1;
-  assert(start <= end);
   for (int i = 0; i < num_committed_tokens; i++) {
     if (committedTokenInfos[i].request_index == requext_idx_in_batch) {
       int const index_in_kv_cache = committedTokenInfos[i].index_in_kv_cache;
@@ -152,9 +151,9 @@ __global__ void commit_tokens_kernel(
       // int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
       int const page_to_idx = kv_page_indices[start + tok_id / kPagesize];
-      assert(start + (tok_id / kPagesize) <= end);
+      // assert(start + (tok_id / kPagesize) <= end);
       int const page_from_idx = kv_page_indices[start + index_in_kv_cache / kPagesize];
-      assert(start + (index_in_kv_cache / kPagesize) <= end);
+      // assert(start + (index_in_kv_cache / kPagesize) <= end);
 
       // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
       // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory

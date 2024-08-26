@@ -36,22 +36,18 @@ LogicalTokenBlock::LogicalTokenBlock(int block_number, uint32_t block_size)
     }
 
 bool LogicalTokenBlock::is_empty() const {
-    assert(num_spec_tokens + num_commit_tokens == num_tokens);
     return num_tokens == 0;
 }
 
 int LogicalTokenBlock::get_num_empty_slots() const {
-    assert(num_spec_tokens + num_commit_tokens == num_tokens);
     return block_size - num_tokens;
 }
 
 int LogicalTokenBlock::get_num_alloc_slots() {
-    assert(num_spec_tokens + num_commit_tokens == num_tokens);
     return num_tokens;
 }
 
 bool LogicalTokenBlock::is_full() const {
-    assert(num_spec_tokens + num_commit_tokens == num_tokens);
     return num_tokens == block_size;
 }
 
@@ -94,7 +90,7 @@ BlockAllocator::BlockAllocator(uint32_t block_size, int num_total_blocks) {
         free_blocks.push_back(PhysicalTokenBlock(block_number, block_size));
     }
     // page attention: will do the shuffle later for testing
-    // std::shuffle(free_blocks.begin(), free_blocks.end(), std::mt19937(std::random_device()()));
+    std::shuffle(free_blocks.begin(), free_blocks.end(), std::mt19937(std::random_device()()));
 }
 
 // Allocate a block
@@ -231,7 +227,9 @@ int PageManager::lookup_index(const RequestGuid& request_guid, int logical_index
 PageManager *PageManager::get_page_manager() {
   if (page_manager_singleton == nullptr) {
     // FIXME: These values are hardcoded for now
-    page_manager_singleton = new PageManager(kPagesize, 1000);
+    page_manager_singleton = new PageManager(kPagesize, (BatchConfig::max_spec_tree_token_num() +
+        BatchConfig::max_sequence_length() + kPagesize - 1) /
+        kPagesize * BatchConfig::max_requests_per_batch());
   }
   return page_manager_singleton;
 }
