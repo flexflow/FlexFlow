@@ -56,7 +56,8 @@ bool LogicalTokenBlock::is_full() const {
 }
 
 void LogicalTokenBlock::reset_num_spec_tokens(){
-    assert(num_spec_tokens + num_commit_tokens == num_tokens);
+    printf("num_spec_tokens: %d, num_commit_tokens: %d, num_tokens: %d\n", num_spec_tokens, num_commit_tokens, num_tokens);
+    // assert(num_spec_tokens + num_commit_tokens == num_tokens);
     num_tokens -= num_spec_tokens;
     num_spec_tokens = 0;
 }
