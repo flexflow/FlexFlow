@@ -48,46 +48,46 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
 
     SUBCASE("SGDOptimizerAttrs") {
       SUBCASE("momentum=0") {
-        OptimizerAttrs optimizer_attrs = OptimizerAttrs{SGDOptimizerAttrs{
-          /*lr=*/0.001,
-          /*momentum=*/0.0f,
-          /*nesterov=*/false,
-          /*weight_decay=*/0.001
-        }};
+        OptimizerAttrs optimizer_attrs =
+            OptimizerAttrs{SGDOptimizerAttrs{/*lr=*/0.001,
+                                             /*momentum=*/0.0f,
+                                             /*nesterov=*/false,
+                                             /*weight_decay=*/0.001}};
         std::optional<ModelTrainingInstance> model_training_instance =
             ModelTrainingInstance{
                 LossAttrs{OtherLossAttrs{
                     LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
                 label_tensor,
-                logit_tensor, optimizer_attrs};
+                logit_tensor,
+                optimizer_attrs};
         LocalTrainingBacking local_backing(allocator,
-                                            cg_builder.computation_graph,
-                                            tensor_backing_map,
-                                            runtime_arg_config,
-                                            model_training_instance);
+                                           cg_builder.computation_graph,
+                                           tensor_backing_map,
+                                           runtime_arg_config,
+                                           model_training_instance);
         local_backing.execute_init();
         local_backing.execute_forward();
         local_backing.execute_backward();
         local_backing.execute_update();
       }
       SUBCASE("momentum=0.9") {
-        OptimizerAttrs optimizer_attrs = OptimizerAttrs{SGDOptimizerAttrs{
-          /*lr=*/0.001,
-          /*momentum=*/0.9,
-          /*nesterov=*/false,
-          /*weight_decay=*/0.001
-        }};
+        OptimizerAttrs optimizer_attrs =
+            OptimizerAttrs{SGDOptimizerAttrs{/*lr=*/0.001,
+                                             /*momentum=*/0.9,
+                                             /*nesterov=*/false,
+                                             /*weight_decay=*/0.001}};
         std::optional<ModelTrainingInstance> model_training_instance =
             ModelTrainingInstance{
                 LossAttrs{OtherLossAttrs{
                     LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
                 label_tensor,
-                logit_tensor, optimizer_attrs};
+                logit_tensor,
+                optimizer_attrs};
         LocalTrainingBacking local_backing(allocator,
-                                            cg_builder.computation_graph,
-                                            tensor_backing_map,
-                                            runtime_arg_config,
-                                            model_training_instance);
+                                           cg_builder.computation_graph,
+                                           tensor_backing_map,
+                                           runtime_arg_config,
+                                           model_training_instance);
         local_backing.execute_init();
         local_backing.execute_forward();
         local_backing.execute_backward();
@@ -95,28 +95,27 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       }
     }
     SUBCASE("AdamOptimizerAttrs") {
-      OptimizerAttrs optimizer_attrs = OptimizerAttrs{AdamOptimizerAttrs{
-        /*alpha=*/ 0.001,           
-        /*beta1=*/ 0.9,             
-        /*beta2=*/ 0.999,           
-        /*weight_decay=*/ 0.001,    
-        /*alpha_t=*/ 0.001,         
-        /*beta_t=*/ 0.9,            
-        /*beta2_t=*/ 0.999,         
-        /*epsilon=*/ 1e-8           
-        }
-      };
+      OptimizerAttrs optimizer_attrs =
+          OptimizerAttrs{AdamOptimizerAttrs{/*alpha=*/0.001,
+                                            /*beta1=*/0.9,
+                                            /*beta2=*/0.999,
+                                            /*weight_decay=*/0.001,
+                                            /*alpha_t=*/0.001,
+                                            /*beta_t=*/0.9,
+                                            /*beta2_t=*/0.999,
+                                            /*epsilon=*/1e-8}};
       std::optional<ModelTrainingInstance> model_training_instance =
           ModelTrainingInstance{
-              LossAttrs{OtherLossAttrs{
-                  LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
+              LossAttrs{
+                  OtherLossAttrs{LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
               label_tensor,
-              logit_tensor, optimizer_attrs};
+              logit_tensor,
+              optimizer_attrs};
       LocalTrainingBacking local_backing(allocator,
-                                          cg_builder.computation_graph,
-                                          tensor_backing_map,
-                                          runtime_arg_config,
-                                          model_training_instance);
+                                         cg_builder.computation_graph,
+                                         tensor_backing_map,
+                                         runtime_arg_config,
+                                         model_training_instance);
       local_backing.execute_init();
       local_backing.execute_forward();
       local_backing.execute_backward();
