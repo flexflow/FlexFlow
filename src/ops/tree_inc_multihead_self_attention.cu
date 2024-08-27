@@ -164,7 +164,6 @@ __global__ void commit_tokens_kernel(
       // page attention: copy the token to the new position
       size_t to_k_idx =get_k_entry_offset(tok_id, page_to_idx, hidden_size),
              to_v_idx =get_v_entry_offset(tok_id, page_to_idx, hidden_size);
-      assert(to_k_idx <= from_k_idx);
 
       kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
       kCache_ptr[to_v_idx + offset] = kCache_ptr[from_v_idx + offset];

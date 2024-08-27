@@ -211,7 +211,11 @@ void PageManager::erase_last_pages(const RequestGuid& request_guid, int last_com
     // std::cerr << "inside function block_table size is: " << block_table.size() << std::endl;
     // std::cerr << "inside function last_commit_page is: " << last_commit_page << std::endl;
     // erase the last num_pages blocks
-    block_table.erase(block_table.begin() + last_commit_page + 1, block_table.end());
+    for (int i = last_commit_page + 1; i < block_table.size(); i++) {
+        gpu_allocator.free(block_table[i]);
+    }
+    block_table = std::vector<PhysicalTokenBlock>(block_table.begin(), block_table.begin() + last_commit_page + 1);
+    // need to put the last blocks back to the free list
     block_tables[request_guid] = block_table;
 }
 
@@ -225,9 +229,11 @@ int PageManager::lookup_index(const RequestGuid& request_guid, int logical_index
 PageManager *PageManager::get_page_manager() {
   if (page_manager_singleton == nullptr) {
     // FIXME: These values are hardcoded for now
-    page_manager_singleton = new PageManager(kPagesize, (BatchConfig::max_spec_tree_token_num() +
+    int num_total_blocks = (BatchConfig::max_spec_tree_token_num() +
         BatchConfig::max_sequence_length() + kPagesize - 1) /
-        kPagesize * BatchConfig::max_requests_per_batch());
+        kPagesize * BatchConfig::max_requests_per_batch();
+        std::cerr << "num_total_blocks is: " << num_total_blocks << std::endl;
+    page_manager_singleton = new PageManager(kPagesize, num_total_blocks);
   }
   return page_manager_singleton;
 }
