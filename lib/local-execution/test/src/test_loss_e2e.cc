@@ -10,7 +10,7 @@
 namespace FlexFlow {
 
 TEST_SUITE(FF_CUDA_TEST_SUITE) {
-  TEST_CASE("Loss Function Local Execution") {
+  TEST_CASE("Local Execution E2E") {
     // initialize runtime configs
     ManagedPerDeviceFFHandle managed_handle{};
 
