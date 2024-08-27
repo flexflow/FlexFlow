@@ -11,19 +11,7 @@ features = [
 ]
 
 [[fields]]
-name = "hidden_size"
-type = "size_t"
-
-[[fields]]
-name = "embedding_size"
-type = "size_t"
-
-[[fields]]
-name = "num_heads"
-type = "size_t"
-
-[[fields]]
-name = "num_layers"
+name = "num_features"
 type = "size_t"
 
 [[fields]]
@@ -33,6 +21,26 @@ type = "size_t"
 [[fields]]
 name = "batch_size"
 type = "size_t"
+
+[[fields]]
+name = "dim_feedforward"
+type = "size_t"
+
+[[fields]]
+name = "num_heads"
+type = "size_t"
+
+[[fields]]
+name = "num_encoder_layers"
+type = "size_t"
+
+[[fields]]
+name = "num_decoder_layers"
+type = "size_t"
+
+[[fields]]
+name = "dropout"
+type = "float"
 
 [[fields]]
 name = "layer_norm_eps"
