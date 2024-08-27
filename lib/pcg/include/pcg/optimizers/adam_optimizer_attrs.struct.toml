@@ -36,3 +36,7 @@ type = "double"
 [[fields]]
 name = "beta2_t"
 type = "double"
+
+[[fields]]
+name = "epsilon"
+type = "double"

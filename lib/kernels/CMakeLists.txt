@@ -9,6 +9,7 @@ file(GLOB_RECURSE SRC
      src/*.cc
      src/cuda/cuda_helper.cu
      src/cuda/loss_function_kernels.cu
+     src/cuda/optimizer_kernels.cu
      src/cuda/ops/*.cu
      )
 

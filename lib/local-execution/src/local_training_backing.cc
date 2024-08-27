@@ -4,6 +4,7 @@
 #include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/reversed.h"
+#include "utils/containers/get_only.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
@@ -136,7 +137,13 @@ PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
 }
 
 void LocalTrainingBacking::execute_update() {
-  NOT_IMPLEMENTED();
+  for (layer_guid_t const &node: topological_ordering(this->computation_graph)) {
+    LayerAttrs layer_attrs = get_layer_attrs(this->computation_graph, node);
+    if (layer_attrs.attrs.has<WeightAttrs>()) {
+      tensor_guid_t weight_tensor = get_only(get_outgoing_tensors(this->computation_graph, node));
+      // TODO: handle momentum vectors separately? handle different updates?
+    }
+  }
 }
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(

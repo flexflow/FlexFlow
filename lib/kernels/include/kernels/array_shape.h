@@ -50,6 +50,9 @@ public:
   ArrayShape sub_shape(std::optional<legion_dim_t> start,
                        std::optional<legion_dim_t> end) const;
 
+  bool operator==(ArrayShape const &) const;
+  bool operator!=(ArrayShape const &) const;
+
 public:
   LegionTensorDims dims;
 };

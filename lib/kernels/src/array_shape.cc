@@ -101,6 +101,14 @@ TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
                      dtype};
 }
 
+bool ArrayShape::operator==(ArrayShape const & other) const {
+  return this->dims == other.dims;
+}
+
+bool ArrayShape::operator!=(ArrayShape const & other) const {
+  return this->dims != other.dims;
+}
+
 std::string format_as(ArrayShape const &x) {
   std::ostringstream oss;
   oss << "<ArrayShape";

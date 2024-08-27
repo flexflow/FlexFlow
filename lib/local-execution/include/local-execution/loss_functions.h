@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#ifndef _FLEXFLOW_LOSS_FUNCTIONS_H_
-#define _FLEXFLOW_LOSS_FUNCTIONS_H_
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_INCLUDE_LOCAL_EXECUTION_LOSS_FUNCTIONS_H_
+#define _FLEXFLOW_LOCAL_EXECUTION_INCLUDE_LOCAL_EXECUTION_LOSS_FUNCTIONS_H_
 
 #include "local-execution/task_impl_function.dtg.h"
 #include "local-execution/task_invocation.h"
