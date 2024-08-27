@@ -504,8 +504,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t qkv_max_proj_size =
         max_tokens_per_batch *
         (qk_dim * num_q_heads + qk_dim * num_q_heads + v_dim * num_q_heads);
-    size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
-           qk_prod_size = 0;
+    size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0;
     // assert((BatchConfig::max_sequence_length() +
     //         BatchConfig::max_spec_tree_token_num()) %
     //            kPagesize ==
@@ -527,8 +526,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         value_cache_size = num_q_heads * v_dim *
                            BatchConfig::max_requests_per_batch() *
                            max_num_pages * kPagesize;
-        qk_prod_size = BatchConfig::max_sequence_length() * max_num_pages *
-                       kPagesize * num_q_heads;
         break;
       }
       default:
@@ -541,7 +538,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         2;
     size_t totalSize =
         (qkv_max_proj_size + query_tmp_size + key_cache_size +
-         value_cache_size + 2 * qk_prod_size + attn_heads_size) *
+         value_cache_size + attn_heads_size) *
             size_of_dt +
         output_tmp_size * data_type_size(DT_HALF) +
         complex_size * sizeof(cuFloatComplex); // more components will
@@ -607,12 +604,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       //     gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
       //         tokeninfo_size);
       // offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
-      qk_prods = gpu_mem_allocator.allocate_reserved_untyped(qk_prod_size *
-                                                             size_of_dt);
-      // offset += qk_prod_size * size_of_dt;
-      qk_prods_softmax = gpu_mem_allocator.allocate_reserved_untyped(
-          qk_prod_size * size_of_dt);
-      // offset += qk_prod_size * size_of_dt;
       attn_heads = gpu_mem_allocator.allocate_reserved_untyped(attn_heads_size *
                                                                size_of_dt);
       // offset += attn_heads_size * size_of_dt;
@@ -626,10 +617,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       // token_infos =
       //     gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
       //         tokeninfo_size);
-      qk_prods = gpu_mem_allocator.allocate_instance_untyped(qk_prod_size *
-                                                             size_of_dt);
-      qk_prods_softmax = gpu_mem_allocator.allocate_instance_untyped(
-          qk_prod_size * size_of_dt);
       attn_heads = gpu_mem_allocator.allocate_instance_untyped(attn_heads_size *
                                                                size_of_dt);
       complex_input =

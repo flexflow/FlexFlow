@@ -186,7 +186,6 @@ public:
   void *weight_ptr, *bias_ptr; // for weight offload
   void *devQKVProjArray, *queryTmp, *kvCache;
   half *outputTmp;
-  void *qk_prods, *qk_prods_softmax;
   void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
