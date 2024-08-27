@@ -50,7 +50,7 @@ public:
   // Maximum possible values for different parameters
   // These maximum values are used for copying BatchConfig
   // across workers
-  inline static int const MAX_NUM_REQUESTS = 64;
+  inline static int const MAX_NUM_REQUESTS = 8;
   inline static int const MAX_NUM_TOKENS = 1024;
   inline static int const MAX_SPEC_TREE_TOKEN_NUM = 128;
   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 4;
@@ -69,6 +69,7 @@ public:
     int first_token_index_in_request = -1;
     int first_token_offset_in_batch = -1;
     int num_tokens_in_batch = 0;
+    int padding = 0; // Padding for memory pointer alignment
   };
 
   struct PerTokenInfo {
