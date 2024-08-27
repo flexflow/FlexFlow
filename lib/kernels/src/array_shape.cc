@@ -50,12 +50,6 @@ std::size_t ArrayShape::at(ff_dim_t idx) const {
   return dims.at(legion_dim_from_ff_dim(idx, this->num_dims()));
 }
 
-// ArrayShape ArrayShape::sub_shape(
-//     std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
-//     std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const {
-//   NOT_IMPLEMENTED();
-// }
-
 ArrayShape ArrayShape::sub_shape(legion_dim_t start, ff_dim_t end) const {
   NOT_IMPLEMENTED();
 }
