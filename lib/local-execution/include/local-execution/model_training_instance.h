@@ -5,8 +5,8 @@
 #include "local-execution/model_training_instance.dtg.h"
 
 namespace FlexFlow {
-  
-ModelTrainingInstance next(ModelTrainingInstance const & old);
+
+ModelTrainingInstance next(ModelTrainingInstance const &old);
 
 } // namespace FlexFlow
 

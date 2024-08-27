@@ -4,7 +4,7 @@
 #include "pcg/optimizer_attrs.dtg.h"
 
 namespace FlexFlow {
-  
+
 OptimizerAttrs make_empty_sgd_attrs();
 OptimizerAttrs make_empty_adam_attrs();
 
