@@ -47,6 +47,27 @@ void LocalSlotsBacking::allocate_outgoing_tensors(
   this->output_tensor_slots.insert({layer_guid, outgoing_tensors});
 }
 
+void LocalSlotsBacking::allocate_optimizer_tensors(
+    layer_guid_t const &weight_layer,
+    tensor_guid_t const &weight,
+    ComputationGraph const &cg,
+    Allocator &allocator,
+    TaskSignature const &sig) {
+  GenericTensorAccessorW weight_backing =
+      get_tensor_backing(weight, IsGrad::NO);
+  int num_buffer_tensors =
+      sig.tensor_guid_slots.size() - 2; // ignore 2 (weight and weight_grad)
+  std::vector<tensor_guid_t> buffer_tensors =
+      get_new_tensor_guids_for_layer_without_graph_insertion(
+          cg, weight_layer, num_buffer_tensors);
+  for (auto const &tensor_guid : buffer_tensors) {
+    GenericTensorAccessorW buffer_backing = allocator.allocate_tensor(
+        get_tensor_shape(weight_backing.shape, weight_backing.data_type));
+    this->gradient_tensor_mapping.insert({tensor_guid, buffer_backing});
+  }
+  this->weight_optimizer_tensor_guids.insert({weight, buffer_tensors});
+}
+
 bool LocalSlotsBacking::is_tensor_allocated(
     tensor_guid_t const &tensor_id) const {
   return contains_key(this->tensor_mapping, tensor_id);

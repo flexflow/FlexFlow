@@ -101,11 +101,11 @@ TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
                      dtype};
 }
 
-bool ArrayShape::operator==(ArrayShape const & other) const {
+bool ArrayShape::operator==(ArrayShape const &other) const {
   return this->dims == other.dims;
 }
 
-bool ArrayShape::operator!=(ArrayShape const & other) const {
+bool ArrayShape::operator!=(ArrayShape const &other) const {
   return this->dims != other.dims;
 }
 

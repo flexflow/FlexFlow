@@ -4,7 +4,6 @@
 #include "local-execution/local_slots_backing.h"
 #include "local-execution/model_training_instance.dtg.h"
 #include "local-execution/task_registry.h"
-#include "op-attrs/ops/loss_functions.h"
 
 namespace FlexFlow {
 
@@ -16,7 +15,7 @@ struct LocalTrainingBacking {
                        ComputationGraph const &,
                        TensorBackingMap const &,
                        RuntimeArgConfig const &,
-                       std::optional<ModelTrainingInstance> const &);
+                       std::optional<ModelTrainingInstance> &);
 
   void execute_init();
   PerLayerElapsedTime execute_forward();

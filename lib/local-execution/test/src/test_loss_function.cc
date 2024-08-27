@@ -4,6 +4,7 @@
 #include "kernels/managed_per_device_ff_handle.h"
 #include "local-execution/local_training_backing.h"
 #include "pcg/computation_graph_builder.h"
+#include "pcg/optimizer_attrs.h"
 #include "test_utils.h"
 
 namespace FlexFlow {
@@ -17,6 +18,8 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         DeviceSpecific<PerDeviceFFHandle>::create(managed_handle.raw_handle()),
         EnableProfiling::NO,
         ProfilingSettings{/*warmup_iters=*/0, /*measure_iters=*/0}};
+
+    OptimizerAttrs optimizer_attrs = make_empty_sgd_attrs();
 
     // construct graph
     ComputationGraphBuilder cg_builder;
@@ -47,11 +50,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       GenericTensorAccessorW label_backing =
           allocator.allocate_tensor(label_shape);
       tensor_backing_map.insert({label_tensor, label_backing});
-      ModelTrainingInstance model_training_instance = ModelTrainingInstance{
-          LossAttrs{
-              SparseCategoricalCrossEntropyLossAttrs{/*replace_labels=*/false}},
-          label_tensor,
-          logit_tensor};
+      std::optional<ModelTrainingInstance> model_training_instance =
+          ModelTrainingInstance{
+              LossAttrs{SparseCategoricalCrossEntropyLossAttrs{
+                  /*replace_labels=*/false}},
+              label_tensor,
+              logit_tensor,
+              optimizer_attrs};
       LocalTrainingBacking local_backing(allocator,
                                          cg_builder.computation_graph,
                                          tensor_backing_map,
@@ -70,10 +75,12 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       tensor_backing_map.insert({label_tensor, label_backing});
 
       SUBCASE("LossFunction::CATEGORICAL_CROSSENTROPY") {
-        ModelTrainingInstance model_training_instance = ModelTrainingInstance{
-            LossAttrs{OtherLossAttrs{LossFunction::CATEGORICAL_CROSSENTROPY}},
-            label_tensor,
-            logit_tensor};
+        std::optional<ModelTrainingInstance> model_training_instance =
+            ModelTrainingInstance{LossAttrs{OtherLossAttrs{
+                                      LossFunction::CATEGORICAL_CROSSENTROPY}},
+                                  label_tensor,
+                                  logit_tensor,
+                                  optimizer_attrs};
         LocalTrainingBacking local_backing(allocator,
                                            cg_builder.computation_graph,
                                            tensor_backing_map,
@@ -85,11 +92,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       }
 
       SUBCASE("LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE") {
-        ModelTrainingInstance model_training_instance = ModelTrainingInstance{
-            LossAttrs{
-                OtherLossAttrs{LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
-            label_tensor,
-            logit_tensor};
+        std::optional<ModelTrainingInstance> model_training_instance =
+            ModelTrainingInstance{
+                LossAttrs{OtherLossAttrs{
+                    LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
+                label_tensor,
+                logit_tensor,
+                optimizer_attrs};
         LocalTrainingBacking local_backing(allocator,
                                            cg_builder.computation_graph,
                                            tensor_backing_map,
@@ -101,10 +110,12 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       }
 
       SUBCASE("LossFunction::IDENTITY") {
-        ModelTrainingInstance model_training_instance = ModelTrainingInstance{
-            LossAttrs{OtherLossAttrs{LossFunction::IDENTITY}},
-            label_tensor,
-            logit_tensor};
+        std::optional<ModelTrainingInstance> model_training_instance =
+            ModelTrainingInstance{
+                LossAttrs{OtherLossAttrs{LossFunction::IDENTITY}},
+                label_tensor,
+                logit_tensor,
+                optimizer_attrs};
         LocalTrainingBacking local_backing(allocator,
                                            cg_builder.computation_graph,
                                            tensor_backing_map,

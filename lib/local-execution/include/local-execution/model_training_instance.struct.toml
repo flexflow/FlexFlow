@@ -11,6 +11,7 @@ includes = [
   "utils/optional.h",
   "op-attrs/ops/loss_attrs.dtg.h",
   "pcg/tensor_guid_t.dtg.h",
+  "pcg/optimizer_attrs.dtg.h",
 ]
 
 [[fields]]
@@ -24,3 +25,7 @@ type = "::FlexFlow::tensor_guid_t"
 [[fields]]
 name = "logit_tensor"
 type = "::FlexFlow::tensor_guid_t"
+
+[[fields]]
+name = "optimizer_attrs"
+type = "::FlexFlow::OptimizerAttrs"

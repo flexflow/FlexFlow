@@ -1,6 +1,6 @@
 
-#ifndef _FLEXFLOW_LOCAL_EXECUTION_SLOT_REGISTRY_H
-#define _FLEXFLOW_LOCAL_EXECUTION_SLOT_REGISTRY_H
+#ifndef _FLEXFLOW_LOCAL_EXECUTION_LOCAL_SLOTS_BACKING_H
+#define _FLEXFLOW_LOCAL_EXECUTION_LOCAL_SLOTS_BACKING_H
 
 #include "kernels/accessor.h"
 #include "local-execution/local_task_argument_accessor.h"
@@ -23,6 +23,11 @@ public:
   void allocate_outgoing_tensors(layer_guid_t const &,
                                  ComputationGraph const &,
                                  Allocator &);
+  void allocate_optimizer_tensors(layer_guid_t const &weight_layer,
+                                  tensor_guid_t const &,
+                                  ComputationGraph const &,
+                                  Allocator &,
+                                  TaskSignature const &);
   TensorSlotsBacking construct_tensor_slots_backing(OpTaskBinding const &,
                                                     layer_guid_t const &) const;
   TensorSlotsBacking construct_tensor_slots_backing(TaskBinding const &) const;
@@ -48,6 +53,8 @@ public:
       input_tensor_slots;
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       output_tensor_slots;
+  std::unordered_map<tensor_guid_t, std::vector<tensor_guid_t>>
+      weight_optimizer_tensor_guids;
 
   // arguments
   std::unordered_map<layer_guid_t, DeviceSpecificDeviceStates>

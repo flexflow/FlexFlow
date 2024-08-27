@@ -14,8 +14,8 @@
  */
 
 #include "device.h"
-#include "kernels/optimizer_kernels.h"
 #include "kernels/nccl.h"
+#include "kernels/optimizer_kernels.h"
 
 namespace FlexFlow {
 
@@ -62,15 +62,14 @@ void sgd_ps_update_task_gpu(cudaStream_t stream,
   }
   // checkCUDA(cudaDeviceSynchronize());
   //  Step 2: SGD update
-  sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
-      size,
-      lr,
-      weight_decay,
-      momentum,
-      nesterov,
-      weight_grad_ptr,
-      sgd_v_ptr,
-      weight_ptr);
+  sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(size,
+                                                                lr,
+                                                                weight_decay,
+                                                                momentum,
+                                                                nesterov,
+                                                                weight_grad_ptr,
+                                                                sgd_v_ptr,
+                                                                weight_ptr);
   // checkCUDA(cudaDeviceSynchronize());
 }
 
@@ -80,7 +79,7 @@ void sgd_nccl_update_task_gpu(cudaStream_t stream,
                               float momentum,
                               bool nesterov,
                               float weight_decay,
-                              PerDeviceFFHandle const & handle,
+                              PerDeviceFFHandle const &handle,
                               float const *weight_grad_ptr,
                               size_t size,
                               float *weight_ptr,
@@ -99,15 +98,14 @@ void sgd_nccl_update_task_gpu(cudaStream_t stream,
   // print_tensor<float>((float*)w_grad_ptr, 16, "[After ncclAllReduce]");
 
   // Step 2: SGD update
-  sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(
-      size,
-      lr,
-      weight_decay,
-      momentum,
-      nesterov,
-      weight_grad_ptr,
-      sgd_v_ptr,
-      weight_ptr);
+  sgd_update<<<GET_BLOCKS(size), CUDA_NUM_THREADS, 0, stream>>>(size,
+                                                                lr,
+                                                                weight_decay,
+                                                                momentum,
+                                                                nesterov,
+                                                                weight_grad_ptr,
+                                                                sgd_v_ptr,
+                                                                weight_ptr);
   // checkCUDA(cudaDeviceSynchronize());
 }
 #endif
@@ -197,7 +195,7 @@ void adam_nccl_update_task_gpu(cudaStream_t stream,
                                float weight_decay,
                                float epsilon,
                                size_t size,
-                               PerDeviceFFHandle const & handle,
+                               PerDeviceFFHandle const &handle,
                                float const *weight_grad_ptr,
                                float *adam_m_ptr,
                                float *adam_v_ptr,

@@ -4,17 +4,29 @@
 #include "local-execution/task_impl_function.dtg.h"
 #include "local-execution/task_invocation.h"
 #include "local-execution/task_signature.h"
-#include "pcg/optimizers/sgd_optimizer_attrs.dtg.h"
+#include "pcg/optimizer_attrs.dtg.h"
 #include "pcg/optimizers/adam_optimizer_attrs.dtg.h"
+#include "pcg/optimizers/sgd_optimizer_attrs.dtg.h"
 
 namespace FlexFlow {
 
+TaskSignature get_update_signature(OptimizerAttrs const &);
+TaskInvocation get_update_invocation(OptimizerAttrs const &,
+                                     tensor_guid_t const &weight,
+                                     std::vector<tensor_guid_t> const &);
+TaskImplFunction get_update_task_impl(OptimizerAttrs const &);
+
 TaskSignature get_sgd_update_signature();
-TaskInvocation sgd_update(SGDOptimizerAttrs const &);
+TaskInvocation sgd_update(SGDOptimizerAttrs const &,
+                          tensor_guid_t const &weight,
+                          tensor_guid_t const &);
 TaskImplFunction get_sgd_update_task_impl();
 
 TaskSignature get_adam_update_signature();
-TaskInvocation adam_update(SGDOptimizerAttrs const &);
+TaskInvocation adam_update(AdamOptimizerAttrs const &,
+                           tensor_guid_t const &weight,
+                           tensor_guid_t const &,
+                           tensor_guid_t const &);
 TaskImplFunction get_adam_update_task_impl();
 
 } // namespace FlexFlow

@@ -1,18 +1,11 @@
-#include "kernels/optimizer_kernels.h"
 #include "local-execution/optimizer.h"
+#include "kernels/optimizer_kernels.h"
 #include "local-execution/profiling.h"
+#include "utils/overload.h"
 
 namespace FlexFlow {
 
-enum Slots {
-  ATTRS,
-  WEIGHT,
-  SGD_V,
-  PROFILING,
-  ADAM_M,
-  ADAM_V,
-  HANDLE
-};
+enum Slots { ATTRS, WEIGHT, SGD_V, PROFILING, ADAM_M, ADAM_V, HANDLE };
 
 TaskSignature get_sgd_update_signature() {
   TaskSignature sig = make_empty_task_signature();
@@ -27,9 +20,9 @@ TaskSignature get_sgd_update_signature() {
   return sig;
 }
 
-TaskInvocation sgd_update(SGDOptimizerAttrs const & attrs,
-                          tensor_guid_t const & weight,
-                          tensor_guid_t const & sgd_v) {
+TaskInvocation sgd_update(SGDOptimizerAttrs const &attrs,
+                          tensor_guid_t const &weight,
+                          tensor_guid_t const &sgd_v) {
   TaskBinding b;
   b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::YES});
   b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::NO});
@@ -46,53 +39,54 @@ TaskInvocation sgd_update(SGDOptimizerAttrs const & attrs,
   return {task_id_t::SGD_UPD_PS_TASK_ID, b};
 }
 
-static void sgd_update_task_impl(TaskArgumentAccessor const & acc) {
+static void sgd_update_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<SGDOptimizerAttrs>(ATTRS);
   auto weight_grad = acc.get_tensor_grad<Permissions::RO>(WEIGHT);
   auto weight = acc.get_tensor<Permissions::RW>(WEIGHT);
   auto profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  assert (weight.shape == weight_grad.shape);
+  assert(weight.shape == weight_grad.shape);
   size_t size = weight_grad.shape.get_volume();
 
-  assert (weight_grad.shape.get_volume() & weight.shape.get_volume() == 0);
-  size_t num_replicas = weight_grad.shape.get_volume() / weight.shape.get_volume();
+  assert(weight_grad.shape.get_volume() & weight.shape.get_volume() == 0);
+  size_t num_replicas =
+      weight_grad.shape.get_volume() / weight.shape.get_volume();
 
   float *sgd_v_ptr;
   if (attrs.momentum > 0.0f) {
     auto sgd_v = acc.get_tensor<Permissions::RW>(SGD_V);
-    assert (sgd_v.shape == weight.shape);
+    assert(sgd_v.shape == weight.shape);
     sgd_v_ptr = sgd_v.get_float_ptr();
   }
 
   if (CHOSEN_SYNC_TYPE == ParamSync::NCCL) {
     auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
     profile(sgd_nccl_update_task_gpu,
-          profiling,
-          "[SGD NCCL] update_time = %.2lfms\n",
-          attrs.lr,
-          attrs.momentum,
-          attrs.nesterov,
-          attrs.weight_decay,
-          handle,
-          weight_grad.get_float_ptr(),
-          size,
-          weight.get_float_ptr(),
-          sgd_v_ptr);
+            profiling,
+            "[SGD NCCL] update_time = %.2lfms\n",
+            attrs.lr,
+            attrs.momentum,
+            attrs.nesterov,
+            attrs.weight_decay,
+            handle,
+            weight_grad.get_float_ptr(),
+            size,
+            weight.get_float_ptr(),
+            sgd_v_ptr);
 
   } else {
     profile(sgd_ps_update_task_gpu,
-          profiling,
-          "[SGD PS] update_time = %.2lfms\n",
-          attrs.lr,
-          attrs.momentum,
-          attrs.nesterov,
-          attrs.weight_decay,
-          weight_grad.get_float_ptr(),
-          size,
-          num_replicas,
-          weight.get_float_ptr(),
-          sgd_v_ptr);
+            profiling,
+            "[SGD PS] update_time = %.2lfms\n",
+            attrs.lr,
+            attrs.momentum,
+            attrs.nesterov,
+            attrs.weight_decay,
+            weight_grad.get_float_ptr(),
+            size,
+            num_replicas,
+            weight.get_float_ptr(),
+            sgd_v_ptr);
   }
 }
 
@@ -114,10 +108,10 @@ TaskSignature get_adam_update_signature() {
   return sig;
 }
 
-TaskInvocation adam_update(AdamOptimizerAttrs const & attrs,
-                           tensor_guid_t const & weight,
-                           tensor_guid_t const & adam_v,
-                           tensor_guid_t const & adam_m) {
+TaskInvocation adam_update(AdamOptimizerAttrs const &attrs,
+                           tensor_guid_t const &weight,
+                           tensor_guid_t const &adam_v,
+                           tensor_guid_t const &adam_m) {
   TaskBinding b;
   b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::YES});
   b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::NO});
@@ -133,7 +127,7 @@ TaskInvocation adam_update(AdamOptimizerAttrs const & attrs,
   return {task_id_t::ADAM_UPD_PS_TASK_ID, b};
 }
 
-static void adam_update_task_impl(TaskArgumentAccessor const & acc) {
+static void adam_update_task_impl(TaskArgumentAccessor const &acc) {
   auto attrs = acc.get_argument<AdamOptimizerAttrs>(ATTRS);
   auto weight_grad = acc.get_tensor_grad<Permissions::RO>(WEIGHT);
   auto weight = acc.get_tensor<Permissions::RW>(WEIGHT);
@@ -142,11 +136,12 @@ static void adam_update_task_impl(TaskArgumentAccessor const & acc) {
 
   auto profiling = acc.get_argument<ProfilingSettings>(PROFILING);
 
-  assert (weight.shape == weight_grad.shape);
+  assert(weight.shape == weight_grad.shape);
   size_t size = weight_grad.shape.get_volume();
 
-  assert (weight_grad.shape.get_volume() % weight.shape.get_volume() == 0);
-  size_t num_replicas = weight_grad.shape.get_volume() / weight.shape.get_volume();
+  assert(weight_grad.shape.get_volume() % weight.shape.get_volume() == 0);
+  size_t num_replicas =
+      weight_grad.shape.get_volume() / weight.shape.get_volume();
 
   if (CHOSEN_SYNC_TYPE == ParamSync::NCCL) {
     auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -182,24 +177,38 @@ static void adam_update_task_impl(TaskArgumentAccessor const & acc) {
   }
 }
 
-AdamOptimizerAttrs next(AdamOptimizerAttrs const & old) {
-  double new_beta1_t = old.beta_t * old.beta1;
-  double new_beta2_t = old.beta2_t * old.beta2;
-  double new_alpha_t = old.alpha * sqrt(1 - new_beta2_t) / (1 - new_beta1_t);
-  return AdamOptimizerAttrs{
-    old.alpha,
-    old.beta1,
-    old.beta2,
-    old.weight_decay,
-    new_alpha_t,
-    new_beta1_t,
-    new_beta2_t,
-    old.epsilon
-  };
-}
-
 TaskImplFunction get_adam_update_task_impl() {
   return TaskImplFunction{GenericTaskImplFunction{adam_update_task_impl}};
 }
 
+TaskSignature get_update_signature(OptimizerAttrs const &attrs) {
+  return attrs.visit<TaskSignature>(overload{
+      [&](SGDOptimizerAttrs const &s) { return get_sgd_update_signature(); },
+      [&](AdamOptimizerAttrs const &s) {
+        return get_adam_update_signature();
+      }});
 }
+
+TaskInvocation
+    get_update_invocation(OptimizerAttrs const &attrs,
+                          tensor_guid_t const &weight,
+                          std::vector<tensor_guid_t> const &buffer_tensors) {
+  return attrs.visit<TaskInvocation>(
+      overload{[&](SGDOptimizerAttrs const &s) {
+                 return sgd_update(s, weight, buffer_tensors.at(0));
+               },
+               [&](AdamOptimizerAttrs const &s) {
+                 return adam_update(
+                     s, weight, buffer_tensors.at(0), buffer_tensors.at(1));
+               }});
+}
+
+TaskImplFunction get_update_task_impl(OptimizerAttrs const &attrs) {
+  return attrs.visit<TaskImplFunction>(overload{
+      [&](SGDOptimizerAttrs const &s) { return get_sgd_update_task_impl(); },
+      [&](AdamOptimizerAttrs const &s) {
+        return get_adam_update_task_impl();
+      }});
+}
+
+} // namespace FlexFlow

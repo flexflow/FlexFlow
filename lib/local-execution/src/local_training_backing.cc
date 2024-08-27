@@ -1,10 +1,12 @@
 #include "local-execution/local_training_backing.h"
 #include "local-execution/loss_functions.h"
+#include "local-execution/model_training_instance.h"
+#include "local-execution/optimizer.h"
 #include "local-execution/task_signature_impl.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
-#include "utils/containers/reversed.h"
 #include "utils/containers/get_only.h"
+#include "utils/containers/reversed.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
@@ -14,22 +16,33 @@ LocalTrainingBacking::LocalTrainingBacking(
     ComputationGraph const &computation_graph,
     TensorBackingMap const &tensor_backing_mapping,
     RuntimeArgConfig const &runtime_arg_config,
-    std::optional<ModelTrainingInstance> const &training_instance)
+    std::optional<ModelTrainingInstance> &training_instance)
     : allocator(allocator), computation_graph(computation_graph),
       local_slots_backing(tensor_backing_mapping, runtime_arg_config),
       task_registry(empty_task_registry()),
       training_instance(training_instance) {
 
-  for (layer_guid_t const &node : topological_ordering(computation_graph)) {
+  for (layer_guid_t const &node :
+       topological_ordering(this->computation_graph)) {
     ComputationGraphOpAttrs attrs =
-        get_layer_attrs(computation_graph, node).attrs;
+        get_layer_attrs(this->computation_graph, node).attrs;
 
     // allocate outgoing tensors
     this->local_slots_backing.allocate_outgoing_tensors(
-        node, computation_graph, this->allocator);
+        node, this->computation_graph, this->allocator);
 
     // register tasks
     register_tasks_for_layer(this->task_registry, node, attrs);
+
+    // allocate optimizer buffers
+    if (attrs.has<WeightAttrs>() && this->training_instance.has_value()) {
+      OptimizerAttrs attrs = this->training_instance.value().optimizer_attrs;
+      TaskSignature sig = get_update_signature(attrs);
+      tensor_guid_t weight_tensor =
+          get_only(get_outgoing_tensors(this->computation_graph, node));
+      this->local_slots_backing.allocate_optimizer_tensors(
+          node, weight_tensor, this->computation_graph, this->allocator, sig);
+    }
   }
 
   if (this->training_instance.has_value()) {
@@ -137,13 +150,33 @@ PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
 }
 
 void LocalTrainingBacking::execute_update() {
-  for (layer_guid_t const &node: topological_ordering(this->computation_graph)) {
+  assert(this->training_instance.has_value());
+  OptimizerAttrs attrs = this->training_instance.value().optimizer_attrs;
+
+  for (layer_guid_t const &node :
+       topological_ordering(this->computation_graph)) {
     LayerAttrs layer_attrs = get_layer_attrs(this->computation_graph, node);
     if (layer_attrs.attrs.has<WeightAttrs>()) {
-      tensor_guid_t weight_tensor = get_only(get_outgoing_tensors(this->computation_graph, node));
-      // TODO: handle momentum vectors separately? handle different updates?
+      // get tensors
+      tensor_guid_t weight_tensor =
+          get_only(get_outgoing_tensors(this->computation_graph, node));
+      std::vector<tensor_guid_t> buffer_tensors =
+          this->local_slots_backing.weight_optimizer_tensor_guids.at(
+              weight_tensor);
+
+      // get invocation
+      TaskInvocation invocation =
+          get_update_invocation(attrs, weight_tensor, buffer_tensors);
+      assert(is_invocation_valid(get_update_signature(attrs), invocation));
+
+      // execute update
+      TaskArgumentAccessor accessor = this->get_task_arg_accessor(invocation);
+      TaskImplFunction update_impl_fn = get_update_task_impl(attrs);
+      update_impl_fn.get<GenericTaskImplFunction>().function_ptr(accessor);
     }
   }
+
+  this->training_instance = next(this->training_instance.value());
 }
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
