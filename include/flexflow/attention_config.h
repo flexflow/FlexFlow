@@ -20,6 +20,11 @@
 namespace FlexFlow {
 
 constexpr uint32_t kPagesize = 64;
+
+inline int round_up_pages(int const num_elements) {
+  return (num_elements + kPagesize - 1) / kPagesize;
+}
+
 #define DISPATCH_HEADDIM(head_dim, HEAD_DIM, ...)                              \
   switch (head_dim) {                                                          \
     case 64: {                                                                 \
@@ -93,9 +98,8 @@ public:
     }
     size_t batch_size = BatchConfig::max_requests_per_batch();
     size_t max_num_pages =
-        (BatchConfig::max_spec_tree_token_num() +
-         BatchConfig::max_sequence_length() + kPagesize - 1) /
-        kPagesize;
+        round_up_pages(BatchConfig::max_spec_tree_token_num() +
+                       BatchConfig::max_sequence_length());
     size_t indices_size = std::max(
         (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *
@@ -132,9 +136,8 @@ public:
            "Insufficient memory size for attention metadata");
     size_t batch_size = BatchConfig::max_requests_per_batch();
     size_t max_num_pages =
-        (BatchConfig::max_spec_tree_token_num() +
-         BatchConfig::max_sequence_length() + kPagesize - 1) /
-        kPagesize;
+        round_up_pages(BatchConfig::max_spec_tree_token_num() +
+                       BatchConfig::max_sequence_length());
     size_t indices_size = std::max(
         (batch_size + 1) * 4 + max_num_pages * batch_size, 1ul * 1024 * 1024);
     size_t custom_mask_size = BatchConfig::max_requests_per_batch() *

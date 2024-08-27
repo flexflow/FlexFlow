@@ -510,9 +510,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     //            kPagesize ==
     //        0);
     size_t max_num_pages =
-        (BatchConfig::max_sequence_length() +
-         BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-        kPagesize;
+        round_up_pages(BatchConfig::max_sequence_length() +
+                       BatchConfig::max_spec_tree_token_num());
     switch (infer_mode) {
       case INC_DECODING_MODE:
       case TREE_SEARCH_MODE:

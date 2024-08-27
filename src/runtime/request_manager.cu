@@ -246,9 +246,8 @@ void RequestManager::load_batch_config_task(
             sizeof(BatchConfig::requestsInfo));
         int batch_size = batch_config->num_active_requests();
         uint32_t const max_num_pages =
-            (BatchConfig::max_sequence_length() +
-             BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-            kPagesize;
+            round_up_pages(BatchConfig::max_sequence_length() +
+                           BatchConfig::max_spec_tree_token_num());
 
         int parallelism = batch_size;
         prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
@@ -285,7 +284,7 @@ void RequestManager::load_batch_config_task(
                     .first_token_index_in_request;
             q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
             kv_indptr_h[indptr_idx + 1] =
-                kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+                kv_indptr_h[indptr_idx] + round_up_pages(kv_len);
             kv_last_page_len_h[indptr_idx] = (kv_len - 1) % kPagesize + 1;
             indptr_idx++;
           }
@@ -392,9 +391,8 @@ void RequestManager::load_batch_config_task(
                 sizeof(BatchConfig::request_available));
         int batch_size = batch_config->num_active_requests();
         uint32_t const max_num_pages =
-            (BatchConfig::max_sequence_length() +
-             BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-            kPagesize;
+            round_up_pages(BatchConfig::max_sequence_length() +
+                           BatchConfig::max_spec_tree_token_num());
 
         int parallelism = batch_size;
         prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
@@ -482,7 +480,7 @@ void RequestManager::load_batch_config_task(
                     .first_token_index_in_request;
             q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
             kv_indptr_h[indptr_idx + 1] =
-                kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+                kv_indptr_h[indptr_idx] + round_up_pages(kv_len);
             indptr_idx++;
           }
         }
@@ -558,9 +556,8 @@ void RequestManager::load_batch_config_task(
                 sizeof(BatchConfig::request_available));
         int batch_size = batch_config->num_active_requests();
         uint32_t const max_num_pages =
-            (BatchConfig::max_sequence_length() +
-             BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-            kPagesize;
+            round_up_pages(BatchConfig::max_sequence_length() +
+                           BatchConfig::max_spec_tree_token_num());
 
         int parallelism = batch_size;
         prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
@@ -648,7 +645,7 @@ void RequestManager::load_batch_config_task(
                     .first_token_index_in_request;
             q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
             kv_indptr_h[indptr_idx + 1] =
-                kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+                kv_indptr_h[indptr_idx] + round_up_pages(kv_len);
             indptr_idx++;
           }
         }

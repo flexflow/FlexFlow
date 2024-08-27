@@ -111,9 +111,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   cudaEventRecord(t_start, stream);
 
   int const max_num_pages =
-      (BatchConfig::max_sequence_length() +
-       BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-      kPagesize;
+      round_up_pages(BatchConfig::max_sequence_length() +
+                     BatchConfig::max_spec_tree_token_num());
   int const num_requests = bc->num_active_requests();
   int parallelism = m->num_kv_heads * m->qk_dim * num_requests;
   commit_tokens_kernel<<<GET_BLOCKS(parallelism),
