@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "TensorGuidSpec"
+features = [
+  "eq",
+  "fmt",
+  "hash",
+  "ord"
+]
+
+includes = [
+  "pcg/tensor_guid_t.dtg.h",
+  "local-execution/is_grad.dtg.h",
+]
+
+[[fields]]
+name = "tensor_guid"
+type = "::FlexFlow::tensor_guid_t"
+
+[[fields]]
+name = "is_grad"
+type = "::FlexFlow::IsGrad"
+

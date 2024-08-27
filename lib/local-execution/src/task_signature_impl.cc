@@ -1,5 +1,5 @@
 #include "local-execution/task_signature_impl.h"
-#include "local-execution/ops/attention.h"
+#include "ops/attention.h"
 #include "ops/batch_matmul.h"
 #include "ops/batch_norm.h"
 #include "ops/cast.h"

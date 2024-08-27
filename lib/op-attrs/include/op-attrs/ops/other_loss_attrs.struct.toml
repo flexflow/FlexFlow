@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "OtherLossAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ops/loss_function.dtg.h"
+]
+
+[[fields]]
+name = "loss_type"
+type = "::FlexFlow::LossFunction"

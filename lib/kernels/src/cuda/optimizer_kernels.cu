@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "device.h"
 #include "kernels/optimizer_kernels.h"
 
 namespace FlexFlow {

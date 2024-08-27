@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "SparseCategoricalCrossEntropyLossAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "replace_labels"
+type = "bool"

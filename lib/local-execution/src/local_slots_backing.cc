@@ -15,6 +15,14 @@ void LocalSlotsBacking::add_per_device_op_state(
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
+void LocalSlotsBacking::allocate_label_tensor(tensor_guid_t const &label_tensor,
+                                              ComputationGraph const &cg,
+                                              Allocator &allocator) {
+  GenericTensorAccessorW tensor_backing =
+      allocator.allocate_tensor(get_tensor_attrs(cg, label_tensor).shape);
+  this->tensor_mapping.insert({label_tensor, tensor_backing});
+}
+
 void LocalSlotsBacking::allocate_outgoing_tensors(
     layer_guid_t const &layer_guid,
     ComputationGraph const &computation_graph,
@@ -78,7 +86,8 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
   TensorSlotsBacking mapping;
   int num_inputs = 0;
   for (auto const &tensor_binding : binding.get_tensor_bindings()) {
-    if (tensor_binding.first.is_grad == IsGrad::NO && tensor_binding.second.role == TensorRole::INPUT) {
+    if (tensor_binding.first.is_grad == IsGrad::NO &&
+        tensor_binding.second.role == TensorRole::INPUT) {
       num_inputs += 1;
     }
   }
@@ -90,7 +99,7 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     int weight_adjusted_idx = 0;
     switch (tensor_spec.role) {
       case TensorRole::WEIGHT:
-	weight_adjusted_idx = num_inputs;
+        weight_adjusted_idx = num_inputs;
       case TensorRole::INPUT:
         assert(contains_key(this->input_tensor_slots, op_guid));
         tensor_guids = this->input_tensor_slots.at(op_guid);
@@ -106,11 +115,27 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     }
 
     IsGrad is_grad = slot_grad_id.is_grad;
-    GenericTensorAccessorW tensor_backing =
-        this->get_tensor_backing(tensor_guids.at(weight_adjusted_idx + tensor_spec.idx), is_grad);
+    GenericTensorAccessorW tensor_backing = this->get_tensor_backing(
+        tensor_guids.at(weight_adjusted_idx + tensor_spec.idx), is_grad);
 
     mapping.insert({slot_grad_id, tensor_backing});
   }
+  return mapping;
+}
+
+TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
+    TaskBinding const &binding) const {
+  TensorSlotsBacking mapping;
+
+  for (auto const &tensor_binding : binding.get_tensor_bindings()) {
+    SlotGradId slot_grad_id = tensor_binding.first;
+    TensorGuidSpec tensor_spec = tensor_binding.second;
+
+    GenericTensorAccessorW accessor =
+        this->get_tensor_backing(tensor_spec.tensor_guid, slot_grad_id.is_grad);
+    mapping.insert({slot_grad_id, accessor});
+  }
+
   return mapping;
 }
 
@@ -126,6 +151,24 @@ ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
                         [&](OpArgRefSpec const &s) {
                           return this->resolve_op_arg_ref_spec(s, op_guid);
                         },
+                        [&](RuntimeArgRefSpec const &s) {
+                          return this->resolve_runtime_arg_ref_spec(s);
+                        },
+                        [](ConcreteArgSpec const &s) { return s; },
+                    })});
+  }
+  return mapping;
+}
+
+ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
+    TaskBinding const &binding) const {
+  ArgSlotsBacking mapping;
+  for (auto const &arg_binding : binding.get_arg_bindings()) {
+    slot_id_t arg_slot = arg_binding.first;
+    TaskArgSpec task_arg_spec = arg_binding.second;
+
+    mapping.insert({arg_slot,
+                    task_arg_spec.visit<ConcreteArgSpec>(overload{
                         [&](RuntimeArgRefSpec const &s) {
                           return this->resolve_runtime_arg_ref_spec(s);
                         },

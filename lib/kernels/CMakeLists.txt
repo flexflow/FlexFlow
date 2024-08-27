@@ -8,6 +8,7 @@ file(GLOB_RECURSE SRC
      LIST_DIRECTORIES False
      src/*.cc
      src/cuda/cuda_helper.cu
+     src/cuda/loss_functions_kernels.cu
      src/cuda/ops/*.cu
      )
 

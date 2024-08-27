@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "TaskSignature"
+features = [
+  "eq",
+  "fmt",
+]
+
+includes = [
+  "local-execution/tensor_guid_slot_spec.dtg.h",
+  "utils/type_index.h",
+  "utils/optional.h"
+]
+
+src_includes = [
+  "utils/fmt/unordered_map.h",
+  "utils/fmt/unordered_set.h",
+]
+
+[[fields]]
+name = "return_value"
+type = "std::optional<std::type_index>"
+
+[[fields]]
+name = "task_arg_types"
+type = "std::unordered_map<::FlexFlow::slot_id_t, std::type_index>"
+
+[[fields]]
+name = "tensor_guid_slots"
+type = "std::unordered_set<::FlexFlow::TensorGuidSlotSpec>"

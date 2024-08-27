@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "local-execution/ops/attention.h"
+#include "attention.h"
 #include "kernels/attention_kernels.h"
 #include "local-execution/op_task_signature.h"
 #include "op-attrs/ops/attention.h"

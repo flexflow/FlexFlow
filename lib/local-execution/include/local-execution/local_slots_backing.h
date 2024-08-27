@@ -7,6 +7,7 @@
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/per_device_op_state.h"
 #include "local-execution/runtime_arg_config.h"
+#include "local-execution/task_invocation.h"
 
 namespace FlexFlow {
 
@@ -19,23 +20,29 @@ struct LocalSlotsBacking {
 public:
   void add_per_device_op_state(layer_guid_t const &,
                                DeviceSpecificDeviceStates const &);
+  void allocate_label_tensor(tensor_guid_t const &,
+                             ComputationGraph const &,
+                             Allocator &);
   void allocate_outgoing_tensors(layer_guid_t const &,
                                  ComputationGraph const &,
                                  Allocator &);
   TensorSlotsBacking construct_tensor_slots_backing(OpTaskBinding const &,
                                                     layer_guid_t const &) const;
+  TensorSlotsBacking construct_tensor_slots_backing(TaskBinding const &) const;
   ArgSlotsBacking construct_arg_slots_backing(OpTaskBinding const &,
                                               layer_guid_t const &) const;
+  ArgSlotsBacking construct_arg_slots_backing(TaskBinding const &) const;
 
   ConcreteArgSpec resolve_runtime_arg_ref_spec(RuntimeArgRefSpec const &) const;
   ConcreteArgSpec resolve_op_arg_ref_spec(OpArgRefSpec const &,
                                           layer_guid_t const &) const;
 
+  GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
+                                                   IsGrad) const;
+
 private:
   bool is_tensor_allocated(tensor_guid_t const &) const;
   bool is_gradient_tensor_allocated(tensor_guid_t const &) const;
-  GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
-                                                   IsGrad) const;
 
 public:
   // tensors

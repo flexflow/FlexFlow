@@ -75,7 +75,8 @@ CostDetails LocalCostEstimator::estimate_cost(
   LocalTrainingBacking local_backing(allocator,
                                      cg_builder.computation_graph,
                                      tensor_backing_map,
-                                     this->runtime_arg_config);
+                                     this->runtime_arg_config,
+                                     std::nullopt);
 
   local_backing.execute_init();
   PerLayerElapsedTime fwd = local_backing.execute_forward();

@@ -10,6 +10,7 @@ features = [
 includes = [
   "local-execution/init_task_impl_function.h",
   "local-execution/fwd_bwd_task_impl_function.h",
+  "local-execution/generic_task_impl_function.h",
 ]
 
 [[values]]
@@ -19,3 +20,7 @@ key = "init_task_impl_function"
 [[values]]
 type = "::FlexFlow::FwdBwdTaskImplFunction"
 key = "fwd_bwd_task_impl_function"
+
+[[values]]
+type = "::FlexFlow::GenericTaskImplFunction"
+key = "generic_task_impl_function"
