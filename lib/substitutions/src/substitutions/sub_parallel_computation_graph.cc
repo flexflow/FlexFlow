@@ -55,8 +55,8 @@ ParallelComputationGraph pcg_from_sub_pcg_by_dropping_inputs(
 }
 
 SubParallelComputationGraph
-    sub_pcg_from_partial_pcg(ParallelComputationGraph const &pcg,
-                             std::unordered_set<Node> const &nodes) {
+    get_pcg_subgraph(ParallelComputationGraph const &pcg,
+                     std::unordered_set<Node> const &nodes) {
   auto as_open = view_as_labelled_open_dataflow_graph(pcg.raw_graph);
   OpenDataflowSubgraphResult subgraph_result = get_subgraph(as_open, nodes);
   return SubParallelComputationGraph{with_labelling(

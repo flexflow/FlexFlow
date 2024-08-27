@@ -7,6 +7,9 @@ GraphOptimizeState::GraphOptimizeState(
     : graph_optimize_result(graph_optimize_result), runtime(runtime) {}
 
 bool GraphOptimizeState::operator==(GraphOptimizeState const &other) const {
+  // Note(@wmdi): This is a hack to implement a partially correct homomorphism
+  // check. Switch to the homomorphism check used in substitutions right after
+  // https://github.com/flexflow/FlexFlow/pull/1471 is merged.
   auto layers1 = topological_ordering(graph_optimize_result.pcg);
   auto layers2 = topological_ordering(other.graph_optimize_result.pcg);
   if (layers1.size() != layers2.size()) {
@@ -56,6 +59,8 @@ namespace std {
 
 size_t hash<::FlexFlow::GraphOptimizeState>::operator()(
     ::FlexFlow::GraphOptimizeState const &state) const {
+  // TODO(@wmdi): Eventually it might be good to use a proper graph hash like
+  // https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash.html#networkx.algorithms.graph_hashing.weisfeiler_lehman_graph_hash
   size_t seed = 0;
   auto layers = topological_ordering(state.graph_optimize_result.pcg);
   ::FlexFlow::hash_combine(seed, layers.size());

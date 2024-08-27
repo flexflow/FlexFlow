@@ -3,7 +3,7 @@ name = "GraphOptimizeResult"
 features = [ ]
 
 includes = [ 
-  "compiler/machine_mapping.dtg.h",
+  "compiler/machine_mapping/machine_mapping.dtg.h",
   "pcg/parallel_computation_graph/parallel_computation_graph.h"
 ]
 

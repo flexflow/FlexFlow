@@ -1,11 +1,8 @@
 namespace = "FlexFlow"
-name = "OptimalCostState"
+name = "MachineMappingState"
 features = [
   "eq",
-  # "ord",
   "hash",
-  # "json",
-  # "rapidcheck",
   "fmt",
 ]
 
@@ -15,8 +12,11 @@ includes = [
   "pcg/machine_view.dtg.h",
   "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h",
   "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
+]
+
+src_includes = [
   "utils/hash/unordered_map.h",
-  "utils/fmt/unordered_map.h", 
+  "utils/fmt/unordered_map.h",
 ]
 
 [[fields]]

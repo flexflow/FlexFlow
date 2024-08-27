@@ -5,7 +5,7 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("graph_optimize_state:equality") {
+  TEST_CASE("GraphOptimizeState::operator==") {
     ParallelComputationGraphBuilder builder;
 
     ParallelTensorShape input_shape =
@@ -48,8 +48,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     // so their values here do not matter.
     std::unordered_map<Node, MachineView> empty_machine_views;
     MachineMapping empty_machine_mapping(empty_machine_views);
-    CHECK(GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping), 0) ==
-          GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping), 0));
+    CHECK(
+        GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping),
+                           0) ==
+        GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping), 0));
 
     ParallelComputationGraphBuilder builder_;
 
@@ -66,7 +68,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     ParallelComputationGraph pcg_ = builder.pcg;
 
-    CHECK(GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping), 0) !=
-          GraphOptimizeState(GraphOptimizeResult(pcg_, empty_machine_mapping), 0));
+    CHECK(GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping),
+                             0) !=
+          GraphOptimizeState(GraphOptimizeResult(pcg_, empty_machine_mapping),
+                             0));
   }
 }

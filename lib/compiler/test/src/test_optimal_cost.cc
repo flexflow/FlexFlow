@@ -1,4 +1,4 @@
-#include "compiler/unity_algorithm.h"
+#include "compiler/machine_mapping/get_optimal_machine_mapping.h"
 #include "doctest/doctest.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "test_cost_estimator.h"
@@ -43,12 +43,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     CostEstimator estimator = CostEstimator::create<TestCostEstimator>();
     MachineSpecification machine_spec{1, 1, 1, 1, 1};
-    OptimalCostCache cached_results;
-    OptimalCostResult result = optimal_cost(pcg,
-                                            test_allowed_machine_views,
-                                            estimator,
-                                            machine_spec,
-                                            cached_results);
+    MachineMappingCache cached_results;
+    MachineMappingResult result =
+        get_optimal_machine_mapping(pcg,
+                                    test_allowed_machine_views,
+                                    estimator,
+                                    machine_spec,
+                                    cached_results);
 
     CHECK(bool(result.runtime > 0));
   }

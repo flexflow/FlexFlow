@@ -21,9 +21,8 @@ SubParallelComputationGraph
 ParallelComputationGraph
     pcg_from_sub_pcg_by_dropping_inputs(SubParallelComputationGraph const &);
 
-SubParallelComputationGraph
-    sub_pcg_from_partial_pcg(ParallelComputationGraph const &,
-                             std::unordered_set<Node> const &);
+SubParallelComputationGraph get_pcg_subgraph(ParallelComputationGraph const &,
+                                             std::unordered_set<Node> const &);
 
 parallel_layer_guid_t
     get_parallel_layer_by_name(SubParallelComputationGraph const &pcg,

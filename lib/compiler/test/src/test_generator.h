@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_TEST_GENERATOR_H
 #define _FLEXFLOW_TEST_GENERATOR_H
 
-#include "compiler/machine_mapping.h"
 #include "pcg/computation_graph.h"
 #include "rapidcheck.h"
 #include "substitutions/sub_parallel_computation_graph.h"

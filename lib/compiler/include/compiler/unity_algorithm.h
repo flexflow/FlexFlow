@@ -2,7 +2,6 @@
 #define _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 
 #include "compiler/graph_optimize_result.dtg.h"
-#include "compiler/machine_mapping.h"
 #include "cost_estimator.h"
 #include "optimizer_config.dtg.h"
 #include "pcg/computation_graph.h"

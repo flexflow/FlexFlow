@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "MachineMappingResult"
+features = [
+  "eq",
+  "fmt",
+]
+
+includes = [
+  "machine_mapping.dtg.h",
+]
+
+[[fields]]
+name = "runtime"
+type = "float"
+
+[[fields]]
+name = "machine_mapping"
+type = "::FlexFlow::MachineMapping"

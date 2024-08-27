@@ -108,9 +108,9 @@ jobs:
         run: |
           test_libs.sh substitutions
 
-      # - name: Test compiler
-      #   run: |
-      #     test_libs.sh compiler
+      - name: Test compiler
+        run: |
+          test_libs.sh compiler
 
       - name: Test substitution-generator
         run: |

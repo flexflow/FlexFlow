@@ -5,6 +5,7 @@
 #include "required_core.h"
 #include "type_traits_core.h"
 #include "utils/bidict/bidict.h"
+#include "utils/containers/are_disjoint.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/extend.h"
 #include "utils/containers/extend_vector.h"

@@ -2,12 +2,12 @@
 #define _FLEXFLOW_COMPILER_MCMC_STATE_H
 
 #include "compiler/graph_optimize_result.dtg.h"
-#include "compiler/machine_mapping.h"
 
 namespace FlexFlow {
 
 struct GraphOptimizeState {
-  GraphOptimizeState(GraphOptimizeResult const &graph_optimize_result, float runtime);
+  GraphOptimizeState(GraphOptimizeResult const &graph_optimize_result,
+                     float runtime);
 
   GraphOptimizeResult graph_optimize_result;
   float runtime;
