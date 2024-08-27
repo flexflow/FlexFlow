@@ -29,6 +29,9 @@ std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
 
+layer_guid_t get_layer_by_name(ComputationGraph const &cg,
+                               std::string const &name);
+
 } // namespace FlexFlow
 
 #endif

@@ -14,21 +14,11 @@
  */
 
 #include "noop.h"
-#include "local-execution/op_task_invocation.h"
-#include "utils/hash-utils.h"
 
 namespace FlexFlow {
 
-std::optional<OpTaskInvocation> init(NoopAttrs const &attrs) {
-  return std::nullopt;
-}
-
-std::optional<OpTaskInvocation> forward(NoopAttrs const &attrs) {
-  return std::nullopt;
-}
-
-std::optional<OpTaskInvocation> backward(NoopAttrs const &attrs) {
-  return std::nullopt;
+std::vector<task_id_t> get_task_ids(NoopAttrs const &attrs) {
+  return {};
 }
 
 }; // namespace FlexFlow
