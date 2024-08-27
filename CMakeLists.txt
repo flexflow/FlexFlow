@@ -425,7 +425,7 @@ if(NOT BUILD_LEGION_ONLY)
       # generate the Legion Python bindings library. When building from pip, we need to do this post-install to prevent Legion from overwriting the path to the Legion shared library
       add_custom_command(TARGET flexflow
         POST_BUILD	
-        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+        COMMAND CMAKE_BUILD_DIR=${Legion_BINARY_DIR}/runtime CMAKE_INSTALL_PREFIX=${Legion_BINARY_DIR} ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
       )
       # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
@@ -496,6 +496,7 @@ if(NOT BUILD_LEGION_ONLY)
     if(NOT CARGO_RESULT EQUAL 0)
       message(FATAL_ERROR "Rust is installed, but cargo is not. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
     endif()
+    set(MLC_ENABLE_SENTENCEPIECE_TOKENIZER ON)
     add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
     target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
     target_link_libraries(flexflow tokenizers_cpp)

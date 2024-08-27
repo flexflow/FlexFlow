@@ -3,7 +3,7 @@
 using namespace Legion;
 using namespace FlexFlow;
 
-LegionRuntime::Logger::Category log_app("split_test");
+Legion::Logger log_app("split_test");
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,

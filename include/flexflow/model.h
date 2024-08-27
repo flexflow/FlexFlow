@@ -22,6 +22,7 @@
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/utils/memory_allocator.h"
 #include "flexflow/utils/tuple.h"
 #include "initializer.h"
 #include "layer.h"
