@@ -27,6 +27,32 @@ class InferenceResult;
 using BatchConfigFuture = Legion::Future;
 using InferenceResultFuture = Legion::Future;
 
+/*
+ * StreamingCacheInfo is a class that manages the streaming kv cache for
+ * attention operator (https://arxiv.org/abs/2309.17453), and we use it in draft
+ * model. It matains a fixed-content *sink* cache and a fixed-size *window*
+ * cache. The *sink* cache is the foremost part of the original kv cache, while
+ * the *window* cache is the backmost part of the original kv cache and is
+ * rolling updated. The information is per-request.
+ * Note that the position encoding of the q&k alters each iteration (relative
+ * position), so we store the *pre-pos-encoding* kv value in the cache.
+ */
+class StreamingCacheInfo {
+public:
+  StreamingCacheInfo();
+  StreamingCacheInfo(int sink_cache_size, int window_cache_size);
+  StreamingCacheInfo(StreamingCacheInfo const &other);
+
+  void update_cache(int len);
+  void reset_cache();
+
+public:
+  int sink_cache_size, window_cache_size;
+  // the meta info of the window cache, commit_len helps to determine if we fill
+  // up the window.
+  int window_back, commit_len;
+};
+
 class BatchConfig {
 public:
   using RequestGuid = size_t;
@@ -57,6 +83,9 @@ public:
   inline static int const MAX_TREE_DEPTH = 16;
   inline static int const MAX_TREE_WIDTH = 64;
   inline static int const MAX_K_LOGITS = 16;
+  // The Constants for the Streaming KVCache
+  inline static int const SINK_SIZE = 4;
+  inline static int const STREAMING_MAX_POS = 2048;
 
   int num_tokens = 0;
   int num_available_requests = 0;
@@ -151,6 +180,7 @@ public:
 
   BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
+  StreamingCacheInfo streamingCacheInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
   CommittedTokensInfo committed_tokens[MAX_NUM_TOKENS];
   bool request_available[MAX_NUM_REQUESTS];
