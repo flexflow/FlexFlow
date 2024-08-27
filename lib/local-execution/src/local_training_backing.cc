@@ -1,6 +1,8 @@
 #include "local-execution/local_training_backing.h"
 #include "local-execution/loss_functions.h"
 #include "local-execution/task_signature_impl.h"
+#include "utils/containers/contains.h"
+#include "utils/containers/contains_key.h"
 #include "utils/containers/reversed.h"
 #include "utils/exception.h"
 
@@ -30,10 +32,11 @@ LocalTrainingBacking::LocalTrainingBacking(
   }
 
   if (this->training_instance.has_value()) {
-    this->local_slots_backing.allocate_label_tensor(
-        this->training_instance.value().label_tensor,
-        computation_graph,
-        this->allocator);
+    // label and logit tensor should be allocated
+    assert(this->local_slots_backing.is_tensor_allocated(
+        this->training_instance.value().label_tensor));
+    assert(this->local_slots_backing.is_tensor_allocated(
+        this->training_instance.value().logit_tensor));
   }
 }
 

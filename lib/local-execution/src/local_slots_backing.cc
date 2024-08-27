@@ -15,14 +15,6 @@ void LocalSlotsBacking::add_per_device_op_state(
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
-void LocalSlotsBacking::allocate_label_tensor(tensor_guid_t const &label_tensor,
-                                              ComputationGraph const &cg,
-                                              Allocator &allocator) {
-  GenericTensorAccessorW tensor_backing =
-      allocator.allocate_tensor(get_tensor_attrs(cg, label_tensor).shape);
-  this->tensor_mapping.insert({label_tensor, tensor_backing});
-}
-
 void LocalSlotsBacking::allocate_outgoing_tensors(
     layer_guid_t const &layer_guid,
     ComputationGraph const &computation_graph,

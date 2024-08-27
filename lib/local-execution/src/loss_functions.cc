@@ -50,7 +50,8 @@ static void backward_task_impl(TaskArgumentAccessor const &acc) {
   auto logit_grad = acc.get_tensor_grad<Permissions::RW>(LOGIT);
   auto logit = acc.get_tensor<Permissions::RO>(LOGIT);
   auto label = acc.get_tensor<Permissions::RO>(LABEL);
-  int batch_size = label.shape.at(ff_dim_t{0});
+  int batch_size = logit.shape.at(legion_dim_t{1});
+  // assuming logit shape is [parallel dim(?), batch dim, num classes]
 
   LossFunction loss_type = get_loss_function(attrs);
   float scale_factor = 1.0f / batch_size;
@@ -60,19 +61,18 @@ static void backward_task_impl(TaskArgumentAccessor const &acc) {
   }
 
   if (loss_type == LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY) {
-    // assertion the outter-most dim is replica dim and replica degree is 1
+    // label shape is [parallel dim(?), batch dim, 1]
     auto scce_attrs = attrs.get<SparseCategoricalCrossEntropyLossAttrs>();
     size_t ndim = logit.shape.num_dims();
-    assert(logit.shape.at(legion_dim_t(ndim - 1)) == 1);
-    int num_samples = logit.shape.at(legion_dim_t(ndim - 2));
-    int num_classes = logit.shape.get_volume() / num_samples;
+    int num_classes = logit.shape.at(legion_dim_t{0});
     assert(logit_grad.shape == logit.shape);
     int k = 1;
     if (scce_attrs.replace_labels) {
       k = logit.shape.at(legion_dim_t(ndim - 1)) /
           label.shape.at(legion_dim_t(
               ndim - 1)); // TODO FIXME something seems wrong here, isn't the
-                          // numerator guaranteed to be 1?
+                          // numerator guaranteed to be 1? <--- this is not the
+                          // case because of the potential parallel dim
     }
     assert(label.shape.sub_shape(legion_dim_t(1), std::nullopt) ==
            logit.shape.sub_shape(legion_dim_t(1), std::nullopt));
@@ -85,21 +85,17 @@ static void backward_task_impl(TaskArgumentAccessor const &acc) {
             "[SparseCategoricalCrossEntropyLoss] backward_time = %.2lfms\n",
             get_float_ptr(logit_grad),
             get_float_ptr(logit),
-            get_int32_ptr(label),
+            reinterpret_cast<int const *>(get_float_ptr(label)),
             get_volume(logit.shape),
             get_volume(logit_grad.shape),
-            num_samples,
+            batch_size,
             num_classes,
             k,
             scale_factor);
   } else {
     assert(logit.shape == label.shape);
     assert(logit_grad.shape == logit.shape);
-    // assertion the outter-most dim is replica dim and replica degree is 1
-    size_t ndim = logit.shape.num_dims();
-    assert(logit.shape.at(legion_dim_t(ndim - 1)) == 1);
-    int num_samples = label.shape.at(legion_dim_t(ndim - 1));
-    int num_channels = logit.shape.get_volume() / num_samples;
+    int num_channels = logit.shape.at(legion_dim_t{0});
     switch (loss_type) {
       case LossFunction::CATEGORICAL_CROSSENTROPY: {
         profile(categorical_crossentropy_loss_backward_kernel,

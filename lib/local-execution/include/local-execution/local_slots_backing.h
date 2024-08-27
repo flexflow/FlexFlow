@@ -20,9 +20,6 @@ struct LocalSlotsBacking {
 public:
   void add_per_device_op_state(layer_guid_t const &,
                                DeviceSpecificDeviceStates const &);
-  void allocate_label_tensor(tensor_guid_t const &,
-                             ComputationGraph const &,
-                             Allocator &);
   void allocate_outgoing_tensors(layer_guid_t const &,
                                  ComputationGraph const &,
                                  Allocator &);
@@ -40,7 +37,6 @@ public:
   GenericTensorAccessorW const &get_tensor_backing(tensor_guid_t const &,
                                                    IsGrad) const;
 
-private:
   bool is_tensor_allocated(tensor_guid_t const &) const;
   bool is_gradient_tensor_allocated(tensor_guid_t const &) const;
 

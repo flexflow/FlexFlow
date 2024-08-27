@@ -50,10 +50,40 @@ std::size_t ArrayShape::at(ff_dim_t idx) const {
   return dims.at(legion_dim_from_ff_dim(idx, this->num_dims()));
 }
 
-ArrayShape ArrayShape::sub_shape(
-    std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
-    std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const {
+// ArrayShape ArrayShape::sub_shape(
+//     std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
+//     std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const {
+//   NOT_IMPLEMENTED();
+// }
+
+ArrayShape ArrayShape::sub_shape(legion_dim_t start, ff_dim_t end) const {
   NOT_IMPLEMENTED();
+}
+
+ArrayShape ArrayShape::sub_shape(std::optional<ff_dim_t> start,
+                                 std::optional<ff_dim_t> end) const {
+  std::vector<size_t> new_shape;
+  ff_dim_t start_idx = start.value_or(ff_dim_t{0});
+  ff_dim_t end_idx = end.value_or(ff_dim_t{this->num_dims()});
+
+  while (start_idx < end_idx) {
+    new_shape.push_back(this->at(start_idx));
+    start_idx = ff_dim_t{start_idx.value + 1};
+  }
+  return ArrayShape{new_shape};
+}
+
+ArrayShape ArrayShape::sub_shape(std::optional<legion_dim_t> start,
+                                 std::optional<legion_dim_t> end) const {
+  std::vector<size_t> new_shape;
+  legion_dim_t start_idx = start.value_or(legion_dim_t{0});
+  legion_dim_t end_idx = end.value_or(legion_dim_t{this->num_dims()});
+
+  while (start_idx < end_idx) {
+    new_shape.push_back(this->at(start_idx));
+    start_idx = add_to_legion_dim(start_idx, 1);
+  }
+  return ArrayShape{new_shape};
 }
 
 std::optional<std::size_t> ArrayShape::at_maybe(legion_dim_t index) const {

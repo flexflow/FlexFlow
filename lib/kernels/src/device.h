@@ -71,6 +71,7 @@ inline int GET_BLOCKS(int const N) {
 }
 
 __global__ void scale_kernel(float *ptr, size_t size, float a, float b);
+__global__ void scale_kernel(float *ptr, unsigned long size, float a, float b);
 
 __global__ void ones_kernel(float *ptr, size_t size);
 
