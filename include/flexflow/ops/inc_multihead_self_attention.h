@@ -2,6 +2,7 @@
 #define _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_H
 
 #include "flexflow/accessor.h"
+#include "flexflow/batch_config.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/inference.h"
@@ -192,13 +193,15 @@ public:
   void *kvCache;
   bool streaming_cache;
   // When enable Streaming cache, we alter relative position each iteration, so
-  // we need below memory buffer for storing the pre-pos-encoding key value.
+  // we need below memory buffer for storing the pre-pos-encoding key value in
+  // sink and window.
   void *streamingPrePosEnc;
   void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
   BatchConfig::PerRequestInfo *request_infos;
   bool *request_available;
+  StreamingCacheInfo *streaming_cache_infos;
   DataType quantization_type;
   bool offload;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)

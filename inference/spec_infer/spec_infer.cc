@@ -69,7 +69,8 @@ void parse_input_args(char **argv,
                       int &expansion_degree,
                       bool &spec_sampling,
                       bool &do_sample,
-                      int &sampling_seed) {
+                      int &sampling_seed,
+                      bool &enable_streaming_cache) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -151,6 +152,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--do-sample")) {
       do_sample = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--enable-streaming-cache")) {
+      enable_streaming_cache = true;
       continue;
     }
   }
@@ -317,6 +322,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool spec_sampling = false;
   bool do_sample = false;
   int sampling_seed = 0;
+  bool enable_streaming_cache = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -336,7 +342,8 @@ void FlexFlow::top_level_task(Task const *task,
                    expansion_degree,
                    spec_sampling,
                    do_sample,
-                   sampling_seed);
+                   sampling_seed,
+                   enable_streaming_cache);
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -356,6 +363,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tree_depth(max_tree_depth);
   rm->set_max_tree_width(max_tree_width);
   rm->set_verbose(verbose);
+  rm->set_streaming_cache(enable_streaming_cache);
   rm->register_tokenizer(model_metadata.llm_model_type,
                          model_metadata.bos_token_id,
                          model_metadata.eos_token_id,
@@ -419,7 +427,7 @@ void FlexFlow::top_level_task(Task const *task,
                                 model_metadata.ssm_model_weights_paths[ssm_id],
                                 TREE_SEARCH_MODE,
                                 generationConfig,
-                                false,
+                                enable_streaming_cache,
                                 use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,

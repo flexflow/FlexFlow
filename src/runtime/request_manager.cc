@@ -206,6 +206,10 @@ void RequestManager::set_speculative_sampling(bool speculative_sampling_) {
   speculative_sampling = speculative_sampling_;
 }
 
+void RequestManager::set_streaming_cache(bool streaming_cache_) {
+  streaming_cache = streaming_cache_;
+}
+
 void RequestManager::register_tokenizer(ModelType type,
                                         int bos_token_id,
                                         int eos_token_id,
@@ -301,6 +305,9 @@ RequestManager::RequestGuid
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
     assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
     init_token_tree(request.guid);
+    request.streaming_cache_info = StreamingCacheInfo(
+        BatchConfig::SINK_SIZE,
+        BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
   }
 
   pending_request_queue.push(request);
@@ -360,6 +367,9 @@ RequestManager::RequestGuid
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
     assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
     init_token_tree(request.guid);
+    request.streaming_cache_info = StreamingCacheInfo(
+        BatchConfig::SINK_SIZE,
+        BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
   }
 
   pending_request_queue.push(request);
@@ -724,6 +734,10 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   bool prefill_completed = false;
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
+  if (decoding_mode == INCREMENTAL_DECODING && streaming_cache) {
+    prefill_request->streaming_cache_info.update_cache(
+        prefill_request->num_tokens_in_batch);
+  }
 
   if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
     // Indicates that the LLM prefilling phase finishes
@@ -768,6 +782,9 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
     request.llm_cache_size++;
+    if (streaming_cache) {
+      request.streaming_cache_info.update_cache(1);
+    }
     request.tokens.push_back(
         result.token_ids[request.first_token_offset_in_batch]);
 
@@ -800,6 +817,10 @@ void RequestManager::update_ssm_prefill_results(
   // request_manager_status is PREFILLING and the prefill_model is SSM.
   // There's no results to update, but we should update ssm_cache_size.
   prefill_request->ssm_cache_size += prefill_request->num_tokens_in_batch;
+  if (streaming_cache) {
+    prefill_request->streaming_cache_info.update_cache(
+        prefill_request->num_tokens_in_batch);
+  }
 
   profiling_requests[prefill_request->guid].ssm_prefilling_steps++;
 }
@@ -881,6 +902,9 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
       get_max_tokens_per_batch(),
       (int)prefill_request->tokens.size() - prefill_request->llm_cache_size);
 
+  // Copy the streaming cache info
+  bc.streamingCacheInfo[request_index] = prefill_request->streaming_cache_info;
+
   prefill_request->first_token_offset_in_batch = 0;
   prefill_request->num_tokens_in_batch =
       bc.requestsInfo[request_index].num_tokens_in_batch;
@@ -934,6 +958,9 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   bc.requestsInfo[request_index].num_tokens_in_batch = std::min(
       get_max_tokens_per_batch(),
       (int)prefill_request->tokens.size() - prefill_request->ssm_cache_size);
+
+  // Copy the streaming cache info
+  bc.streamingCacheInfo[request_index] = prefill_request->streaming_cache_info;
 
   prefill_request->first_token_offset_in_batch = 0;
   prefill_request->num_tokens_in_batch =
@@ -991,6 +1018,9 @@ BatchConfig RequestManager::prepare_decoding_batch() {
         request.llm_cache_size;
     bc.requestsInfo[request_index].first_token_offset_in_batch = bc.num_tokens;
     bc.requestsInfo[request_index].num_tokens_in_batch = 1;
+
+    // Copy the streaming cache info
+    bc.streamingCacheInfo[request_index] = request.streaming_cache_info;
 
     request.first_token_offset_in_batch = bc.num_tokens;
     request.num_tokens_in_batch = 1;
@@ -1100,6 +1130,9 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
     // update_llm_verify_results
     new_bc.causalMask[request_index] = request.causal_mask;
 
+    // Copy the streaming cache info
+    new_bc.streamingCacheInfo[request_index] = request.streaming_cache_info;
+
     if (profiling_requests[guid].ssm_decoding_steps == 0) {
       profiling_requests[guid].start_decoding_time =
           Realm::Clock::current_time_in_microseconds();
@@ -1190,6 +1223,9 @@ BatchConfig RequestManager::prepare_next_spec_batch_config() {
     // Copy the causal mask, it should already been updated by
     // update_ssm_inference_results
     new_bc.causalMask[request_index] = request.causal_mask;
+
+    // Copy the streaming cache info
+    new_bc.streamingCacheInfo[request_index] = request.streaming_cache_info;
   }
 
   if (verbose) {
@@ -1292,6 +1328,9 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     // Create the causal mask for the large model based on the small model
     // causal mask.
     new_bc.causalMask[request_index] = create_llm_bitmask(guid);
+
+    // Copy the streaming cache info
+    new_bc.streamingCacheInfo[request_index] = request.streaming_cache_info;
   }
 
   if (verbose) {
@@ -1430,6 +1469,9 @@ bool RequestManager::update_ssm_inference_results(
 
     if (current_ssm_step == 1) {
       request.ssm_cache_size = request.tokens.size();
+      if (streaming_cache) {
+        request.streaming_cache_info.update_cache(request.num_tokens_in_batch);
+      }
     }
 
     if (current_ssm_step == 1) {

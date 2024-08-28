@@ -43,6 +43,8 @@ public:
   StreamingCacheInfo(int sink_cache_size, int window_cache_size);
   StreamingCacheInfo(StreamingCacheInfo const &other);
 
+  StreamingCacheInfo &operator=(StreamingCacheInfo const &other);
+
   void update_cache(int len);
   void reset_cache();
 

@@ -231,6 +231,14 @@ void RequestManager::load_batch_config_task(
                             stream));
   total_copy_size += sizeof(BatchConfig::request_available);
 
+  checkCUDA(cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                                total_copy_size,
+                            &(batch_config->streamingCacheInfo),
+                            sizeof(BatchConfig::streamingCacheInfo),
+                            cudaMemcpyHostToDevice,
+                            stream));
+  total_copy_size += sizeof(BatchConfig::streamingCacheInfo);
+
   // load attention metadata
   if (batch_config->get_mode() == INC_DECODING_MODE) {
     if (handle.incr_attention_metadata->enabled()) {
@@ -388,7 +396,8 @@ void RequestManager::load_batch_config_task(
                 static_cast<char *>(handle.batch_config_metadata) +
                 sizeof(BatchConfig::tokensInfo) +
                 sizeof(BatchConfig::requestsInfo) +
-                sizeof(BatchConfig::request_available));
+                sizeof(BatchConfig::request_available)) +
+                sizeof(BatchConfig::streamingCacheInfo);
         int batch_size = batch_config->num_active_requests();
         uint32_t const max_num_pages =
             round_up_pages(BatchConfig::max_sequence_length() +
@@ -553,7 +562,8 @@ void RequestManager::load_batch_config_task(
                 static_cast<char *>(handle.batch_config_metadata) +
                 sizeof(BatchConfig::tokensInfo) +
                 sizeof(BatchConfig::requestsInfo) +
-                sizeof(BatchConfig::request_available));
+                sizeof(BatchConfig::request_available)) +
+                sizeof(BatchConfig::streamingCacheInfo);
         int batch_size = batch_config->num_active_requests();
         uint32_t const max_num_pages =
             round_up_pages(BatchConfig::max_sequence_length() +

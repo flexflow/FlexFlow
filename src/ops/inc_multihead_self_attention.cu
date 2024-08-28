@@ -622,6 +622,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     request_available = reinterpret_cast<bool *>(
         reinterpret_cast<char *>(handler.batch_config_metadata) +
         sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo));
+    streaming_cache_infos = reinterpret_cast<StreamingCacheInfo *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
+        sizeof(BatchConfig::request_available));
 
     if (offload) {
       // token_infos =
