@@ -12,9 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "flexflow/batch_config.h"
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
 #endif
+#include "flashinfer/pos_enc.cuh"
+#include "flexflow/attention_config.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
@@ -27,6 +30,9 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 using Legion::Memory;
+
+using flashinfer::BatchQKApplyLlama31Rotary;
+using flashinfer::BatchQKApplyRotary;
 
 #define WARP_SIZE 32
 
@@ -293,11 +299,14 @@ template <typename DT>
 __global__ void
     apply_pos_encoding_kernel(DT *input_ptr,
                               cuFloatComplex *complex_input,
+                              BatchConfig::PerRequestInfo const *requestInfos,
                               BatchConfig::PerTokenInfo const *tokenInfos,
                               int qk_dim,
                               int num_tokens,
                               size_t q_array_size,
-                              int hidden_size) {
+                              int hidden_size,
+                              bool streaming_cache,
+                              StreamingCacheInfo const *streaming_cache_infos) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     // create complex number
     bool q_tensor = i < (q_array_size / 2);
@@ -327,6 +336,13 @@ __global__ void
     // size_t pos = id_map[token_idx].token_position;
     size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
+    // relative position should be calculated based on current streaming size
+    if (streaming_cache) {
+      int req_idx = tokenInfos[token_idx].request_index;
+      pos += streaming_cache_infos[req_idx].commit_len -
+             requestInfos[req_idx].first_token_index_in_request;
+    }
+
     // float before_real = complex_input[i].x, before_complex =
     int pos_i = real_i % (proj_size / 2);
     float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
@@ -342,6 +358,10 @@ __global__ void
   }
 }
 
+// Apply position embedding for qk.
+// Note that this is only used for tokens in the current batch.
+// For other Key tokens like in streaming cache, we nned other kernel to apply
+// the position embedding.
 template <typename DT>
 void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
@@ -359,25 +379,30 @@ void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
                               0,
                               stream>>>(output_ptr,
                                         m->complex_input,
+                                        m->request_infos,
                                         m->token_infos,
                                         m->qk_dim,
                                         num_tokens,
                                         q_array_size,
-                                        m->local_hidden_size);
+                                        m->local_hidden_size,
+                                        m->streaming_cache,
+                                        m->streaming_cache_infos);
 }
 
 template <typename DT>
 __global__ void
     update_qkv_cache_kernel(DT *devQKVProjArray,
                             half *qTmp_ptr,
-                            half *kCache_ptr,
+                            half *kvCache_ptr,
                             BatchConfig::PerTokenInfo const *tokenInfos,
-                            BatchConfig::PerRequestInfo *request_infos,
+                            BatchConfig::PerRequestInfo *requestInfos,
                             int const max_num_pages,
                             int num_q_heads,
                             int num_kv_heads,
                             int head_dim,
-                            int num_new_tokens) {
+                            int num_new_tokens,
+                            bool streaming_cache,
+                            StreamingCacheInfo const *streaming_cache_infos) {
   int const q_hidden_size = num_q_heads * head_dim;
   int const temp_kv_hidden_size = num_q_heads * head_dim; // temporary hard code
   int const kv_hidden_size = num_kv_heads * head_dim;
@@ -389,7 +414,12 @@ __global__ void
   }
 
   int const req_idx = tokenInfos[token_idx].request_index;
-  int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
+  int token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
+
+  if (streaming_cache) {
+    token_abs_idx += streaming_cache_infos[req_idx].commit_len -
+                     requestInfos[req_idx].first_token_index_in_request;
+  }
 
   size_t from_idx = token_idx * (q_hidden_size + temp_kv_hidden_size * 2);
   qTmp_ptr[token_idx * q_hidden_size + offset] =
@@ -404,9 +434,9 @@ __global__ void
     int const stride = num_q_heads / num_kv_heads;
     int const kv_offset =
         offset / head_dim * stride * head_dim + offset % head_dim;
-    kCache_ptr[to_k_idx + offset] = static_cast<half>(
+    kvCache_ptr[to_k_idx + offset] = static_cast<half>(
         devQKVProjArray[from_idx + q_hidden_size + kv_offset]);
-    kCache_ptr[to_v_idx + offset] =
+    kvCache_ptr[to_v_idx + offset] =
         static_cast<half>(devQKVProjArray[from_idx + q_hidden_size +
                                           temp_kv_hidden_size + kv_offset]);
   }
@@ -434,7 +464,9 @@ void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
                                       m->num_q_heads,
                                       m->num_kv_heads,
                                       m->qk_dim,
-                                      num_new_tokens);
+                                      num_new_tokens,
+                                      m->streaming_cache,
+                                      m->streaming_cache_infos);
 }
 
 template <typename DT>
