@@ -391,7 +391,7 @@ void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 __global__ void
-    update_qkv_cache_kernel(DT *devQKVProjArray,
+    update_qkv_in_batch_kernel(DT *devQKVProjArray,
                             half *qTmp_ptr,
                             half *kvCache_ptr,
                             BatchConfig::PerTokenInfo const *tokenInfos,
@@ -443,7 +443,7 @@ __global__ void
 }
 
 template <typename DT>
-void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
+void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                       BatchConfig const *bc,
                       cudaStream_t stream) {
   // update the kv cache, compact the q array
@@ -452,7 +452,7 @@ void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
   int const max_num_pages =
       round_up_pages(BatchConfig::max_sequence_length() +
                      BatchConfig::max_spec_tree_token_num());
-  update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
+  update_qkv_in_batch_kernel<<<GET_BLOCKS(parallelism),
                             min(CUDA_NUM_THREADS, parallelism),
                             0,
                             stream>>>(static_cast<DT *>(m->devQKVProjArray),
@@ -672,12 +672,12 @@ template void Kernels::IncMultiHeadAttention::apply_pos_encoding<half>(
     half *output_ptr,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::update_qkv_cache<float>(
+template void Kernels::IncMultiHeadAttention::update_qkv_in_batch<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::update_qkv_cache<half>(
+template void Kernels::IncMultiHeadAttention::update_qkv_in_batch<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     cudaStream_t stream);

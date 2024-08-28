@@ -259,7 +259,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   apply_pos_encoding(m, bc, static_cast<DT *>(m->devQKVProjArray), stream);
 
   // phase 2: Update key/val cache
-  update_qkv_cache<DT>(m, bc, stream);
+  update_qkv_in_batch<DT>(m, bc, stream);
 
   // cudaEventRecord(t_end, stream);
   // checkCUDA(cudaEventSynchronize(t_end));
@@ -609,7 +609,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     kvCache = gpu_mem_allocator.allocate_instance_untyped(
         (key_cache_size + value_cache_size) * size_of_dt);
     if (streaming_pre_pos_enc_size > 0) {
-      streamingPrePosEnc = gpu_mem_allocator.allocate_instance_untyped(
+      streamingPrePosEncBuf = gpu_mem_allocator.allocate_instance_untyped(
           streaming_pre_pos_enc_size * size_of_dt);
     }
     outputTmp = gpu_mem_allocator.allocate_instance<half>(output_tmp_size);

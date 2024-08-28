@@ -195,7 +195,7 @@ public:
   // When enable Streaming cache, we alter relative position each iteration, so
   // we need below memory buffer for storing the pre-pos-encoding key value in
   // sink and window.
-  void *streamingPrePosEnc;
+  void *streamingPrePosEncBuf;
   void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;

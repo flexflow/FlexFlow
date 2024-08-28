@@ -420,7 +420,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventRecord(t_start, stream);
 
   // Update key-val cache, compact q array
-  update_qkv_cache<DT>(m, bc, stream);
+  update_qkv_in_batch<DT>(m, bc, stream);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));

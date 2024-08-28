@@ -257,7 +257,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
                      stream);
 
   // phase 2: Update key/val cache
-  update_qkv_cache<DT>(m, bc, stream);
+  update_qkv_in_batch<DT>(m, bc, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
