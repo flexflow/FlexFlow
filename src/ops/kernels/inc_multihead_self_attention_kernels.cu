@@ -420,9 +420,8 @@ void update_qkv_cache(IncMultiHeadSelfAttentionMeta const *m,
   int num_new_tokens = bc->num_active_tokens();
   int parallelism = m->local_hidden_size * num_new_tokens;
   int const max_num_pages =
-      (BatchConfig::max_sequence_length() +
-       BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-      kPagesize;
+      round_up_pages(BatchConfig::max_sequence_length() +
+                     BatchConfig::max_spec_tree_token_num());
   update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
                             min(CUDA_NUM_THREADS, parallelism),
                             0,
