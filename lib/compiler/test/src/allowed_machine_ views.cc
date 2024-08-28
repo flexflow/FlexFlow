@@ -4,13 +4,18 @@
 #include "pcg/machine_view.h"
 #include "pcg/start_invariant_machine_view.h"
 #include "utils/containers/extend.h"
+#include "utils/containers/range.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/unordered_set_of.h"
 
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
+
   TEST_CASE("get_allowed_machine_views") {
 
     SUBCASE("1 degree of parallelism") {
+
       MachineSpecification ms = MachineSpecification{5, 1, 1, 0, 0};
       ParallelTensorShape shape = ParallelTensorShape{
           ParallelTensorDims{
@@ -32,11 +37,13 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_1d_machine_view(gpu_id_t(0), gpu_id_t(6), stride_t(2))};
       std::unordered_set<MachineView> result =
           get_allowed_machine_views(ms, shape);
+
       CHECK(correct == result);
     }
 
     SUBCASE("2 degrees of parallelism") {
-      MachineSpecification ms = MachineSpecification{18, 1, 1, 0, 0};
+
+      MachineSpecification ms = MachineSpecification{11, 1, 1, 0, 0};
       ParallelTensorShape shape = ParallelTensorShape{
           ParallelTensorDims{
               FFOrdered<ShardParallelDim>{
@@ -51,32 +58,27 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       auto make_2d_views = [&](int num_starts, int stride1, int stride2) {
-        std::unordered_set<MachineView> views;
-        for (int i = 0; i < num_starts; i++) {
-          StridedRectangle rect = StridedRectangle{
-              {StridedRectangleSide{num_points_t(2), stride_t(stride1)},
-               StridedRectangleSide{num_points_t(3), stride_t(stride2)}}};
-          MachineView mv = MachineView{device_id_t(gpu_id_t(i)), rect};
-          views.insert(mv);
-        }
-        return views;
+        return unordered_set_of(transform(range(num_starts), [&](int start) {
+          return MachineView{
+              device_id_t{gpu_id_t{start}},
+              StridedRectangle{
+                  {StridedRectangleSide{num_points_t{2}, stride_t{stride1}},
+                   StridedRectangleSide{num_points_t{3}, stride_t{stride2}}}},
+          };
+        }));
       };
+
       std::unordered_set<MachineView> correct;
       extend(correct,
-             make_2d_views(/*num_starts*/ 13, /*stride1*/ 1, /*stride2*/ 1));
+             make_2d_views(/*num_starts*/ 6, /*stride1*/ 1, /*stride2*/ 1));
       extend(correct,
-             make_2d_views(/*num_starts*/ 8, /*stride1*/ 2, /*stride2*/ 1));
+             make_2d_views(/*num_starts*/ 1, /*stride1*/ 2, /*stride2*/ 1));
       extend(correct,
-             make_2d_views(/*num_starts*/ 9, /*stride1*/ 1, /*stride2*/ 2));
-      extend(correct,
-             make_2d_views(/*num_starts*/ 3, /*stride1*/ 3, /*stride2*/ 1));
-      extend(correct,
-             make_2d_views(/*num_starts*/ 5, /*stride1*/ 1, /*stride2*/ 3));
-      extend(correct,
-             make_2d_views(/*num_starts*/ 1, /*stride1*/ 1, /*stride2*/ 4));
+             make_2d_views(/*num_starts*/ 2, /*stride1*/ 1, /*stride2*/ 2));
 
       std::unordered_set<MachineView> result =
           get_allowed_machine_views(ms, shape);
+
       CHECK(result == correct);
     }
   }
@@ -84,6 +86,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_allowed_start_invariant_machine_views") {
 
     SUBCASE("1 degree of parallelism") {
+
       MachineSpecification ms = MachineSpecification{5, 1, 1, 0, 0};
       ParallelTensorShape shape = ParallelTensorShape{
           ParallelTensorDims{
@@ -103,11 +106,13 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_1d_start_invariant_machine_view(num_points_t(3), stride_t(2))};
       std::unordered_set<StartInvariantMachineView> result =
           get_allowed_start_invariant_machine_views(ms, shape);
+
       CHECK(correct == result);
     }
 
     SUBCASE("2 degrees of parallelism") {
-      MachineSpecification ms = MachineSpecification(18, 1, 1, 0, 0);
+
+      MachineSpecification ms = MachineSpecification(15, 1, 1, 0, 0);
       ParallelTensorShape shape = ParallelTensorShape{
           ParallelTensorDims{
               FFOrdered<ShardParallelDim>{
@@ -127,54 +132,18 @@ TEST_SUITE(FF_TEST_SUITE) {
              StridedRectangleSide{num_points_t(3), stride_t(stride2)}}};
         return StartInvariantMachineView{rect};
       };
+
       std::unordered_set<StartInvariantMachineView> correct = {
           make_2d_view(/*stride1*/ 1, /*stride2*/ 1),
           make_2d_view(/*stride1*/ 2, /*stride2*/ 1),
           make_2d_view(/*stride1*/ 1, /*stride2*/ 2),
-          make_2d_view(/*stride1*/ 3, /*stride2*/ 1),
           make_2d_view(/*stride1*/ 1, /*stride2*/ 3),
-          make_2d_view(/*stride1*/ 1, /*stride2*/ 4)};
+      };
 
       std::unordered_set<StartInvariantMachineView> result =
           get_allowed_start_invariant_machine_views(ms, shape);
+
       CHECK(result == correct);
     }
-  }
-
-  TEST_CASE("get_all_tensor_to_machine_view_injections") {
-    ParallelTensorShape shape = ParallelTensorShape{
-        ParallelTensorDims{
-            FFOrdered<ShardParallelDim>{
-                ShardParallelDim{10, 3},
-            },
-            ReplicaParallelDimSet{
-                SumDegree{2},
-                DiscardCopyDegree{2},
-            },
-        },
-        DataType::FLOAT,
-    };
-    MachineView view =
-        MachineView{device_id_from_index(0, DeviceType::GPU),
-                    StridedRectangle{
-                        {StridedRectangleSide{num_points_t(2), stride_t(1)},
-                         StridedRectangleSide{num_points_t(2), stride_t(4)},
-                         StridedRectangleSide{num_points_t(3), stride_t(1)}},
-                    }};
-    bidict<machine_view_dim_idx, parallel_tensor_dim_idx> b1 = {
-        {machine_view_dim_idx(2), ff_dim_t(0)},
-        {machine_view_dim_idx(1), ReplicaType::SUM},
-        {machine_view_dim_idx(0), ReplicaType::DISCARD_COPY}};
-
-    bidict<machine_view_dim_idx, parallel_tensor_dim_idx> b2 = {
-        {machine_view_dim_idx(2), ff_dim_t(0)},
-        {machine_view_dim_idx(0), ReplicaType::SUM},
-        {machine_view_dim_idx(1), ReplicaType::DISCARD_COPY}};
-
-    std::unordered_set<TensorToMachineViewInjection> correct = {
-        TensorToMachineViewInjection{b1}, TensorToMachineViewInjection{b2}};
-    std::unordered_set<TensorToMachineViewInjection> result =
-        get_all_tensor_to_machine_view_injections(view, shape);
-    CHECK(correct == result);
   }
 }

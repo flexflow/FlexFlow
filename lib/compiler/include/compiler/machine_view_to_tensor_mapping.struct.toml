@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "MachineViewToTensorMapping"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/machine_view_dim_idx_t.dtg.h",
+  "op-attrs/parallel_tensor_dim_idx_t.dtg.h",
+  "utils/bidict/bidict.h",
+]
+
+[[fields]]
+name = "raw_bidict"
+type = "::FlexFlow::bidict<::FlexFlow::machine_view_dim_idx_t, ::FlexFlow::parallel_tensor_dim_idx_t>"

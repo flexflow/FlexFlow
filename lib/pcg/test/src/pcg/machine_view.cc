@@ -14,11 +14,11 @@ using namespace FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("MachineView - utility functions") {
-    StridedRectangle rect{{StridedRectangleSide(num_points_t(7), stride_t{5}),
-                           StridedRectangleSide(num_points_t(10), stride_t{2}),
-                           StridedRectangleSide(num_points_t(1), stride_t{4})}};
-    gpu_id_t start(1);
-    MachineView mv{device_id_t{start}, rect};
+    MachineView mv = MachineView{
+        device_id_t{gpu_id_t{1}},
+        StridedRectangle{{StridedRectangleSide(num_points_t{7}, stride_t{5}),
+                          StridedRectangleSide(num_points_t{10}, stride_t{2}),
+                          StridedRectangleSide(num_points_t{1}, stride_t{4})}}};
 
     SUBCASE("num_dims") {
       CHECK(num_dims(mv) == 3);
@@ -48,12 +48,23 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_device_ids") {
 
     SUBCASE("2D MachineView") {
-      StridedRectangle rect{{
-          StridedRectangleSide(num_points_t(2), stride_t{3}),
-          StridedRectangleSide(num_points_t(2), stride_t{2}),
-      }};
-      gpu_id_t start(0);
-      MachineView mv{device_id_t{start}, rect};
+      // 2D MachineView describes a 4 x 6 area.
+      // The devices are at coordinates (0,0), (0, 3), (2, 0), (2, 3)
+      // Thus we have as device ids:
+      //  0  = 0*1 + 0*4
+      //  12 = 0*1 + 3*4
+      //  2  = 2*1 + 0*4
+      //  14 = 2*1 + 3*4
+      // The coefficients are obtained by doing 
+      //`scanl(area_coefficients, 1,product) = {1,4}` 
+      // and ignoring the last term.
+
+      MachineView mv =
+          MachineView{device_id_t{gpu_id_t{0}},
+                      StridedRectangle{{
+                          StridedRectangleSide(num_points_t(2), stride_t{3}),
+                          StridedRectangleSide(num_points_t(2), stride_t{2}),
+                      }}};
       SUBCASE("get_device_ids") {
         std::unordered_set<device_id_t> expected =
             make_gpu_device_ids({0, 2, 12, 14});
@@ -62,13 +73,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
     SUBCASE("3D MachineView") {
-      StridedRectangle rect{{
-          StridedRectangleSide(num_points_t(1), stride_t{3}),
-          StridedRectangleSide(num_points_t(2), stride_t{1}),
-          StridedRectangleSide(num_points_t(2), stride_t{2}),
-      }};
-      gpu_id_t start(1);
-      MachineView mv{device_id_t{start}, rect};
+      // 3D MachineView describes a 3 x 2 x 4 area, and 1*2*2=4 devices.
+      // (Pre offset) the devices are at coordinates (0, 0, 0), (0, 0, 2), (0,
+      // 1, 0), (0, 1, 2) Thus (pre offset) we have as device ids:
+      //  0  = 0*1 + 0*3 + 0*(2*3)
+      //  12  = 0*1 + 0*3 + 2*(2*3)
+      //  3  = 0*1 + 1*3 + 0*(2*3)
+      //  15  = 0*1 + 1*3 + 1*(2*3)
+      // Where the coefficients are obtained by doing `scanl(area_coefficients,
+      // 1, product) = {1,3,6}` and ignoring the last term. We do, however, have
+      // 1 as a starting device, meaning all device-id are offset by 1. We thus
+      // have 1, 13, 4, 16 as device-ids
+      MachineView mv =
+          MachineView{device_id_t{gpu_id_t{1}},
+                      StridedRectangle{{
+                          StridedRectangleSide(num_points_t(1), stride_t{3}),
+                          StridedRectangleSide(num_points_t(2), stride_t{1}),
+                          StridedRectangleSide(num_points_t(2), stride_t{2}),
+                      }}};
 
       SUBCASE("get_device_ids") {
         std::unordered_set<device_id_t> expected =
@@ -79,17 +101,18 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE("get_last_device_id") {
+  TEST_CASE("get_maximum_device_id") {
     SUBCASE("2D MachineView") {
-      StridedRectangle rect{{
-          StridedRectangleSide(num_points_t(2), stride_t{3}),
-          StridedRectangleSide(num_points_t(2), stride_t{2}),
-      }};
-      gpu_id_t start(0);
-      MachineView mv{device_id_t{start}, rect};
 
-      SUBCASE("get_last_device_id") {
-        CHECK(get_last_device_id(mv) == device_id_t(gpu_id_t(14)));
+      MachineView mv =
+          MachineView{device_id_t{gpu_id_t{0}},
+                      StridedRectangle{{
+                          StridedRectangleSide(num_points_t(2), stride_t{3}),
+                          StridedRectangleSide(num_points_t(2), stride_t{2}),
+                      }}};
+
+      SUBCASE("get_maximum_device_id") {
+        CHECK(get_maximum_device_id(mv) == device_id_t(gpu_id_t(14)));
       }
     }
 
@@ -99,20 +122,25 @@ TEST_SUITE(FF_TEST_SUITE) {
           StridedRectangleSide(num_points_t(2), stride_t{1}),
           StridedRectangleSide(num_points_t(2), stride_t{2}),
       }};
-      gpu_id_t start(1);
-      MachineView mv{device_id_t{start}, rect};
+      MachineView mv{device_id_t{gpu_id_t{1}},
+                     StridedRectangle{{
+                         StridedRectangleSide(num_points_t(1), stride_t{3}),
+                         StridedRectangleSide(num_points_t(2), stride_t{1}),
+                         StridedRectangleSide(num_points_t(2), stride_t{2}),
+                     }}};
 
-      SUBCASE("get_last_device_id") {
-        CHECK(get_last_device_id(mv) == device_id_t(gpu_id_t(16)));
+      SUBCASE("get_maximum_device_id") {
+        CHECK(get_maximum_device_id(mv) == device_id_t(gpu_id_t(16)));
       }
     }
   }
 
   TEST_CASE("make_1d_machine_view - GPU") {
 
-    StridedRectangle rect{{StridedRectangleSide{num_points_t{7}, stride_t{5}}}};
-    device_id_t start_gpu{gpu_id_t{1}};
-    MachineView gpu_mv{start_gpu, rect};
+    device_id_t start_gpu = device_id_t{gpu_id_t{1}};
+    MachineView gpu_mv = MachineView{
+        start_gpu,
+        StridedRectangle{{StridedRectangleSide{num_points_t{7}, stride_t{5}}}}};
 
     SUBCASE("make_1d_machine_view(gpu_id_t start, gpu_id_t stop, stride_t "
             "stride)") {
@@ -132,10 +160,11 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("make_1d_machine_view - CPU") {
-    StridedRectangle rect{
-        {StridedRectangleSide{num_points_t{11}, stride_t{4}}}};
-    device_id_t start_cpu{cpu_id_t{2}};
-    MachineView cpu_mv{start_cpu, rect};
+    device_id_t start_cpu = device_id_t{cpu_id_t{2}};
+    MachineView cpu_mv =
+        MachineView{start_cpu,
+                    StridedRectangle{
+                        {StridedRectangleSide{num_points_t{11}, stride_t{4}}}}};
 
     SUBCASE("make_1d_machine_view(cpu_id_t start, cpu_id_t stop, stride_t "
             "stride)") {

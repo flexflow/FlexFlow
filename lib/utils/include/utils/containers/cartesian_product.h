@@ -9,24 +9,26 @@
 
 namespace FlexFlow {
 
-template <typename C, typename V = std::vector<typename C::value_type>>
-auto cartesian_product(std::vector<C> const &containers) {
-  std::unordered_multiset<V> result;
+template <typename C, typename E = typename C::value_type>
+std::unordered_multiset<std::vector<E>>
+    cartesian_product(std::vector<C> const &containers) {
+  std::unordered_multiset<std::vector<E>> result;
 
-  std::function<void(V &, size_t)> recurse = [&](V &current, size_t depth) {
-    if (depth == containers.size()) {
-      result.insert(current);
-      return;
-    }
+  std::function<void(std::vector<E> &, size_t)> recurse =
+      [&](std::vector<E> &current, size_t depth) {
+        if (depth == containers.size()) {
+          result.insert(current);
+          return;
+        }
 
-    for (const auto &item : containers.at(depth)) {
-      current.push_back(item);
-      recurse(current, depth + 1);
-      current.pop_back();
-    }
-  };
+        for (E const &item : containers.at(depth)) {
+          current.push_back(item);
+          recurse(current, depth + 1);
+          current.pop_back();
+        }
+      };
 
-  V current;
+  std::vector<E> current;
   recurse(current, 0);
 
   return result;

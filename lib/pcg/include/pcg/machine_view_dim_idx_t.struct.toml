@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "machine_view_dim_idx"
+name = "machine_view_dim_idx_t"
 features = [
   "eq",
   "ord",

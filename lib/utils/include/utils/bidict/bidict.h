@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_BIDICT_H
 
 #include "utils/fmt/unordered_map.h"
+#include "utils/hash/unordered_map.h"
 #include <cassert>
 #include <optional>
 #include <unordered_map>
@@ -22,7 +23,7 @@ struct bidict {
     }
   }
 
-  bidict(std::vector<std::pair<L, R>> init)
+  explicit bidict(std::vector<std::pair<L, R>> init)
       : bidict(init.begin(), init.end()) {}
 
   bool contains_l(L const &l) const {

@@ -12,6 +12,8 @@ StridedRectangleSide strided_side_from_size_and_stride(side_size_t,
 
 side_size_t get_side_size(StridedRectangleSide const &);
 
+std::vector<int> get_points(StridedRectangleSide const &);
+
 } // namespace FlexFlow
 
 #endif

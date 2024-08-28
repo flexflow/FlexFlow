@@ -1,4 +1,5 @@
 #include "pcg/strided_rectangle_side.h"
+#include "utils/containers/range.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
@@ -12,6 +13,10 @@ StridedRectangleSide strided_side_from_size_and_stride(side_size_t side_size,
 
 side_size_t get_side_size(StridedRectangleSide const &s) {
   return side_size_t{s.num_points.unwrapped * s.stride.unwrapped};
+}
+
+std::vector<int> get_points(StridedRectangleSide const &s) {
+  return range(0, get_side_size(s).unwrapped, s.stride.unwrapped);
 }
 
 } // namespace FlexFlow

@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "MultiDimensionalStride"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "<vector>",
+  "pcg/stride_t.dtg.h",
+]
+
+src_includes = [
+    "utils/hash/vector.h",
+    "utils/fmt/vector.h"
+    
+]
+
+[[fields]]
+name = "raw_strides"
+type = "std::vector<::FlexFlow::stride_t>"

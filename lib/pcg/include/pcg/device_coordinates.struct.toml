@@ -11,11 +11,13 @@ features = [
 
 includes = [ 
   "<vector>",
+]
+
+src_includes = [
   "utils/hash/vector.h",
   "utils/fmt/vector.h",
-  
 ]
 
 [[fields]]
-name = "coords"
+name = "raw_coords"
 type = "std::vector<int>"

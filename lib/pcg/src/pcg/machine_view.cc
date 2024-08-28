@@ -1,7 +1,7 @@
 #include "pcg/machine_view.h"
 #include "pcg/device_coordinates.dtg.h"
 #include "pcg/device_id.h"
-#include "pcg/machine_view_dim_idx.dtg.h"
+#include "pcg/machine_view_dim_idx_t.dtg.h"
 #include "pcg/strided_rectangle.h"
 #include "pcg/strided_rectangle_side.h"
 #include "utils/containers.h"
@@ -20,43 +20,40 @@ namespace FlexFlow {
 
 static device_id_t get_device_id(MachineView const &mv,
                                  DeviceCoordinates const &point) {
-  assert(point.coords.size() == get_num_dims(mv.rect));
+  assert(point.raw_coords.size() == get_num_dims(mv.rect));
   std::vector<int> coefficients =
       scanl(mv.rect.get_sides(),
             1,
             [](size_t const &result, StridedRectangleSide const &side) {
               return result * get_side_size(side).unwrapped;
             });
-  size_t raw_id =
-      sum(transform(zip(coefficients, as_vector(point.coords)),
-                    [](auto const pair) { return pair.first * pair.second; })) +
-      get_raw_id(mv.start);
-
-  return ((get_device_type(mv) == DeviceType::CPU)
-              ? device_id_t(cpu_id_t(raw_id))
-              : device_id_t(gpu_id_t(raw_id)));
+  size_t coord_offset =
+      sum(transform(zip(coefficients, as_vector(point.raw_coords)),
+                    [](auto const pair) { return pair.first * pair.second; }));
+  size_t raw_id = get_raw_id(mv.start) + coord_offset;
+  return device_id_from_index(raw_id, get_device_type(mv));
 }
 
 std::unordered_set<device_id_t> get_device_ids(MachineView const &mv) {
-  std::vector<std::vector<int>> ranges =
-      transform(mv.rect.get_sides(), [](StridedRectangleSide const &side) {
-        return range(0, get_side_size(side).unwrapped, side.stride.unwrapped);
+
+  std::vector<std::vector<int>> coordinate_ranges =
+      transform(mv.rect.get_sides(), get_points);
+
+  std::unordered_set<std::vector<int>> raw_coordinates =
+      unordered_set_of(cartesian_product(coordinate_ranges));
+  std::unordered_set<DeviceCoordinates> device_coordinates =
+      transform(raw_coordinates, [](std::vector<int> const &point) {
+        return DeviceCoordinates(point);
       });
-  std::unordered_set<DeviceCoordinates> devices_as_points = unordered_set_of(
-      transform(cartesian_product(ranges),
-                [](auto const &point) { return DeviceCoordinates(point); }));
-  std::unordered_set<device_id_t> ids =
-      transform(devices_as_points, [&](DeviceCoordinates const &dc) {
+
+  std::unordered_set<device_id_t> device_ids =
+      transform(device_coordinates, [&](DeviceCoordinates const &dc) {
         return get_device_id(mv, dc);
       });
-  return ids;
+  return device_ids;
 }
 
-device_id_t get_last_device_id(MachineView const &mv) {
-  // DeviceCoordinates last_device = DeviceCoordinates(
-  //     transform(mv.rect.get_sides(), [](StridedRectangleSide const &s) {
-  //       return s.stride.unwrapped;
-  //     }));
+device_id_t get_maximum_device_id(MachineView const &mv) {
   return maximum(get_device_ids(mv));
 }
 
@@ -83,7 +80,7 @@ DeviceType get_device_type(MachineView const &mv) {
 }
 
 StridedRectangleSide get_side_at_idx(MachineView const &mv,
-                                     machine_view_dim_idx const &idx) {
+                                     machine_view_dim_idx_t const &idx) {
   return mv.rect.at(idx.unwrapped);
 }
 

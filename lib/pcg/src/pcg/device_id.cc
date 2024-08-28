@@ -32,17 +32,16 @@ int get_raw_id(device_id_t device_id) {
     case DeviceType::CPU:
       return unwrap_cpu(device_id).cpu_index;
     default:
-      throw mk_runtime_error(
-          fmt::format("Unsupported DeviceType {}", get_device_type(device_id)));
+      throw mk_runtime_error(fmt::format("Unsupported device {}", device_id));
   }
 }
 
 device_id_t device_id_from_index(int idx, DeviceType device_type) {
   switch (device_type) {
     case DeviceType::GPU:
-      return device_id_t(gpu_id_t(idx));
+      return device_id_t{gpu_id_t{idx}};
     case DeviceType::CPU:
-      return device_id_t(cpu_id_t(idx));
+      return device_id_t{cpu_id_t{idx}};
     default:
       throw mk_runtime_error(
           fmt::format("Unsupported DeviceType {}", device_type));

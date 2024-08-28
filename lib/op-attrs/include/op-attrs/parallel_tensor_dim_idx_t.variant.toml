@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "parallel_tensor_dim_idx"
+name = "parallel_tensor_dim_idx_t"
 features = [
   "eq",
   "ord",
@@ -7,7 +7,6 @@ features = [
   "json",
   "fmt",
 ]
-explicit_constructors = false
 
 includes = [
   "op-attrs/ff_dim.dtg.h",

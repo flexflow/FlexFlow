@@ -8,6 +8,7 @@
 #include "utils/containers/product.h"
 #include "utils/containers/sorted.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/zip.h"
 #include "utils/fmt/vector.h"
 #include "utils/hash-utils.h"
 #include "utils/hash/tuple.h"
@@ -21,7 +22,7 @@ StridedRectangle::StridedRectangle(
 
 std::tuple<std::vector<StridedRectangleSide> const &>
     StridedRectangle::tie() const {
-  return std::tie(sides);
+  return std::tie(this->sides);
 }
 
 bool StridedRectangle::operator==(StridedRectangle const &other) const {
@@ -49,7 +50,7 @@ bool StridedRectangle::operator>=(StridedRectangle const &other) const {
 }
 
 std::vector<StridedRectangleSide> const &StridedRectangle::get_sides() const {
-  return sides;
+  return this->sides;
 }
 
 StridedRectangleSide const &StridedRectangle::at(int idx) const {
@@ -85,6 +86,16 @@ size_t get_size(StridedRectangle const &rect) {
         return get_side_size(side).unwrapped;
       }));
 }
+
+StridedRectangle
+    get_strided_rectangle(MultiDimensionalStride const &strides,
+                          std::vector<num_points_t> const &num_points_per_dim) {
+  std::vector<StridedRectangleSide> sides = transform(
+      zip(num_points_per_dim, strides.raw_strides), [&](auto const &p) {
+        return StridedRectangleSide(num_points_t(p.first), stride_t(p.second));
+      });
+  return StridedRectangle{sides};
+};
 
 } // namespace FlexFlow
 
