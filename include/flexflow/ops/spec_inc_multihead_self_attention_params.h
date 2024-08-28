@@ -13,6 +13,7 @@ struct SpecIncMultiHeadSelfAttentionParams {
   float dropout, scaling_factor;
   bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
       scaling_query, qk_prod_scaling, position_bias;
+  bool streaming_cache;
   char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;
 };

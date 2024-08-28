@@ -617,7 +617,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     _num_q_heads,
                                     _num_kv_heads,
                                     attn->quantization_type,
-                                    attn->offload),
+                                    attn->offload,
+                                    false),
       num_active_tokens(0) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));

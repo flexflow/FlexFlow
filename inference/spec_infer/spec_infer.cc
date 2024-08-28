@@ -371,6 +371,7 @@ void FlexFlow::top_level_task(Task const *task,
                               model_metadata.llm_weights_path,
                               TREE_VERIFY_MODE,
                               generationConfig,
+                              false,
                               use_full_precision);
   } else if (model_metadata.llm_model_type == ModelType::OPT) {
     OPT::create_opt_model(tree_model,
@@ -418,6 +419,7 @@ void FlexFlow::top_level_task(Task const *task,
                                 model_metadata.ssm_model_weights_paths[ssm_id],
                                 TREE_SEARCH_MODE,
                                 generationConfig,
+                                false,
                                 use_full_precision);
     } else if (model_metadata.ssm_model_types[ssm_id] == ModelType::OPT) {
       OPT::create_opt_model(beam_model,

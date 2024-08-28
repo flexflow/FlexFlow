@@ -237,6 +237,7 @@ void FlexFlow::top_level_task(Task const *task,
                               weights_filepath,
                               INC_DECODING_MODE,
                               generationConfig,
+                              false,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,

@@ -85,7 +85,7 @@ public:
   inline static int const MAX_K_LOGITS = 16;
   // The Constants for the Streaming KVCache
   inline static int const SINK_SIZE = 4;
-  inline static int const STREAMING_MAX_POS = 2048;
+  inline static int const MAX_STREAMING_POS = 2048;
 
   int num_tokens = 0;
   int num_available_requests = 0;

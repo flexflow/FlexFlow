@@ -47,6 +47,7 @@ public:
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
+                            bool _streaming_cache,
                             int _tensor_parallelism_degree,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -69,6 +70,7 @@ public:
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
+                            bool _streaming_cache,
                             int _tensor_parallelism_degree,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -131,7 +133,7 @@ public:
   int hidden_size, qk_dim, v_dim, o_dim;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
-  bool offload;
+  bool offload, streaming_cache;
 };
 
 class IncMultiHeadSelfAttentionMeta : public OpMeta {
@@ -165,7 +167,8 @@ public:
                                 int _num_q_heads,
                                 int _num_kv_heads,
                                 DataType _quantization_type,
-                                bool _offload);
+                                bool _offload,
+                                bool _streaming_cache);
   ~IncMultiHeadSelfAttentionMeta(void);
 
 public:
@@ -184,8 +187,13 @@ public:
   bool *position_bias;
   float scaling_factor;
   void *weight_ptr, *bias_ptr; // for weight offload
-  void *devQKVProjArray, *queryTmp, *kvCache;
+  void *devQKVProjArray, *queryTmp;
   half *outputTmp;
+  void *kvCache;
+  bool streaming_cache;
+  // When enable Streaming cache, we alter relative position each iteration, so
+  // we need below memory buffer for storing the pre-pos-encoding key value.
+  void *streamingPrePosEnc;
   void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;

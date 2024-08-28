@@ -25,6 +25,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                                std::string const &weight_file_path,
                                InferenceMode mode,
                                GenerationConfig generation_config,
+                               bool streaming_cache,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
   LLAMAConfig llama_config(model_config_file_path);
@@ -112,6 +113,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
+            streaming_cache,
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
@@ -160,6 +162,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
+            streaming_cache,   /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );

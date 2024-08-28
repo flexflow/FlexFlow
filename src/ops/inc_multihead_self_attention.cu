@@ -415,7 +415,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     _num_q_heads,
                                     _num_kv_heads,
                                     attn->quantization_type,
-                                    attn->offload) {}
+                                    attn->offload,
+                                    attn->streaming_cache) {}
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
@@ -440,7 +441,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _num_q_heads,
     int _num_kv_heads,
     DataType _quantization_type,
-    bool _offload)
+    bool _offload,
+    bool _streaming_cache)
     : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -453,6 +455,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   size_t size_of_dt = data_type_size(attn->data_type);
   quantization_type = _quantization_type;
   offload = _offload;
+  streaming_cache = _streaming_cache;
 
   global_num_q_heads = _global_num_q_heads;
   global_num_kv_heads = _global_num_kv_heads;
@@ -505,6 +508,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         max_tokens_per_batch *
         (qk_dim * num_q_heads + qk_dim * num_q_heads + v_dim * num_q_heads);
     size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0;
+    size_t streaming_pre_pos_enc_size = 0;
     // assert((BatchConfig::max_sequence_length() +
     //         BatchConfig::max_spec_tree_token_num()) %
     //            kPagesize ==
@@ -525,6 +529,17 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         value_cache_size = num_q_heads * v_dim *
                            BatchConfig::max_requests_per_batch() *
                            max_num_pages * kPagesize;
+        if (streaming_cache) {
+          size_t max_position_pages = round_up_pages(
+              BatchConfig::MAX_STREAMING_POS);
+          key_cache_size = num_kv_heads * qk_dim *
+                           BatchConfig::max_requests_per_batch() *
+                            max_position_pages * kPagesize;
+          value_cache_size = num_kv_heads * v_dim *
+                             BatchConfig::max_requests_per_batch() *
+                             max_position_pages * kPagesize;
+          streaming_pre_pos_enc_size = key_cache_size + value_cache_size;
+        }
         break;
       }
       default:
@@ -537,7 +552,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         2;
     size_t totalSize =
         (qkv_max_proj_size + query_tmp_size + key_cache_size +
-         value_cache_size + attn_heads_size) *
+         value_cache_size + streaming_pre_pos_enc_size + attn_heads_size) *
             size_of_dt +
         output_tmp_size * data_type_size(DT_HALF) +
         complex_size * sizeof(cuFloatComplex); // more components will
@@ -547,18 +562,18 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       size_t totalSharedSize =
           infer_mode == TREE_VERIFY_MODE
               ? totalSize - (query_tmp_size + key_cache_size +
-                             value_cache_size + qkv_max_proj_size) *
+                             value_cache_size + streaming_pre_pos_enc_size + qkv_max_proj_size) *
                                 size_of_dt
               : totalSize -
-                    (query_tmp_size + key_cache_size + value_cache_size) *
+                    (query_tmp_size + key_cache_size + value_cache_size + streaming_pre_pos_enc_size) *
                         size_of_dt;
 
       size_t instance_size =
           size_of_dt *
           (infer_mode == TREE_VERIFY_MODE
-               ? query_tmp_size + key_cache_size + value_cache_size +
+               ? query_tmp_size + key_cache_size + value_cache_size + streaming_pre_pos_enc_size +
                      qkv_max_proj_size
-               : query_tmp_size + key_cache_size + value_cache_size);
+               : query_tmp_size + key_cache_size + value_cache_size + streaming_pre_pos_enc_size);
 
       if (quantization_type != DT_NONE) {
         totalSharedSize += quantized_weightSize;
@@ -587,6 +602,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     }
     kvCache = gpu_mem_allocator.allocate_instance_untyped(
         (key_cache_size + value_cache_size) * size_of_dt);
+    if (streaming_pre_pos_enc_size > 0) {
+      streamingPrePosEnc = gpu_mem_allocator.allocate_instance_untyped(
+          streaming_pre_pos_enc_size * size_of_dt);
+    }
     outputTmp = gpu_mem_allocator.allocate_instance<half>(output_tmp_size);
 
     token_infos =
