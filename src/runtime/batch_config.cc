@@ -103,6 +103,10 @@ int BatchConfig::max_spec_tree_token_num() {
   return RequestManager::get_request_manager()->get_max_spec_tree_token_num();
 }
 
+int BatchConfig::get_max_tree_depth() {
+  return RequestManager::get_request_manager()->get_max_tree_depth();
+}
+
 // Overloading the << operator for the Bitset class
 std::ostream &operator<<(std::ostream &os,
                          BatchConfig::BitMask::Bitset const &bitset) {

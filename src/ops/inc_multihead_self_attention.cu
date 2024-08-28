@@ -256,10 +256,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
               bias_ptr,
               stream);
 
-  apply_pos_encoding(m,
-                     bc,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     stream);
+  apply_pos_encoding(m, bc, static_cast<DT *>(m->devQKVProjArray), stream);
 
   // phase 2: Update key/val cache
   update_qkv_cache<DT>(m, bc, stream);
@@ -530,15 +527,22 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                            BatchConfig::max_requests_per_batch() *
                            max_num_pages * kPagesize;
         if (streaming_cache) {
-          size_t max_position_pages = round_up_pages(
-              BatchConfig::MAX_STREAMING_POS);
+          size_t max_post_pos_enc_pages =
+              round_up_pages(BatchConfig::MAX_STREAMING_POS -
+                             BatchConfig::get_max_tree_depth() +
+                             BatchConfig::max_spec_tree_token_num());
           key_cache_size = num_kv_heads * qk_dim *
                            BatchConfig::max_requests_per_batch() *
-                            max_position_pages * kPagesize;
+                           max_post_pos_enc_pages * kPagesize;
           value_cache_size = num_kv_heads * v_dim *
                              BatchConfig::max_requests_per_batch() *
-                             max_position_pages * kPagesize;
-          streaming_pre_pos_enc_size = key_cache_size + value_cache_size;
+                             max_post_pos_enc_pages * kPagesize;
+          streaming_pre_pos_enc_size =
+              num_kv_heads * (qk_dim + v_dim) *
+              BatchConfig::max_requests_per_batch() *
+              round_up_pages(BatchConfig::MAX_STREAMING_POS -
+                             BatchConfig::get_max_tree_depth()) *
+              kPagesize;
         }
         break;
       }
@@ -561,19 +565,21 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       // assert that we have enough reserved work space left
       size_t totalSharedSize =
           infer_mode == TREE_VERIFY_MODE
-              ? totalSize - (query_tmp_size + key_cache_size +
-                             value_cache_size + streaming_pre_pos_enc_size + qkv_max_proj_size) *
-                                size_of_dt
-              : totalSize -
-                    (query_tmp_size + key_cache_size + value_cache_size + streaming_pre_pos_enc_size) *
-                        size_of_dt;
+              ? totalSize -
+                    (query_tmp_size + key_cache_size + value_cache_size +
+                     streaming_pre_pos_enc_size + qkv_max_proj_size) *
+                        size_of_dt
+              : totalSize - (query_tmp_size + key_cache_size +
+                             value_cache_size + streaming_pre_pos_enc_size) *
+                                size_of_dt;
 
       size_t instance_size =
           size_of_dt *
           (infer_mode == TREE_VERIFY_MODE
-               ? query_tmp_size + key_cache_size + value_cache_size + streaming_pre_pos_enc_size +
-                     qkv_max_proj_size
-               : query_tmp_size + key_cache_size + value_cache_size + streaming_pre_pos_enc_size);
+               ? query_tmp_size + key_cache_size + value_cache_size +
+                     streaming_pre_pos_enc_size + qkv_max_proj_size
+               : query_tmp_size + key_cache_size + value_cache_size +
+                     streaming_pre_pos_enc_size);
 
       if (quantization_type != DT_NONE) {
         totalSharedSize += quantized_weightSize;

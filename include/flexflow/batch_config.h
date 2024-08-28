@@ -67,6 +67,7 @@ public:
   static int max_verify_tokens_per_batch();
   static int max_spec_tree_token_num();
   static int max_sequence_length();
+  static int get_max_tree_depth();
   friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;
   void save_to_file(std::string const &filename) const;
@@ -83,8 +84,10 @@ public:
   inline static int const MAX_TREE_DEPTH = 16;
   inline static int const MAX_TREE_WIDTH = 64;
   inline static int const MAX_K_LOGITS = 16;
+
   // The Constants for the Streaming KVCache
   inline static int const SINK_SIZE = 4;
+  // size_SINK + size_WINDOW + depth_DRAFT shouldn't exceed this value
   inline static int const MAX_STREAMING_POS = 2048;
 
   int num_tokens = 0;
