@@ -55,8 +55,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       //  12 = 0*1 + 3*4
       //  2  = 2*1 + 0*4
       //  14 = 2*1 + 3*4
-      // The coefficients are obtained by doing 
-      //`scanl(area_coefficients, 1,product) = {1,4}` 
+      // The coefficients are obtained by doing
+      //`scanl(area_coefficients, 1,product) = {1,4}`
       // and ignoring the last term.
 
       MachineView mv =
