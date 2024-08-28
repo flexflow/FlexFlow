@@ -898,6 +898,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   std::cerr << "max tokens per batch: " << get_max_tokens_per_batch() << std::endl;
   std::cerr << "llm_cache_size: " << prefill_request->llm_cache_size << std::endl;
 
+  PageManager *page_manager = nullptr;
   // page attention: add logical blocks here
   // TODO: currently only support specinfer, might need to support incremental
   if (decoding_mode == SPECULATIVE_DECODING) {
@@ -907,7 +908,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     _append_tokens_to_blocks(*prefill_request, prefill_request->tokens, true, start, end);
     // printf("append block\n");
     // printf("prefilling request num_tokens: %d\n", prefill_request->tokens.size());
-    PageManager *page_manager = PageManager::get_page_manager();
+    page_manager = PageManager::get_page_manager();
     // printf("page manager address prepare: %p\n", page_manager);
     assert(page_manager != nullptr);
     // we first need to update the physical block numbers
@@ -954,6 +955,17 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   if (verbose) {
     std::cout << "prepare_llm_prefilling_batch NEW batchconfig:" << std::endl;
     bc.print();
+    // also print the page indices
+    if (decoding_mode == SPECULATIVE_DECODING) {
+      std::cout << "page indices are: " << std::endl;
+      std::vector<int> page_indices = page_manager -> get_block_table_indices(1000000);
+      for (int i = 0; i < page_indices.size(); i++) {
+        std::cout << page_indices[i] << " ";
+      }
+      std::cout << "last page len: " << request.blocks.back().get_num_alloc_slots() << std::endl;
+      std::cout << "last page commit token: " << request.blocks.back().num_commit_tokens << std::endl;
+      std::cout << "last page spec token: " << request.blocks.back().num_spec_tokens << std::endl;
+    }
   }
   // printf("end of prepare_llm_prefilling_batch\n");
   return bc;
@@ -1280,6 +1292,8 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
             std::begin(new_bc.request_available));
   new_bc.num_available_requests = num_available_requests;
 
+  PageManager *page_manager = PageManager::get_page_manager();
+  assert(page_manager != nullptr);
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1297,13 +1311,14 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
 
     
-    PageManager *page_manager = PageManager::get_page_manager();
-    assert(page_manager != nullptr);
 
     // std::cerr << "number of logical blocks before: " << request.blocks.size() << std::endl;
     // std::cerr << "number of physical blocks before: " << page_manager->get_num_allocated_blocks(guid) << std::endl;
     //page attention:  delete the spec tokens in the logical block
     assert(request.blocks.size() == page_manager->get_num_allocated_blocks(guid));
+    // get a copy of guid's physical blocks table
+    std::vector<int> block_table = page_manager->get_block_table_indices(guid);
+    std::vector<int> block_table_copy = block_table;
     if (request.page_id_commit + 1 < request.blocks.size()) {
       request.blocks.erase(request.blocks.begin() + request.page_id_commit + 1, request.blocks.end());
       // std::cerr << "page_id_commit: " << request.page_id_commit << std::endl;
@@ -1331,8 +1346,8 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
           committed_tokens.at(committed_token_index);
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
           request_index;
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache =
-          committed_token.from_index;
+      // page attention: in this case we need to use the old page table for the index_in_kv_cache
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache = block_table_copy[committed_token.from_index / kPagesize];
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
           committed_token.to_index;
       new_bc.num_tokens_to_commit++;
@@ -1403,6 +1418,14 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
   if (verbose) {
     std::cout << "prepare_verify_batch_config NEW batchconfig:" << std::endl;
     new_bc.print();
+    std::cout << "page indices are: " << std::endl;
+    std::vector<int> page_indices = page_manager -> get_block_table_indices(1000000);
+    for (int i = 0; i < page_indices.size(); i++) {
+      std::cout << page_indices[i] << " ";
+    }
+    std::cout << "last page len: " << all_requests[1000000].blocks.back().get_num_alloc_slots() << std::endl;
+    std::cout << "last page commit token: " << all_requests[1000000].blocks.back().num_commit_tokens << std::endl;
+    std::cout << "last page spec token: " << all_requests[1000000].blocks.back().num_spec_tokens << std::endl;
   }
   profiling.llm_step_start = Realm::Clock::current_time_in_microseconds();
   return new_bc;

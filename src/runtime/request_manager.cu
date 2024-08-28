@@ -78,6 +78,7 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
                                        int32_t *kv_indices_h,
                                        int32_t *kv_last_page_len_h,
                                        int32_t *qk_indptr_h) {
+  std::cerr << "prepare_inference_params_kernel_h" << std::endl;
   int batch_size = batch_config->num_active_requests();
   // we just search for the page number for each request
   // kv_last_page_len can be handled
@@ -98,11 +99,32 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       indices_lens += (kv_len + kPagesize - 1) / kPagesize;
       q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
       kv_indptr_h[indptr_idx + 1] = batch_config->requestsInfo[req_idx].num_kv_pages + kv_indptr_h[indptr_idx];
+
+      std::cerr << "Expected num_kv_pages: " << (kv_len + kPagesize - 1) / kPagesize << std::endl;
+      std::cerr << "Actual num_kv_pages: " << batch_config->requestsInfo[req_idx].num_kv_pages << std::endl;
+      std::cerr << "kv_len: " << kv_len << std::endl;
+      std::cerr << "kPagesize: " << kPagesize << std::endl;
+      std::cerr << "last page len: " << batch_config->requestsInfo[req_idx].kv_last_page_len << std::endl;
+      std::cerr << "Request Index: " << req_idx << std::endl;
+      if (batch_config->requestsInfo[req_idx].num_kv_pages != (kv_len + kPagesize - 1) / kPagesize) {
+        // Print useful information
+        // std::cerr << "Assertion failed!" << std::endl;
+        // std::cerr << "Expected num_kv_pages: " << (kv_len + kPagesize - 1) / kPagesize << std::endl;
+        // std::cerr << "Actual num_kv_pages: " << batch_config->requestsInfo[req_idx].num_kv_pages << std::endl;
+        // std::cerr << "kv_len: " << kv_len << std::endl;
+        // std::cerr << "kPagesize: " << kPagesize << std::endl;
+        // std::cerr << "last page len: " << batch_config->requestsInfo[req_idx].kv_last_page_len << std::endl;
+
+        // // Optionally, print more information
+        // std::cerr << "Request Index: " << req_idx << std::endl;
+
+        // Exit the program
+        std::exit(EXIT_FAILURE);
+      }
       std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
+      assert(kv_indices.size() == (kv_len + kPagesize - 1) / kPagesize);
       for (int i = indices_offset; i < indices_lens; i++) {
         kv_indices_h[i] = kv_indices[i - indices_offset];
-        // printf("indices offset = %d, indices_lens = %d\n", indices_offset, indices_lens);
-        // printf("kv_indices_h[%d] = %d\n", i, kv_indices_h[i]);
       }
       qk_indptr_h[indptr_idx + 1] = qk_lens;
       kv_last_page_len_h[indptr_idx] = batch_config->requestsInfo[req_idx].kv_last_page_len;
@@ -477,18 +499,9 @@ void RequestManager::load_batch_config_task(
                                           kv_indices_h,
                                           kv_last_page_len_h,
                                           qk_indptr_h);
-        // prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
-        //                                   min(CUDA_NUM_THREADS, parallelism),
-        //                                   0,
-        //                                   stream>>>(batch_size,
-        //                                             request_infos,
-        //                                             request_available,
-        //                                             max_num_pages,
-        //                                             handle.tree_verify_attention_metadata->q_indptr,
-        //                                             handle.tree_verify_attention_metadata->kv_indptr,
-        //                                             handle.tree_verify_attention_metadata->kv_indices,
-        //                                             handle.tree_verify_attention_metadata->kv_last_page_len,
-        //                                             handle.tree_verify_attention_metadata->qk_indptr);
+        // print 
+        printf("load batch config task%d\n");
+        // we only have two requests for now
 
         // Update gpu-side custom mask referring from CaualMask
         if (!batch_config->prompt_phase) {
@@ -552,19 +565,19 @@ void RequestManager::load_batch_config_task(
             handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
         }
 
-        static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
-        q_indptr_h[0] = 0;
-        kv_indptr_h[0] = 0;
-        for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
-          if (batch_config->request_available[req_idx]) {
-            int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
-            int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
-                        batch_config->requestsInfo[req_idx].first_token_index_in_request;
-            q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
-            kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
-            indptr_idx++;
-          }
-        }
+        // static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
+        // q_indptr_h[0] = 0;
+        // kv_indptr_h[0] = 0;
+        // for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
+        //   if (batch_config->request_available[req_idx]) {
+        //     int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
+        //     int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
+        //                 batch_config->requestsInfo[req_idx].first_token_index_in_request;
+        //     q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
+        //     kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
+        //     indptr_idx++;
+        //   }
+        // }
 
         handler->SetCUDAStream(stream);
         handler->BeginForward<half, int32_t>(static_cast<void*>(
