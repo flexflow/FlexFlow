@@ -20,31 +20,31 @@ MachineMappingResult get_optimal_machine_mapping(
     MachineMappingCache &cached_subgraph_results);
 
 MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingContext &context,
+    get_optimal_machine_mapping_internal(MachineMappingContext &context,
                                 MachineSpecification const &resources);
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     SerialParallelDecomposition const &decompn,
     MachineSpecification const &resource,
     std::unordered_map<OpenDataflowValue, MachineView> const
         &fixed_machine_views);
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     SerialSplit const &serial,
     MachineSpecification const &resource,
     std::unordered_map<OpenDataflowValue, MachineView> const
         &fixed_machine_views);
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     ParallelSplit const &parallel,
     MachineSpecification const &resource,
     std::unordered_map<OpenDataflowValue, MachineView> const
         &fixed_machine_views);
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     Node const &node,
     MachineSpecification const &resource,

@@ -1,6 +1,7 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
 #include "compiler/cost_estimator.h"
 #include "compiler/machine_mapping/machine_mapping_result.h"
+#include "compiler/machine_mapping/split_sp_decomposition.h"
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.dtg.h"
@@ -91,34 +92,6 @@ std::vector<std::pair<MachineSpecification, MachineSpecification>>
   return result;
 }
 
-std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
-    decompose(SerialSplit const &serial) {
-  if (serial.children.size() == 2) {
-    return {widen<SerialParallelDecomposition>(serial.children[0]),
-            widen<SerialParallelDecomposition>(serial.children[1])};
-  }
-  SerialSplit decompn1 = serial;
-  decompn1.children.pop_back();
-  return {SerialParallelDecomposition(decompn1),
-          widen<SerialParallelDecomposition>(serial.children.back())};
-}
-
-std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
-    decompose(ParallelSplit const &parallel) {
-  if (parallel.children.size() == 2) {
-    std::vector<SerialParallelDecomposition> children =
-        transform(as_vector(parallel.children), [&](auto const &child) {
-          return widen<SerialParallelDecomposition>(child);
-        });
-    return {children[0], children[1]};
-  }
-  ParallelSplit decompn1 = parallel;
-  std::variant<SerialSplit, Node> child = *parallel.children.begin();
-  decompn1.children.erase(child);
-  return {SerialParallelDecomposition(decompn1),
-          widen<SerialParallelDecomposition>(child)};
-}
-
 GraphSplit
     get_graph_split(SerialParallelDecomposition const &pre_decomposition,
                     SerialParallelDecomposition const &post_decomposition) {
@@ -147,20 +120,27 @@ MachineMappingResult get_optimal_machine_mapping(
 
   MachineMappingContext context(
       pcg, cost_estimator, allowed_machine_views, cached_subgraph_results);
-  MachineMappingResult result = get_optimal_machine_mapping(context, resources);
+  MachineMappingResult result = get_optimal_machine_mapping_internal(context, resources);
   cached_subgraph_results = context.cached_subgraph_results;
   return result;
 }
 
 MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingContext &context,
+    get_optimal_machine_mapping_internal(MachineMappingContext &context,
                                 MachineSpecification const &resources) {
-  SerialParallelDecomposition decompn =
-      get_serial_parallel_decomposition(context.pcg.raw_graph).value();
-  return get_optimal_machine_mapping(context, decompn, resources, {});
+  std::optional<SerialParallelDecomposition> decompn_optional =
+      get_serial_parallel_decomposition(context.pcg.raw_graph);
+  
+  if (!decompn_optional) {
+    throw mk_runtime_error("Failed to get serial parallel decomposition");
+  }
+
+  SerialParallelDecomposition decompn = decompn_optional.value();
+
+  return get_optimal_machine_mapping_internal(context, decompn, resources, {});
 }
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     SerialParallelDecomposition const &decompn,
     MachineSpecification const &resource,
@@ -176,15 +156,15 @@ MachineMappingResult get_optimal_machine_mapping(
 
   MachineMappingResult result = decompn.visit<MachineMappingResult>(
       overload{[&](SerialSplit const &serial) {
-                 return get_optimal_machine_mapping(
+                 return get_optimal_machine_mapping_internal(
                      context, serial, resource, fixed_machine_views);
                },
                [&](ParallelSplit const &parallel) {
-                 return get_optimal_machine_mapping(
+                 return get_optimal_machine_mapping_internal(
                      context, parallel, resource, fixed_machine_views);
                },
                [&](Node const &node) {
-                 return get_optimal_machine_mapping(
+                 return get_optimal_machine_mapping_internal(
                      context, node, resource, fixed_machine_views);
                }});
 
@@ -192,7 +172,7 @@ MachineMappingResult get_optimal_machine_mapping(
   return result;
 }
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     SerialSplit const &serial,
     MachineSpecification const &resource,
@@ -200,7 +180,7 @@ MachineMappingResult get_optimal_machine_mapping(
         &fixed_machine_views) {
   MachineMappingResult optimal_result = get_infinity_machine_mapping_result();
 
-  auto [decompn1, decompn2] = decompose(serial);
+  auto [decompn1, decompn2] = split_sp_decomposition(serial);
 
   GraphSplit graph_split = get_graph_split(decompn1, decompn2);
 
@@ -234,22 +214,22 @@ MachineMappingResult get_optimal_machine_mapping(
     minimize_runtime(
         optimal_result,
         sequential_combine(
-            get_optimal_machine_mapping(
+            get_optimal_machine_mapping_internal(
                 context, decompn1, resource, fixed_machine_views1),
-            get_optimal_machine_mapping(
+            get_optimal_machine_mapping_internal(
                 context, decompn2, resource, fixed_machine_views2)));
   }
 
   return optimal_result;
 }
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     ParallelSplit const &parallel,
     MachineSpecification const &resource,
     std::unordered_map<OpenDataflowValue, MachineView> const
         &fixed_machine_views) {
-  auto [decompn1, decompn2] = decompose(parallel);
+  auto [decompn1, decompn2] = split_sp_decomposition(parallel);
 
   GraphSplit graph_split = get_graph_split(decompn1, decompn2);
 
@@ -266,18 +246,18 @@ MachineMappingResult get_optimal_machine_mapping(
                     get_open_dataflow_values(subgraph_res2.graph));
 
   MachineMappingResult optimal_result = sequential_combine(
-      get_optimal_machine_mapping(
+      get_optimal_machine_mapping_internal(
           context, decompn1, resource, fixed_machine_views1),
-      get_optimal_machine_mapping(
+      get_optimal_machine_mapping_internal(
           context, decompn2, resource, fixed_machine_views2));
 
   for (auto const &resource_split : get_resource_split(resource)) {
     minimize_runtime(
         optimal_result,
         parallel_combine(
-            get_optimal_machine_mapping(
+            get_optimal_machine_mapping_internal(
                 context, decompn1, resource_split.first, fixed_machine_views1),
-            get_optimal_machine_mapping(context,
+            get_optimal_machine_mapping_internal(context,
                                         decompn2,
                                         resource_split.second,
                                         fixed_machine_views2)));
@@ -286,7 +266,7 @@ MachineMappingResult get_optimal_machine_mapping(
   return optimal_result;
 }
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
     Node const &node,
     MachineSpecification const &resource,
