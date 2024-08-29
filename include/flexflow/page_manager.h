@@ -29,9 +29,14 @@ namespace FlexFlow {
 
 using TokenId = BatchConfig::TokenId;
 
-
+/**
+ * @class LogicalTokenBlock
+ * @brief A class to represent a logical block of tokens similar to virtual memory address
+ * 
+ */
 class LogicalTokenBlock {
 public:
+    using TokenId = BatchConfig::TokenId;
     // Constructor
     LogicalTokenBlock(int block_number, uint32_t block_size);
 
@@ -52,17 +57,14 @@ public:
     void reset_num_spec_tokens();
 
     // Method to get the list of token ids
-    std::vector<int> get_token_ids() const;
-
-    // Method to get the last token id
-    int get_last_token_id() const;
+    std::vector<TokenId> get_token_ids() const;
 
     int block_number;
     uint32_t block_size;
     int num_tokens;
     int num_commit_tokens;
     int num_spec_tokens; //spec + commit = num_tokens
-    std::vector<int> token_ids;
+    std::vector<TokenId> token_ids;
 };
 
 class PhysicalTokenBlock {
@@ -87,7 +89,7 @@ public:
     void free(PhysicalTokenBlock& block);
 
     // Get the number of free blocks
-    int get_num_free_blocks() const;
+    size_t get_num_free_blocks() const;
 
 private:
     uint32_t block_size;
@@ -107,7 +109,7 @@ public:
     bool allocate(const RequestGuid& request_guid);
     void free(const RequestGuid& request_guid);
 
-    int get_num_free_blocks() const;
+    size_t get_num_free_blocks() const;
 
     std::vector<int32_t> get_block_table_indices(const RequestGuid& request_guid) const;
 
@@ -118,13 +120,13 @@ public:
 
     void erase_last_pages(const RequestGuid& request_guid, int num_pages);
 
-    int lookup_index(const RequestGuid& request_guid, int logical_index);
+    // int lookup_index(const RequestGuid& request_guid, int logical_index);
 private:
     uint32_t block_size;
     int num_total_blocks;
 
-    BlockAllocator gpu_allocator;
-    bool can_prefill(const RequestGuid& request_guid, const std::vector<int>& token_ids);
+    BlockAllocator block_allocator;
+    // bool can_prefill(const RequestGuid& request_guid, const std::vector<int>& token_ids);
     bool can_allocate(const RequestGuid& request_guid) const;
     std::unordered_map<int, BlockTable> block_tables;
     void _free_block_table(BlockTable& block_table);

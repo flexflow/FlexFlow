@@ -922,12 +922,8 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     for (int i = 0; i < diff_block; i++) {
       page_manager->allocate(guid);
     }
-    // printf("after allocate\n");
-    // update last kv len
     bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
-    // printf("after kv_last_page_len\n");
-    // update the block table
-    // bc.requestsInfo[request_index].page_indices = page_manager->get_block_table_indices(guid);
+    assert(bc.requestsInfo[request_index].kv_last_page_len <= 64);
     bc.requestsIndices[request_index] = page_manager->get_block_table_indices(guid);
     // printf("page_indices size: %d\n", bc.requestsIndices[request_index].size());
     // printf("first page index: %d\n", bc.requestsIndices[request_index][0]);
@@ -1599,6 +1595,7 @@ void RequestManager::_append_logical_block_to_request(
 
 // [start, end) is the number of tokens that we want to extract
 void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens, bool is_commit, int start, int end) {
+  assert(start >= 0 && start < tokens.size());
   int cursor = start;
   int marker = 0;
   if (end == -1) {
@@ -1619,6 +1616,7 @@ void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<Toke
     request.blocks.back().append_tokens(tokens_to_append, is_commit);
     cursor += num_tokens_to_append;
   }
+  assert(request.blocks.back().num_tokens <= kPagesize);
 }
 
 /* --------- Page Attention Related Functions --------- */

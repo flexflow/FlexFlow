@@ -106,21 +106,8 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       std::cerr << "kPagesize: " << kPagesize << std::endl;
       std::cerr << "last page len: " << batch_config->requestsInfo[req_idx].kv_last_page_len << std::endl;
       std::cerr << "Request Index: " << req_idx << std::endl;
-      if (batch_config->requestsInfo[req_idx].num_kv_pages != (kv_len + kPagesize - 1) / kPagesize) {
-        // Print useful information
-        // std::cerr << "Assertion failed!" << std::endl;
-        // std::cerr << "Expected num_kv_pages: " << (kv_len + kPagesize - 1) / kPagesize << std::endl;
-        // std::cerr << "Actual num_kv_pages: " << batch_config->requestsInfo[req_idx].num_kv_pages << std::endl;
-        // std::cerr << "kv_len: " << kv_len << std::endl;
-        // std::cerr << "kPagesize: " << kPagesize << std::endl;
-        // std::cerr << "last page len: " << batch_config->requestsInfo[req_idx].kv_last_page_len << std::endl;
-
-        // // Optionally, print more information
-        // std::cerr << "Request Index: " << req_idx << std::endl;
-
-        // Exit the program
-        std::exit(EXIT_FAILURE);
-      }
+      assert(batch_config->requestsInfo[req_idx].num_kv_pages == (kv_len + kPagesize - 1) / kPagesize);
+      assert(batch_config->requestsInfo[req_idx].kv_last_page_len <= 64);
       std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
       assert(kv_indices.size() == (kv_len + kPagesize - 1) / kPagesize);
       for (int i = indices_offset; i < indices_lens; i++) {
