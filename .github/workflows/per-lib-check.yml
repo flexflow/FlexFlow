@@ -120,6 +120,10 @@ jobs:
         run: |
           test_libs.sh substitution-generator
 
+      - name: Test local-execution
+        run: |
+          test_libs.sh local-execution
+
       - name: Test models
         run: |
           test_libs.sh models

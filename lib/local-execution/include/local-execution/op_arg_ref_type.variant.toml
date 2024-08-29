@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "OpArgRefType"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "local-execution/per_device_op_state_ref_type.dtg.h",
+  "local-execution/parallel_tensor_shape_ref_type.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::PerDeviceOpStateRefType"
+key = "per_device_op_state_ref_type"
+
+[[values]]
+type = "::FlexFlow::ParallelTensorShapeRefType"
+key = "parallel_tensor_shape_ref_type"

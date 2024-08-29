@@ -504,6 +504,47 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
   return this->add_layer(layer, {input}, {}, output_shape);
 }
 
+tensor_guid_t ComputationGraphBuilder::multihead_attention(
+    tensor_guid_t const &query,
+    tensor_guid_t const &key,
+    tensor_guid_t const &value,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool bias,
+    bool add_bias_kv,
+    bool add_zero_attn,
+    std::optional<InitializerAttrs> initializer,
+    std::optional<std::string> const &maybe_name) {
+
+  MultiHeadAttentionAttrs attrs = MultiHeadAttentionAttrs{embed_dim,
+                                                          num_heads,
+                                                          kdim,
+                                                          vdim,
+                                                          dropout,
+                                                          bias,
+                                                          add_bias_kv,
+                                                          add_zero_attn};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(
+      attrs, get_shape(query), get_shape(key), get_shape(value)));
+
+  TensorShape weights_shape = throw_if_unexpected(get_weights_shape(
+      attrs, get_shape(query), get_shape(key), get_shape(value)));
+  TensorAttrs weight_attrs = make_weight_attrs(weights_shape, initializer);
+
+  return this->add_layer(layer,
+                         std::vector<tensor_guid_t>{query, key, value},
+                         {weight_attrs},
+                         output_shape);
+}
+
 TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
     std::vector<tensor_guid_t> const &) {
   // NOT_IMPLEMENTED

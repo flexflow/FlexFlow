@@ -13,7 +13,17 @@ struct DeviceSpecific {
 
   template <typename... Args>
   static DeviceSpecific<T> create(Args &&...args) {
-    NOT_IMPLEMENTED();
+    size_t device_idx = 0;
+    return DeviceSpecific<T>(std::make_shared<T>(std::forward<Args>(args)...),
+                             device_idx);
+  }
+
+  bool operator==(DeviceSpecific const &other) const {
+    return this->tie() == other.tie();
+  }
+
+  bool operator!=(DeviceSpecific const &other) const {
+    return this->tie() != other.tie();
   }
 
   T const *get(size_t curr_device_idx) const {
@@ -23,17 +33,21 @@ struct DeviceSpecific {
                              curr_device_idx,
                              this->device_idx);
     }
-    return this->ptr;
+    return (T const *)this->ptr.get();
   }
 
   // TODO: can modify ptr
 
 private:
-  DeviceSpecific(T *ptr, size_t device_idx)
+  DeviceSpecific(std::shared_ptr<T> ptr, size_t device_idx)
       : ptr(ptr), device_idx(device_idx) {}
 
-  T *ptr;
+  std::shared_ptr<T> ptr;
   size_t device_idx;
+
+  std::tuple<decltype(ptr) const &, decltype(device_idx) const &> tie() const {
+    return std::tie(this->ptr, this->device_idx);
+  }
 };
 
 // manually force serialization to make DeviceSpecific trivially

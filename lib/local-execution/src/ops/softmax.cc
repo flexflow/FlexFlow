@@ -30,7 +30,7 @@ OpTaskInvocation init(SoftmaxAttrs const &attrs) {
 
   binding.bind_arg(HANDLE, ff_handle());
   binding.bind_arg(ATTRS, attrs);
-  return {SOFTMAX_INIT_TASK_ID, binding};
+  return {task_id_t::SOFTMAX_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(SoftmaxAttrs const &attrs) {
@@ -43,16 +43,16 @@ OpTaskInvocation forward(SoftmaxAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {SOFTMAX_FWD_TASK_ID, binding};
+  return {task_id_t::SOFTMAX_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(SoftmaxAttrs const &attrs) {
   OpTaskBinding binding = infer_bwd_binding(forward(attrs).binding);
 
-  return {SOFTMAX_BWD_TASK_ID, binding};
+  return {task_id_t::SOFTMAX_BWD_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -67,7 +67,8 @@ static DeviceSpecific<DeviceStates>
   SoftmaxPerDeviceState per_device_state = init_kernel(
       handle, attrs.dim.value, output_n, output_c, output_h, output_w);
 
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<SoftmaxPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -107,13 +108,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_softmax_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_softmax_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_softmax_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_softmax_init_signature() {
@@ -140,7 +141,9 @@ OpTaskSignature get_softmax_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(SoftmaxAttrs const &) {
-  return {SOFTMAX_INIT_TASK_ID, SOFTMAX_FWD_TASK_ID, SOFTMAX_BWD_TASK_ID};
+  return {task_id_t::SOFTMAX_INIT_TASK_ID,
+          task_id_t::SOFTMAX_FWD_TASK_ID,
+          task_id_t::SOFTMAX_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

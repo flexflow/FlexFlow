@@ -1,0 +1,87 @@
+namespace = "FlexFlow"
+name = "PerDeviceOpState"
+features = []
+
+includes = [
+  "kernels/attention_kernels.h",
+  "kernels/batch_norm_kernels.h",
+  "kernels/conv_2d_kernels.h",
+  "kernels/dropout_kernels.h",
+  "kernels/element_binary_kernels.h",
+  "kernels/element_unary_kernels.h",
+  "kernels/gather_kernels.h",
+  "kernels/layer_norm_kernels.h",
+  "kernels/linear_kernels.h",
+  "kernels/partition_kernels.h",
+  "kernels/pool_2d_kernels.h",
+  "kernels/reduce_kernels.h",
+  "kernels/reduction_kernels.h",
+  "kernels/reshape_kernels.h",
+  "kernels/softmax_kernels.h",
+  "kernels/topk_kernels.h",
+  "kernels/transpose_kernels.h",
+]
+
+[[values]]
+type = "::FlexFlow::MHAPerDeviceState"
+key = "mha_per_device_state"
+
+[[values]]
+type = "::FlexFlow::BatchNormPerDeviceState"
+key = "batch_norm_per_device_state"
+
+[[values]]
+type = "::FlexFlow::Conv2DPerDeviceState"
+key = "conv2d_per_device_state"
+
+[[values]]
+type = "::FlexFlow::DropoutPerDeviceState"
+key = "dropout_per_device_state"
+
+[[values]]
+type = "::FlexFlow::ElementBinaryPerDeviceState"
+key = "element_binary_per_device_state"
+
+[[values]]
+type = "::FlexFlow::ElementUnaryPerDeviceState"
+key = "element_unary_per_device_state"
+
+[[values]]
+type = "::FlexFlow::GatherPerDeviceState"
+key = "gather_per_device_state"
+
+[[values]]
+type = "::FlexFlow::LayerNormPerDeviceState"
+key = "layer_norm_per_device_state"
+
+[[values]]
+type = "::FlexFlow::LinearPerDeviceState"
+key = "linear_per_device_state"
+
+[[values]]
+type = "::FlexFlow::Pool2DPerDeviceState"
+key = "pool_2d_per_device_state"
+
+[[values]]
+type = "::FlexFlow::ReducePerDeviceState"
+key = "reduce_per_device_state"
+
+[[values]]
+type = "::FlexFlow::RepartitionPerDeviceState"
+key = "repartition_per_device_state"
+
+[[values]]
+type = "::FlexFlow::ReshapePerDeviceState"
+key = "reshape_per_device_state"
+
+[[values]]
+type = "::FlexFlow::SoftmaxPerDeviceState"
+key = "softmax_per_device_state"
+
+[[values]]
+type = "::FlexFlow::TopKPerDeviceState"
+key = "topk_per_device_state"
+
+[[values]]
+type = "::FlexFlow::TransposePerDeviceState"
+key = "transpose_per_device_state"
