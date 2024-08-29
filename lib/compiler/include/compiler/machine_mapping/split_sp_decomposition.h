@@ -11,6 +11,6 @@ std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
 std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
     split_sp_decomposition(ParallelSplit const &parallel);
 
-}
+} // namespace FlexFlow
 
 #endif

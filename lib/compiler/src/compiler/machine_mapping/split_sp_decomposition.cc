@@ -1,7 +1,7 @@
 #include "compiler/machine_mapping/split_sp_decomposition.h"
-#include "utils/variant.h"
 #include "utils/containers/as_vector.h"
 #include "utils/containers/transform.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 
@@ -33,4 +33,4 @@ std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
           widen<SerialParallelDecomposition>(child)};
 }
 
-}
+} // namespace FlexFlow

@@ -1,9 +1,9 @@
 #include "compiler/machine_mapping/machine_mapping_cache.h"
+#include "compiler/machine_mapping/split_sp_decomposition.h"
+#include "cost_estimator_for_test.h"
 #include "doctest/doctest.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
-#include "cost_estimator_for_test.h"
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
-#include "compiler/machine_mapping/split_sp_decomposition.h"
 
 using namespace FlexFlow;
 
@@ -49,17 +49,22 @@ TEST_SUITE(FF_TEST_SUITE) {
       return builder.pcg;
     }();
 
-    SerialParallelDecomposition subgraph0 = get_serial_parallel_decomposition(pcg.raw_graph).value();
-    auto [subgraph1, subgraph2] = split_sp_decomposition(subgraph0.get<SerialSplit>());
+    SerialParallelDecomposition subgraph0 =
+        get_serial_parallel_decomposition(pcg.raw_graph).value();
+    auto [subgraph1, subgraph2] =
+        split_sp_decomposition(subgraph0.get<SerialSplit>());
 
     MachineSpecification machine_spec(1, 1, 1, 1, 1);
     MachineMappingState state0(subgraph0, machine_spec, {});
     MachineMappingState state1(subgraph1, machine_spec, {});
     MachineMappingState state2(subgraph2, machine_spec, {});
 
-    MachineMappingResult result0(2, MachineMapping(std::unordered_map<Node, MachineView>{}));
-    MachineMappingResult result1(1, MachineMapping(std::unordered_map<Node, MachineView>{}));
-    MachineMappingResult result2(1, MachineMapping(std::unordered_map<Node, MachineView>{}));
+    MachineMappingResult result0(
+        2, MachineMapping(std::unordered_map<Node, MachineView>{}));
+    MachineMappingResult result1(
+        1, MachineMapping(std::unordered_map<Node, MachineView>{}));
+    MachineMappingResult result2(
+        1, MachineMapping(std::unordered_map<Node, MachineView>{}));
 
     MachineMappingCache cache;
 

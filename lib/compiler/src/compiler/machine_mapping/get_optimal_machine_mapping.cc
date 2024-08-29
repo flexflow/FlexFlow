@@ -120,17 +120,17 @@ MachineMappingResult get_optimal_machine_mapping(
 
   MachineMappingContext context(
       pcg, cost_estimator, allowed_machine_views, cached_subgraph_results);
-  MachineMappingResult result = get_optimal_machine_mapping_internal(context, resources);
+  MachineMappingResult result =
+      get_optimal_machine_mapping_internal(context, resources);
   cached_subgraph_results = context.cached_subgraph_results;
   return result;
 }
 
-MachineMappingResult
-    get_optimal_machine_mapping_internal(MachineMappingContext &context,
-                                MachineSpecification const &resources) {
+MachineMappingResult get_optimal_machine_mapping_internal(
+    MachineMappingContext &context, MachineSpecification const &resources) {
   std::optional<SerialParallelDecomposition> decompn_optional =
       get_serial_parallel_decomposition(context.pcg.raw_graph);
-  
+
   if (!decompn_optional) {
     throw mk_runtime_error("Failed to get serial parallel decomposition");
   }
@@ -258,9 +258,9 @@ MachineMappingResult get_optimal_machine_mapping_internal(
             get_optimal_machine_mapping_internal(
                 context, decompn1, resource_split.first, fixed_machine_views1),
             get_optimal_machine_mapping_internal(context,
-                                        decompn2,
-                                        resource_split.second,
-                                        fixed_machine_views2)));
+                                                 decompn2,
+                                                 resource_split.second,
+                                                 fixed_machine_views2)));
   }
 
   return optimal_result;

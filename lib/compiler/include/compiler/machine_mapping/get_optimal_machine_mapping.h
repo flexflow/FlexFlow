@@ -21,7 +21,7 @@ MachineMappingResult get_optimal_machine_mapping(
 
 MachineMappingResult
     get_optimal_machine_mapping_internal(MachineMappingContext &context,
-                                MachineSpecification const &resources);
+                                         MachineSpecification const &resources);
 
 MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,

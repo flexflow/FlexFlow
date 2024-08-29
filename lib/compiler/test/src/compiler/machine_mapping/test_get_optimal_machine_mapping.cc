@@ -1,7 +1,7 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
+#include "cost_estimator_for_test.h"
 #include "doctest/doctest.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
-#include "cost_estimator_for_test.h"
 
 using namespace FlexFlow;
 
@@ -24,10 +24,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                               },
                               DataType::FLOAT};
 
-      parallel_tensor_guid_t input0 =
-          builder.create_input_tensor(input_shape);
-      parallel_tensor_guid_t dense0 = builder.dense(input0,
-                                                    8);
+      parallel_tensor_guid_t input0 = builder.create_input_tensor(input_shape);
+      parallel_tensor_guid_t dense0 = builder.dense(input0, 8);
 
       return builder.pcg;
     }();
@@ -48,8 +46,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                               },
                               DataType::FLOAT};
 
-      parallel_tensor_guid_t input0 =
-          builder.create_input_tensor(input_shape);
+      parallel_tensor_guid_t input0 = builder.create_input_tensor(input_shape);
       parallel_tensor_guid_t dense0 = builder.dense(input0, 8);
       parallel_tensor_guid_t dense1 = builder.dense(dense0, 8);
       parallel_tensor_guid_t dense2 = builder.dense(dense1, 8);
@@ -115,9 +112,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                                   },
                               },
                               DataType::FLOAT};
-      
-      parallel_tensor_guid_t input0 =
-          builder.create_input_tensor(input_shape);
+
+      parallel_tensor_guid_t input0 = builder.create_input_tensor(input_shape);
       parallel_tensor_guid_t dense0 = builder.dense(input0, 8);
       parallel_tensor_guid_t dense1 = builder.dense(input0, 4);
       parallel_tensor_guid_t dense2 = builder.dense(dense1, 8);
@@ -127,8 +123,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     }();
 
     auto allowed_machine_views1 = [&](ParallelLayerAttrs const &,
-                                        MachineSpecification const &) {
-      // TODO(@Mengdi Wu): Replace it with actual allowed machine views when https://github.com/flexflow/FlexFlow/pull/1458 is merged
+                                      MachineSpecification const &) {
+      // TODO(@Mengdi Wu): Replace it with actual allowed machine views when
+      // https://github.com/flexflow/FlexFlow/pull/1458 is merged
       return std::unordered_set<MachineView>{
           make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
     };
@@ -184,6 +181,5 @@ TEST_SUITE(FF_TEST_SUITE) {
         // CHECK(result.runtime == xx);
       }
     }
-    
   }
 }
