@@ -280,7 +280,7 @@ StreamingCacheInfo &
 // For draft model, we only update the cache when prefill or
 // commit the verified result from target model;
 // For incremental decoding, we update the cache both in prefill and decoding
-void StreamingCacheInfo::update_cache(int len) {
+void StreamingCacheInfo::commit_cache(int len) {
   commit_len += len;
   if (commit_len <= sink_cache_size + window_cache_size) {
     window_back = std::max(0, commit_len - sink_cache_size);

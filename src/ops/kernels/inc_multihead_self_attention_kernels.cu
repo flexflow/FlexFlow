@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 #include "flexflow/batch_config.h"
+#include <cassert>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
 #endif
@@ -358,6 +359,7 @@ __global__ void
   }
 }
 
+// [For the tokens in batch]
 // Apply position embedding for qk.
 // Note that this is only used for tokens in the current batch.
 // For other Key tokens like in streaming cache, we nned other kernel to apply
@@ -390,19 +392,19 @@ void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-__global__ void
-    update_qkv_in_batch_kernel(DT *devQKVProjArray,
-                            half *qTmp_ptr,
-                            half *kvCache_ptr,
-                            BatchConfig::PerTokenInfo const *tokenInfos,
-                            BatchConfig::PerRequestInfo *requestInfos,
-                            int const max_num_pages,
-                            int num_q_heads,
-                            int num_kv_heads,
-                            int head_dim,
-                            int num_new_tokens,
-                            bool streaming_cache,
-                            StreamingCacheInfo const *streaming_cache_infos) {
+__global__ void update_qkv_in_batch_kernel(
+    DT *qkv_proj_array,
+    half *qTmp_ptr,
+    half *kvCache_ptr,
+    BatchConfig::PerTokenInfo const *tokenInfos,
+    BatchConfig::PerRequestInfo const *requestInfos,
+    int const max_num_pages,
+    int num_q_heads,
+    int num_kv_heads,
+    int head_dim,
+    int num_new_tokens,
+    bool streaming_cache,
+    StreamingCacheInfo const *streaming_cache_infos) {
   int const q_hidden_size = num_q_heads * head_dim;
   int const temp_kv_hidden_size = num_q_heads * head_dim; // temporary hard code
   int const kv_hidden_size = num_kv_heads * head_dim;
@@ -423,7 +425,7 @@ __global__ void
 
   size_t from_idx = token_idx * (q_hidden_size + temp_kv_hidden_size * 2);
   qTmp_ptr[token_idx * q_hidden_size + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + offset]);
+      static_cast<half>(qkv_proj_array[from_idx + offset]);
 
   if (offset < kv_hidden_size) {
     size_t to_k_idx = get_k_entry_offset(
@@ -434,39 +436,241 @@ __global__ void
     int const stride = num_q_heads / num_kv_heads;
     int const kv_offset =
         offset / head_dim * stride * head_dim + offset % head_dim;
-    kvCache_ptr[to_k_idx + offset] = static_cast<half>(
-        devQKVProjArray[from_idx + q_hidden_size + kv_offset]);
+    kvCache_ptr[to_k_idx + offset] =
+        static_cast<half>(qkv_proj_array[from_idx + q_hidden_size + kv_offset]);
     kvCache_ptr[to_v_idx + offset] =
-        static_cast<half>(devQKVProjArray[from_idx + q_hidden_size +
-                                          temp_kv_hidden_size + kv_offset]);
+        static_cast<half>(qkv_proj_array[from_idx + q_hidden_size +
+                                         temp_kv_hidden_size + kv_offset]);
   }
 }
 
+// [For the tokens in batch]
+// Update the kv cache, and compact the q array.
+// Source: qkv projeciton array of tokens in the batch.
+// Destination: q&kv ptr took by the attention kernel.
 template <typename DT>
 void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
-                      BatchConfig const *bc,
-                      cudaStream_t stream) {
-  // update the kv cache, compact the q array
+                         BatchConfig const *bc,
+                         cudaStream_t stream) {
   int num_new_tokens = bc->num_active_tokens();
   int parallelism = m->local_hidden_size * num_new_tokens;
   int const max_num_pages =
       round_up_pages(BatchConfig::max_sequence_length() +
                      BatchConfig::max_spec_tree_token_num());
   update_qkv_in_batch_kernel<<<GET_BLOCKS(parallelism),
-                            min(CUDA_NUM_THREADS, parallelism),
-                            0,
-                            stream>>>(static_cast<DT *>(m->devQKVProjArray),
-                                      static_cast<half *>(m->queryTmp),
-                                      static_cast<half *>(m->kvCache),
-                                      m->token_infos,
-                                      m->request_infos,
-                                      max_num_pages,
-                                      m->num_q_heads,
-                                      m->num_kv_heads,
-                                      m->qk_dim,
-                                      num_new_tokens,
-                                      m->streaming_cache,
-                                      m->streaming_cache_infos);
+                               min(CUDA_NUM_THREADS, parallelism),
+                               0,
+                               stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                                         static_cast<half *>(m->queryTmp),
+                                         static_cast<half *>(m->kvCache),
+                                         m->token_infos,
+                                         m->request_infos,
+                                         max_num_pages,
+                                         m->num_q_heads,
+                                         m->num_kv_heads,
+                                         m->qk_dim,
+                                         num_new_tokens,
+                                         m->streaming_cache,
+                                         m->streaming_cache_infos);
+}
+
+__global__ void update_kv_in_streaming_cache_kernel(
+    half *pre_pos_enc_buf,
+    half *kv_cache,
+    BatchConfig::PerRequestInfo const *requestInfos,
+    bool const *request_available,
+    int const max_num_pages_pre_pos_enc_buf,
+    int const max_num_pages_kv_cache,
+    int num_kv_heads,
+    int head_dim,
+    StreamingCacheInfo const *streaming_cache_infos,
+    uint32_t const max_num_requests) {
+  int const kv_hidden_size = num_kv_heads * head_dim;
+  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int token_idx = thread_idx / kv_hidden_size;
+  int const offset = thread_idx % kv_hidden_size;
+  int request_idx = 0;
+  while (token_idx >= 0 && request_idx < max_num_requests) {
+    if (request_available[request_idx]) {
+      token_idx -= streaming_cache_infos[request_idx].commit_len;
+    }
+    request_idx++;
+  }
+  if (token_idx >= 0) {
+    return;
+  }
+  request_idx--;
+  token_idx += streaming_cache_infos[request_idx].commit_len;
+
+  size_t from_k_idx = get_k_entry_offset(request_idx,
+                                         token_idx,
+                                         max_num_pages_pre_pos_enc_buf,
+                                         num_kv_heads,
+                                         head_dim),
+         from_v_idx = get_v_entry_offset(request_idx,
+                                         token_idx,
+                                         max_num_pages_pre_pos_enc_buf,
+                                         num_kv_heads,
+                                         head_dim);
+
+  // to_idx should consider the rolling property of the window cache
+  int to_idx = token_idx;
+  StreamingCacheInfo const &info = streaming_cache_infos[request_idx];
+  if (to_idx >= info.sink_cache_size &&
+      info.commit_len < info.sink_cache_size + info.window_cache_size) {
+    to_idx -= info.sink_cache_size;
+    to_idx = (to_idx + info.window_cache_size - info.window_back) %
+             info.window_cache_size;
+    to_idx += info.sink_cache_size;
+  }
+
+  size_t to_k_idx = get_k_entry_offset(request_idx,
+                                       to_idx,
+                                       max_num_pages_kv_cache,
+                                       num_kv_heads,
+                                       head_dim),
+         to_v_idx = get_v_entry_offset(request_idx,
+                                       to_idx,
+                                       max_num_pages_kv_cache,
+                                       num_kv_heads,
+                                       head_dim);
+
+  kv_cache[to_k_idx + offset] = pre_pos_enc_buf[from_k_idx + offset];
+  kv_cache[to_v_idx + offset] = pre_pos_enc_buf[from_v_idx + offset];
+}
+
+// [For the tokens in streaming cache]
+// Convert the out-of-order cache to in-order relative position.
+// Source: pre-pos-encoding kv values in the streaming cache.
+// Destination: kv ptr took by the attention kernel.
+template <typename DT>
+void update_kv_in_streaming_cache(IncMultiHeadSelfAttentionMeta const *m,
+                                  BatchConfig const *bc,
+                                  cudaStream_t stream) {
+  assert(m->streaming_cache);
+  int const kv_hidden_size = m->num_kv_heads * m->qk_dim;
+  int num_tokens = 0;
+  for (int req_idx = 0; req_idx < BatchConfig::max_requests_per_batch();
+       req_idx++) {
+    if (!bc->request_available[req_idx]) {
+      continue;
+    }
+    num_tokens += bc->streamingCacheInfo[req_idx].commit_len;
+  }
+  int parallelism = kv_hidden_size * num_tokens;
+  int const max_num_pages_pre_pos_enc_buf = round_up_pages(
+      BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
+  int const max_num_pages_kv_cache = round_up_pages(
+      BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth() +
+      BatchConfig::max_spec_tree_token_num());
+
+  update_kv_in_streaming_cache_kernel<<<GET_BLOCKS(parallelism),
+                                        min(CUDA_NUM_THREADS, parallelism),
+                                        0,
+                                        stream>>>(
+      static_cast<half *>(m->streamingPrePosEncBuf),
+      static_cast<half *>(m->kvCache),
+      m->request_infos,
+      m->request_available,
+      max_num_pages_pre_pos_enc_buf,
+      max_num_pages_kv_cache,
+      m->num_kv_heads,
+      m->qk_dim,
+      m->streaming_cache_infos,
+      bc->max_requests_per_batch());
+}
+
+template <typename DT>
+__global__ void
+    commit_kv_kernel(DT const *qkv_proj_array,
+                     half *pre_pos_enc_buf,
+                     BatchConfig::PerTokenInfo const *tokenInfos,
+                     BatchConfig::PerRequestInfo const *requestInfos,
+                     int const max_num_pages,
+                     int num_q_heads,
+                     int num_kv_heads,
+                     int head_dim,
+                     StreamingCacheInfo const *streaming_cache_infos,
+                     int num_new_tokens) {
+  int const q_hidden_size = num_q_heads * head_dim;
+  int const temp_kv_hidden_size = num_q_heads * head_dim; // temporary hard code
+  int const kv_hidden_size = num_kv_heads * head_dim;
+  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int const token_idx = thread_idx / kv_hidden_size;
+  int const offset = thread_idx % kv_hidden_size;
+  if (token_idx >= num_new_tokens) {
+    return;
+  }
+  int const request_idx = tokenInfos[token_idx].request_index;
+
+  StreamingCacheInfo const &info = streaming_cache_infos[request_idx];
+  int to_idx = tokenInfos[token_idx].abs_index_in_request -
+               requestInfos[request_idx].first_token_index_in_request +
+               info.commit_len;
+  // cases that get over the boundary:
+  // 1. commit_len < sink_cache_size: commit to sink, window, window_back is
+  // after commit_len.
+  // 2. sink_cache_size <= commit_len < sink_cache_size + window_cache_size:
+  // commit to window, window_back + sink_cache_size = commit_len, pointing to
+  // the same position.
+  // 3. commit_len >= sink_cache_size + window_cache_size: commit to window,
+  // window is full before this commit, window_back is pointing to the real
+  // position.
+  if (to_idx >= info.sink_cache_size + info.window_cache_size) {
+    to_idx = tokenInfos[token_idx].abs_index_in_request -
+             requestInfos[request_idx].first_token_index_in_request +
+             info.window_back;
+    if (info.commit_len < info.sink_cache_size) {
+      // For case 1, compensating for sink offset, because window_back is
+      // someway back from commit_len.
+      to_idx -= info.sink_cache_size - info.commit_len;
+    }
+    to_idx = info.sink_cache_size + to_idx % info.window_cache_size;
+  }
+  // TODO: For now don't consider the case that the commit tokens roll over the
+  // for more than once. In this case, we should only count the last tokens in
+  // the same window position.
+
+  size_t from_idx = token_idx * (q_hidden_size + temp_kv_hidden_size * 2);
+  size_t to_k_idx = get_k_entry_offset(
+             request_idx, to_idx, max_num_pages, num_kv_heads, head_dim),
+         to_v_idx = get_v_entry_offset(
+             request_idx, to_idx, max_num_pages, num_kv_heads, head_dim);
+
+  pre_pos_enc_buf[to_k_idx + offset] =
+      static_cast<half>(qkv_proj_array[from_idx + q_hidden_size + offset]);
+  pre_pos_enc_buf[to_v_idx + offset] = static_cast<half>(
+      qkv_proj_array[from_idx + q_hidden_size + temp_kv_hidden_size + offset]);
+}
+
+// [For the tokens in batch]
+// Commit the kv values to the streaming cache.
+// Source: qkv projeciton array of tokens in the batch.
+// Destination: pre-pos-encoding kv values in the streaming cache.
+template <typename DT>
+void commit_kv(IncMultiHeadSelfAttentionMeta const *m,
+               BatchConfig const *bc,
+               cudaStream_t stream) {
+  assert(m->streaming_cache);
+  int const kv_hidden_size = m->num_kv_heads * m->qk_dim;
+  int const num_new_tokens = bc->num_active_tokens();
+  int parallelism = kv_hidden_size * num_new_tokens;
+  int const max_num_pages = round_up_pages(BatchConfig::MAX_STREAMING_POS -
+                                           BatchConfig::get_max_tree_depth());
+
+  commit_kv_kernel<<<GET_BLOCKS(parallelism),
+                     min(CUDA_NUM_THREADS, parallelism),
+                     0,
+                     stream>>>(static_cast<DT *>(m->devQKVProjArray),
+                               static_cast<half *>(m->streamingPrePosEncBuf),
+                               m->token_infos,
+                               m->request_infos,
+                               max_num_pages,
+                               m->num_q_heads,
+                               m->num_kv_heads,
+                               m->qk_dim,
+                               m->streaming_cache_infos,
+                               num_new_tokens);
 }
 
 template <typename DT>
@@ -503,7 +707,8 @@ void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
 #if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
+  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best
+  // performance
   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
 #else
   cudaDataType_t compute_type = cublas_data_type;
@@ -678,6 +883,28 @@ template void Kernels::IncMultiHeadAttention::update_qkv_in_batch<float>(
     cudaStream_t stream);
 
 template void Kernels::IncMultiHeadAttention::update_qkv_in_batch<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::update_kv_in_streaming_cache<half>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::update_kv_in_streaming_cache<float>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::commit_kv<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::commit_kv<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     cudaStream_t stream);

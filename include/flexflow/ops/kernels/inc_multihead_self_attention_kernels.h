@@ -62,8 +62,18 @@ void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
-                      BatchConfig const *bc,
-                      cudaStream_t stream);
+                         BatchConfig const *bc,
+                         cudaStream_t stream);
+
+template <typename DT>
+void update_kv_in_streaming_cache(IncMultiHeadSelfAttentionMeta const *m,
+                                  BatchConfig const *bc,
+                                  cudaStream_t stream);
+
+template <typename DT>
+void commit_kv(IncMultiHeadSelfAttentionMeta const *m,
+               BatchConfig const *bc,
+               cudaStream_t stream);
 
 template <typename DT>
 void produce_output(IncMultiHeadSelfAttentionMeta const *m,

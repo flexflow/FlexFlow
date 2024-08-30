@@ -45,7 +45,7 @@ public:
 
   StreamingCacheInfo &operator=(StreamingCacheInfo const &other);
 
-  void update_cache(int len);
+  void commit_cache(int len);
   void reset_cache();
 
 public:
