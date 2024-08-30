@@ -511,6 +511,7 @@ void forward_kernel(LinearMeta const *m,
                          out_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
   // use_bias = True
   if (bias_ptr != NULL) {
     // fuse bias and relu
@@ -630,6 +631,7 @@ void peft_bwd_kernel(LinearMeta const *m,
                            in_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      // printf("%s: input_grad has shape %d, %d\n", m->op_name, in_dim, num_peft_tokens);
   }
 }
 

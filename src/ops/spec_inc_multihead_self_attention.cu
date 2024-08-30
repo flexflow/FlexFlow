@@ -698,20 +698,30 @@ template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       BeamSearchBatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
+                      DT const *qkv_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
-  // phase 1: Implement kernel to compute KQV for input tokens
 
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  cudaMemcpyAsync(m->devQKVProjArray,
+                  qkv_ptr,
+                  qkv_proj_size * sizeof(DT), // is this right, do we need layers etc here
+                  cudaMemcpyDeviceToDevice,
+                  stream);
+  // phase 1: Implement kernel to compute KQV for input tokens
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn first
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     input_ptr,
-                     weight_ptr,
+                    //  input_ptr,
+                    //  weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
+                    //  bias_ptr,
                      stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
@@ -728,8 +738,13 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
 
-  compute_o_prod_bias(
-      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+  // compute_o_prod_bias(
+  //     m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+  cudaMemcpyAsync(output_ptr,
+                  m->attn_heads,
+                  m->oProjSize * num_tokens * sizeof(DT),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 } // namespace SpecIncMultiHeadSelfAttention
@@ -741,9 +756,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     BeamSearchBatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
-    GenericTensorAccessorR const &weight,
-    GenericTensorAccessorW const &output,
-    GenericTensorAccessorR const &bias) {
+    GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   bool use_bias = *m->qkv_bias || *m->final_bias;
@@ -755,35 +768,28 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  if (use_bias) {
-    assert(input.data_type == bias.data_type);
-  }
 
   if (input.data_type == DT_HALF) {
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
+    half const *bias_ptr = static_cast<half const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
         m,
         bc,
         shard_id,
         input.get_half_ptr(),
-        weight.get_half_ptr(),
+        static_cast<half const *>(nullptr),
         output.get_half_ptr(),
-        bias_ptr,
+        static_cast<half const *>(nullptr),
         stream);
   } else if (input.data_type == DT_FLOAT) {
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
         m,
         bc,
         shard_id,
         input.get_float_ptr(),
-        weight.get_float_ptr(),
+        static_cast<float const *>(nullptr),
         output.get_float_ptr(),
-        bias_ptr,
+        static_cast<float const *>(nullptr),
         stream);
   } else {
     assert(false && "Unspported data type");

@@ -114,10 +114,7 @@ public:
                                        TreeVerifyBatchConfig const *bc,
                                        int shard_id,
                                        GenericTensorAccessorR const &input,
-                                       GenericTensorAccessorR const &weight,
-                                       GenericTensorAccessorW const &output,
-                                       GenericTensorAccessorR const &bias);
-
+                                       GenericTensorAccessorW const &output);
   Params get_params() const;
 
 public:
