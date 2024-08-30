@@ -779,6 +779,13 @@ void Linear::peft_bwd_task(Task const *task,
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
+    printf("%s: in_dim = %d, out_dim = %d, num_infr_tokens = %d, num_peft_tokens = %d, volume = %d\n",
+           m->op_name,
+           in_dim,
+           out_dim,
+           num_infr_tokens,
+           num_peft_tokens,
+           input_grad.domain.get_volume());
     Linear::save_inference_tensors_to_file(
         m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false);
   }

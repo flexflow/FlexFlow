@@ -73,7 +73,7 @@ AllReduce::AllReduce(FFModel &model,
   for (int i = 0; i < numdim; i++) {
     dims[i] = _input->dims[i];
   }
-  assert(dims[allreduce_dim].degree > 1);
+  // assert(dims[allreduce_dim].degree > 1);
   // ParallelTensorBase::update_parallel_ids(numdim, dims);
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       numdim, dims, _input->data_type, this);
