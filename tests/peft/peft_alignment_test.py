@@ -247,18 +247,16 @@ class LllamaAlignmentTest(AlignmentTest):
             compare(hf_tensor, ff_tensor, label=f"Input layernorm {i} output")
 
             # Attention
-            # this block of code is commented because it's failing assert. Remaining code passes so this
-            # is likely a misaligning between HF and FF's naming of the tensors.
-            # hf_tensor_name = f"layers.{i}.self_attn.o_proj"
-            # ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
-            # # the raw attention result, w/o o_proj. This is the output of senf_attn of FF and the input of o_proj in HF
-            # output_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
-            # hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-            # # ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
-            # # TP for self-attn partitions the attention heads across TP workers
-            # ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
-            # print("comparing attention tensor: ", hf_tensor_name, " and ", ff_tensor_name)
-            # compare(hf_tensor, ff_tensor, label=f"Attention {i} output")
+            hf_tensor_name = f"layers.{i}.self_attn.o_proj"
+            ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+            # the raw attention result, w/o o_proj. This is the output of senf_attn of FF and the input of o_proj in HF
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+            # ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            # TP for self-attn partitions the attention heads across TP workers
+            ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.PARTITION)
+            print("comparing attention tensor: ", hf_tensor_name, " and ", ff_tensor_name)
+            compare(hf_tensor, ff_tensor, label=f"Attention {i} output")
             
             # Post-attention layernorm
             hf_tensor_name = f"layers.{i}.post_attention_layernorm"
@@ -466,17 +464,17 @@ class LllamaAlignmentTest(AlignmentTest):
         ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, TPType.TO_REDUCE)
         compare(hf_tensor, ff_tensor, label="LM head gradient input")
 
-        # # Norm
-        # hf_tensor_name = "norm"
-        # ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
-        # output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
-        # input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
-        # hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
-        # ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
-        # compare(hf_tensor, ff_tensor, label="Norm gradient output")
-        # hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
-        # ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
-        # compare(hf_tensor, ff_tensor, label="Norm gradient input")
+        # Norm
+        hf_tensor_name = "norm"
+        ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+        output_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+        hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
+        compare(hf_tensor, ff_tensor, label="Norm gradient output")
+        hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+        ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape)
+        compare(hf_tensor, ff_tensor, label="Norm gradient input")
 
         # Transformers blocks
         for i in range(self.num_layers-1, -1, -1):
@@ -594,34 +592,34 @@ class LllamaAlignmentTest(AlignmentTest):
             ff_tensor = get_ff_tensor(ff_tensor_name, q_proj_comparison, augmented_hf_tensor_shape, tp_type=TPType.PARTITION, shard_axis=2)[:,:,:,0]
             compare(hf_tensor, ff_tensor, label=f"Q-proj {i} gradient input")
             
-            # # FF Attn input with HF layernorm out
-            # hf_tensor_name = f"layers.{i}.input_layernorm"
-            # ff_tensor_name = f"layers.{i}.layers.{i}.self_attn.qkv_proj"
-            # input_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
-            # hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
-            # ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
-            # compare(hf_tensor, ff_tensor, label=f"Attn input {i} gradient input")
+            # FF Attn input with HF layernorm out
+            hf_tensor_name = f"layers.{i}.input_layernorm"
+            ff_tensor_name = f"layers.{i}.layers.{i}.self_attn.qkv_proj"
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="output_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+            ff_tensor = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
+            compare(hf_tensor, ff_tensor, label=f"Attn input {i} gradient input")
 
-            # if i > 0:
-            #     # FF attn input with FF layernorm out 1
-            #     attn_input = ff_tensor.clone()
-            #     ff_tensor_name = f"layers.{i}.layers.{i}.input_layernorm"
-            #     _output_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
-            #     input_layernorm_out1 = get_ff_tensor(ff_tensor_name, _output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
-            #     torch.testing.assert_close(attn_input, input_layernorm_out1, rtol=1.3e-6, atol=1e-5)
+            if i > 0:
+                # FF attn input with FF layernorm out 1
+                attn_input = ff_tensor.clone()
+                ff_tensor_name = f"layers.{i}.layers.{i}.input_layernorm"
+                _output_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="output_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
+                input_layernorm_out1 = get_ff_tensor(ff_tensor_name, _output_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
+                torch.testing.assert_close(attn_input, input_layernorm_out1, rtol=1.3e-6, atol=1e-5)
 
-            #     # Input layernorm
+                # Input layernorm
                 
-            #     hf_tensor_name = f"layers.{i}.input_layernorm"
-            #     ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
-            #     input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
-            #     ff_in1_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
-            #     input_layernorm0 = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
-            #     input_layernorm1 = get_ff_tensor(ff_tensor_name, ff_in1_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
-            #     torch.testing.assert_close(input_layernorm0, input_layernorm1, rtol=1.3e-6, atol=1e-5)
-            #     hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
-            #     # if i > 1:
-            #     #     compare(hf_tensor, input_layernorm1, label=f"Input layernorm {i} gradient input")
+                hf_tensor_name = f"layers.{i}.input_layernorm"
+                ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name)
+                input_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=0)
+                ff_in1_comparison = TensorComparisonIdxs(hf_tensor_type="input_gradient", ff_tensor_type="input_gradient", hf_tensor_idx=0, ff_tensor_idx=1)
+                input_layernorm0 = get_ff_tensor(ff_tensor_name, input_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
+                input_layernorm1 = get_ff_tensor(ff_tensor_name, ff_in1_comparison, hf_tensor.shape, tp_type=TPType.REPLICATE)
+                torch.testing.assert_close(input_layernorm0, input_layernorm1, rtol=1.3e-6, atol=1e-5)
+                hf_tensor = get_hf_tensor(hf_tensor_name, input_comparison)
+                # if i > 1:
+                #     compare(hf_tensor, input_layernorm1, label=f"Input layernorm {i} gradient input")
 
     def check_step(self, step_idx=0, learning_rate=0.001):
         hf_weight_folder = os.path.join(hf_path, "weights", f"step_{step_idx}")
