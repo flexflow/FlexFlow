@@ -110,20 +110,13 @@ struct SharedTokenTreeNodePtrGreater {
 class TokenTree {
 public:
   std::list<std::list<shared_ptr<TokenTreeNode>>> tree_layers = {};
-  // The numebr of tokens in the tree that are not pruned
-  int tree_size = 0;
-  // The numebr of tokens in the tree including the pruned ones
-
   void add_layer() {
     tree_layers.emplace_back();
   }
 
   void clear() {
     tree_layers.clear();
-    tree_size = 0;
   }
-
-  TokenTree() : tree_size(0) {}
 };
 
 std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree);
