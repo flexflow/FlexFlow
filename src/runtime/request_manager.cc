@@ -773,6 +773,14 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     // Indicates that the LLM prefilling phase finishes
     prefill_request->tokens.push_back(
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << result.token_ids[prefill_request->num_tokens_in_batch - 1]
+              << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    std::cout << std::endl;
     prefill_completed = true;
 
     if (prefill_request->tokens.back() == eos_token_id) {
@@ -1327,7 +1335,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       }
       layer_index++;
     }
-    assert(token_tree_index == token_tree.tree_size);
     new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;
 
     request.first_token_offset_in_batch = new_bc.num_tokens - token_tree_index;
@@ -1484,6 +1491,8 @@ bool RequestManager::update_ssm_inference_results(
 
   // Stop conditions
   if (current_ssm_step == get_max_tree_depth()) {
+    // Prune the token tree at the last step
+    prune_token_tree();
     // Update profiling statistics before returning
     profiling.ssm_step_times.push_back(
         (Realm::Clock::current_time_in_microseconds() -
@@ -1623,9 +1632,6 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
     parent_pos_2_abs_index.clear();
     parent_pos_2_abs_index.swap(current_layer_abs_index);
   }
-
-  // A sanity check
-  assert(abs_index_in_tree == token_tree.tree_size);
 
   // Maintain other fields of llm_bitmask
   llm_bitmask.non_tree_cache_size = request.causal_mask.non_tree_cache_size;
@@ -2365,7 +2371,6 @@ void RequestManager::add_root_to_spec_token_tree(
     node_ptr->gumbel = true;
   }
   speculative_token_tree.tree_layers.front().push_back(node_ptr);
-  speculative_token_tree.tree_size++;
   request.token_tree_nodes_pq.push(node_ptr);
 }
 
@@ -2495,13 +2500,8 @@ void RequestManager::add_tokens_to_spec_token_tree(
     for (auto token_it = tokens.cbegin(); token_it != tokens.cend();
          token_it++) {
       spec_token_tree.tree_layers.back().push_back((*token_it));
-      spec_token_tree.tree_size++;
       request.token_tree_nodes_pq.push((*token_it));
     }
-
-    assert(spec_token_tree.tree_size <=
-               get_max_tree_width() * get_max_tree_depth() + 1 &&
-           "The size of the token tree should not exceed the maximum size.");
   }
 }
 
