@@ -414,45 +414,50 @@ void compute_attention_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       C = static_cast<DT *>(output_ptr) +
           tokens_previous_requests * m->oProjSize;
 
-      checkCUDA(hipblasGemmEx(m->handle.blas,
-                              HIPBLAS_OP_T,
-                              HIPBLAS_OP_T,
-                              m_,
-                              n,
-                              k,
-                              &alpha,
-                              A,
-                              hipblas_data_type,
-                              lda,
-                              B,
-                              hipblas_data_type,
-                              ldb,
-                              &beta,
-                              C,
-                              hipblas_data_type,
-                              ldc,
-                              compute_type,
-                              HIPBLAS_GEMM_DEFAULT));
+      // checkCUDA(hipblasGemmEx(m->handle.blas,
+      //                         HIPBLAS_OP_T,
+      //                         HIPBLAS_OP_T,
+      //                         m_,
+      //                         n,
+      //                         k,
+      //                         &alpha,
+      //                         A,
+      //                         hipblas_data_type,
+      //                         lda,
+      //                         B,
+      //                         hipblas_data_type,
+      //                         ldb,
+      //                         &beta,
+      //                         C,
+      //                         hipblas_data_type,
+      //                         ldc,
+      //                         compute_type,
+      //                         HIPBLAS_GEMM_DEFAULT));
       tokens_previous_requests += num_new_tokens;
       tokens_prev_requests_squares += num_new_tokens * total_tokens;
     }
   }
-  if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * num_tokens;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_w<DT>),
-                       GET_BLOCKS(parallelism),
-                       min(CUDA_NUM_THREADS, parallelism),
-                       0,
-                       stream,
-                       output_ptr,
-                       bias_ptr,
-                       num_tokens,
-                       qkv_weight_size,
-                       m->oProjSize);
-  }
+  // if (*m->final_bias && shard_id == 0) {
+  //   int parallelism = m->oProjSize * num_tokens;
+  //   int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
+  //                         m->kProjSize * m->global_num_q_heads +
+  //                         m->vProjSize * m->global_num_q_heads;
+  //   hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_w<DT>),
+  //                      GET_BLOCKS(parallelism),
+  //                      min(CUDA_NUM_THREADS, parallelism),
+  //                      0,
+  //                      stream,
+  //                      output_ptr,
+  //                      bias_ptr,
+  //                      num_tokens,
+  //                      qkv_weight_size,
+  //                      m->oProjSize);
+  // }
+  cudaMemcpyAsync(output_ptr,
+                  m->attn_heads,
+                  m->oProjSize * num_tokens * sizeof(DT),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 
   assert(tokens_previous_requests == num_tokens);
 }
@@ -461,7 +466,7 @@ template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       BeamSearchBatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
+                      DT const *qkv_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
                       DT const *bias_ptr,
@@ -494,15 +499,26 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
           sizeof(BeamSearchBatchConfig::BeamSearchPerRequestInfo),
       hipMemcpyHostToDevice,
       stream));
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  cudaMemcpyAsync(m->devQKVProjArray,
+                  qkv_ptr,
+                  qkv_proj_size * sizeof(DT), // is this right, do we need layers etc here
+                  cudaMemcpyDeviceToDevice,
+                  stream);
+
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn first
+  // compute_qkv_kernel(m,
+  //                    bc,
+  //                    shard_id,
+  //                   //  input_ptr,
+  //                    weight_ptr,
+  //                    static_cast<DT *>(m->devQKVProjArray),
+  //                    bias_ptr,
+  //                    stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 

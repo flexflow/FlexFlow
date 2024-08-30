@@ -873,7 +873,7 @@ template <typename DT>
 void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       TreeVerifyBatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
+                      DT const *qkv_ptr,
                       DT const *weight_ptr,
                       DT *output_ptr,
                       DT const *bias_ptr,
@@ -914,14 +914,25 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
         m->bias_ptr, bias_ptr, m->biasSize, cudaMemcpyHostToDevice, stream);
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  cudaMemcpyAsync(m->devQKVProjArray,
+                  qkv_ptr,
+                  qkv_proj_size * sizeof(DT), // is this right, do we need layers etc here
+                  cudaMemcpyDeviceToDevice,
+                  stream);
+
   // phase 1: Implement kernel to compute KQV for input tokens
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn first
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     input_ptr,
-                     weight_ptr,
+                    //  input_ptr,
+                    //  weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
+                    //  bias_ptr,
                      stream);
 
   // phase 2: No need to update key/val cache
@@ -933,14 +944,20 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
-  compute_o_prod_bias(m,
-                      bc,
-                      shard_id,
-                      output_ptr,
-                      weight_ptr,
-                      bias_ptr,
-                      processed_tokens_in_batch,
-                      stream);
+  // compute_o_prod_bias(m,
+  //                     bc,
+  //                     shard_id,
+  //                     output_ptr,
+  //                     weight_ptr,
+  //                     bias_ptr,
+  //                     processed_tokens_in_batch,
+  //                     stream);
+  int num_tokens = bc->num_active_tokens();
+  cudaMemcpyAsync(output_ptr,
+                  m->attn_heads,
+                  m->oProjSize * num_tokens * sizeof(DT),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 } // namespace TreeIncMultiHeadAttention
@@ -952,9 +969,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeVerifyBatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
-    GenericTensorAccessorR const &weight,
-    GenericTensorAccessorW const &output,
-    GenericTensorAccessorR const &bias) {
+    GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   bool use_bias = *m->qkv_bias || *m->final_bias;
@@ -968,41 +983,26 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  if (use_bias) {
-    assert(input.data_type == bias.data_type);
-  }
 
   if (input.data_type == DT_HALF) {
-    if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
-    }
-
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(
         m,
         bc,
         shard_id,
         input.get_half_ptr(),
-        m->offload ? static_cast<half *>(m->weight_ptr) : weight.get_half_ptr(),
+        (half*)nullptr,
         output.get_half_ptr(),
-        bias_ptr,
+        (half*)nullptr,
         stream);
   } else if (input.data_type == DT_FLOAT) {
-    if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
-    }
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(
         m,
         bc,
         shard_id,
         input.get_float_ptr(),
-        m->offload ? static_cast<float *>(m->weight_ptr)
-                   : weight.get_float_ptr(),
+        (float*)nullptr,
         output.get_float_ptr(),
-        bias_ptr,
+        (float*)nullptr,
         stream);
   } else {
     assert(false && "Unspported data type");
