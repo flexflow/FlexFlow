@@ -6,35 +6,32 @@
 
 namespace FlexFlow {
 
-class Transformer {
-public:
-  Transformer(TransformerConfig const &config)
-      : config_(config), kdim_(config_.dim_feedforward / config_.num_heads),
-        vdim_(config_.dim_feedforward / config_.num_heads) {
-    init_model();
-  }
+// Helper functions to construct the Transformer model
+tensor_guid_t create_transformer_feedforward_network(TransformerConfig const &,
+                                                     ComputationGraphBuilder &,
+                                                     tensor_guid_t const &);
+tensor_guid_t create_transformer_encoder_layer(TransformerConfig const &,
+                                               ComputationGraphBuilder &,
+                                               tensor_guid_t const &);
+tensor_guid_t create_transformer_decoder_layer(TransformerConfig const &,
+                                               ComputationGraphBuilder &,
+                                               tensor_guid_t const &,
+                                               tensor_guid_t const &);
 
-  [[nodiscard]] ComputationGraph get_computation_graph() const;
+tensor_guid_t create_transformer_encoder(TransformerConfig const &,
+                                         ComputationGraphBuilder &,
+                                         tensor_guid_t const &);
+tensor_guid_t create_transformer_decoder(TransformerConfig const &,
+                                         ComputationGraphBuilder &,
+                                         tensor_guid_t const &,
+                                         tensor_guid_t const &);
 
-private:
-  void init_model();
-
-  tensor_guid_t create_feedforward_network(tensor_guid_t const &);
-
-  tensor_guid_t create_encoder_layer(tensor_guid_t const &);
-  tensor_guid_t create_encoder(tensor_guid_t const &);
-
-  tensor_guid_t create_decoder_layer(tensor_guid_t const &,
-                                     tensor_guid_t const &);
-  tensor_guid_t create_decoder(tensor_guid_t const &, tensor_guid_t const &);
-
-private:
-  TransformerConfig config_;
-  ComputationGraphBuilder cgb_;
-  int kdim_;
-  int vdim_;
-};
-
+/**
+ * @brief Get the Transformer computation graph (PCG).
+ *
+ * @param TransformerConfig The config of Transformer model.
+ * @return ComputationGraph The PCG of a Transformer model.
+ */
 ComputationGraph get_transformer_computation_graph(TransformerConfig const &);
 
 } // namespace FlexFlow
