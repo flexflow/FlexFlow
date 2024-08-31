@@ -299,7 +299,6 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
 template <typename DT>
 __global__ void
     apply_pos_encoding_kernel(DT *input_ptr,
-                              cuFloatComplex *complex_input,
                               BatchConfig::PerRequestInfo const *requestInfos,
                               BatchConfig::PerTokenInfo const *tokenInfos,
                               int qk_dim,
@@ -323,8 +322,6 @@ __global__ void
                           hidden_size * (q_tensor ? 0 : 1);
     int complex_part_index = real_part_index + (proj_size / 2);
 
-    // complex_input[i] = {input_ptr[real_part_index],
-    //                     input_ptr[complex_part_index]};
     cuFloatComplex cii = {input_ptr[real_part_index],
                           input_ptr[complex_part_index]};
 
@@ -334,7 +331,6 @@ __global__ void
 
     // get position of token
 
-    // size_t pos = id_map[token_idx].token_position;
     size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
     // relative position should be calculated based on current streaming size
@@ -344,14 +340,8 @@ __global__ void
              requestInfos[req_idx].first_token_index_in_request;
     }
 
-    // float before_real = complex_input[i].x, before_complex =
-    int pos_i = real_i % (proj_size / 2);
-    float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
+    float freq = pos * (1.0 / pow(10000.0, (float)2 * idx / proj_size));
     cuFloatComplex complex_pos = {cos(freq), sin(freq)};
-
-    // complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-    // input_ptr[real_part_index] = complex_input[i].x;
-    // input_ptr[complex_part_index] = complex_input[i].y;
 
     cii = cuCmulf(cii, complex_pos);
     input_ptr[real_part_index] = cii.x;
@@ -380,7 +370,6 @@ void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
                               min(CUDA_NUM_THREADS, parallelism),
                               0,
                               stream>>>(output_ptr,
-                                        m->complex_input,
                                         m->request_infos,
                                         m->token_infos,
                                         m->qk_dim,
@@ -389,6 +378,90 @@ void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
                                         m->local_hidden_size,
                                         m->streaming_cache,
                                         m->streaming_cache_infos);
+}
+
+__global__ void apply_pos_encoding_to_streaming_proj_kernel(
+    half *kv_cache,
+    BatchConfig::PerRequestInfo const *requestInfos,
+    bool const *request_available,
+    int const max_num_pages,
+    int num_kv_heads,
+    int head_dim,
+    StreamingCacheInfo const *streaming_cache_infos,
+    uint32_t const max_num_requests) {
+  int const kv_hidden_size = num_kv_heads * head_dim;
+  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
+  int token_idx = thread_idx / (kv_hidden_size / 2);
+  // Each complex is consist of (i, i + head_dim / 2) wuthin the same head.
+  int const head_idx = (thread_idx % (kv_hidden_size / 2)) / (head_dim / 2);
+  int const offset_in_head = thread_idx % (head_dim / 2);
+  // Get the corresponding request index and token index in the request.
+  int request_idx = 0;
+  while (token_idx >= 0 && request_idx < max_num_requests) {
+    if (request_available[request_idx]) {
+      token_idx -= streaming_cache_infos[request_idx].commit_len;
+    }
+    request_idx++;
+  }
+  if (token_idx >= 0) {
+    return;
+  }
+  request_idx--;
+  token_idx += streaming_cache_infos[request_idx].commit_len;
+
+  // Get the real and complex part index for the current complex.
+  int const real_part_idx =
+      get_k_entry_offset(
+          request_idx, token_idx, max_num_pages, num_kv_heads, head_dim) +
+      head_idx * head_dim + offset_in_head;
+  int const complex_part_idx = real_part_idx + head_dim / 2;
+
+  // Apply the rotary position encoding.
+  cuFloatComplex cii = {kv_cache[real_part_idx], kv_cache[complex_part_idx]};
+  size_t pos = token_idx;
+  float freq = pos * (1.0 / pow(10000.0, (float)2 * offset_in_head / head_dim));
+  cuFloatComplex complex_pos = {cos(freq), sin(freq)};
+  cii = cuCmulf(cii, complex_pos);
+  kv_cache[real_part_idx] = cii.x;
+  kv_cache[complex_part_idx] = cii.y;
+}
+
+// [For the tokens in streaming cache]
+// Apply position embedding for k projection in the streaming cache.
+// Note that before the position encoding, the projection is moved *in order* to
+// the kv memory took by the attention kernel. So our operation is applied where
+// kvCache points to.
+template <typename DT>
+void apply_pos_encoding_to_streaming_proj(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    cudaStream_t stream) {
+  assert(m->streaming_cache);
+  int const kv_hidden_size = m->num_kv_heads * m->qk_dim;
+  int num_tokens = 0;
+  for (int req_idx = 0; req_idx < BatchConfig::max_requests_per_batch();
+       req_idx++) {
+    if (!bc->request_available[req_idx]) {
+      continue;
+    }
+    num_tokens += bc->streamingCacheInfo[req_idx].commit_len;
+  }
+  int parallelism = num_tokens * kv_hidden_size / 2;
+  int const max_num_pages = round_up_pages(
+      BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth() +
+      BatchConfig::max_spec_tree_token_num());
+  apply_pos_encoding_to_streaming_proj_kernel<<<GET_BLOCKS(parallelism),
+                                               min(CUDA_NUM_THREADS, parallelism),
+                                                0,
+                                                stream>>>(
+      static_cast<half *>(m->kvCache),
+      m->request_infos,
+      m->request_available,
+      max_num_pages,
+      m->num_kv_heads,
+      m->qk_dim,
+      m->streaming_cache_infos,
+      bc->max_requests_per_batch());
 }
 
 template <typename DT>
@@ -516,8 +589,8 @@ __global__ void update_kv_in_streaming_cache_kernel(
   // to_idx should consider the rolling property of the window cache
   int to_idx = token_idx;
   StreamingCacheInfo const &info = streaming_cache_infos[request_idx];
-  if (to_idx >= info.sink_cache_size &&
-      info.commit_len < info.sink_cache_size + info.window_cache_size) {
+  if (info.commit_len >= info.sink_cache_size + info.window_cache_size &&
+      to_idx >= info.sink_cache_size) {
     to_idx -= info.sink_cache_size;
     to_idx = (to_idx + info.window_cache_size - info.window_back) %
              info.window_cache_size;
@@ -876,6 +949,18 @@ template void Kernels::IncMultiHeadAttention::apply_pos_encoding<half>(
     BatchConfig const *bc,
     half *output_ptr,
     cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::apply_pos_encoding_to_streaming_proj<float>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        cudaStream_t stream);
+
+template void
+    Kernels::IncMultiHeadAttention::apply_pos_encoding_to_streaming_proj<half>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        cudaStream_t stream);
 
 template void Kernels::IncMultiHeadAttention::update_qkv_in_batch<float>(
     IncMultiHeadSelfAttentionMeta const *m,
