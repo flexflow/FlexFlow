@@ -62,11 +62,11 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(
     case OperatorType::DROPOUT:
     case OperatorType::LINEAR:
       return PCGOperatorAttrs{LinearAttrs{
-          acc.get<int>(OperatorAttributeKey::OUT_CHANNELS),
-          acc.get<bool>(OperatorAttributeKey::USE_BIAS),
-          acc.get<DataType>(OperatorAttributeKey::DATA_TYPE),
-          acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION),
-          acc.get<std::optional<RegularizerAttrs>>(
+          /*out_channels=*/acc.get<int>(OperatorAttributeKey::OUT_CHANNELS),
+          /*use_bias=*/acc.get<bool>(OperatorAttributeKey::USE_BIAS),
+          /*data_type=*/acc.get<DataType>(OperatorAttributeKey::DATA_TYPE),
+          /*activation=*/acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION),
+          /*regularizer=*/acc.get<std::optional<RegularizerAttrs>>(
               OperatorAttributeKey::REGULARIZER),
       }};
     case OperatorType::BATCHMATMUL:
