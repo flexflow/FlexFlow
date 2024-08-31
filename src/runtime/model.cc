@@ -1616,41 +1616,47 @@ FFModel::FFModel(FFConfig &_config, bool cpu_offload)
   model_id = model_counter++;
 }
 
+#ifdef FF_USE_NCCL
+void FFModel::finish_nccl_comms() {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
+  for (auto const &comm : view_hash_to_nccl_comms) {
+    // Find the machine view that has the hash
+    MachineView view;
+    for (size_t l = 0; l < operators.size(); l++) {
+      view = operators[l]->outputs[0]->machine_view;
+      if (view.hash() == comm.first) {
+        break;
+      }
+    }
+    assert(view.hash() == comm.first && "Cannot find the machine view");
+    IndexSpace task_is = get_or_create_task_is(view);
+    Domain domain = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = 0;
+    for (Domain::DomainPointIterator it(domain); it; it++, idx++) {
+      argmap.set_point(*it,
+                       TaskArgument(&comm.second[idx], sizeof(ncclComm_t)));
+    }
+    IndexLauncher index_launcher(NCCL_FINISH_COMMS_TASK_ID,
+                                 task_is,
+                                 TaskArgument(nullptr, 0),
+                                 argmap,
+                                 Predicate::TRUE_PRED,
+                                 false /*must*/,
+                                 0 /*mapper_id*/,
+                                 comm.first);
+    FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
+    fm.wait_all_results();
+  }
+}
+#endif
+
 FFModel::~FFModel() {
   // Destroy nccl communication groups
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {
-    Context ctx = config.lg_ctx;
-    Runtime *runtime = config.lg_hlr;
-    for (auto const &comm : view_hash_to_nccl_comms) {
-      // Find the machine view that has the hash
-      MachineView view;
-      for (size_t l = 0; l < operators.size(); l++) {
-        view = operators[l]->outputs[0]->machine_view;
-        if (view.hash() == comm.first) {
-          break;
-        }
-      }
-      assert(view.hash() == comm.first && "Cannot find the machine view");
-      IndexSpace task_is = get_or_create_task_is(view);
-      Domain domain = runtime->get_index_space_domain(ctx, task_is);
-      ArgumentMap argmap;
-      int idx = 0;
-      for (Domain::DomainPointIterator it(domain); it; it++, idx++) {
-        argmap.set_point(*it,
-                         TaskArgument(&comm.second[idx], sizeof(ncclComm_t)));
-      }
-      IndexLauncher index_launcher(NCCL_FINISH_COMMS_TASK_ID,
-                                   task_is,
-                                   TaskArgument(nullptr, 0),
-                                   argmap,
-                                   Predicate::TRUE_PRED,
-                                   false /*must*/,
-                                   0 /*mapper_id*/,
-                                   comm.first);
-      FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
-      fm.wait_all_results();
-    }
+    finish_nccl_comms();
   }
 #endif
 }

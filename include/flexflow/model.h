@@ -1097,6 +1097,7 @@ public:
                      bool use_propagation) const;
 #ifdef FF_USE_NCCL
   ncclComm_t *find_nccl_comms(MachineView const &view) const;
+  void finish_nccl_comms();
 #endif
 #ifdef FF_USE_PROPAGATE
   void propagate(std::map<Op *, ParallelConfig> const &current,
