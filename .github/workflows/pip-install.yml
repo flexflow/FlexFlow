@@ -65,6 +65,17 @@ jobs:
         run: |
           export FF_HOME=$(pwd)
           export FF_CUDA_ARCH=70
+          echo "Running which python3.11"
+          which python3.11
+          echo "Running which pip"
+          which pip
+          echo "Running python3.11 -m pip --version"
+          python3.11 -m pip --version
+          echo "Running echo CONDA_PREFIX"
+          echo $CONDA_PREFIX
+          echo "Running echo path"
+          echo $PATH
+          echo "Now installing"
           pip install . --verbose
           # Remove build folder to check that the installed version can run independently of the build files
           rm -rf build
