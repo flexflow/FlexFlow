@@ -41,8 +41,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::unordered_multiset<std::vector<int>> result =
           unordered_multiset_of(get_all_permutations(input));
       std::unordered_multiset<std::vector<int>> correct = {
-          {1, 2, 2}, 
-          {2, 1, 2}, 
+          {1, 2, 2},
+          {2, 1, 2},
           {2, 2, 1},
       };
 

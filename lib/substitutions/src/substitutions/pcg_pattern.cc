@@ -74,14 +74,14 @@ std::vector<PatternNodeOutput>
   });
 }
 
-bool assignment_satisfies(
-    SubParallelComputationGraph const &pcg,
-    PCGPattern const &pattern,
-    PCGPatternMatch const &pattern_match) {
-  return unlabelled_pattern_does_match(get_unlabelled_pattern(pattern),
-                                       pcg.raw_graph,
-                                       get_unlabelled_pattern_match(pattern_match),
-                                       pcg_pattern_criteria(pattern, pcg));
+bool assignment_satisfies(SubParallelComputationGraph const &pcg,
+                          PCGPattern const &pattern,
+                          PCGPatternMatch const &pattern_match) {
+  return unlabelled_pattern_does_match(
+      get_unlabelled_pattern(pattern),
+      pcg.raw_graph,
+      get_unlabelled_pattern_match(pattern_match),
+      pcg_pattern_criteria(pattern, pcg));
 }
 
 } // namespace FlexFlow

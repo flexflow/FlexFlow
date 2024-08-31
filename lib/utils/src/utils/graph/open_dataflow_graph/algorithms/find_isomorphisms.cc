@@ -29,7 +29,8 @@ static std::optional<OpenDataflowGraphIsomorphism>
         OpenDataflowGraphView const &src_g,
         OpenDataflowGraphView const &dst_g,
         bidict<Node, Node> const &sink_node_mapping,
-        bidict<DataflowGraphInput, DataflowGraphInput> const &unused_graph_inputs_mapping) {
+        bidict<DataflowGraphInput, DataflowGraphInput> const
+            &unused_graph_inputs_mapping) {
   {
     std::unordered_set<Node> already_mapped_src_nodes =
         left_entries(sink_node_mapping);
@@ -47,17 +48,18 @@ static std::optional<OpenDataflowGraphIsomorphism>
   {
     std::unordered_set<DataflowGraphInput> already_mapped_src_inputs =
         right_entries(unused_graph_inputs_mapping);
-    std::unordered_set<DataflowGraphInput> src_g_unused_inputs = get_unused_open_dataflow_graph_inputs(src_g);
+    std::unordered_set<DataflowGraphInput> src_g_unused_inputs =
+        get_unused_open_dataflow_graph_inputs(src_g);
     assert(already_mapped_src_inputs == src_g_unused_inputs);
   }
 
   {
     std::unordered_set<DataflowGraphInput> already_mapped_dst_inputs =
         right_entries(unused_graph_inputs_mapping);
-    std::unordered_set<DataflowGraphInput> dst_g_unused_inputs = get_unused_open_dataflow_graph_inputs(dst_g);
+    std::unordered_set<DataflowGraphInput> dst_g_unused_inputs =
+        get_unused_open_dataflow_graph_inputs(dst_g);
     assert(already_mapped_dst_inputs == dst_g_unused_inputs);
   }
-
 
   std::optional<OpenDataflowGraphIsomorphism> result =
       OpenDataflowGraphIsomorphism{
@@ -206,8 +208,10 @@ std::unordered_set<OpenDataflowGraphIsomorphism>
     return {};
   }
 
-  std::vector<DataflowGraphInput> src_unused_graph_inputs = as_vector(get_unused_open_dataflow_graph_inputs(src));
-  std::unordered_set<DataflowGraphInput> dst_unused_graph_inputs = get_unused_open_dataflow_graph_inputs(dst);
+  std::vector<DataflowGraphInput> src_unused_graph_inputs =
+      as_vector(get_unused_open_dataflow_graph_inputs(src));
+  std::unordered_set<DataflowGraphInput> dst_unused_graph_inputs =
+      get_unused_open_dataflow_graph_inputs(dst);
 
   if (src_unused_graph_inputs.size() != dst_unused_graph_inputs.size()) {
     return {};
@@ -222,11 +226,13 @@ std::unordered_set<OpenDataflowGraphIsomorphism>
     for (std::vector<DataflowGraphInput> const &dst_unused_graph_inputs :
          get_all_permutations(dst_unused_graph_inputs)) {
 
-      bidict<DataflowGraphInput, DataflowGraphInput> unused_graph_inputs_mapping =
-          bidict_from_keys_and_values(src_unused_graph_inputs, dst_unused_graph_inputs);
+      bidict<DataflowGraphInput, DataflowGraphInput>
+          unused_graph_inputs_mapping = bidict_from_keys_and_values(
+              src_unused_graph_inputs, dst_unused_graph_inputs);
 
       std::optional<OpenDataflowGraphIsomorphism> found =
-          find_isomorphism_under_sink_node_mapping(src, dst, sink_node_mapping, unused_graph_inputs_mapping);
+          find_isomorphism_under_sink_node_mapping(
+              src, dst, sink_node_mapping, unused_graph_inputs_mapping);
 
       if (found.has_value()) {
         assert(is_isomorphic_under(src, dst, found.value()));

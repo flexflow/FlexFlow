@@ -12,12 +12,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     auto g2 = OpenDataflowGraph::create<UnorderedSetDataflowGraph>();
 
     SUBCASE("input graphs are empty") {
-      std::optional<OpenDataflowGraphIsomorphism> correct = OpenDataflowGraphIsomorphism{
-        {},
-        {},
-      };
+      std::optional<OpenDataflowGraphIsomorphism> correct =
+          OpenDataflowGraphIsomorphism{
+              {},
+              {},
+          };
 
-      std::optional<OpenDataflowGraphIsomorphism> result = find_isomorphism(g1, g2);
+      std::optional<OpenDataflowGraphIsomorphism> result =
+          find_isomorphism(g1, g2);
 
       CHECK(result == correct);
     }
@@ -43,7 +45,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("input graphs are isomorphic") {
         DataflowGraphInput g2_i1 = g2.add_input();
-        NodeAddedResult g2_n1_added = g2.add_node({OpenDataflowValue{g2_i1}}, 1);
+        NodeAddedResult g2_n1_added =
+            g2.add_node({OpenDataflowValue{g2_i1}}, 1);
         Node g2_n1_node = g2_n1_added.node;
         DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
         NodeAddedResult g2_n2_added = g2.add_node(
@@ -67,10 +70,12 @@ TEST_SUITE(FF_TEST_SUITE) {
         CHECK(result == correct);
       }
 
-      SUBCASE("input graphs are not isomorphic (different number of graph inputs)") {
+      SUBCASE("input graphs are not isomorphic (different number of graph "
+              "inputs)") {
         DataflowGraphInput g2_i1 = g2.add_input();
         DataflowGraphInput g2_i2 = g2.add_input();
-        NodeAddedResult g2_n1_added = g2.add_node({OpenDataflowValue{g2_i1}}, 1);
+        NodeAddedResult g2_n1_added =
+            g2.add_node({OpenDataflowValue{g2_i1}}, 1);
         Node g2_n1_node = g2_n1_added.node;
         DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
         NodeAddedResult g2_n2_added = g2.add_node(
@@ -87,11 +92,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("input graphs are not isomorphic (different connectivity)") {
         DataflowGraphInput g2_i1 = g2.add_input();
-        NodeAddedResult g2_n1_added = g2.add_node({OpenDataflowValue{g2_i1}}, 1);
+        NodeAddedResult g2_n1_added =
+            g2.add_node({OpenDataflowValue{g2_i1}}, 1);
         Node g2_n1_node = g2_n1_added.node;
         DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
         NodeAddedResult g2_n2_added = g2.add_node(
-            {OpenDataflowValue{g2_n1_output}, OpenDataflowValue{g2_n1_output}}, 1);
+            {OpenDataflowValue{g2_n1_output}, OpenDataflowValue{g2_n1_output}},
+            1);
         Node g2_n2_node = g2_n2_added.node;
 
         std::optional<OpenDataflowGraphIsomorphism> correct = std::nullopt;
@@ -104,15 +111,15 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("input graphs are not isomorphic (different numbers of nodes)") {
         DataflowGraphInput g2_i1 = g2.add_input();
-        NodeAddedResult g2_n1_added = g2.add_node({OpenDataflowValue{g2_i1}}, 1);
+        NodeAddedResult g2_n1_added =
+            g2.add_node({OpenDataflowValue{g2_i1}}, 1);
         Node g2_n1_node = g2_n1_added.node;
         DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
         NodeAddedResult g2_n2_added = g2.add_node(
             {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}}, 1);
         Node g2_n2_node = g2_n2_added.node;
-        
-        NodeAddedResult g2_n3_added = g2.add_node(
-            {}, 0);
+
+        NodeAddedResult g2_n3_added = g2.add_node({}, 0);
         Node g2_n3_node = g2_n3_added.node;
 
         std::optional<OpenDataflowGraphIsomorphism> correct = std::nullopt;

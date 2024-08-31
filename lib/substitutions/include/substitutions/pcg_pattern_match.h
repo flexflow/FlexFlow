@@ -16,7 +16,8 @@ bidict<PatternNodeOutput, parallel_tensor_guid_t>
         PCGPattern const &pattern,
         SubParallelComputationGraph const &spcg);
 
-UnlabelledDataflowGraphPatternMatch get_unlabelled_pattern_match(PCGPatternMatch const &);
+UnlabelledDataflowGraphPatternMatch
+    get_unlabelled_pattern_match(PCGPatternMatch const &);
 
 } // namespace FlexFlow
 

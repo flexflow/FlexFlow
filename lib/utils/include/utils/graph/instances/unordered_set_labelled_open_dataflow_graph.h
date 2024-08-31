@@ -18,11 +18,11 @@
 #include "utils/graph/node/node_source.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_edges.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_inputs.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_graph_inputs.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_values.h"
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_graph_inputs.h"
 
 namespace FlexFlow {
 

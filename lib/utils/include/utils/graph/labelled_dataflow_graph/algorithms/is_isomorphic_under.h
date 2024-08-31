@@ -9,17 +9,15 @@ namespace FlexFlow {
 
 template <typename NodeLabel, typename ValueLabel>
 bool is_isomorphic_under(
-    LabelledDataflowGraphView<NodeLabel, ValueLabel> const &src, 
+    LabelledDataflowGraphView<NodeLabel, ValueLabel> const &src,
     LabelledDataflowGraphView<NodeLabel, ValueLabel> const &dst,
     DataflowGraphIsomorphism const &candidate_isomorphism) {
-  return is_isomorphic_under(
-    view_as_labelled_open_dataflow_graph(src),
-    view_as_labelled_open_dataflow_graph(dst),
-    OpenDataflowGraphIsomorphism{
-      candidate_isomorphism.node_mapping,
-      {},
-    }
-  );
+  return is_isomorphic_under(view_as_labelled_open_dataflow_graph(src),
+                             view_as_labelled_open_dataflow_graph(dst),
+                             OpenDataflowGraphIsomorphism{
+                                 candidate_isomorphism.node_mapping,
+                                 {},
+                             });
 }
 
 } // namespace FlexFlow

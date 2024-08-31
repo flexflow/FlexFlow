@@ -65,8 +65,10 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(
           /*out_channels=*/acc.get<int>(OperatorAttributeKey::OUT_CHANNELS),
           /*use_bias=*/acc.get<bool>(OperatorAttributeKey::USE_BIAS),
           /*data_type=*/acc.get<DataType>(OperatorAttributeKey::DATA_TYPE),
-          /*activation=*/acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION),
-          /*regularizer=*/acc.get<std::optional<RegularizerAttrs>>(
+          /*activation=*/
+          acc.get<std::optional<Activation>>(OperatorAttributeKey::ACTIVATION),
+          /*regularizer=*/
+          acc.get<std::optional<RegularizerAttrs>>(
               OperatorAttributeKey::REGULARIZER),
       }};
     case OperatorType::BATCHMATMUL:

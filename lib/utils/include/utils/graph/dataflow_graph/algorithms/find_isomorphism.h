@@ -12,8 +12,8 @@ namespace FlexFlow {
  *
  * @note If multiple isomorphisms exist, an arbitrary one is returned
  */
-std::optional<DataflowGraphIsomorphism> find_isomorphism(DataflowGraphView const &,
-                                                         DataflowGraphView const &);
+std::optional<DataflowGraphIsomorphism>
+    find_isomorphism(DataflowGraphView const &, DataflowGraphView const &);
 
 } // namespace FlexFlow
 

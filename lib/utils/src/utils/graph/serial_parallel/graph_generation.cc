@@ -7,7 +7,8 @@ namespace FlexFlow {
 
 void parallel_extend_unsafe(DataflowGraph &g, DataflowGraphView const &ext) {
   for (Node const &node : get_nodes(ext)) {
-    g.add_node_unsafe(node, get_input_values(ext, node), get_outputs(ext, node));
+    g.add_node_unsafe(
+        node, get_input_values(ext, node), get_outputs(ext, node));
   }
 }
 

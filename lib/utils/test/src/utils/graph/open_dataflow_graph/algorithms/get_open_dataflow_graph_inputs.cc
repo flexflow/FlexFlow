@@ -1,7 +1,7 @@
-#include <doctest/doctest.h>
 #include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_graph_inputs.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
@@ -15,7 +15,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     NodeAddedResult n0_added = g.add_node({}, 1);
 
-    std::unordered_set<DataflowGraphInput> result = get_open_dataflow_graph_inputs(g);
+    std::unordered_set<DataflowGraphInput> result =
+        get_open_dataflow_graph_inputs(g);
     std::unordered_set<DataflowGraphInput> correct = {i0, i1};
 
     CHECK(result == correct);

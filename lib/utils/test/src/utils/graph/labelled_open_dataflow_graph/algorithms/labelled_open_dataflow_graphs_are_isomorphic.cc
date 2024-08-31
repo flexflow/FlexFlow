@@ -37,10 +37,10 @@ TEST_SUITE(FF_TEST_SUITE) {
           g2.add_node(n1_label, {OpenDataflowValue{g2_i1}}, {n1_output_label});
       Node g2_n1_node = g2_n1_added.node;
       DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
-      NodeAddedResult g2_n2_added =
-          g2.add_node(n2_label,
-                      {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
-                      {n2_output_label});
+      NodeAddedResult g2_n2_added = g2.add_node(
+          n2_label,
+          {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
+          {n2_output_label});
       Node g2_n2_node = g2_n2_added.node;
 
       bool correct = true;
@@ -56,10 +56,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       NodeAddedResult g2_n1_added =
           g2.add_node(n1_label, {OpenDataflowValue{g2_i1}}, {n1_output_label});
       DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
-      NodeAddedResult g2_n2_added =
-          g2.add_node("mismatched_label",
-                      {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
-                      {n2_output_label});
+      NodeAddedResult g2_n2_added = g2.add_node(
+          "mismatched_label",
+          {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
+          {n2_output_label});
 
       bool correct = false;
       bool result = labelled_open_dataflow_graphs_are_isomorphic(g1, g2);
@@ -71,13 +71,13 @@ TEST_SUITE(FF_TEST_SUITE) {
       int mismatched_output_label = 20000;
 
       DataflowGraphInput g2_i1 = g2.add_input(i1_label);
-      NodeAddedResult g2_n1_added =
-          g2.add_node(n1_label, {OpenDataflowValue{g2_i1}}, {mismatched_output_label});
+      NodeAddedResult g2_n1_added = g2.add_node(
+          n1_label, {OpenDataflowValue{g2_i1}}, {mismatched_output_label});
       DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
-      NodeAddedResult g2_n2_added =
-          g2.add_node(n2_label,
-                      {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
-                      {n2_output_label});
+      NodeAddedResult g2_n2_added = g2.add_node(
+          n2_label,
+          {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
+          {n2_output_label});
 
       bool correct = false;
       bool result = labelled_open_dataflow_graphs_are_isomorphic(g1, g2);
@@ -92,10 +92,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       NodeAddedResult g2_n1_added =
           g2.add_node(n1_label, {OpenDataflowValue{g2_i1}}, {n1_output_label});
       DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
-      NodeAddedResult g2_n2_added =
-          g2.add_node(n2_label,
-                      {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
-                      {n2_output_label});
+      NodeAddedResult g2_n2_added = g2.add_node(
+          n2_label,
+          {OpenDataflowValue{g2_i1}, OpenDataflowValue{g2_n1_output}},
+          {n2_output_label});
 
       bool correct = false;
       bool result = labelled_open_dataflow_graphs_are_isomorphic(g1, g2);
@@ -103,15 +103,14 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
-    SUBCASE("input graphs are not isomorphic (underlying unlabelled graphs not isomorphic)") {
+    SUBCASE("input graphs are not isomorphic (underlying unlabelled graphs not "
+            "isomorphic)") {
       DataflowGraphInput g2_i1 = g2.add_input(i1_label);
       NodeAddedResult g2_n1_added =
           g2.add_node(n1_label, {OpenDataflowValue{g2_i1}}, {n1_output_label});
       DataflowOutput g2_n1_output = get_only(g2_n1_added.outputs);
-      NodeAddedResult g2_n2_added =
-          g2.add_node(n2_label,
-                      {OpenDataflowValue{g2_n1_output}},
-                      {n2_output_label});
+      NodeAddedResult g2_n2_added = g2.add_node(
+          n2_label, {OpenDataflowValue{g2_n1_output}}, {n2_output_label});
 
       bool correct = false;
       bool result = labelled_open_dataflow_graphs_are_isomorphic(g1, g2);
