@@ -421,6 +421,7 @@ if(NOT BUILD_LEGION_ONLY)
 
   # python related
   if (FF_USE_PYTHON)
+    find_package(Python COMPONENTS Interpreter Development)
     # create flexflow_cffi_header.py
     add_custom_command(TARGET flexflow
       PRE_BUILD	
