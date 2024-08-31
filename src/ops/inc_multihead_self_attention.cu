@@ -520,10 +520,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         query_tmp_size =
             num_q_heads * qk_dim * BatchConfig::max_tokens_per_batch();
         // a K-ary tree max node is (k^n - 1) / 2
-        key_cache_size = num_q_heads * qk_dim *
+        key_cache_size = num_kv_heads * qk_dim *
                          BatchConfig::max_requests_per_batch() * max_num_pages *
                          kPagesize;
-        value_cache_size = num_q_heads * v_dim *
+        value_cache_size = num_kv_heads * v_dim *
                            BatchConfig::max_requests_per_batch() *
                            max_num_pages * kPagesize;
         if (streaming_cache) {
