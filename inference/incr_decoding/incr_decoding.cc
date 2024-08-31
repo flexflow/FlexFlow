@@ -49,7 +49,7 @@ void parse_input_args(char **argv,
                       int &max_tokens_per_batch,
                       int &max_sequence_length,
                       int &sampling_seed,
-                      bool &enable_streaming_cache) {
+                      bool &streaming_cache) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -112,7 +112,7 @@ void parse_input_args(char **argv,
       continue;
     }
     if (!strcmp(argv[i], "--enable-streaming-cache")) {
-      enable_streaming_cache = true;
+      streaming_cache = true;
       continue;
     }
   }
@@ -149,7 +149,7 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager::DecodingMode decoding_mode =
       RequestManager::INCREMENTAL_DECODING;
   int sampling_seed = 0;
-  bool enable_streaming_cache = false;
+  bool streaming_cache = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -167,7 +167,7 @@ void FlexFlow::top_level_task(Task const *task,
                    max_tokens_per_batch,
                    max_sequence_length,
                    sampling_seed,
-                   enable_streaming_cache);
+                   streaming_cache);
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -233,7 +233,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tree_depth(8);
   rm->set_max_tree_width(16);
   rm->set_verbose(verbose);
-  rm->set_streaming_cache(enable_streaming_cache);
+  rm->set_streaming_cache(streaming_cache);
   rm->register_tokenizer(
       model_type, bos_token_id, eos_token_id, tokenizer_filepath);
   rm->register_output_filepath(file_paths.output_file_path);
@@ -245,7 +245,7 @@ void FlexFlow::top_level_task(Task const *task,
                               weights_filepath,
                               INC_DECODING_MODE,
                               generationConfig,
-                              enable_streaming_cache,
+                              streaming_cache,
                               use_full_precision);
   } else if (model_type == ModelType::OPT) {
     OPT::create_opt_model(model,
