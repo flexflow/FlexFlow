@@ -10,7 +10,6 @@
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"
-#include "utils/graph/open_dataflow_graph/algorithms/are_isomorphic.h"
 #include "utils/integer_conversions.h"
 #include <doctest/doctest.h>
 
@@ -225,6 +224,6 @@ TEST_SUITE(FF_TEST_SUITE) {
     // since the new nodes produced by the substitution have new ids, it's
     // easier/more correct to check that the graphs are isomorphic rather than
     // checking their exact graph data
-    CHECK(are_isomorphic(result, correct));
+    CHECK(sub_pcgs_are_isomorphic(result, correct));
   }
 }

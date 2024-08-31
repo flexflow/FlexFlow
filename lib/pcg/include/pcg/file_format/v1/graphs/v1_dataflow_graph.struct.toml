@@ -19,7 +19,7 @@ includes = [
 
 [[fields]]
 name = "nodes"
-type = "std::vector<size_t>"
+type = "std::vector<int>"
 
 [[fields]]
 name = "edges"

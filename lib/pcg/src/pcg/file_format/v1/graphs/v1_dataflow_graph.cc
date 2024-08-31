@@ -5,21 +5,24 @@
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/integer_conversions.h"
+#include "utils/bidict/algorithms/bidict_from_enumerating.h"
 
 namespace FlexFlow {
 
 V1DataflowGraph to_v1(DataflowGraphView const &g) {
-  return to_v1(g, enumerate(get_nodes(g)).reversed());
+  bidict<int, Node> node_enumeration_bidict = bidict_from_enumerating(get_nodes(g));
+  std::unordered_map<Node, int> node_enumeration = node_enumeration_bidict.reversed().as_unordered_map();
+  return to_v1(g, node_enumeration);
 }
 
 V1DataflowGraph to_v1(DataflowGraphView const &g,
-                      std::unordered_map<Node, size_t> const &nodes) {
+                      std::unordered_map<Node, int> const &nodes) {
   std::unordered_set<V1GraphEdge> edges;
   for (DataflowEdge const &e : get_edges(g)) {
     edges.insert(V1GraphEdge{nodes.at(e.src.node),
-                             size_t_from_int(e.src.idx),
+                             e.src.idx,
                              nodes.at(e.dst.node),
-                             size_t_from_int(e.dst.idx)});
+                             e.dst.idx});
   }
 
   return V1DataflowGraph{

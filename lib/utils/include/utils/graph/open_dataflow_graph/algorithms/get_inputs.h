@@ -6,8 +6,6 @@
 
 namespace FlexFlow {
 
-std::unordered_set<DataflowGraphInput>
-    get_inputs(OpenDataflowGraphView const &);
 std::vector<OpenDataflowValue> get_inputs(OpenDataflowGraphView const &,
                                           Node const &);
 

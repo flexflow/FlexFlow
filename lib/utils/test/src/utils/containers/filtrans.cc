@@ -36,7 +36,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == correct);
   }
 
-  TEST_CASE("filtrans(std::unorded_set<In>, F)") {
+  TEST_CASE("filtrans(std::set<In>, F)") {
     std::set<int> input = {1, 2, 3, 4};
     std::set<std::string> result =
         filtrans(input, [](int x) -> std::optional<std::string> {

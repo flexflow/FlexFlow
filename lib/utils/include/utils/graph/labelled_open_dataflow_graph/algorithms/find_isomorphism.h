@@ -6,15 +6,20 @@
 #include "utils/containers/zip.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/is_isomorphic_under.h"
 #include "utils/graph/labelled_open_dataflow_graph/labelled_open_dataflow_graph_view.h"
-#include "utils/graph/open_dataflow_graph/algorithms/find_isomorphism.h"
+#include "utils/graph/open_dataflow_graph/algorithms/find_isomorphisms.h"
 #include "utils/graph/open_dataflow_graph/algorithms/open_dataflow_graph_isomorphism.dtg.h"
 
 namespace FlexFlow {
 
-template <typename NodeLabel, typename EdgeLabel>
+/**
+ * @brief Finds an isomorphism between \p src and \p dst, if one exists.
+ *
+ * @note If multiple isomorphisms exist, an arbitrary one is returned.
+ */
+template <typename NodeLabel, typename ValueLabel>
 std::optional<OpenDataflowGraphIsomorphism> find_isomorphism(
-    LabelledOpenDataflowGraphView<NodeLabel, EdgeLabel> const &src,
-    LabelledOpenDataflowGraphView<NodeLabel, EdgeLabel> const &dst) {
+    LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &src,
+    LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &dst) {
   std::unordered_set<OpenDataflowGraphIsomorphism> unlabelled_isomorphisms =
       find_isomorphisms(static_cast<OpenDataflowGraphView>(src),
                         static_cast<OpenDataflowGraphView>(dst));

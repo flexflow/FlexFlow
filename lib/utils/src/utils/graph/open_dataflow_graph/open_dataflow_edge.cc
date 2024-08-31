@@ -19,7 +19,7 @@ DataflowInput get_open_dataflow_edge_dst(OpenDataflowEdge const &e) {
 }
 
 OpenDataflowValue
-    get_open_dataflow_edge_source(OpenDataflowEdge const &open_e) {
+    get_open_dataflow_edge_src(OpenDataflowEdge const &open_e) {
   return open_e.visit<OpenDataflowValue>(overload{
       [](DataflowEdge const &e) { return OpenDataflowValue{e.src}; },
       [](DataflowInputEdge const &e) { return OpenDataflowValue{e.src}; },

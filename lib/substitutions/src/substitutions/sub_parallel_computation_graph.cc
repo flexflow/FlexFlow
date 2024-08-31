@@ -186,7 +186,7 @@ SubParallelComputationGraph
   };
 }
 
-bool are_isomorphic(SubParallelComputationGraph const &lhs,
+bool sub_pcgs_are_isomorphic(SubParallelComputationGraph const &lhs,
                     SubParallelComputationGraph const &rhs) {
   return find_isomorphism(without_layer_names(lhs).raw_graph,
                           without_layer_names(rhs).raw_graph)

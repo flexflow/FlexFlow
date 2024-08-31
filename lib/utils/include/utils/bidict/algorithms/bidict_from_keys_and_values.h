@@ -15,7 +15,7 @@ bidict<L, R> bidict_from_keys_and_values(std::vector<L> const &ls,
   size_t r_size = rs.size();
   if (l_size != r_size) {
     throw mk_runtime_error(fmt::format(
-        "__FUNC__ recieved keys (of size {}) not matching values (of size {})",
+        "recieved keys (of size {}) not matching values (of size {})",
         l_size,
         r_size));
   }

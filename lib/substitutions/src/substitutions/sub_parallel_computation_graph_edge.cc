@@ -31,7 +31,7 @@ SubParallelComputationGraphEdge
 
 open_parallel_tensor_guid_t
     get_parallel_tensor(SubParallelComputationGraphEdge const &e) {
-  OpenDataflowValue raw_value = get_open_dataflow_edge_source(e.raw_edge);
+  OpenDataflowValue raw_value = get_open_dataflow_edge_src(e.raw_edge);
   return open_parallel_tensor_guid_t{raw_value};
 }
 

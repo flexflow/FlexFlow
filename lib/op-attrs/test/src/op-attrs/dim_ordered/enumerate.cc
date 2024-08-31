@@ -1,0 +1,19 @@
+#include <doctest/doctest.h>
+#include "op-attrs/dim_ordered/enumerate.h"
+
+using namespace ::FlexFlow;
+
+TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("enumerate(FFOrdered<T>)") {
+    FFOrdered<std::string> input = {"zero", "one", "two"};
+
+    std::map<ff_dim_t, std::string> result = enumerate(input);
+    std::map<ff_dim_t, std::string> correct = {
+      {ff_dim_t{0}, "zero"},
+      {ff_dim_t{1}, "one"},
+      {ff_dim_t{2}, "two"},
+    };
+
+    CHECK(result == correct);
+  }
+}

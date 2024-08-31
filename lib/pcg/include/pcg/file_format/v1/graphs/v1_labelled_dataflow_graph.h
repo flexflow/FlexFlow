@@ -3,12 +3,12 @@
 
 #include "pcg/file_format/v1/graphs/v1_dataflow_graph.h"
 #include "pcg/file_format/v1/graphs/v1_labelled_dataflow_graph.dtg.h"
-#include "utils/containers/enumerate.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph_view.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/bidict/algorithms/bidict_from_enumerating.h"
 
 namespace FlexFlow {
 
@@ -16,14 +16,14 @@ template <typename NodeLabel, typename OutputLabel>
 V1LabelledDataflowGraph<NodeLabel, OutputLabel>
     to_v1(LabelledDataflowGraphView<NodeLabel, OutputLabel> const &g) {
 
-  bidict<size_t, Node> nodes = enumerate(get_nodes(g));
+  bidict<int, Node> nodes = bidict_from_enumerating(get_nodes(g));
 
   V1DataflowGraph unlabelled = to_v1(g, nodes.reversed());
 
-  std::unordered_map<size_t, NodeLabel> node_labels = map_values(
+  std::unordered_map<int, NodeLabel> node_labels = map_values(
       nodes.as_unordered_map(), [&](Node const &n) { return g.at(n); });
 
-  std::unordered_map<size_t, std::vector<OutputLabel>> output_labels =
+  std::unordered_map<int, std::vector<OutputLabel>> output_labels =
       map_values(nodes.as_unordered_map(), [&](Node const &n) {
         return transform(get_outputs(g, n),
                          [&](DataflowOutput const &o) { return g.at(o); });

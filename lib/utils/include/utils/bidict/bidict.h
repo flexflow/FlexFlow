@@ -90,6 +90,10 @@ struct bidict {
     return fwd_map.size();
   }
 
+  bool empty() const {
+    return this->size() == 0;
+  }
+
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;
   using value_type = std::pair<L, R>;
   using reference = value_type &;

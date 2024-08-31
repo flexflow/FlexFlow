@@ -29,7 +29,7 @@ std::vector<PatternNodeOutput> get_pattern_node_outputs(PCGPattern const &,
 
 bool assignment_satisfies(SubParallelComputationGraph const &,
                           PCGPattern const &,
-                          UnlabelledDataflowGraphPatternMatch const &);
+                          PCGPatternMatch const &);
 
 } // namespace FlexFlow
 

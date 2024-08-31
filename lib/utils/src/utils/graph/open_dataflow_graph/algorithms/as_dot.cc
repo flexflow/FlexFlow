@@ -4,7 +4,7 @@
 #include "utils/graph/dataflow_graph/algorithms/as_dot.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
-#include "utils/graph/open_dataflow_graph/algorithms/get_inputs.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_graph_inputs.h"
 
 namespace FlexFlow {
 
@@ -44,7 +44,7 @@ std::string
     return fmt::format("gi{}", i.idx);
   };
 
-  for (DataflowGraphInput const &i : get_inputs(g)) {
+  for (DataflowGraphInput const &i : get_open_dataflow_graph_inputs(g)) {
     dot.add_node(get_graph_input_name(i),
                  {{"style", "dashed"}, {"label", get_input_label(i)}});
   }

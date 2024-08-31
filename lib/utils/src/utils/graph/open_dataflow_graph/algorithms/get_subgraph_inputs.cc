@@ -28,7 +28,7 @@ std::unordered_set<OpenDataflowValue>
     extend(relevant_edges, filter(incoming, comes_from_outside_subgraph));
   }
 
-  return transform(relevant_edges, get_open_dataflow_edge_source);
+  return transform(relevant_edges, get_open_dataflow_edge_src);
 }
 
 } // namespace FlexFlow

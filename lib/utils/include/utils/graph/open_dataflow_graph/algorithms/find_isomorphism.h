@@ -6,12 +6,14 @@
 
 namespace FlexFlow {
 
-std::unordered_set<OpenDataflowGraphIsomorphism>
-    find_isomorphisms(OpenDataflowGraphView const &,
-                      OpenDataflowGraphView const &);
+/**
+ * @brief Find a valid isomorphism between \p src and \p dst, if one exists
+ *
+ * @note If multiple isomorphisms exist, an arbitrary one is returned
+ */
 std::optional<OpenDataflowGraphIsomorphism>
-    find_isomorphism(OpenDataflowGraphView const &,
-                     OpenDataflowGraphView const &);
+    find_isomorphism(OpenDataflowGraphView const &src,
+                     OpenDataflowGraphView const &dst);
 
 } // namespace FlexFlow
 

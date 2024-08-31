@@ -10,10 +10,10 @@
 
 namespace FlexFlow {
 
-template <typename NodeLabel, typename EdgeLabel>
+template <typename NodeLabel, typename ValueLabel>
 bool is_isomorphic_under(
-    LabelledOpenDataflowGraphView<NodeLabel, EdgeLabel> const &src,
-    LabelledOpenDataflowGraphView<NodeLabel, EdgeLabel> const &dst,
+    LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &src,
+    LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &dst,
     OpenDataflowGraphIsomorphism const &candidate_isomorphism) {
 
   bidict<NewNode, Node> node_permutation =

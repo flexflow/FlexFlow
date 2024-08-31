@@ -57,7 +57,7 @@ SubParallelComputationGraphData
     get_sub_pcg_data(SubParallelComputationGraph const &);
 SubParallelComputationGraph
     sub_pcg_from_graph_data(SubParallelComputationGraphData const &);
-bool are_isomorphic(SubParallelComputationGraph const &,
+bool sub_pcgs_are_isomorphic(SubParallelComputationGraph const &,
                     SubParallelComputationGraph const &);
 
 SubParallelComputationGraph

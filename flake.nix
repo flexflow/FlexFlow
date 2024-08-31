@@ -101,6 +101,7 @@
               tl-expected
               doxygen
               lcov # for code coverage
+              texliveFull
             ])
             (with proj-repo.packages.${system}; [
               proj

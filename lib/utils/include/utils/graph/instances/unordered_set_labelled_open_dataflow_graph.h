@@ -22,6 +22,7 @@
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_graph_inputs.h"
 
 namespace FlexFlow {
 
@@ -147,7 +148,7 @@ public:
         get_nodes(view), [&](Node const &n) { return view.at(n); });
     std::unordered_set<OpenDataflowEdge> edges = get_edges(view);
     std::unordered_set<DataflowGraphInput> inputs =
-        ::FlexFlow::get_inputs(view);
+        ::FlexFlow::get_open_dataflow_graph_inputs(view);
 
     std::unordered_map<OpenDataflowValue, ValueLabel> values =
         generate_map(get_open_dataflow_values(view),

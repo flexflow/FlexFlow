@@ -1,5 +1,6 @@
 #include "substitutions/pcg_pattern.h"
 #include "substitutions/operator_pattern/satisfies_pattern.h"
+#include "substitutions/pcg_pattern_match.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "substitutions/tensor_pattern/satisfies_pattern.h"
 #include "substitutions/unlabelled/pattern_value.h"
@@ -76,10 +77,10 @@ std::vector<PatternNodeOutput>
 bool assignment_satisfies(
     SubParallelComputationGraph const &pcg,
     PCGPattern const &pattern,
-    UnlabelledDataflowGraphPatternMatch const &patternMatch) {
+    PCGPatternMatch const &pattern_match) {
   return unlabelled_pattern_does_match(get_unlabelled_pattern(pattern),
                                        pcg.raw_graph,
-                                       patternMatch,
+                                       get_unlabelled_pattern_match(pattern_match),
                                        pcg_pattern_criteria(pattern, pcg));
 }
 

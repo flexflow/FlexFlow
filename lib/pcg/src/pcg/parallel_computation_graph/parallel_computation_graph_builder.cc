@@ -427,7 +427,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::elu(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::TANH,
+      OperatorType::ELU,
       std::nullopt,
   };
 

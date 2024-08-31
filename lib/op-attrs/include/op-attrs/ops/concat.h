@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_CONCAT_ATTRS_H
-#define _FLEXFLOW_CONCAT_ATTRS_H
+#ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_CONCAT_H
+#define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_CONCAT_H
 
 #include "op-attrs/ops/concat_attrs.dtg.h"
 #include "op-attrs/ops/core.h"

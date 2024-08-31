@@ -4,6 +4,7 @@
 #include "utils/bidict/algorithms/bidict_from_keys_and_values.h"
 #include "utils/bidict/algorithms/merge_bidicts.h"
 #include "utils/containers/zip.h"
+#include "utils/containers/map_values.h"
 
 namespace FlexFlow {
 
@@ -30,6 +31,13 @@ bidict<PatternNodeOutput, parallel_tensor_guid_t>
   }
 
   return result;
+}
+
+UnlabelledDataflowGraphPatternMatch get_unlabelled_pattern_match(PCGPatternMatch const &match) {
+  return UnlabelledDataflowGraphPatternMatch{
+    map_values(match.node_assignment, [](parallel_layer_guid_t const &l) { return l.raw_graph_node; }),
+    map_values(match.input_assignment, [](open_parallel_tensor_guid_t const &i) { return i.raw_open_dataflow_value; }),
+  };
 }
 
 } // namespace FlexFlow

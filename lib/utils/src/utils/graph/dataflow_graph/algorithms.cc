@@ -11,7 +11,7 @@ std::unordered_set<DataflowEdge> get_edges(DataflowGraphView const &g) {
   return g.query_edges(dataflow_edge_query_all());
 }
 
-std::vector<DataflowOutput> get_inputs(DataflowGraphView const &g,
+std::vector<DataflowOutput> get_input_values(DataflowGraphView const &g,
                                        Node const &n) {
   return transform(get_incoming_edges(g, n),
                    [](DataflowEdge const &e) { return e.src; });

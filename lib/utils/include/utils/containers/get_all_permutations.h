@@ -86,6 +86,14 @@ private:
   mutable std::vector<T> current;
 };
 
+/**
+ * @brief Lazily compute all permutations of the elements of in the input container.
+ *
+ * @note In cases where an element appears multiple times in the input 
+ * (e.g., <tt>std::vector{1, 2, 2}</tt>), duplicate permutations are removed
+ * (i.e., <tt>{2, 1, 2}</tt> is only returned once, not twice), so it is possible
+ * for this function to return fewer than (but no more than) \f$ n! \f$ permutations.
+ */
 template <typename C, typename T = typename C::value_type>
 permutations_container<T> get_all_permutations(C const &c) {
   return permutations_container<T>(c.cbegin(), c.cend());
