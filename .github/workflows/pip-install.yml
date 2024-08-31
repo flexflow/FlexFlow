@@ -71,6 +71,8 @@ jobs:
           which pip
           echo "Running python3.11 -m pip --version"
           python3.11 -m pip --version
+          echo "Running /usr/share/miniconda/envs/flexflow/bin/python3.11 -m pip --version"
+          /usr/share/miniconda/envs/flexflow/bin/python3.11 -m pip --version
           echo "Running echo CONDA_PREFIX"
           echo $CONDA_PREFIX
           echo "Running echo path"
