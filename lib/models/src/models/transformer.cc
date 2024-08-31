@@ -2,8 +2,8 @@
 
 namespace FlexFlow {
 
-tensor_guid_t create_feedforward_network(TransformerConfig const &config,
-                                         ComputationGraphBuilder &cgb,
+tensor_guid_t create_feedforward_network(ComputationGraphBuilder &cgb,
+                                         TransformerConfig const &config,
                                          tensor_guid_t const &input) {
   tensor_guid_t layer1_out = cgb.dense(
       input, config.dim_feedforward, Activation::RELU, /*use_bias=*/true);
@@ -15,8 +15,8 @@ tensor_guid_t create_feedforward_network(TransformerConfig const &config,
   return cgb.dropout(layer2_out, config.dropout);
 };
 
-tensor_guid_t create_transformer_encoder_layer(TransformerConfig const &config,
-                                               ComputationGraphBuilder &cgb,
+tensor_guid_t create_transformer_encoder_layer(ComputationGraphBuilder &cgb,
+                                               TransformerConfig const &config,
                                                tensor_guid_t const &input) {
   std::vector<int> layer_norm_axis{2}; // Normalize the last dim
   int kdim = config.dim_feedforward / config.num_heads;
@@ -34,26 +34,26 @@ tensor_guid_t create_transformer_encoder_layer(TransformerConfig const &config,
                                               /*elementwise_affine=*/true,
                                               config.layer_norm_eps);
   tensor_guid_t feedfoward_output =
-      create_feedforward_network(config, cgb, normalized_t);
+      create_feedforward_network(cgb, config, normalized_t);
   return cgb.layer_norm(cgb.add(normalized_t, feedfoward_output),
                         layer_norm_axis,
                         /*elementwise_affine=*/true,
                         config.layer_norm_eps);
 }
 
-tensor_guid_t create_transformer_encoder(TransformerConfig const &config,
-                                         ComputationGraphBuilder &cgb,
+tensor_guid_t create_transformer_encoder(ComputationGraphBuilder &cgb,
+                                         TransformerConfig const &config,
                                          tensor_guid_t const &input) {
   tensor_guid_t t = input;
   for (int i = 0; i < config.num_encoder_layers; i++) {
-    t = create_transformer_encoder_layer(config, cgb, t);
+    t = create_transformer_encoder_layer(cgb, config, t);
   }
   return t;
 };
 
 tensor_guid_t
-    create_transformer_decoder_layer(TransformerConfig const &config,
-                                     ComputationGraphBuilder &cgb,
+    create_transformer_decoder_layer(ComputationGraphBuilder &cgb,
+                                     TransformerConfig const &config,
                                      tensor_guid_t const &input,
                                      tensor_guid_t const &encoder_output) {
   std::vector<int> layer_norm_axis{2}; // Normalize the last dim
@@ -88,20 +88,20 @@ tensor_guid_t
                      config.layer_norm_eps);
 
   tensor_guid_t feedfoward_output =
-      create_feedforward_network(config, cgb, mha_normalized);
+      create_feedforward_network(cgb, config, mha_normalized);
   return cgb.layer_norm(cgb.add(mha_normalized, feedfoward_output),
                         layer_norm_axis,
                         /*elementwise_affine=*/true,
                         config.layer_norm_eps);
 }
 
-tensor_guid_t create_transformer_decoder(TransformerConfig const &config,
-                                         ComputationGraphBuilder &cgb,
+tensor_guid_t create_transformer_decoder(ComputationGraphBuilder &cgb,
+                                         TransformerConfig const &config,
                                          tensor_guid_t const &input,
                                          tensor_guid_t const &encoder_output) {
   tensor_guid_t t = input;
   for (int i = 0; i < config.num_decoder_layers; i++) {
-    t = create_transformer_decoder_layer(config, cgb, t, encoder_output);
+    t = create_transformer_decoder_layer(cgb, config, t, encoder_output);
   }
   return t;
 }
@@ -117,9 +117,9 @@ ComputationGraph
   };
   tensor_guid_t input = cgb.create_tensor(input_shape, CreateGrad::YES);
 
-  tensor_guid_t encoder_output = create_transformer_encoder(config, cgb, input);
+  tensor_guid_t encoder_output = create_transformer_encoder(cgb, config, input);
   tensor_guid_t decoder_output =
-      create_transformer_decoder(config, cgb, input, encoder_output);
+      create_transformer_decoder(cgb, config, input, encoder_output);
 
   tensor_guid_t out_prob = cgb.softmax(cgb.dense(decoder_output,
                                                  /*outDim=*/config.vocab_size,

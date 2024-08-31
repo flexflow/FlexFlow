@@ -7,27 +7,27 @@
 namespace FlexFlow {
 
 // Helper functions to construct the Transformer model
-tensor_guid_t create_transformer_feedforward_network(TransformerConfig const &,
-                                                     ComputationGraphBuilder &,
+tensor_guid_t create_transformer_feedforward_network(ComputationGraphBuilder &,
+                                                     TransformerConfig const &,
                                                      tensor_guid_t const &);
-tensor_guid_t create_transformer_encoder_layer(TransformerConfig const &,
-                                               ComputationGraphBuilder &,
+tensor_guid_t create_transformer_encoder_layer(ComputationGraphBuilder &,
+                                               TransformerConfig const &,
                                                tensor_guid_t const &);
-tensor_guid_t create_transformer_decoder_layer(TransformerConfig const &,
-                                               ComputationGraphBuilder &,
+tensor_guid_t create_transformer_decoder_layer(ComputationGraphBuilder &,
+                                               TransformerConfig const &,
                                                tensor_guid_t const &,
                                                tensor_guid_t const &);
 
-tensor_guid_t create_transformer_encoder(TransformerConfig const &,
-                                         ComputationGraphBuilder &,
+tensor_guid_t create_transformer_encoder(ComputationGraphBuilder &,
+                                         TransformerConfig const &,
                                          tensor_guid_t const &);
-tensor_guid_t create_transformer_decoder(TransformerConfig const &,
-                                         ComputationGraphBuilder &,
+tensor_guid_t create_transformer_decoder(ComputationGraphBuilder &,
+                                         TransformerConfig const &,
                                          tensor_guid_t const &,
                                          tensor_guid_t const &);
 
 /**
- * @brief Get the Transformer computation graph (PCG).
+ * @brief Get the Transformer computation graph.
  *
  * @param TransformerConfig The config of Transformer model.
  * @return ComputationGraph The PCG of a Transformer model.
