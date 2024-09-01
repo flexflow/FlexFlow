@@ -82,9 +82,7 @@ std::vector<TensorShape>
 
 template <typename Attrs>
 TensorShape get_output_shape(Attrs const &attrs, TensorShape const &shape) {
-  // NOT_IMPLEMENTED
-  TensorShape dummy_shape = shape;
-  return shape;
+  NOT_IMPLEMENTED();
 }
 
 template <typename Attrs>
@@ -112,19 +110,13 @@ template <typename Attrs>
 std::vector<TensorShape> get_output_shapes(Attrs const &attrs,
                                            std::vector<TensorShape> const &);
 
-ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &,
-                                     std::vector<ParallelTensorShape> const &);
 ParallelTensorShape get_output_shape(ConcatAttrs const &,
                                      std::vector<ParallelTensorShape> const &);
-ParallelTensorShape get_output_shape(DropoutAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(FlatAttrs const &,
                                      ParallelTensorShape const &);
 std::vector<ParallelTensorShape> get_output_shapes(GatherAttrs const &,
                                                    ParallelTensorShape const &,
                                                    ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(LayerNormAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(Pool2DAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(ReduceAttrs const &,
@@ -133,8 +125,6 @@ ParallelTensorShape get_output_shape(ReverseAttrs const &,
                                      ParallelTensorShape const &);
 std::vector<ParallelTensorShape> get_output_shapes(SplitAttrs const &,
                                                    ParallelTensorShape const &);
-ParallelTensorShape get_output_shape(SoftmaxAttrs const &,
-                                     ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(TopKAttrs const &,
                                      ParallelTensorShape const &);
 ParallelTensorShape get_output_shape(TransposeAttrs const &,

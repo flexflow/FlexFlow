@@ -244,7 +244,7 @@ public:
 private:
   TensorShape get_shape(tensor_guid_t const &) const;
 
-  tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &);
+  tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &, std::string const &);
 
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
 

@@ -4,6 +4,7 @@
 #include "op-attrs/ff_dim.dtg.h"
 #include "utils/json.h"
 #include "utils/stack_vector.h"
+#include "utils/fmt/vector.h"
 
 namespace FlexFlow {
 

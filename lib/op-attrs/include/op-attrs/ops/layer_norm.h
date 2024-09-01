@@ -7,8 +7,26 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(LayerNormAttrs const &,
-                                     ParallelTensorShape const &);
+tl::expected<TensorShape, std::string>
+  get_output_shape(LayerNormAttrs const &,
+                   TensorShape const &);
+tl::expected<TensorShape, std::string>
+  get_gamma_weights_shape(LayerNormAttrs const &,
+                          TensorShape const &);
+tl::expected<TensorShape, std::string>
+  get_beta_weights_shape(LayerNormAttrs const &,
+                         TensorShape const &);
+
+tl::expected<ParallelTensorShape, std::string> 
+  get_output_shape(LayerNormAttrs const &,
+                   ParallelTensorShape const &);
+tl::expected<ParallelTensorShape, std::string>
+  get_gamma_weights_shape(LayerNormAttrs const &,
+                          ParallelTensorShape const &);
+tl::expected<ParallelTensorShape, std::string>
+  get_beta_weights_shape(LayerNormAttrs const &,
+                         ParallelTensorShape const &);
+
 
 CHECK_VALID_OP_ATTR(LayerNormAttrs);
 

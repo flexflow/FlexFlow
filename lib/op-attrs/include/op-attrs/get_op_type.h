@@ -4,7 +4,7 @@
 #include "op-attrs/ops/attention_attrs.dtg.h"
 #include "op-attrs/ops/batch_matmul.dtg.h"
 #include "op-attrs/ops/batch_norm_attrs.dtg.h"
-#include "op-attrs/ops/broadcast.dtg.h"
+#include "op-attrs/ops/broadcast_attrs.dtg.h"
 #include "op-attrs/ops/cast_attrs.dtg.h"
 #include "op-attrs/ops/combine_attrs.dtg.h"
 #include "op-attrs/ops/concat_attrs.dtg.h"
