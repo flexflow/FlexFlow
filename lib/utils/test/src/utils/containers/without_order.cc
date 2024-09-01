@@ -1,6 +1,7 @@
 #include "utils/containers/without_order.h"
 #include <doctest/doctest.h>
 #include <vector>
+#include "utils/fmt/unordered_multiset.h"
 
 using namespace ::FlexFlow;
 

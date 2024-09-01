@@ -4,6 +4,7 @@
 #include "utils/check_fmtable.h"
 #include <fmt/format.h>
 #include <optional>
+#include <doctest/doctest.h>
 
 namespace fmt {
 
@@ -41,5 +42,17 @@ std::ostream &operator<<(std::ostream &s, std::optional<T> const &t) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename T>
+struct StringMaker<std::optional<T>> {
+  static String convert(std::optional<T> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
+
 
 #endif

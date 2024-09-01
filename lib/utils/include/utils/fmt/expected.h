@@ -5,6 +5,7 @@
 #include "utils/check_fmtable.h"
 #include <tl/expected.hpp>
 #include <utility>
+#include <doctest/doctest.h>
 
 namespace fmt {
 
@@ -40,5 +41,16 @@ std::ostream &operator<<(std::ostream &s, tl::expected<T, E> const &t) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename T, typename E>
+struct StringMaker<tl::expected<T, E>> {
+  static String convert(tl::expected<T, E> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

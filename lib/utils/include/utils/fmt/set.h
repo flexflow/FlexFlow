@@ -7,6 +7,7 @@
 #include <fmt/format.h>
 #include <set>
 #include <vector>
+#include <doctest/doctest.h>
 
 namespace fmt {
 
@@ -41,5 +42,16 @@ std::ostream &operator<<(std::ostream &s, std::set<T> const &x) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename T>
+struct StringMaker<std::set<T>> {
+  static String convert(std::set<T> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

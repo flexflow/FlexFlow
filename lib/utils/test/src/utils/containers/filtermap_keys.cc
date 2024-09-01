@@ -1,5 +1,7 @@
 #include "utils/containers/filtermap_keys.h"
 #include "test/utils/doctest.h"
+#include "utils/fmt/unordered_map.h"
+#include "utils/fmt/map.h"
 
 using namespace FlexFlow;
 

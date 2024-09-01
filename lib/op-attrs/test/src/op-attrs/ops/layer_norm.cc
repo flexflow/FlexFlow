@@ -1,3 +1,4 @@
+#include "utils/fmt/expected.h"
 #include "test/utils/doctest.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "utils/expected.h"
@@ -105,7 +106,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                   int o0,
                                   int o2) {
       return lift_to_parallel_with_degrees(
-          output, o_sum, o_eq, FFOrdered<int>{o0, o2});
+          gamma, o_sum, o_eq, FFOrdered<int>{o0, o2});
     };
 
     auto make_beta_weights = [&](SumDegree o_sum, 
@@ -113,7 +114,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                   int o0,
                                   int o2) {
       return lift_to_parallel_with_degrees(
-          output, o_sum, o_eq, FFOrdered<int>{o0, o2});
+          beta, o_sum, o_eq, FFOrdered<int>{o0, o2});
     };
 
     SUBCASE("parallel shape inference (LayerNorm)") {

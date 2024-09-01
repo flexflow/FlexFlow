@@ -13,6 +13,7 @@
 #include "utils/hash-utils.h"
 #include "utils/hash/set.h"
 #include "utils/optional.h"
+#include "utils/containers/transform.h"
 #include <optional>
 #include <set>
 #include <unordered_set>

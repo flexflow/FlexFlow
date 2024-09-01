@@ -2,6 +2,7 @@
 #include "utils/fmt/unordered_set.h"
 #include "utils/hash/unordered_set.h"
 #include <doctest/doctest.h>
+#include "utils/fmt/optional.h"
 
 using namespace ::FlexFlow;
 

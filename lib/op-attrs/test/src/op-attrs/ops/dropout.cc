@@ -2,6 +2,7 @@
 #include "op-attrs/ops/dropout.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/expected.h"
+#include "utils/fmt/expected.h"
 
 using namespace ::FlexFlow;
 
