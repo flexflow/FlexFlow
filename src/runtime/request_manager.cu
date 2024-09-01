@@ -130,6 +130,11 @@ __global__ void
 #define test_bit_orig(bit_mask, idx, pos)                                      \
   (((bit_mask)[idx].bits[(pos) / 64] & (1ULL << ((pos) % 64))) != 0)
 
+// Passing the CPU-side causalMask, then output the bit-packed custom_mask for
+// attention forward.
+// Layout of causalMask: [num_requests][tree_size][tree_size]
+// Layout of custom_mask: [num_requests][q_length][kv_length] (bit-packed)
+// Note that for spec-decoding, q_length == last_layer_length != tree_size
 __global__ void
     update_custom_mask_kernel(uint8_t *custom_mask,
                               int32_t const *qk_indptr,
@@ -160,21 +165,24 @@ __global__ void
     }
   }
 
+  BatchConfig::BitMask &causal_mask = causalMask[requext_idx_in_batch];
+
   int const q_length = request_infos[requext_idx_in_batch].num_tokens_in_batch,
             q_start = request_infos[requext_idx_in_batch]
-                          .first_token_index_in_request;
+                          .first_token_index_in_request - causal_mask.non_tree_cache_size,
+            non_tree_cache_size = causal_mask.non_tree_cache_size;
 
   uint8_t packed_bits = 0;
   for (int bit_idx = 0; bit_idx < 8; bit_idx++) {
     int const bit_offset = byte_idx * 8 + bit_idx,
-              q_idx = bit_offset / (q_start + q_length),
-              kv_idx = bit_offset % (q_start + q_length);
-    if (kv_idx < q_start || q_idx >= q_length) {
+              q_idx = bit_offset / (non_tree_cache_size + q_start + q_length),
+              kv_idx = bit_offset % (non_tree_cache_size + q_start + q_length);
+    if (kv_idx < non_tree_cache_size || q_idx >= q_length) {
       packed_bits |= 1 << bit_idx;
     } else {
-      if (test_bit_orig(causalMask[requext_idx_in_batch].bit_mask,
-                        q_idx,
-                        kv_idx - q_start)) {
+      if (test_bit_orig(causal_mask.bit_mask,
+                        q_start + q_idx,
+                        kv_idx - non_tree_cache_size)) {
         packed_bits |= 1 << bit_idx;
       }
     }
@@ -232,12 +240,12 @@ void RequestManager::load_batch_config_task(
   total_copy_size += sizeof(BatchConfig::request_available);
 
   for (int request_idx = 0;
-        request_idx < BatchConfig::max_requests_per_batch();
-        request_idx++) {
+   request_idx < BatchConfig::max_requests_per_batch();
+       request_idx++) {
     if (batch_config->request_available[request_idx]) {
       checkCUDA(cudaMemcpyAsync(
-          static_cast<char *>(handle.batch_config_metadata) +
-              total_copy_size + request_idx * sizeof(BatchConfig::BitMask),
+          static_cast<char *>(handle.batch_config_metadata) + 
+          total_copy_size + request_idx * sizeof(BatchConfig::BitMask),
           &(batch_config->causalMask[request_idx]),
           sizeof(BatchConfig::BitMask),
           cudaMemcpyHostToDevice,
@@ -266,11 +274,11 @@ void RequestManager::load_batch_config_task(
   total_copy_size += sizeof(BatchConfig::committed_tokens);
 
   checkCUDA(cudaMemcpyAsync(
-      static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-      &(batch_config->num_tokens_to_commit),
-      sizeof(int),
-      cudaMemcpyHostToDevice,
-      stream));
+    static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+                            &(batch_config->num_tokens_to_commit),
+                            sizeof(int),
+                            cudaMemcpyHostToDevice,
+                            stream));
   total_copy_size += sizeof(int);
 
   // load attention metadata
