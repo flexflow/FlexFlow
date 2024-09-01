@@ -8,8 +8,10 @@
 namespace FlexFlow {
 
 template <typename Idx, typename T1, typename T2>
-DimOrdered<Idx, std::pair<T1, T2>> zip(DimOrdered<Idx, T1> const &lhs, DimOrdered<Idx, T2> const &rhs) {
-  return DimOrdered<Idx, std::pair<T1, T2>>{zip(as_vector(lhs), as_vector(rhs))};
+DimOrdered<Idx, std::pair<T1, T2>> zip(DimOrdered<Idx, T1> const &lhs,
+                                       DimOrdered<Idx, T2> const &rhs) {
+  return DimOrdered<Idx, std::pair<T1, T2>>{
+      zip(as_vector(lhs), as_vector(rhs))};
 }
 
 } // namespace FlexFlow

@@ -1,7 +1,7 @@
 #include "utils/containers/unordered_set_of.h"
+#include "utils/fmt/unordered_set.h"
 #include <doctest/doctest.h>
 #include <vector>
-#include "utils/fmt/unordered_set.h"
 
 using namespace ::FlexFlow;
 

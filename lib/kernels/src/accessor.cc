@@ -23,7 +23,10 @@ half *GenericTensorAccessorW::get_half_ptr() const {
 }
 
 std::string format_as(GenericTensorAccessorW const &a) {
-  return fmt::format("<GenericTensorAccessorW data_type={} shape={} ptr={}>", a.data_type, a.shape, a.ptr);
+  return fmt::format("<GenericTensorAccessorW data_type={} shape={} ptr={}>",
+                     a.data_type,
+                     a.shape,
+                     a.ptr);
 }
 
 std::ostream &operator<<(std::ostream &s, GenericTensorAccessorW const &a) {
@@ -51,7 +54,10 @@ half const *GenericTensorAccessorR::get_half_ptr() const {
 }
 
 std::string format_as(GenericTensorAccessorR const &a) {
-  return fmt::format("<GenericTensorAccessorR data_type={} shape={} ptr={}>", a.data_type, a.shape, a.ptr);
+  return fmt::format("<GenericTensorAccessorR data_type={} shape={} ptr={}>",
+                     a.data_type,
+                     a.shape,
+                     a.ptr);
 }
 
 std::ostream &operator<<(std::ostream &s, GenericTensorAccessorR const &a) {

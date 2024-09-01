@@ -8,10 +8,9 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(DropoutAttrs const &,
-                                                        TensorShape const &);
-tl::expected<ParallelTensorShape, std::string> get_output_shape(DropoutAttrs const &,
-                                                                ParallelTensorShape const &);
+TensorShape get_output_shape(DropoutAttrs const &, TensorShape const &);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(DropoutAttrs const &, ParallelTensorShape const &);
 
 CHECK_VALID_OP_ATTR(DropoutAttrs);
 

@@ -2,9 +2,9 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_OPTIONAL_H
 
 #include "utils/check_fmtable.h"
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <optional>
-#include <doctest/doctest.h>
 
 namespace fmt {
 
@@ -53,6 +53,5 @@ struct StringMaker<std::optional<T>> {
 };
 
 } // namespace doctest
-
 
 #endif

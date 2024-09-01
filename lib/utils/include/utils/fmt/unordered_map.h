@@ -5,10 +5,10 @@
 #include "utils/fmt/pair.h"
 #include "utils/join_strings.h"
 #include <algorithm>
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <unordered_map>
 #include <vector>
-#include <doctest/doctest.h>
 
 namespace fmt {
 

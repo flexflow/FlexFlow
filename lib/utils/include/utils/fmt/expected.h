@@ -3,14 +3,16 @@
 
 #include "fmt/format.h"
 #include "utils/check_fmtable.h"
+#include <doctest/doctest.h>
 #include <tl/expected.hpp>
 #include <utility>
-#include <doctest/doctest.h>
 
 namespace fmt {
 
 template <typename T, typename E, typename Char>
-struct formatter<::tl::expected<T, E>, Char,
+struct formatter<
+    ::tl::expected<T, E>,
+    Char,
     std::enable_if_t<!detail::has_format_as<::tl::expected<T, E>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>

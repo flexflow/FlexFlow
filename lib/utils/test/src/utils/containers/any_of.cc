@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include "utils/containers/any_of.h"
+#include <doctest/doctest.h>
 #include <vector>
 
 using namespace ::FlexFlow;

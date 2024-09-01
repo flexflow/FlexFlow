@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_GET_IDXS_H
 
 #include "op-attrs/dim_ordered.h"
-#include "utils/containers/transform.h"
 #include "utils/containers/count.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

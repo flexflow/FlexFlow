@@ -4,9 +4,9 @@
 #include "utils/containers/vector_transform.h"
 #include "utils/required_core.h"
 #include <algorithm>
+#include <optional>
 #include <type_traits>
 #include <vector>
-#include <optional>
 
 namespace FlexFlow {
 
@@ -64,7 +64,6 @@ std::optional<std::invoke_result_t<F, T>> transform(std::optional<T> const &o,
     return std::nullopt;
   }
 }
-
 
 } // namespace FlexFlow
 

@@ -4,10 +4,10 @@
 #include "utils/check_fmtable.h"
 #include "utils/containers/sorted.h"
 #include "utils/join_strings.h"
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <set>
 #include <vector>
-#include <doctest/doctest.h>
 
 namespace fmt {
 

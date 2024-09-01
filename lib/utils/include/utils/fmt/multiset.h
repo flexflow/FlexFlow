@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_MULTISET_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_MULTISET_H
 
-#include <fmt/format.h>
-#include <doctest/doctest.h>
-#include <set>
 #include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
+#include <doctest/doctest.h>
+#include <fmt/format.h>
+#include <set>
 
 namespace fmt {
 
@@ -29,7 +29,7 @@ struct formatter<
   }
 };
 
-} // namespace fmt 
+} // namespace fmt
 
 namespace FlexFlow {
 

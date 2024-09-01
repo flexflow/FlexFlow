@@ -5,9 +5,9 @@
 #include "utils/containers/sorted.h"
 #include "utils/fmt/pair.h"
 #include "utils/join_strings.h"
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <map>
-#include <doctest/doctest.h>
 
 namespace fmt {
 

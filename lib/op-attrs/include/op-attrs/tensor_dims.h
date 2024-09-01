@@ -12,8 +12,10 @@ size_t num_dims(TensorDims const &);
 size_t dim_at_idx(TensorDims const &, ff_dim_t);
 size_t &dim_at_idx(TensorDims &, ff_dim_t);
 
-bool tensor_dims_is_broadcastable_to(TensorDims const &curr, TensorDims const &goal);
-std::optional<TensorDims> get_broadcast_target_dims(std::unordered_set<TensorDims> const &);
+bool tensor_dims_is_broadcastable_to(TensorDims const &curr,
+                                     TensorDims const &goal);
+std::optional<TensorDims>
+    get_broadcast_target_dims(std::unordered_set<TensorDims> const &);
 
 ParallelTensorDims lift_to_parallel(TensorDims const &);
 ParallelTensorDims

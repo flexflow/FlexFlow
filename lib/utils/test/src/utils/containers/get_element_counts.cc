@@ -1,6 +1,6 @@
 #include "utils/containers/get_element_counts.h"
-#include <doctest/doctest.h>
 #include "utils/fmt/unordered_map.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

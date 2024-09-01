@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_EXPECTED_H
 #define _FLEXFLOW_UTILS_INCLUDE_EXPECTED_H
 
-#include <tl/expected.hpp>
 #include "utils/fmt.h"
-#include <string>
 #include <optional>
+#include <string>
+#include <tl/expected.hpp>
 
 namespace FlexFlow {
 

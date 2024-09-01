@@ -1,6 +1,6 @@
 #include "utils/graph/serial_parallel/intermediate_sp_decomposition_tree.h"
-#include <doctest/doctest.h>
 #include "utils/fmt/variant.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

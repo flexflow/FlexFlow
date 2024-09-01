@@ -1,7 +1,7 @@
-#include <doctest/doctest.h>
 #include "utils/expected.h"
 #include "utils/fmt/expected.h"
 #include "utils/fmt/optional.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
@@ -17,7 +17,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("has unexpected") {
-      tl::expected<int, std::string> input = tl::make_unexpected("error message");
+      tl::expected<int, std::string> input =
+          tl::make_unexpected("error message");
 
       std::optional<int> result = optional_from_expected(input);
       std::optional<int> correct = std::nullopt;

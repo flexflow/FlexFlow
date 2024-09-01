@@ -29,7 +29,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       CHECK(result == correct);
     }
-    
+
     SUBCASE("has unexpected") {
       tl::expected<int, std::string> input = tl::make_unexpected("error");
 

@@ -2,16 +2,16 @@
 #define _FLEXFLOW_UTILS_STACK_VECTOR_H
 
 #include "utils/hash-utils.h"
-#include <rapidcheck.h>
+#include "utils/join_strings.h"
 #include "utils/json.h"
 #include "utils/test_types.h"
 #include "utils/type_traits.h"
 #include <array>
 #include <cassert>
-#include <optional>
-#include <type_traits>
 #include <fmt/format.h>
-#include "utils/join_strings.h"
+#include <optional>
+#include <rapidcheck.h>
+#include <type_traits>
 
 namespace FlexFlow {
 
@@ -48,8 +48,8 @@ public:
     }
   }
 
-  stack_vector(std::initializer_list<T> const &l) 
-    : stack_vector(l.begin(), l.end()) { }
+  stack_vector(std::initializer_list<T> const &l)
+      : stack_vector(l.begin(), l.end()) {}
 
   operator std::vector<T>() const {
     return {this->cbegin(), this->cend()};

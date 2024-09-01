@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_VARIANT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_VARIANT_H
 
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <variant>
-#include <doctest/doctest.h>
 
 namespace fmt {
 
@@ -43,6 +43,5 @@ struct StringMaker<std::variant<Ts...>> {
 };
 
 } // namespace doctest
-
 
 #endif

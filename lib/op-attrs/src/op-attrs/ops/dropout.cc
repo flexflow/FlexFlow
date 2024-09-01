@@ -8,8 +8,9 @@ TensorShape get_output_shape(DropoutAttrs const &,
   return input_shape;
 }
 
-tl::expected<ParallelTensorShape, std::string> get_output_shape(DropoutAttrs const &attrs,
-                                                                ParallelTensorShape const &input_shape) {
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(DropoutAttrs const &attrs,
+                     ParallelTensorShape const &input_shape) {
   if (get_sum_degree(input_shape) != 1) {
     return tl::unexpected(
         fmt::format("Expected sum degree 1, but receieved sum degree {}",

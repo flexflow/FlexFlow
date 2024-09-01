@@ -1,8 +1,8 @@
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/complete_bipartite_composite_decomposition.h"
+#include "utils/fmt/optional.h"
 #include "utils/fmt/unordered_set.h"
 #include "utils/hash/unordered_set.h"
 #include <doctest/doctest.h>
-#include "utils/fmt/optional.h"
 
 using namespace ::FlexFlow;
 
