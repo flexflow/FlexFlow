@@ -231,6 +231,32 @@ void RequestManager::load_batch_config_task(
                             stream));
   total_copy_size += sizeof(BatchConfig::request_available);
 
+  for (int request_idx = 0;
+        request_idx < BatchConfig::max_requests_per_batch();
+        request_idx++) {
+    if (batch_config->request_available[request_idx]) {
+      checkCUDA(cudaMemcpyAsync(
+          static_cast<char *>(handle.batch_config_metadata) +
+              total_copy_size + request_idx * sizeof(BatchConfig::BitMask),
+          &(batch_config->causalMask[request_idx]),
+          sizeof(BatchConfig::BitMask),
+          cudaMemcpyHostToDevice,
+          stream));
+    }
+  }
+  total_copy_size += sizeof(BatchConfig::causalMask);
+
+  if (batch_config->num_tokens_to_commit > 0) {
+    checkCUDA(cudaMemcpyAsync(
+        static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+        &(batch_config->committed_tokens),
+        batch_config->num_tokens_to_commit *
+            sizeof(BatchConfig::CommittedTokensInfo),
+        cudaMemcpyHostToDevice,
+        stream));
+  }
+  total_copy_size += sizeof(BatchConfig::committed_tokens);
+
   checkCUDA(cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
                                 total_copy_size,
                             &(batch_config->streamingCacheInfo),
@@ -238,6 +264,14 @@ void RequestManager::load_batch_config_task(
                             cudaMemcpyHostToDevice,
                             stream));
   total_copy_size += sizeof(BatchConfig::streamingCacheInfo);
+
+  checkCUDA(cudaMemcpyAsync(
+      static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+      &(batch_config->num_tokens_to_commit),
+      sizeof(int),
+      cudaMemcpyHostToDevice,
+      stream));
+  total_copy_size += sizeof(int);
 
   // load attention metadata
   if (batch_config->get_mode() == INC_DECODING_MODE) {
@@ -366,21 +400,6 @@ void RequestManager::load_batch_config_task(
     }
   } else if (batch_config->get_mode() == TREE_SEARCH_MODE) {
     if (handle.tree_search_attention_metadata->enabled()) {
-      for (int request_idx = 0;
-           request_idx < BatchConfig::max_requests_per_batch();
-           request_idx++) {
-        if (batch_config->request_available[request_idx]) {
-          checkCUDA(cudaMemcpyAsync(
-              static_cast<char *>(handle.batch_config_metadata) +
-                  total_copy_size + request_idx * sizeof(BatchConfig::BitMask),
-              &(batch_config->causalMask[request_idx]),
-              sizeof(BatchConfig::BitMask),
-              cudaMemcpyHostToDevice,
-              stream));
-        }
-      }
-      total_copy_size += sizeof(BatchConfig::causalMask);
-
       // calculate the attention meta data
       {
         BatchConfig::PerRequestInfo *request_infos =
@@ -396,8 +415,7 @@ void RequestManager::load_batch_config_task(
                 static_cast<char *>(handle.batch_config_metadata) +
                 sizeof(BatchConfig::tokensInfo) +
                 sizeof(BatchConfig::requestsInfo) +
-                sizeof(BatchConfig::request_available)) +
-                sizeof(BatchConfig::streamingCacheInfo);
+                sizeof(BatchConfig::request_available));
         int batch_size = batch_config->num_active_requests();
         uint32_t const max_num_pages =
             round_up_pages(BatchConfig::max_sequence_length() +
@@ -513,40 +531,6 @@ void RequestManager::load_batch_config_task(
     }
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     if (handle.tree_verify_attention_metadata->enabled()) {
-      for (int request_idx = 0;
-           request_idx < BatchConfig::max_requests_per_batch();
-           request_idx++) {
-        if (batch_config->request_available[request_idx]) {
-          checkCUDA(cudaMemcpyAsync(
-              static_cast<char *>(handle.batch_config_metadata) +
-                  total_copy_size + request_idx * sizeof(BatchConfig::BitMask),
-              &(batch_config->causalMask[request_idx]),
-              sizeof(BatchConfig::BitMask),
-              cudaMemcpyHostToDevice,
-              stream));
-        }
-      }
-      total_copy_size += sizeof(BatchConfig::causalMask);
-
-      if (batch_config->num_tokens_to_commit > 0) {
-        checkCUDA(cudaMemcpyAsync(
-            static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-            &(batch_config->committed_tokens),
-            batch_config->num_tokens_to_commit *
-                sizeof(BatchConfig::CommittedTokensInfo),
-            cudaMemcpyHostToDevice,
-            stream));
-      }
-      total_copy_size += sizeof(BatchConfig::committed_tokens);
-
-      checkCUDA(cudaMemcpyAsync(
-          static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
-          &(batch_config->num_tokens_to_commit),
-          sizeof(int),
-          cudaMemcpyHostToDevice,
-          stream));
-      total_copy_size += sizeof(int);
-
       // calculate the attention meta data
       {
         BatchConfig::PerRequestInfo *request_infos =
@@ -562,8 +546,7 @@ void RequestManager::load_batch_config_task(
                 static_cast<char *>(handle.batch_config_metadata) +
                 sizeof(BatchConfig::tokensInfo) +
                 sizeof(BatchConfig::requestsInfo) +
-                sizeof(BatchConfig::request_available)) +
-                sizeof(BatchConfig::streamingCacheInfo);
+                sizeof(BatchConfig::request_available));
         int batch_size = batch_config->num_active_requests();
         uint32_t const max_num_pages =
             round_up_pages(BatchConfig::max_sequence_length() +

@@ -625,7 +625,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     streaming_cache_infos = reinterpret_cast<StreamingCacheInfo *>(
         reinterpret_cast<char *>(handler.batch_config_metadata) +
         sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BatchConfig::request_available));
+        sizeof(BatchConfig::request_available) + sizeof(BatchConfig::causalMask)) +
+        sizeof(BatchConfig::committed_tokens);
 
     if (offload) {
       // token_infos =
