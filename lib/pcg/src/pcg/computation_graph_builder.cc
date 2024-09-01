@@ -654,10 +654,13 @@ tensor_guid_t ComputationGraphBuilder::layer_norm(
 
 tensor_guid_t ComputationGraphBuilder::softmax(
     tensor_guid_t const &input,
-    int dim,
+    std::optional<int> maybe_dim,
     std::optional<std::string> const &maybe_name) {
 
   TensorShape input_shape = this->get_shape(input);
+
+  int dim = maybe_dim.value_or(num_dims(input_shape) - 1);
+
   if (dim >= num_dims(input_shape)) {
     throw mk_runtime_error(fmt::format("ComputationGraphBuilder::softmax received out-of-bounds dim {} for input tensor shape {}", dim, input_shape));
   }
