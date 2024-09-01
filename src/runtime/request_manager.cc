@@ -735,7 +735,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   bool prefill_completed = false;
   prefill_request->llm_cache_size += prefill_request->num_tokens_in_batch;
   if (decoding_mode == INCREMENTAL_DECODING && streaming_cache) {
-    prefill_request->streaming_cache_info.update_cache(
+    prefill_request->streaming_cache_info.commit_cache(
         prefill_request->num_tokens_in_batch);
   }
 
@@ -783,7 +783,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     assert(request.status == Request::RUNNING);
     request.llm_cache_size++;
     if (streaming_cache) {
-      request.streaming_cache_info.update_cache(1);
+      request.streaming_cache_info.commit_cache(1);
     }
     request.tokens.push_back(
         result.token_ids[request.first_token_offset_in_batch]);
@@ -818,7 +818,7 @@ void RequestManager::update_ssm_prefill_results(
   // There's no results to update, but we should update ssm_cache_size.
   prefill_request->ssm_cache_size += prefill_request->num_tokens_in_batch;
   if (streaming_cache) {
-    prefill_request->streaming_cache_info.update_cache(
+    prefill_request->streaming_cache_info.commit_cache(
         prefill_request->num_tokens_in_batch);
   }
 
@@ -1470,7 +1470,7 @@ bool RequestManager::update_ssm_inference_results(
     if (current_ssm_step == 1) {
       request.ssm_cache_size = request.tokens.size();
       if (streaming_cache) {
-        request.streaming_cache_info.update_cache(request.num_tokens_in_batch);
+        request.streaming_cache_info.commit_cache(request.num_tokens_in_batch);
       }
     }
 
