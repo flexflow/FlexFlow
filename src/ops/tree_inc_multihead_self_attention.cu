@@ -638,11 +638,11 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
             sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BatchConfig::request_available) +
-            sizeof(BatchConfig::causalMask));
+            sizeof(BatchConfig::causalMask) +
+            sizeof(BatchConfig::streamingCacheInfo));
     num_tokens_to_commit = reinterpret_cast<int *>(
         reinterpret_cast<char *>(committed_token_infos) +
-        sizeof(BatchConfig::committed_tokens) +
-        sizeof(BatchConfig::streamingCacheInfo));
+        sizeof(BatchConfig::committed_tokens));
   }
 
   cudaStreamSynchronize(stream);

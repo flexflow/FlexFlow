@@ -246,6 +246,14 @@ void RequestManager::load_batch_config_task(
   }
   total_copy_size += sizeof(BatchConfig::causalMask);
 
+  checkCUDA(cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                                total_copy_size,
+                            &(batch_config->streamingCacheInfo),
+                            sizeof(BatchConfig::streamingCacheInfo),
+                            cudaMemcpyHostToDevice,
+                            stream));
+  total_copy_size += sizeof(BatchConfig::streamingCacheInfo);
+
   if (batch_config->num_tokens_to_commit > 0) {
     checkCUDA(cudaMemcpyAsync(
         static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
@@ -256,14 +264,6 @@ void RequestManager::load_batch_config_task(
         stream));
   }
   total_copy_size += sizeof(BatchConfig::committed_tokens);
-
-  checkCUDA(cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
-                                total_copy_size,
-                            &(batch_config->streamingCacheInfo),
-                            sizeof(BatchConfig::streamingCacheInfo),
-                            cudaMemcpyHostToDevice,
-                            stream));
-  total_copy_size += sizeof(BatchConfig::streamingCacheInfo);
 
   checkCUDA(cudaMemcpyAsync(
       static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
