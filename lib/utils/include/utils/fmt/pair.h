@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_PAIR_H
 
 #include "utils/check_fmtable.h"
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <utility>
 
@@ -38,5 +39,16 @@ std::ostream &operator<<(std::ostream &s, std::pair<L, R> const &m) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename L, typename R>
+struct StringMaker<std::pair<L, R>> {
+  static String convert(std::pair<L, R> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

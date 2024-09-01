@@ -11,6 +11,12 @@ using namespace FlexFlow;
 
 namespace doctest {
 
+#define CHECK_WITHOUT_STRINGIFY(...)                                           \
+  do {                                                                         \
+    bool result = __VA_ARGS__;                                                 \
+    CHECK(result);                                                             \
+  } while (0);
+
 // template <typename InputIt, typename Stringifiable = std::string>
 // std::string
 //     doctest_print_container(InputIt first,
@@ -64,12 +70,5 @@ namespace doctest {
 //     return toString(entries);
 //   }
 // };
-
-template <typename T, typename E>
-struct StringMaker<tl::expected<T, E>> {
-  static String convert(tl::expected<T, E> const &m) {
-    return toString(fmt::to_string(m));
-  }
-};
 
 } // namespace doctest

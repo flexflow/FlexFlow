@@ -7,6 +7,7 @@
 #include "utils/containers/filter_keys.h"
 #include "utils/containers/intersection.h"
 #include "utils/containers/set_union.h"
+#include "utils/containers/transform.h"
 #include "utils/containers/unordered_set_of.h"
 #include "utils/exception.h"
 #include "utils/fmt/unordered_set.h"

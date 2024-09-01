@@ -1,4 +1,5 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
+#include "utils/fmt/unordered_set.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
