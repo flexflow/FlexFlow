@@ -8,10 +8,12 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("sequential_combine") {
     MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
     MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
-    MachineMapping machine_mapping_empty(std::unordered_map<Node, MachineView>{});
+    MachineMapping machine_mapping_empty(
+        std::unordered_map<Node, MachineView>{});
     MachineMapping machine_mapping_0({{Node(0), machine_view_0}});
     MachineMapping machine_mapping_1({{Node(1), machine_view_1}});
-    MachineMapping combined({{Node(0), machine_view_0}, {Node(1), machine_view_1}});
+    MachineMapping combined(
+        {{Node(0), machine_view_0}, {Node(1), machine_view_1}});
     MachineMappingResult s0(0, machine_mapping_empty);
     MachineMappingResult s1(1, machine_mapping_0);
     MachineMappingResult s2(2, machine_mapping_1);
@@ -32,10 +34,12 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("parallel_combine") {
     MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
     MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
-    MachineMapping machine_mapping_empty(std::unordered_map<Node, MachineView>{});
+    MachineMapping machine_mapping_empty(
+        std::unordered_map<Node, MachineView>{});
     MachineMapping machine_mapping_0({{Node(0), machine_view_0}});
     MachineMapping machine_mapping_1({{Node(1), machine_view_1}});
-    MachineMapping combined({{Node(0), machine_view_0}, {Node(1), machine_view_1}});
+    MachineMapping combined(
+        {{Node(0), machine_view_0}, {Node(1), machine_view_1}});
     MachineMappingResult s0(0, machine_mapping_empty);
     MachineMappingResult s1(1, machine_mapping_0);
     MachineMappingResult s2(2, machine_mapping_1);
@@ -56,10 +60,12 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_infinity_machine_mapping_result") {
     MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
     MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
-    MachineMapping machine_mapping_empty(std::unordered_map<Node, MachineView>{});
+    MachineMapping machine_mapping_empty(
+        std::unordered_map<Node, MachineView>{});
     MachineMapping machine_mapping_0({{Node(0), machine_view_0}});
     MachineMapping machine_mapping_1({{Node(1), machine_view_1}});
-    MachineMapping combined({{Node(0), machine_view_0}, {Node(1), machine_view_1}});
+    MachineMapping combined(
+        {{Node(0), machine_view_0}, {Node(1), machine_view_1}});
     MachineMappingResult s0(0, machine_mapping_empty);
     MachineMappingResult s1(1, machine_mapping_0);
     MachineMappingResult s2(2, machine_mapping_1);
@@ -73,10 +79,12 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("minimize_runtime") {
     MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
     MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
-    MachineMapping machine_mapping_empty(std::unordered_map<Node, MachineView>{});
+    MachineMapping machine_mapping_empty(
+        std::unordered_map<Node, MachineView>{});
     MachineMapping machine_mapping_0({{Node(0), machine_view_0}});
     MachineMapping machine_mapping_1({{Node(1), machine_view_1}});
-    MachineMapping combined({{Node(0), machine_view_0}, {Node(1), machine_view_1}});
+    MachineMapping combined(
+        {{Node(0), machine_view_0}, {Node(1), machine_view_1}});
     MachineMappingResult s0(0, machine_mapping_empty);
     MachineMappingResult s1(1, machine_mapping_0);
     MachineMappingResult s2(2, machine_mapping_1);
