@@ -5066,6 +5066,20 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     }
   }
   {
+    TaskVariantRegistrar registrar(GROUP_BY_INF_TASK_ID, "Group_by Inference");
+    registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<Group_by::inference_task>(
+          registrar, "Group_by Inference Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<Group_by::inference_task>(registrar);
+    }
+  }
+  {
     TaskVariantRegistrar registrar(GROUP_BY_BWD_TASK_ID, "Group_by Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();

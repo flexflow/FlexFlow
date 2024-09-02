@@ -64,7 +64,9 @@ void FFModel::group_by(const Tensor input,
       dims[i] = input->dims[i];
     }
     // Batch dimension is replaced by max expert capacity
-    dims[num_dims - 1] = (int)ceil(alpha * k / n * input->dims[num_dims - 1]);
+    if (alpha != 0.0f) {
+      dims[num_dims - 1] = (int)ceil(alpha * k / n * input->dims[num_dims - 1]);
+    }
     for (int i = 0; i < n; i++) {
       // Creating one tensor per expert, each with size (DATA_DIMS,
       // max_expert_capacity)
@@ -321,6 +323,72 @@ void Group_by::forward(FFModel const &ff) {
   runtime->execute_index_space(ctx, launcher);
 }
 
+void Group_by::forward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  int n = (int)regions.size() - 2;
+  assert((int)task->regions.size() == n + 2);
+
+  GroupByMeta *m = *((GroupByMeta **)task->local_args);
+
+  // get input and assign regions. Each tensor has three dimensions:
+  // (datapoint_dim, batch_size, replica_dim)
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      DT_FLOAT, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR assign = helperGetGenericTensorAccessorRO(
+      DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  Domain input_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Domain assign_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+
+  coord_t input_rows = input_domain.hi()[1] - input_domain.lo()[1] + 1;
+  coord_t input_cols = input_domain.hi()[0] - input_domain.lo()[0] + 1;
+  assert(input_rows == assign_domain.hi()[1] - assign_domain.lo()[1] + 1);
+
+  int k = assign_domain.hi()[0] - assign_domain.lo()[0] + 1;
+  int batch_size = input_rows;
+  int data_dim = input_cols;
+
+  // Create a vector of n outputs, where n is the number of experts.
+  // Each entry in the "outputs" vector points to the Legion tensor that will
+  // contain the tockens dispatched to the corresponding expert
+  std::vector<GenericTensorAccessorW> output_accessors;
+  std::vector<GenericTensorAccessorR> output_accessors_inf_deb;
+  float *outputs[n];
+  for (int i = 0; i < n; i++) {
+    GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+        DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
+    output_accessors.push_back(output);
+    GenericTensorAccessorR output_inf_deb = helperGetGenericTensorAccessorRO(
+        DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
+    output_accessors_inf_deb.push_back(output_inf_deb);
+    Domain out_domain = runtime->get_index_space_domain(
+        ctx, task->regions[i + 2].region.get_index_space());
+    outputs[i] = output.get_float_ptr();
+
+    coord_t output_rows = out_domain.hi()[1] - out_domain.lo()[1] + 1;
+    coord_t output_cols = out_domain.hi()[0] - out_domain.lo()[0] + 1;
+    assert(output_cols == input_cols);
+  }
+
+  Group_by::forward_kernel_wrapper(m,
+                                   input.get_float_ptr(),
+                                   assign.get_int32_ptr(),
+                                   outputs,
+                                   n,
+                                   k,
+                                   batch_size,
+                                   data_dim);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Group_by::save_inference_tensors_to_file(
+        m, shard_id, nullptr, {input, assign}, {}, output_accessors_inf_deb);
+  }
+}
+
 FutureMap Group_by::inference(FFModel const &ff,
                               BatchConfigFuture const &bc,
                               std::vector<ParallelTensor> const &batch_inputs,
@@ -334,7 +402,7 @@ FutureMap Group_by::inference(FFModel const &ff,
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   /* std::cout << "GroupBy op machine_view: " << *(MachineView const *)mv
             << std::endl; */
-  IndexLauncher launcher(GROUP_BY_FWD_TASK_ID,
+  IndexLauncher launcher(GROUP_BY_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -372,10 +440,10 @@ FutureMap Group_by::inference(FFModel const &ff,
   return runtime->execute_index_space(ctx, launcher);
 }
 
-void Group_by::forward_task(Task const *task,
-                            std::vector<PhysicalRegion> const &regions,
-                            Context ctx,
-                            Runtime *runtime) {
+void Group_by::inference_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
   int n = (int)regions.size() - 2;
   assert((int)task->regions.size() == n + 2);
 
@@ -403,12 +471,16 @@ void Group_by::forward_task(Task const *task,
   // Create a vector of n outputs, where n is the number of experts.
   // Each entry in the "outputs" vector points to the Legion tensor that will
   // contain the tockens dispatched to the corresponding expert
-  std::vector<GenericTensorAccessorR> output_accessors;
+  std::vector<GenericTensorAccessorW> output_accessors;
+  std::vector<GenericTensorAccessorR> output_accessors_inf_deb;
   float *outputs[n];
   for (int i = 0; i < n; i++) {
     GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
         DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
     output_accessors.push_back(output);
+    GenericTensorAccessorR output_inf_deb = helperGetGenericTensorAccessorRO(
+        DT_FLOAT, regions[i + 2], task->regions[i + 2], FID_DATA, ctx, runtime);
+    output_accessors_inf_deb.push_back(output_inf_deb);
     Domain out_domain = runtime->get_index_space_domain(
         ctx, task->regions[i + 2].region.get_index_space());
     outputs[i] = output.get_float_ptr();
@@ -418,19 +490,19 @@ void Group_by::forward_task(Task const *task,
     assert(output_cols == input_cols);
   }
 
-  Group_by::forward_kernel_wrapper(m,
-                                   input.get_float_ptr(),
-                                   assign.get_int32_ptr(),
-                                   outputs,
-                                   n,
-                                   k,
-                                   batch_size,
-                                   data_dim);
+  Group_by::inference_kernel_wrapper(m,
+                                     input.get_float_ptr(),
+                                     assign.get_int32_ptr(),
+                                     outputs,
+                                     n,
+                                     k,
+                                     batch_size,
+                                     data_dim);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     Group_by::save_inference_tensors_to_file(
-        m, shard_id, nullptr, {input, assign}, {}, output_accessors);
+        m, shard_id, nullptr, {input, assign}, {}, output_accessors_inf_deb);
   }
 }
 

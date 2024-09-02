@@ -1485,6 +1485,72 @@ flexflow_tensor_t *
   return tensor_outputs_wrapped;
 }
 
+flexflow_tensor_t *flexflow_model_add_top_k(flexflow_model_t handle_,
+                                            const flexflow_tensor_t input_,
+                                            int k,
+                                            bool sorted,
+                                            char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor tensor_outputs[2];
+  handle->top_k(input, tensor_outputs, k, sorted, name);
+  assert(tensor_outputs[0] != nullptr);
+  assert(tensor_outputs[1] != nullptr);
+  flexflow_tensor_t *tensor_outputs_wrapped =
+      (flexflow_tensor_t *)calloc(2, sizeof(flexflow_tensor_t));
+  tensor_outputs_wrapped[0] = FFCObjectWrapper::wrap(tensor_outputs[0]);
+  tensor_outputs_wrapped[1] = FFCObjectWrapper::wrap(tensor_outputs[1]);
+  return tensor_outputs_wrapped;
+}
+
+flexflow_tensor_t *
+    flexflow_model_add_group_by(flexflow_model_t handle_,
+                                const flexflow_tensor_t input_,
+                                const flexflow_tensor_t topk_indices_,
+                                int num_experts,
+                                char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor input = FFCObjectWrapper::unwrap(input_);
+  Tensor topk_indices = FFCObjectWrapper::unwrap(topk_indices_);
+  assert(num_experts > 0);
+  Tensor tensor_outputs[num_experts];
+  handle->group_by(
+      input, topk_indices, tensor_outputs, num_experts, 0.0f, name);
+  flexflow_tensor_t *tensor_outputs_wrapped =
+      (flexflow_tensor_t *)calloc(num_experts, sizeof(flexflow_tensor_t));
+  for (int i = 0; i < num_experts; i++) {
+    assert(tensor_outputs[i] != nullptr);
+    tensor_outputs_wrapped[i] = FFCObjectWrapper::wrap(tensor_outputs[i]);
+  }
+  return tensor_outputs_wrapped;
+}
+
+flexflow_tensor_t
+    flexflow_model_add_aggregate(flexflow_model_t handle_,
+                                 const flexflow_tensor_t topk_coefficients_,
+                                 const flexflow_tensor_t topk_indices_,
+                                 flexflow_tensor_t *expert_predictions_,
+                                 int num_experts,
+                                 char const *name) {
+  FFModel *handle = FFCObjectWrapper::unwrap(handle_);
+  Tensor topk_coefficients = FFCObjectWrapper::unwrap(topk_coefficients_);
+  Tensor topk_indices = FFCObjectWrapper::unwrap(topk_indices_);
+  assert(num_experts > 0);
+  Tensor aggregate_inputs[num_experts + 4] = {nullptr};
+  aggregate_inputs[0] = topk_coefficients;
+  aggregate_inputs[1] = topk_indices;
+  aggregate_inputs[2] = topk_indices;
+  // Note: we need to set the tensor below to a non-null value, but it is
+  // ignored (as it is not used in inference/finetuning)
+  aggregate_inputs[3] = topk_coefficients; // TODO: set this to full gate preds
+                                           // (to support training)
+  for (int i = 0; i < num_experts; i++) {
+    aggregate_inputs[i + 4] = FFCObjectWrapper::unwrap(expert_predictions_[i]);
+  }
+  Tensor tensor = handle->aggregate(aggregate_inputs, num_experts, 0.0f, name);
+  return FFCObjectWrapper::wrap(tensor);
+}
+
 flexflow_tensor_t flexflow_model_add_arg_top_k(flexflow_model_t handle_,
                                                const flexflow_tensor_t input_,
                                                int k,

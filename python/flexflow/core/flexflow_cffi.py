@@ -575,6 +575,14 @@ class ResidualRMSNorm(Op):
 
 
 # -----------------------------------------------------------------------
+# TopK
+# -----------------------------------------------------------------------
+class TopK(Op):
+    def __init__(self, handle, idx=None, name=None):
+        super(TopK, self).__init__(handle, idx, name)
+
+
+# -----------------------------------------------------------------------
 # ArgTopK
 # -----------------------------------------------------------------------
 class ArgTopK(Op):
@@ -604,6 +612,20 @@ class Sampling(Op):
 class ArgMax(Op):
     def __init__(self, handle, idx=None, name=None):
         super(ArgMax, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# GroupBy
+# -----------------------------------------------------------------------
+class GroupBy(Op):
+    def __init__(self, handle, idx=None, name=None):
+        super(GroupBy, self).__init__(handle, idx, name)
+
+# -----------------------------------------------------------------------
+# Aggregate
+# -----------------------------------------------------------------------
+class Aggregate(Op):
+    def __init__(self, handle, idx=None, name=None):
+        super(Aggregate, self).__init__(handle, idx, name)
 
 
 # -----------------------------------------------------------------------
@@ -702,6 +724,8 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
         return RMSNorm(handle, idx, name)
     elif op_type == OpType.RESIDUAL_RMS_NORM:
         return ResidualRMSNorm(handle, idx, name)
+    elif op_type == OpType.TOPK:
+        return TopK(handle, idx, name)
     elif op_type == OpType.ARG_TOPK:
         return ArgTopK(handle, idx, name)
     elif op_type == OpType.BEAM_TOPK:
@@ -718,6 +742,10 @@ def convert_op_handle_to_op(op_type, handle, idx=None, name=None):
         return Mean(handle, idx, name)
     elif op_type == OpType.GATHER:
         return Gather(handle, idx, name)
+    elif op_type == OpType.GROUP_BY:
+        return GroupBy(handle, idx, name)
+    elif op_type == OpType.AGGREGATE:
+        return Aggregate(handle, idx, name)
     else:
         assert 0, "unknown layer type {}".format(op_type)
         return None
@@ -1947,7 +1975,7 @@ class FFModel(object):
         use_bias=True,
         name=None,
     ):
-        """Add a fused LayerNorm + Residual layer. This operator uses a single kernel, resulting in 
+        """Add a fused LayerNorm + Residual layer. This operator uses a single kernel, resulting in
         better efficiency compared to using separate element-wise add and LayerNorm operators.
 
         :param input: The input tensor
@@ -2007,8 +2035,8 @@ class FFModel(object):
         use_bias=True,
         name=None,
     ):
-        """Add a Attention Bias + Residual + LayerNorm layer. This operator uses a single kernel, 
-        resulting in better efficiency compared to using separate attention bias addition + 
+        """Add a Attention Bias + Residual + LayerNorm layer. This operator uses a single kernel,
+        resulting in better efficiency compared to using separate attention bias addition +
         element-wise residual addition + LayerNorm operators.
 
         :param input: The input tensor
@@ -3338,7 +3366,9 @@ class FFModel(object):
         :param name: the name of the layer. Default is None.
         :type name: string
 
-        :returns:  Tensor -- the output tensor.
+        :returns:
+            - Tensor -- the residual tensor
+            - Tensor -- the output tensor.
         """
         c_name = get_c_name(name)
         handles_array = ffc().flexflow_model_add_residual_rms_norm(
@@ -3348,6 +3378,94 @@ class FFModel(object):
         return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM), Tensor(
             handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM
         )
+
+    def top_k(self, input, k, sorted, name=None):
+        """Defines the TopK layer.
+
+        :param input: the input Tensor.
+        :type input: Tensor
+
+        :param k: the top k indices to select
+        :type k: int
+
+        :param sorted: Whether the entries should be sorted
+        :type sorted: bool
+
+        :param name: the name of the layer. Default is None.
+        :type name: string
+
+        :returns:
+            - Tensor -- the top K values
+            - Tensor -- the top K indices
+        """
+        c_name = get_c_name(name)
+        handles_array = ffc().flexflow_model_add_top_k(
+            self.handle, input.handle, k, sorted, c_name
+        )
+        self.add_layer(OpType.TOPK, name)
+        return Tensor(handles_array[0], owner_op_type=OpType.TOPK), Tensor(
+            handles_array[1], owner_op_type=OpType.TOPK
+        )
+
+    def group_by(self, input, topk_indices, num_experts, name=None):
+        """Defines the GroupBy layer.
+
+        :param input: the input Tensor.
+        :type input: Tensor
+
+        :param num_experts: the number of experts
+        :type num_experts: int
+
+        :param name: the name of the layer. Default is None.
+        :type name: string
+
+        :returns: List[Tensor] -- the tokens grouped by assigned expert.
+        """
+        c_name = get_c_name(name)
+        handles_array = ffc().flexflow_model_add_group_by(
+            self.handle, input.handle, topk_indices.handle, num_experts, c_name
+        )
+        self.add_layer(OpType.GROUP_BY, name)
+        return [
+            Tensor(handles_array[i], owner_op_type=OpType.GROUP_BY)
+            for i in range(num_experts)
+        ]
+
+    def aggregate(
+        self,
+        topk_coefficients,
+        topk_indices,
+        expert_predictions,
+        num_experts,
+        name=None,
+    ):
+        """Defines the Aggregate layer for MoE experts.
+
+        :param topk_coefficients: the K coefficients for the prediction from the k experts assigned to each token.
+        :type topk_coefficients: Tensor
+
+        :param topk_indices: the indices of the K experts assigned to each token
+        :type topk_indices: Tensor
+
+        :param num_experts: the number of experts
+        :type num_experts: int
+
+        :param name: the name of the layer. Default is None.
+        :type name: string
+
+        :returns: Tensor -- the aggregated output from all experts, weighted by the topk_coefficients
+        """
+        c_name = get_c_name(name)
+        handle = ffc().flexflow_model_add_aggregate(
+            self.handle,
+            topk_coefficients.handle,
+            topk_indices.handle,
+            [exp_tensor.handle for exp_tensor in expert_predictions],
+            num_experts,
+            c_name,
+        )
+        self.add_layer(OpType.AGGREGATE, name)
+        return Tensor(handle, owner_op_type=OpType.AGGREGATE)
 
     def arg_top_k(self, input, k, sorted, speculative_decoding, name=None):
         """Defines the Arg TopK layer.
@@ -3817,7 +3935,9 @@ class FFModel(object):
         c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
         max_num_chars = 5 * (max_sequence_length + 100)
         c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
-        c_output_length_and_tokens = [ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list]
+        c_output_length_and_tokens = [
+            ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list
+        ]
         ffc().flexflow_model_generate(
             self.handle,
             len(prompt_list),
@@ -3827,13 +3947,16 @@ class FFModel(object):
             max_sequence_length,
             c_output_length_and_tokens,
         )
-        #output_length = c_output_length_and_tokens[0]
-        #output_tokens = []
-        #for i in range(output_length):
+        # output_length = c_output_length_and_tokens[0]
+        # output_tokens = []
+        # for i in range(output_length):
         #    output_tokens.append(c_output_length_and_tokens[i + 1])
         from flexflow.serve import GenerationResult
 
-        return [GenerationResult(ffi.string(c_output_text), []) for c_output_text in c_output_texts]
+        return [
+            GenerationResult(ffi.string(c_output_text), [])
+            for c_output_text in c_output_texts
+        ]
 
     def set_position_offset(self, offset):
         ffc().flexflow_model_set_position_offset(self.handle, offset)
@@ -4194,19 +4317,23 @@ class RequestManager(object):
 
     def set_max_requests_per_batch(self, max_requests):
         return ffc().flexflow_request_manager_set_max_requests_per_batch(
-            self.handle, max_requests)
-    
+            self.handle, max_requests
+        )
+
     def set_max_tokens_per_batch(self, max_tokens):
         return ffc().flexflow_request_manager_set_max_tokens_per_batch(
-            self.handle, max_tokens)
-    
+            self.handle, max_tokens
+        )
+
     def set_max_spec_tree_token_num(self, max_tokens):
         return ffc().flexflow_request_manager_set_max_spec_tree_token_num(
-            self.handle, max_tokens)
+            self.handle, max_tokens
+        )
     
     def set_max_sequence_length(self, max_length):
         return ffc().flexflow_request_manager_set_max_sequence_length(
-            self.handle, max_length)
+            self.handle, max_length
+        )
 
     def start_server(self, model):
         return ffc().flexflow_request_manager_start_background_server(
@@ -4214,8 +4341,9 @@ class RequestManager(object):
         )
 
     def stop_server(self):
-        return ffc().flexflow_request_manager_terminate_background_server(
-            self.handle)
+        return ffc().flexflow_request_manager_terminate_background_server(self.handle)
+
+
 # -----------------------------------------------------------------------
 # InferenceManager
 # -----------------------------------------------------------------------
@@ -4243,6 +4371,7 @@ class InferenceManager(object):
             self.handle, model.handle, fileloader.handle
         )
 
+
 # -----------------------------------------------------------------------
 # FileDataLoader
 # -----------------------------------------------------------------------
@@ -4259,7 +4388,7 @@ class FileDataLoader(object):
         hidden_dim,
         qkv_inner_dim,
         tensor_parallelism_degree,
-        use_full_precision
+        use_full_precision,
     ):
         c_weight_file_path = get_c_name(weight_file_path)
         self.handle = ffc().flexflow_file_data_loader_create(
@@ -4269,14 +4398,12 @@ class FileDataLoader(object):
             hidden_dim,
             qkv_inner_dim,
             tensor_parallelism_degree,
-            use_full_precision
+            use_full_precision,
         )
         self._handle = ffi.gc(self.handle, ffc().flexflow_file_data_loader_destroy)
 
     def load_weights(self, model):
         # Check data type and create use_full_precision boolean
-        #assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
-        #use_full_precision = data_type == DataType.DT_FLOAT
-        ffc().flexflow_file_data_loader_load_weights(
-            self.handle, model.handle
-        )
+        # assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
+        # use_full_precision = data_type == DataType.DT_FLOAT
+        ffc().flexflow_file_data_loader_load_weights(self.handle, model.handle)

@@ -17,3 +17,4 @@ from .opt import FlexFlowOPT, OPTConfig
 from .falcon import FlexFlowFalcon, FalconConfig
 from .starcoder import FlexFlowSTARCODER, STARCODERConfig
 from .mpt import FlexFlowMPT, MPTConfig
+from .mixtral import FlexFlowMixtral, MixtralConfig

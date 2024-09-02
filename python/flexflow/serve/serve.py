@@ -18,6 +18,7 @@ from flexflow.serve.models import (
     FlexFlowFalcon,
     FlexFlowSTARCODER,
     FlexFlowMPT,
+    FlexFlowMixtral,
 )
 from flexflow.serve.models import (
     LLAMAConfig,
@@ -25,6 +26,7 @@ from flexflow.serve.models import (
     FalconConfig,
     STARCODERConfig,
     MPTConfig,
+    MixtralConfig,
 )
 from flexflow.core import *
 from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
@@ -104,6 +106,7 @@ class LLM:
                 STARCODERConfig,
             ),
             "MPTForCausalLM": (ModelType.MPT, FlexFlowMPT, MPTConfig),
+            "MixtralForCausalLM": (ModelType.MIXTRAL, FlexFlowMixtral, MixtralConfig),
         }
         self.hf_config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
         self.model_name = self.hf_config._name_or_path
