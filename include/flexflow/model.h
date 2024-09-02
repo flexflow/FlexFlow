@@ -22,6 +22,7 @@
 #include "flexflow/node.h"
 #include "flexflow/operator_params.h"
 #include "flexflow/utils/hash_utils.h"
+#include "flexflow/utils/memory_allocator.h"
 #include "flexflow/utils/tuple.h"
 #include "initializer.h"
 #include "layer.h"
@@ -1116,6 +1117,7 @@ public:
                      bool use_propagation) const;
 #ifdef FF_USE_NCCL
   ncclComm_t *find_nccl_comms(MachineView const &view) const;
+  void finish_nccl_comms();
 #endif
 #ifdef FF_USE_PROPAGATE
   void propagate(std::map<Op *, ParallelConfig> const &current,

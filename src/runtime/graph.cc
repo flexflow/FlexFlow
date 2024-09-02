@@ -68,8 +68,8 @@ namespace FlexFlow::PCG {
 using namespace Legion;
 using FlexFlow::MachineView;
 
-LegionRuntime::Logger::Category log_graph("graph");
-LegionRuntime::Logger::Category log_simplify("graph_simplify");
+Legion::Logger log_graph("graph");
+Legion::Logger log_simplify("graph_simplify");
 
 const Node Node::INVALID_NODE = Node();
 
@@ -1916,10 +1916,7 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
                                     model->config.workersPerNode,
                                     model->config.cpusPerNode,
                                     model->all_valid_views);
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MachineModel *machine;
   if (model->config.machine_model_version == 0) {
     machine =

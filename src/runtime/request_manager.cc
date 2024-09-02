@@ -33,7 +33,7 @@ using namespace Legion;
 using tokenizers::Tokenizer;
 using json = nlohmann::json;
 
-LegionRuntime::Logger::Category log_req_mgr("RequestManager");
+Legion::Logger log_req_mgr("RequestManager");
 
 std::string LoadBytesFromFile(std::string const &path) {
   std::ifstream fs(path, std::ios::in | std::ios::binary);
@@ -2808,6 +2808,10 @@ void RequestManager::background_serving_task(
     rm->serve_spec_infer(llm);
   }
 
+#ifdef FF_USE_NCCL
+  llm->finish_nccl_comms();
+#endif
+  
   // Print at the end of the task
   print_timestamped_message(
       "###PEFT DEBUGGING### Background serving task completed.");

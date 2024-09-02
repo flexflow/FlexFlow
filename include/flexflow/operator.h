@@ -21,7 +21,7 @@ namespace fs = std::filesystem;
 
 namespace FlexFlow {
 
-extern LegionRuntime::Logger::Category log_measure;
+extern Legion::Logger log_measure;
 
 class OpMeta;
 class Simulator;
@@ -240,6 +240,8 @@ public:
                                       std::vector<ParallelTensor> const &,
                                       MachineView const *mv = nullptr) {
     assert(false);
+    Legion::FutureMap empty_map;
+    return empty_map;
   };
   virtual Legion::FutureMap peft_bwd(FFModel const &,
                                      BatchConfigFuture const &,

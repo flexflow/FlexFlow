@@ -233,10 +233,7 @@ OpMeta *ArgMax::init_task(Task const *task,
       ctx, task->regions[1].region.get_index_space());
   int length = acc_input.domain.hi()[0] - acc_input.domain.lo()[0] + 1;
   int batch_size = acc_input.domain.get_volume() / length;
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);
 
   ArgMaxMeta *m = new ArgMaxMeta(handle,

@@ -164,10 +164,7 @@ OpMeta *Dropout::init_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   assert(input_domain == output_domain);
   DropoutMeta *m = new DropoutMeta(handle, dropout, gpu_mem, output_domain);
   std::strcpy(m->op_name, dropout->name);

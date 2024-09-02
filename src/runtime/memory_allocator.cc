@@ -19,7 +19,9 @@ namespace FlexFlow {
 
 // declare Legion names
 using Legion::coord_t;
+using Legion::Machine;
 using Legion::Memory;
+using Legion::Processor;
 using Realm::RegionInstance;
 
 MemoryAllocator::MemoryAllocator(Memory _memory)
@@ -49,6 +51,16 @@ void MemoryAllocator::register_reserved_work_space(void *base, size_t size) {
   reserved_ptr = base;
   reserved_total_size = size;
   reserved_allocated_size = 0;
+}
+
+// Now it's for allocating FB memory, in the future we can
+// add more types of memory allocation if needed
+Memory get_proc_mem(Machine machine, Processor proc) {
+  Machine::MemoryQuery proc_mem = Machine::MemoryQuery(machine)
+                                      .only_kind(Memory::GPU_FB_MEM)
+                                      .best_affinity_to(proc);
+  assert(proc_mem.count() > 0);
+  return proc_mem.first();
 }
 
 }; // namespace FlexFlow

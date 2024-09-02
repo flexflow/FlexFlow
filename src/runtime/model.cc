@@ -85,8 +85,8 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_model("Model");
-LegionRuntime::Logger::Category log_measure("measure");
+Legion::Logger log_model("Model");
+Legion::Logger log_measure("measure");
 
 Op::Op(FFModel &model,
        OperatorType otype,
@@ -1636,41 +1636,47 @@ FFModel::FFModel(FFConfig &_config, bool cpu_offload)
   model_id = model_counter++;
 }
 
+#ifdef FF_USE_NCCL
+void FFModel::finish_nccl_comms() {
+  Context ctx = config.lg_ctx;
+  Runtime *runtime = config.lg_hlr;
+  for (auto const &comm : view_hash_to_nccl_comms) {
+    // Find the machine view that has the hash
+    MachineView view;
+    for (size_t l = 0; l < operators.size(); l++) {
+      view = operators[l]->outputs[0]->machine_view;
+      if (view.hash() == comm.first) {
+        break;
+      }
+    }
+    assert(view.hash() == comm.first && "Cannot find the machine view");
+    IndexSpace task_is = get_or_create_task_is(view);
+    Domain domain = runtime->get_index_space_domain(ctx, task_is);
+    ArgumentMap argmap;
+    int idx = 0;
+    for (Domain::DomainPointIterator it(domain); it; it++, idx++) {
+      argmap.set_point(*it,
+                       TaskArgument(&comm.second[idx], sizeof(ncclComm_t)));
+    }
+    IndexLauncher index_launcher(NCCL_FINISH_COMMS_TASK_ID,
+                                 task_is,
+                                 TaskArgument(nullptr, 0),
+                                 argmap,
+                                 Predicate::TRUE_PRED,
+                                 false /*must*/,
+                                 0 /*mapper_id*/,
+                                 comm.first);
+    FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
+    fm.wait_all_results();
+  }
+}
+#endif
+
 FFModel::~FFModel() {
   // Destroy nccl communication groups
 #ifdef FF_USE_NCCL
   if (config.computationMode == COMP_MODE_TRAINING) {
-    Context ctx = config.lg_ctx;
-    Runtime *runtime = config.lg_hlr;
-    for (auto const &comm : view_hash_to_nccl_comms) {
-      // Find the machine view that has the hash
-      MachineView view;
-      for (size_t l = 0; l < operators.size(); l++) {
-        view = operators[l]->outputs[0]->machine_view;
-        if (view.hash() == comm.first) {
-          break;
-        }
-      }
-      assert(view.hash() == comm.first && "Cannot find the machine view");
-      IndexSpace task_is = get_or_create_task_is(view);
-      Domain domain = runtime->get_index_space_domain(ctx, task_is);
-      ArgumentMap argmap;
-      int idx = 0;
-      for (Domain::DomainPointIterator it(domain); it; it++, idx++) {
-        argmap.set_point(*it,
-                         TaskArgument(&comm.second[idx], sizeof(ncclComm_t)));
-      }
-      IndexLauncher index_launcher(NCCL_FINISH_COMMS_TASK_ID,
-                                   task_is,
-                                   TaskArgument(nullptr, 0),
-                                   argmap,
-                                   Predicate::TRUE_PRED,
-                                   false /*must*/,
-                                   0 /*mapper_id*/,
-                                   comm.first);
-      FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
-      fm.wait_all_results();
-    }
+    finish_nccl_comms();
   }
 #endif
 }
@@ -4550,8 +4556,8 @@ void FFConfig::parse_args(char **argv, int argc) {
       workersPerNode = atoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "-ll:fsize")) {
-      device_mem = atoi(argv[++i]);
+    if ((!strcmp(argv[i], "-ll:fsize")) || (!strcmp(argv[i], "-ll:msize"))) {
+      device_mem += atoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--nodes")) {
@@ -7450,6 +7456,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(SGD_UPD_NCCL_TASK_ID, "SGD NCCL Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
           registrar, "SGD NCCL Update Task");
@@ -7600,6 +7607,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "NCCL Init Communicators");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
           registrar, "NCCL Init Communicators Task");

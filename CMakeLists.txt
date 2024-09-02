@@ -37,13 +37,24 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       STRING "Choose the type of build." FORCE)
 endif()
 
+# option for using Python
+option(FF_USE_PYTHON "Enable Python" ON)
+if (FF_USE_PYTHON)
+  find_package(Python3 COMPONENTS Interpreter Development)
+endif()
+
 if(INSTALL_DIR)
   message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
   set(CMAKE_INSTALL_PREFIX ${INSTALL_DIR} CACHE PATH "Installation directory" FORCE)
 else()
-  # Install DIR not set. Use default, unless a conda environment is active
-  if (DEFINED ENV{CONDA_PREFIX} AND NOT FF_BUILD_FROM_PYPI)
-    set(CONDA_PREFIX $ENV{CONDA_PREFIX})
+  # Install DIR not set. Use default, unless a conda environment is in use
+  if ((DEFINED ENV{CONDA_PREFIX} OR (Python3_EXECUTABLE AND Python3_EXECUTABLE MATCHES "conda")) AND NOT FF_BUILD_FROM_PYPI)
+    if (DEFINED ENV{CONDA_PREFIX})
+        set(CONDA_PREFIX $ENV{CONDA_PREFIX})
+    else()
+        get_filename_component(CONDA_PREFIX "${Python3_EXECUTABLE}" DIRECTORY)
+        get_filename_component(CONDA_PREFIX "${CONDA_PREFIX}" DIRECTORY)
+    endif()
     # Set CMAKE_INSTALL_PREFIX to the Conda environment's installation path
     set(CMAKE_INSTALL_PREFIX ${CONDA_PREFIX} CACHE PATH "Installation directory" FORCE)
     message(STATUS "Active conda environment detected. Setting CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
@@ -63,9 +74,6 @@ option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
 
 # build shared or static flexflow lib
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
-
-# option for using Python
-option(FF_USE_PYTHON "Enable Python" ON)
 
 # option for building legion only 
 option(BUILD_LEGION_ONLY "Build Legion only" OFF)
@@ -425,7 +433,7 @@ if(NOT BUILD_LEGION_ONLY)
       # generate the Legion Python bindings library. When building from pip, we need to do this post-install to prevent Legion from overwriting the path to the Legion shared library
       add_custom_command(TARGET flexflow
         POST_BUILD	
-        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+        COMMAND CMAKE_BUILD_DIR=${Legion_BINARY_DIR}/runtime CMAKE_INSTALL_PREFIX=${Legion_BINARY_DIR} ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
       )
       # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
@@ -496,6 +504,7 @@ if(NOT BUILD_LEGION_ONLY)
     if(NOT CARGO_RESULT EQUAL 0)
       message(FATAL_ERROR "Rust is installed, but cargo is not. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
     endif()
+    set(MLC_ENABLE_SENTENCEPIECE_TOKENIZER ON)
     add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
     target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
     target_link_libraries(flexflow tokenizers_cpp)

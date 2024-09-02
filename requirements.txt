@@ -15,6 +15,7 @@ onnx
 transformers>=4.31.0
 sentencepiece
 einops
+pip
 # peft-related
 scipy
 bitsandbytes 

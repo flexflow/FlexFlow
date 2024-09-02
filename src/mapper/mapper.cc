@@ -14,13 +14,14 @@
  */
 
 #include "flexflow/mapper.h"
+#include "flexflow/utils/memory_allocator.h"
 
 namespace FlexFlow {
 
 using namespace Legion;
 using namespace Mapping;
 
-LegionRuntime::Logger::Category log_ff_mapper("Mapper");
+Legion::Logger log_ff_mapper("Mapper");
 
 FFShardingFunctor::FFShardingFunctor(int _gpus_per_node,
                                      int _cpus_per_node,
@@ -81,11 +82,7 @@ FFMapper::FFMapper(MapperRuntime *rt,
       if (it->address_space() == node_id) {
         local_gpus.push_back(*it);
       }
-      Machine::MemoryQuery fb_query(machine);
-      fb_query.only_kind(Memory::GPU_FB_MEM);
-      fb_query.best_affinity_to(*it);
-      assert(fb_query.count() == 1);
-      proc_fbmems[*it] = *(fb_query.begin());
+      proc_fbmems[*it] = get_proc_mem(machine, *it);
       Machine::MemoryQuery zc_query(machine);
       zc_query.only_kind(Memory::Z_COPY_MEM);
       zc_query.has_affinity_to(*it);
@@ -296,6 +293,7 @@ void FFMapper::select_task_options(const MapperContext ctx,
     // control replicate top level task
     if (enable_control_replication) {
       output.replicate = true;
+      output.map_locally = false;
     }
     return;
   }
@@ -560,6 +558,10 @@ void FFMapper::map_task(const MapperContext ctx,
       assert(output.target_procs[i].address_space() == node_id);
     }
   }
+  if (input.shard_processor.exists()) {
+    output.target_procs = std::vector<Processor>{input.shard_processor};
+  }
+
   // Find instances that still need to be mapped
   std::vector<std::set<FieldID>> missing_fields(task.regions.size());
   runtime->filter_instances(ctx,

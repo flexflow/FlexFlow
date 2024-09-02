@@ -391,10 +391,7 @@ OpMeta *ResidualRMSNorm::init_task(Task const *task,
                                    Runtime *runtime) {
   ResidualRMSNorm *rn = (ResidualRMSNorm *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
-                       .only_kind(Memory::GPU_FB_MEM)
-                       .best_affinity_to(task->target_proc)
-                       .first();
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   ResidualRMSNormMeta *meta =
       new ResidualRMSNormMeta(handle, rn, gpu_mem_allocator);
