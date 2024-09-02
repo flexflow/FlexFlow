@@ -32,3 +32,4 @@ dependencies:
     - loralib
     - triton
     - peft
+    - tf-keras
