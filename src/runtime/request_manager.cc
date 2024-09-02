@@ -2811,7 +2811,7 @@ void RequestManager::background_serving_task(
 #ifdef FF_USE_NCCL
   llm->finish_nccl_comms();
 #endif
-  
+
   // Print at the end of the task
   print_timestamped_message(
       "###PEFT DEBUGGING### Background serving task completed.");
