@@ -54,28 +54,50 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                  DT const *bias_ptr,
                  ffStream_t stream);
 
+// [For the tokens in batch]
+// Apply position embedding for qk.
+// Note that this is only used for tokens in the current batch.
+// For other Key tokens like in streaming cache, we nned other kernel to apply
+// the position embedding.
 template <typename DT>
 void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         DT *output_ptr,
                         cudaStream_t stream);
 
+// [For the tokens in streaming cache]
+// Apply position embedding for k projection in the streaming cache.
+// Note that before the position encoding, the projection is moved *in order* to
+// the kv memory took by the attention kernel. So our operation is applied where
+// kvCache points to.
 template <typename DT>
 void apply_pos_encoding_to_streaming_proj(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     cudaStream_t stream);
 
+// [For the tokens in batch]
+// Update the kv cache, and compact the q array.
+// Source: qkv projeciton array of tokens in the batch.
+// Destination: q&kv ptr took by the attention kernel.
 template <typename DT>
 void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
                          cudaStream_t stream);
 
+// [For the tokens in streaming cache]
+// Convert the out-of-order cache to in-order relative position.
+// Source: pre-pos-encoding kv values in the streaming cache.
+// Destination: kv ptr took by the attention kernel.
 template <typename DT>
 void update_kv_in_streaming_cache(IncMultiHeadSelfAttentionMeta const *m,
                                   BatchConfig const *bc,
                                   cudaStream_t stream);
 
+// [For the tokens in batch]
+// Commit the kv values to the streaming cache.
+// Source: qkv projeciton array of tokens in the batch.
+// Destination: pre-pos-encoding kv values in the streaming cache.
 template <typename DT>
 void commit_kv(IncMultiHeadSelfAttentionMeta const *m,
                BatchConfig const *bc,
