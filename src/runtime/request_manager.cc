@@ -1343,7 +1343,10 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
           request_index;
       // page attention: in this case we need to use the old page table for the index_in_kv_cache
-      new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache = block_table_copy[committed_token.from_index / kPagesize];
+      new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache = block_table_copy[committed_token.from_index / kPagesize] * kPagesize + committed_token.from_index % kPagesize;
+      printf("index in kv cache: %d\n", new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache);
+      printf("committed token from index: %d\n", committed_token.from_index);
+      printf("block table copy page index: %d\n", block_table_copy[committed_token.from_index / kPagesize]);
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
           committed_token.to_index;
       new_bc.num_tokens_to_commit++;
