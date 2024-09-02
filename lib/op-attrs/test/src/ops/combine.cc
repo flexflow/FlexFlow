@@ -1,5 +1,8 @@
 #include "op-attrs/ops/combine.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/expected.h"
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Combine shape inference") {

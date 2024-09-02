@@ -1,4 +1,4 @@
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "utils/graph/algorithms.h"
 #include "utils/graph/construction.h"
 #include "utils/graph/hashmap_undirected_graph.h"

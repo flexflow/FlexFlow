@@ -1,15 +1,16 @@
-#include "doctest/doctest.h"
+#include <doctest/doctest.h>
 #include "kernels/attention_kernels.h"
 #include "local-execution/local_cost_estimator.h"
 #include "local-execution/local_cpu_allocator.h"
 #include "local-execution/local_slots_backing.h"
 #include "pcg/computation_graph_builder.h"
 #include "test_utils.h"
-#include "utils/fmt/unordered_map.h"
-#include "utils/fmt/variant.h"
-#include "utils/fmt/vector.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/variant.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include "test/utils/doctest/fmt/pair.h"
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("LocalSlotsBacking -- Attention Op") {
@@ -269,5 +270,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 }
-
-} // namespace FlexFlow

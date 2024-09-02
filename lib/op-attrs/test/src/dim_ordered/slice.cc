@@ -1,5 +1,7 @@
 #include "op-attrs/dim_ordered/slice.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE(

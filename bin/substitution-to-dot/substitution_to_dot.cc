@@ -1,4 +1,4 @@
-#include "substitution-generator/json.h"
+#include "substitution-generator/legacy_rules.h"
 #include "utils/dot_file.h"
 #include <cassert>
 #include <iostream>
@@ -24,10 +24,10 @@ int main(int argc, char **argv) {
   std::string json_path(argv[1]);
   std::string rule_name(argv[2]);
 
-  RuleCollection rule_collection = load_rule_collection_from_path(json_path);
+  LegacyRuleCollection rule_collection = load_rule_collection_from_path(json_path);
 
-  std::optional<Rule> found = std::nullopt;
-  for (Rule const &r : rule_collection.rules) {
+  std::optional<LegacyRule> found = std::nullopt;
+  for (LegacyRule const &r : rule_collection.rules) {
     if (r.name == rule_name) {
       found = r;
       break;
@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  Rule r = found.value();
+  LegacyRule r = found.value();
 
   using Node = std::tuple<NodeType, int, int>;
 
@@ -82,14 +82,14 @@ int main(int argc, char **argv) {
   };
 
   for (int i = 0; i < r.srcOp.size(); i++) {
-    Operator const &o = r.srcOp[i];
+    LegacyOperator const &o = r.srcOp[i];
     Node srcOpNode = {NodeType::SRC, i, 0};
     {
       dot.add_node(srcOpNode, label_map(fmt::to_string(o.op_type), srcOpNode));
       dot.add_node_to_subgraph(srcOpNode, src_body_subgraph);
     }
 
-    for (Tensor const &t : o.input) {
+    for (LegacyTensor const &t : o.input) {
       if (t.opId < 0) {
         assert(t.tsId == 0);
         Node inputOpNode = {NodeType::SRC_INPUT_TENSOR, t.opId, 0};
@@ -106,14 +106,14 @@ int main(int argc, char **argv) {
     }
   }
   for (int j = 0; j < r.dstOp.size(); j++) {
-    Operator const &o = r.dstOp[j];
+    LegacyOperator const &o = r.dstOp[j];
     Node dstOpNode = {NodeType::DST, j, 0};
     {
       dot.add_node(dstOpNode, label_map(fmt::to_string(o.op_type), dstOpNode));
       dot.add_node_to_subgraph(dstOpNode, dst_body_subgraph);
     }
 
-    for (Tensor const &t : o.input) {
+    for (LegacyTensor const &t : o.input) {
       if (t.opId < 0) {
         assert(t.tsId == 0);
         Node inputOpNode = {NodeType::DST_INPUT_TENSOR, t.opId, 0};
@@ -128,7 +128,7 @@ int main(int argc, char **argv) {
       }
     }
   }
-  for (MapOutput const &mo : r.mappedOutput) {
+  for (LegacyMapOutput const &mo : r.mappedOutput) {
     Node srcOutputNode = {NodeType::SRC_OUTPUT_TENSOR, mo.srcOpId, mo.srcTsId};
     Node dstOutputNode = {NodeType::DST_OUTPUT_TENSOR, mo.dstOpId, mo.dstTsId};
     {

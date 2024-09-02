@@ -5,7 +5,7 @@
 #include "substitutions/operator_pattern/operator_attribute_constraint.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 

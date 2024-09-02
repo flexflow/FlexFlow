@@ -44,7 +44,7 @@ std::vector<ParallelTensorShape>
         return {get_output_shape(attrs, inputs.at(0))};
       },
       [&](DropoutAttrs const &attrs) -> std::vector<ParallelTensorShape> {
-        return {get_output_shape(attrs, inputs.at(0))};
+        return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
       },
       [&](ElementBinaryAttrs const &attrs) -> std::vector<ParallelTensorShape> {
         return {throw_if_unexpected(
@@ -66,7 +66,7 @@ std::vector<ParallelTensorShape>
         return {get_output_parallel_tensor_shape(attrs)};
       },
       [&](LayerNormAttrs const &attrs) -> std::vector<ParallelTensorShape> {
-        return {get_output_shape(attrs, inputs.at(0))};
+        return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
       },
       [&](LinearAttrs const &attrs) -> std::vector<ParallelTensorShape> {
         return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};

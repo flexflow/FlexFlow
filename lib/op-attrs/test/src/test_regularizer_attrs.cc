@@ -1,6 +1,8 @@
 #include "op-attrs/regularizer_attrs.dtg.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "test/utils/rapidcheck.h"
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Arbitrary<RegularizerAttrs>") {

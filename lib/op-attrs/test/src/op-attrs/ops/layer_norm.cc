@@ -1,5 +1,5 @@
 #include "op-attrs/ops/layer_norm.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "utils/expected.h"
 #include "utils/fmt/expected.h"
 #include "utils/fmt/optional.h"

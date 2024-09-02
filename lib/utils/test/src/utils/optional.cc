@@ -1,7 +1,8 @@
 #include "utils/optional.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "test/utils/rapidcheck.h"
-#include <rapidcheck.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE_TEMPLATE(

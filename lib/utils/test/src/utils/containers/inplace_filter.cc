@@ -1,10 +1,11 @@
 #include "utils/containers/inplace_filter.h"
-#include "test/utils/all.h"
-#include "utils/fmt/map.h"
-#include "utils/fmt/set.h"
-#include "utils/fmt/unordered_map.h"
-#include "utils/fmt/unordered_set.h"
-#include "utils/fmt/vector.h"
+#include "test/utils/rapidcheck.h"
+#include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/map.h"
+#include "test/utils/doctest/fmt/set.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
 
 using namespace ::FlexFlow;
 

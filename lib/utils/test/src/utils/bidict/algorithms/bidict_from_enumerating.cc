@@ -2,6 +2,7 @@
 #include "utils/bidict/algorithms/left_entries.h"
 #include "utils/bidict/algorithms/right_entries.h"
 #include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/unordered_set.h"
 
 using namespace ::FlexFlow;
 

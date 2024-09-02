@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "CLIFlagSpec"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<string>",
+  "<optional>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+]
+
+[[fields]]
+name = "long_flag"
+type = "std::string"
+
+[[fields]]
+name = "short_flag"
+type = "std::optional<char>"

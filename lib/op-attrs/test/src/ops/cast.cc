@@ -1,6 +1,9 @@
 #include "op-attrs/ops/cast.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/expected.h"
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Cast shape inference") {

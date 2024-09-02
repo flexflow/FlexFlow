@@ -5,7 +5,7 @@
 #include "pcg/computation_graph_builder.h"
 #include "test_utils.h"
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_CUDA_TEST_SUITE) {
   TEST_CASE("Local Cost Estimator") {
@@ -73,5 +73,3 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     }
   }
 }
-
-} // namespace FlexFlow

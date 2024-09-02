@@ -1,4 +1,4 @@
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "utils/vector.h"
 
 TEST_SUITE(FF_TEST_SUITE) {

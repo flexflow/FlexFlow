@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "CLIPositionalArgumentSpec"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<optional>",
+  "<unordered_set>",
+  "<string>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/fmt/unordered_set.h",
+  "utils/hash/unordered_set.h",
+]
+
+[[fields]]
+name = "options"
+type = "std::optional<std::unordered_set<std::string>>"

@@ -1,7 +1,7 @@
 #include "utils/fmt/unordered_set.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "utils/containers/unordered_multiset_of.h"
-#include "utils/fmt/unordered_multiset.h"
+#include "test/utils/doctest/fmt/unordered_multiset.h"
 
 using namespace ::FlexFlow;
 

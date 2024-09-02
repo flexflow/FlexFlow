@@ -1,9 +1,11 @@
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include "utils/graph/dataflow_graph/dataflow_edge_query.h"
 #include "utils/graph/dataflow_graph/dataflow_graph.h"
 #include "utils/graph/dataflow_graph/dataflow_output_query.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/node/node_query.h"
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("UnorderedSetDataflowGraph") {

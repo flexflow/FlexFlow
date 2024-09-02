@@ -1,5 +1,6 @@
 #include "op-attrs/dim_ordered/enumerate.h"
 #include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/map.h"
 
 using namespace ::FlexFlow;
 

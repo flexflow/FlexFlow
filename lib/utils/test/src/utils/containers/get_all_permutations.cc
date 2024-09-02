@@ -3,6 +3,8 @@
 #include "utils/containers/unordered_multiset_of.h"
 #include "utils/hash/vector.h"
 #include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/unordered_multiset.h"
+#include "test/utils/doctest/fmt/vector.h"
 
 using namespace ::FlexFlow;
 

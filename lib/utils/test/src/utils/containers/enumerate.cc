@@ -1,6 +1,11 @@
 #include "utils/containers/enumerate.h"
 #include <doctest/doctest.h>
 #include <string>
+#include "utils/containers/keys.h"
+#include "utils/containers/unordered_set_of.h"
+#include "utils/containers/values.h"
+#include "test/utils/doctest/fmt/map.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
 
 using namespace ::FlexFlow;
 
@@ -14,6 +19,10 @@ TEST_SUITE(FF_TEST_SUITE) {
         {2, "two"},
         {3, "three"},
     };
+  
+    std::map<int, std::string> result = enumerate(input);
+
+    CHECK(result == correct);
   }
 
   TEST_CASE("enumerate(std::unordered_set<T>)") {
@@ -25,5 +34,16 @@ TEST_SUITE(FF_TEST_SUITE) {
         {2, "two"},
         {3, "three"},
     };
+
+    std::map<int, std::string> result = enumerate(input);
+
+    std::unordered_set<int> result_keys = keys(correct);
+    std::unordered_set<std::string> result_values = unordered_set_of(values(correct));
+
+    std::unordered_set<int> correct_keys = {0, 1, 2, 3};
+    std::unordered_set<std::string> correct_values = input;
+
+    CHECK(result_keys == correct_keys);
+    CHECK(result_values == correct_values);
   }
 }
