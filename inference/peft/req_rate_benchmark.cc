@@ -31,7 +31,7 @@ using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
 
-LegionRuntime::Logger::Category log_app("llama");
+Legion::Logger log_app("llama");
 
 class ConcurrentQueue {
 public:
