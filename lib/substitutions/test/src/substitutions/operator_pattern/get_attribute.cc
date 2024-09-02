@@ -1,5 +1,6 @@
 #include "substitutions/operator_pattern/get_attribute.h"
 #include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/optional.h"
 
 using namespace ::FlexFlow;
 

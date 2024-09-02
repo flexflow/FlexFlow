@@ -677,13 +677,13 @@ tensor_guid_t ComputationGraphBuilder::layer_norm(
     TensorShape gamma_shape =
         throw_if_unexpected(get_gamma_weights_shape(attrs, input_shape));
     InitializerAttrs gamma_initializer =
-        InitializerAttrs{ConstantInitializerAttrs{float{1}}};
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{1}}}};
     weights.push_back(make_weight_attrs(gamma_shape, gamma_initializer));
 
     TensorShape beta_shape =
         throw_if_unexpected(get_beta_weights_shape(attrs, input_shape));
     InitializerAttrs beta_initializer =
-        InitializerAttrs{ConstantInitializerAttrs{float{0}}};
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{0}}}};
     weights.push_back(make_weight_attrs(beta_shape, beta_initializer));
   }
 

@@ -55,7 +55,7 @@ struct BackwardKernel {
                   GenericTensorAccessorR const &output,
                   size_t num_replicas) {
     size_t total_elements = input.shape.num_elements() * num_replicas;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<real_type<T>>),
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(replicate_backward_kernel<real_type_t<T>>),
                        GET_BLOCKS(total_elements),
                        CUDA_NUM_THREADS,
                        0,

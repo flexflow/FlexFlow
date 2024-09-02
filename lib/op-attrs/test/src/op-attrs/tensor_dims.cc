@@ -1,5 +1,6 @@
 #include "op-attrs/tensor_dims.h"
 #include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/optional.h" 
 
 using namespace ::FlexFlow;
 

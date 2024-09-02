@@ -47,14 +47,7 @@ typename data_type_enum_to_class<DT>::type cast_to(T t) {
 }
 
 template <DataType DT>
-using real_type = typename data_type_enum_to_class<DT>::type;
-
-using DataTypeValue = std::variant<real_type<DataType::FLOAT>,
-                                   real_type<DataType::DOUBLE>,
-                                   real_type<DataType::INT32>,
-                                   real_type<DataType::INT64>,
-                                   /* real_type<DataType::HALF>, */
-                                   real_type<DataType::BOOL>>;
+using real_type_t = typename data_type_enum_to_class<DT>::type;
 
 size_t size_of_datatype(DataType);
 

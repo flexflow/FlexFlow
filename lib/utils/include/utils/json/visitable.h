@@ -7,35 +7,11 @@
 #include "utils/type_traits.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
+#include "utils/json/is_json_deserializable.h"
+#include "utils/json/is_json_serializable.h"
+#include "utils/json/is_jsonable.h"
 
 namespace FlexFlow {
-
-template <typename T, typename Enable = void>
-struct is_json_serializable : std::false_type {};
-
-template <typename T>
-struct is_json_serializable<
-    T,
-    void_t<decltype(std::declval<json>() = std::declval<T>())>>
-    : std::true_type {};
-
-template <typename T, typename Enable = void>
-struct is_json_deserializable : std::false_type {};
-
-template <typename T>
-struct is_json_deserializable<T,
-                              void_t<decltype(std::declval<json>().get<T>())>>
-    : std::true_type {};
-
-template <typename T, typename Enable = void>
-struct is_jsonable
-    : conjunction<is_json_serializable<T>, is_json_deserializable<T>> {};
-
-#define CHECK_IS_JSONABLE(TYPENAME)                                            \
-  static_assert(is_json_serializable<TYPENAME>::value,                         \
-                #TYPENAME " should be json serializeable");                    \
-  static_assert(is_json_deserializable<TYPENAME>::value,                       \
-                #TYPENAME " should be json deserializeable")
 
 struct json_serialization_visitor {
   json_serialization_visitor() = delete;
@@ -134,65 +110,6 @@ T moveonly_visit_json_deserialize(json const &j) {
   return visitable_from_tuple<T>(tuple_from_json<T>(j));
 }
 
-struct VariantToJsonFunctor {
-  VariantToJsonFunctor(json &j) : j(j) {}
-
-  json &j;
-
-  template <typename T>
-  void operator()(T const &t) {
-    static_assert(is_jsonable<T>::value, "");
-
-    j = t;
-  }
-};
-
-template <typename... Args>
-void variant_to_json(json &j, std::variant<Args...> const &v) {
-  json jval;
-  visit(::FlexFlow::VariantToJsonFunctor{jval}, v);
-  j["value"] = jval;
-  j["index"] = v.index();
-}
-
-template <typename Variant, size_t Idx>
-std::optional<Variant> variant_from_json_impl(json const &j) {
-  using Type = typename std::variant_alternative<Idx, Variant>::type;
-
-  if (j.at("index").get<size_t>() == Idx) {
-    return j.at("value").get<Type>();
-  }
-  return std::nullopt;
-}
-
-template <typename Variant, size_t... Is>
-std::optional<Variant> variant_from_json_impl(json const &j,
-                                              std::index_sequence<Is...>) {
-  // If there were no errors when parsing, all but one element of the array
-  // will be nullopt. This is because each call to variant_from_json_impl will
-  // have a unique index and exactly one of them will match the index in the
-  // json object.
-  std::array<std::optional<Variant>, sizeof...(Is)> results{
-      variant_from_json_impl<Variant, Is>(j)...};
-  for (std::optional<Variant> &maybe : results) {
-    if (maybe) {
-      return maybe.value();
-    }
-  }
-  return std::nullopt;
-}
-
-template <typename... Args>
-std::variant<Args...> variant_from_json(json const &j) {
-  using Variant = std::variant<Args...>;
-  std::optional<Variant> result = variant_from_json_impl<Variant>(
-      j, std::make_index_sequence<sizeof...(Args)>());
-  if (!result.has_value()) {
-    throw ::FlexFlow::mk_runtime_error("Invalid type {} found in json",
-                                       j.at("index").get<size_t>());
-  }
-  return result.value();
-}
 
 } // namespace FlexFlow
 
@@ -228,41 +145,6 @@ struct adl_serializer<
 
   static T from_json(json const &j) {
     return ::FlexFlow::moveonly_visit_json_deserialize<T>(j);
-  }
-};
-
-template <typename T>
-struct adl_serializer<
-    std::optional<T>,
-    typename std::enable_if<::FlexFlow::is_jsonable<T>::value>::type> {
-  static void to_json(json &j, std::optional<T> const &t) {
-    if (t.has_value()) {
-      to_json(j, t.value());
-    } else {
-      j = nullptr;
-    }
-  }
-
-  static void from_json(json const &j, std::optional<T> &t) {
-    if (j == nullptr) {
-      t = std::nullopt;
-    } else {
-      t = j.get<T>();
-    }
-  }
-};
-
-template <typename... Args>
-struct adl_serializer<std::variant<Args...>,
-                      typename std::enable_if<::FlexFlow::elements_satisfy<
-                          ::FlexFlow::is_json_serializable,
-                          std::variant<Args...>>::value>::type> {
-  static void to_json(json &j, std::variant<Args...> const &v) {
-    return ::FlexFlow::variant_to_json(j, v);
-  }
-
-  static std::variant<Args...> from_json(json const &j) {
-    return ::FlexFlow::variant_from_json<Args...>(j);
   }
 };
 

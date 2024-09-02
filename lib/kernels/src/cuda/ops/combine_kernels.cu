@@ -41,7 +41,7 @@ struct BackwardKernel {
                   GenericTensorAccessorR const &output_grad,
                   GenericTensorAccessorW const &input_grad) {
     size_t num_elements = output_grad.shape.get_volume();
-    add_kernel<real_type<DT>>
+    add_kernel<real_type_t<DT>>
         <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
             input_grad.get<DT>(), output_grad.get<DT>(), num_elements);
   }

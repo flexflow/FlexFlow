@@ -1,4 +1,4 @@
-#include "utils/optional.h"
+#include "utils/rapidcheck/optional.h"
 #include <doctest/doctest.h>
 #include "test/utils/rapidcheck.h"
 

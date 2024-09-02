@@ -24,7 +24,7 @@ struct ConstantInitKernel {
   void operator()(GenericTensorAccessorW const &tensor,
                   DataTypeValue value) const {
     auto arr = get<DT>(tensor);
-    auto unwrapped_value = get<real_type<DT>>(value);
+    auto unwrapped_value = value.get<real_type_t<DT>>();
     for (size_t i = 0; i < get_volume(tensor.shape); i++) {
       arr[i] = unwrapped_value;
     }
