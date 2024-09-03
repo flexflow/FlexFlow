@@ -4,6 +4,7 @@
 #include "utils/check_fmtable.h"
 #include "utils/containers/sorted.h"
 #include "utils/join_strings.h"
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <set>
 #include <vector>
@@ -41,5 +42,16 @@ std::ostream &operator<<(std::ostream &s, std::set<T> const &x) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename T>
+struct StringMaker<std::set<T>> {
+  static String convert(std::set<T> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

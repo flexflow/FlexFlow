@@ -3,14 +3,17 @@
 
 #include "fmt/format.h"
 #include "utils/check_fmtable.h"
+#include <doctest/doctest.h>
 #include <tl/expected.hpp>
 #include <utility>
 
 namespace fmt {
 
 template <typename T, typename E, typename Char>
-struct formatter<::tl::expected<T, E>, Char>
-    /* std::enable_if_t<!detail::has_format_as<::tl::expected<T, E>>::value>> */
+struct formatter<
+    ::tl::expected<T, E>,
+    Char,
+    std::enable_if_t<!detail::has_format_as<::tl::expected<T, E>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>
   auto format(::tl::expected<T, E> const &m, FormatContext &ctx)
@@ -28,5 +31,28 @@ struct formatter<::tl::expected<T, E>, Char>
 };
 
 } // namespace fmt
+
+namespace FlexFlow {
+
+template <typename T, typename E>
+std::ostream &operator<<(std::ostream &s, tl::expected<T, E> const &t) {
+  CHECK_FMTABLE(T);
+  CHECK_FMTABLE(E);
+
+  return s << fmt::to_string(t);
+}
+
+} // namespace FlexFlow
+
+namespace doctest {
+
+template <typename T, typename E>
+struct StringMaker<tl::expected<T, E>> {
+  static String convert(tl::expected<T, E> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif
