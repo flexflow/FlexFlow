@@ -297,16 +297,13 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-__global__ void
-    apply_pos_encoding_to_tokens_in_batch_kernel(DT *input_ptr,
-                              BatchConfig::PerRequestInfo const *requestInfos,
-                              BatchConfig::PerTokenInfo const *tokenInfos,
-                              int qk_dim,
-                              int num_tokens,
-                              size_t q_array_size,
-                              int hidden_size,
-                              bool streaming_cache,
-                              StreamingCacheInfo const *streaming_cache_infos) {
+__global__ void apply_pos_encoding_to_tokens_in_batch_kernel(
+    DT *input_ptr,
+    BatchConfig::PerTokenInfo const *tokenInfos,
+    int qk_dim,
+    int num_tokens,
+    size_t q_array_size,
+    int hidden_size) {
   CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
     // create complex number
     bool q_tensor = i < (q_array_size / 2);
@@ -333,13 +330,6 @@ __global__ void
 
     size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
-    // relative position should be calculated based on current streaming size
-    if (streaming_cache) {
-      int req_idx = tokenInfos[token_idx].request_index;
-      pos += streaming_cache_infos[req_idx].commit_len -
-             requestInfos[req_idx].first_token_index_in_request;
-    }
-
     float freq = pos * (1.0 / pow(10000.0, (float)2 * idx / proj_size));
     cuFloatComplex complex_pos = {cos(freq), sin(freq)};
 
@@ -350,10 +340,11 @@ __global__ void
 }
 
 template <typename DT>
-void apply_pos_encoding_to_tokens_in_batch(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        DT *output_ptr,
-                        cudaStream_t stream) {
+void apply_pos_encoding_to_tokens_in_batch(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    DT *output_ptr,
+    cudaStream_t stream) {
   // apply rotary embedding if needed
   if (!*m->apply_rotary_embedding) {
     return;
@@ -362,17 +353,16 @@ void apply_pos_encoding_to_tokens_in_batch(IncMultiHeadSelfAttentionMeta const *
   int parallelism = num_tokens * m->local_hidden_size;
   size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
   apply_pos_encoding_to_tokens_in_batch_kernel<<<GET_BLOCKS(parallelism),
-                              min(CUDA_NUM_THREADS, parallelism),
-                              0,
-                              stream>>>(output_ptr,
-                                        m->request_infos,
-                                        m->token_infos,
-                                        m->qk_dim,
-                                        num_tokens,
-                                        q_array_size,
-                                        m->local_hidden_size,
-                                        m->streaming_cache,
-                                        m->streaming_cache_infos);
+                                                 min(CUDA_NUM_THREADS,
+                                                     parallelism),
+                                                 0,
+                                                 stream>>>(
+      output_ptr,
+      m->token_infos,
+      m->qk_dim,
+      num_tokens,
+      q_array_size,
+      m->local_hidden_size);
 }
 
 __global__ void apply_pos_encoding_to_streaming_proj_kernel(
@@ -441,7 +431,8 @@ void apply_pos_encoding_to_streaming_proj(
       BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth() +
       BatchConfig::max_spec_tree_token_num());
   apply_pos_encoding_to_streaming_proj_kernel<<<GET_BLOCKS(parallelism),
-                                               min(CUDA_NUM_THREADS, parallelism),
+                                                min(CUDA_NUM_THREADS,
+                                                    parallelism),
                                                 0,
                                                 stream>>>(
       static_cast<half *>(m->kvCache),
@@ -455,19 +446,16 @@ void apply_pos_encoding_to_streaming_proj(
 }
 
 template <typename DT>
-__global__ void update_qkv_in_batch_kernel(
-    DT *qkv_proj_array,
-    half *qTmp_ptr,
-    half *kvCache_ptr,
-    BatchConfig::PerTokenInfo const *tokenInfos,
-    BatchConfig::PerRequestInfo const *requestInfos,
-    int const max_num_pages,
-    int num_q_heads,
-    int num_kv_heads,
-    int head_dim,
-    int num_new_tokens,
-    bool streaming_cache,
-    StreamingCacheInfo const *streaming_cache_infos) {
+__global__ void
+    update_qkv_in_batch_kernel(DT *qkv_proj_array,
+                               half *qTmp_ptr,
+                               half *kvCache_ptr,
+                               BatchConfig::PerTokenInfo const *tokenInfos,
+                               int const max_num_pages,
+                               int num_q_heads,
+                               int num_kv_heads,
+                               int head_dim,
+                               int num_new_tokens) {
   int const q_hidden_size = num_q_heads * head_dim;
   int const temp_kv_hidden_size = num_q_heads * head_dim; // temporary hard code
   int const kv_hidden_size = num_kv_heads * head_dim;
@@ -480,11 +468,6 @@ __global__ void update_qkv_in_batch_kernel(
 
   int const req_idx = tokenInfos[token_idx].request_index;
   int token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
-
-  if (streaming_cache) {
-    token_abs_idx += streaming_cache_infos[req_idx].commit_len -
-                     requestInfos[req_idx].first_token_index_in_request;
-  }
 
   size_t from_idx = token_idx * (q_hidden_size + temp_kv_hidden_size * 2);
   qTmp_ptr[token_idx * q_hidden_size + offset] =
@@ -523,14 +506,11 @@ void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                                          static_cast<half *>(m->queryTmp),
                                          static_cast<half *>(m->kvCache),
                                          m->token_infos,
-                                         m->request_infos,
                                          max_num_pages,
                                          m->num_q_heads,
                                          m->num_kv_heads,
                                          m->qk_dim,
-                                         num_new_tokens,
-                                         m->streaming_cache,
-                                         m->streaming_cache_infos);
+                                         num_new_tokens);
 }
 
 __global__ void update_kv_in_streaming_cache_kernel(
@@ -659,9 +639,7 @@ __global__ void
   int const request_idx = tokenInfos[token_idx].request_index;
 
   StreamingCacheInfo const &info = streaming_cache_infos[request_idx];
-  int to_idx = tokenInfos[token_idx].abs_index_in_request -
-               requestInfos[request_idx].first_token_index_in_request +
-               info.commit_len;
+  int to_idx = tokenInfos[token_idx].abs_index_in_request;
   // cases that get over the boundary:
   // 1. commit_len < sink_cache_size: commit to sink, window, window_back is
   // after commit_len.
@@ -672,9 +650,7 @@ __global__ void
   // window is full before this commit, window_back is pointing to the real
   // position.
   if (to_idx >= info.sink_cache_size + info.window_cache_size) {
-    to_idx = tokenInfos[token_idx].abs_index_in_request -
-             requestInfos[request_idx].first_token_index_in_request +
-             info.window_back;
+    to_idx = to_idx - info.commit_len + info.window_back;
     if (info.commit_len < info.sink_cache_size) {
       // For case 1, compensating for sink offset, because window_back is
       // someway back from commit_len.
@@ -916,17 +892,19 @@ template void Kernels::IncMultiHeadAttention::compute_qkv<half>(
     half const *bias_ptr,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::apply_pos_encoding_to_tokens_in_batch<float>(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    float *output_ptr,
-    cudaStream_t stream);
+template void
+    Kernels::IncMultiHeadAttention::apply_pos_encoding_to_tokens_in_batch<
+        float>(IncMultiHeadSelfAttentionMeta const *m,
+               BatchConfig const *bc,
+               float *output_ptr,
+               cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::apply_pos_encoding_to_tokens_in_batch<half>(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    half *output_ptr,
-    cudaStream_t stream);
+template void
+    Kernels::IncMultiHeadAttention::apply_pos_encoding_to_tokens_in_batch<half>(
+        IncMultiHeadSelfAttentionMeta const *m,
+        BatchConfig const *bc,
+        half *output_ptr,
+        cudaStream_t stream);
 
 template void
     Kernels::IncMultiHeadAttention::apply_pos_encoding_to_streaming_proj<float>(

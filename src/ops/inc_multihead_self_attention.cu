@@ -246,7 +246,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
-  // phase 1: Implement kernel to compute KQV for input tokens
+  // phase 1: Compute QKV Projections of the batch
   compute_qkv(m,
               bc,
               shard_id,
@@ -256,54 +256,30 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
               bias_ptr,
               stream);
 
-  apply_pos_encoding_to_tokens_in_batch(m, bc, static_cast<DT *>(m->devQKVProjArray), stream);
+  // phase 2: First maintain the streaming cache, because it need
+  // pre-pos-encoding values
+  if (m->streaming_cache) {
+    // Move pre-pos-encoding cache to where took by attention
+    update_kv_in_streaming_cache<DT>(m, bc, stream);
+    // Apply pos-encoding to those k values
+    apply_pos_encoding_to_streaming_proj<DT>(m, bc, stream);
+    // Commit to the streaming cache
+    commit_kv<DT>(m, bc, stream);
+  }
 
-  // phase 2: Update key/val cache
-  update_qkv_in_batch<DT>(m, bc, stream);
+  // phase 3: Take care of the batch
+  {
+    // Apply pos-encoding to the batch
+    apply_pos_encoding_to_tokens_in_batch(
+        m, bc, static_cast<DT *>(m->devQKVProjArray), stream);
+    // Move the batch qkv values to where took by attention
+    update_qkv_in_batch<DT>(m, bc, stream);
+  }
 
-  // cudaEventRecord(t_end, stream);
-  // checkCUDA(cudaEventSynchronize(t_end));
-  // float elapsed = 0;
-  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  // cudaEventDestroy(t_start);
-  // cudaEventDestroy(t_end);
-  // std::cout << "Prepare attn time: " << elapsed << " ms\n";
-
-  // cudaEventCreate(&t_start);
-  // cudaEventCreate(&t_end);
-  // cudaEventRecord(t_start, stream);
-
-  // phase 3: Compute attention score
+  // phase 4: Attention computation
   incr_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
-  // cudaEventRecord(t_end, stream);
-  // checkCUDA(cudaEventSynchronize(t_end));
-  // elapsed = 0;
-  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  // cudaEventDestroy(t_start);
-  // cudaEventDestroy(t_end);
-  // std::cout << "Attn time: " << elapsed << " ms\n";
-
-  // Debug output:
-  //   int size = m->local_hidden_size * BatchConfig::max_tokens_per_batch();
-  //   float *temp_output = new float[size];
-  //   cudaDeviceSynchronize();
-  //   cudaMemcpy(
-  //       temp_output, m->attn_heads, size * sizeof(float),
-  //       cudaMemcpyDeviceToHost);
-  //   printf("Output: ");
-  //   float temp = 0;
-  //   for (int i = 0; i < 1; ++i) {
-  //     for (int j = 0; j < m->local_hidden_size; ++j) {
-  //       temp += temp_output[i * m->local_hidden_size + j];
-  //     }
-  //     printf("%.6f ", temp);
-  //   }
-  //   printf("\n");
-
-  //   delete[] temp_output;
-
-  // compute output production and bias together for all tokens
+  // phase 5: Compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
@@ -625,7 +601,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     streaming_cache_infos = reinterpret_cast<StreamingCacheInfo *>(
         reinterpret_cast<char *>(handler.batch_config_metadata) +
         sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BatchConfig::request_available) + sizeof(BatchConfig::causalMask));
+        sizeof(BatchConfig::request_available) +
+        sizeof(BatchConfig::causalMask));
 
     if (offload) {
       // token_infos =
