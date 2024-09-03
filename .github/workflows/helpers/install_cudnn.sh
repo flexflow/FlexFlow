@@ -64,10 +64,10 @@ if [[ "$cuda_version" == "11.6" || "$cuda_version" == "11.7" || "$cuda_version" 
 elif [[ "$CUDNN_TARBALL_NAME" == *.deb ]]; then
     wget -c -q "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${ubuntu_version}/x86_64/cuda-keyring_1.1-1_all.deb"
     sudo dpkg -i cuda-keyring_1.1-1_all.deb
-    sudo cp /var/cudnn-local-repo-ubuntu2004-8.8.0.121/cudnn-local-A9E17745-keyring.gpg /usr/share/keyrings/
     sudo apt update -y
     rm -f cuda-keyring_1.1-1_all.deb
     sudo dpkg -i $CUDNN_TARBALL_NAME
+    sudo cp /var/cudnn-local-repo-ubuntu2004-8.8.0.121/cudnn-local-A9E17745-keyring.gpg /usr/share/keyrings/
     sudo apt update -y
     sudo apt install -y libcudnn8
     sudo apt install -y libcudnn8-dev
