@@ -26,6 +26,8 @@ tensor_guid_t create_transformer_decoder(ComputationGraphBuilder &,
                                          tensor_guid_t const &,
                                          tensor_guid_t const &);
 
+TransformerConfig get_default_transformer_config();
+
 /**
  * @brief Get the Transformer computation graph.
  *

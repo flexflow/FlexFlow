@@ -3,6 +3,19 @@
 
 namespace FlexFlow {
 
+TransformerConfig get_default_transformer_config() {
+  return TransformerConfig{/*num_features=*/512,
+                           /*sequence_length=*/512,
+                           /*batch_size=*/64,
+                           /*dim_feedforward=*/2048,
+                           /*num_heads=*/8,
+                           /*num_encoder_layers=*/6,
+                           /*num_decoder_layers=*/6,
+                           /*dropout=*/0.1,
+                           /*layer_norm_eps=*/1e-05,
+                           /*vocab_size=*/64};
+}
+
 tensor_guid_t create_feedforward_network(ComputationGraphBuilder &cgb,
                                          TransformerConfig const &config,
                                          tensor_guid_t const &input) {
