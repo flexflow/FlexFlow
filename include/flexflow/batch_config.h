@@ -29,13 +29,13 @@ using InferenceResultFuture = Legion::Future;
 
 /*
  * StreamingCacheInfo is a class that manages the streaming kv cache for
- * attention operator (https://arxiv.org/abs/2309.17453), and we use it in draft
- * model. It matains a fixed-content *sink* cache and a fixed-size *window*
- * cache. The *sink* cache is the foremost part of the original kv cache, while
- * the *window* cache is the backmost part of the original kv cache and is
- * rolling updated. The information is per-request.
- * Note that the position encoding of the q&k alters each iteration (relative
- * position), so we store the *pre-pos-encoding* kv value in the cache.
+ * attention operator (https://arxiv.org/abs/2309.17453), and we use it in the
+ * draft model. It maintains a fixed-content *sink* cache and a fixed-size
+ * *window* cache. The *sink* cache is the foremost part of the original kv
+ * cache, while the *window* cache is the backmost part of the original kv cache
+ * and is rolling updated. The information is per-request. Note that the
+ * position encoding of the q&k alters each iteration (relative position), so we
+ * store the *pre-pos-encoding* kv value in the cache.
  */
 class StreamingCacheInfo {
 public:
@@ -47,6 +47,7 @@ public:
 
   void commit_cache(int len);
   void reset_cache();
+  int global_2_cache_index(int global_index);
 
 public:
   int sink_cache_size, window_cache_size;
