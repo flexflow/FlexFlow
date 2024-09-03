@@ -273,6 +273,7 @@ template <>
 __host__ void
     save_tensor(float const *ptr, size_t num_elements, char const *file_name) {
   float *host_ptr = (float *)calloc(num_elements, sizeof(float));
+  checkCUDA(cudaDeviceSynchronize());
   checkCUDA(cudaMemcpy(
       host_ptr, ptr, sizeof(float) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
@@ -293,6 +294,7 @@ template <>
 __host__ void
     save_tensor(half const *ptr, size_t num_elements, char const *file_name) {
   half *host_ptr = (half *)calloc(num_elements, sizeof(half));
+  checkCUDA(cudaDeviceSynchronize());
   checkCUDA(cudaMemcpy(
       host_ptr, ptr, sizeof(half) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
@@ -314,6 +316,7 @@ __host__ void save_tensor(int32_t const *ptr,
                           size_t num_elements,
                           char const *file_name) {
   int32_t *host_ptr = (int32_t *)calloc(num_elements, sizeof(int32_t));
+  checkCUDA(cudaDeviceSynchronize());
   checkCUDA(cudaMemcpy(
       host_ptr, ptr, sizeof(int32_t) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
@@ -335,6 +338,7 @@ __host__ void save_tensor(int64_t const *ptr,
                           size_t num_elements,
                           char const *file_name) {
   int64_t *host_ptr = (int64_t *)calloc(num_elements, sizeof(int64_t));
+  checkCUDA(cudaDeviceSynchronize());
   checkCUDA(cudaMemcpy(
       host_ptr, ptr, sizeof(int64_t) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;

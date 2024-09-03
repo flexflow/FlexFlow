@@ -30,14 +30,16 @@ python ./inference/utils/download_peft_model.py goliaro/llama-160m-lora --base_m
 python ./tests/peft/hf_finetune.py --peft-model-id goliaro/llama-160m-lora --save-peft-tensors --use-full-precision
 
 # Python test
+echo "Python test"
 python ./inference/python/ff_peft.py
 # Check alignment
 python ./tests/peft/peft_alignment_test.py -tp 2
 
 # C++ test
+echo "C++ test"
 ./build/inference/peft/peft \
-    -ll:gpu 1 -ll:cpu 4 -ll:util 4 \
-    -tensor-parallelism-degree 1 \
+    -ll:gpu 2 -ll:cpu 4 -ll:util 4 \
+    -tensor-parallelism-degree 2 \
     -ll:fsize 8192 -ll:zsize 12000 \
     -llm-model JackFram/llama-160m \
     -finetuning-dataset ./inference/prompt/peft_dataset.json \
@@ -46,7 +48,7 @@ python ./tests/peft/peft_alignment_test.py -tp 2
     --use-full-precision \
     --inference-debugging
 # Check alignment
-python ./tests/peft/peft_alignment_test.py
+python ./tests/peft/peft_alignment_test.py -tp 2
 
 # Print succeess message
 echo ""
