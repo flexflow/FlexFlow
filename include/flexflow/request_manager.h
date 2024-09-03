@@ -68,6 +68,8 @@ struct Request {
   int batch_index = -1;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
+  int ssm_prefill_len = 0;
+  int llm_prefill_len = 0;
 
   int first_token_offset_in_batch = 0;
   int num_tokens_in_batch = 0;
