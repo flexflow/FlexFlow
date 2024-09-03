@@ -58,7 +58,7 @@ if [[ "$cuda_version" == "11.6" || "$cuda_version" == "11.7" || "$cuda_version" 
     sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME"/include/* /usr/local/include
     sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME"/lib/* /usr/local/lib
     rm -rf "$CUDNN_EXTRACTED_TARBALL_NAME"
-else if [[ "$CUDNN_TARBALL_NAME" == *.deb ]]; then
+elif [[ "$CUDNN_TARBALL_NAME" == *.deb ]]; then
     sudo dpkg -i $CUDNN_TARBALL_NAME
 else
     sudo tar -xzf $CUDNN_TARBALL_NAME -C /usr/local
