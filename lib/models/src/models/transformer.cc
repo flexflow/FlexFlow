@@ -46,18 +46,18 @@ tensor_guid_t create_transformer_encoder_layer(ComputationGraphBuilder &cgb,
   assert(are_tensor_guid_shapes_equivalent(
       cgb.computation_graph, input, self_attention));
 
-  tensor_guid_t normalized_t = cgb.layer_norm(cgb.add(self_attention, input),
-                                              layer_norm_axis,
-                                              /*elementwise_affine=*/true,
-                                              config.layer_norm_eps);
+  tensor_guid_t normalized = cgb.layer_norm(cgb.add(self_attention, input),
+                                            layer_norm_axis,
+                                            /*elementwise_affine=*/true,
+                                            config.layer_norm_eps);
   assert(are_tensor_guid_shapes_equivalent(
-      cgb.computation_graph, input, normalized_t));
+      cgb.computation_graph, input, normalized));
 
-  tensor_guid_t feedfoward_output =
-      create_feedforward_network(cgb, config, normalized_t);
+  tensor_guid_t feedforward_output =
+      create_feedforward_network(cgb, config, normalized);
   assert(are_tensor_guid_shapes_equivalent(
-      cgb.computation_graph, input, feedfoward_output));
-  return cgb.layer_norm(cgb.add(normalized_t, feedfoward_output),
+      cgb.computation_graph, input, feedforward_output));
+  return cgb.layer_norm(cgb.add(normalized, feedforward_output),
                         layer_norm_axis,
                         /*elementwise_affine=*/true,
                         config.layer_norm_eps);
@@ -118,12 +118,12 @@ tensor_guid_t
   assert(are_tensor_guid_shapes_equivalent(
       cgb.computation_graph, input, mha_normalized));
 
-  tensor_guid_t feedfoward_output =
+  tensor_guid_t feedforward_output =
       create_feedforward_network(cgb, config, mha_normalized);
   assert(are_tensor_guid_shapes_equivalent(
-      cgb.computation_graph, input, feedfoward_output));
+      cgb.computation_graph, input, feedforward_output));
 
-  return cgb.layer_norm(cgb.add(mha_normalized, feedfoward_output),
+  return cgb.layer_norm(cgb.add(mha_normalized, feedforward_output),
                         layer_norm_axis,
                         /*elementwise_affine=*/true,
                         config.layer_norm_eps);

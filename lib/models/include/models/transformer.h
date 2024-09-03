@@ -26,6 +26,12 @@ tensor_guid_t create_transformer_decoder(ComputationGraphBuilder &,
                                          tensor_guid_t const &,
                                          tensor_guid_t const &);
 
+/**
+ * @brief Get the base config from the Attention Is All You Need paper.
+ *
+ * @details See the first row of the Table 3 at the top of p. 9 in
+ * https://arxiv.org/abs/1706.03762
+ */
 TransformerConfig get_default_transformer_config();
 
 /**
