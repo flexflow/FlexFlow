@@ -11,7 +11,6 @@ ff_add_library(
     op-attrs
     utils
     pcg
-    rapidcheck
 )
 
 add_subdirectory(test)
