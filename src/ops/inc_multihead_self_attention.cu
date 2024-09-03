@@ -538,7 +538,6 @@ __global__ void fill_entries_above_diagonal(DT *matrix,
   }
 }
 
-
 template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
@@ -563,7 +562,6 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
   }
 #endif
-
 
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
@@ -739,7 +737,7 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-// this kernel is no longer used by the attention operator because 
+// this kernel is no longer used by the attention operator because
 // there's no more weights
 // TODO: check if this is needed by the projection layers?
 template <typename DT>
@@ -814,7 +812,8 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
 
   // phase 0: copy calculated qkv into devQKVProjArray
   // [qProjSize, num_heads, 3, num_new_tokens]
-  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+  size_t qkv_proj_size =
+      m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
 
   cudaMemcpyAsync(m->devQKVProjArray,
                   qkv_ptr,
@@ -826,11 +825,11 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                    //  input_ptr,
-                    //  weight_ptr,
-                    //  nullptr, // does not use weight
+                     //  input_ptr,
+                     //  weight_ptr,
+                     //  nullptr, // does not use weight
                      static_cast<DT *>(m->devQKVProjArray),
-                    //  bias_ptr,
+                     //  bias_ptr,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
@@ -871,50 +870,79 @@ std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,
   return dst_filepath.string();
 }
 
-__global__ void transposeAdd_half_kernel(half *out, const half *in, int width, int height, half alpha, half beta) {
-    int t_id = blockIdx.x * blockDim.x + threadIdx.x;
-    int num_threads = blockDim.x * gridDim.x;
-    for(int i = t_id; i < width * height; i += num_threads) {
-        int row = i / width;
-        int col = i % width;
-        out[col * height + row] = alpha * in[row * width + col] + beta * out[col * height + row];
-    }
+__global__ void transposeAdd_half_kernel(
+    half *out, half const *in, int width, int height, half alpha, half beta) {
+  int t_id = blockIdx.x * blockDim.x + threadIdx.x;
+  int num_threads = blockDim.x * gridDim.x;
+  for (int i = t_id; i < width * height; i += num_threads) {
+    int row = i / width;
+    int col = i % width;
+    out[col * height + row] =
+        alpha * in[row * width + col] + beta * out[col * height + row];
+  }
 }
 
-__global__ void transposeAdd_float_kernel(float *out, const float *in, int width, int height, float alpha, float beta) {
-    int t_id = blockIdx.x * blockDim.x + threadIdx.x;
-    int num_threads = blockDim.x * gridDim.x;
-    for(int i = t_id; i < width * height; i += num_threads) {
-        int row = i / width;
-        int col = i % width;
-        out[col * height + row] = alpha * in[row * width + col] + beta * out[col * height + row];
-    }
-}
-
-template <typename DT>
-void transposeAdd(DT *out, const DT *in, int width, int height, float alpha, float beta, cudaStream_t stream) {
-    assert(false && "Unsupported data type");
-}
-
-template<>
-void transposeAdd<float>(float *out, const float *in, int width, int height, float alpha, float beta, cudaStream_t stream) {
-    transposeAdd_float_kernel<<<4, 1024, 0, stream>>>(out, in, width, height, alpha, beta);
-}
-
-template<>
-void transposeAdd<half>(half *out, const half *in, int width, int height, float alpha, float beta, cudaStream_t stream) {
-    transposeAdd_half_kernel<<<4, 1024, 0, stream>>>(out, in, width, height, __float2half(alpha), __float2half(beta));
+__global__ void transposeAdd_float_kernel(float *out,
+                                          float const *in,
+                                          int width,
+                                          int height,
+                                          float alpha,
+                                          float beta) {
+  int t_id = blockIdx.x * blockDim.x + threadIdx.x;
+  int num_threads = blockDim.x * gridDim.x;
+  for (int i = t_id; i < width * height; i += num_threads) {
+    int row = i / width;
+    int col = i % width;
+    out[col * height + row] =
+        alpha * in[row * width + col] + beta * out[col * height + row];
+  }
 }
 
 template <typename DT>
-void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                     BatchConfig const *bc,
-                     int shard_id,
-                     DT *input_grad_ptr,
-                     DT const *weight_ptr, // this is unused, kept for consistency
-                     DT const *output_grad_ptr,
-                     DT const *bias_ptr,
-                     cudaStream_t stream) {
+void transposeAdd(DT *out,
+                  const DT *in,
+                  int width,
+                  int height,
+                  float alpha,
+                  float beta,
+                  cudaStream_t stream) {
+  assert(false && "Unsupported data type");
+}
+
+template <>
+void transposeAdd<float>(float *out,
+                         float const *in,
+                         int width,
+                         int height,
+                         float alpha,
+                         float beta,
+                         cudaStream_t stream) {
+  transposeAdd_float_kernel<<<4, 1024, 0, stream>>>(
+      out, in, width, height, alpha, beta);
+}
+
+template <>
+void transposeAdd<half>(half *out,
+                        half const *in,
+                        int width,
+                        int height,
+                        float alpha,
+                        float beta,
+                        cudaStream_t stream) {
+  transposeAdd_half_kernel<<<4, 1024, 0, stream>>>(
+      out, in, width, height, __float2half(alpha), __float2half(beta));
+}
+
+template <typename DT>
+void peft_bwd_kernel(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    int shard_id,
+    DT *input_grad_ptr,
+    DT const *weight_ptr, // this is unused, kept for consistency
+    DT const *output_grad_ptr,
+    DT const *bias_ptr,
+    cudaStream_t stream) {
   assert(!m->offload);
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -1327,12 +1355,14 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
       int n_ = num_tokens;
       int k_ = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
 
-      // TODO: checkout if the input grad ptr has some relation with m->devQKVProjArray
-      // so we may potentially skip this transpose and copy
-      // TODO: check if this transposeAdd can correctly implement gradient accumulation
+      // TODO: checkout if the input grad ptr has some relation with
+      // m->devQKVProjArray so we may potentially skip this transpose and copy
+      // TODO: check if this transposeAdd can correctly implement gradient
+      // accumulation
       transposeAdd(C, B, n_, k_, alpha, beta, stream);
-      
-      // printf("backward of raw attn grad: %d, %d, with redudant dimension %d\n", k_, n_, m_);
+
+      // printf("backward of raw attn grad: %d, %d, with redudant dimension
+      // %d\n", k_, n_, m_);
       if (m->inference_debugging) {
         std::string filename =
             get_peft_dbg_folder(m, shard_id) + ".self_attn.input_gradient_0";
@@ -1685,7 +1715,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     // GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output
     // GenericTensorAccessorR const &bias
-    ) {
+) {
   // printf("inf_k_warpper start\n");
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -1710,7 +1740,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_half_ptr(),
-        static_cast<half const *>(nullptr), //weight_ptr is no longer used
+        static_cast<half const *>(nullptr), // weight_ptr is no longer used
         output.get_half_ptr(),
         static_cast<half const *>(nullptr), // bias_ptr is no longer used
         stream);
@@ -1720,7 +1750,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_float_ptr(),
-        static_cast<float const *>(nullptr), //weight_ptr is no longer used
+        static_cast<float const *>(nullptr), // weight_ptr is no longer used
         output.get_float_ptr(),
         static_cast<float const *>(nullptr), // bias_ptr is no longer used
         stream);
@@ -1747,7 +1777,7 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     GenericTensorAccessorW const &input_grad,
     // GenericTensorAccessorR const &weight,
     GenericTensorAccessorR const &output_grad) {
-    // GenericTensorAccessorR const &bias) {
+  // GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   bool use_bias = *m->qkv_bias || *m->final_bias;
@@ -1769,30 +1799,33 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     assert(!m->offload);
     // half const *bias_ptr =
     //     use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
-    Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
-                                                    bc,
-                                                    shard_id,
-                                                    input_grad.get_half_ptr(),
-                                                    // weight.get_half_ptr(),
-                                                    static_cast<half const *>(nullptr),
-                                                    output_grad.get_half_ptr(),
-                                                    // bias_ptr,
-                                                    static_cast<half const *>(nullptr),
-                                                    stream);
+    Kernels::IncMultiHeadAttention::peft_bwd_kernel(
+        m,
+        bc,
+        shard_id,
+        input_grad.get_half_ptr(),
+        // weight.get_half_ptr(),
+        static_cast<half const *>(nullptr),
+        output_grad.get_half_ptr(),
+        // bias_ptr,
+        static_cast<half const *>(nullptr),
+        stream);
   } else if (input_grad.data_type == DT_FLOAT) {
     assert(!m->offload);
     // float const *bias_ptr =
-    //     use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
-    Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
-                                                    bc,
-                                                    shard_id,
-                                                    input_grad.get_float_ptr(),
-                                                    // weight.get_float_ptr(),
-                                                    static_cast<float const *>(nullptr),
-                                                    output_grad.get_float_ptr(),
-                                                    // bias_ptr,
-                                                    static_cast<float const *>(nullptr),
-                                                    stream);
+    //     use_bias ? bias.get_float_ptr() : static_cast<float const
+    //     *>(nullptr);
+    Kernels::IncMultiHeadAttention::peft_bwd_kernel(
+        m,
+        bc,
+        shard_id,
+        input_grad.get_float_ptr(),
+        // weight.get_float_ptr(),
+        static_cast<float const *>(nullptr),
+        output_grad.get_float_ptr(),
+        // bias_ptr,
+        static_cast<float const *>(nullptr),
+        stream);
   } else {
     assert(false && "Unspported data type");
   }

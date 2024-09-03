@@ -159,7 +159,7 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
   int one_head_size = qParas + kParas + vParas + oParas;
   int weight_size = qParas * num_q_heads + kParas * num_q_heads +
                     vParas * num_q_heads + oParas * num_q_heads;
-  
+
   li->data_type = data_type;
   li->add_int_property("embed_dim", embed_dim);
   li->add_int_property("num_q_heads", num_q_heads);
@@ -392,7 +392,8 @@ TreeIncMultiHeadSelfAttention::TreeIncMultiHeadSelfAttention(
     dims[i] = _input->dims[i];
   }
   dims[0].size = _embed_dim;
-  // Currently require no parallelism along this dim, is this aligned with the previous removal of assert?
+  // Currently require no parallelism along this dim, is this aligned with the
+  // previous removal of assert?
   assert(dims[0].degree == 1);
   if (allocate_weights) {
     // Create weight tensor
@@ -597,10 +598,13 @@ OpMeta *TreeIncMultiHeadSelfAttention::init_task(
   int num_kv_heads =
       attn->num_kv_heads / attn->tensor_parallelism_degree +
       (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
-  if(attn->oProjSize != output.domain.hi()[0] - output.domain.lo()[0] + 1) {
-    std::cout<<"attn->oProjSize: "<<attn->oProjSize<<" does not match output domain dim[0]: "<<output.domain.hi()[0] - output.domain.lo()[0] + 1<<std::endl;
+  if (attn->oProjSize != output.domain.hi()[0] - output.domain.lo()[0] + 1) {
+    std::cout << "attn->oProjSize: " << attn->oProjSize
+              << " does not match output domain dim[0]: "
+              << output.domain.hi()[0] - output.domain.lo()[0] + 1 << std::endl;
   }
-  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
+  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] +
+  // 1);
 
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);

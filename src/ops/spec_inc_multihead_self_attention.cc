@@ -705,14 +705,14 @@ void SpecIncMultiHeadSelfAttention::inference_task(
 
   SpecIncMultiHeadSelfAttentionMeta *m =
       *((SpecIncMultiHeadSelfAttentionMeta **)task->local_args);
-  assert(regions.size() ==2);
+  assert(regions.size() == 2);
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorR biases;
-  
+
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   Domain output_domain = runtime->get_index_space_domain(

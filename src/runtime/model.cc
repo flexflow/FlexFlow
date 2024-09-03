@@ -1154,19 +1154,25 @@ bool Op::check_output_input_weight_same_parallel_is() const {
   IndexSpace parallel_is = outputs[0]->parallel_is;
   for (int i = 0; i < numOutputs; i++) {
     if (outputs[i]->parallel_is != parallel_is) {
-      std::cout<<"outputs["<<i<<"] has different parallel_is "<<outputs[i]->parallel_is<<" than output[0] "<<parallel_is<<std::endl;
+      std::cout << "outputs[" << i << "] has different parallel_is "
+                << outputs[i]->parallel_is << " than output[0] " << parallel_is
+                << std::endl;
       return false;
     }
   }
   for (int i = 0; i < numInputs; i++) {
     if (inputs[i]->parallel_is != parallel_is) {
-      std::cout<<"inputs["<<i<<"] has different parallel_is "<<inputs[i]->parallel_is<<" than output[0] "<<parallel_is<<std::endl;
+      std::cout << "inputs[" << i << "] has different parallel_is "
+                << inputs[i]->parallel_is << " than output[0] " << parallel_is
+                << std::endl;
       return false;
     }
   }
   for (int i = 0; i < numWeights; i++) {
     if (weights[i]->parallel_is != parallel_is) {
-      std::cout<<"weights["<<i<<"] has different parallel_is "<<weights[i]->parallel_is<<" than output[0] "<<parallel_is<<std::endl;
+      std::cout << "weights[" << i << "] has different parallel_is "
+                << weights[i]->parallel_is << " than output[0] " << parallel_is
+                << std::endl;
       return false;
     }
   }
@@ -3416,27 +3422,28 @@ bool FFModel::need_to_add_allreduce(int layer_idx) const {
   if (config.computationMode == COMP_MODE_INFERENCE &&
       config.tensor_parallelism_degree > 1 &&
       (
-      //  l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
-      //  l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-       (std::string(l->name).find(".self_attn.o_proj") != std::string::npos) ||
-       // mlp layer
-       is_mlp_block(layer_idx) ||
-       // llama mlp layer
-       (l->op_type == OP_LINEAR && layer_idx >= 2 &&
-        layers[layer_idx - 1]->op_type == OP_GELU &&
-        layers[layer_idx - 2]->op_type == OP_LINEAR) ||
-       // LLAMA without element-wise operator fusion
-       (l->op_type == OP_LINEAR && layer_idx >= 5 &&
-        layers[layer_idx - 1]->op_type == OP_EW_MUL &&
-        layers[layer_idx - 2]->op_type == OP_EW_MUL &&
-        layers[layer_idx - 3]->op_type == OP_SIGMOID &&
-        layers[layer_idx - 4]->op_type == OP_LINEAR &&
-        layers[layer_idx - 5]->op_type == OP_LINEAR) ||
-       // LLAMA with element-wise operator fusion
-       (l->op_type == OP_LINEAR && layer_idx >= 3 &&
-        layers[layer_idx - 1]->op_type == OP_SIGMOID_SILU_MULTI &&
-        layers[layer_idx - 2]->op_type == OP_LINEAR &&
-        layers[layer_idx - 3]->op_type == OP_LINEAR))) {
+          //  l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
+          //  l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
+          (std::string(l->name).find(".self_attn.o_proj") !=
+           std::string::npos) ||
+          // mlp layer
+          is_mlp_block(layer_idx) ||
+          // llama mlp layer
+          (l->op_type == OP_LINEAR && layer_idx >= 2 &&
+           layers[layer_idx - 1]->op_type == OP_GELU &&
+           layers[layer_idx - 2]->op_type == OP_LINEAR) ||
+          // LLAMA without element-wise operator fusion
+          (l->op_type == OP_LINEAR && layer_idx >= 5 &&
+           layers[layer_idx - 1]->op_type == OP_EW_MUL &&
+           layers[layer_idx - 2]->op_type == OP_EW_MUL &&
+           layers[layer_idx - 3]->op_type == OP_SIGMOID &&
+           layers[layer_idx - 4]->op_type == OP_LINEAR &&
+           layers[layer_idx - 5]->op_type == OP_LINEAR) ||
+          // LLAMA with element-wise operator fusion
+          (l->op_type == OP_LINEAR && layer_idx >= 3 &&
+           layers[layer_idx - 1]->op_type == OP_SIGMOID_SILU_MULTI &&
+           layers[layer_idx - 2]->op_type == OP_LINEAR &&
+           layers[layer_idx - 3]->op_type == OP_LINEAR))) {
     return true;
   }
   return false;
