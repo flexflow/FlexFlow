@@ -9,7 +9,7 @@ ubuntu_version=$(lsb_release -rs)
 ubuntu_version=${ubuntu_version//./}
 
 # Install CUDNN
-cuda_version=${1:-12.0.0}
+cuda_version=${1:-12.1.1}
 cuda_version=$(echo "${cuda_version}" | cut -f1,2 -d'.')
 echo "Installing CUDNN for CUDA version: ${cuda_version} ..."
 CUDNN_LINK=http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz
