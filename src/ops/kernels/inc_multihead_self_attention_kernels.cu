@@ -265,6 +265,9 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
   //   }
 
   int num_tokens = bc->num_active_tokens();
+  if (num_tokens == 0) {
+    return;
+  }
   int parallelism = m->qk_dim * num_tokens * m->num_q_heads;
 
   // Step 2: apply bias for QKV, or scale the query
@@ -350,6 +353,9 @@ void apply_pos_encoding_to_tokens_in_batch(
     return;
   }
   int num_tokens = bc->num_active_tokens();
+  if (num_tokens == 0) {
+    return;
+  }
   int parallelism = num_tokens * m->local_hidden_size;
   size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
   apply_pos_encoding_to_tokens_in_batch_kernel<<<GET_BLOCKS(parallelism),
@@ -426,6 +432,9 @@ void apply_pos_encoding_to_streaming_proj(
     }
     num_tokens += bc->streamingCacheInfo[req_idx].commit_len;
   }
+  if (num_tokens == 0) {
+    return;
+  }
   int parallelism = num_tokens * kv_hidden_size / 2;
   int const max_num_pages = round_up_pages(
       BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth() +
@@ -495,6 +504,9 @@ void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
                          cudaStream_t stream) {
   int num_new_tokens = bc->num_active_tokens();
+  if (num_new_tokens == 0) {
+    return;
+  }
   int parallelism = m->local_hidden_size * num_new_tokens;
   int const max_num_pages =
       round_up_pages(BatchConfig::max_sequence_length() +
@@ -592,6 +604,9 @@ void update_kv_in_streaming_cache(IncMultiHeadSelfAttentionMeta const *m,
     }
     num_tokens += bc->streamingCacheInfo[req_idx].commit_len;
   }
+  if (num_tokens == 0) {
+    return;
+  }
   int parallelism = kv_hidden_size * num_tokens;
   int const max_num_pages_pre_pos_enc_buf = round_up_pages(
       BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
@@ -681,6 +696,9 @@ void commit_kv(IncMultiHeadSelfAttentionMeta const *m,
   assert(m->streaming_cache);
   int const kv_hidden_size = m->num_kv_heads * m->qk_dim;
   int const num_new_tokens = bc->num_active_tokens();
+  if (num_new_tokens == 0) {
+    return;
+  }
   int parallelism = kv_hidden_size * num_new_tokens;
   int const max_num_pages = round_up_pages(BatchConfig::MAX_STREAMING_POS -
                                            BatchConfig::get_max_tree_depth());
@@ -714,7 +732,11 @@ void produce_output(IncMultiHeadSelfAttentionMeta const *m,
                     BatchConfig const *bc,
                     DT *output_ptr,
                     cudaStream_t stream) {
-  int parallelism = m->v_dim * m->num_q_heads * bc->num_active_tokens();
+  int const num_tokens = bc->num_active_tokens();
+  if (num_tokens == 0) {
+    return;
+  }
+  int parallelism = m->v_dim * m->num_q_heads * num_tokens;
   produce_output_kernel<<<GET_BLOCKS(parallelism),
                           min(CUDA_NUM_THREADS, parallelism),
                           0,
