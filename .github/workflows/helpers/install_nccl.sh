@@ -14,7 +14,7 @@ sudo apt update -y
 rm -f cuda-keyring_1.0-1_all.deb
 
 # Install NCCL
-cuda_version=${1:-11.8.0}
+cuda_version=${1:-12.0.0}
 cuda_version=$(echo "${cuda_version}" | cut -f1,2 -d'.')
 echo "Installing NCCL for CUDA version: ${cuda_version} ..."
 

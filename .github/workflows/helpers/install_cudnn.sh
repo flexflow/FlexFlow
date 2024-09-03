@@ -6,7 +6,7 @@ set -x
 cd "${BASH_SOURCE[0]%/*}"
 
 # Install CUDNN
-cuda_version=${1:-11.8.0}
+cuda_version=${1:-12.0.0}
 cuda_version=$(echo "${cuda_version}" | cut -f1,2 -d'.')
 echo "Installing CUDNN for CUDA version: ${cuda_version} ..."
 CUDNN_LINK=http://developer.download.nvidia.com/compute/redist/cudnn/v8.0.5/cudnn-11.1-linux-x64-v8.0.5.39.tgz
@@ -44,8 +44,11 @@ elif [[ "$cuda_version" == "11.7" ]]; then
 elif [[ "$cuda_version" == "11.8" ]]; then
     CUDNN_LINK=https://developer.download.nvidia.com/compute/redist/cudnn/v8.7.0/local_installers/11.8/cudnn-linux-x86_64-8.7.0.84_cuda11-archive.tar.xz
     CUDNN_TARBALL_NAME=cudnn-linux-x86_64-8.7.0.84_cuda11-archive.tar.xz
-elif [[ "$cuda_version" == "12.0" ]]; then
-    echo "CUDNN support for CUDA version 12.0 not yet added"
+elif [[ "$cuda_version" == "12.0" || "$cuda_version" == "12.1" || "$cuda_version" == "12.2" || "$cuda_version" == "12.3" || "$cuda_version" == "12.4" || "$cuda_version" == "12.5" ]]; then
+    CUDNN_LINK=https://developer.download.nvidia.com/compute/redist/cudnn/v8.8.0/local_installers/12.0/cudnn-local-repo-ubuntu2004-8.8.0.121_1.0-1_amd64.deb
+    CUDNN_TARBALL_NAME=cudnn-local-repo-ubuntu2004-8.8.0.121_1.0-1_amd64.deb
+else
+    echo "CUDNN support for CUDA version above 12.0 not yet added"
     exit 1
 fi
 wget -c -q $CUDNN_LINK
@@ -55,6 +58,8 @@ if [[ "$cuda_version" == "11.6" || "$cuda_version" == "11.7" || "$cuda_version" 
     sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME"/include/* /usr/local/include
     sudo cp -r "$CUDNN_EXTRACTED_TARBALL_NAME"/lib/* /usr/local/lib
     rm -rf "$CUDNN_EXTRACTED_TARBALL_NAME"
+else if [[ "$CUDNN_TARBALL_NAME" == *.deb ]]; then
+    sudo dpkg -i $CUDNN_TARBALL_NAME
 else
     sudo tar -xzf $CUDNN_TARBALL_NAME -C /usr/local
 fi
