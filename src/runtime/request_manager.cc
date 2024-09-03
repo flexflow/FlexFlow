@@ -785,7 +785,6 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    request.llm_cache_size++;
     if (streaming_cache) {
       request.streaming_cache_info.commit_cache(1);
       request.llm_cache_size = request.streaming_cache_info.commit_len;
