@@ -394,8 +394,8 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[i] = _input->dims[i];
   }
   dims[0].size = _embed_dim;
-  // Currently require no parallelism along this dim, is this consistent with the 
-  // removal of the previous assert?
+  // Currently require no parallelism along this dim, is this consistent with
+  // the removal of the previous assert?
   assert(dims[0].degree == 1);
   if (allocate_weights) {
     // Create weight tensor
@@ -600,10 +600,13 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       attn->num_kv_heads / attn->tensor_parallelism_degree +
       (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
 
-  if(attn->oProjSize != output.domain.hi()[0] - output.domain.lo()[0] + 1) {
-    printf("attn o_proj size %d does not match output domain %d\n", attn->oProjSize, output.domain.hi()[0] - output.domain.lo()[0] + 1);
+  if (attn->oProjSize != output.domain.hi()[0] - output.domain.lo()[0] + 1) {
+    printf("attn o_proj size %d does not match output domain %d\n",
+           attn->oProjSize,
+           output.domain.hi()[0] - output.domain.lo()[0] + 1);
   }
-  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] + 1);
+  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] +
+  // 1);
 
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);
@@ -709,7 +712,7 @@ void IncMultiHeadSelfAttention::inference_task(
 
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-    GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   Domain input_domain = runtime->get_index_space_domain(
@@ -724,7 +727,7 @@ void IncMultiHeadSelfAttention::inference_task(
   assert(task->index_point.get_dim() == 1);
 
   IncMultiHeadSelfAttention::inference_kernel_wrapper(
-         m, bc, task->index_point.point_data[0], input, output);
+      m, bc, task->index_point.point_data[0], input, output);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -822,9 +825,11 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   // GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-  //     m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  //     m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx,
+  //     runtime);
   // GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
-  //     m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  //     m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx,
+  //     runtime);
   GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorR biases;
@@ -862,7 +867,7 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
       input_grad,
       // weight,
       output_grad);
-      // biases);
+  // biases);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);

@@ -501,17 +501,19 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       stream));
   // phase 0: copy calculated qkv into devQKVProjArray
   // [qProjSize, num_heads, 3, num_new_tokens]
-  size_t qkv_proj_size = m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+  size_t qkv_proj_size =
+      m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
 
   cudaMemcpyAsync(m->devQKVProjArray,
                   qkv_ptr,
-                  qkv_proj_size * sizeof(DT), // is this right, do we need layers etc here
+                  qkv_proj_size *
+                      sizeof(DT), // is this right, do we need layers etc here
                   cudaMemcpyDeviceToDevice,
                   stream);
 
   // phase 1: Implement kernel to compute KQV for input tokens
-  // TODO WARNING: this is commented out only because we are fixing the inc_attn first
-  // compute_qkv_kernel(m,
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn
+  // first compute_qkv_kernel(m,
   //                    bc,
   //                    shard_id,
   //                   //  input_ptr,

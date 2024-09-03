@@ -457,8 +457,7 @@ __host__ void
             bc,
             task->index_point.point_data[0],
             my_input_accessor[0],
-            my_output_accessor[0]
-            );
+            my_output_accessor[0]);
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
@@ -1042,7 +1041,7 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
             my_input_grad_accessor[0],
             // my_weight_accessor[0],
             my_output_grad_accessor[0]);
-            // biases);
+        // biases);
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION:

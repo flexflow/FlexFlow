@@ -936,8 +936,8 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
   // phase 1: Implement kernel to compute KQV for input tokens
-  // TODO WARNING: this is commented out only because we are fixing the inc_attn first
-  // compute_qkv_kernel(m,
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn
+  // first compute_qkv_kernel(m,
   //                    bc,
   //                    shard_id,
   //                   //  input_ptr,

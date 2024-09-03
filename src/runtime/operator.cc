@@ -2,8 +2,8 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/simulator.h"
 #include <stdexcept>
-#include <wordexp.h>
 #include <unistd.h>
+#include <wordexp.h>
 
 namespace FlexFlow {
 
@@ -33,11 +33,12 @@ fs::path get_dst_folder(std::string const &subdir,
   char cwd[PATH_MAX];
   getcwd(cwd, sizeof(cwd));
 
-  // char const *ff_cache_path = std::string(std::getenv("FF_DEBUG_PATH")) == "." ?
+  // char const *ff_cache_path = std::string(std::getenv("FF_DEBUG_PATH")) ==
+  // "." ?
   //     cwd : std::getenv("FF_DEBUG_PATH");
 
   char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
-  
+
   std::string debug_dir_ =
       ff_cache_path ? std::string(ff_cache_path) + "/debug/flexflow"
                     : std::string("~/.cache/flexflow/debug/flexflow");
@@ -46,7 +47,7 @@ fs::path get_dst_folder(std::string const &subdir,
   debug_dir_ = p.we_wordv[0];
   wordfree(&p);
   fs::path debug_dir = debug_dir_;
-  if(!fs::is_directory(debug_dir)) {
+  if (!fs::is_directory(debug_dir)) {
     printf("invalid debug directory: %s\n", debug_dir.c_str());
   }
   assert(fs::is_directory(debug_dir));

@@ -129,12 +129,12 @@ void load_attention_weights_multi_query(DT *ptr,
 
 template <typename DT>
 void load_attention_o_proj_bias_to_dense_v2(DT *ptr,
-                            int num_heads,
-                            int num_kv_heads,
-                            size_t hidden_dim,
-                            size_t qkv_inner_dim,
-                            std::string layer_name,
-                            std::string weights_folder) {
+                                            int num_heads,
+                                            int num_kv_heads,
+                                            size_t hidden_dim,
+                                            size_t qkv_inner_dim,
+                                            std::string layer_name,
+                                            std::string weights_folder) {
   std::string filename = layer_name + ".o_proj.bias";
 
   int file_index = 0;
@@ -262,15 +262,15 @@ void load_attention_bias_v2(DT *ptr,
 
 template <typename DT>
 void load_attention_weights_to_dense_v2(DT *ptr,
-                               int num_heads,
-                               int num_kv_heads,
-                               size_t hidden_dim,
-                               size_t qkv_inner_dim,
-                               std::string layer_name,
-                               std::string weights_folder,
-                               size_t volume,
-                               int tensor_parallelism_degree,
-                               bool load_o_proj) {
+                                        int num_heads,
+                                        int num_kv_heads,
+                                        size_t hidden_dim,
+                                        size_t qkv_inner_dim,
+                                        std::string layer_name,
+                                        std::string weights_folder,
+                                        size_t volume,
+                                        int tensor_parallelism_degree,
+                                        bool load_o_proj) {
   // layers_0_attention_wq_weight
   // layers_0_self_attn_q_proj_weight
   std::string q_file = layer_name + ".q_proj.weight";
@@ -299,9 +299,10 @@ void load_attention_weights_to_dense_v2(DT *ptr,
   // stride for q, k, v, o
   size_t stride_size = (q_size + v_replicate_size + k_replicate_size) /
                        tensor_parallelism_degree;
-  if(!load_o_proj) {
+  if (!load_o_proj) {
     for (auto filename : weight_filenames) {
-      std::cout << "Loading weight file " << filename << " to dense"<< std::endl;
+      std::cout << "Loading weight file " << filename << " to dense"
+                << std::endl;
       std::string weight_filepath = join_path({weights_folder, filename});
 
       int data_index = 0;
@@ -342,17 +343,18 @@ void load_attention_weights_to_dense_v2(DT *ptr,
           int head_idx = i % (num_heads / tensor_parallelism_degree);
           int tp_idx = (i / (num_heads / tensor_parallelism_degree));
           for (int j = 0; j < single_proj_size; j++) {
-            ptr[base_index + tp_idx * stride_size + single_proj_size * head_idx +
-                j] = host_array.at(kv_idx * single_proj_size + j);
+            ptr[base_index + tp_idx * stride_size +
+                single_proj_size * head_idx + j] =
+                host_array.at(kv_idx * single_proj_size + j);
           }
         }
       }
-      std::cout<<"host array going out of scope, releasing"<<endl;
+      std::cout << "host array going out of scope, releasing" << endl;
       base_index += one_partition_size;
       file_index++;
     }
     assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
-                            tensor_parallelism_degree);
+                             tensor_parallelism_degree);
   } else {
     std::cout << "Loading weight file " << o_file << std::endl;
     std::string weight_filepath = join_path({weights_folder, o_file});
@@ -907,23 +909,23 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
 
   // dense layers for attention projection is named as
   // self_attn.qkv_proj or self_attn.o_proj
-  // so looking for self_attn. in the name can determine if it is an attention projection
+  // so looking for self_attn. in the name can determine if it is an attention
+  // projection
   if (weight_filename.find("self_attn.") != std::string::npos) {
     size_t pos = weight_filename.find(".o_proj");
     if (pos != std::string::npos) {
-        weight_filename.replace(pos, std::string(".o_proj").length(), "");
-        is_o_proj = true;
+      weight_filename.replace(pos, std::string(".o_proj").length(), "");
+      is_o_proj = true;
     } else {
       pos = weight_filename.find(".qkv_proj");
-      if(pos == std::string::npos) {
-        cout<<weight_filename<<endl;
+      if (pos == std::string::npos) {
+        cout << weight_filename << endl;
       }
       assert(pos != std::string::npos);
       weight_filename.replace(pos, std::string(".qkv_proj").length(), "");
     }
     is_attn_proj = true;
   }
-
 
   if (ff->config.benchmarking) {
     std::cout << "Initializing weight " << weight_filename
@@ -957,9 +959,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
       //                          weight_filename,
       //                          weights_folder);
       // }
-    } else if(is_attn_proj) {
-      if(is_o_proj) {
-        if(weight_idx == 0) {
+    } else if (is_attn_proj) {
+      if (is_o_proj) {
+        if (weight_idx == 0) {
           load_attention_weights_to_dense_v2(data,
                                              num_heads,
                                              num_kv_heads,
@@ -978,10 +980,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                                                  qkv_inner_dim,
                                                  weight_filename,
                                                  weights_folder);
-        
         }
       } else {
-        if(weight_idx == 0) {
+        if (weight_idx == 0) {
           load_attention_weights_to_dense_v2(data,
                                              num_heads,
                                              num_kv_heads,
