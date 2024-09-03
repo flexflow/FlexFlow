@@ -68,6 +68,10 @@ elif [[ "$CUDNN_TARBALL_NAME" == *.deb ]]; then
     sudo apt update -y
     rm -f cuda-keyring_1.1-1_all.deb
     sudo dpkg -i $CUDNN_TARBALL_NAME
+    sudo apt update -y
+    sudo apt install -y libcudnn8
+    sudo apt install -y libcudnn8-dev
+    sudo apt install -y libcudnn8-samples
 else
     sudo tar -xzf $CUDNN_TARBALL_NAME -C /usr/local
 fi
