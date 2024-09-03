@@ -65,7 +65,7 @@ jobs:
       - name: Create folder for artifacts
         run: mkdir artifacts unwrapped_artifacts
       - name: Download artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
         with:
           path: ./artifacts
       - name: Display structure of downloaded files
