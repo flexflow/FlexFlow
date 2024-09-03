@@ -202,21 +202,20 @@ struct Request {
   // 1. Prefilling phase
   // 2. Committing phase after the target model verification
   StreamingCacheInfo streaming_cache_info;
-};
 
-std::priority_queue<std::shared_ptr<TokenTreeNode>,
-                    std::vector<std::shared_ptr<TokenTreeNode>>,
-                    SharedTokenTreeNodePtrLess>
-    token_tree_nodes_pq;
+  std::priority_queue<std::shared_ptr<TokenTreeNode>,
+                      std::vector<std::shared_ptr<TokenTreeNode>>,
+                      SharedTokenTreeNodePtrLess>
+      token_tree_nodes_pq;
 
-double get_length_weight();
-void set_slo_ratio(double slo_ratio_);
-double get_slo_ratio();
+  double get_length_weight();
+  void set_slo_ratio(double slo_ratio_);
+  double get_slo_ratio();
 };
 
 // A comparator for std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
 // This is used to sort the token tree nodes in ascending order
-struct SharedTokenTreeNodePtrRequestGreater {
+struct SharedTokenTreeNodePtrRequestWeightedGreater {
   bool operator()(
       std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &lhs,
       std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &rhs) const {
@@ -227,6 +226,18 @@ struct SharedTokenTreeNodePtrRequestGreater {
     }
     return lhs.first->log_accumulated_prob * lhs.second.get_length_weight() >
            rhs.first->log_accumulated_prob * rhs.second.get_length_weight();
+  }
+};
+
+struct SharedTokenTreeNodePtrRequestGreater {
+  bool operator()(
+      std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &lhs,
+      std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &rhs) const {
+    if (lhs.first->gumbel) {
+      assert(rhs.first->gumbel);
+      return lhs.first->gumbel_logit > rhs.first->gumbel_logit;
+    }
+    return lhs.first->log_accumulated_prob > rhs.first->log_accumulated_prob;
   }
 };
 
@@ -288,6 +299,8 @@ public:
   void set_correction_factor(double correction_factor);
   double get_correction_factor();
   void set_streaming_cache(bool streaming_cache);
+  bool get_memory_occupancy();
+  void set_memory_occupancy(bool memory_occupancy);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -370,6 +383,7 @@ private:
   bool speculative_sampling = false;
   // specify if enable streaming cache for incremental decoding or draft model
   bool streaming_cache = false;
+  bool memory_occupancy = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -485,6 +499,8 @@ private:
   void prune_token_tree();
   void add_tokens_toward_slo(RequestGuid guid, int &budget);
   void add_tokens_toward_memory_occupancy(int budget);
+  void add_tokens_toward_goodput(int budget);
+
   /* ---------- Spec Decoding Helper Functions ---------- */
   void renormalize(std::vector<std::pair<TokenId, float>> &D,
                    std::unordered_map<TokenId, float> &R,
@@ -499,5 +515,4 @@ private:
   // Profiling related functions
   void reset_profiling_statistics();
 };
-}
-; // namespace FlexFlow
+}; // namespace FlexFlow
