@@ -1,4 +1,5 @@
 #include "models/transformer.h"
+#include "pcg/computation_graph.h"
 
 namespace FlexFlow {
 
@@ -29,12 +30,20 @@ tensor_guid_t create_transformer_encoder_layer(ComputationGraphBuilder &cgb,
                                                          kdim,
                                                          vdim,
                                                          config.dropout);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, self_attention));
+
   tensor_guid_t normalized_t = cgb.layer_norm(cgb.add(self_attention, input),
                                               layer_norm_axis,
                                               /*elementwise_affine=*/true,
                                               config.layer_norm_eps);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, normalized_t));
+
   tensor_guid_t feedfoward_output =
       create_feedforward_network(cgb, config, normalized_t);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, feedfoward_output));
   return cgb.layer_norm(cgb.add(normalized_t, feedfoward_output),
                         layer_norm_axis,
                         /*elementwise_affine=*/true,
@@ -67,11 +76,16 @@ tensor_guid_t
                                                          kdim,
                                                          vdim,
                                                          config.dropout);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, self_attention));
+
   tensor_guid_t self_attention_normalized =
       cgb.layer_norm(cgb.add(input, self_attention),
                      layer_norm_axis,
                      /*elementwise_affine=*/true,
                      config.layer_norm_eps);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, self_attention_normalized));
 
   tensor_guid_t mha = cgb.multihead_attention(input,
                                               encoder_output,
@@ -81,14 +95,21 @@ tensor_guid_t
                                               kdim,
                                               vdim,
                                               config.dropout);
+  assert(are_tensor_guid_shapes_equivalent(cgb.computation_graph, input, mha));
+
   tensor_guid_t mha_normalized =
       cgb.layer_norm(cgb.add(self_attention_normalized, mha),
                      layer_norm_axis,
                      /*elementwise_affine=*/true,
                      config.layer_norm_eps);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, mha_normalized));
 
   tensor_guid_t feedfoward_output =
       create_feedforward_network(cgb, config, mha_normalized);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, feedfoward_output));
+
   return cgb.layer_norm(cgb.add(mha_normalized, feedfoward_output),
                         layer_norm_axis,
                         /*elementwise_affine=*/true,
