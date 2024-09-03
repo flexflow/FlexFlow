@@ -56,7 +56,7 @@ jobs:
       CONDA: "3"    
     needs: gpu-ci-concierge
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-12.0:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Keep alive
@@ -75,7 +75,7 @@ jobs:
       CONDA: "3"    
     needs: gpu-ci-concierge
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-12.0:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
@@ -151,7 +151,7 @@ jobs:
       HUGGINGFACE_TOKEN: ${{ secrets.HUGGINGFACE_TOKEN }}
     needs: gpu-ci-concierge
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-12.0:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
@@ -181,6 +181,16 @@ jobs:
           ../config/config.linux
           make -j
 
+      - name: Run PEFT tests
+        run: |
+          export PATH=$CONDA_PREFIX/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+
+          source ./build/set_python_envs.sh
+          ./tests/peft_test.sh
+      
       - name: Run inference tests
         env:
           CPP_INFERENCE_TESTS: ${{ vars.CPP_INFERENCE_TESTS }}
@@ -197,16 +207,6 @@ jobs:
           # Inference tests
           source ./build/set_python_envs.sh
           ./tests/inference_tests.sh
-      
-      - name: Run PEFT tests
-        run: |
-          export PATH=$CONDA_PREFIX/bin:$PATH
-          export CUDNN_DIR=/usr/local/cuda
-          export CUDA_DIR=/usr/local/cuda
-          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
-
-          source ./build/set_python_envs.sh
-          ./tests/peft_test.sh
       
       - name: Save inference output as an artifact
         if: always()
@@ -239,7 +239,7 @@ jobs:
       CONDA: "3"
     needs: inference-tests
     container:
-      image: ghcr.io/flexflow/flexflow-environment-cuda-11.8:latest
+      image: ghcr.io/flexflow/flexflow-environment-cuda-12.0:latest
       options: --gpus all --shm-size=8192m
     steps:
       - name: Install updated git version
