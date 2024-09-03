@@ -59,6 +59,7 @@ jobs:
           cuda: "12.1.1"
           # Disable caching of the CUDA binaries, since it does not give us any significant performance improvement
           use-github-cache: "false"
+          log-file-suffix: 'cmake_${{matrix.gpu_backend}}.txt'
 
       - name: Install system dependencies
         run: .github/workflows/helpers/install_dependencies.sh
@@ -161,6 +162,7 @@ jobs:
         with:
           cuda: "12.1.1"
           use-github-cache: "false"
+          log-file-suffix: 'makefile_${{matrix.gpu_backend}}.txt'
 
       - name: Install system dependencies
         run: .github/workflows/helpers/install_dependencies.sh
