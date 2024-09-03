@@ -251,7 +251,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
               bias_ptr,
               stream);
 
-  apply_pos_encoding(m,
+  apply_pos_encoding_to_tokens_in_batch(m,
                      bc,
                      static_cast<DT *>(m->devQKVProjArray),
                      stream);

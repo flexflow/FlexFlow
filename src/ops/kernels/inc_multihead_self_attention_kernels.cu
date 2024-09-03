@@ -298,7 +298,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
 
 template <typename DT>
 __global__ void
-    apply_pos_encoding_kernel(DT *input_ptr,
+    apply_pos_encoding_to_tokens_in_batch_kernel(DT *input_ptr,
                               BatchConfig::PerRequestInfo const *requestInfos,
                               BatchConfig::PerTokenInfo const *tokenInfos,
                               int qk_dim,
@@ -350,7 +350,7 @@ __global__ void
 }
 
 template <typename DT>
-void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
+void apply_pos_encoding_to_tokens_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         DT *output_ptr,
                         cudaStream_t stream) {
@@ -361,7 +361,7 @@ void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
   int num_tokens = bc->num_active_tokens();
   int parallelism = num_tokens * m->local_hidden_size;
   size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
-  apply_pos_encoding_kernel<<<GET_BLOCKS(parallelism),
+  apply_pos_encoding_to_tokens_in_batch_kernel<<<GET_BLOCKS(parallelism),
                               min(CUDA_NUM_THREADS, parallelism),
                               0,
                               stream>>>(output_ptr,
@@ -916,13 +916,13 @@ template void Kernels::IncMultiHeadAttention::compute_qkv<half>(
     half const *bias_ptr,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::apply_pos_encoding<float>(
+template void Kernels::IncMultiHeadAttention::apply_pos_encoding_to_tokens_in_batch<float>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     float *output_ptr,
     cudaStream_t stream);
 
-template void Kernels::IncMultiHeadAttention::apply_pos_encoding<half>(
+template void Kernels::IncMultiHeadAttention::apply_pos_encoding_to_tokens_in_batch<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     half *output_ptr,

@@ -62,7 +62,7 @@ void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
 // For other Key tokens like in streaming cache, we nned other kernel to apply
 // the position embedding.
 template <typename DT>
-void apply_pos_encoding(IncMultiHeadSelfAttentionMeta const *m,
+void apply_pos_encoding_to_tokens_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         DT *output_ptr,
                         cudaStream_t stream);
