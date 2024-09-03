@@ -151,12 +151,8 @@ __global__ void commit_tokens_kernel(
       // int const req_id = committedTokenInfos[i].request_index;
       int const tok_id = committedTokenInfos[i].token_depth;
       int const page_to_idx = kv_page_indices[start + tok_id / kPagesize];
-      if (start + (tok_id / kPagesize) > end) {
-        printf("start: %d, end: %d, tok_id: %d\n", start, end, tok_id);
-        assert(false);
-      }
-      int const page_from_idx = kv_page_indices[start + index_in_kv_cache / kPagesize];
-      assert(start + (index_in_kv_cache / kPagesize) <= end);
+      assert(start + tok_id / kPagesize <= end);
+      int const page_from_idx = committedTokenInfos[i].index_in_kv_cache / kPagesize;
 
       // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
       // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory
