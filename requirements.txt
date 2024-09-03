@@ -24,4 +24,3 @@ accelerate
 loralib
 triton
 peft
-tf-keras
