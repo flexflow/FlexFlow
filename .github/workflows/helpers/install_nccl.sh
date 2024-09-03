@@ -8,10 +8,10 @@ cd "${BASH_SOURCE[0]%/*}"
 # Add NCCL key ring
 ubuntu_version=$(lsb_release -rs)
 ubuntu_version=${ubuntu_version//./}
-wget "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${ubuntu_version}/x86_64/cuda-keyring_1.0-1_all.deb"
-sudo dpkg -i cuda-keyring_1.0-1_all.deb
+wget "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${ubuntu_version}/x86_64/cuda-keyring_1.1-1_all.deb"
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
 sudo apt update -y
-rm -f cuda-keyring_1.0-1_all.deb
+rm -f cuda-keyring_1.1-1_all.deb
 
 # Install NCCL
 cuda_version=${1:-12.0.0}
