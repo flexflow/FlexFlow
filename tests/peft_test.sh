@@ -2,6 +2,10 @@
 # set -x
 set -e
 
+cleanup() {
+    rm -rf ~/.cache/flexflow/debug
+}
+
 # Cd into directory holding this script
 cd "${BASH_SOURCE[0]%/*}/.."
 
@@ -10,6 +14,9 @@ HUGGINGFACE_TOKEN=${HUGGINGFACE_TOKEN:-none}
 if [[ "$HUGGINGFACE_TOKEN" != "none" ]]; then
     huggingface-cli login --token "$HUGGINGFACE_TOKEN"
 fi
+
+# Clean up before test (just in case)
+cleanup
 
 # Create test prompt file
 mkdir -p ./inference/prompt
@@ -54,3 +61,6 @@ python ./tests/peft/peft_alignment_test.py -tp 2
 echo ""
 echo "PEFT tests passed!"
 echo ""
+
+# Cleanup after the test
+cleanup
