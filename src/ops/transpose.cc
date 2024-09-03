@@ -51,7 +51,7 @@ TransposeParams Transpose::get_params() const {
   for (int i = 0; i < outputs[0]->num_dims; i++) {
     params.perm.push_back(this->perm[i]);
   }
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

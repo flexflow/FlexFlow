@@ -47,9 +47,7 @@ using namespace FlexFlow::Kernels::ParallelIdentity;
 bool operator==(ParallelIdentityParams const &lhs,
                 ParallelIdentityParams const &rhs) {
   return lhs.parallel_identity_legion_dim == rhs.parallel_identity_legion_dim &&
-         ((lhs.name == NULL && rhs.name == NULL) ||
-          (lhs.name != NULL && rhs.name != NULL &&
-           std::strcmp(lhs.name, rhs.name) == 0));
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool ParallelIdentityParams::is_valid(ParallelTensorShape const &input) const {
@@ -59,7 +57,7 @@ bool ParallelIdentityParams::is_valid(ParallelTensorShape const &input) const {
 ParallelIdentityParams ParallelIdentity::get_params() const {
   ParallelIdentityParams params;
   params.parallel_identity_legion_dim = this->parallel_identity_dim;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

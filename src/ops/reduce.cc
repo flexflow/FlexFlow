@@ -41,7 +41,7 @@ ReduceParams Reduce::get_params() const {
   }
   params.keepdims = keepdims;
   params.layer_guid = this->layer_guid;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

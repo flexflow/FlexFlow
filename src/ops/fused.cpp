@@ -15,6 +15,7 @@
 
 #include "flexflow/ops/fused.h"
 #include "flexflow/accessor.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/add_bias_residual_layer_norm.h"
 #include "flexflow/ops/batch_norm.h"
@@ -43,6 +44,7 @@
 #include "flexflow/ops/spec_inc_multihead_self_attention.h"
 #include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
+#include "flexflow/parallel_ops/kernels/parallel_identity_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -92,6 +94,7 @@ __host__ void
   if (bc->num_tokens == 0) {
     return;
   }
+
   assert(metas->numOperators == fused->numOperators);
   assert(regions.size() == task->regions.size());
   bool softmax_grad_additional_region =
@@ -1763,6 +1766,7 @@ __host__ void FusedOp::backward_task(Task const *task,
       if (fused->op_input_source[i + ioff] == SOURCE_INPUT) {
         my_input_accessor[i] = input_accessor[my_off];
         my_input_grad_accessor[i] = input_grad_accessor[my_off];
+        assert(my_input_grad_accessor[i].domain == my_input_accessor[i].domain);
       } else if (fused->op_input_source[i + ioff] == SOURCE_OUTPUT) {
         my_input_accessor[i] = output_accessor[my_off];
         my_input_grad_accessor[i] = output_grad_accessor[my_off];

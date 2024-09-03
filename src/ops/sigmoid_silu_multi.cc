@@ -52,7 +52,7 @@ bool SigmoidSiluMultiParams::is_valid(
 SigmoidSiluMultiParams SigmoidSiluMulti::get_params() const {
   SigmoidSiluMultiParams params;
   params.layer_guid = this->layer_guid;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

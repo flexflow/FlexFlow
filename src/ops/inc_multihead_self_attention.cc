@@ -1061,7 +1061,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
   params.num_kv_heads = this->num_kv_heads;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
 

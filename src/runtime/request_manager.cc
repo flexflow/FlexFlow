@@ -2515,7 +2515,7 @@ std::vector<std::pair<BatchConfig::TokenId, int>>
         // must in this branch.
         int layer_slot = i - processed_whole_layer_tokens;
         int layer_slot_total = treeLayers[layer_num];
-        if ((first_layer_slot == layer_slot)) {
+        if (first_layer_slot == layer_slot) {
           verifiedTree.push_back(output);
           new_committed_tokens.push_back(std::make_pair(
               input.second, committed_tokens.at(guid).at(i).second));

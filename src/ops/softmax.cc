@@ -86,7 +86,7 @@ SoftmaxParams Softmax::get_params() const {
   SoftmaxParams params;
   params.layer_guid = this->layer_guid;
   params.dim = this->dim;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

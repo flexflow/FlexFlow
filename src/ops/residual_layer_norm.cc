@@ -65,7 +65,7 @@ ResidualLayerNormParams ResidualLayerNorm::get_params() const {
   params.use_bias = this->use_bias;
   params.use_two_residuals = this->use_two_residuals;
   params.inplace_residual = this->inplace_residual;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

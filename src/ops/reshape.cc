@@ -296,7 +296,7 @@ ReshapeParams Reshape::get_params() const {
   ReshapeParams params;
   params.shape = shape_vec;
   params.layer_guid = this->layer_guid;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

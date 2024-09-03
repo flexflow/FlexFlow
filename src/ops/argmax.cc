@@ -91,7 +91,7 @@ Op *ArgMax::create_operator_from_layer(
 ArgMaxParams ArgMax::get_params() const {
   ArgMaxParams params;
   params.beam_search = this->beam_search;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

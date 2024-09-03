@@ -46,9 +46,7 @@ using namespace FlexFlow::Kernels::AllReduce;
 /* Params */
 bool operator==(AllReduceParams const &lhs, AllReduceParams const &rhs) {
   return lhs.allreduce_legion_dim == rhs.allreduce_legion_dim &&
-         ((lhs.name == NULL && rhs.name == NULL) ||
-          (lhs.name != NULL && rhs.name != NULL &&
-           std::strcmp(lhs.name, rhs.name) == 0));
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool AllReduceParams::is_valid(ParallelTensorShape const &input) const {
@@ -58,7 +56,7 @@ bool AllReduceParams::is_valid(ParallelTensorShape const &input) const {
 AllReduceParams AllReduce::get_params() const {
   AllReduceParams params;
   params.allreduce_legion_dim = this->allreduce_dim;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

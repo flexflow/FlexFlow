@@ -87,7 +87,7 @@ TopKParams TopK::get_params() const {
   TopKParams params;
   params.k = this->k;
   params.sorted = this->sorted;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

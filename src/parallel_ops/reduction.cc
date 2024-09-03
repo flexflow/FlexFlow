@@ -46,9 +46,7 @@ using namespace FlexFlow::Kernels::Reduction;
 bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
   return lhs.reduction_legion_dim == rhs.reduction_legion_dim &&
          lhs.reduction_degree == rhs.reduction_degree &&
-         ((lhs.name == NULL && rhs.name == NULL) ||
-          (lhs.name != NULL && rhs.name != NULL &&
-           std::strcmp(lhs.name, rhs.name) == 0));
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
@@ -59,7 +57,7 @@ ReductionParams Reduction::get_params() const {
   ReductionParams params;
   params.reduction_legion_dim = this->reduction_dim;
   params.reduction_degree = this->reduction_degree;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

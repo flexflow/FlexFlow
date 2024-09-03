@@ -57,7 +57,7 @@ LayerNormParams LayerNorm::get_params() const {
   params.elementwise_affine = this->elementwise_affine;
   params.eps = this->eps;
   params.use_bias = this->use_bias;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

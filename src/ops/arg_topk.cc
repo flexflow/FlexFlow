@@ -112,7 +112,7 @@ ArgTopKParams ArgTopK::get_params() const {
   params.k = this->k;
   params.sorted = this->sorted;
   params.speculative_decoding = this->speculative_decoding;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

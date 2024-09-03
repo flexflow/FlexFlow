@@ -53,7 +53,7 @@ RMSNormParams RMSNorm::get_params() const {
   params.layer_guid = this->layer_guid;
   params.eps = this->eps;
   params.dim = this->dim;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

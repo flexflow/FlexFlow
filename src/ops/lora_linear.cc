@@ -1278,7 +1278,7 @@ LoraLinearParams LoraLinear::get_params() const {
   LoraLinearParams params;
   params.layer_guid = this->layer_guid;
   params.type = this->op_type;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   params.peft_configs = this->peft_configs;

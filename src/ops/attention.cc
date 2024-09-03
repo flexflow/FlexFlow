@@ -1010,7 +1010,7 @@ MultiHeadAttentionParams MultiHeadAttention::get_params() const {
   params.bias = this->bias;
   params.add_bias_kv = this->add_bias_kv;
   params.add_zero_attn = this->add_zero_attn;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

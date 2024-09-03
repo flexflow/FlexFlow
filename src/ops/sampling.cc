@@ -88,7 +88,7 @@ Op *Sampling::create_operator_from_layer(
 SamplingParams Sampling::get_params() const {
   SamplingParams params;
   params.top_p = this->top_p;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

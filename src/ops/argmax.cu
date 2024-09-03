@@ -72,7 +72,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
                             float *loss,
                             cudaStream_t stream) {
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
-  DT alpha = 1.0f, beta = 0.0f;
+
   if (m->beam_search) {
     // set all parents id zero in arg top1 case.
     checkCUDA(cudaMemsetAsync(parent, 0, batch_size * sizeof(int), stream));
@@ -89,7 +89,7 @@ void ArgMax::forward_kernel(ArgMaxMeta const *m,
       m->d_offsets + 1,
       stream));
 
-  // copy dout to incides
+  // copy dout to indices
   int parallelism = batch_size;
   copy_result<<<GET_BLOCKS(parallelism),
                 min(CUDA_NUM_THREADS, parallelism),

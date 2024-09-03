@@ -85,7 +85,7 @@ AggregateParams Aggregate::get_params() const {
   AggregateParams params;
   params.n = this->n;
   params.lambda_bal = this->lambda_bal;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

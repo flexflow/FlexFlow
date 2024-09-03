@@ -45,9 +45,7 @@ using namespace FlexFlow::Kernels::Combine;
 bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
   return lhs.combine_legion_dim == rhs.combine_legion_dim &&
          lhs.combine_degree == rhs.combine_degree &&
-         ((lhs.name == NULL && rhs.name == NULL) ||
-          (lhs.name != NULL && rhs.name != NULL &&
-           std::strcmp(lhs.name, rhs.name) == 0));
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool CombineParams::is_valid(ParallelTensorShape const &input) const {
@@ -61,7 +59,7 @@ CombineParams Combine::get_params() const {
   CombineParams params;
   params.combine_legion_dim = this->combine_dim;
   params.combine_degree = this->combine_degree;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

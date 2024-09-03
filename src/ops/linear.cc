@@ -1433,7 +1433,7 @@ LinearParams Linear::get_params() const {
   params.kernel_reg_lambda = this->kernel_reg_lambda;
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
 

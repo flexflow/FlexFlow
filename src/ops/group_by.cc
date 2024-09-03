@@ -99,7 +99,7 @@ Group_byParams Group_by::get_params() const {
   Group_byParams params;
   params.n = this->n;
   params.alpha = this->alpha;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

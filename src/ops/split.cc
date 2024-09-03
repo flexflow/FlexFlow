@@ -50,7 +50,7 @@ SplitParams Split::get_params() const {
   SplitParams params;
   params.splits = this->splits;
   params.legion_axis = this->legion_axis;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
