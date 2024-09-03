@@ -44,6 +44,8 @@ void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
                       DataType data_type,
                       ffStream_t stream);
 
+// [For the tokens in batch]
+// Compute qkv projection for the tokens in the batch.
 template <typename DT>
 void compute_qkv(IncMultiHeadSelfAttentionMeta const *m,
                  BatchConfig const *bc,
@@ -80,6 +82,7 @@ void apply_pos_encoding_to_streaming_proj(
 // Update the kv cache, and compact the q array.
 // Source: qkv projeciton array of tokens in the batch.
 // Destination: q&kv ptr took by the attention kernel.
+// Note that the q&k here are the value after applying with position encoding.
 template <typename DT>
 void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
