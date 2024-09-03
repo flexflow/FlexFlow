@@ -2,6 +2,7 @@
 #define _FLEXFLOW_INC_MULTIHEAD_SELF_ATTENTION_H
 
 #include "flexflow/accessor.h"
+#include "flexflow/batch_config.h"
 #include "flexflow/device.h"
 #include "flexflow/fftype.h"
 #include "flexflow/inference.h"
@@ -47,6 +48,7 @@ public:
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
+                            bool _streaming_cache,
                             int _tensor_parallelism_degree,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -69,6 +71,7 @@ public:
                             bool allocate_weights,
                             DataType _quantization_type,
                             bool _offload,
+                            bool _streaming_cache,
                             int _tensor_parallelism_degree,
                             char const *name);
   IncMultiHeadSelfAttention(FFModel &model,
@@ -113,7 +116,7 @@ public:
                              MachineView const &mv,
                              CostMetrics &cost_metrics) const override;
 
-  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta const *m,
+  static void inference_kernel_wrapper(IncMultiHeadSelfAttentionMeta *m,
                                        BatchConfig const *bc,
                                        int shard_id,
                                        GenericTensorAccessorR const &input,
@@ -128,10 +131,10 @@ public:
   bool qkv_bias;
   bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
       qk_prod_scaling, position_bias;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qk_dim, v_dim, o_dim;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
-  bool offload;
+  bool offload, streaming_cache;
 };
 
 class IncMultiHeadSelfAttentionMeta : public OpMeta {
@@ -146,13 +149,10 @@ public:
   IncMultiHeadSelfAttentionMeta(FFHandler handler,
                                 InferenceMode infer_mode,
                                 Op const *attn,
-                                int _qSize,
-                                int _kSize,
-                                int _vSize,
-                                int _qProjSize,
-                                int _kProjSize,
-                                int _vProjSize,
-                                int _oProjSize,
+                                int _hidden_size,
+                                int _qk_dim,
+                                int _v_dim,
+                                int _o_dim,
                                 bool _apply_rotary_embedding,
                                 bool _qkv_bias,
                                 bool _scaling_query,
@@ -168,16 +168,17 @@ public:
                                 int _num_q_heads,
                                 int _num_kv_heads,
                                 DataType _quantization_type,
-                                bool _offload);
+                                bool _offload,
+                                bool _streaming_cache);
   ~IncMultiHeadSelfAttentionMeta(void);
 
 public:
   Realm::RegionInstance reserveInst;
   size_t weights_params, weightSize, biasSize, reserveSpaceSize,
       quantized_weightSize;
-  int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
+  int hidden_size, qk_dim, v_dim, o_dim;
   int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads,
-      hidden_size;
+      local_hidden_size;
   bool *has_load_weights;
   bool *apply_rotary_embedding;
   bool *qkv_bias;
@@ -187,14 +188,20 @@ public:
   bool *position_bias;
   float scaling_factor;
   void *weight_ptr, *bias_ptr; // for weight offload
-  void *devQKVProjArray, *queryTmp, *keyCache, *valueCache;
+  void *devQKVProjArray, *queryTmp;
   half *outputTmp;
-  void *qk_prods, *qk_prods_softmax;
+  void *kvCache;
+  bool streaming_cache;
+  // When enable Streaming cache, we alter relative position each iteration, so
+  // we need below memory buffer for storing the pre-pos-encoding key value in
+  // sink and window.
+  void *streamingPrePosEncBuf;
   void *attn_heads;
   char *quantized_weight_ptr;
   BatchConfig::PerTokenInfo *token_infos;
   BatchConfig::PerRequestInfo *request_infos;
   bool *request_available;
+  StreamingCacheInfo *streaming_cache_infos;
   DataType quantization_type;
   bool offload;
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)

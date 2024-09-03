@@ -14,6 +14,7 @@
  */
 #include "flexflow/model.h"
 #include "flexflow/utils/cuda_helper.h"
+#include <cassert>
 
 namespace FlexFlow {
 // declare Legion names
@@ -89,8 +90,11 @@ FFHandler
   handle.offload_reserve_space_size = info->offload_reserve_space_size;
   handle.quantization_type = info->quantization_type;
   handle.allowTensorOpMathConversion = info->allowTensorOpMathConversion;
+  handle.incr_attention_metadata = new AttentionMetaData();
   handle.tree_search_attention_metadata = new AttentionMetaData();
   handle.tree_verify_attention_metadata = new AttentionMetaData();
+  assert(handle.incr_attention_metadata != nullptr &&
+         "Attention metadata must be allocated");
   assert(handle.tree_search_attention_metadata != nullptr &&
          "Attention metadata must be allocated");
   assert(handle.tree_verify_attention_metadata != nullptr &&
@@ -158,6 +162,7 @@ FFHandler
     handle.offload_reserve_space = nullptr;
   }
   if (handle.batch_config_metadata_size +
+          handle.incr_attention_metadata->mem_size() +
           handle.tree_search_attention_metadata->mem_size() +
           handle.tree_verify_attention_metadata->mem_size() >
       0) {
@@ -170,6 +175,7 @@ FFHandler
         Realm::Point<1, coord_t>(0),
         Realm::Point<1, coord_t>(
             handle.batch_config_metadata_size +
+            handle.incr_attention_metadata->mem_size() +
             handle.tree_search_attention_metadata->mem_size() +
             handle.tree_verify_attention_metadata->mem_size() - 1));
     std::vector<size_t> field_sizes;
@@ -184,17 +190,24 @@ FFHandler
         .wait();
     handle.batch_config_metadata =
         workspaceInst.pointer_untyped(0, sizeof(char));
-    handle.tree_search_attention_metadata->assign_address(
+    handle.incr_attention_metadata->assign_address(
         static_cast<void *>(static_cast<char *>(handle.batch_config_metadata) +
                             handle.batch_config_metadata_size),
+        handle.incr_attention_metadata->mem_size());
+    handle.tree_search_attention_metadata->assign_address(
+        static_cast<void *>(static_cast<char *>(handle.batch_config_metadata) +
+                            handle.batch_config_metadata_size +
+                            handle.incr_attention_metadata->mem_size()),
         handle.tree_search_attention_metadata->mem_size());
     handle.tree_verify_attention_metadata->assign_address(
         static_cast<void *>(static_cast<char *>(handle.batch_config_metadata) +
                             handle.batch_config_metadata_size +
+                            handle.incr_attention_metadata->mem_size() +
                             handle.tree_search_attention_metadata->mem_size()),
         handle.tree_verify_attention_metadata->mem_size());
   } else {
     handle.batch_config_metadata = nullptr;
+    handle.incr_attention_metadata->assign_address(nullptr, 0);
     handle.tree_search_attention_metadata->assign_address(nullptr, 0);
     handle.tree_verify_attention_metadata->assign_address(nullptr, 0);
   }

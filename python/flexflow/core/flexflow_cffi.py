@@ -2784,6 +2784,7 @@ class FFModel(object):
         scaling_factor=1.0,
         qk_prod_scaling=True,
         position_bias=False,
+        streaming_cache=False,
         name=None,
     ):
         """Defines the MultiHead Attention operation as described in Attention Is All You Need
@@ -2864,6 +2865,7 @@ class FFModel(object):
             scaling_factor,
             qk_prod_scaling,
             position_bias,
+            streaming_cache,
             c_name,
         )
         self.add_layer(OpType.SPEC_INC_MULTIHEAD_SELF_ATTENTION, name)
@@ -2991,6 +2993,7 @@ class FFModel(object):
         scaling_factor=1.0,
         qk_prod_scaling=True,
         position_bias=False,
+        streaming_cache=False,
         name=None,
     ):
         """Defines the multi-query head attention, which allows a different number of Q and KV heads,
@@ -3075,6 +3078,7 @@ class FFModel(object):
             scaling_factor,
             qk_prod_scaling,
             position_bias,
+            streaming_cache,
             c_name,
         )
         self.add_layer(OpType.INC_MULTIHEAD_ATTENTION, name)
@@ -4257,7 +4261,7 @@ class FileDataLoader(object):
         num_q_heads,
         num_kv_heads,
         hidden_dim,
-        qkv_inner_dim,
+        head_dim,
         tensor_parallelism_degree,
         use_full_precision
     ):
@@ -4267,7 +4271,7 @@ class FileDataLoader(object):
             num_q_heads,
             num_kv_heads,
             hidden_dim,
-            qkv_inner_dim,
+            head_dim,
             tensor_parallelism_degree,
             use_full_precision
         )

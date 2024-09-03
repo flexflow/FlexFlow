@@ -1201,6 +1201,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1222,6 +1223,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
                                                        scaling_factor,
                                                        qk_prod_scaling,
                                                        position_bias,
+                                                       streaming_cache,
                                                        name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1244,6 +1246,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1266,6 +1269,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
                                                 scaling_factor,
                                                 qk_prod_scaling,
                                                 position_bias,
+                                                streaming_cache,
                                                 name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -1333,29 +1337,31 @@ flexflow_tensor_t flexflow_model_add_groupquery_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
   Initializer *kernel_initializer =
       FFCObjectWrapper::unwrap(kernel_initializer_);
   Tensor tensor = handle->groupquery_self_attention(input,
-                                                        embed_dim,
-                                                        num_q_heads,
-                                                        num_kv_heads,
-                                                        kdim,
-                                                        vdim,
-                                                        dropout,
-                                                        bias,
-                                                        add_bias_kv,
-                                                        add_zero_attn,
-                                                        data_type,
-                                                        kernel_initializer,
-                                                        apply_rotary_embedding,
-                                                        scaling_query,
-                                                        scaling_factor,
-                                                        qk_prod_scaling,
-                                                        position_bias,
-                                                        name);
+                                                    embed_dim,
+                                                    num_q_heads,
+                                                    num_kv_heads,
+                                                    kdim,
+                                                    vdim,
+                                                    dropout,
+                                                    bias,
+                                                    add_bias_kv,
+                                                    add_zero_attn,
+                                                    data_type,
+                                                    kernel_initializer,
+                                                    apply_rotary_embedding,
+                                                    scaling_query,
+                                                    scaling_factor,
+                                                    qk_prod_scaling,
+                                                    position_bias,
+                                                    streaming_cache,
+                                                    name);
   return FFCObjectWrapper::wrap(tensor);
 }
 
@@ -1378,6 +1384,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor input = FFCObjectWrapper::unwrap(input_);
@@ -1401,6 +1408,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
                                                  scaling_factor,
                                                  qk_prod_scaling,
                                                  position_bias,
+                                                 streaming_cache,
                                                  name);
   return FFCObjectWrapper::wrap(tensor);
 }
@@ -2698,7 +2706,7 @@ flexflow_file_data_loader_t
                                      int num_q_heads,
                                      int num_kv_heads,
                                      int hidden_dim,
-                                     int qkv_inner_dim,
+                                     int head_dim,
                                      int tensor_parallelism_degree,
                                      bool use_full_precision) {
   assert(weight_file_path != nullptr &&
@@ -2709,7 +2717,7 @@ flexflow_file_data_loader_t
                                               num_q_heads,
                                               num_kv_heads,
                                               hidden_dim,
-                                              qkv_inner_dim,
+                                              head_dim,
                                               tensor_parallelism_degree,
                                               use_full_precision);
   DEBUG_PRINT("[FileDataLoader] new %p", handle);

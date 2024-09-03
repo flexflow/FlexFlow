@@ -166,7 +166,7 @@ void inference_kernel_wrapper(AllReduceMeta *m,
                                 ncclComm,
                                 const_cast<void *>(input.ptr),
                                 stream);
-  params.barrier_flag = (*comm_buffer->barrier_flag)++;
+  params.barrier_flag = ++(*comm_buffer->barrier_flag);
   for (int i = 0; i < num_devices; ++i) {
     params.peer_comm_buffer_ptrs[i] = comm_buffer->comm_ptrs[i];
   }

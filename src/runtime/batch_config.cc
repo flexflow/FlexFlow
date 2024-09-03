@@ -16,6 +16,7 @@
 #include "flexflow/batch_config.h"
 #include "flexflow/request_manager.h"
 #include "legion.h"
+#include <algorithm>
 #include <cassert>
 #include <climits>
 
@@ -48,6 +49,7 @@ BatchConfig::BatchConfig(BatchConfig const &rhs) {
     if (rhs.request_available[request_idx]) {
       request_available[request_idx] = true;
       requestsInfo[request_idx] = rhs.requestsInfo[request_idx];
+      streamingCacheInfo[request_idx] = rhs.streamingCacheInfo[request_idx];
       causalMask[request_idx] = rhs.causalMask[request_idx];
     }
   }
@@ -101,6 +103,10 @@ int BatchConfig::max_spec_tree_token_num() {
   return RequestManager::get_request_manager()->get_max_spec_tree_token_num();
 }
 
+int BatchConfig::get_max_tree_depth() {
+  return RequestManager::get_request_manager()->get_max_tree_depth();
+}
+
 // Overloading the << operator for the Bitset class
 std::ostream &operator<<(std::ostream &os,
                          BatchConfig::BitMask::Bitset const &bitset) {
@@ -152,6 +158,24 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
       os << "    Number of tokens in batch: "
          << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
       os << "    Request available: " << bc.request_available[i] << std::endl;
+    }
+  }
+
+  // Streaming cache info
+  if (bc.inference_mode == TREE_SEARCH_MODE) {
+    os << "Streaming cache info:\n";
+    for (int i = 0; i < bc.max_requests_per_batch(); i++) {
+      if (bc.request_available[i]) {
+        os << "  Request " << i << ":\n";
+        os << "    Sink cache size: "
+           << bc.streamingCacheInfo[i].sink_cache_size << std::endl;
+        os << "    Window cache size: "
+           << bc.streamingCacheInfo[i].window_cache_size << std::endl;
+        os << "    Window back: " << bc.streamingCacheInfo[i].window_back
+           << std::endl;
+        os << "    Commit len: " << bc.streamingCacheInfo[i].commit_len
+           << std::endl;
+      }
     }
   }
 
@@ -230,6 +254,49 @@ InferenceResult::InferenceResult(InferenceResult const &other) {
   std::copy(other.gumbel_logits,
             other.gumbel_logits + num_gumbel_logits,
             gumbel_logits);
+}
+
+StreamingCacheInfo::StreamingCacheInfo() : StreamingCacheInfo(0, 0) {}
+
+StreamingCacheInfo::StreamingCacheInfo(int sink_cache_size,
+                                       int window_cache_size)
+    : sink_cache_size(sink_cache_size), window_cache_size(window_cache_size),
+      window_back(0), commit_len(0) {}
+
+StreamingCacheInfo::StreamingCacheInfo(StreamingCacheInfo const &other)
+    : sink_cache_size(other.sink_cache_size),
+      window_cache_size(other.window_cache_size),
+      window_back(other.window_back), commit_len(other.commit_len) {}
+
+StreamingCacheInfo &
+    StreamingCacheInfo::operator=(StreamingCacheInfo const &other) {
+  sink_cache_size = other.sink_cache_size;
+  window_cache_size = other.window_cache_size;
+  window_back = other.window_back;
+  commit_len = other.commit_len;
+  return *this;
+}
+
+// For draft model, we only update the cache when prefill or
+// commit the verified result from target model;
+// For incremental decoding, we update the cache both in prefill and decoding
+void StreamingCacheInfo::commit_cache(int len) {
+  commit_len += len;
+  if (commit_len <= sink_cache_size + window_cache_size) {
+    window_back = std::max(0, commit_len - sink_cache_size);
+  } else {
+    commit_len = sink_cache_size + window_cache_size;
+    window_back = (window_back + len - 1) % window_cache_size + 1;
+  }
+}
+
+void StreamingCacheInfo::reset_cache() {
+  window_back = 0;
+  commit_len = 0;
+}
+
+int StreamingCacheInfo::global_2_cache_index(int global_index) {
+  return (global_index - sink_cache_size) % window_cache_size + sink_cache_size;
 }
 
 }; // namespace FlexFlow

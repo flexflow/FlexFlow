@@ -29,7 +29,7 @@ public:
                  int _num_heads,
                  int _num_kv_heads,
                  size_t _hidden_dim,
-                 size_t _qkv_inner_dim,
+                 size_t _head_dim,
                  int _tensor_parallelism_degree,
                  bool _use_full_precision);
 
@@ -49,7 +49,7 @@ public:
 
 private:
   int num_heads, num_kv_heads, tensor_parallelism_degree;
-  size_t hidden_dim, qkv_inner_dim;
+  size_t hidden_dim, head_dim;
   std::string prompts_filepath;
   std::string weights_folder;
   bool use_full_precision;

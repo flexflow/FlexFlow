@@ -724,6 +724,7 @@ public:
                                       float scaling_factor = 1.0f,
                                       bool qk_prod_scaling = true,
                                       bool position_bias = false,
+                                      bool streaming_cache = false,
                                       char const *name = NULL);
   Tensor
       spec_inc_multihead_self_attention(Tensor const input,
@@ -742,6 +743,7 @@ public:
                                         float scaling_factor = 1.0f,
                                         bool qk_prod_scaling = true,
                                         bool position_bias = false,
+                                        bool streaming_cache = false,
                                         char const *name = NULL);
   Tensor inc_multihead_self_attention_verify(
       Tensor const input,
@@ -762,23 +764,24 @@ public:
       bool position_bias = false,
       char const *name = NULL);
   Tensor groupquery_self_attention(Tensor const input,
-                                       int embed_dim,
-                                       int num_q_heads,
-                                       int num_kv_heads,
-                                       int kdim = 0,
-                                       int vdim = 0,
-                                       float dropout = 0.0f,
-                                       bool bias = false,
-                                       bool add_bias_kv = false,
-                                       bool add_zero_attn = false,
-                                       DataType data_type = DT_NONE,
-                                       Initializer *kernel_initializer = NULL,
-                                       bool apply_rotary_embedding = false,
-                                       bool scaling_query = false,
-                                       float scaling_factor = 1.0f,
-                                       bool qk_prod_scaling = true,
-                                       bool position_bias = false,
-                                       char const *name = NULL);
+                                   int embed_dim,
+                                   int num_q_heads,
+                                   int num_kv_heads,
+                                   int kdim = 0,
+                                   int vdim = 0,
+                                   float dropout = 0.0f,
+                                   bool bias = false,
+                                   bool add_bias_kv = false,
+                                   bool add_zero_attn = false,
+                                   DataType data_type = DT_NONE,
+                                   Initializer *kernel_initializer = NULL,
+                                   bool apply_rotary_embedding = false,
+                                   bool scaling_query = false,
+                                   float scaling_factor = 1.0f,
+                                   bool qk_prod_scaling = true,
+                                   bool position_bias = false,
+                                   bool streaming_cache = false,
+                                   char const *name = NULL);
   Tensor
       spec_inc_multiquery_self_attention(Tensor const input,
                                          int embed_dim,
@@ -797,6 +800,7 @@ public:
                                          float scaling_factor = 1.0f,
                                          bool qk_prod_scaling = true,
                                          bool position_bias = false,
+                                         bool streaming_cache = false,
                                          char const *name = NULL);
   Tensor inc_multiquery_self_attention_verify(
       Tensor const input,

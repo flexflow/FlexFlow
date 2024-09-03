@@ -134,6 +134,8 @@ struct Request {
   int llm_cache_size = 0;
   double slo_ratio = 1.0;
   double decode_latency_ms = 0.0;
+  int ssm_prefill_len = 0;
+  int llm_prefill_len = 0;
 
   int first_token_offset_in_batch = 0;
   int num_tokens_in_batch = 0;
@@ -187,14 +189,29 @@ struct Request {
   };
   std::vector<CommittedToken> committed_tokens;
 
-  std::priority_queue<std::shared_ptr<TokenTreeNode>,
-                      std::vector<std::shared_ptr<TokenTreeNode>>,
-                      SharedTokenTreeNodePtrLess>
-      token_tree_nodes_pq;
+  // Enabling Streaming KVCache means we doesn't store the whole KV sequence of
+  // the tokens in a request. Instead, we only store the sink cache (a few
+  // foremost tokens) and the window cache (rolling-updated backmost tokens
+  // through decoding). Currently, we only use streaming cache in the *draft
+  // model* calculation.
+  // - Maintain the streaming cache: During inference, we
+  // first fill up the sink cache then the window cache. After the window cache
+  // is full, we move back to the beginning of the window cache and commit the
+  // tokens in replace there.
+  // - When to update the streaming cache:
+  // 1. Prefilling phase
+  // 2. Committing phase after the target model verification
+  StreamingCacheInfo streaming_cache_info;
+};
 
-  double get_length_weight();
-  void set_slo_ratio(double slo_ratio_);
-  double get_slo_ratio();
+std::priority_queue<std::shared_ptr<TokenTreeNode>,
+                    std::vector<std::shared_ptr<TokenTreeNode>>,
+                    SharedTokenTreeNodePtrLess>
+    token_tree_nodes_pq;
+
+double get_length_weight();
+void set_slo_ratio(double slo_ratio_);
+double get_slo_ratio();
 };
 
 // A comparator for std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
@@ -270,6 +287,7 @@ public:
   double get_llm_verify_latency();
   void set_correction_factor(double correction_factor);
   double get_correction_factor();
+  void set_streaming_cache(bool streaming_cache);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -350,6 +368,8 @@ private:
   DecodingMode decoding_mode;
   PrefillModel prefill_model;
   bool speculative_sampling = false;
+  // specify if enable streaming cache for incremental decoding or draft model
+  bool streaming_cache = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -479,5 +499,5 @@ private:
   // Profiling related functions
   void reset_profiling_statistics();
 };
-
-}; // namespace FlexFlow
+}
+; // namespace FlexFlow

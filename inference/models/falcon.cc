@@ -116,6 +116,7 @@ void FALCON::create_falcon_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
+            false,   /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
@@ -166,6 +167,7 @@ void FALCON::create_falcon_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
+            false,  /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );

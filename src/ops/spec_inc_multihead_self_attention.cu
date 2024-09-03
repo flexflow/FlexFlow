@@ -25,30 +25,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#define DISPATCH_HEADDIM(head_dim, HEAD_DIM, ...)                              \
-  switch (head_dim) {                                                          \
-    case 64: {                                                                 \
-      constexpr size_t HEAD_DIM = 64;                                          \
-      __VA_ARGS__                                                              \
-      break;                                                                   \
-    }                                                                          \
-    case 128: {                                                                \
-      constexpr size_t HEAD_DIM = 128;                                         \
-      __VA_ARGS__                                                              \
-      break;                                                                   \
-    }                                                                          \
-    case 256: {                                                                \
-      constexpr size_t HEAD_DIM = 256;                                         \
-      __VA_ARGS__                                                              \
-      break;                                                                   \
-    }                                                                          \
-    default: {                                                                 \
-      std::ostringstream err_msg;                                              \
-      err_msg << "Unsupported head_dim: " << head_dim;                         \
-      throw std::invalid_argument(err_msg.str());                              \
-    }                                                                          \
-  }
-
 namespace FlexFlow {
 
 // declare Legion names
@@ -68,92 +44,6 @@ using flashinfer::PageStorage;
 using flashinfer::PosEncodingMode;
 using flashinfer::QKVLayout;
 
-__device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
-                                                     int const token_idx,
-                                                     int const max_num_pages,
-                                                     int const hidden_size) {
-  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          token_idx % kPagesize) *
-         hidden_size;
-}
-
-__device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
-                                                     int const token_idx,
-                                                     int const max_num_pages,
-                                                     int const hidden_size) {
-  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-          kPagesize + token_idx % kPagesize) *
-         hidden_size;
-}
-
-template <typename DT>
-__global__ void
-    update_qkv_cache_kernel(DT *devQKVProjArray,
-                            half *qTmp_ptr,
-                            half *kCache_ptr,
-                            BatchConfig::PerTokenInfo const *tokenInfos,
-                            BatchConfig::PerRequestInfo *request_infos,
-                            int const max_num_pages,
-                            int hidden_size,
-                            int num_new_tokens) {
-  int const thread_idx = blockIdx.x * blockDim.x + threadIdx.x;
-  int const token_idx = thread_idx / hidden_size;
-  int const offset = thread_idx % hidden_size;
-  if (token_idx >= num_new_tokens) {
-    return;
-  }
-
-  int const req_idx = tokenInfos[token_idx].request_index;
-  int const token_abs_idx = tokenInfos[token_idx].abs_index_in_request;
-
-  size_t from_idx = token_idx * QKV_WEIGHT_NUM * hidden_size;
-  size_t to_k_idx = get_k_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size),
-         to_v_idx = get_v_entry_offset(
-             req_idx, token_abs_idx, max_num_pages, hidden_size);
-
-  // key and value cache should be stored interleaved
-  kCache_ptr[to_k_idx + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + hidden_size + offset]);
-  kCache_ptr[to_v_idx + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + hidden_size * 2 + offset]);
-  qTmp_ptr[token_idx * hidden_size + offset] =
-      static_cast<half>(devQKVProjArray[from_idx + offset]);
-}
-
-template <typename DT>
-void update_qkv_cache(SpecIncMultiHeadSelfAttentionMeta const *m,
-                      BatchConfig const *bc,
-                      cudaStream_t stream) {
-  // update the kv cache, compact the q array
-  int num_new_tokens = bc->num_active_tokens();
-  int parallelism = m->hidden_size * num_new_tokens;
-  int const max_num_pages =
-      (BatchConfig::max_sequence_length() +
-       BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-      kPagesize;
-  update_qkv_cache_kernel<<<GET_BLOCKS(parallelism),
-                            min(CUDA_NUM_THREADS, parallelism),
-                            0,
-                            stream>>>(static_cast<DT *>(m->devQKVProjArray),
-                                      static_cast<half *>(m->queryTmp),
-                                      static_cast<half *>(m->keyCache),
-                                      m->token_infos,
-                                      m->request_infos,
-                                      max_num_pages,
-                                      m->hidden_size,
-                                      num_new_tokens);
-}
-
-template <typename DT>
-__global__ void produce_output_kernel(half const *input_ptr,
-                                      DT *output_ptr,
-                                      int parallelism) {
-  CUDA_KERNEL_LOOP(idx, parallelism) {
-    output_ptr[idx] = static_cast<DT>(input_ptr[idx]);
-  }
-}
-
 template <typename DT>
 void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
                            BatchConfig const *bc,
@@ -169,10 +59,9 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
   // global constant parameters
   uint32_t const num_q_heads = m->num_q_heads;
   uint32_t const num_kv_heads = m->num_kv_heads;
-  uint32_t const head_dim = m->qProjSize;
+  uint32_t const head_dim = m->qk_dim;
   uint32_t const batch_size = bc->num_active_requests();
-  float const sm_scale =
-      (*m->qk_prod_scaling) ? 1.0f / sqrt(m->kProjSize) : 1.0f;
+  float const sm_scale = (*m->qk_prod_scaling) ? 1.0f / sqrt(m->qk_dim) : 1.0f;
 
   //   cudaEventCreate(&t_start);
   //   cudaEventCreate(&t_end);
@@ -189,13 +78,14 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
   //   }
 
   half *q = static_cast<half *>(m->queryTmp),
-       *kv = static_cast<half *>(m->keyCache),
+       *kv = static_cast<half *>(m->kvCache),
        *o = static_cast<half *>(m->outputTmp);
-  paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
-      num_q_heads,
+  paged_kv_t<PageStorage::kIndices, half, int32_t> paged_kv(
+      num_kv_heads,
       kPagesize,
       head_dim,
       batch_size,
+      QKVLayout::kNHD,
       kv,
       m->handle.tree_search_attention_metadata->kv_indices,
       m->handle.tree_search_attention_metadata->kv_indptr,
@@ -254,10 +144,10 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
           BatchPrefillWithPagedKVCacheWrapperDispatched<PageStorage::kIndices,
                                                         HEAD_DIM,
                                                         LogitsPostHook::kNone,
-                                                        QKVLayout::kNHD,
                                                         PosEncodingMode::kNone,
                                                         false,
                                                         MaskMode::kCausal,
+                                                        half,
                                                         half,
                                                         half,
                                                         int32_t>(
@@ -271,6 +161,7 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
               o,
               /*lse=*/nullptr,
               num_q_heads,
+              /*window_left=*/-1,
               /*logits_soft_cap=*/0.f,
               sm_scale,
               /*rope_scale=*/1.f,
@@ -281,10 +172,10 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
           BatchPrefillWithPagedKVCacheWrapperDispatched<PageStorage::kIndices,
                                                         HEAD_DIM,
                                                         LogitsPostHook::kNone,
-                                                        QKVLayout::kNHD,
                                                         PosEncodingMode::kNone,
                                                         false,
                                                         MaskMode::kCustom,
+                                                        half,
                                                         half,
                                                         half,
                                                         int32_t>(
@@ -298,6 +189,7 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
               o,
               /*lse=*/nullptr,
               num_q_heads,
+              /*window_left=*/-1,
               /*logits_soft_cap=*/0.f,
               sm_scale,
               /*rope_scale=*/1.f,
@@ -325,13 +217,7 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventCreate(&t_end);
   //   cudaEventRecord(t_start, stream);
 
-  {
-    int parallelism = m->vProjSize * m->num_q_heads * bc->num_active_tokens();
-    produce_output_kernel<<<GET_BLOCKS(parallelism),
-                            min(CUDA_NUM_THREADS, parallelism),
-                            0,
-                            stream>>>(m->outputTmp, output_ptr, parallelism);
-  }
+  produce_output(m, bc, output_ptr, stream);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -356,23 +242,29 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
   // phase 1: Implement kernel to compute KQV for input tokens
 
   // long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
-  compute_qkv_kernel(m,
+  compute_qkv(m,
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
+
+  apply_pos_encoding(m,
                      bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
                      stream);
+
   // phase 2: Update key/val cache
-  update_qkv_cache<DT>(m, bc, stream);
+  update_qkv_in_batch<DT>(m, bc, stream);
 
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   tree_search_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
-  //   int size = m->hidden_size * BatchConfig::max_tokens_per_batch();
+  //   int size = m->local_hidden_size * BatchConfig::max_tokens_per_batch();
   //   float *temp_output = new float[size];
   //   cudaDeviceSynchronize();
   //   cudaMemcpy(
@@ -382,8 +274,8 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
   //   printf("Output: ");
   //   for (int i = 0; i < bc->num_tokens; ++i) {
   //     float temp = 0;
-  //     for (int j = 0; j < m->hidden_size; ++j) {
-  //       temp += temp_output[i * m->hidden_size + j];
+  //     for (int j = 0; j < m->local_hidden_size; ++j) {
+  //       temp += temp_output[i * m->local_hidden_size + j];
   //     }
   //     printf("%.6f ", temp);
   //   }
@@ -483,13 +375,10 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     : IncMultiHeadSelfAttentionMeta(handler,
                                     TREE_SEARCH_MODE,
                                     attn,
-                                    attn->qSize,
-                                    attn->kSize,
-                                    attn->vSize,
-                                    attn->qProjSize,
-                                    attn->kProjSize,
-                                    attn->vProjSize,
-                                    attn->oProjSize,
+                                    attn->hidden_size,
+                                    attn->qk_dim,
+                                    attn->v_dim,
+                                    attn->o_dim,
                                     attn->apply_rotary_embedding,
                                     attn->qkv_bias,
                                     attn->scaling_query,
@@ -505,7 +394,8 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     _num_q_heads,
                                     _num_kv_heads,
                                     DT_NONE,
-                                    false) {
+                                    false,
+                                    attn->streaming_cache) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
@@ -514,7 +404,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
   handler.tree_search_attention_metadata->set_enabled(true);
   handler.tree_search_attention_metadata->set_num_q_heads(num_q_heads);
   handler.tree_search_attention_metadata->set_num_kv_heads(num_kv_heads);
-  handler.tree_search_attention_metadata->set_head_dim(qProjSize);
+  handler.tree_search_attention_metadata->set_head_dim(qk_dim);
 
   cudaStreamSynchronize(stream);
 }

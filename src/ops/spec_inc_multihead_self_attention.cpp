@@ -147,7 +147,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // printf("curr depth: %d\n", curr_depth);
   // assert(curr_depth < 3);
   if (num_tokens > 0) {
-    int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_tokens;
+    int parallelism = m->local_hidden_size * KV_WEIGHT_NUM * num_tokens;
     hipLaunchKernelGGL(HIP_KERNEL_NAME(spec_store_kv_cache<DT>),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -167,7 +167,7 @@ void update_kv_cache_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                        BatchConfig::max_sequence_length(),
                        TreeSearchBatchConfig::MAX_BEAM_WIDTH,
                        /*root*/ curr_depth == 0,
-                       m->hidden_size);
+                       m->local_hidden_size);
   }
 }
 
@@ -495,14 +495,14 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
       hipMemcpyHostToDevice,
       stream));
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  compute_qkv(m,
+              bc,
+              shard_id,
+              input_ptr,
+              weight_ptr,
+              static_cast<DT *>(m->devQKVProjArray),
+              bias_ptr,
+              stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
 
