@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_COMPILER_MACHINE_MAPPING_MACHINE_MAPPING_RESULT_H
 #define _FLEXFLOW_COMPILER_MACHINE_MAPPING_MACHINE_MAPPING_RESULT_H
 
-#include "machine_mapping_result.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_result.dtg.h"
 
 namespace FlexFlow {
 

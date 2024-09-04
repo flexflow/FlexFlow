@@ -8,7 +8,7 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("machine_mapping_cache") {
+  TEST_CASE("MachineMappingCache") {
     ParallelComputationGraph pcg = [&] {
       ParallelComputationGraphBuilder builder;
 

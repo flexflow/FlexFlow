@@ -4,7 +4,7 @@ features = [
 ]
 
 includes = [
-  "machine_mapping.dtg.h",
+  "compiler/machine_mapping/machine_mapping.dtg.h",
   "pcg/parallel_computation_graph/parallel_computation_graph.h",
   "compiler/cost_estimator.h",
   "pcg/machine_view.h",

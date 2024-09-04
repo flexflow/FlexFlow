@@ -2,6 +2,7 @@
 #include "compiler/cost_estimator.h"
 #include "compiler/machine_mapping/machine_mapping_result.h"
 #include "compiler/machine_mapping/split_sp_decomposition.h"
+#include "compiler/machine_mapping/allowed_machine_mappings.h"
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.dtg.h"
@@ -12,11 +13,9 @@
 #include "utils/containers/as_vector.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/generate_map.h"
-#include "utils/containers/get_first.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/restrict_keys.h"
-#include "utils/containers/set_minus.h"
 #include "utils/containers/values.h"
 #include "utils/exception.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
@@ -31,54 +30,6 @@
 #include "utils/overload.h"
 
 namespace FlexFlow {
-
-std::vector<std::unordered_map<Node, MachineView>>
-    allowed_machine_mappings(MachineMappingContext const &context,
-                             std::unordered_set<Node> const &nodes,
-                             MachineSpecification const &resource) {
-  if (nodes.empty()) {
-    return {{}};
-  }
-  Node node = get_first(nodes);
-  std::vector<std::unordered_map<Node, MachineView>> partial_enumeration =
-      allowed_machine_mappings(context, set_minus(nodes, {node}), resource);
-  std::unordered_set<MachineView> allowed_machine_views_for_node =
-      context.allowed_machine_views(context.pcg.raw_graph.at(node), resource);
-  std::vector<std::unordered_map<Node, MachineView>> enumeration;
-  for (MachineView const &mv : allowed_machine_views_for_node) {
-    for (std::unordered_map<Node, MachineView> const &partial :
-         partial_enumeration) {
-      enumeration.push_back(merge_maps(
-          partial, std::unordered_map<Node, MachineView>{{node, mv}}));
-    }
-  }
-  return enumeration;
-}
-
-std::vector<std::unordered_map<DataflowOutput, MachineView>>
-    allowed_machine_mappings(MachineMappingContext const &context,
-                             std::unordered_set<DataflowOutput> const &values,
-                             MachineSpecification const &resource) {
-  std::unordered_set<Node> nodes;
-  for (DataflowOutput const &v : values) {
-    nodes.insert(v.node);
-  }
-
-  std::vector<std::unordered_map<Node, MachineView>> node_enumeration =
-      allowed_machine_mappings(context, nodes, resource);
-  std::vector<std::unordered_map<DataflowOutput, MachineView>> enumeration;
-
-  for (std::unordered_map<Node, MachineView> _node_enumeration :
-       node_enumeration) {
-    std::unordered_map<DataflowOutput, MachineView> _emumeration;
-    for (DataflowOutput const &v : values) {
-      _emumeration.emplace(v, _node_enumeration.at(v.node));
-    }
-    enumeration.push_back(_emumeration);
-  }
-
-  return enumeration;
-}
 
 std::vector<std::pair<MachineSpecification, MachineSpecification>>
     get_resource_split(MachineSpecification const &resource) {
@@ -203,12 +154,12 @@ MachineMappingResult get_optimal_machine_mapping_internal(
         restrict_keys(fixed_machine_views,
                       get_open_dataflow_values(subgraph_res2.graph));
 
-    for (auto const &[split_value, split_input] :
+    for (auto const &[full_graph_value, subgraph_input] :
          subgraph_res2.full_graph_values_to_subgraph_inputs) {
       MachineView mv =
-          split_machine_views.at(split_value.get<DataflowOutput>());
-      fixed_machine_views1.emplace(split_value, mv);
-      fixed_machine_views2.emplace(OpenDataflowValue(split_input), mv);
+          split_machine_views.at(full_graph_value.get<DataflowOutput>());
+      fixed_machine_views1.emplace(full_graph_value, mv);
+      fixed_machine_views2.emplace(OpenDataflowValue(subgraph_input), mv);
     }
 
     minimize_runtime(
@@ -278,9 +229,12 @@ MachineMappingResult get_optimal_machine_mapping_internal(
   OpenDataflowValue any_output =
       OpenDataflowValue(get_outputs(context.pcg.raw_graph, node)[0]);
   if (contains_key(fixed_machine_views, any_output)) {
-    assert(contains(
-        context.allowed_machine_views(context.pcg.raw_graph.at(node), resource),
-        fixed_machine_views.at(any_output)));
+    {
+      std::unordered_set<MachineView> allowed_machine_views_for_node = context.allowed_machine_views(
+          context.pcg.raw_graph.at(node), resource);
+      MachineView fixed_machine_view_for_node = fixed_machine_views.at(any_output);
+      assert(contains(allowed_machine_views_for_node, fixed_machine_view_for_node));
+    }
     MachineView mv = fixed_machine_views.at(any_output);
     MachineMapping mv_map{{{node, mv}}};
     return MachineMappingResult(base_case_estimate_cost(subgraph,
@@ -294,11 +248,12 @@ MachineMappingResult get_optimal_machine_mapping_internal(
       MachineView mv = node_machine_views.at(node);
       MachineMapping mv_map{{{node, mv}}};
 
+      std::vector<OpenDataflowValue> outputs_of_node = transform(
+          get_outputs(context.pcg.raw_graph, node),
+          [](DataflowOutput const &o) { return OpenDataflowValue(o); });
+
       std::unordered_map<OpenDataflowValue, MachineView> output_mv_map =
-          generate_map(transform(get_outputs(context.pcg.raw_graph, node),
-                                 [](DataflowOutput const &o) {
-                                   return OpenDataflowValue(o);
-                                 }),
+          generate_map(outputs_of_node,
                        [&](OpenDataflowValue const &o) { return mv; });
 
       std::unordered_map<OpenDataflowValue, MachineView> machine_views =

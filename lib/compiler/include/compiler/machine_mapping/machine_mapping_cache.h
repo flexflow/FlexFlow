@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_COMPILER_MACHINE_MAPPING_DP_CACHE_H
 #define _FLEXFLOW_COMPILER_MACHINE_MAPPING_DP_CACHE_H
 
-#include "machine_mapping_result.dtg.h"
-#include "machine_mapping_state.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_result.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_state.dtg.h"
 #include "utils/optional.h"
 
 namespace FlexFlow {

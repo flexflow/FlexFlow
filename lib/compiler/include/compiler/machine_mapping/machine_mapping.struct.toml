@@ -9,11 +9,14 @@ features = [
   "fmt",
 ]
 
-includes = [ 
+includes = [
   "utils/graph/node/node.dtg.h",
   "pcg/machine_view.dtg.h",
+]  
+ 
+src_includes = [   
   "utils/hash/unordered_map.h",
-  "utils/fmt/unordered_map.h", 
+  "utils/fmt/unordered_map.h",
 ]
 
 [[fields]]

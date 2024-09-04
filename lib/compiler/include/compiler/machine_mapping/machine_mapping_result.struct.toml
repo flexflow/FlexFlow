@@ -6,7 +6,7 @@ features = [
 ]
 
 includes = [
-  "machine_mapping.dtg.h",
+  "compiler/machine_mapping/machine_mapping.dtg.h",
 ]
 
 [[fields]]

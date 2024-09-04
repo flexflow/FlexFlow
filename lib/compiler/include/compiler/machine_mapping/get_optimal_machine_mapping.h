@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_COMPILER_MACHINE_MAPPING_GET_OPTIMAL_MACHINE_MAPPING_H
 #define _FLEXFLOW_COMPILER_MACHINE_MAPPING_GET_OPTIMAL_MACHINE_MAPPING_H
 
-#include "machine_mapping.h"
-#include "machine_mapping_cache.h"
-#include "machine_mapping_context.dtg.h"
+#include "compiler/machine_mapping/machine_mapping.h"
+#include "compiler/machine_mapping/machine_mapping_cache.h"
+#include "compiler/machine_mapping/machine_mapping_context.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"

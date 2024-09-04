@@ -7,7 +7,7 @@ std::optional<MachineMappingResult>
     MachineMappingCache::load(MachineMappingState const &state) const {
   if (contains_key(cache, state)) {
     MachineMappingResult result = cache.at(state);
-    return std::make_optional(result);
+    return result;
   }
   return std::nullopt;
 }

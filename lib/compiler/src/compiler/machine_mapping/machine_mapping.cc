@@ -5,7 +5,8 @@
 
 namespace FlexFlow {
 
-MachineMapping combine(MachineMapping const &s1, MachineMapping const &s2) {
+MachineMapping combine_disjoint_mappings(MachineMapping const &s1,
+                                         MachineMapping const &s2) {
   return MachineMapping{merge_maps(s1.machine_views, s2.machine_views)};
 }
 
