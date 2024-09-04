@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/layer_norm.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/hash_utils.h"
 #include "legion/legion_utilities.h"
@@ -56,7 +57,7 @@ LayerNormParams LayerNorm::get_params() const {
   params.elementwise_affine = this->elementwise_affine;
   params.eps = this->eps;
   params.use_bias = this->use_bias;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -561,7 +562,7 @@ void LayerNorm::inference_task(Task const *task,
     assert(regions.size() == 2);
   }
 
-  LayerNorm::forward_kernel_wrapper(m, in, out, gamma, beta);
+  LayerNorm::inference_kernel_wrapper(m, bc, in, out, gamma, beta);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -645,6 +646,104 @@ void LayerNorm::forward_task(Task const *task,
   LayerNorm::forward_kernel_wrapper(m, in, out, gamma, beta);
 }
 
+Legion::FutureMap
+    LayerNorm::peft_bwd(FFModel const &ff,
+                        BatchConfigFuture const &bc,
+                        std::vector<ParallelTensor> const &batch_inputs,
+                        std::vector<ParallelTensor> const &batch_outputs,
+                        MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "LayerNorm op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(LAYERNORM_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  // regions[0](I): output_grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // regions[1](I/O): input_grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(2, FID_DATA);
+  if (elementwise_affine) {
+    // regions[2](I): gamma
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region));
+    launcher.add_field(3, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): output_grad
+  regions[1](I/O): input_grad
+  regions[2](I): gamma
+*/
+void LayerNorm::peft_bwd_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
+  assert(task->regions.size() == regions.size());
+
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR gamma;
+  GenericTensorAccessorW gamma_grad, beta_grad;
+
+  Domain out_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Domain in_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+
+  if (m->elementwise_affine) {
+    assert(m->use_bias == (regions.size() == 3));
+    gamma = helperGetGenericTensorAccessorRO(m->output_type[0],
+                                             regions[2],
+                                             task->regions[2],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+    Domain gamma_domain = runtime->get_index_space_domain(
+        ctx, task->regions[2].region.get_index_space());
+
+    assert(gamma_domain.get_volume() == m->effective_num_elements);
+  } else {
+    assert(regions.size() == 2);
+  }
+  LayerNorm::peft_bwd_kernel_wrapper(m, output_grad, input_grad, gamma);
+}
+
 void LayerNorm::backward(FFModel const &ff) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
@@ -722,55 +821,60 @@ void LayerNorm::backward_task(Task const *task,
                               Runtime *runtime) {
   LayerNormMeta const *m = *((LayerNormMeta **)task->local_args);
   assert(task->regions.size() == regions.size());
-  float const *in_ptr = NULL, *out_grad_ptr = NULL, *gamma_ptr = NULL;
-  float *in_grad_ptr = NULL, *gamma_grad_ptr = NULL, *beta_grad_ptr = NULL;
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR gamma;
+  GenericTensorAccessorW gamma_grad, beta_grad;
   Domain out_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  out_grad_ptr = helperGetTensorPointerRO<float>(
-      regions[0], task->regions[0], FID_DATA, ctx, runtime);
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
-  in_ptr = helperGetTensorPointerRO<float>(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
   Domain in_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[2].region.get_index_space());
-  in_grad_ptr = helperGetTensorPointerRW<float>(
-      regions[2], task->regions[2], FID_DATA, ctx, runtime);
   assert(in_domain == out_grad_domain);
   assert(in_domain.get_volume() ==
          m->effective_num_elements * m->effective_batch_size);
+
   if (m->elementwise_affine) {
     assert(m->use_bias == (regions.size() == 6));
+    gamma = helperGetGenericTensorAccessorRO(m->output_type[0],
+                                             regions[3],
+                                             task->regions[3],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+    gamma_grad = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                                  regions[4],
+                                                  task->regions[4],
+                                                  FID_DATA,
+                                                  ctx,
+                                                  runtime);
     Domain gamma_domain = runtime->get_index_space_domain(
         ctx, task->regions[3].region.get_index_space());
-    gamma_ptr = helperGetTensorPointerRO<float>(
-        regions[3], task->regions[3], FID_DATA, ctx, runtime);
     Domain gamma_grad_domain = runtime->get_index_space_domain(
         ctx, task->regions[4].region.get_index_space());
-    gamma_grad_ptr = helperGetTensorPointerRW<float>(
-        regions[4], task->regions[4], FID_DATA, ctx, runtime);
     if (m->use_bias) {
       Domain beta_grad_domain = runtime->get_index_space_domain(
           ctx, task->regions[5].region.get_index_space());
-      beta_grad_ptr = helperGetTensorPointerRW<float>(
-          regions[5], task->regions[5], FID_DATA, ctx, runtime);
+      beta_grad = helperGetGenericTensorAccessorRW(m->output_type[0],
+                                                   regions[5],
+                                                   task->regions[5],
+                                                   FID_DATA,
+                                                   ctx,
+                                                   runtime);
       assert(gamma_domain == beta_grad_domain);
     }
-
     assert(gamma_domain == gamma_grad_domain);
-
     assert(gamma_domain.get_volume() == m->effective_num_elements);
   } else {
     assert(regions.size() == 3);
   }
-
-  LayerNorm::backward_kernel_wrapper<float>(m,
-                                            out_grad_ptr,
-                                            in_ptr,
-                                            in_grad_ptr,
-                                            gamma_ptr,
-                                            gamma_grad_ptr,
-                                            beta_grad_ptr);
+  LayerNorm::backward_kernel_wrapper(
+      m, output_grad, input, input_grad, gamma, gamma_grad, beta_grad);
 }
 
 bool LayerNorm::measure_operator_cost(Simulator *sim,
@@ -785,7 +889,8 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
   }
   Domain input_domain = sub_input.get_domain();
   Domain output_domain = sub_output.get_domain();
-  LayerNormMeta *m = sim->layernorm_meta;
+  MemoryAllocator gpu_mem_allocator(sim->memory);
+  LayerNormMeta *m = new LayerNormMeta(sim->handler, this, gpu_mem_allocator);
 
   sim->free_all();
   float *in_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
@@ -821,16 +926,24 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *in_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    GenericTensorAccessorW in_grad_acc(
+        inputs[0]->data_type, input_domain, in_grad_ptr);
     assert(in_grad_ptr != NULL);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
     float *out_grad_ptr = NULL;
     out_grad_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    GenericTensorAccessorR out_grad_acc(
+        outputs[0]->data_type, output_domain, out_grad_ptr);
     assert(out_grad_ptr != NULL);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
 
     float *gamma_grad_ptr = NULL, *beta_grad_ptr = NULL;
+    GenericTensorAccessorW gamma_grad_acc(
+        outputs[0]->data_type, output_domain, gamma_grad_ptr);
+    GenericTensorAccessorW beta_grad_acc(
+        outputs[0]->data_type, output_domain, beta_grad_ptr);
 
     out_of_memory = (in_grad_ptr == NULL) || (out_grad_ptr == NULL) ||
                     (((gamma_grad_ptr == NULL) || (beta_grad_ptr == NULL)) &&
@@ -842,13 +955,13 @@ bool LayerNorm::measure_operator_cost(Simulator *sim,
     }
 
     backward = [=] {
-      backward_kernel_wrapper<float>(m,
-                                     out_grad_ptr,
-                                     in_ptr,
-                                     in_grad_ptr,
-                                     gamma_ptr,
-                                     gamma_grad_ptr,
-                                     beta_grad_ptr);
+      backward_kernel_wrapper(m,
+                              out_grad_acc,
+                              input1_acc,
+                              in_grad_acc,
+                              gamma_acc,
+                              gamma_grad_acc,
+                              beta_grad_acc);
     };
   }
 

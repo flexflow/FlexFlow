@@ -198,9 +198,9 @@ void Group_by::backward_kernel_wrapper(GroupByMeta const *m,
   }
 }
 
-GroupByMeta::GroupByMeta(FFHandler handler, int n, float _alpha)
-    : OpMeta(handler), alpha(_alpha) {
-  checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
+GroupByMeta::GroupByMeta(FFHandler handler, Group_by const *gb)
+    : OpMeta(handler, gb), alpha(gb->alpha) {
+  checkCUDA(cudaMalloc(&dev_region_ptrs, gb->n * sizeof(float *)));
 }
 GroupByMeta::~GroupByMeta(void) {
   checkCUDA(cudaFree(&dev_region_ptrs));

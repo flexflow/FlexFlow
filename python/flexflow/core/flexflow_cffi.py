@@ -28,6 +28,8 @@ from flexflow.type import (
     CompMode,
     MetricsType,
     InferenceMode,
+    RequestType,
+    OptimizerType,
     ModelType,
     OpType,
     ParameterSyncType,
@@ -36,6 +38,9 @@ from flexflow.type import (
 )
 from flexflow.config import *
 from .flexflowlib import ffi, flexflow_library
+from typing import Union, List
+from peft import LoraConfig
+import json
 
 
 def ffc():
@@ -1243,6 +1248,829 @@ class Parameter(Tensor):
 
 
 # -----------------------------------------------------------------------
+# SGDOptimizer
+# -----------------------------------------------------------------------
+
+
+class SGDOptimizer(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(
+        self, ffmodel, lr=0.01, momentum=0.0, nesterov=False, weight_decay=0.0
+    ):
+        self.handle = ffc().flexflow_sgd_optimizer_create(
+            ffmodel.handle, lr, momentum, nesterov, weight_decay
+        )
+        self._handle = ffi.gc(self.handle, ffc().flexflow_sgd_optimizer_destroy)
+
+    def set_learning_rate(self, learning_rate):
+        ffc().flexflow_sgd_optimizer_set_lr(self.handle, learning_rate)
+
+
+# -----------------------------------------------------------------------
+# AdamOptimizer
+# -----------------------------------------------------------------------
+
+
+class AdamOptimizer(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(
+        self,
+        ffmodel,
+        alpha=0.001,
+        beta1=0.9,
+        beta2=0.999,
+        weight_decay=0.0,
+        epsilon=1e-8,
+    ):
+        self.handle = ffc().flexflow_adam_optimizer_create(
+            ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon
+        )
+        self._handle = ffi.gc(self.handle, ffc().flexflow_adam_optimizer_destroy)
+
+    def set_learning_rate(self, learning_rate):
+        ffc().flexflow_adam_optimizer_set_lr(self.handle, learning_rate)
+
+
+# -----------------------------------------------------------------------
+# Initializer
+# -----------------------------------------------------------------------
+class Initializer(object):
+    __slots__ = ["handle", "p_handle"]
+
+    def __init__(self, handle, p_handle=0):
+        self.p_handle = ffi.new("flexflow_initializer_t *")
+        if handle == None:
+            self.p_handle.impl = ffi.NULL
+        else:
+            self.p_handle.impl = handle.impl
+        self.handle = self.p_handle[0]
+        assert ffi.typeof(self.handle) == ffi.typeof(
+            "flexflow_initializer_t"
+        ), "Initializer handle is wrong"
+
+
+# -----------------------------------------------------------------------
+# GlorotUniform
+# -----------------------------------------------------------------------
+
+
+class GlorotUniformInitializer(Initializer):
+    __slots__ = ["glorot_handle", "_glorot_handle"]
+
+    def __init__(self, seed):
+        self.glorot_handle = ffc().flexflow_glorot_uniform_initializer_create(seed)
+        self._glorot_handle = ffi.gc(
+            self.glorot_handle, ffc().flexflow_glorot_uniform_initializer_destroy
+        )
+        super(GlorotUniformInitializer, self).__init__(self.glorot_handle)
+
+
+# -----------------------------------------------------------------------
+# ZeroInitializer
+# -----------------------------------------------------------------------
+
+
+class ZeroInitializer(Initializer):
+    __slots__ = ["zero_handle", "_zero_handle"]
+
+    def __init__(self):
+        self.zero_handle = ffc().flexflow_zero_initializer_create()
+        self._zero_handle = ffi.gc(
+            self.zero_handle, ffc().flexflow_zero_initializer_destroy
+        )
+        super(ZeroInitializer, self).__init__(self.zero_handle)
+
+
+# -----------------------------------------------------------------------
+# UniformInitializer
+# -----------------------------------------------------------------------
+
+
+class UniformInitializer(Initializer):
+    __slots__ = ["uniform_handle", "_uniform_handle"]
+
+    def __init__(self, seed, minv, maxv):
+        self.uniform_handle = ffc().flexflow_uniform_initializer_create(
+            seed, minv, maxv
+        )
+        self._uniform_handle = ffi.gc(
+            self.uniform_handle, ffc().flexflow_uniform_initializer_destroy
+        )
+        super(UniformInitializer, self).__init__(self.uniform_handle)
+
+
+# -----------------------------------------------------------------------
+# NormInitializer
+# -----------------------------------------------------------------------
+
+
+class NormInitializer(Initializer):
+    __slots__ = ["norm_handle", "_norm_handle"]
+
+    def __init__(self, seed, mean, stddev):
+        self.norm_handle = ffc().flexflow_norm_initializer_create(seed, mean, stddev)
+        self._norm_handle = ffi.gc(
+            self.norm_handle, ffc().flexflow_norm_initializer_destroy
+        )
+        super(NormInitializer, self).__init__(self.norm_handle)
+
+
+# -----------------------------------------------------------------------
+# PerfMetrics
+# -----------------------------------------------------------------------
+
+
+class PerfMetrics(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self, handle):
+        self.handle = handle
+        self._handle = ffi.gc(self.handle, ffc().flexflow_per_metrics_destroy)
+
+    def get_accuracy(self):
+        return ffc().flexflow_per_metrics_get_accuracy(self.handle)
+
+
+# -----------------------------------------------------------------------
+# NetConfig
+# -----------------------------------------------------------------------
+
+
+class NetConfig(object):
+    def __init__(self):
+        self.handle = ffc().flexflow_net_config_create()
+        self._handle = ffi.gc(self.handle, ffc().flexflow_net_config_destroy)
+        cpath = ffc().flexflow_net_config_get_dataset_path(self.handle)
+        self.dataset_path = ffi.string(cpath)
+
+
+# -----------------------------------------------------------------------
+# DLRMConfig
+# -----------------------------------------------------------------------
+
+
+class DLRMConfig(object):
+    def __init__(self):
+        self.handle = ffc().flexflow_dlrm_config_create()
+        self._handle = ffi.gc(self.handle, ffc().flexflow_dlrm_config_destroy)
+
+        cstr = ffc().flexflow_dlrm_config_get_dataset_path(self.handle)
+        self.dataset_path = ffi.string(cstr)
+
+        cstr = ffc().flexflow_dlrm_config_get_arch_interaction_op(self.handle)
+        self.arch_interaction_op = ffi.string(cstr)
+
+        self.sparse_feature_size = ffc().flexflow_dlrm_config_get_sparse_feature_size(
+            self.handle
+        )
+        self.sigmoid_bot = ffc().flexflow_dlrm_config_get_sigmoid_bot(self.handle)
+        self.sigmoid_top = ffc().flexflow_dlrm_config_get_sigmoid_top(self.handle)
+        self.embedding_bag_size = ffc().flexflow_dlrm_config_get_embedding_bag_size(
+            self.handle
+        )
+        self.loss_threshold = ffc().flexflow_dlrm_config_get_loss_threshold(self.handle)
+
+        mlp_bot_c = ffc().flexflow_dlrm_config_get_mlp_bot(self.handle)
+        self.mlp_bot = []
+        for i in range(0, mlp_bot_c[0]):
+            self.mlp_bot.append(mlp_bot_c[i + 1])
+
+        mlp_top_c = ffc().flexflow_dlrm_config_get_mlp_top(self.handle)
+        self.mlp_top = []
+        for i in range(0, mlp_top_c[0]):
+            self.mlp_top.append(mlp_top_c[i + 1])
+
+        embedding_size_c = ffc().flexflow_dlrm_config_get_embedding_size(self.handle)
+        self.embedding_size = []
+        for i in range(0, embedding_size_c[0]):
+            self.embedding_size.append(embedding_size_c[i + 1])
+
+
+# -----------------------------------------------------------------------
+# Single DataLoader
+# -----------------------------------------------------------------------
+
+
+class SingleDataLoader(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self, ffmodel, input, full_input, num_samples, data_type):
+        assert type(ffmodel) is FFModel, "SingleDataLoader ffmodel is wrong"
+        assert type(input) is Tensor, "SingleDataLoader input is wrong"
+        if type(full_input) is Tensor:
+            self.init_from_tensor(ffmodel, input, full_input, num_samples, data_type)
+        else:
+            self.init_from_ptr(ffmodel, input, full_input, num_samples, data_type)
+        self._handle = ffi.gc(self.handle, ffc().flexflow_single_dataloader_destroy)
+
+    def init_from_tensor(self, ffmodel, input, full_input, num_samples, data_type):
+        assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
+        c_data_type = enum_to_int(DataType, data_type)
+        self.handle = ffc().flexflow_single_dataloader_create(
+            ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type
+        )
+
+    def init_from_ptr(self, ffmodel, input, full_input, num_samples, data_type):
+        # assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
+        c_data_type = enum_to_int(DataType, data_type)
+        self.handle = ffc().flexflow_single_dataloader_create2(
+            ffmodel.handle, input.handle, full_input, num_samples, c_data_type
+        )
+
+    @property
+    def num_samples(self):
+        return ffc().flexflow_single_dataloader_get_num_samples(self.handle)
+
+    @num_samples.setter
+    def num_samples(self, samples):
+        ffc().flexflow_single_dataloader_set_num_samples(self.handle, samples)
+
+    def next_batch(self, ffmodel):
+        """Ask the dataloder to load the next batch to the :attr:`batch_tensor`.
+
+        :returns:  None -- no returns.
+        """
+        ffc().flowflow_single_dataloader_next_batch(self.handle, ffmodel.handle)
+
+    def reset(self):
+        """Reset the current position of the dataloder to 0.
+
+        :returns:  None -- no returns.
+        """
+        ffc().flexflow_single_dataloader_reset(self.handle)
+
+
+class RegionNdarray(object):
+    __slots__ = ["__array_interface__"]
+
+    def __init__(self, shape, data_type, base_ptr, strides, read_only):
+        # See: https://docs.scipy.org/doc/numpy/reference/arrays.interface.html
+        if data_type == DataType.DT_HALF:
+            field_type = "<f2"
+        elif data_type == DataType.DT_FLOAT:
+            field_type = "<f4"
+        elif data_type == DataType.DT_INT32:
+            field_type = "<i4"
+        else:
+            assert 0, "unknown data type"
+            field_type = "<f4"
+        self.__array_interface__ = {
+            "version": 3,
+            "shape": shape,
+            "typestr": field_type,
+            "data": (base_ptr, read_only),
+            "strides": strides,
+        }
+
+
+# -----------------------------------------------------------------------
+# BatchConfig
+# -----------------------------------------------------------------------
+
+
+class BatchConfig(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self):
+        self.handle = ffc().flexflow_batch_config_create()
+        self._handle = ffi.gc(self.handle, ffc().flexflow_batch_config_destroy)
+
+
+# -----------------------------------------------------------------------
+# TreeVerifyBatchConfig
+# -----------------------------------------------------------------------
+
+
+class TreeVerifyBatchConfig(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self):
+        self.handle = ffc().flexflow_tree_verify_batch_config_create()
+        self._handle = ffi.gc(
+            self.handle, ffc().flexflow_tree_verify_batch_config_destroy
+        )
+
+
+# -----------------------------------------------------------------------
+# BeamSearchBatchConfig
+# -----------------------------------------------------------------------
+
+
+class BatchConfig(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(self):
+        self.handle = ffc().flexflow_beam_search_batch_config_create()
+        self._handle = ffi.gc(
+            self.handle, ffc().flexflow_beam_search_batch_config_destroy
+        )
+
+
+# -----------------------------------------------------------------------
+# RequestManager
+# -----------------------------------------------------------------------
+
+
+class RequestManager(object):
+    __slots__ = ["handle"]
+
+    def __init__(self):
+        self.handle = ffc().flexflow_request_manager_get_request_manager()
+        # self._handle = ffi.gc(self.handle, ffc().flexflow_request_manager_destroy)
+
+    def register_tokenizer(
+        self, model_type, bos_token_id, eos_token_id, tokenizer_filepath
+    ):
+        c_model_type = enum_to_int(ModelType, model_type)
+        c_tokenizer_filepath = get_c_name(tokenizer_filepath)
+        return ffc().flexflow_request_manager_register_tokenizer(
+            self.handle, c_model_type, bos_token_id, eos_token_id, c_tokenizer_filepath
+        )
+
+    def register_output_filepath(self, output_filepath):
+        c_output_filepath = get_c_name(output_filepath)
+        return ffc().flexflow_request_manager_register_output_filepath(
+            self.handle, c_output_filepath
+        )
+
+    def register_ssm_model(self, model):
+        return ffc().flexflow_request_manager_register_ssm_model(
+            self.handle, model.handle
+        )
+
+    def set_max_requests_per_batch(self, max_requests):
+        return ffc().flexflow_request_manager_set_max_requests_per_batch(
+            self.handle, max_requests
+        )
+
+    def set_max_tokens_per_batch(self, max_tokens):
+        return ffc().flexflow_request_manager_set_max_tokens_per_batch(
+            self.handle, max_tokens
+        )
+
+    def set_max_spec_tree_token_num(self, max_tokens):
+        return ffc().flexflow_request_manager_set_max_spec_tree_token_num(
+            self.handle, max_tokens
+        )
+
+    def set_max_sequence_length(self, max_length):
+        return ffc().flexflow_request_manager_set_max_sequence_length(
+            self.handle, max_length
+        )
+
+    def set_enable_peft_finetuning(self, enable_peft_finetuning):
+        return ffc().flexflow_request_manager_set_enable_peft_finetuning(
+            self.handle, enable_peft_finetuning
+        )
+
+    def start_server(self, model):
+        return ffc().flexflow_request_manager_start_background_server(
+            self.handle, model.handle
+        )
+
+    def stop_server(self):
+        return ffc().flexflow_request_manager_terminate_background_server(self.handle)
+
+
+# -----------------------------------------------------------------------
+# InferenceManager
+# -----------------------------------------------------------------------
+
+
+class InferenceManager(object):
+    __slots__ = ["handle"]
+
+    def __init__(self):
+        self.handle = ffc().flexflow_inference_manager_get_inference_manager()
+        # self._handle = ffi.gc(self.handle, ffc().flexflow_inference_manager_destroy)
+
+    def compile_model_and_allocate_buffer(self, model):
+        ffc().flexflow_inference_manager_compile_model_and_allocate_buffer(
+            self.handle, model.handle
+        )
+
+    def init_operators_inference(self, model):
+        ffc().flexflow_inference_manager_init_operators_inference(
+            self.handle, model.handle
+        )
+
+    def register_model_weights_loader(self, model, fileloader):
+        ffc().flexflow_inference_manager_register_model_weights_loader(
+            self.handle, model.handle, fileloader.handle
+        )
+
+
+# -----------------------------------------------------------------------
+# FileDataLoader
+# -----------------------------------------------------------------------
+
+
+class FileDataLoader(object):
+    __slots__ = ["handle", "_handle"]
+
+    def __init__(
+        self,
+        weight_file_path,
+        num_q_heads,
+        num_kv_heads,
+        hidden_dim,
+        qkv_inner_dim,
+        tensor_parallelism_degree,
+        use_full_precision,
+    ):
+        c_weight_file_path = get_c_name(weight_file_path)
+        self.handle = ffc().flexflow_file_data_loader_create(
+            c_weight_file_path,
+            num_q_heads,
+            num_kv_heads,
+            hidden_dim,
+            qkv_inner_dim,
+            tensor_parallelism_degree,
+            use_full_precision,
+        )
+        self._handle = ffi.gc(self.handle, ffc().flexflow_file_data_loader_destroy)
+
+    def load_weights(self, model):
+        # Check data type and create use_full_precision boolean
+        # assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
+        # use_full_precision = data_type == DataType.DT_FLOAT
+        ffc().flexflow_file_data_loader_load_weights(self.handle, model.handle)
+
+
+# -----------------------------------------------------------------------
+# GenerationConfig
+# -----------------------------------------------------------------------
+
+
+class GenerationConfig(object):
+    """A class to store the sampling configs."""
+
+    def __init__(
+        self,
+        do_sample: bool = False,
+        temperature: float = 0.9,
+        topp: float = 0.8,
+        topk: int = 1,
+    ):
+        """Initialize the sampling configs
+
+        :param do_sample: Whether to perform sampling, or use greedy decoding, defaults to False
+        :type do_sample: bool, optional
+        :param temperature: The temperature setting, defaults to 0.9
+        :type temperature: float, optional
+        :param topp: The top probabilities (top-p) setting, defaults to 0.8
+        :type topp: float, optional
+        :param topk: The top-k setting, defaults to 1
+        :type topk: int, optional
+        """
+        self.do_sample = do_sample
+        self.temperature = temperature
+        self.topp = topp
+        self.topk = topk
+
+
+# -----------------------------------------------------------------------
+# GenerationResult
+# -----------------------------------------------------------------------
+
+
+class GenerationResult(object):
+    """A class to store the output of a generation request."""
+
+    def __init__(
+        self, text: str = None, tokens: list = None, finetuning_losses: list = []
+    ):
+        self.output_text = text
+        self.output_tokens = tokens
+        self.finetuning_losses = finetuning_losses
+
+
+# -----------------------------------------------------------------------
+# LoraLinearConfig
+# -----------------------------------------------------------------------
+
+
+class LoraLinearConfig(object):
+    def __init__(
+        self,
+        cache_folder: str,
+        peft_model_id: str,
+        trainable: bool = False,
+        init_lora_weights: bool = False,
+        base_model_name_or_path: str = "",
+        precision: str = "fp16",
+        rank: int = None,
+        lora_alpha: float = None,
+        lora_dropout: float = None,
+        target_modules: List[str] = [],
+        optimizer_type: OptimizerType = OptimizerType.OPTIMIZER_TYPE_NONE,
+        optimizer_kwargs: dict = {},
+    ):
+        if trainable:
+            if (
+                optimizer_type != OptimizerType.OPTIMIZER_TYPE_SGD
+                and optimizer_type != OptimizerType.OPTIMIZER_TYPE_ADAM
+            ):
+                raise ValueError(
+                    "Please specify optimizer to be used to train LoRA module. Supported optimizers: SGD and Adam"
+                )
+            if init_lora_weights and len(target_modules) == 0:
+                raise ValueError(
+                    "Please specify target modules to be used to train LoRA module"
+                )
+            if not init_lora_weights and len(target_modules) > 0:
+                raise ValueError(
+                    "Target modules can only be specified when init_lora_weights=True"
+                )
+        else:
+            if init_lora_weights:
+                raise ValueError(
+                    "LORA weights initialization from scratch not supported in inference model"
+                )
+            if len(target_modules) > 0:
+                raise ValueError(
+                    "Target modules can only be specified when trainable=True"
+                )
+        
+        # Check rank, lora_alpha, lora_dropout values
+        if rank is not None or lora_alpha is not None or lora_dropout is not None:
+            if not trainable or not init_lora_weights:
+                raise ValueError(
+                    "rank, lora_alpha, and lora_dropout can only be set when trainable=True and init_lora_weights=True"
+                )
+        rank = rank if rank is not None else 8
+        lora_alpha = lora_alpha if lora_alpha is not None else 8.0
+        lora_dropout = lora_dropout if lora_dropout is not None else 0.0
+        
+        # If passed, check if the values of rank, lora_alpha, and lora_dropout are valid
+        if rank < 1 or type(rank) != int:
+            raise ValueError("Rank must be >= 1 and an integer")
+        if lora_alpha <= 0:
+            raise ValueError("Lora_alpha must be > 0")
+        if lora_dropout < 0 or lora_dropout > 1:
+            raise ValueError("Lora_dropout must be in the interval [0, 1]")
+        
+        self.ff_initialized = False
+        self._cache_folder = cache_folder
+        self._peft_model_id = peft_model_id
+        self._trainable = trainable
+        self._init_lora_weights = init_lora_weights
+        self._base_model_name_or_path = base_model_name_or_path
+        self._precision = precision
+        self._rank = rank
+        self._lora_alpha = lora_alpha
+        self._lora_dropout = lora_dropout
+        self._target_modules = target_modules
+        self.optimizer_type = optimizer_type
+        self.optimizer_kwargs = optimizer_kwargs
+
+    def ff_compile(self):
+        c_cache_folder = get_c_name(os.path.expanduser(self.cache_folder))
+        peft_model_id = get_c_name(self.peft_model_id)
+        base_model_name_or_path = get_c_name(self.base_model_name_or_path)
+        precision = get_c_name(self.precision)
+        c_target_modules = [
+            get_c_name(target_module) for target_module in self.target_modules
+        ]
+        c_optimizer_type = enum_to_int(OptimizerType, self.optimizer_type)
+        # SGD optional optimizer args
+        sgd_learning_rate = self.optimizer_kwargs.get("learning_rate", 0.001)
+        sgd_momentum = self.optimizer_kwargs.get("momentum", 0.0)
+        sgd_nesterov = self.optimizer_kwargs.get("nesterov", False)
+        sgd_weight_decay = self.optimizer_kwargs.get("weight_decay", 0.0)
+        # Adam optional optimizer args
+        adam_alpha = self.optimizer_kwargs.get("alpha", 0.001)
+        adam_beta1 = self.optimizer_kwargs.get("beta1", 0.9)
+        adam_beta2 = self.optimizer_kwargs.get("beta2", 0.999)
+        adam_weight_decay = self.optimizer_kwargs.get("weight_decay", 0.0)
+        adam_epsilon = self.optimizer_kwargs.get("epsilon", 1e-8)
+        self.handle = ffc().flexflow_lora_linear_config_create(
+            c_cache_folder,
+            peft_model_id,
+            self.trainable,
+            self.init_lora_weights,
+            base_model_name_or_path,
+            precision,
+            self.rank,
+            self.lora_alpha,
+            self.lora_dropout,
+            len(self.target_modules),
+            c_target_modules,
+            c_optimizer_type,
+            sgd_learning_rate,
+            sgd_momentum,
+            sgd_nesterov,
+            sgd_weight_decay,
+            adam_alpha,
+            adam_beta1,
+            adam_beta2,
+            adam_weight_decay,
+            adam_epsilon,
+        )
+        self._handle = ffi.gc(self.handle, ffc().flexflow_lora_linear_config_destroy)
+        self.ff_initialized = True
+
+    @classmethod
+    def from_jsonfile(self, jsonfile: str):
+        with open(jsonfile, "r") as file:
+            config = json.load(file)
+        config_dict = dict(config)
+        config_dict["optimizer_type"] = OptimizerType.OPTIMIZER_TYPE_SGD
+        return LoraLinearConfig(**config_dict)
+
+    def to_hf_config(self) -> LoraConfig:
+        return LoraConfig(
+            base_model_name_or_path=self.base_model_name_or_path,
+            r=self.rank,
+            target_modules=self.target_modules,
+            lora_alpha=self.lora_alpha,
+            lora_dropout=self.lora_dropout,
+        )
+
+    @property
+    def cache_folder(self):
+        if self.ff_initialized:
+            c_cache_folder = ffc().flexflow_lora_linear_config_get_cache_folder(
+                self.handle
+            )
+            return ffi.string(c_cache_folder).decode("utf-8")
+        else:
+            return self._cache_folder
+
+    @property
+    def peft_model_id(self):
+        if self.ff_initialized:
+            c_peft_model_id = ffc().flexflow_lora_linear_config_get_peft_model_id(
+                self.handle
+            )
+            return ffi.string(c_peft_model_id).decode("utf-8")
+        else:
+            return self._peft_model_id
+
+    @property
+    def rank(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_rank(self.handle)
+        else:
+            return self._rank
+
+    @property
+    def lora_alpha(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_lora_alpha(self.handle)
+        else:
+            return self._lora_alpha
+
+    @property
+    def lora_dropout(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_lora_dropout(self.handle)
+        else:
+            return self._lora_dropout
+
+    @property
+    def trainable(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_trainable(self.handle)
+        else:
+            return self._trainable
+
+    @property
+    def init_lora_weights(self):
+        if self.ff_initialized:
+            return ffc().flexflow_lora_linear_config_get_init_lora_weights(self.handle)
+        else:
+            return self._init_lora_weights
+
+    @property
+    def base_model_name_or_path(self):
+        if self.ff_initialized:
+            c_base_model_name_or_path = (
+                ffc().flexflow_lora_linear_config_get_base_model_name_or_path(
+                    self.handle
+                )
+            )
+            return ffi.string(c_base_model_name_or_path).decode("utf-8")
+        else:
+            return self._base_model_name_or_path
+
+    @property
+    def precision(self):
+        if self.ff_initialized:
+            c_precision = ffc().flexflow_lora_linear_config_get_precision(self.handle)
+            return ffi.string(c_precision).decode("utf-8")
+        else:
+            return self._precision
+
+    @property
+    def target_modules(self):
+        if self.ff_initialized:
+            num_target_modules = ffi.new("int *")
+            c_target_modules = ffc().flexflow_lora_linear_config_get_target_modules(
+                self.handle, num_target_modules
+            )
+            target_modules = []
+            for i in range(num_target_modules[0]):
+                target_modules.append(ffi.string(c_target_modules[i]).decode("utf-8"))
+            return target_modules
+        else:
+            return self._target_modules
+
+    @cache_folder.setter
+    def cache_folder(self, value: str):
+        self._cache_folder = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_cache_folder(self.handle, value)
+
+    @peft_model_id.setter
+    def peft_model_id(self, value: str):
+        self._peft_model_id = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_peft_model_id(self.handle, value)
+
+    @rank.setter
+    def rank(self, value: int):
+        self._rank = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_rank(self.handle, value)
+
+    @lora_alpha.setter
+    def lora_alpha(self, value: float):
+        self._lora_alpha = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_lora_alpha(self.handle, value)
+
+    @lora_dropout.setter
+    def lora_dropout(self, value: float):
+        self._lora_dropout = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_lora_dropout(self.handle, value)
+
+    @trainable.setter
+    def trainable(self, value: bool):
+        self._trainable = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_trainable(self.handle, value)
+
+    @init_lora_weights.setter
+    def init_lora_weights(self, value: bool):
+        self._init_lora_weights = value
+        if self.ff_initialized:
+            ffc().flexflow_lora_linear_config_set_init_lora_weights(self.handle, value)
+
+
+# -----------------------------------------------------------------------
+# PEFTModelID
+# -----------------------------------------------------------------------
+
+
+class PEFTModelID(object):
+    __slots__ = ["handle", "_handle"]
+
+    __no_id_h = None
+
+    def __init__(self, id=None):
+        if id is None:
+            self.handle = ffc().flexflow_peft_model_id_create()
+        else:
+            self.handle = ffc().flexflow_peft_model_id_create_id(id)
+        self._handle = ffi.gc(self.handle, ffc().flexflow_peft_model_id_destroy)
+
+    @staticmethod
+    def no_id_handle():
+        if PEFTModelID.__no_id_h is None:
+            PEFTModelID.__no_id_h = ffc().flexflow_peft_model_id_no_id()
+        return PEFTModelID.__no_id_h
+
+
+# -----------------------------------------------------------------------
+# Request
+# -----------------------------------------------------------------------
+
+
+class Request:
+    """A class to record the metadata of an inference or finetuning request."""
+
+    def __init__(
+        self,
+        req_type: RequestType,
+        prompt: str = None,
+        max_sequence_length: int = 128,
+        peft_model_id: PEFTModelID = None,
+        dataset_filepath: str = None,
+        max_training_steps: int = 1,
+    ):
+        self.req_type = req_type
+        self.prompt = prompt
+        self.max_sequence_length = max_sequence_length
+        self.peft_model_id = peft_model_id
+        self.dataset_filepath = dataset_filepath
+        self.max_training_steps = max_training_steps
+
+
+# -----------------------------------------------------------------------
 # FFModel
 # -----------------------------------------------------------------------
 
@@ -1945,9 +2773,10 @@ class FFModel(object):
         elementwise_affine=True,
         eps=1e-5,
         use_bias=True,
+        inplace_residual=False,
         name=None,
     ):
-        """Add a fused LayerNorm + Residual layer. This operator uses a single kernel, resulting in 
+        """Add a fused LayerNorm + Residual layer. This operator uses a single kernel, resulting in
         better efficiency compared to using separate element-wise add and LayerNorm operators.
 
         :param input: The input tensor
@@ -1966,6 +2795,8 @@ class FFModel(object):
         :type eps: float, optional
         :param use_bias: Whether to add a beta bias to the LayerNorm result, defaults to True
         :type use_bias: bool, optional
+        :param inplace_residual: Whether to perform the residual computation inplace in the input tensor, defaults to False
+        :type inplace_residual: bool, optional
         :param name: Name of the operator, also used for loading weights in inference mode, defaults to None
         :type name: str, optional
         :return: A tensor with the sum of the input and residual(s), and the LayerNorm output
@@ -1990,12 +2821,14 @@ class FFModel(object):
             elementwise_affine,
             eps,
             use_bias,
+            inplace_residual,
             c_name,
         )
         self.add_layer(OpType.RESIDUAL_LAYERNORM, name)
-        return Tensor(
-            handles_array[0], owner_op_type=OpType.RESIDUAL_LAYERNORM
-        ), Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYERNORM)
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_LAYERNORM),
+            Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_LAYERNORM),
+        )
 
     def add_bias_residual_layer_norm(
         self,
@@ -2005,10 +2838,11 @@ class FFModel(object):
         elementwise_affine=True,
         eps=1e-5,
         use_bias=True,
+        inplace_residual=False,
         name=None,
     ):
-        """Add a Attention Bias + Residual + LayerNorm layer. This operator uses a single kernel, 
-        resulting in better efficiency compared to using separate attention bias addition + 
+        """Add a Attention Bias + Residual + LayerNorm layer. This operator uses a single kernel,
+        resulting in better efficiency compared to using separate attention bias addition +
         element-wise residual addition + LayerNorm operators.
 
         :param input: The input tensor
@@ -2023,6 +2857,8 @@ class FFModel(object):
         :type eps: float, optional
         :param use_bias: Whether to add a beta bias to the LayerNorm result, defaults to True
         :type use_bias: bool, optional
+        :param inplace_residual: Whether to perform the residual computation inplace in the input tensor, defaults to False
+        :type inplace_residual: bool, optional
         :param name: Name of the operator, also used for loading weights in inference mode, defaults to None
         :type name: _type_, optional
         :return: A tensor with the sum of the attention bias, input and residual(s), and the LayerNorm output
@@ -2039,12 +2875,14 @@ class FFModel(object):
             elementwise_affine,
             eps,
             use_bias,
+            inplace_residual,
             c_name,
         )
         self.add_layer(OpType.ADD_BIAS_RESIDUAL_LAYERNORM, name)
-        return Tensor(
-            handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM
-        ), Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM),
+            Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM),
+        )
 
     def sigmoid_silu_multi(self, input1, input2, name=None):
         c_name = get_c_name(name)
@@ -3320,7 +4158,9 @@ class FFModel(object):
         self.add_layer(OpType.RMS_NORM, name)
         return Tensor(handle, owner_op_type=OpType.RMS_NORM)
 
-    def residual_rms_norm(self, input1, input2, eps, dim, name=None):
+    def residual_rms_norm(
+        self, input1, input2, eps, dim, inplace_residual=False, name=None
+    ):
         """Defines the Residual RMS Norm layer.
 
         :param input: the input 1 Tensor.
@@ -3338,15 +4178,25 @@ class FFModel(object):
         :param name: the name of the layer. Default is None.
         :type name: string
 
+        :param inplace_residual: whether to compute the residual inplace using the input tensor. Default is False.
+        :type inplace_residual: bool
+
         :returns:  Tensor -- the output tensor.
         """
         c_name = get_c_name(name)
         handles_array = ffc().flexflow_model_add_residual_rms_norm(
-            self.handle, input1.handle, input2.handle, eps, dim, c_name
+            self.handle,
+            input1.handle,
+            input2.handle,
+            eps,
+            dim,
+            inplace_residual,
+            c_name,
         )
         self.add_layer(OpType.RESIDUAL_RMS_NORM, name)
-        return Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM), Tensor(
-            handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM
+        return (
+            Tensor(handles_array[0], owner_op_type=OpType.RESIDUAL_RMS_NORM),
+            Tensor(handles_array[1], owner_op_type=OpType.RESIDUAL_RMS_NORM),
         )
 
     def arg_top_k(self, input, k, sorted, speculative_decoding, name=None):
@@ -3441,6 +4291,9 @@ class FFModel(object):
         )
         self.add_layer(OpType.ARGMAX, name)
         return Tensor(handle, owner_op_type=OpType.ARGMAX)
+
+    def add_lora_layer(self, peft_config):
+        return ffc().flexflow_model_add_lora_layer(self.handle, peft_config.handle)
 
     def reset_metrics(self):
         """Reset performance metrics.
@@ -3812,471 +4665,118 @@ class FFModel(object):
         assert ret_val == True
         return np_array
 
-    def generate(self, prompt_list, max_sequence_length):
+    def generate_inf_only(self, prompt_list: List[str], max_sequence_length: int = 128):
         assert isinstance(prompt_list, list)
         c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
         max_num_chars = 5 * (max_sequence_length + 100)
         c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
-        c_output_length_and_tokens = [ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list]
+        c_output_length_and_tokens = [
+            ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list
+        ]
+        c_request_types = [
+            enum_to_int(RequestType, RequestType.REQ_INFERENCE)
+            for prompt in prompt_list
+        ]
+        max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
+        peft_model_ids = [PEFTModelID.no_id_handle() for prompt in prompt_list]
+        dataset_filepaths = [ffi.NULL for prompt in prompt_list]
+        training_steps = [0 for prompt in prompt_list]
+        num_finetuning_losses = ffi.new("int *")
+        c_finetuning_losses = ffi.new("float[]", 0)
         ffc().flexflow_model_generate(
             self.handle,
             len(prompt_list),
+            c_request_types,
             c_input_texts,
-            max_num_chars,
             c_output_texts,
-            max_sequence_length,
+            max_sequence_lengths,
+            peft_model_ids,
+            dataset_filepaths,
+            training_steps,
             c_output_length_and_tokens,
+            num_finetuning_losses,
+            c_finetuning_losses,
         )
-        #output_length = c_output_length_and_tokens[0]
-        #output_tokens = []
-        #for i in range(output_length):
-        #    output_tokens.append(c_output_length_and_tokens[i + 1])
         from flexflow.serve import GenerationResult
 
-        return [GenerationResult(ffi.string(c_output_text), []) for c_output_text in c_output_texts]
+        return [
+            GenerationResult(
+                text=ffi.string(c_output_text), tokens=[], finetuning_losses=[]
+            )
+            for c_output_text in c_output_texts
+        ]
+
+    def generate(self, requests_list: List[Request]):
+        assert isinstance(requests_list, list)
+        c_input_texts = [
+            get_c_name(request.prompt) for request in requests_list
+        ]  # entry will be None for finetuning requests
+        c_output_texts = [
+            (
+                ffi.new("char[]", 5 * (request.max_sequence_length + 100))
+                if request.req_type == RequestType.REQ_INFERENCE
+                else ffi.NULL
+            )
+            for request in requests_list
+        ]
+        c_output_length_and_tokens = [
+            ffi.new("int[]", request.max_sequence_length + 100)
+            for request in requests_list
+        ]
+        c_request_types = [
+            enum_to_int(RequestType, request.req_type) for request in requests_list
+        ]
+        max_sequence_lengths = [
+            request.max_sequence_length for request in requests_list
+        ]
+        peft_model_ids = [
+            (
+                request.peft_model_id
+                if request.peft_model_id is not None
+                else PEFTModelID.no_id_handle()
+            )
+            for request in requests_list
+        ]
+        dataset_filepaths = [
+            get_c_name(request.dataset_filepath) for request in requests_list
+        ]
+        training_steps = [request.max_training_steps for request in requests_list]
+        num_finetuning_losses = ffi.new("int *")
+        # c_finetuning_losses = ffi.new("float**")
+        # TODO: set this value automatically
+        c_finetuning_losses = ffi.new("float[]", 10000)
+        
+        ffc().flexflow_model_generate(
+            self.handle,
+            len(requests_list),
+            c_request_types,
+            c_input_texts,
+            c_output_texts,
+            max_sequence_lengths,
+            peft_model_ids,
+            dataset_filepaths,
+            training_steps,
+            c_output_length_and_tokens,
+            num_finetuning_losses,
+            c_finetuning_losses,
+        )
+        finetuning_losses = []
+        if num_finetuning_losses[0] > 0:
+            finetuning_losses = [
+                c_finetuning_losses[i] for i in range(num_finetuning_losses[0])
+            ]
+        results = []
+        for c_output_text in c_output_texts:
+            results.append(
+                GenerationResult(
+                    text=(
+                        ffi.string(c_output_text) if c_output_text != ffi.NULL else None
+                    ),
+                    tokens=[],
+                    finetuning_losses=finetuning_losses,
+                )
+            )
+        return results
 
     def set_position_offset(self, offset):
         ffc().flexflow_model_set_position_offset(self.handle, offset)
-
-
-# -----------------------------------------------------------------------
-# SGDOptimizer
-# -----------------------------------------------------------------------
-
-
-class SGDOptimizer(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(
-        self, ffmodel, lr=0.01, momentum=0.0, nesterov=False, weight_decay=0.0
-    ):
-        self.handle = ffc().flexflow_sgd_optimizer_create(
-            ffmodel.handle, lr, momentum, nesterov, weight_decay
-        )
-        self._handle = ffi.gc(self.handle, ffc().flexflow_sgd_optimizer_destroy)
-
-    def set_learning_rate(self, learning_rate):
-        ffc().flexflow_sgd_optimizer_set_lr(self.handle, learning_rate)
-
-
-# -----------------------------------------------------------------------
-# AdamOptimizer
-# -----------------------------------------------------------------------
-
-
-class AdamOptimizer(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(
-        self,
-        ffmodel,
-        alpha=0.001,
-        beta1=0.9,
-        beta2=0.999,
-        weight_decay=0.0,
-        epsilon=1e-8,
-    ):
-        self.handle = ffc().flexflow_adam_optimizer_create(
-            ffmodel.handle, alpha, beta1, beta2, weight_decay, epsilon
-        )
-        self._handle = ffi.gc(self.handle, ffc().flexflow_adam_optimizer_destroy)
-
-    def set_learning_rate(self, learning_rate):
-        ffc().flexflow_adam_optimizer_set_lr(self.handle, learning_rate)
-
-
-# -----------------------------------------------------------------------
-# Initializer
-# -----------------------------------------------------------------------
-class Initializer(object):
-    __slots__ = ["handle", "p_handle"]
-
-    def __init__(self, handle, p_handle=0):
-        self.p_handle = ffi.new("flexflow_initializer_t *")
-        if handle == None:
-            self.p_handle.impl = ffi.NULL
-        else:
-            self.p_handle.impl = handle.impl
-        self.handle = self.p_handle[0]
-        assert ffi.typeof(self.handle) == ffi.typeof(
-            "flexflow_initializer_t"
-        ), "Initializer handle is wrong"
-
-
-# -----------------------------------------------------------------------
-# GlorotUniform
-# -----------------------------------------------------------------------
-
-
-class GlorotUniformInitializer(Initializer):
-    __slots__ = ["glorot_handle", "_glorot_handle"]
-
-    def __init__(self, seed):
-        self.glorot_handle = ffc().flexflow_glorot_uniform_initializer_create(seed)
-        self._glorot_handle = ffi.gc(
-            self.glorot_handle, ffc().flexflow_glorot_uniform_initializer_destroy
-        )
-        super(GlorotUniformInitializer, self).__init__(self.glorot_handle)
-
-
-# -----------------------------------------------------------------------
-# ZeroInitializer
-# -----------------------------------------------------------------------
-
-
-class ZeroInitializer(Initializer):
-    __slots__ = ["zero_handle", "_zero_handle"]
-
-    def __init__(self):
-        self.zero_handle = ffc().flexflow_zero_initializer_create()
-        self._zero_handle = ffi.gc(
-            self.zero_handle, ffc().flexflow_zero_initializer_destroy
-        )
-        super(ZeroInitializer, self).__init__(self.zero_handle)
-
-
-# -----------------------------------------------------------------------
-# UniformInitializer
-# -----------------------------------------------------------------------
-
-
-class UniformInitializer(Initializer):
-    __slots__ = ["uniform_handle", "_uniform_handle"]
-
-    def __init__(self, seed, minv, maxv):
-        self.uniform_handle = ffc().flexflow_uniform_initializer_create(
-            seed, minv, maxv
-        )
-        self._uniform_handle = ffi.gc(
-            self.uniform_handle, ffc().flexflow_uniform_initializer_destroy
-        )
-        super(UniformInitializer, self).__init__(self.uniform_handle)
-
-
-# -----------------------------------------------------------------------
-# NormInitializer
-# -----------------------------------------------------------------------
-
-
-class NormInitializer(Initializer):
-    __slots__ = ["norm_handle", "_norm_handle"]
-
-    def __init__(self, seed, mean, stddev):
-        self.norm_handle = ffc().flexflow_norm_initializer_create(seed, mean, stddev)
-        self._norm_handle = ffi.gc(
-            self.norm_handle, ffc().flexflow_norm_initializer_destroy
-        )
-        super(NormInitializer, self).__init__(self.norm_handle)
-
-
-# -----------------------------------------------------------------------
-# PerfMetrics
-# -----------------------------------------------------------------------
-
-
-class PerfMetrics(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(self, handle):
-        self.handle = handle
-        self._handle = ffi.gc(self.handle, ffc().flexflow_per_metrics_destroy)
-
-    def get_accuracy(self):
-        return ffc().flexflow_per_metrics_get_accuracy(self.handle)
-
-
-# -----------------------------------------------------------------------
-# NetConfig
-# -----------------------------------------------------------------------
-
-
-class NetConfig(object):
-    def __init__(self):
-        self.handle = ffc().flexflow_net_config_create()
-        self._handle = ffi.gc(self.handle, ffc().flexflow_net_config_destroy)
-        cpath = ffc().flexflow_net_config_get_dataset_path(self.handle)
-        self.dataset_path = ffi.string(cpath)
-
-
-# -----------------------------------------------------------------------
-# DLRMConfig
-# -----------------------------------------------------------------------
-
-
-class DLRMConfig(object):
-    def __init__(self):
-        self.handle = ffc().flexflow_dlrm_config_create()
-        self._handle = ffi.gc(self.handle, ffc().flexflow_dlrm_config_destroy)
-
-        cstr = ffc().flexflow_dlrm_config_get_dataset_path(self.handle)
-        self.dataset_path = ffi.string(cstr)
-
-        cstr = ffc().flexflow_dlrm_config_get_arch_interaction_op(self.handle)
-        self.arch_interaction_op = ffi.string(cstr)
-
-        self.sparse_feature_size = ffc().flexflow_dlrm_config_get_sparse_feature_size(
-            self.handle
-        )
-        self.sigmoid_bot = ffc().flexflow_dlrm_config_get_sigmoid_bot(self.handle)
-        self.sigmoid_top = ffc().flexflow_dlrm_config_get_sigmoid_top(self.handle)
-        self.embedding_bag_size = ffc().flexflow_dlrm_config_get_embedding_bag_size(
-            self.handle
-        )
-        self.loss_threshold = ffc().flexflow_dlrm_config_get_loss_threshold(self.handle)
-
-        mlp_bot_c = ffc().flexflow_dlrm_config_get_mlp_bot(self.handle)
-        self.mlp_bot = []
-        for i in range(0, mlp_bot_c[0]):
-            self.mlp_bot.append(mlp_bot_c[i + 1])
-
-        mlp_top_c = ffc().flexflow_dlrm_config_get_mlp_top(self.handle)
-        self.mlp_top = []
-        for i in range(0, mlp_top_c[0]):
-            self.mlp_top.append(mlp_top_c[i + 1])
-
-        embedding_size_c = ffc().flexflow_dlrm_config_get_embedding_size(self.handle)
-        self.embedding_size = []
-        for i in range(0, embedding_size_c[0]):
-            self.embedding_size.append(embedding_size_c[i + 1])
-
-
-# -----------------------------------------------------------------------
-# Single DataLoader
-# -----------------------------------------------------------------------
-
-
-class SingleDataLoader(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(self, ffmodel, input, full_input, num_samples, data_type):
-        assert type(ffmodel) is FFModel, "SingleDataLoader ffmodel is wrong"
-        assert type(input) is Tensor, "SingleDataLoader input is wrong"
-        if type(full_input) is Tensor:
-            self.init_from_tensor(ffmodel, input, full_input, num_samples, data_type)
-        else:
-            self.init_from_ptr(ffmodel, input, full_input, num_samples, data_type)
-        self._handle = ffi.gc(self.handle, ffc().flexflow_single_dataloader_destroy)
-
-    def init_from_tensor(self, ffmodel, input, full_input, num_samples, data_type):
-        assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
-        c_data_type = enum_to_int(DataType, data_type)
-        self.handle = ffc().flexflow_single_dataloader_create(
-            ffmodel.handle, input.handle, full_input.handle, num_samples, c_data_type
-        )
-
-    def init_from_ptr(self, ffmodel, input, full_input, num_samples, data_type):
-        # assert type(full_input) is Tensor, "SingleDataLoader full_input is wrong"
-        c_data_type = enum_to_int(DataType, data_type)
-        self.handle = ffc().flexflow_single_dataloader_create2(
-            ffmodel.handle, input.handle, full_input, num_samples, c_data_type
-        )
-
-    @property
-    def num_samples(self):
-        return ffc().flexflow_single_dataloader_get_num_samples(self.handle)
-
-    @num_samples.setter
-    def num_samples(self, samples):
-        ffc().flexflow_single_dataloader_set_num_samples(self.handle, samples)
-
-    def next_batch(self, ffmodel):
-        """Ask the dataloder to load the next batch to the :attr:`batch_tensor`.
-
-        :returns:  None -- no returns.
-        """
-        ffc().flowflow_single_dataloader_next_batch(self.handle, ffmodel.handle)
-
-    def reset(self):
-        """Reset the current position of the dataloder to 0.
-
-        :returns:  None -- no returns.
-        """
-        ffc().flexflow_single_dataloader_reset(self.handle)
-
-
-class RegionNdarray(object):
-    __slots__ = ["__array_interface__"]
-
-    def __init__(self, shape, data_type, base_ptr, strides, read_only):
-        # See: https://docs.scipy.org/doc/numpy/reference/arrays.interface.html
-        if data_type == DataType.DT_HALF:
-            field_type = "<f2"
-        elif data_type == DataType.DT_FLOAT:
-            field_type = "<f4"
-        elif data_type == DataType.DT_INT32:
-            field_type = "<i4"
-        else:
-            assert 0, "unknown data type"
-            field_type = "<f4"
-        self.__array_interface__ = {
-            "version": 3,
-            "shape": shape,
-            "typestr": field_type,
-            "data": (base_ptr, read_only),
-            "strides": strides,
-        }
-
-
-# -----------------------------------------------------------------------
-# BatchConfig
-# -----------------------------------------------------------------------
-
-
-class BatchConfig(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(self):
-        self.handle = ffc().flexflow_batch_config_create()
-        self._handle = ffi.gc(self.handle, ffc().flexflow_batch_config_destroy)
-
-
-# -----------------------------------------------------------------------
-# TreeVerifyBatchConfig
-# -----------------------------------------------------------------------
-
-
-class TreeVerifyBatchConfig(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(self):
-        self.handle = ffc().flexflow_tree_verify_batch_config_create()
-        self._handle = ffi.gc(
-            self.handle, ffc().flexflow_tree_verify_batch_config_destroy
-        )
-
-
-# -----------------------------------------------------------------------
-# BeamSearchBatchConfig
-# -----------------------------------------------------------------------
-
-
-class BatchConfig(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(self):
-        self.handle = ffc().flexflow_beam_search_batch_config_create()
-        self._handle = ffi.gc(
-            self.handle, ffc().flexflow_beam_search_batch_config_destroy
-        )
-
-
-# -----------------------------------------------------------------------
-# RequestManager
-# -----------------------------------------------------------------------
-
-
-class RequestManager(object):
-    __slots__ = ["handle"]
-
-    def __init__(self):
-        self.handle = ffc().flexflow_request_manager_get_request_manager()
-        # self._handle = ffi.gc(self.handle, ffc().flexflow_request_manager_destroy)
-
-    def register_tokenizer(
-        self, model_type, bos_token_id, eos_token_id, tokenizer_filepath
-    ):
-        c_model_type = enum_to_int(ModelType, model_type)
-        c_tokenizer_filepath = get_c_name(tokenizer_filepath)
-        return ffc().flexflow_request_manager_register_tokenizer(
-            self.handle, c_model_type, bos_token_id, eos_token_id, c_tokenizer_filepath
-        )
-
-    def register_output_filepath(self, output_filepath):
-        c_output_filepath = get_c_name(output_filepath)
-        return ffc().flexflow_request_manager_register_output_filepath(
-            self.handle, c_output_filepath
-        )
-
-    def register_ssm_model(self, model):
-        return ffc().flexflow_request_manager_register_ssm_model(
-            self.handle, model.handle
-        )
-
-    def set_max_requests_per_batch(self, max_requests):
-        return ffc().flexflow_request_manager_set_max_requests_per_batch(
-            self.handle, max_requests)
-    
-    def set_max_tokens_per_batch(self, max_tokens):
-        return ffc().flexflow_request_manager_set_max_tokens_per_batch(
-            self.handle, max_tokens)
-    
-    def set_max_spec_tree_token_num(self, max_tokens):
-        return ffc().flexflow_request_manager_set_max_spec_tree_token_num(
-            self.handle, max_tokens)
-    
-    def set_max_sequence_length(self, max_length):
-        return ffc().flexflow_request_manager_set_max_sequence_length(
-            self.handle, max_length)
-
-    def start_server(self, model):
-        return ffc().flexflow_request_manager_start_background_server(
-            self.handle, model.handle
-        )
-
-    def stop_server(self):
-        return ffc().flexflow_request_manager_terminate_background_server(
-            self.handle)
-# -----------------------------------------------------------------------
-# InferenceManager
-# -----------------------------------------------------------------------
-
-
-class InferenceManager(object):
-    __slots__ = ["handle"]
-
-    def __init__(self):
-        self.handle = ffc().flexflow_inference_manager_get_inference_manager()
-        # self._handle = ffi.gc(self.handle, ffc().flexflow_inference_manager_destroy)
-
-    def compile_model_and_allocate_buffer(self, model):
-        ffc().flexflow_inference_manager_compile_model_and_allocate_buffer(
-            self.handle, model.handle
-        )
-
-    def init_operators_inference(self, model):
-        ffc().flexflow_inference_manager_init_operators_inference(
-            self.handle, model.handle
-        )
-
-    def register_model_weights_loader(self, model, fileloader):
-        ffc().flexflow_inference_manager_register_model_weights_loader(
-            self.handle, model.handle, fileloader.handle
-        )
-
-# -----------------------------------------------------------------------
-# FileDataLoader
-# -----------------------------------------------------------------------
-
-
-class FileDataLoader(object):
-    __slots__ = ["handle", "_handle"]
-
-    def __init__(
-        self,
-        weight_file_path,
-        num_q_heads,
-        num_kv_heads,
-        hidden_dim,
-        qkv_inner_dim,
-        tensor_parallelism_degree,
-        use_full_precision
-    ):
-        c_weight_file_path = get_c_name(weight_file_path)
-        self.handle = ffc().flexflow_file_data_loader_create(
-            c_weight_file_path,
-            num_q_heads,
-            num_kv_heads,
-            hidden_dim,
-            qkv_inner_dim,
-            tensor_parallelism_degree,
-            use_full_precision
-        )
-        self._handle = ffi.gc(self.handle, ffc().flexflow_file_data_loader_destroy)
-
-    def load_weights(self, model):
-        # Check data type and create use_full_precision boolean
-        #assert data_type == DataType.DT_FLOAT or data_type == DataType.DT_HALF
-        #use_full_precision = data_type == DataType.DT_FLOAT
-        ffc().flexflow_file_data_loader_load_weights(
-            self.handle, model.handle
-        )

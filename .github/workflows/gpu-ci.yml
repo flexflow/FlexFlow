@@ -181,6 +181,16 @@ jobs:
           ../config/config.linux
           make -j
 
+      - name: Run PEFT tests
+        run: |
+          export PATH=$CONDA_PREFIX/bin:$PATH
+          export CUDNN_DIR=/usr/local/cuda
+          export CUDA_DIR=/usr/local/cuda
+          export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA_PREFIX/lib
+
+          source ./build/set_python_envs.sh
+          ./tests/peft_test.sh
+      
       - name: Run inference tests
         env:
           CPP_INFERENCE_TESTS: ${{ vars.CPP_INFERENCE_TESTS }}

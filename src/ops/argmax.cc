@@ -91,7 +91,7 @@ Op *ArgMax::create_operator_from_layer(
 ArgMaxParams ArgMax::get_params() const {
   ArgMaxParams params;
   params.beam_search = this->beam_search;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -314,7 +314,7 @@ FutureMap ArgMax::inference(FFModel const &ff,
     launcher.add_future(bc);
     launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                       0 /*projection id*/,
-                                                      READ_WRITE,
+                                                      READ_ONLY,
                                                       EXCLUSIVE,
                                                       batch_inputs[0]->region));
     launcher.add_field(0, FID_DATA);
@@ -348,15 +348,18 @@ BeamInferenceResult
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc->num_active_infr_tokens();
   GenericTensorAccessorW parent = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
+  float loss = 0.0f;
+  ArgMax::forward_kernel_wrapper(
+      m, bc, input, indices, parent, batch_size, &loss);
   BeamInferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
-  download_tensor(m->probs, ir.probs, batch_size);
-  download_tensor<int>(parent.get_int32_ptr(), ir.parent_id, batch_size);
+  copy_tensor_dev_to_host(m->probs, ir.probs, batch_size);
+  copy_tensor_dev_to_host<int>(
+      parent.get_int32_ptr(), ir.parent_id, batch_size);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
@@ -383,23 +386,36 @@ InferenceResult
     return ir;
   }
 
-  GenericTensorAccessorW input = helperGetGenericTensorAccessorRW(
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW indices = helperGetGenericTensorAccessorWO(
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW parent;
-  int batch_size = bc->num_active_tokens();
-  ArgMax::forward_kernel_wrapper(m, input, indices, parent, batch_size);
+  int batch_size = bc->num_active_infr_tokens();
+  float loss = 0.0f;
+
+  ArgMax::forward_kernel_wrapper(
+      m, bc, input, indices, parent, batch_size, &loss);
+
   InferenceResult ir;
+  ir.finetuning_loss = loss;
+
+  if (bc->num_active_peft_tokens() > 0) {
+    printf("Loss: %.4f\n", loss);
+  }
+
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     ArgMax::save_inference_tensors_to_file(
-        m, shard_id, bc, {}, {}, {input, indices});
+        m, shard_id, bc, {input}, {}, {indices});
+  } else {
+    m->decoding_step++;
   }
 
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
+
   return ir;
 }
 

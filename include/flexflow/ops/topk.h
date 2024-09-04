@@ -8,9 +8,11 @@
 
 namespace FlexFlow {
 
+class TopK;
+
 class TopKMeta : public OpMeta {
 public:
-  TopKMeta(FFHandler handle);
+  TopKMeta(FFHandler handle, TopK const *topk);
   bool sorted;
 };
 

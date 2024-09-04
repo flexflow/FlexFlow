@@ -17,6 +17,7 @@ public:
   size_t temp_storage_bytes = 0;
   int *d_offsets;
   void *d_out;
+  float *d_loss;
   Realm::RegionInstance reserveInst;
   ArgMaxMeta(FFHandler handler,
              Op const *op,
@@ -89,18 +90,22 @@ public:
                              CostMetrics &cost_metrics) const override;
   template <typename DT>
   static void forward_kernel(ArgMaxMeta const *m,
-                             DT *input_ptr,
+                             BatchConfig const *bc,
+                             DT const *input_ptr,
                              int *indices_ptr,
                              float *prob_ptr,
                              int *parent_ptr,
                              int length,
                              int batch_size,
+                             float *loss,
                              ffStream_t stream);
   static void forward_kernel_wrapper(ArgMaxMeta const *m,
-                                     GenericTensorAccessorW const &input,
+                                     BatchConfig const *bc,
+                                     GenericTensorAccessorR const &input,
                                      GenericTensorAccessorW const &indices,
                                      GenericTensorAccessorW const &parent,
-                                     int batch_size);
+                                     int batch_size,
+                                     float *loss);
   Params get_params() const;
 
 public:

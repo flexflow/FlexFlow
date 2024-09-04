@@ -567,6 +567,7 @@ if(NOT BUILD_LEGION_ONLY)
   if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(inference/spec_infer)
     add_subdirectory(inference/incr_decoding)
+    add_subdirectory(inference/peft)
   endif()
 
 

@@ -188,6 +188,9 @@ std::string get_operator_type_name(OperatorType type) {
       return "Sampling";
     case OP_ARGMAX:
       return "ArgMax";
+    // PEFT Ops
+    case OP_LORA:
+      return "Lora Layer";
     // Parallel Ops
     case OP_REPARTITION:
       return "Repartition";
@@ -199,6 +202,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Reduction";
     case OP_ALLREDUCE:
       return "AllReduce";
+    case OP_PARALLEL_IDENTITY:
+      return "ParallelIdentity";
     case OP_PIPELINE:
       return "Pipeline";
     case OP_FUSED_PARALLEL:

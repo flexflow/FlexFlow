@@ -87,8 +87,7 @@ OpMeta *Mean::init_task(Task const *task,
                         Context ctx,
                         Runtime *runtime) {
   FFHandler handler = *((FFHandler const *)task->local_args);
-  OpMeta *m = new OpMeta(handler);
-  return m;
+  return nullptr;
 }
 
 void Mean::forward(FFModel const &ff) {}

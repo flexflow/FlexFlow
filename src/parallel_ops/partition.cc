@@ -44,7 +44,8 @@ using namespace FlexFlow::Kernels::Repartition;
 /* Params */
 bool operator==(RepartitionParams const &lhs, RepartitionParams const &rhs) {
   return lhs.repartition_legion_dim == rhs.repartition_legion_dim &&
-         lhs.repartition_degree == rhs.repartition_degree;
+         lhs.repartition_degree == rhs.repartition_degree &&
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool RepartitionParams::is_valid(ParallelTensorShape const &input) const {
@@ -60,7 +61,7 @@ RepartitionParams Repartition::get_params() const {
   RepartitionParams params;
   params.repartition_legion_dim = this->repartition_dim;
   params.repartition_degree = this->repartition_degree;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -200,6 +201,11 @@ void Repartition::create_input_partition_inference(
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
+  ff.create_disjoint_partition(batch_inputs[0]->num_dims,
+                               batch_inputs[0]->dims,
+                               batch_inputs[0]->parallel_is,
+                               batch_outputs[0]->region_grad,
+                               inference_output_grad_lps[batch_outputs[0]]);
 }
 
 FutureMap

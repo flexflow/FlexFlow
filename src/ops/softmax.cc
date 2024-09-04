@@ -86,7 +86,7 @@ SoftmaxParams Softmax::get_params() const {
   SoftmaxParams params;
   params.layer_guid = this->layer_guid;
   params.dim = this->dim;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -270,50 +270,10 @@ OpMeta *Softmax::init_task(Task const *task,
     domain = input_domain;
   }
   SoftmaxMeta *m = new SoftmaxMeta(handle, softmax, domain);
-  m->input_type = softmax->inputs[0]->data_type;
-  m->output_type = softmax->outputs[0]->data_type;
   // checkCUDNN(cudnnCreateTensorDescriptor(&m->outputTensor));
   std::strcpy(m->op_name, softmax->name);
   m->layer_guid = softmax->layer_guid;
   return m;
-}
-
-FutureMap Softmax::inference(FFModel const &ff,
-                             BatchConfigFuture const &bc,
-                             std::vector<ParallelTensor> const &batch_inputs,
-                             std::vector<ParallelTensor> const &batch_outputs,
-                             MachineView const *mv) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  parallel_is = batch_outputs[0]->parallel_is;
-  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
-  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
-  size_t machine_view_hash = view->hash();
-  /* std::cout << "Softmax op machine_view: " << *(MachineView const *)mv
-            << std::endl; */
-  IndexLauncher launcher(SOFTMAX_INF_TASK_ID,
-                         parallel_is,
-                         TaskArgument(nullptr, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         machine_view_hash);
-  launcher.add_future(bc);
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::forward(FFModel const &ff) {
@@ -354,17 +314,11 @@ void Softmax::forward_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
-  if (m->output_type == DT_HALF) {
-    forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
-  } else if (m->output_type == DT_FLOAT) {
-    forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
-  } else {
-    assert(false && "Unsupported data type");
-  }
+  forward_kernel_wrapper(m, input, output);
 }
 
 void Softmax::backward(FFModel const &ff) {
@@ -402,52 +356,69 @@ void Softmax::backward_task(Task const *task,
   Domain in_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  switch (in_domain.get_dim()) {
-#define DIMFUNC(DIM)                                                           \
-  case DIM:                                                                    \
-    if (m->output_type == DT_HALF) {                                           \
-      return backward_task_with_dim<half, DIM>(task, regions, ctx, runtime);   \
-    } else if (m->output_type == DT_FLOAT) {                                   \
-      return backward_task_with_dim<float, DIM>(task, regions, ctx, runtime);  \
-    } else {                                                                   \
-      assert(false && "Unsupported data type");                                \
-    }
-    LEGION_FOREACH_N(DIMFUNC)
-#undef DIMFUNC
-    default:
-      assert(false);
-  }
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  backward_kernel_wrapper(m, input_grad, output_grad);
 }
 
-/*
-  regions[0](I/O): input_grad
-  regions[1](I): output_grad
-*/
-// Note that the backward task of softmax is actually a no op (i.e., input_grad
-// = output_grad) since the upstream cross_entropy_loss function computes
-// performs softmax_cross_entropy_loss to avoid intermediate zeros
-template <typename DT, int NDIM>
-void Softmax::backward_task_with_dim(Task const *task,
-                                     std::vector<PhysicalRegion> const &regions,
-                                     Context ctx,
-                                     Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  // const Softmax* softmax = (Softmax*) task->args;
-  SoftmaxMeta const *m = *((SoftmaxMeta **)task->local_args);
-  TensorAccessorW<DT, NDIM> acc_input_grad(regions[0],
-                                           task->regions[0],
-                                           FID_DATA,
-                                           ctx,
-                                           runtime,
-                                           true /*readOutput*/);
-  TensorAccessorR<DT, NDIM> acc_output_grad(
-      regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  // make sure the image indices match!
-  assert(acc_input_grad.rect == acc_output_grad.rect);
-
-  backward_kernel_wrapper(
-      m, acc_input_grad.ptr, acc_output_grad.ptr, acc_input_grad.rect.volume());
+FutureMap Softmax::inference(FFModel const &ff,
+                             BatchConfigFuture const &bc,
+                             std::vector<ParallelTensor> const &batch_inputs,
+                             std::vector<ParallelTensor> const &batch_outputs,
+                             MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Softmax op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(SOFTMAX_INF_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    batch_outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // if this is the last operator, we add the region below in order to copy the
+  // output to the grad tensor
+  assert(ff.config.computationMode == COMP_MODE_INFERENCE);
+  int last_op = ff.operators.size() - 1;
+  assert(ff.operators[last_op]->op_type == OP_ARGMAX ||
+         ff.operators[last_op]->op_type == OP_ARG_TOPK ||
+         ff.operators[last_op]->op_type == OP_SAMPLING);
+  last_op -= 1;
+  while (ff.operators[last_op]->op_type == OP_WEIGHT && last_op > 0) {
+    last_op -= 1;
+  }
+  if (ff.operators[last_op] == this) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part_grad,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region_grad));
+    launcher.add_field(2, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Softmax::inference_task(Task const *task,
@@ -455,8 +426,8 @@ void Softmax::inference_task(Task const *task,
                              Context ctx,
                              Runtime *runtime) {
   assert(task->regions.size() == regions.size());
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
+  assert(regions.size() == 3 || regions.size() == 2);
+  bool is_last_op = (regions.size() == 3);
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
   if (bc->num_tokens == 0) {
     return;
@@ -465,21 +436,91 @@ void Softmax::inference_task(Task const *task,
       ctx, task->regions[0].region.get_index_space());
   SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
   GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      m->output_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  if (m->output_type == DT_HALF) {
-    forward_kernel_wrapper(m, input.get_half_ptr(), output.get_half_ptr());
-  } else if (m->output_type == DT_FLOAT) {
-    forward_kernel_wrapper(m, input.get_float_ptr(), output.get_float_ptr());
-  } else {
-    assert(false && "Unsupported data type");
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output_grad;
+  if (is_last_op) {
+    output_grad = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                                   regions[2],
+                                                   task->regions[2],
+                                                   FID_DATA,
+                                                   ctx,
+                                                   runtime);
   }
+  inference_kernel_wrapper(m, bc, is_last_op, input, output, output_grad);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     Softmax::save_inference_tensors_to_file(
         m, shard_id, bc, {input}, {}, {output});
+  }
+}
+
+FutureMap Softmax::peft_bwd(FFModel const &ff,
+                            BatchConfigFuture const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Softmax op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(SOFTMAX_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+void Softmax::peft_bwd_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  Domain in_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  SoftmaxMeta *m = *((SoftmaxMeta **)task->local_args);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Softmax::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {}, {output_grad}, false);
   }
 }
 
@@ -508,29 +549,35 @@ bool Softmax::measure_operator_cost(Simulator *sim,
 
   sim->free_all();
   float *input_ptr = (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+  GenericTensorAccessorR input_acc(DT_FLOAT, sub_input.get_domain(), input_ptr);
   assert(input_ptr != NULL);
   cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   float *output_ptr = (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+  GenericTensorAccessorW output_acc(
+      DT_FLOAT, sub_output.get_domain(), output_ptr);
   assert(output_ptr != NULL);
   cost_metrics.outputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
   std::function<void()> forward, backward;
-  forward = [&] { forward_kernel_wrapper(m, input_ptr, output_ptr); };
+  forward = [&] { forward_kernel_wrapper(m, input_acc, output_acc); };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     float *input_grad_ptr =
         (float *)sim->allocate(sub_input.get_volume(), DT_FLOAT);
+    GenericTensorAccessorW input_grad_acc(
+        DT_FLOAT, sub_input.get_domain(), input_grad_ptr);
     assert(input_grad_ptr != NULL);
     cost_metrics.inputs_memory += cost_metrics.total_mem_diff_from(sim->offset);
 
     float *output_grad_ptr =
         (float *)sim->allocate(sub_output.get_volume(), DT_FLOAT);
+    GenericTensorAccessorW output_grad_acc(
+        DT_FLOAT, sub_output.get_domain(), output_grad_ptr);
     assert(output_grad_ptr != NULL);
     cost_metrics.outputs_memory +=
         cost_metrics.total_mem_diff_from(sim->offset);
     backward = [&] {
-      backward_kernel_wrapper(
-          m, input_grad_ptr, output_grad_ptr, sub_output.get_volume());
+      backward_kernel_wrapper(m, input_grad_acc, output_grad_acc);
     };
   }
 

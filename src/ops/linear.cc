@@ -498,7 +498,7 @@ OpMeta *Linear::init_task_with_dim(Task const *task,
   m->add_bias_only_once = linear->add_bias_only_once;
   m->profiling = linear->profiling;
   m->inference_debugging = linear->inference_debugging;
-  m->trainableInputs[0] = linear->trainableInputs[0];
+  m->trainable_inputs[0] = linear->trainable_inputs[0];
   m->weight_ptr_type = m->input_type[0];
   m->quantization_type = linear->quantization_type;
   m->offload = linear->offload;
@@ -632,8 +632,11 @@ void Linear::inference_task(Task const *task,
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
   int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
   int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+  assert((weight.domain.hi()[0] - weight.domain.lo()[0] + 1) == in_dim);
+  assert((weight.domain.hi()[1] - weight.domain.lo()[1] + 1) == out_dim);
+  assert(weight.domain.get_volume() == in_dim * out_dim);
 
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc->num_active_infr_tokens();
   GenericTensorAccessorR bias;
   if (m->use_bias &&
       !(m->add_bias_only_once && task->index_point.point_data[0] != 0)) {
@@ -645,14 +648,15 @@ void Linear::inference_task(Task const *task,
                                             runtime);
     assert(bias.domain.get_volume() == static_cast<size_t>(out_dim));
   }
-  forward_kernel_wrapper(m,
-                         input.ptr,
-                         output.ptr,
-                         weight.ptr,
-                         bias.ptr,
-                         in_dim,
-                         out_dim,
-                         batch_size);
+  inference_kernel_wrapper(m,
+                           bc,
+                           input.ptr,
+                           output.ptr,
+                           weight.ptr,
+                           bias.ptr,
+                           in_dim,
+                           out_dim,
+                           batch_size);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -664,6 +668,119 @@ void Linear::inference_task(Task const *task,
     }
     Linear::save_inference_tensors_to_file(
         m, shard_id, bc, {input}, weights_accessors, {output});
+    printf("\tin=[%i,%i].T @ w=[%i,%i] -> out=[%i,%i]\n",
+           in_dim,
+           bc->num_tokens,
+           in_dim,
+           out_dim,
+           out_dim,
+           bc->num_tokens);
+  }
+}
+
+FutureMap Linear::peft_bwd(FFModel const &ff,
+                           BatchConfigFuture const &bc,
+                           std::vector<ParallelTensor> const &batch_inputs,
+                           std::vector<ParallelTensor> const &batch_outputs,
+                           MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  /* std::cout << "Linear op machine_view: " << *(MachineView const *)mv
+            << std::endl; */
+  IndexLauncher launcher(LINEAR_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  launcher.add_field(2, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+void Linear::peft_bwd_task(Task const *task,
+                           std::vector<PhysicalRegion> const &regions,
+                           Context ctx,
+                           Runtime *runtime) {
+  Domain input_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  LinearMeta *m = *((LinearMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  assert(regions.size() == 3);
+  assert(task->regions.size() == 3);
+  if (m->quantization_type == DT_NONE) {
+    assert(m->input_type[0] == m->weight_type[0]);
+  }
+  assert(m->input_type[0] == m->output_type[0]);
+
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
+  int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
+
+  int num_infr_tokens = bc->num_active_infr_tokens();
+  int num_peft_tokens = bc->num_active_peft_tokens();
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Linear::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false, true);
+    printf("\tw=[%i,%i] @ out_grad=[%i,%i] -> in_grad[%i,%i]\n",
+           in_dim,
+           out_dim,
+           out_dim,
+           num_peft_tokens,
+           in_dim,
+           num_peft_tokens);
+  }
+  peft_bwd_kernel_wrapper(m,
+                          input_grad.ptr,
+                          output_grad.ptr,
+                          weight.ptr,
+                          in_dim,
+                          out_dim,
+                          num_infr_tokens,
+                          num_peft_tokens);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    Linear::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false);
   }
 }
 
@@ -782,7 +899,7 @@ void Linear::backward(FFModel const &ff) {
     launcher.add_field(rid++, FID_DATA);
     // regions[1](I/O): replica_grad
     assert(replica == NULL);
-    if (trainableInputs[0]) {
+    if (trainable_inputs[0]) {
       launcher.add_region_requirement(
           RegionRequirement(inputs[0]->part_grad,
                             0 /*projection id*/,
@@ -878,17 +995,17 @@ void Linear::backward_task_with_dim(Task const *task,
                                     Runtime *runtime) {
   // Linear* linear = (Linear*) task->args;
   LinearMeta const *m = *((LinearMeta **)task->local_args);
-  assert(regions.size() == (5 + static_cast<size_t>(m->trainableInputs[0]) +
+  assert(regions.size() == (5 + static_cast<size_t>(m->trainable_inputs[0]) +
                             static_cast<size_t>(m->use_bias)));
   assert(task->regions.size() ==
-         (5 + static_cast<size_t>(m->trainableInputs[0]) +
+         (5 + static_cast<size_t>(m->trainable_inputs[0]) +
           static_cast<size_t>(m->use_bias)));
   DT *input_grad = nullptr;
   size_t rid = 0;
   TensorAccessorR<DT, NDIM> acc_input(
       regions[rid], task->regions[rid], FID_DATA, ctx, runtime);
   rid++;
-  if (m->trainableInputs[0]) {
+  if (m->trainable_inputs[0]) {
     Domain domain = runtime->get_index_space_domain(
         ctx, task->regions[rid].region.get_index_space());
     if (domain.get_dim() == NDIM + 1) {
@@ -1119,7 +1236,10 @@ bool Linear::measure_operator_cost(Simulator *sim,
   int input_n = sub_input.get_volume() / input_c;
   int output_c = sub_output.dims[0].size;
   int output_n = sub_output.get_volume() / output_c;
-  LinearMeta *m = sim->linear_meta;
+
+  MemoryAllocator gpu_mem_allocator(sim->memory);
+  LinearMeta *m = new LinearMeta(
+      sim->handler, output_n, this, gpu_mem_allocator, input_c * output_c);
   m->activation = activation;
   m->kernel_reg_type = kernel_reg_type;
   m->kernel_reg_lambda = kernel_reg_lambda;
@@ -1164,7 +1284,7 @@ bool Linear::measure_operator_cost(Simulator *sim,
   };
   if (sim->computationMode == COMP_MODE_TRAINING) {
     void *input_grad_ptr = NULL;
-    if (trainableInputs[0]) {
+    if (trainable_inputs[0]) {
       input_grad_ptr =
           sim->allocate(sub_input.get_volume(), inputs[0]->data_type);
     } else {
@@ -1313,7 +1433,7 @@ LinearParams Linear::get_params() const {
   params.kernel_reg_lambda = this->kernel_reg_lambda;
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
 

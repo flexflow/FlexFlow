@@ -723,7 +723,7 @@ void BeamTopK::forward_kernel_wrapper(BeamTopKMeta const *m,
 BeamTopKMeta::BeamTopKMeta(FFHandler handler,
                            Op const *op,
                            MemoryAllocator &gpu_mem_allocator)
-    : OpMeta(handler) {
+    : OpMeta(handler, op) {
   DataType data_type = op->inputs[0]->data_type;
   int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
   int max_requests_per_batch = BatchConfig::max_requests_per_batch();

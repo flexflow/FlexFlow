@@ -56,14 +56,13 @@ if [[ "${FF_GPU_BACKEND}" == "cuda" || "${FF_GPU_BACKEND}" == "hip_cuda" ]]; the
     cuda_version_input=${cuda_version}.3
   elif [[ "$cuda_version" == @(11.8) ]]; then 
     cuda_version_input=${cuda_version}.0
+  elif [[ "$cuda_version" == @(12.3|12.4|12.5|12.6|12.7|12.8|12.9) ]]; then
+    # Use CUDA 12.2 for all versions greater or equal to 12.2 for now (the Docker machine with CUDNN is not yet available)
+    cuda_version=12.2
+    cuda_version_input=${cuda_version}.2
   else
     echo "cuda_version is not supported, please choose among {11.1|11.2|11.3|11.4|11.5|11.6|11.7|11.8|12.0|12.1|12.2}"
     exit 1
-  fi
-  # Use CUDA 12.2 for all versions greater or equal to 12.2 for now (the Docker machine with CUDNN is not yet available)
-  if [[ "$cuda_version" == @(12.3|12.4|12.5|12.6|12.7|12.8|12.9) ]]; then
-    cuda_version=12.2
-    cuda_version_input=${cuda_version}.2
   fi
   echo "Building $image docker image with CUDA $cuda_version"
   ff_environment_base_image="nvidia/cuda:${cuda_version_input}-cudnn8-devel-ubuntu20.04"

@@ -58,7 +58,7 @@ if [[ "${FF_GPU_BACKEND}" == "cuda" || "${FF_GPU_BACKEND}" == "hip_cuda" ]]; the
     fi
   fi
   # Check that CUDA version is supported
-  if [[ "$cuda_version" != @(11.1|11.2|11.3|11.4|11.5|11.6|11.7|11.8|12.0|12.1|12.2) ]]; then
+  if [[ "$cuda_version" != @(11.1|11.2|11.3|11.4|11.5|11.6|11.7|11.8|12.0|12.1|12.2|12.3|12.4|12.5|12.6|12.7|12.8|12.9) ]]; then
     echo "cuda_version is not supported, please choose among {11.1|11.2|11.3|11.4|11.5|11.6|11.7|11.8|12.0|12.1|12.2}"
     exit 1
   fi

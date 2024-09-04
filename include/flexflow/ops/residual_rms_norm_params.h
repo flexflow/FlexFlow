@@ -11,6 +11,7 @@ struct ResidualRMSNormParams {
   LayerID layer_guid;
   float eps;
   int dim;
+  bool inplace_residual;
   char name[MAX_OPNAME];
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &input) const;

@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/kernels/transpose_kernels.h"
+#include "flexflow/ops/transpose.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
@@ -21,6 +22,9 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 using Legion::Domain;
+
+TransposeMeta::TransposeMeta(FFHandler handler, Transpose const *transpose)
+    : OpMeta(handler, transpose) {}
 
 struct TransposeStrides {
   int num_dim;

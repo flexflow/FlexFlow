@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class Flat;
+
 class FlatMeta : public OpMeta {
 public:
-  FlatMeta(FFHandler handle) : OpMeta(handle){};
+  FlatMeta(FFHandler handle, Flat const *flat);
 };
 
 namespace Kernels {

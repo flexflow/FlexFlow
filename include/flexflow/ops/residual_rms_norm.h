@@ -20,6 +20,7 @@ public:
                   const ParallelTensor _input2,
                   float _eps,
                   int dim,
+                  bool inplace_residual,
                   bool allocate_weights,
                   char const *name);
   ResidualRMSNorm(FFModel &model,
@@ -32,6 +33,7 @@ public:
                   ResidualRMSNorm const &other,
                   Input const &inputs,
                   bool allocate_weights);
+  void map_output_tensors(FFModel &ff) override;
   void init(FFModel const &) override;
   void forward(FFModel const &) override;
   void backward(FFModel const &) override;
@@ -44,6 +46,11 @@ public:
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
+  Legion::FutureMap peft_bwd(FFModel const &,
+                             BatchConfigFuture const &,
+                             std::vector<ParallelTensor> const &,
+                             std::vector<ParallelTensor> const &,
+                             MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
@@ -74,6 +81,14 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+  static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+  static void peft_bwd_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
   bool measure_operator_cost(Simulator *sim,
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
@@ -82,6 +97,7 @@ public:
   float eps;
   int effective_batch_size;
   int dim, data_dim;
+  bool inplace_residual;
 };
 } // namespace FlexFlow
 #endif // _FLEXFLOW_RESIDUAL_RMS_NORM_H

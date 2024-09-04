@@ -35,6 +35,9 @@ public:
   float kernel_reg_lambda;
   bool use_bias, add_bias_only_once;
   Realm::RegionInstance reserveInst;
+  // PEFT related fields
+  void *output_activation_buffer;
+  size_t allocated_peft_buffer_size = 0;
 };
 
 namespace Kernels {
@@ -48,6 +51,23 @@ void forward_kernel_wrapper(LinearMeta const *m,
                             int in_dim,
                             int out_dim,
                             int batch_size);
+void inference_kernel_wrapper(LinearMeta *m,
+                              BatchConfig const *bc,
+                              void const *input_ptr,
+                              void *output_ptr,
+                              void const *filter_ptr,
+                              void const *bias_ptr,
+                              int in_dim,
+                              int out_dim,
+                              int batch_size);
+void peft_bwd_kernel_wrapper(LinearMeta const *m,
+                             void *input_grad_ptr,
+                             void *output_grad_ptr,
+                             void const *kernel_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int num_infr_tokens,
+                             int num_peft_tokens);
 void backward_kernel_wrapper(LinearMeta const *m,
                              void const *input_ptr,
                              void *input_grad_ptr,
@@ -73,6 +93,16 @@ void forward_kernel(LinearMeta const *m,
                     int batch_size,
                     ffStream_t stream);
 template <typename DT>
+void peft_bwd_kernel(LinearMeta const *m,
+                     void *input_grad_ptr,
+                     void *output_grad_ptr,
+                     void const *kernel_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int num_infr_tokens,
+                     int num_peft_tokens,
+                     ffStream_t stream);
+template <typename DT>
 void backward_kernel(LinearMeta const *m,
                      void const *input_ptr,
                      void *input_grad_ptr,
@@ -85,6 +115,7 @@ void backward_kernel(LinearMeta const *m,
                      int out_dim,
                      int batch_size,
                      ffStream_t stream);
+
 template <typename DT>
 __global__ void build_one_ptr(DT *one_ptr, int batch_size);
 } // namespace Internal

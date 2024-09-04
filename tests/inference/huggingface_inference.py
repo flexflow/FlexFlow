@@ -77,20 +77,18 @@ def main():
 
     # Set default tensor type depending on argument indicating the float type to use
     if not args.use_full_precision:
-        torch.set_default_tensor_type(torch.HalfTensor)
-
+        torch.set_default_dtype(torch.float16)
+    else:
+        torch.set_default_dtype(torch.float32)
+    
     # Run huggingface model
     cuda_availble = torch.cuda.is_available()
     device = "cuda" if args.gpu and cuda_availble else "cpu"
     # Get Model
-    model = AutoModelForCausalLM.from_pretrained(args.model_name).to(device)
+    model = AutoModelForCausalLM.from_pretrained(args.model_name, trust_remote_code=True).to(device)
     # Get Tokenizer
     hf_config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
-    hf_arch = getattr(hf_config, "architectures")[0]
-    if hf_arch == "LLaMAForCausalLM" or hf_arch == "LlamaForCausalLM":
-        tokenizer = LlamaTokenizer.from_pretrained(args.model_name, use_fast=True)
-    else:
-        tokenizer = AutoTokenizer.from_pretrained(args.model_name)
+    tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
     generation_config = GenerationConfig.from_pretrained(args.model_name)
     generation_config.do_sample = args.do_sample
     ################# debugging #################

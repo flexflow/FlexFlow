@@ -13,13 +13,15 @@
  * limitations under the License.
  */
 
+#include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/kernels/batch_matmul_kernels.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {
 
-BatchMatmulMeta::BatchMatmulMeta(FFHandler handler) : OpMeta(handler) {}
+BatchMatmulMeta::BatchMatmulMeta(FFHandler handler, BatchMatmul const *bmm)
+    : OpMeta(handler, bmm) {}
 
 namespace Kernels {
 namespace BatchMatmul {

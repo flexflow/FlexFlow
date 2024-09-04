@@ -40,6 +40,11 @@ public:
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
+  Legion::FutureMap peft_bwd(FFModel const &,
+                             BatchConfigFuture const &bc,
+                             std::vector<ParallelTensor> const &,
+                             std::vector<ParallelTensor> const &,
+                             MachineView const *mv = nullptr) override;
   void backward(FFModel const &) override;
   bool get_int_parameter(PMParameter, int *) const override;
   bool append_parallel_op_info(
@@ -52,7 +57,15 @@ public:
                            std::vector<Legion::PhysicalRegion> const &regions,
                            Legion::Context ctx,
                            Legion::Runtime *runtime);
+  static void inference_task(Legion::Task const *task,
+                             std::vector<Legion::PhysicalRegion> const &regions,
+                             Legion::Context ctx,
+                             Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
+  static void peft_bwd_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
                             Legion::Runtime *runtime);
