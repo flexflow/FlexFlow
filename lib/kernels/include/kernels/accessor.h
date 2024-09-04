@@ -39,6 +39,9 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorW,
                                              shape,
                                              ptr);
 
+std::string format_as(GenericTensorAccessorW const &);
+std::ostream &operator<<(std::ostream &, GenericTensorAccessorW const &);
+
 class GenericTensorAccessorR {
 public:
   template <DataType DT>
@@ -66,6 +69,9 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorR,
                                              data_type,
                                              shape,
                                              ptr);
+
+std::string format_as(GenericTensorAccessorR const &);
+std::ostream &operator<<(std::ostream &, GenericTensorAccessorR const &);
 
 int32_t *get_int32_ptr(GenericTensorAccessorW const &);
 int64_t *get_int64_ptr(GenericTensorAccessorW const &);

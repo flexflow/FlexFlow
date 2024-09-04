@@ -13,7 +13,7 @@ includes = [
   "op-attrs/ops/attention_attrs.dtg.h", 
   "op-attrs/ops/batch_matmul.dtg.h", 
   "op-attrs/ops/batch_norm_attrs.dtg.h", 
-  "op-attrs/ops/broadcast.dtg.h",
+  "op-attrs/ops/broadcast_attrs.dtg.h",
   "op-attrs/ops/cast_attrs.dtg.h", 
   "op-attrs/ops/concat_attrs.dtg.h", 
   "op-attrs/ops/conv_2d_attrs.dtg.h",
