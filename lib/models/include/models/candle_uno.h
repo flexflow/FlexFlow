@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_CANDLE_UNO_H
 #define _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_CANDLE_UNO_H
 
+// #include "candle_uno_config.dtg.h"
 #include "pcg/computation_graph_builder.h"
 #include <map>
 #include <string>
@@ -9,48 +10,29 @@
 namespace FlexFlow {
 
 struct CandleUnoConfig {
-  CandleUnoConfig() : dense_layers(4, 4192), dense_feature_layers(8, 4192) {
-    feature_shapes["dose"] = 1;
-    feature_shapes["cell.rnaseq"] = 942;
-    feature_shapes["drug.descriptors"] = 5270;
-    feature_shapes["drug.fingerprints"] = 2048;
-
-    input_features["dose1"] = "dose";
-    input_features["dose2"] = "dose";
-    input_features["cell.rnaseq"] = "cell.rnaseq";
-    input_features["drug1.descriptors"] = "drug.descriptors";
-    input_features["drug1.fingerprints"] = "drug.fingerprints";
-    input_features["drug2.descriptors"] = "drug.descriptors";
-    input_features["drug2.fingerprints"] = "drug.fingerprints";
-  }
-
-  std::vector<int> dense_layers, dense_feature_layers;
-  std::map<std::string, int> feature_shapes;
-  std::map<std::string, std::string> input_features;
   size_t batch_size{};
+  std::vector<int> dense_layers{};
+  std::vector<int> dense_feature_layers{};
+  std::map<std::string, int> feature_shapes{};
+  std::map<std::string, std::string> input_features{};
 };
 
-class CandleUno {
-public:
-  static const size_t max_num_samples = 4196;
+// Helper functions to construct the Candle Uno model
+tensor_guid_t create_candle_uno_feature_model(ComputationGraphBuilder &,
+                                              CandleUnoConfig const &,
+                                              tensor_guid_t const &);
 
-public:
-  CandleUno(CandleUnoConfig const &config) : config_(config) {
-    init_model();
-  }
+/**
+ * @brief Get the default configs of Candle Uno model.
+ */
+CandleUnoConfig get_default_candle_uno_config();
 
-  [[nodiscard]] ComputationGraph get_computation_graph() const;
-
-private:
-  void init_model();
-
-  tensor_guid_t build_feature_model(tensor_guid_t const &);
-
-private:
-  CandleUnoConfig config_;
-  ComputationGraphBuilder cgb_;
-};
-
+/**
+ * @brief Get the Candle Uno computation graph.
+ *
+ * @param CandleUnoConfig The config of the Candle Uno model.
+ * @return ComputationGraph The PCG of a Transformer model.
+ */
 ComputationGraph get_candle_uno_computation_graph(CandleUnoConfig const &);
 
 } // namespace FlexFlow

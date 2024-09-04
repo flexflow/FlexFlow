@@ -1,0 +1,31 @@
+namespace = "FlexFlow"
+name = "CandleUnoConfig"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "batch_size"
+type = "size_t"
+
+[[fields]]
+name = "dense_layers"
+type = "std::vector<int>"
+
+[[fields]]
+name = "dense_feature_layers"
+type = "std::vector<int>"
+
+[[fields]]
+name = "feature_shapes"
+type = "std::map<std::string, int>"
+
+[[fields]]
+name = "input_features"
+type = "std::map<std::string, std::string>"

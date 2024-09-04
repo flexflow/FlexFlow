@@ -708,4 +708,14 @@ tensor_guid_t ComputationGraphBuilder::softmax(
   return this->add_layer(layer, {input}, {}, output_shape);
 }
 
+tensor_guid_t ComputationGraphBuilder::concat(
+    int n,
+    std::vector<tensor_guid_t> const &tensors,
+    int axis,
+    std::optional<std::string> const &maybe_name) {
+  // NOT_IMPLEMENTED
+  tensor_guid_t dummy_output = tensors.at(0);
+  return dummy_output;
+}
+
 } // namespace FlexFlow
