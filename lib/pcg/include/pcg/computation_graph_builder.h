@@ -189,7 +189,7 @@ public:
                      std::optional<std::string> const &name = std::nullopt);
   // Add a softmax layer
   tensor_guid_t softmax(tensor_guid_t const &input,
-                        int dim = -1,
+                        std::optional<int> dim = std::nullopt,
                         std::optional<std::string> const &name = std::nullopt);
   // Create input tensors and constants
   tensor_guid_t
@@ -244,7 +244,9 @@ public:
 private:
   TensorShape get_shape(tensor_guid_t const &) const;
 
-  tensor_guid_t broadcast(tensor_guid_t const &, TensorShape const &);
+  tensor_guid_t broadcast(tensor_guid_t const &,
+                          TensorShape const &,
+                          std::string const &);
 
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
 

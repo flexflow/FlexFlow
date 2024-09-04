@@ -2,6 +2,7 @@
 #include "local-execution/local_cpu_allocator.h"
 #include "local-execution/local_task_argument_accessor.h"
 #include "local-execution/task_signature_impl.h"
+#include "utils/fmt/variant.h"
 
 namespace FlexFlow {
 

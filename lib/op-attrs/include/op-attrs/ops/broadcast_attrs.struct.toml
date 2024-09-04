@@ -10,9 +10,9 @@ features = [
 ]
 
 includes = [
-  "utils/stack_vector.h",
+  "op-attrs/tensor_dims.dtg.h",
 ]
 
 [[fields]]
 name = "target_dims"
-type = "::FlexFlow::stack_vector<int, MAX_TENSOR_DIM>"
+type = "::FlexFlow::TensorDims"

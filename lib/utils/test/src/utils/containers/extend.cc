@@ -1,4 +1,6 @@
 #include "utils/containers/extend.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

@@ -1,4 +1,6 @@
 #include "utils/containers/intersection.h"
+#include "utils/fmt/optional.h"
+#include "utils/fmt/unordered_set.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
