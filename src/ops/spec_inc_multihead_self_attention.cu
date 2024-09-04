@@ -239,9 +239,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
-  // phase 1: Implement kernel to compute KQV for input tokens
-
-  // long long time_1 = Realm::Clock::current_time_in_microseconds(), time_2;
+  // phase 1: Compute QKV Projections of the batch
   compute_qkv(m,
               bc,
               shard_id,
@@ -251,16 +249,29 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
               bias_ptr,
               stream);
 
-  apply_pos_encoding(m,
-                     bc,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     stream);
+  // phase 2: First maintain the streaming cache, because it need
+  // pre-pos-encoding values
+  if (m->streaming_cache) {
+    // Move pre-pos-encoding cache to where took by attention
+    update_kv_in_streaming_cache<DT>(m, bc, stream);
+    // Apply pos-encoding to those k values
+    apply_pos_encoding_to_streaming_proj<DT>(m, bc, stream);
+    // Commit to the streaming cache
+    if (bc->prompt_phase) {
+      commit_kv<DT>(m, bc, stream);
+    }
+  }
 
-  // phase 2: Update key/val cache
-  update_qkv_in_batch<DT>(m, bc, stream);
+  // phase 3: Take care of the batch
+  {
+    // Apply pos-encoding to the batch
+    apply_pos_encoding_to_tokens_in_batch(
+        m, bc, static_cast<DT *>(m->devQKVProjArray), stream);
+    // Move the batch qkv values to where took by attention
+    update_qkv_in_batch<DT>(m, bc, stream);
+  }
 
-  // phase 3: Compute attention score
-  // 3 kernels for pahse 3: matmul1 - softmax - matmal2
+  // phase 4: Attention computation
   tree_search_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   // Debug output:
@@ -283,14 +294,10 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta *m,
 
   //   delete[] temp_output;
 
-  // compute output production and bias together for all tokens
+  // phase 5: Compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
-
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
-  // time_2 = Realm::Clock::current_time_in_microseconds();
-  // std::cout << "SpecIncMultiHeadSelfAttention kernel time: "
-  //           << (time_2 - time_1) << "us" << std::endl;
 }
 
 } // namespace SpecIncMultiHeadSelfAttention

@@ -296,6 +296,9 @@ void StreamingCacheInfo::reset_cache() {
 }
 
 int StreamingCacheInfo::global_2_cache_index(int global_index) {
+  if (global_index < sink_cache_size) {
+    return global_index;
+  }
   return (global_index - sink_cache_size) % window_cache_size + sink_cache_size;
 }
 

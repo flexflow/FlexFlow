@@ -357,10 +357,12 @@ RequestManager::RequestGuid
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
     assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
     init_token_tree(request.guid);
-    request.streaming_cache_info = StreamingCacheInfo(
-        BatchConfig::SINK_SIZE,
-        BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
   }
+
+  request.streaming_cache_info = StreamingCacheInfo(
+      BatchConfig::SINK_SIZE,
+      BatchConfig::MAX_STREAMING_POS - BatchConfig::SINK_SIZE -
+          BatchConfig::get_max_tree_depth());
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
@@ -419,10 +421,12 @@ RequestManager::RequestGuid
     std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
     assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
     init_token_tree(request.guid);
-    request.streaming_cache_info = StreamingCacheInfo(
-        BatchConfig::SINK_SIZE,
-        BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
   }
+
+  request.streaming_cache_info = StreamingCacheInfo(
+      BatchConfig::SINK_SIZE,
+      BatchConfig::MAX_STREAMING_POS - BatchConfig::SINK_SIZE -
+          BatchConfig::get_max_tree_depth());
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
@@ -845,7 +849,6 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     int guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    request.llm_cache_size++;
     if (streaming_cache) {
       request.streaming_cache_info.commit_cache(1);
       request.llm_cache_size = request.streaming_cache_info.commit_len;

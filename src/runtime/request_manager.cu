@@ -78,7 +78,17 @@ void RequestManager::load_tokens_task(
   }
 }
 
-// NOTE: qk_indptr is accumulative `ceil(qk_len / 8)`
+// q_indptr: the start offset of q in the batch for each request,
+//           the length is `num_requests + 1`: [0, num_q_0, num_q_0 + num_q_1,
+//           ..., num_q_0 + num_q_1 + ... + num_q_{num_requests - 1}]
+// kv_indptr: the start offset of kv page_indices for each request,
+//            the length is `num_requests + 1`.
+// kv_indices: the page indices for kv, the length is `num_kv_pages`.
+// kv_last_page_len: the cache length in the last page for each request,
+//                   the length is `num_requests`.
+// qk_indptr: the start offset of custom_mask in the flattened mask for each
+//            request, the length is `num_requests + 1`. It can be calculated as
+//            accumulative `ceil(qk_len / 8)`.
 __global__ void
     prepare_inference_params_kernel(int const num_requests,
                                     BatchConfig::PerRequestInfo *request_infos,
@@ -169,7 +179,8 @@ __global__ void
 
   int const q_length = request_infos[requext_idx_in_batch].num_tokens_in_batch,
             q_start = request_infos[requext_idx_in_batch]
-                          .first_token_index_in_request - causal_mask.non_tree_cache_size,
+                          .first_token_index_in_request -
+                      causal_mask.non_tree_cache_size,
             non_tree_cache_size = causal_mask.non_tree_cache_size;
 
   uint8_t packed_bits = 0;
@@ -239,13 +250,12 @@ void RequestManager::load_batch_config_task(
                             stream));
   total_copy_size += sizeof(BatchConfig::request_available);
 
-  for (int request_idx = 0;
-   request_idx < BatchConfig::max_requests_per_batch();
+  for (int request_idx = 0; request_idx < BatchConfig::max_requests_per_batch();
        request_idx++) {
     if (batch_config->request_available[request_idx]) {
       checkCUDA(cudaMemcpyAsync(
-          static_cast<char *>(handle.batch_config_metadata) + 
-          total_copy_size + request_idx * sizeof(BatchConfig::BitMask),
+          static_cast<char *>(handle.batch_config_metadata) + total_copy_size +
+              request_idx * sizeof(BatchConfig::BitMask),
           &(batch_config->causalMask[request_idx]),
           sizeof(BatchConfig::BitMask),
           cudaMemcpyHostToDevice,
@@ -273,8 +283,8 @@ void RequestManager::load_batch_config_task(
   }
   total_copy_size += sizeof(BatchConfig::committed_tokens);
 
-  checkCUDA(cudaMemcpyAsync(
-    static_cast<char *>(handle.batch_config_metadata) + total_copy_size,
+  checkCUDA(cudaMemcpyAsync(static_cast<char *>(handle.batch_config_metadata) +
+                                total_copy_size,
                             &(batch_config->num_tokens_to_commit),
                             sizeof(int),
                             cudaMemcpyHostToDevice,
