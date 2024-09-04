@@ -2419,6 +2419,7 @@ void RequestManager::terminate_background_server() {
     mean_generated_tokens /= profiling.generated_tokens_per_step.size();
     mean_generated_tokens_per_step += std::to_string(mean_generated_tokens);
     mean_generated_tokens_per_step += ")";
+    str += mean_generated_tokens_per_step;
 
     write_to_output_file("", str);
     background_server_status = TERMINATED;
