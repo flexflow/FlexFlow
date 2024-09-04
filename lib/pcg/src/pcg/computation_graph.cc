@@ -6,6 +6,8 @@
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
 
 namespace FlexFlow {
 
@@ -55,6 +57,38 @@ std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n) {
   return transform(get_input_values(cg.raw_graph, n.raw_node),
                    [](DataflowOutput const &o) { return tensor_guid_t{o}; });
+}
+
+std::unordered_set<ComputationGraphEdge> get_subgraph_incoming_edges(
+    ComputationGraph const &cg,
+    std::unordered_set<layer_guid_t> const &subgraph_nodes) {
+
+  std::unordered_set<Node> raw_subgraph_nodes =
+      transform(subgraph_nodes, [](layer_guid_t const &l) {
+        return l.raw_node;
+      });
+  std::unordered_set<DataflowEdge> raw_incoming_edges =
+      get_subgraph_incoming_edges(cg.raw_graph, raw_subgraph_nodes);
+
+  return transform(raw_incoming_edges, [](DataflowEdge const &e) {
+    return ComputationGraphEdge{e};
+  });
+}
+
+std::unordered_set<ComputationGraphEdge> get_subgraph_outgoing_edges(
+    ComputationGraph const &cg,
+    std::unordered_set<layer_guid_t> const &subgraph_nodes) {
+
+  std::unordered_set<Node> raw_subgraph_nodes =
+      transform(subgraph_nodes, [](layer_guid_t const &l) {
+        return l.raw_node;
+      });
+  std::unordered_set<DataflowEdge> raw_outgoing_edges =
+      get_subgraph_outgoing_edges(cg.raw_graph, raw_subgraph_nodes);
+
+  return transform(raw_outgoing_edges, [](DataflowEdge const &e) {
+    return ComputationGraphEdge{e};
+  });
 }
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n) {

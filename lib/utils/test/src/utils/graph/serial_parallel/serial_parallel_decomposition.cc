@@ -1,6 +1,6 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
-#include "utils/fmt/unordered_set.h"
 #include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/unordered_multiset.h"
 
 using namespace ::FlexFlow;
 
@@ -77,18 +77,18 @@ TEST_SUITE(FF_TEST_SUITE) {
                 Node{1},
                 Node{2},
             }},
-            Node{3},
+            Node{2},
             ParallelSplit{{
                 Node{4},
                 Node{5},
             }},
         }}};
 
-    std::unordered_set<Node> result = get_nodes(input);
-    std::unordered_set<Node> correct = {
+    std::unordered_multiset<Node> result = get_nodes(input);
+    std::unordered_multiset<Node> correct = {
         Node{1},
         Node{2},
-        Node{3},
+        Node{2},
         Node{4},
         Node{5},
     };
@@ -106,19 +106,19 @@ TEST_SUITE(FF_TEST_SUITE) {
             }},
         }},
         SerialSplit{{
-            Node{5},
+            Node{1},
             Node{6},
         }},
         Node{7},
     }};
 
-    std::unordered_set<Node> result = get_nodes(input);
-    std::unordered_set<Node> correct = {
+    std::unordered_multiset<Node> result = get_nodes(input);
+    std::unordered_multiset<Node> correct = {
         Node{1},
         Node{2},
         Node{3},
         Node{4},
-        Node{5},
+        Node{1},
         Node{6},
         Node{7},
     };
@@ -131,7 +131,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         Node{1},
         SerialSplit{{
             Node{2},
-            Node{3},
+            Node{4},
             ParallelSplit{{
                 Node{4},
                 Node{5},
@@ -139,11 +139,11 @@ TEST_SUITE(FF_TEST_SUITE) {
         }},
     }};
 
-    std::unordered_set<Node> result = get_nodes(input);
-    std::unordered_set<Node> correct = {
+    std::unordered_multiset<Node> result = get_nodes(input);
+    std::unordered_multiset<Node> correct = {
         Node{1},
         Node{2},
-        Node{3},
+        Node{4},
         Node{4},
         Node{5},
     };
@@ -153,8 +153,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("get_nodes(Node)") {
     Node input = Node{5};
-    std::unordered_set<Node> result = get_nodes(input);
-    std::unordered_set<Node> correct = {input};
+    std::unordered_multiset<Node> result = get_nodes(input);
+    std::unordered_multiset<Node> correct = {input};
     CHECK(result == correct);
   }
 }

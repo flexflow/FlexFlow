@@ -275,9 +275,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == std::vector<int>({2, 4, 6}));
   }
 
-  TEST_CASE("as_vector") {
+  TEST_CASE("vector_of") {
     std::unordered_set<int> s = {1, 2, 3};
-    std::vector<int> result = as_vector(s);
+    std::vector<int> result = vector_of(s);
     CHECK(result == std::vector<int>({3, 2, 1}));
   }
 

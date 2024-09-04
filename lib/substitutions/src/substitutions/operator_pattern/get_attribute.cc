@@ -1,6 +1,6 @@
 #include "substitutions/operator_pattern/get_attribute.h"
 #include "op-attrs/get_op_type.h"
-#include "utils/containers/as_vector.h"
+#include "utils/containers/vector_of.h"
 
 namespace FlexFlow {
 
@@ -364,7 +364,7 @@ std::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
     case OperatorAttributeKey::PERMUTATION:
-      return as_vector(p.perm);
+      return vector_of(p.perm);
     default:
       return std::nullopt;
   }

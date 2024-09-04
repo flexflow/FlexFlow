@@ -229,7 +229,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(num_replicate_attrs == 2);
 
     parallel_layer_guid_t conv_guid = get_only(without_nullopts(transform(
-        as_vector(items(layers)),
+        vector_of(items(layers)),
         [](std::pair<parallel_layer_guid_t, ParallelLayerAttrs> const &kv)
             -> std::optional<parallel_layer_guid_t> {
           if (get_op_type(kv.second) == OperatorType::CONV2D) {

@@ -1,22 +1,49 @@
+#include "pcg/computation_graph/computation_graph_edge.h"
 #include "pcg/file_format/v1/v1_computation_graph.h"
 #include "utils/cli/cli_spec.h"
 #include "utils/exception.h"
 #include "utils/cli/cli_parse_result.h"
 #include "models/transformer.h"
+#include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
+#include "utils/graph/instances/adjacency_digraph.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/left_associative_binary_sp_tree_from_nary.h"
+#include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
+#include "pcg/computation_graph.h"
 
 using namespace ::FlexFlow;
 
+SerialParallelDecomposition get_computation_graph_serial_parallel_decomposition(ComputationGraph const &cg) {
+  std::unordered_set<layer_guid_t> weight_and_input_layers = filter(get_layers(cg), [&](layer_guid_t const &l) {  
+    ComputationGraphOpAttrs op_attrs = get_layer_attrs(cg, l).attrs;
+    return op_attrs.has<WeightAttrs>() || op_attrs.has<InputAttrs>();
+  });
+
+  std::unordered_set<layer_guid_t> weight_and_input_layer_successors = transform(
+      get_subgraph_outgoing_edges(cg, weight_and_input_layers),
+      get_computation_graph_edge_dst_layer);
+
+  DiGraphView preprocessed_digraph = [&] {
+    DiGraph digraph = materialize_digraph_view<AdjacencyDiGraph>(cg.raw_graph);
+    for (layer_guid_t const &src : weight_and_input_layers) {
+      for (layer_guid_t const &dst : weight_and_input_layer_successors) {
+        digraph.add_edge(DirectedEdge{src.raw_node, dst.raw_node});
+      }
+    }
+    return digraph;
+  }();
+
+  SerialParallelDecomposition sp_decomposition = get_serial_parallel_decomposition(preprocessed_digraph).value();
+  
+  return sp_decomposition;
+}
+
+BinarySPDecompositionTree get_computation_graph_left_assoc_sp_decomposition(ComputationGraph const &cg) {
+  return left_associative_binary_sp_tree_from_nary(get_computation_graph_serial_parallel_decomposition(cg));
+}
+
 ComputationGraph get_default_transformer_computation_graph() {
-  TransformerConfig config = TransformerConfig{/*num_features=*/512,
-                                               /*sequence_length=*/512,
-                                               /*batch_size=*/64,
-                                               /*dim_feedforward=*/2048,
-                                               /*num_heads=*/8,
-                                               /*num_encoder_layers=*/6,
-                                               /*num_decoder_layers=*/6,
-                                               /*dropout=*/0.1,
-                                               /*layer_norm_eps=*/1e-05,
-                                               /*vocab_size=*/64};
+  TransformerConfig config = get_default_transformer_config();
   ComputationGraph cg = get_transformer_computation_graph(config);
   
   return cg;
@@ -53,8 +80,10 @@ int main(int argc, char **argv) {
   }
 
   ComputationGraph cg = get_model_computation_graph(model_name);
+  BinarySPDecompositionTree sp_decomposition = get_computation_graph_left_assoc_sp_decomposition(cg);
 
-  nlohmann::json j = to_v1(cg);
+  // nlohmann::json j = to_v1(cg);
+  nlohmann::json j = sp_decomposition;
 
   std::cout << j.dump(2) << std::endl;
 

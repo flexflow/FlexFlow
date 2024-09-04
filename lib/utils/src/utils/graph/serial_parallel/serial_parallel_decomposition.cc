@@ -1,7 +1,9 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
+#include "utils/containers/multiset_union.h"
 #include "utils/containers/set_union.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/unordered_set_of.h"
+#include "utils/containers/vector_of.h"
 #include "utils/graph/serial_parallel/intermediate_sp_decomposition_tree.h"
 #include "utils/hash/unordered_set.h"
 #include "utils/variant.h"
@@ -46,28 +48,28 @@ SerialParallelDecomposition to_final_ast(
                     internal_to_final_ast(ast));
 }
 
-std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
-  return sp.visit<std::unordered_set<Node>>(
+std::unordered_multiset<Node> get_nodes(SerialParallelDecomposition const &sp) {
+  return sp.visit<std::unordered_multiset<Node>>(
       [](auto &&t) { return get_nodes(t); });
 }
 
-std::unordered_set<Node> get_nodes(SerialSplit const &serial) {
-  return set_union(transform(
+std::unordered_multiset<Node> get_nodes(SerialSplit const &serial) {
+  return multiset_union(transform(
       serial.children,
       [](std::variant<ParallelSplit, Node> const &child)
-          -> std::unordered_set<Node> {
+          -> std::unordered_multiset<Node> {
         return std::visit([](auto &&t) { return get_nodes(t); }, child);
       }));
 }
 
-std::unordered_set<Node> get_nodes(ParallelSplit const &parallel) {
-  return set_union(transform(
-      parallel.children, [](std::variant<SerialSplit, Node> const &child) {
+std::unordered_multiset<Node> get_nodes(ParallelSplit const &parallel) {
+  return multiset_union(transform(
+      vector_of(parallel.children), [](std::variant<SerialSplit, Node> const &child) {
         return std::visit([](auto &&t) { return get_nodes(t); }, child);
       }));
 }
 
-std::unordered_set<Node> get_nodes(Node const &node) {
+std::unordered_multiset<Node> get_nodes(Node const &node) {
   return {node};
 }
 

@@ -6,6 +6,8 @@
 #include "utils/graph/instances/adjacency_multidigraph.h"
 #include "utils/graph/multidigraph/algorithms/get_edges.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/nary_sp_tree_from_binary.h"
 #include "utils/graph/serial_parallel/parallel_reduction.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
 #include "utils/graph/serial_parallel/series_reduction.h"
@@ -28,12 +30,12 @@ std::optional<SerialParallelDecomposition>
   MultiDiGraph ttsp = MultiDiGraph::materialize_copy_of<AdjacencyMultiDiGraph>(
       inverse_line_graph_result.graph);
   std::unordered_map<MultiDiEdge,
-                     std::variant<IntermediateSpDecompositionTree, Node>>
+                     BinarySPDecompositionTree>
       ttsp_edge_to_sp_tree = map_values(
           inverse_line_graph_result.inverse_edge_to_line_node_bidict
               .as_unordered_map(),
           [](Node const &n) {
-            return std::variant<IntermediateSpDecompositionTree, Node>{n};
+            return BinarySPDecompositionTree{n};
           });
 
   while (true) {
@@ -44,10 +46,12 @@ std::optional<SerialParallelDecomposition>
       ParallelReduction parallel_reduction = maybe_parallel_reduction.value();
       auto [e1, e2] = parallel_reduction.edges.ordered();
       MultiDiEdge merged = apply_parallel_reduction(ttsp, parallel_reduction);
-      std::variant<IntermediateSpDecompositionTree, Node> new_tree =
-          IntermediateSpDecompositionTree{
-              SplitType::PARALLEL,
-              {ttsp_edge_to_sp_tree.at(e1), ttsp_edge_to_sp_tree.at(e2)},
+      BinarySPDecompositionTree new_tree =
+          BinarySPDecompositionTree{
+            BinaryParallelSplit{
+              ttsp_edge_to_sp_tree.at(e1), 
+              ttsp_edge_to_sp_tree.at(e2),
+            },
           };
       ttsp_edge_to_sp_tree.erase(e1);
       ttsp_edge_to_sp_tree.erase(e2);
@@ -63,10 +67,12 @@ std::optional<SerialParallelDecomposition>
       MultiDiEdge e1 = series_reduction.first;
       MultiDiEdge e2 = series_reduction.second;
       MultiDiEdge merged = apply_series_reduction(ttsp, series_reduction);
-      std::variant<IntermediateSpDecompositionTree, Node> new_tree =
-          IntermediateSpDecompositionTree{
-              SplitType::SERIAL,
-              {ttsp_edge_to_sp_tree.at(e1), ttsp_edge_to_sp_tree.at(e2)},
+      BinarySPDecompositionTree new_tree =
+          BinarySPDecompositionTree{
+            BinarySeriesSplit{
+              ttsp_edge_to_sp_tree.at(e1), 
+              ttsp_edge_to_sp_tree.at(e2),
+            },
           };
       ttsp_edge_to_sp_tree.erase(e1);
       ttsp_edge_to_sp_tree.erase(e2);
@@ -83,7 +89,7 @@ std::optional<SerialParallelDecomposition>
 
     MultiDiEdge e = get_only(get_edges(ttsp));
     if (ttsp.get_multidiedge_src(e) != ttsp.get_multidiedge_dst(e)) {
-      return to_final_ast(ttsp_edge_to_sp_tree.at(e));
+      return nary_sp_tree_from_binary(ttsp_edge_to_sp_tree.at(e));
     }
   }
 }

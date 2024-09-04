@@ -1,5 +1,5 @@
 #include "utils/graph/digraph/algorithms/get_imm_dominators_map.h"
-#include "utils/containers/as_vector.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/filter_values.h"
 #include "utils/containers/generate_map.h"
@@ -22,8 +22,8 @@ std::unordered_map<Node, std::optional<Node>>
     std::unordered_set<Node> n_dominators = node_to_its_dominators.at(n);
     n_dominators.erase(n);
     std::vector<Node> recursive_dominator_list = concat_vectors(
-        transform(as_vector(n_dominators), [&](Node const &dominator) {
-          return as_vector(node_to_its_dominators.at(dominator));
+        transform(vector_of(n_dominators), [&](Node const &dominator) {
+          return vector_of(node_to_its_dominators.at(dominator));
         }));
     std::unordered_map<Node, int> dominator_counts =
         get_element_counts(recursive_dominator_list);

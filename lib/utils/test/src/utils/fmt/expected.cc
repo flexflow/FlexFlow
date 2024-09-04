@@ -1,5 +1,6 @@
 #include "utils/fmt/expected.h"
 #include <doctest/doctest.h>
+#include "test/utils/doctest/fmt/expected.h"
 
 using namespace ::FlexFlow;
 
@@ -16,26 +17,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       tl::expected<int, std::string> input = tl::unexpected("hello world");
       std::string result = fmt::to_string(input);
       std::string correct = "unexpected(hello world)";
-      CHECK(result == correct);
-    }
-  }
-
-  TEST_CASE("doctest::toString(tl::expected)") {
-    SUBCASE("has expected") {
-      tl::expected<int, std::string> input = 3;
-
-      doctest::String result = doctest::toString(input);
-      doctest::String correct = "expected(3)";
-
-      CHECK(result == correct);
-    }
-
-    SUBCASE("has unexpected") {
-      tl::expected<int, std::string> input = tl::make_unexpected("error");
-
-      doctest::String result = doctest::toString(input);
-      doctest::String correct = "unexpected(error)";
-
       CHECK(result == correct);
     }
   }

@@ -3,7 +3,7 @@
 #include "op-attrs/replica_parallel_dim_set.h"
 #include "op-attrs/shard_parallel_dim.dtg.h"
 #include "utils/containers/all_of.h"
-#include "utils/containers/as_vector.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/zip.h"
@@ -33,8 +33,8 @@ bool tensor_dims_is_broadcastable_to(TensorDims const &curr,
     return false;
   }
 
-  std::vector<size_t> curr_dims = as_vector(curr.ff_ordered);
-  std::vector<size_t> goal_dims = as_vector(goal.ff_ordered);
+  std::vector<size_t> curr_dims = vector_of(curr.ff_ordered);
+  std::vector<size_t> goal_dims = vector_of(goal.ff_ordered);
 
   for (auto const &[curr_dim, goal_dim] :
        zip(reversed(curr_dims), reversed(goal_dims))) {
@@ -72,7 +72,7 @@ ParallelTensorDims
                                   DiscardCopyDegree discard_copy_degree,
                                   FFOrdered<int> const &shard_degrees) {
   std::vector<ShardParallelDim> lifted =
-      transform(zip(as_vector(dims.ff_ordered), as_vector(shard_degrees)),
+      transform(zip(vector_of(dims.ff_ordered), vector_of(shard_degrees)),
                 [](std::pair<size_t, int> const &p) {
                   size_t size = p.first;
                   int degree = p.second;

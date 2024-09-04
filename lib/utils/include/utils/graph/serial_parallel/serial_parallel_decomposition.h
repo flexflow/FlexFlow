@@ -12,10 +12,10 @@ std::variant<SerialSplit, ParallelSplit, Node> internal_to_final_ast(
 SerialParallelDecomposition
     to_final_ast(std::variant<IntermediateSpDecompositionTree, Node> const &);
 
-std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp);
-std::unordered_set<Node> get_nodes(SerialSplit const &);
-std::unordered_set<Node> get_nodes(ParallelSplit const &);
-std::unordered_set<Node> get_nodes(Node const &);
+std::unordered_multiset<Node> get_nodes(SerialParallelDecomposition const &sp);
+std::unordered_multiset<Node> get_nodes(SerialSplit const &);
+std::unordered_multiset<Node> get_nodes(ParallelSplit const &);
+std::unordered_multiset<Node> get_nodes(Node const &);
 
 } // namespace FlexFlow
 

@@ -2,7 +2,7 @@
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_SLICE_H
 
 #include "op-attrs/dim_ordered.h"
-#include "utils/containers/as_vector.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/subvec.h"
 #include "utils/containers/transform.h"
 #include "utils/optional.h"
@@ -18,7 +18,7 @@ DimOrdered<Idx, T> nonoverloaded_slice(DimOrdered<Idx, T> const &d,
   };
 
   return DimOrdered<Idx, T>{
-      subvec(as_vector(d), to_raw_idx(start), to_raw_idx(end))};
+      subvec(vector_of(d), to_raw_idx(start), to_raw_idx(end))};
 }
 
 template <typename Idx, typename T>
