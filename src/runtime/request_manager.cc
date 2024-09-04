@@ -309,7 +309,8 @@ RequestManager::RequestGuid
 
   request.streaming_cache_info = StreamingCacheInfo(
       BatchConfig::SINK_SIZE,
-      BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
+      BatchConfig::MAX_STREAMING_POS - BatchConfig::SINK_SIZE -
+          BatchConfig::get_max_tree_depth());
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
@@ -372,7 +373,8 @@ RequestManager::RequestGuid
 
   request.streaming_cache_info = StreamingCacheInfo(
       BatchConfig::SINK_SIZE,
-      BatchConfig::MAX_STREAMING_POS - BatchConfig::get_max_tree_depth());
+      BatchConfig::MAX_STREAMING_POS - BatchConfig::SINK_SIZE -
+          BatchConfig::get_max_tree_depth());
 
   pending_request_queue.push(request);
   all_requests[request.guid] = request;
@@ -745,7 +747,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   }
   prefill_request->llm_prefill_len += prefill_request->num_tokens_in_batch;
 
-  if (prefill_request->llm_cache_size == prefill_request->tokens.size()) {
+  if (prefill_request->llm_prefill_len == prefill_request->tokens.size()) {
     // Indicates that the LLM prefilling phase finishes
     prefill_request->tokens.push_back(
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
