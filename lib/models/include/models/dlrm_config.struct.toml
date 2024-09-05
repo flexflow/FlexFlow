@@ -1,0 +1,15 @@
+namespace = "FlexFlow"
+name = "DLRMConfig"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "batch_size"
+type = "size_t"
