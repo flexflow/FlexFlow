@@ -68,6 +68,8 @@ struct Request {
   int batch_index = -1;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
+  int ssm_prefill_len = 0;
+  int llm_prefill_len = 0;
 
   int first_token_offset_in_batch = 0;
   int num_tokens_in_batch = 0;
@@ -120,6 +122,20 @@ struct Request {
         : from_index(from_index), to_index(to_index), token_id(token_id) {}
   };
   std::vector<CommittedToken> committed_tokens;
+
+  // Enabling Streaming KVCache means we doesn't store the whole KV sequence of
+  // the tokens in a request. Instead, we only store the sink cache (a few
+  // foremost tokens) and the window cache (rolling-updated backmost tokens
+  // through decoding). Currently, we only use streaming cache in the *draft
+  // model* calculation.
+  // - Maintain the streaming cache: During inference, we
+  // first fill up the sink cache then the window cache. After the window cache
+  // is full, we move back to the beginning of the window cache and commit the
+  // tokens in replace there.
+  // - When to update the streaming cache:
+  // 1. Prefilling phase
+  // 2. Committing phase after the target model verification
+  StreamingCacheInfo streaming_cache_info;
 };
 
 class TokenTreeNode {
@@ -244,6 +260,7 @@ public:
   int get_max_tree_width();
   void set_max_tree_width(int max_tree_width);
   void set_speculative_sampling(bool speculative_sampling);
+  void set_streaming_cache(bool streaming_cache);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -318,6 +335,8 @@ private:
   DecodingMode decoding_mode;
   PrefillModel prefill_model;
   bool speculative_sampling = false;
+  // specify if enable streaming cache for incremental decoding or draft model
+  bool streaming_cache = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;

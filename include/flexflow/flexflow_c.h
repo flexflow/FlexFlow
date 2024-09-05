@@ -448,6 +448,7 @@ flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
@@ -468,6 +469,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multihead_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_inc_multihead_self_attention_verify(
@@ -509,6 +511,7 @@ flexflow_tensor_t flexflow_model_add_groupquery_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
@@ -530,6 +533,7 @@ flexflow_tensor_t flexflow_model_add_spec_inc_multiquery_self_attention(
     float scaling_factor,
     bool qk_prod_scaling,
     bool position_bias,
+    bool streaming_cache,
     char const *name);
 
 flexflow_tensor_t flexflow_model_add_inc_multiquery_self_attention_verify(

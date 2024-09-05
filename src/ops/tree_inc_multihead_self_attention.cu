@@ -111,9 +111,8 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
   //   cudaEventRecord(t_start, stream);
 
   int const max_num_pages =
-      (BatchConfig::max_sequence_length() +
-       BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-      kPagesize;
+      round_up_pages(BatchConfig::max_sequence_length() +
+                     BatchConfig::max_spec_tree_token_num());
   int const num_requests = bc->num_active_requests();
   int parallelism = m->num_kv_heads * m->qk_dim * num_requests;
   commit_tokens_kernel<<<GET_BLOCKS(parallelism),
@@ -401,6 +400,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
               bias_ptr,
               stream);
 
+  apply_pos_encoding_to_tokens_in_batch(
+      m, bc, static_cast<DT *>(m->devQKVProjArray), stream);
+
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
   //   elapsed = 0;
@@ -416,7 +418,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   //   cudaEventRecord(t_start, stream);
 
   // Update key-val cache, compact q array
-  update_qkv_cache<DT>(m, bc, stream);
+  update_qkv_in_batch<DT>(m, bc, stream);
 
   //   cudaEventRecord(t_end, stream);
   //   checkCUDA(cudaEventSynchronize(t_end));
@@ -613,7 +615,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     _num_q_heads,
                                     _num_kv_heads,
                                     attn->quantization_type,
-                                    attn->offload),
+                                    attn->offload,
+                                    false),
       num_active_tokens(0) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -633,7 +636,8 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
             sizeof(BatchConfig::tokensInfo) +
             sizeof(BatchConfig::requestsInfo) +
             sizeof(BatchConfig::request_available) +
-            sizeof(BatchConfig::causalMask));
+            sizeof(BatchConfig::causalMask) +
+            sizeof(BatchConfig::streamingCacheInfo));
     num_tokens_to_commit = reinterpret_cast<int *>(
         reinterpret_cast<char *>(committed_token_infos) +
         sizeof(BatchConfig::committed_tokens));

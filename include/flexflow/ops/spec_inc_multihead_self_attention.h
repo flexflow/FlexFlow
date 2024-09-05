@@ -42,6 +42,7 @@ public:
                                 bool _qk_prod_scaling,
                                 bool _position_bias,
                                 bool allocate_weights,
+                                bool _streaming_cache,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 ParallelTensor const _input,
@@ -61,6 +62,7 @@ public:
                                 bool _qk_prod_scaling,
                                 bool _position_bias,
                                 bool allocate_weights,
+                                bool _streaming_cache,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 SpecIncMultiHeadSelfAttention const &other,
@@ -124,6 +126,7 @@ public:
       qk_prod_scaling, position_bias;
   int hidden_size, qk_dim, v_dim, o_dim;
   int qoSeqLength, kvSeqLength;
+  bool streaming_cache;
 };
 
 class SpecIncMultiHeadSelfAttentionMeta : public IncMultiHeadSelfAttentionMeta {

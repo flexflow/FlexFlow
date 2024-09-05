@@ -25,6 +25,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                                std::string const &weight_file_path,
                                InferenceMode mode,
                                GenerationConfig generation_config,
+                               bool streaming_cache,
                                bool use_full_precision) {
   // do not apply cpu offload in beam search model.
   LLAMAConfig llama_config(model_config_file_path);
@@ -112,6 +113,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
             false,   /*position_bias*/
+            streaming_cache,
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
@@ -149,17 +151,18 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
-            0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
-            false,   /*add_zero_attn*/
-            DT_NONE, /*data_type*/
-            nullptr, /*kernel_initializer*/
-            true,    /*apply_rotary_embedding*/
-            false,   /*scaling query*/
-            1.0f,    /*scaling factor*/
-            true,    /*qk_prod_scaling*/
-            false,   /*position_bias*/
+            0.0f,            /*dropout*/
+            false,           /*qkv_bias*/
+            false,           /*final_bias*/
+            false,           /*add_zero_attn*/
+            DT_NONE,         /*data_type*/
+            nullptr,         /*kernel_initializer*/
+            true,            /*apply_rotary_embedding*/
+            false,           /*scaling query*/
+            1.0f,            /*scaling factor*/
+            true,            /*qk_prod_scaling*/
+            false,           /*position_bias*/
+            streaming_cache, /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );

@@ -246,7 +246,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
     bias_ptr = static_cast<DT *>(m->bias_ptr);
   }
 
-  // phase 1: Implement kernel to compute KQV for input tokens
+  // phase 1: Compute QKV Projections of the batch
   compute_qkv(m,
               bc,
               shard_id,
@@ -255,52 +255,31 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
               static_cast<DT *>(m->devQKVProjArray),
               bias_ptr,
               stream);
-  // phase 2: Update key/val cache
-  update_qkv_cache<DT>(m, bc, stream);
 
-  // cudaEventRecord(t_end, stream);
-  // checkCUDA(cudaEventSynchronize(t_end));
-  // float elapsed = 0;
-  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  // cudaEventDestroy(t_start);
-  // cudaEventDestroy(t_end);
-  // std::cout << "Prepare attn time: " << elapsed << " ms\n";
+  // phase 2: First maintain the streaming cache, because it need
+  // pre-pos-encoding values
+  if (m->streaming_cache) {
+    // Move pre-pos-encoding cache to where took by attention
+    update_kv_in_streaming_cache<DT>(m, bc, stream);
+    // Apply pos-encoding to those k values
+    apply_pos_encoding_to_streaming_proj<DT>(m, bc, stream);
+    // Commit to the streaming cache
+    commit_kv<DT>(m, bc, stream);
+  }
 
-  // cudaEventCreate(&t_start);
-  // cudaEventCreate(&t_end);
-  // cudaEventRecord(t_start, stream);
+  // phase 3: Take care of the batch
+  {
+    // Apply pos-encoding to the batch
+    apply_pos_encoding_to_tokens_in_batch(
+        m, bc, static_cast<DT *>(m->devQKVProjArray), stream);
+    // Move the batch qkv values to where took by attention
+    update_qkv_in_batch<DT>(m, bc, stream);
+  }
 
-  // phase 3: Compute attention score
+  // phase 4: Attention computation
   incr_attention<DT>(m, bc, static_cast<DT *>(m->attn_heads), stream);
 
-  // cudaEventRecord(t_end, stream);
-  // checkCUDA(cudaEventSynchronize(t_end));
-  // elapsed = 0;
-  // checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
-  // cudaEventDestroy(t_start);
-  // cudaEventDestroy(t_end);
-  // std::cout << "Attn time: " << elapsed << " ms\n";
-
-  // Debug output:
-  //   int size = m->local_hidden_size * BatchConfig::max_tokens_per_batch();
-  //   float *temp_output = new float[size];
-  //   cudaDeviceSynchronize();
-  //   cudaMemcpy(
-  //       temp_output, m->attn_heads, size * sizeof(float),
-  //       cudaMemcpyDeviceToHost);
-  //   printf("Output: ");
-  //   float temp = 0;
-  //   for (int i = 0; i < 1; ++i) {
-  //     for (int j = 0; j < m->local_hidden_size; ++j) {
-  //       temp += temp_output[i * m->local_hidden_size + j];
-  //     }
-  //     printf("%.6f ", temp);
-  //   }
-  //   printf("\n");
-
-  //   delete[] temp_output;
-
-  // compute output production and bias together for all tokens
+  // phase 5: Compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
   compute_o_prod_bias(
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
@@ -409,7 +388,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     _num_q_heads,
                                     _num_kv_heads,
                                     attn->quantization_type,
-                                    attn->offload) {}
+                                    attn->offload,
+                                    attn->streaming_cache) {}
 
 IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     FFHandler handler,
@@ -434,7 +414,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _num_q_heads,
     int _num_kv_heads,
     DataType _quantization_type,
-    bool _offload)
+    bool _offload,
+    bool _streaming_cache)
     : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
@@ -447,6 +428,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   size_t size_of_dt = data_type_size(attn->data_type);
   quantization_type = _quantization_type;
   offload = _offload;
+  streaming_cache = _streaming_cache;
 
   global_num_q_heads = _global_num_q_heads;
   global_num_kv_heads = _global_num_kv_heads;
@@ -498,16 +480,15 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     size_t qkv_max_proj_size =
         max_tokens_per_batch *
         (qk_dim * num_q_heads + qk_dim * num_q_heads + v_dim * num_q_heads);
-    size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0,
-           qk_prod_size = 0;
+    size_t query_tmp_size = 0, key_cache_size = 0, value_cache_size = 0;
+    size_t streaming_pre_pos_enc_size = 0;
     // assert((BatchConfig::max_sequence_length() +
     //         BatchConfig::max_spec_tree_token_num()) %
     //            kPagesize ==
     //        0);
     size_t max_num_pages =
-        (BatchConfig::max_sequence_length() +
-         BatchConfig::max_spec_tree_token_num() + kPagesize - 1) /
-        kPagesize;
+        round_up_pages(BatchConfig::max_sequence_length() +
+                       BatchConfig::max_spec_tree_token_num());
     switch (infer_mode) {
       case INC_DECODING_MODE:
       case TREE_SEARCH_MODE:
@@ -515,14 +496,31 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         query_tmp_size =
             num_q_heads * qk_dim * BatchConfig::max_tokens_per_batch();
         // a K-ary tree max node is (k^n - 1) / 2
-        key_cache_size = num_q_heads * qk_dim *
+        key_cache_size = num_kv_heads * qk_dim *
                          BatchConfig::max_requests_per_batch() * max_num_pages *
                          kPagesize;
-        value_cache_size = num_q_heads * v_dim *
+        value_cache_size = num_kv_heads * v_dim *
                            BatchConfig::max_requests_per_batch() *
                            max_num_pages * kPagesize;
-        qk_prod_size = BatchConfig::max_sequence_length() * max_num_pages *
-                       kPagesize * num_q_heads;
+        if (streaming_cache) {
+          size_t max_post_pos_enc_pages =
+              round_up_pages(BatchConfig::MAX_STREAMING_POS -
+                             BatchConfig::get_max_tree_depth() +
+                             max(BatchConfig::max_tokens_per_batch(),
+                                 BatchConfig::max_spec_tree_token_num()));
+          key_cache_size = num_kv_heads * qk_dim *
+                           BatchConfig::max_requests_per_batch() *
+                           max_post_pos_enc_pages * kPagesize;
+          value_cache_size = num_kv_heads * v_dim *
+                             BatchConfig::max_requests_per_batch() *
+                             max_post_pos_enc_pages * kPagesize;
+          streaming_pre_pos_enc_size =
+              num_kv_heads * (qk_dim + v_dim) *
+              BatchConfig::max_requests_per_batch() *
+              round_up_pages(BatchConfig::MAX_STREAMING_POS -
+                             BatchConfig::get_max_tree_depth()) *
+              kPagesize;
+        }
         break;
       }
       default:
@@ -535,7 +533,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
         2;
     size_t totalSize =
         (qkv_max_proj_size + query_tmp_size + key_cache_size +
-         value_cache_size + 2 * qk_prod_size + attn_heads_size) *
+         value_cache_size + streaming_pre_pos_enc_size + attn_heads_size) *
             size_of_dt +
         output_tmp_size * data_type_size(DT_HALF) +
         complex_size * sizeof(cuFloatComplex); // more components will
@@ -544,19 +542,21 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       // assert that we have enough reserved work space left
       size_t totalSharedSize =
           infer_mode == TREE_VERIFY_MODE
-              ? totalSize - (query_tmp_size + key_cache_size +
-                             value_cache_size + qkv_max_proj_size) *
-                                size_of_dt
-              : totalSize -
-                    (query_tmp_size + key_cache_size + value_cache_size) *
-                        size_of_dt;
+              ? totalSize -
+                    (query_tmp_size + key_cache_size + value_cache_size +
+                     streaming_pre_pos_enc_size + qkv_max_proj_size) *
+                        size_of_dt
+              : totalSize - (query_tmp_size + key_cache_size +
+                             value_cache_size + streaming_pre_pos_enc_size) *
+                                size_of_dt;
 
       size_t instance_size =
           size_of_dt *
           (infer_mode == TREE_VERIFY_MODE
                ? query_tmp_size + key_cache_size + value_cache_size +
-                     qkv_max_proj_size
-               : query_tmp_size + key_cache_size + value_cache_size);
+                     streaming_pre_pos_enc_size + qkv_max_proj_size
+               : query_tmp_size + key_cache_size + value_cache_size +
+                     streaming_pre_pos_enc_size);
 
       if (quantization_type != DT_NONE) {
         totalSharedSize += quantized_weightSize;
@@ -585,6 +585,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     }
     kvCache = gpu_mem_allocator.allocate_instance_untyped(
         (key_cache_size + value_cache_size) * size_of_dt);
+    if (streaming_pre_pos_enc_size > 0) {
+      streamingPrePosEncBuf = gpu_mem_allocator.allocate_instance_untyped(
+          streaming_pre_pos_enc_size * size_of_dt);
+    }
     outputTmp = gpu_mem_allocator.allocate_instance<half>(output_tmp_size);
 
     token_infos =
@@ -595,18 +599,17 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     request_available = reinterpret_cast<bool *>(
         reinterpret_cast<char *>(handler.batch_config_metadata) +
         sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo));
+    streaming_cache_infos = reinterpret_cast<StreamingCacheInfo *>(
+        reinterpret_cast<char *>(handler.batch_config_metadata) +
+        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
+        sizeof(BatchConfig::request_available) +
+        sizeof(BatchConfig::causalMask));
 
     if (offload) {
       // token_infos =
       //     gpu_mem_allocator.allocate_reserved<BatchConfig::PerTokenInfo>(
       //         tokeninfo_size);
       // offset += sizeof(BatchConfig::PerTokenInfo) * tokeninfo_size;
-      qk_prods = gpu_mem_allocator.allocate_reserved_untyped(qk_prod_size *
-                                                             size_of_dt);
-      // offset += qk_prod_size * size_of_dt;
-      qk_prods_softmax = gpu_mem_allocator.allocate_reserved_untyped(
-          qk_prod_size * size_of_dt);
-      // offset += qk_prod_size * size_of_dt;
       attn_heads = gpu_mem_allocator.allocate_reserved_untyped(attn_heads_size *
                                                                size_of_dt);
       // offset += attn_heads_size * size_of_dt;
@@ -620,10 +623,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       // token_infos =
       //     gpu_mem_allocator.allocate_instance<BatchConfig::PerTokenInfo>(
       //         tokeninfo_size);
-      qk_prods = gpu_mem_allocator.allocate_instance_untyped(qk_prod_size *
-                                                             size_of_dt);
-      qk_prods_softmax = gpu_mem_allocator.allocate_instance_untyped(
-          qk_prod_size * size_of_dt);
       attn_heads = gpu_mem_allocator.allocate_instance_untyped(attn_heads_size *
                                                                size_of_dt);
       complex_input =
