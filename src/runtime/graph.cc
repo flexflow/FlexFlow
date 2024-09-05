@@ -2809,7 +2809,8 @@ void FFModel::deserialize_graph_optimal_view(
             tensor_parallelism_degree;
         float dropout, scaling_factor;
         bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
-            scaling_query, qk_prod_scaling, offload, streaming_cache, position_bias;
+            scaling_query, qk_prod_scaling, offload, streaming_cache,
+            position_bias;
         DataType quantization_type;
         size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);

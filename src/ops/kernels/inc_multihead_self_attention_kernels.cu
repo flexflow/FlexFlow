@@ -689,8 +689,9 @@ __global__ void
 
   pre_pos_enc_buf[to_k_idx + offset] =
       static_cast<half>(qkv_proj_array[from_idx + q_hidden_size + kv_offset]);
-  pre_pos_enc_buf[to_v_idx + offset] = static_cast<half>(
-      qkv_proj_array[from_idx + q_hidden_size + temp_kv_hidden_size + kv_offset]);
+  pre_pos_enc_buf[to_v_idx + offset] =
+      static_cast<half>(qkv_proj_array[from_idx + q_hidden_size +
+                                       temp_kv_hidden_size + kv_offset]);
 }
 
 template <typename DT>

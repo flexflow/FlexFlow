@@ -151,18 +151,18 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
-            0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
-            false,   /*add_zero_attn*/
-            DT_NONE, /*data_type*/
-            nullptr, /*kernel_initializer*/
-            true,    /*apply_rotary_embedding*/
-            false,   /*scaling query*/
-            1.0f,    /*scaling factor*/
-            true,    /*qk_prod_scaling*/
-            false,   /*position_bias*/
-            streaming_cache,   /*streaming_cache*/
+            0.0f,            /*dropout*/
+            false,           /*qkv_bias*/
+            false,           /*final_bias*/
+            false,           /*add_zero_attn*/
+            DT_NONE,         /*data_type*/
+            nullptr,         /*kernel_initializer*/
+            true,            /*apply_rotary_embedding*/
+            false,           /*scaling query*/
+            1.0f,            /*scaling factor*/
+            true,            /*qk_prod_scaling*/
+            false,           /*position_bias*/
+            streaming_cache, /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
