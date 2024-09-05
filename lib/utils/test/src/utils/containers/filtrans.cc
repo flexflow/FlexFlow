@@ -1,4 +1,7 @@
 #include "utils/containers/filtrans.h"
+#include "utils/fmt/set.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

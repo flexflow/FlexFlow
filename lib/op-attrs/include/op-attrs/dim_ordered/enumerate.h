@@ -3,6 +3,7 @@
 
 #include "op-attrs/dim_ordered.h"
 #include "utils/bidict/bidict.h"
+#include "utils/containers/count.h"
 
 namespace FlexFlow {
 

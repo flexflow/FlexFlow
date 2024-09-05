@@ -1,6 +1,8 @@
 #include "utils/containers/get_all_permutations.h"
 #include "utils/containers/as_vector.h"
 #include "utils/containers/unordered_multiset_of.h"
+#include "utils/fmt/unordered_multiset.h"
+#include "utils/fmt/vector.h"
 #include "utils/hash/vector.h"
 #include <doctest/doctest.h>
 
