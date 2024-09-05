@@ -1,0 +1,47 @@
+namespace = "FlexFlow"
+name = "BertConfig"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "vocab_size"
+type = "size_t"
+
+[[fields]]
+name = "num_features"
+type = "size_t"
+
+[[fields]]
+name = "num_encoder_layers"
+type = "size_t"
+
+[[fields]]
+name = "num_heads"
+type = "size_t"
+
+[[fields]]
+name = "dim_feedforward"
+type = "size_t"
+
+[[fields]]
+name = "dropout"
+type = "float"
+
+[[fields]]
+name = "layer_norm_eps"
+type = "float"
+
+[[fields]]
+name = "sequence_length"
+type = "size_t"
+
+[[fields]]
+name = "batch_size"
+type = "size_t"
