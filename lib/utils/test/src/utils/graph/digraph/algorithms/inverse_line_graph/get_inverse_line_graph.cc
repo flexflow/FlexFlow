@@ -4,6 +4,7 @@
 #include "utils/containers/transform.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/algorithms/get_successors.h"
+#include "utils/graph/digraph/algorithms/transitive_reduction.h"
 #include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/multidigraph/algorithms/get_directed_edge.h"
 #include "utils/graph/multidigraph/algorithms/get_edge_counts.h"
@@ -138,6 +139,28 @@ TEST_SUITE(FF_TEST_SUITE) {
         };
         CHECK(result_bidict == correct_bidict);
       }
+    }
+
+    SUBCASE("sp n-graph") {
+      // Tests that the inverse line graph of the sp n-graph
+      //
+      // a-b
+      //  \
+      // c-d
+      // 
+      // does not exist
+      std::vector<Node> n = add_nodes(g, 4);
+      add_edges(g,
+                {
+                    DirectedEdge{n.at(0), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(3)},
+                });
+
+      std::optional<InverseLineGraphResult> result =
+          get_inverse_line_graph(transitive_reduction(g));
+
+      CHECK_FALSE(result.has_value());
     }
   }
 }

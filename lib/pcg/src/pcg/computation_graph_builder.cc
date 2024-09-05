@@ -15,6 +15,7 @@
 #include "op-attrs/ops/linear.h"
 #include "op-attrs/ops/softmax.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
+#include "op-attrs/tensor_dims.h"
 #include "pcg/computation_graph.h"
 #include "utils/containers/any_of.h"
 #include "utils/containers/concat_vectors.h"
@@ -131,17 +132,21 @@ tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,
 
 tensor_guid_t
     ComputationGraphBuilder::broadcast(tensor_guid_t const &input,
-                                       TensorShape const &target_shape,
+                                       TensorDims const &target_dims,
                                        std::string const &name) {
   TensorShape input_shape = this->get_shape(input);
-  if (!tensor_shape_is_broadcastable_to(input_shape, target_shape)) {
-    throw mk_runtime_error(fmt::format(
-        "Cannot broadcast input tensor of shape {} to target shape {}",
-        input_shape,
-        target_shape));
+  if (input_shape.dims == target_dims) {
+    return input;
   }
 
-  BroadcastAttrs attrs = BroadcastAttrs{target_shape.dims};
+  if (!tensor_dims_is_broadcastable_to(input_shape.dims, target_dims)) {
+    throw mk_runtime_error(fmt::format(
+        "Cannot broadcast input tensor of dims {} to target dims {}",
+        input_shape.dims,
+        target_dims));
+  }
+
+  BroadcastAttrs attrs = BroadcastAttrs{target_dims};
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
   TensorShape output_shape =
@@ -194,18 +199,18 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
     std::optional<std::string> const &maybe_name) {
   std::string name = maybe_name.value_or(get_default_name(op_type));
 
-  TensorShape compute_shape = this->get_broadcast_target_shape({lhs, rhs});
+  TensorDims compute_dims = this->get_broadcast_target_dims({lhs, rhs});
   DataType compute_type =
       std::max(this->get_shape(lhs).data_type, this->get_shape(rhs).data_type);
 
   tensor_guid_t lhs_input = this->as_type(
       this->broadcast(
-          lhs, compute_shape, fmt::format("{}_inputl_broadcast", name)),
+          lhs, compute_dims, fmt::format("{}_inputl_broadcast", name)),
       compute_type,
       name + "_inputl_cast");
   tensor_guid_t rhs_input = this->as_type(
       this->broadcast(
-          rhs, compute_shape, fmt::format("{}_inputr_broadcast", name)),
+          rhs, compute_dims, fmt::format("{}_inputr_broadcast", name)),
       compute_type,
       name + "_inputr_cast");
 
@@ -581,26 +586,26 @@ tensor_guid_t ComputationGraphBuilder::multihead_attention(
                          output_shape);
 }
 
-TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
+TensorDims ComputationGraphBuilder::get_broadcast_target_dims(
     std::vector<tensor_guid_t> const &inputs) {
-  std::vector<TensorShape> input_shapes = transform(
-      inputs, [&](tensor_guid_t const &t) { return this->get_shape(t); });
+  std::vector<TensorDims> inputs_dims = transform(
+      inputs, [&](tensor_guid_t const &t) { return this->get_shape(t).dims; });
 
-  return this->get_broadcast_target_shape(input_shapes);
+  return this->get_broadcast_target_dims(inputs_dims);
 }
 
-TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
-    std::vector<TensorShape> const &input_shapes) {
-  std::optional<TensorShape> maybe_result =
-      ::FlexFlow::get_broadcast_target_shape(unordered_set_of(input_shapes));
+TensorDims ComputationGraphBuilder::get_broadcast_target_dims(
+    std::vector<TensorDims> const &inputs_dims) {
+  std::optional<TensorDims> maybe_result =
+      ::FlexFlow::get_broadcast_target_dims(unordered_set_of(inputs_dims));
 
   if (maybe_result.has_value()) {
     return maybe_result.value();
   } else {
     throw mk_runtime_error(fmt::format(
-        "ComputationGraphBuilder::get_broadcast_target_shape failed to find "
-        "target tensor shape for input tensor shapes {}",
-        input_shapes));
+        "ComputationGraphBuilder::get_broadcast_target_dims failed to find "
+        "target tensor dims for input tensor dims {}",
+        inputs_dims));
   }
 }
 

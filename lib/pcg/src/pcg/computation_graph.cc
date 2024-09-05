@@ -5,9 +5,13 @@
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
 #include "utils/graph/dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
+#include "utils/record_formatter.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/as_dot.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 
 namespace FlexFlow {
 
@@ -102,6 +106,40 @@ layer_guid_t get_layer_by_name(ComputationGraph const &cg,
         return get_layer_attrs(cg, l).name == name;
       });
   return get_only(found);
+}
+
+std::string as_dot(ComputationGraph const &cg) {
+  std::function<std::string(LayerAttrs const &)> get_node_label =
+      [](LayerAttrs const &a) -> std::string {
+    RecordFormatter r = as_dot(a.attrs);
+
+    if (a.name.has_value()) {
+      RecordFormatter rr;
+      rr << "Name" << a.name.value();
+      r << rr;
+    }
+
+    std::ostringstream oss;
+    oss << r;
+    return oss.str();
+  };
+
+  std::function<std::string(TensorAttrs const &)> get_input_label =
+      [](TensorAttrs const &a) -> std::string {
+    RecordFormatter r;
+
+    r << fmt::to_string(a.shape);
+
+    std::ostringstream oss;
+    oss << r;
+    return oss.str();
+  };
+
+  return as_dot(view_as_labelled_open_dataflow_graph(cg.raw_graph), get_node_label, get_input_label);
+}
+
+void debug_print_dot(ComputationGraph const &cg) {
+  std::cout << as_dot(cg) << std::endl;
 }
 
 } // namespace FlexFlow

@@ -4,12 +4,15 @@
 #include "utils/exception.h"
 #include "utils/cli/cli_parse_result.h"
 #include "models/transformer.h"
+#include "utils/graph/digraph/algorithms/digraph_as_dot.h"
 #include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
+#include "utils/graph/digraph/algorithms/transitive_reduction.h"
 #include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/left_associative_binary_sp_tree_from_nary.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
 #include "pcg/computation_graph.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 
 using namespace ::FlexFlow;
 
@@ -23,23 +26,48 @@ SerialParallelDecomposition get_computation_graph_serial_parallel_decomposition(
       get_subgraph_outgoing_edges(cg, weight_and_input_layers),
       get_computation_graph_edge_dst_layer);
 
-  DiGraphView preprocessed_digraph = [&] {
-    DiGraph digraph = materialize_digraph_view<AdjacencyDiGraph>(cg.raw_graph);
-    for (layer_guid_t const &src : weight_and_input_layers) {
-      for (layer_guid_t const &dst : weight_and_input_layer_successors) {
-        digraph.add_edge(DirectedEdge{src.raw_node, dst.raw_node});
-      }
+  // DiGraphView preprocessed_digraph = [&] {
+  DiGraph digraph = materialize_digraph_view<AdjacencyDiGraph>(cg.raw_graph);
+  // Node fake_node = digraph.add_node();
+  for (layer_guid_t const &src : weight_and_input_layers) {
+    for (layer_guid_t const &dst : weight_and_input_layer_successors) {
+      digraph.add_edge(DirectedEdge{src.raw_node, dst.raw_node});
     }
-    return digraph;
-  }();
+  }
+  DiGraphView preprocessed_digraph = digraph;
+    // return digraph;
+  // }();
+
+  // std::function<std::string(Node const &)> get_node_label =
+  //     [&](Node const &n) -> std::string {
+  //   if (n == fake_node) {
+  //     return "FAKE";
+  //   }
+  //   LayerAttrs a = cg.raw_graph.at(n);
+  //   RecordFormatter r = as_dot(a.attrs);
+  //
+  //
+  //   if (a.name.has_value()) {
+  //     RecordFormatter rr;
+  //     rr << "Name" << a.name.value();
+  //     r << rr;
+  //   }
+  //
+  //   std::ostringstream oss;
+  //   oss << r;
+  //   return oss.str();
+  // };
+  // std::string preprocessed_dot = digraph_as_dot(transitive_reduction(preprocessed_digraph), get_node_label);
+  // std::cout << preprocessed_dot << std::endl;
+  // exit(0);
 
   SerialParallelDecomposition sp_decomposition = get_serial_parallel_decomposition(preprocessed_digraph).value();
   
   return sp_decomposition;
 }
 
-BinarySPDecompositionTree get_computation_graph_left_assoc_sp_decomposition(ComputationGraph const &cg) {
-  return left_associative_binary_sp_tree_from_nary(get_computation_graph_serial_parallel_decomposition(cg));
+BinarySPDecompositionTree get_computation_graph_right_assoc_sp_decomposition(ComputationGraph const &cg) {
+  return right_associative_binary_sp_tree_from_nary(get_computation_graph_serial_parallel_decomposition(cg));
 }
 
 ComputationGraph get_default_transformer_computation_graph() {
@@ -80,8 +108,10 @@ int main(int argc, char **argv) {
   }
 
   ComputationGraph cg = get_model_computation_graph(model_name);
-  BinarySPDecompositionTree sp_decomposition = get_computation_graph_left_assoc_sp_decomposition(cg);
+  BinarySPDecompositionTree sp_decomposition = get_computation_graph_right_assoc_sp_decomposition(cg);
 
+
+  // std::cout << as_dot(cg) << std::endl;
   // nlohmann::json j = to_v1(cg);
   nlohmann::json j = sp_decomposition;
 

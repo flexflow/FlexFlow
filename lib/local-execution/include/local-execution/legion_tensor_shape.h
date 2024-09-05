@@ -4,7 +4,7 @@
 #include "kernels/legion_dim.h"
 #include "op-attrs/datatype.h"
 #include "op-attrs/ff_dim.h"
-#include "op-attrs/tensor_shape.h"
+#include "op-attrs/tensor_shape.dtg.h"
 #include "utils/stack_vector.h"
 #include <cstddef>
 #include "utils/visitable.h"

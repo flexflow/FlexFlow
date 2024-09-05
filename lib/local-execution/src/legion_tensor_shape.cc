@@ -1,4 +1,5 @@
 #include "local-execution/legion_tensor_shape.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 

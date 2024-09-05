@@ -3,6 +3,7 @@
 #include "utils/containers/map_values.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/digraph/algorithms/inverse_line_graph/get_inverse_line_graph.h"
+#include "utils/graph/digraph/algorithms/transitive_reduction.h"
 #include "utils/graph/instances/adjacency_multidigraph.h"
 #include "utils/graph/multidigraph/algorithms/get_edges.h"
 #include "utils/graph/node/algorithms.h"
@@ -15,11 +16,13 @@
 namespace FlexFlow {
 
 std::optional<SerialParallelDecomposition>
-    get_serial_parallel_decomposition(DiGraphView const &g) {
+    get_serial_parallel_decomposition(DiGraphView const &x) {
 
+  DiGraphView transitively_reduced = transitive_reduction(x);
+  // DiGraphView transitively_reduced = x;
   InverseLineGraphResult inverse_line_graph_result = ({
     std::optional<InverseLineGraphResult> maybe_line_graph =
-        get_inverse_line_graph(g);
+        get_inverse_line_graph(transitively_reduced);
     if (!maybe_line_graph.has_value()) {
       return std::nullopt;
     }

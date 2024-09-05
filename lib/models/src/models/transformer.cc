@@ -100,7 +100,7 @@ tensor_guid_t
   assert(are_tensor_guid_shapes_equivalent(
       cgb.computation_graph, input, self_attention_normalized));
 
-  tensor_guid_t mha = cgb.multihead_attention(input,
+  tensor_guid_t mha = cgb.multihead_attention(self_attention_normalized,
                                               encoder_output,
                                               encoder_output,
                                               config.num_features,
@@ -150,6 +150,7 @@ ComputationGraph
       DataType::FLOAT,
   };
   tensor_guid_t input = cgb.create_tensor(input_shape, CreateGrad::YES);
+  // tensor_guid_t target = cgb.create_tensor(input_shape, CreateGrad::YES);
 
   tensor_guid_t encoder_output = create_transformer_encoder(cgb, config, input);
   tensor_guid_t decoder_output =

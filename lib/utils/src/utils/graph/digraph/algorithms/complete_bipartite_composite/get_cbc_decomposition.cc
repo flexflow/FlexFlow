@@ -4,7 +4,10 @@
 #include "utils/containers/get_first.h"
 #include "utils/containers/set_minus.h"
 #include "utils/containers/values.h"
+#include "utils/containers/set_of.h"
+#include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/algorithms/complete_bipartite_composite/is_complete_bipartite_digraph.h"
 #include "utils/graph/digraph/algorithms/get_incoming_edges.h"
 #include "utils/graph/digraph/algorithms/get_outgoing_edges.h"
 #include "utils/graph/digraph/algorithms/get_predecessors.h"
@@ -12,6 +15,7 @@
 #include "utils/graph/digraph/algorithms/get_weakly_connected_components.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/hash/unordered_set.h"
+#include "utils/fmt/set.h"
 
 namespace FlexFlow {
 
@@ -39,6 +43,12 @@ std::optional<CompleteBipartiteCompositeDecomposition>
 
     std::unordered_set<DirectedEdge> from_head_to_tail =
         g.query_edges(DirectedEdgeQuery{head, tail});
+
+    DiGraphView subgraph = get_subgraph(g, set_union(head, tail));
+    if (!is_complete_bipartite_digraph(subgraph, head)) {
+      return std::nullopt;
+    }
+
     if (set_union(values(get_outgoing_edges(g, head))) != from_head_to_tail) {
       return std::nullopt;
     }

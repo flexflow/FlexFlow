@@ -1,5 +1,6 @@
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/get_cbc_decomposition.h"
 #include "utils/graph/algorithms.h"
+#include "utils/graph/digraph/algorithms/transitive_reduction.h"
 #include "utils/graph/instances/adjacency_digraph.h"
 #include <doctest/doctest.h>
 
@@ -39,6 +40,27 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::optional<CompleteBipartiteCompositeDecomposition> result =
           get_cbc_decomposition(g);
+      std::optional<CompleteBipartiteCompositeDecomposition> correct =
+          CompleteBipartiteCompositeDecomposition{{}};
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("irreducible n-graph") {
+      std::vector<Node> n = add_nodes(g, 4);
+      add_edges(g,
+                {
+                    DirectedEdge{n.at(0), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(2)},
+                    DirectedEdge{n.at(1), n.at(3)},
+                });
+
+      std::cout << "AAAAAAAA" << std::endl;
+      std::optional<CompleteBipartiteCompositeDecomposition> result =
+          get_cbc_decomposition(g);
+      std::cout << "TRTRTRTR" << std::endl;
+      std::optional<CompleteBipartiteCompositeDecomposition> result =
+          get_cbc_decomposition(transitive_reduction(g));
       std::optional<CompleteBipartiteCompositeDecomposition> correct =
           CompleteBipartiteCompositeDecomposition{{}};
 
