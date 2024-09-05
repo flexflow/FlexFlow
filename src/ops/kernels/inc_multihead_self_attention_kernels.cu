@@ -683,10 +683,14 @@ __global__ void
          to_v_idx = get_v_entry_offset(
              request_idx, to_idx, max_num_pages, num_kv_heads, head_dim);
 
+  int const stride = num_q_heads / num_kv_heads;
+  int const kv_offset =
+      offset / head_dim * stride * head_dim + offset % head_dim;
+
   pre_pos_enc_buf[to_k_idx + offset] =
-      static_cast<half>(qkv_proj_array[from_idx + q_hidden_size + offset]);
+      static_cast<half>(qkv_proj_array[from_idx + q_hidden_size + kv_offset]);
   pre_pos_enc_buf[to_v_idx + offset] = static_cast<half>(
-      qkv_proj_array[from_idx + q_hidden_size + temp_kv_hidden_size + offset]);
+      qkv_proj_array[from_idx + q_hidden_size + temp_kv_hidden_size + kv_offset]);
 }
 
 template <typename DT>
