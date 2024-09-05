@@ -2415,11 +2415,15 @@ void RequestManager::terminate_background_server() {
 
     std::string mean_generated_tokens_per_step =
         "\n mean_generated_tokens_per_step( ";
-    double mean_generated_tokens = 0;
-    for (int nb : profiling.generated_tokens_per_step) {
-      mean_generated_tokens += nb;
-    }
-    mean_generated_tokens /= profiling.generated_tokens_per_step.size();
+    double mean_generated_tokens =
+        (double)std::accumulate(profiling.generated_tokens_per_step.begin(),
+                                profiling.generated_tokens_per_step.end(),
+                                0);
+    double total_request_steps =
+        (double)std::accumulate(profiling.requests_per_step.begin(),
+                                profiling.requests_per_step.end(),
+                                0);
+    mean_generated_tokens /= total_request_steps;
     mean_generated_tokens_per_step += std::to_string(mean_generated_tokens);
     mean_generated_tokens_per_step += ")";
     str += mean_generated_tokens_per_step;
