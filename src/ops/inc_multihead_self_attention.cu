@@ -506,7 +506,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           size_t max_post_pos_enc_pages =
               round_up_pages(BatchConfig::MAX_STREAMING_POS -
                              BatchConfig::get_max_tree_depth() +
-                             BatchConfig::max_spec_tree_token_num());
+                             max(BatchConfig::max_tokens_per_batch(),
+                                 BatchConfig::max_spec_tree_token_num()));
           key_cache_size = num_kv_heads * qk_dim *
                            BatchConfig::max_requests_per_batch() *
                            max_post_pos_enc_pages * kPagesize;
