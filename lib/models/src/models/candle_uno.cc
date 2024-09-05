@@ -3,10 +3,12 @@
 namespace FlexFlow {
 
 CandleUnoConfig get_default_candle_uno_config() {
-  CandleUnoConfig config{};
-  config.batch_size = 64;
-  config.dense_layers = std::vector<int>(4, 4192);
-  config.dense_feature_layers = std::vector<int>(8, 4192);
+  CandleUnoConfig config(
+      /*batch_size=*/64,
+      /*dense_layers=*/std::vector<int>(4, 4192),
+      /*dense_feature_layers=*/std::vector<int>(8, 4192),
+      /*feature_shapes=*/std::map<std::string, int>(),
+      /*input_features=*/std::map<std::string, std::string>());
 
   config.feature_shapes["dose"] = 1;
   config.feature_shapes["cell.rnaseq"] = 942;

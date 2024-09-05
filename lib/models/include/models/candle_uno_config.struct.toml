@@ -10,6 +10,19 @@ features = [
   "fmt",
 ]
 
+includes = [
+  "<vector>",
+  "<map>",
+  "<string>",
+]
+
+src_includes = [
+  "utils/fmt/vector.h",
+  "utils/fmt/map.h",
+  "utils/hash/vector.h",
+  "utils/hash/map.h",
+]
+
 [[fields]]
 name = "batch_size"
 type = "size_t"
