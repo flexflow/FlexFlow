@@ -162,20 +162,18 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
   }
 
   // Streaming cache info
-  if (bc.inference_mode == TREE_SEARCH_MODE) {
-    os << "Streaming cache info:\n";
-    for (int i = 0; i < bc.max_requests_per_batch(); i++) {
-      if (bc.request_available[i]) {
-        os << "  Request " << i << ":\n";
-        os << "    Sink cache size: "
-           << bc.streamingCacheInfo[i].sink_cache_size << std::endl;
-        os << "    Window cache size: "
-           << bc.streamingCacheInfo[i].window_cache_size << std::endl;
-        os << "    Window back: " << bc.streamingCacheInfo[i].window_back
-           << std::endl;
-        os << "    Commit len: " << bc.streamingCacheInfo[i].commit_len
-           << std::endl;
-      }
+  os << "Streaming cache info:\n";
+  for (int i = 0; i < bc.max_requests_per_batch(); i++) {
+    if (bc.request_available[i]) {
+      os << "  Request " << i << ":\n";
+      os << "    Sink cache size: " << bc.streamingCacheInfo[i].sink_cache_size
+         << std::endl;
+      os << "    Window cache size: "
+         << bc.streamingCacheInfo[i].window_cache_size << std::endl;
+      os << "    Window back: " << bc.streamingCacheInfo[i].window_back
+         << std::endl;
+      os << "    Commit len: " << bc.streamingCacheInfo[i].commit_len
+         << std::endl;
     }
   }
 

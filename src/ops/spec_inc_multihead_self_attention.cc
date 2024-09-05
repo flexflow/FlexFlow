@@ -296,7 +296,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
       o_dim(_embed_dim), qoSeqLength(_input->dims[1].size),
       kvSeqLength(_input->dims[1].size), scaling_query(_scaling_query),
       scaling_factor(_scaling_factor), qk_prod_scaling(_qk_prod_scaling),
-      position_bias(_position_bias) , streaming_cache(_streaming_cache) {
+      position_bias(_position_bias), streaming_cache(_streaming_cache) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
 
