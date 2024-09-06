@@ -3,9 +3,10 @@
 #include "utils/containers/extend.h"
 #include "utils/containers/get_first.h"
 #include "utils/containers/set_minus.h"
-#include "utils/containers/values.h"
 #include "utils/containers/set_of.h"
+#include "utils/containers/values.h"
 #include "utils/containers/vector_of.h"
+#include "utils/fmt/set.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/is_complete_bipartite_digraph.h"
@@ -16,13 +17,13 @@
 #include "utils/graph/digraph/algorithms/get_weakly_connected_components.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/hash/unordered_set.h"
-#include "utils/fmt/set.h"
 #include <queue>
 
 namespace FlexFlow {
 
-std::optional<CompleteBipartiteCompositeDecomposition> 
-    get_cbc_decomposition_with_edge_order_internal(DiGraphView const &g, std::vector<DirectedEdge> const &edge_order) {
+std::optional<CompleteBipartiteCompositeDecomposition>
+    get_cbc_decomposition_with_edge_order_internal(
+        DiGraphView const &g, std::vector<DirectedEdge> const &edge_order) {
   // implementation of the algorithm from https://doi.org/10.1145/800135.804393
   // top left of page 8, second paragraph
 

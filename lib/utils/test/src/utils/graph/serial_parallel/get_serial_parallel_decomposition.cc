@@ -160,7 +160,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == correct);
   }
 
-  TEST_CASE("get_serial_parallel_decomposition (requires transitive reduction)") {
+  TEST_CASE(
+      "get_serial_parallel_decomposition (requires transitive reduction)") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
 
     std::vector<Node> n = add_nodes(g, 4);
@@ -177,10 +178,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::optional<SerialParallelDecomposition> correct =
         SerialParallelDecomposition{
             SerialSplit{
-              n.at(0),
-              n.at(1),
-              n.at(2),
-              n.at(3),
+                n.at(0),
+                n.at(1),
+                n.at(2),
+                n.at(3),
             },
         };
     std::optional<SerialParallelDecomposition> result =

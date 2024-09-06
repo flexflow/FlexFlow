@@ -1,7 +1,7 @@
 #include "op-attrs/ops/cast.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include <doctest/doctest.h>
 #include "test/utils/doctest/fmt/expected.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

@@ -1,6 +1,6 @@
-#include <doctest/doctest.h>
 #include "utils/json/optional.h"
 #include "test/utils/doctest/fmt/optional.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
@@ -29,10 +29,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("from_json") {
       SUBCASE("has value") {
         nlohmann::json input = 5;
-        
+
         std::optional<int> result = input;
         std::optional<int> correct = 5;
-        
+
         CHECK(result == correct);
       }
 

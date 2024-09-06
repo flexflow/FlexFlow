@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include "utils/disjoint_set.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

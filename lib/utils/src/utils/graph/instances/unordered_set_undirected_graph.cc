@@ -4,13 +4,13 @@
 
 namespace FlexFlow {
 
-UnorderedSetUndirectedGraph::UnorderedSetUndirectedGraph() { }
+UnorderedSetUndirectedGraph::UnorderedSetUndirectedGraph() {}
 
-UnorderedSetUndirectedGraph::UnorderedSetUndirectedGraph(NodeSource const &node_source,
-                                                         std::unordered_set<Node> const &nodes,
-                                                         std::unordered_set<UndirectedEdge> const &edges)
-  : node_source(node_source), nodes(nodes), edges(edges)
-{ }
+UnorderedSetUndirectedGraph::UnorderedSetUndirectedGraph(
+    NodeSource const &node_source,
+    std::unordered_set<Node> const &nodes,
+    std::unordered_set<UndirectedEdge> const &edges)
+    : node_source(node_source), nodes(nodes), edges(edges) {}
 
 Node UnorderedSetUndirectedGraph::add_node() {
   Node new_node = this->node_source.new_node();
@@ -27,8 +27,8 @@ void UnorderedSetUndirectedGraph::remove_node_unsafe(Node const &n) {
 }
 
 void UnorderedSetUndirectedGraph::add_edge(UndirectedEdge const &e) {
-  assert (contains(this->nodes, e.bigger));
-  assert (contains(this->nodes, e.smaller));
+  assert(contains(this->nodes, e.bigger));
+  assert(contains(this->nodes, e.smaller));
   this->edges.insert(e);
 }
 
@@ -36,19 +36,22 @@ void UnorderedSetUndirectedGraph::remove_edge(UndirectedEdge const &e) {
   this->edges.erase(e);
 }
 
-std::unordered_set<Node> UnorderedSetUndirectedGraph::query_nodes(NodeQuery const &q) const {
+std::unordered_set<Node>
+    UnorderedSetUndirectedGraph::query_nodes(NodeQuery const &q) const {
   return apply_node_query(q, this->nodes);
 }
 
-std::unordered_set<UndirectedEdge> UnorderedSetUndirectedGraph::query_edges(UndirectedEdgeQuery const &q) const {
-  return filter(this->edges, [&](UndirectedEdge const &e) { return matches_edge(q, e); });
+std::unordered_set<UndirectedEdge> UnorderedSetUndirectedGraph::query_edges(
+    UndirectedEdgeQuery const &q) const {
+  return filter(this->edges,
+                [&](UndirectedEdge const &e) { return matches_edge(q, e); });
 }
 
 UnorderedSetUndirectedGraph *UnorderedSetUndirectedGraph::clone() const {
   return new UnorderedSetUndirectedGraph{
-    this->node_source,
-    this->nodes, 
-    this->edges,
+      this->node_source,
+      this->nodes,
+      this->edges,
   };
 }
 

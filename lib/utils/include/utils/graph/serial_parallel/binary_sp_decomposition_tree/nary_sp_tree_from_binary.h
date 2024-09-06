@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-SerialParallelDecomposition 
+SerialParallelDecomposition
     nary_sp_tree_from_binary(BinarySPDecompositionTree const &);
 
 } // namespace FlexFlow

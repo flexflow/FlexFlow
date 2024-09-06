@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_IS_JSON_SERIALIZABLE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_IS_JSON_SERIALIZABLE_H
 
-#include <type_traits>
-#include <nlohmann/json.hpp>
 #include "utils/type_traits_core.h"
+#include <nlohmann/json.hpp>
+#include <type_traits>
 
 namespace FlexFlow {
 

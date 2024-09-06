@@ -1,8 +1,8 @@
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/get_op_type.h"
-#include "utils/overload.h"
-#include "op-attrs/ops/linear.h"
 #include "op-attrs/ops/broadcast.h"
+#include "op-attrs/ops/linear.h"
+#include "utils/overload.h"
 
 namespace FlexFlow {
 

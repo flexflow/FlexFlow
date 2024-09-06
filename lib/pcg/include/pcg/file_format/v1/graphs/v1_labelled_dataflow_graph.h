@@ -13,10 +13,9 @@
 namespace FlexFlow {
 
 template <typename NodeLabel, typename OutputLabel>
-std::pair<
-  V1LabelledDataflowGraph<NodeLabel, OutputLabel>,
-  bidict<int, Node>
-> to_v1_including_node_numbering(LabelledDataflowGraphView<NodeLabel, OutputLabel> const &g) {
+std::pair<V1LabelledDataflowGraph<NodeLabel, OutputLabel>, bidict<int, Node>>
+    to_v1_including_node_numbering(
+        LabelledDataflowGraphView<NodeLabel, OutputLabel> const &g) {
 
   bidict<int, Node> nodes = bidict_from_enumerating(get_nodes(g));
 
@@ -32,9 +31,9 @@ std::pair<
       });
 
   return {
-    V1LabelledDataflowGraph<NodeLabel, OutputLabel>{
-      node_labels, output_labels, unlabelled},
-   nodes,
+      V1LabelledDataflowGraph<NodeLabel, OutputLabel>{
+          node_labels, output_labels, unlabelled},
+      nodes,
   };
 }
 

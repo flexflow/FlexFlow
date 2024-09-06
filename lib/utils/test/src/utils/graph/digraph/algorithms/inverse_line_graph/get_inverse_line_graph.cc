@@ -147,7 +147,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       // a-b
       //  \
       // c-d
-      // 
+      //
       // does not exist
       std::vector<Node> n = add_nodes(g, 4);
       add_edges(g,

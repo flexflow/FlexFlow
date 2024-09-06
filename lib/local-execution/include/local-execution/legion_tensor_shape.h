@@ -6,8 +6,8 @@
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/tensor_shape.dtg.h"
 #include "utils/stack_vector.h"
-#include <cstddef>
 #include "utils/visitable.h"
+#include <cstddef>
 
 namespace FlexFlow {
 

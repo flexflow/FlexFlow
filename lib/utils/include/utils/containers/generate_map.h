@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_GENERATE_MAP_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_GENERATE_MAP_H
 
-#include "utils/containers/vector_of.h"
 #include "utils/containers/get_element_type.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/vector_transform.h"
 #include "utils/type_traits_core.h"
 #include <unordered_map>

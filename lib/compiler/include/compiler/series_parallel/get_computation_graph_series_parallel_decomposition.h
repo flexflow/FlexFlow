@@ -6,8 +6,11 @@
 
 namespace FlexFlow {
 
-std::string render_preprocessed_computation_graph_for_sp_decomposition(ComputationGraph const &);
-std::optional<SerialParallelDecomposition> get_computation_graph_series_parallel_decomposition(ComputationGraph const &);
+std::string render_preprocessed_computation_graph_for_sp_decomposition(
+    ComputationGraph const &);
+std::optional<SerialParallelDecomposition>
+    get_computation_graph_series_parallel_decomposition(
+        ComputationGraph const &);
 
 } // namespace FlexFlow
 

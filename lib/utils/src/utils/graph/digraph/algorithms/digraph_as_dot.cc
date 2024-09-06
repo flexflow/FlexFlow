@@ -1,16 +1,17 @@
 #include "utils/graph/digraph/algorithms/digraph_as_dot.h"
 #include "utils/dot_file.h"
-#include "utils/graph/node/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
-std::string digraph_as_dot(DiGraphView const &g,
-                   std::function<std::string(Node const &)> const &get_node_label) {
+std::string digraph_as_dot(
+    DiGraphView const &g,
+    std::function<std::string(Node const &)> const &get_node_label) {
   std::ostringstream oss;
   DotFile<std::string> dot = DotFile<std::string>{oss};
-  
-  auto get_node_name = [](Node const &n) { 
+
+  auto get_node_name = [](Node const &n) {
     return fmt::format("n{}", n.raw_uid);
   };
 

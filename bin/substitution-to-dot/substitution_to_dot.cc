@@ -24,7 +24,8 @@ int main(int argc, char **argv) {
   std::string json_path(argv[1]);
   std::string rule_name(argv[2]);
 
-  LegacyRuleCollection rule_collection = load_rule_collection_from_path(json_path);
+  LegacyRuleCollection rule_collection =
+      load_rule_collection_from_path(json_path);
 
   std::optional<LegacyRule> found = std::nullopt;
   for (LegacyRule const &r : rule_collection.rules) {

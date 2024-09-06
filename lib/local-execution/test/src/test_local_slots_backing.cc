@@ -1,4 +1,3 @@
-#include <doctest/doctest.h>
 #include "kernels/attention_kernels.h"
 #include "local-execution/local_cost_estimator.h"
 #include "local-execution/local_cpu_allocator.h"
@@ -7,11 +6,12 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/computation_graph.h"
 #include "pcg/computation_graph_builder.h"
-#include "test_utils.h"
+#include "test/utils/doctest/fmt/pair.h"
 #include "test/utils/doctest/fmt/unordered_map.h"
 #include "test/utils/doctest/fmt/variant.h"
 #include "test/utils/doctest/fmt/vector.h"
-#include "test/utils/doctest/fmt/pair.h"
+#include "test_utils.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

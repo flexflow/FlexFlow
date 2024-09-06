@@ -1,13 +1,14 @@
 #include "utils/graph/dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
-#include "utils/graph/dataflow_graph/dataflow_graph.h"
 #include "utils/containers/get_only.h"
+#include "utils/graph/dataflow_graph/dataflow_graph.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("get_subgraph_incoming_edges(DataflowGraphView, std::unordered_set<Node>") {
+  TEST_CASE("get_subgraph_incoming_edges(DataflowGraphView, "
+            "std::unordered_set<Node>") {
     DataflowGraph g = DataflowGraph::create<UnorderedSetDataflowGraph>();
 
     NodeAddedResult n1_added = g.add_node({}, 1);

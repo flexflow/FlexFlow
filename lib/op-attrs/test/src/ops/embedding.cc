@@ -1,8 +1,8 @@
 #include "op-attrs/ops/embedding.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include <doctest/doctest.h>
-#include "utils/integer_conversions.h"
 #include "test/utils/doctest/fmt/expected.h"
+#include "utils/integer_conversions.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

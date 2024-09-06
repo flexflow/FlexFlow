@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_H
 
+#include "utils/exception.h"
 #include "utils/graph/node/node.dtg.h"
 #include "utils/graph/serial_parallel/sp_decomposition_tree_node_type.dtg.h"
-#include <variant>
-#include "utils/exception.h"
+#include "utils/hash-utils.h"
+#include "utils/hash/tuple.h"
 #include "utils/overload.h"
 #include <fmt/format.h>
 #include <rapidcheck.h>
-#include "utils/hash-utils.h"
-#include "utils/hash/tuple.h"
+#include <variant>
 
 namespace FlexFlow {
 
@@ -20,11 +20,13 @@ template <typename T>
 struct GenericBinarySeriesSplit {
 public:
   GenericBinarySeriesSplit() = delete;
-  explicit GenericBinarySeriesSplit(GenericBinarySPDecompositionTree<T> const &lhs,
-                                    GenericBinarySPDecompositionTree<T> const &rhs) 
-    : left_child_ptr(std::make_shared<GenericBinarySPDecompositionTree<T>>(lhs)),
-      right_child_ptr(std::make_shared<GenericBinarySPDecompositionTree<T>>(rhs))
-  { }
+  explicit GenericBinarySeriesSplit(
+      GenericBinarySPDecompositionTree<T> const &lhs,
+      GenericBinarySPDecompositionTree<T> const &rhs)
+      : left_child_ptr(
+            std::make_shared<GenericBinarySPDecompositionTree<T>>(lhs)),
+        right_child_ptr(
+            std::make_shared<GenericBinarySPDecompositionTree<T>>(rhs)) {}
 
   GenericBinarySeriesSplit(GenericBinarySeriesSplit const &) = default;
 
@@ -52,10 +54,9 @@ private:
   std::shared_ptr<GenericBinarySPDecompositionTree<T>> right_child_ptr;
 
 private:
-  std::tuple<
-    GenericBinarySPDecompositionTree<T> const &,
-    GenericBinarySPDecompositionTree<T> const &
-  > tie() const {
+  std::tuple<GenericBinarySPDecompositionTree<T> const &,
+             GenericBinarySPDecompositionTree<T> const &>
+      tie() const {
     return std::tie(this->left_child(), this->right_child());
   }
 
@@ -64,24 +65,27 @@ private:
 
 template <typename T>
 std::string format_as(GenericBinarySeriesSplit<T> const &s) {
-  return fmt::format("<BinarySeriesSplit {} {}>", s.left_child(), s.right_child());
+  return fmt::format(
+      "<BinarySeriesSplit {} {}>", s.left_child(), s.right_child());
 }
 
 template <typename T>
-std::ostream &operator<<(std::ostream &s, GenericBinarySeriesSplit<T> const &x) {
-  return (s << fmt::to_string(x)); 
+std::ostream &operator<<(std::ostream &s,
+                         GenericBinarySeriesSplit<T> const &x) {
+  return (s << fmt::to_string(x));
 }
-
 
 template <typename T>
 struct GenericBinaryParallelSplit {
 public:
   GenericBinaryParallelSplit() = delete;
-  explicit GenericBinaryParallelSplit(GenericBinarySPDecompositionTree<T> const &lhs,
-                                      GenericBinarySPDecompositionTree<T> const &rhs) 
-    : left_child_ptr(std::make_shared<GenericBinarySPDecompositionTree<T>>(lhs)),
-      right_child_ptr(std::make_shared<GenericBinarySPDecompositionTree<T>>(rhs))
-  { }
+  explicit GenericBinaryParallelSplit(
+      GenericBinarySPDecompositionTree<T> const &lhs,
+      GenericBinarySPDecompositionTree<T> const &rhs)
+      : left_child_ptr(
+            std::make_shared<GenericBinarySPDecompositionTree<T>>(lhs)),
+        right_child_ptr(
+            std::make_shared<GenericBinarySPDecompositionTree<T>>(rhs)) {}
 
   GenericBinaryParallelSplit(GenericBinaryParallelSplit const &) = default;
 
@@ -110,10 +114,9 @@ private:
   std::shared_ptr<GenericBinarySPDecompositionTree<T>> right_child_ptr;
 
 private:
-  std::tuple<
-    GenericBinarySPDecompositionTree<T> const &,
-    GenericBinarySPDecompositionTree<T> const &
-  > tie() const {
+  std::tuple<GenericBinarySPDecompositionTree<T> const &,
+             GenericBinarySPDecompositionTree<T> const &>
+      tie() const {
     return std::tie(this->left_child(), this->right_child());
   }
 
@@ -122,32 +125,32 @@ private:
 
 template <typename T>
 std::string format_as(GenericBinaryParallelSplit<T> const &s) {
-  return fmt::format("<BinaryParallelSplit {} {}>", s.left_child(), s.right_child());
+  return fmt::format(
+      "<BinaryParallelSplit {} {}>", s.left_child(), s.right_child());
 }
 
 template <typename T>
-std::ostream &operator<<(std::ostream &s, GenericBinaryParallelSplit<T> const &x) {
-  return (s << fmt::to_string(x)); 
+std::ostream &operator<<(std::ostream &s,
+                         GenericBinaryParallelSplit<T> const &x) {
+  return (s << fmt::to_string(x));
 }
-
 
 template <typename T>
 struct GenericBinarySPDecompositionTree {
 public:
   GenericBinarySPDecompositionTree() = delete;
-  explicit GenericBinarySPDecompositionTree(GenericBinarySeriesSplit<T> const &s)
-    : root{s} 
-  { }
+  explicit GenericBinarySPDecompositionTree(
+      GenericBinarySeriesSplit<T> const &s)
+      : root{s} {}
 
-  explicit GenericBinarySPDecompositionTree(GenericBinaryParallelSplit<T> const &s)
-    : root{s}
-  { }
+  explicit GenericBinarySPDecompositionTree(
+      GenericBinaryParallelSplit<T> const &s)
+      : root{s} {}
 
-  explicit GenericBinarySPDecompositionTree(T const &t) 
-    : root{t}
-  { }
+  explicit GenericBinarySPDecompositionTree(T const &t) : root{t} {}
 
-  GenericBinarySPDecompositionTree(GenericBinarySPDecompositionTree const &) = default;
+  GenericBinarySPDecompositionTree(GenericBinarySPDecompositionTree const &) =
+      default;
 
   bool operator==(GenericBinarySPDecompositionTree const &other) const {
     return this->tie() == other.tie();
@@ -162,14 +165,20 @@ public:
   }
 
   SPDecompositionTreeNodeType get_node_type() const {
-    // implemented using std::visit as opposed to this->visit because 
+    // implemented using std::visit as opposed to this->visit because
     // this->visit is implemented using this function, so doing so would
     // create infinite recursion
-    return std::visit(overload {
-      [](GenericBinarySeriesSplit<T> const &) { return SPDecompositionTreeNodeType::SERIES; },
-      [](GenericBinaryParallelSplit<T> const &) { return SPDecompositionTreeNodeType::PARALLEL; },
-      [](T const &) { return SPDecompositionTreeNodeType::NODE; },
-    }, this->root);
+    return std::visit(
+        overload{
+            [](GenericBinarySeriesSplit<T> const &) {
+              return SPDecompositionTreeNodeType::SERIES;
+            },
+            [](GenericBinaryParallelSplit<T> const &) {
+              return SPDecompositionTreeNodeType::PARALLEL;
+            },
+            [](T const &) { return SPDecompositionTreeNodeType::NODE; },
+        },
+        this->root);
   }
 
   GenericBinarySeriesSplit<T> const &require_series() const {
@@ -211,19 +220,25 @@ public:
         return result;
       }
       default:
-        throw mk_runtime_error(fmt::format("Unknown GenericSPDecompositionTreeNodeType {}", tree_node_type));
+        throw mk_runtime_error(fmt::format(
+            "Unknown GenericSPDecompositionTreeNodeType {}", tree_node_type));
     }
   }
 
-  static GenericBinarySPDecompositionTree parallel(GenericBinarySPDecompositionTree const &lhs, GenericBinarySPDecompositionTree const &rhs);
-  static GenericBinarySPDecompositionTree series(GenericBinarySPDecompositionTree const &lhs, GenericBinarySPDecompositionTree const &rhs);
+  static GenericBinarySPDecompositionTree
+      parallel(GenericBinarySPDecompositionTree const &lhs,
+               GenericBinarySPDecompositionTree const &rhs);
+  static GenericBinarySPDecompositionTree
+      series(GenericBinarySPDecompositionTree const &lhs,
+             GenericBinarySPDecompositionTree const &rhs);
   static GenericBinarySPDecompositionTree node(T const &n);
-private:
-  std::variant<GenericBinarySeriesSplit<T>, GenericBinaryParallelSplit<T>, T> root;
 
 private:
-  std::tuple<decltype(root) const &> 
-    tie() const {
+  std::variant<GenericBinarySeriesSplit<T>, GenericBinaryParallelSplit<T>, T>
+      root;
+
+private:
+  std::tuple<decltype(root) const &> tie() const {
     return std::tie(this->root);
   }
 
@@ -232,46 +247,52 @@ private:
 
 template <typename T>
 std::string format_as(GenericBinarySPDecompositionTree<T> const &t) {
-  return t.template visit<std::string>(overload {
-    [](GenericBinarySeriesSplit<T> const &s) { return fmt::format("<GenericBinarySPDecompositionTree {}>", s); },
-    [](GenericBinaryParallelSplit<T> const &s) { return fmt::format("<GenericBinarySPDecompositionTree {}>", s); },
-    [](T const &t) { return fmt::format("<BinarySPDecompositionTree {}>", t); },
+  return t.template visit<std::string>(overload{
+      [](GenericBinarySeriesSplit<T> const &s) {
+        return fmt::format("<GenericBinarySPDecompositionTree {}>", s);
+      },
+      [](GenericBinaryParallelSplit<T> const &s) {
+        return fmt::format("<GenericBinarySPDecompositionTree {}>", s);
+      },
+      [](T const &t) {
+        return fmt::format("<BinarySPDecompositionTree {}>", t);
+      },
   });
 }
 
 template <typename T>
-std::ostream &operator<<(std::ostream &s, GenericBinarySPDecompositionTree<T> const &t) {
+std::ostream &operator<<(std::ostream &s,
+                         GenericBinarySPDecompositionTree<T> const &t) {
   return (s << fmt::to_string(t));
 }
 
 template <typename T, typename F, typename TT = std::invoke_result_t<F, T>>
 GenericBinarySPDecompositionTree<TT>
-transform(GenericBinarySPDecompositionTree<T> const &tt, F f) {
-  return tt.template visit<GenericBinarySPDecompositionTree<TT>>(overload {
-    [&](GenericBinarySeriesSplit<T> const &s) { 
-      return GenericBinarySPDecompositionTree<TT>{
-        GenericBinarySeriesSplit<TT>{
-          transform(s.left_child(), f),
-          transform(s.right_child(), f),
-        },
-      };
-    },
-    [&](GenericBinaryParallelSplit<T> const &s) {
-      return GenericBinarySPDecompositionTree<TT>{
-        GenericBinaryParallelSplit<TT>{
-          transform(s.left_child(), f),
-          transform(s.right_child(), f),
-        },
-      };
-    },
-    [&](T const &t) {
-      return GenericBinarySPDecompositionTree<TT>{
-        f(t),
-      };
-    },
+    transform(GenericBinarySPDecompositionTree<T> const &tt, F f) {
+  return tt.template visit<GenericBinarySPDecompositionTree<TT>>(overload{
+      [&](GenericBinarySeriesSplit<T> const &s) {
+        return GenericBinarySPDecompositionTree<TT>{
+            GenericBinarySeriesSplit<TT>{
+                transform(s.left_child(), f),
+                transform(s.right_child(), f),
+            },
+        };
+      },
+      [&](GenericBinaryParallelSplit<T> const &s) {
+        return GenericBinarySPDecompositionTree<TT>{
+            GenericBinaryParallelSplit<TT>{
+                transform(s.left_child(), f),
+                transform(s.right_child(), f),
+            },
+        };
+      },
+      [&](T const &t) {
+        return GenericBinarySPDecompositionTree<TT>{
+            f(t),
+        };
+      },
   });
 }
-
 
 } // namespace FlexFlow
 
@@ -293,7 +314,8 @@ struct hash<::FlexFlow::GenericBinaryParallelSplit<T>> {
 
 template <typename T>
 struct hash<::FlexFlow::GenericBinarySPDecompositionTree<T>> {
-  size_t operator()(::FlexFlow::GenericBinarySPDecompositionTree<T> const &s) const {
+  size_t operator()(
+      ::FlexFlow::GenericBinarySPDecompositionTree<T> const &s) const {
     return get_std_hash(s.tie());
   }
 };
@@ -306,12 +328,15 @@ template <typename T>
 struct adl_serializer<::FlexFlow::GenericBinarySeriesSplit<T>> {
   static ::FlexFlow::GenericBinarySeriesSplit<T> from_json(json const &j) {
     return ::FlexFlow::GenericBinarySeriesSplit<T>{
-      j.at("left_child").template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
-      j.at("right_child").template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
+        j.at("left_child")
+            .template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
+        j.at("right_child")
+            .template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
     };
   }
 
-  static void to_json(json &j, ::FlexFlow::GenericBinarySeriesSplit<T> const &v) {
+  static void to_json(json &j,
+                      ::FlexFlow::GenericBinarySeriesSplit<T> const &v) {
     j["__type"] = "GenericBinarySeriesSplit";
     j["left_child"] = v.left_child();
     j["right_child"] = v.right_child();
@@ -322,12 +347,15 @@ template <typename T>
 struct adl_serializer<::FlexFlow::GenericBinaryParallelSplit<T>> {
   static ::FlexFlow::GenericBinaryParallelSplit<T> from_json(json const &j) {
     return ::FlexFlow::GenericBinaryParallelSplit<T>{
-      j.at("left_child").template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
-      j.at("right_child").template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
+        j.at("left_child")
+            .template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
+        j.at("right_child")
+            .template get<::FlexFlow::GenericBinarySPDecompositionTree<T>>(),
     };
   }
 
-  static void to_json(json &j, ::FlexFlow::GenericBinaryParallelSplit<T> const &v) {
+  static void to_json(json &j,
+                      ::FlexFlow::GenericBinaryParallelSplit<T> const &v) {
     j["__type"] = "GenericBinaryParallelSplit";
     j["left_child"] = v.left_child();
     j["right_child"] = v.right_child();
@@ -336,44 +364,48 @@ struct adl_serializer<::FlexFlow::GenericBinaryParallelSplit<T>> {
 
 template <typename T>
 struct adl_serializer<::FlexFlow::GenericBinarySPDecompositionTree<T>> {
-  static ::FlexFlow::GenericBinarySPDecompositionTree<T> from_json(json const &j) {
+  static ::FlexFlow::GenericBinarySPDecompositionTree<T>
+      from_json(json const &j) {
     std::string key = j.at("type").get<std::string>();
 
     if (key == "series") {
       return ::FlexFlow::GenericBinarySPDecompositionTree<T>{
-        j.at("value").get<::FlexFlow::GenericBinarySeriesSplit<T>>(),
+          j.at("value").get<::FlexFlow::GenericBinarySeriesSplit<T>>(),
       };
     } else if (key == "parallel") {
       return ::FlexFlow::GenericBinarySPDecompositionTree<T>{
-        j.at("value").get<::FlexFlow::GenericBinaryParallelSplit<T>>(),
+          j.at("value").get<::FlexFlow::GenericBinaryParallelSplit<T>>(),
       };
     } else if (key == "node") {
       return ::FlexFlow::GenericBinarySPDecompositionTree<T>{
-        j.at("value").get<T>(),
+          j.at("value").get<T>(),
       };
     } else {
-      throw ::FlexFlow::mk_runtime_error(fmt::format("Unknown json type key: {}", key));
+      throw ::FlexFlow::mk_runtime_error(
+          fmt::format("Unknown json type key: {}", key));
     }
   }
 
-  static void to_json(json &j, ::FlexFlow::GenericBinarySPDecompositionTree<T> const &v) {
+  static void
+      to_json(json &j,
+              ::FlexFlow::GenericBinarySPDecompositionTree<T> const &v) {
     j["__type"] = "BinarySPDecompositionTree";
-    v.template visit<std::monostate>(::FlexFlow::overload {
-      [&](::FlexFlow::GenericBinarySeriesSplit<T> const &s) { 
-        j["type"] = "series";
-        j["value"] = s;
-        return std::monostate{};
-      },
-      [&](::FlexFlow::GenericBinaryParallelSplit<T> const &p) { 
-        j["type"] = "parallel";
-        j["value"] = p;
-        return std::monostate{};
-      },
-      [&](T const &t) { 
-        j["type"] = "node";
-        j["value"] = t;
-        return std::monostate{};
-      },
+    v.template visit<std::monostate>(::FlexFlow::overload{
+        [&](::FlexFlow::GenericBinarySeriesSplit<T> const &s) {
+          j["type"] = "series";
+          j["value"] = s;
+          return std::monostate{};
+        },
+        [&](::FlexFlow::GenericBinaryParallelSplit<T> const &p) {
+          j["type"] = "parallel";
+          j["value"] = p;
+          return std::monostate{};
+        },
+        [&](T const &t) {
+          j["type"] = "node";
+          j["value"] = t;
+          return std::monostate{};
+        },
     });
   }
 };

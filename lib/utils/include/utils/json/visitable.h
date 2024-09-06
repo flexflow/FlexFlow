@@ -1,15 +1,15 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_JSON_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_JSON_H
 
+#include "utils/json/is_json_deserializable.h"
+#include "utils/json/is_json_serializable.h"
+#include "utils/json/is_jsonable.h"
 #include "utils/json_core.h"
 #include "utils/optional.h"
 #include "utils/sequence.h"
 #include "utils/type_traits.h"
 #include "utils/variant.h"
 #include "utils/visitable.h"
-#include "utils/json/is_json_deserializable.h"
-#include "utils/json/is_json_serializable.h"
-#include "utils/json/is_jsonable.h"
 
 namespace FlexFlow {
 
@@ -109,7 +109,6 @@ T moveonly_visit_json_deserialize(json const &j) {
 
   return visitable_from_tuple<T>(tuple_from_json<T>(j));
 }
-
 
 } // namespace FlexFlow
 

@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_OPTIONAL_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_OPTIONAL_H
 
-#include <optional>
-#include <nlohmann/json.hpp>
 #include "utils/json/is_jsonable.h"
+#include <nlohmann/json.hpp>
+#include <optional>
 
 namespace nlohmann {
 

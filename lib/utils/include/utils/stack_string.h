@@ -4,9 +4,9 @@
 #include "fmt/core.h"
 #include "stack_vector.h"
 #include "utils/fmt.h"
-#include <nlohmann/json.hpp>
 #include "utils/type_traits.h"
 #include <cstring>
+#include <nlohmann/json.hpp>
 #include <rapidcheck.h>
 #include <string>
 

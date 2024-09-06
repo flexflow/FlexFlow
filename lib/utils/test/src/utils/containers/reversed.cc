@@ -1,6 +1,6 @@
-#include <doctest/doctest.h>
 #include "utils/containers/reversed.h"
 #include "test/utils/doctest/fmt/vector.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

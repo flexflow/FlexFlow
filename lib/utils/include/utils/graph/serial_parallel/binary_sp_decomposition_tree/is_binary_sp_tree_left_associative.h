@@ -6,19 +6,20 @@
 namespace FlexFlow {
 
 template <typename T>
-bool is_binary_sp_tree_left_associative(GenericBinarySPDecompositionTree<T> const &tt) {
-  return tt.template visit<bool>(overload {
-    [](T const &) { return true; },
-    [](GenericBinarySeriesSplit<T> const &s) { 
-      return !s.right_child().template has<GenericBinarySeriesSplit<T>>()
-        && is_binary_sp_tree_left_associative(s.left_child())
-        && is_binary_sp_tree_left_associative(s.right_child());
-    },
-    [](GenericBinaryParallelSplit<T> const &p) {
-      return !p.right_child().template has<GenericBinaryParallelSplit<T>>()
-        && is_binary_sp_tree_left_associative(p.left_child())
-        && is_binary_sp_tree_left_associative(p.right_child());
-    },
+bool is_binary_sp_tree_left_associative(
+    GenericBinarySPDecompositionTree<T> const &tt) {
+  return tt.template visit<bool>(overload{
+      [](T const &) { return true; },
+      [](GenericBinarySeriesSplit<T> const &s) {
+        return !s.right_child().template has<GenericBinarySeriesSplit<T>>() &&
+               is_binary_sp_tree_left_associative(s.left_child()) &&
+               is_binary_sp_tree_left_associative(s.right_child());
+      },
+      [](GenericBinaryParallelSplit<T> const &p) {
+        return !p.right_child().template has<GenericBinaryParallelSplit<T>>() &&
+               is_binary_sp_tree_left_associative(p.left_child()) &&
+               is_binary_sp_tree_left_associative(p.right_child());
+      },
   });
 }
 

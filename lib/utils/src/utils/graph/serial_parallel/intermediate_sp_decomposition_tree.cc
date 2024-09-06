@@ -48,27 +48,28 @@ std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(
 
 std::variant<IntermediateSpDecompositionTree, Node>
     from_binary_sp_tree(GenericBinarySPDecompositionTree<Node> const &binary) {
-  return binary.visit<std::variant<IntermediateSpDecompositionTree, Node>>(overload {
-    [](Node const &n) { return n; },
-    [](GenericBinarySeriesSplit<Node> const &s) { 
-      return IntermediateSpDecompositionTree{
-        SplitType::SERIAL,
-        {
-          from_binary_sp_tree(s.left_child()),
-          from_binary_sp_tree(s.right_child()),
-        },
-      };
-    },
-    [](GenericBinaryParallelSplit<Node> const &p) {
-      return IntermediateSpDecompositionTree{
-        SplitType::PARALLEL,
-        {
-          from_binary_sp_tree(p.left_child()),
-          from_binary_sp_tree(p.right_child()),
-        },
-      };
-    },
-  });
+  return binary.visit<std::variant<IntermediateSpDecompositionTree, Node>>(
+      overload{
+          [](Node const &n) { return n; },
+          [](GenericBinarySeriesSplit<Node> const &s) {
+            return IntermediateSpDecompositionTree{
+                SplitType::SERIAL,
+                {
+                    from_binary_sp_tree(s.left_child()),
+                    from_binary_sp_tree(s.right_child()),
+                },
+            };
+          },
+          [](GenericBinaryParallelSplit<Node> const &p) {
+            return IntermediateSpDecompositionTree{
+                SplitType::PARALLEL,
+                {
+                    from_binary_sp_tree(p.left_child()),
+                    from_binary_sp_tree(p.right_child()),
+                },
+            };
+          },
+      });
 }
 
 std::variant<IntermediateSpDecompositionTree, Node>

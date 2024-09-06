@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include "utils/containers.h"
+#include <doctest/doctest.h>
 #include <string>
 #include <unordered_map>
 #include <vector>

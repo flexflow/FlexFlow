@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_VARIANT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_VARIANT_H
 
-#include <nlohmann/json.hpp>
 #include "utils/json/is_jsonable.h"
+#include <nlohmann/json.hpp>
 
 namespace FlexFlow {
 
@@ -65,7 +65,6 @@ std::variant<Args...> variant_from_json(json const &j) {
   }
   return result.value();
 }
-
 
 } // namespace FlexFlow
 

@@ -3,8 +3,8 @@
 
 #include "op-attrs/ff_dim.dtg.h"
 #include "utils/fmt/vector.h"
-#include <nlohmann/json.hpp>
 #include "utils/stack_vector.h"
+#include <nlohmann/json.hpp>
 
 namespace FlexFlow {
 
@@ -206,7 +206,8 @@ struct adl_serializer<::FlexFlow::DimOrdered<Idx, T>> {
     return {j.template get<std::vector<T>>()};
   }
 
-  static void to_json(nlohmann::json &j, ::FlexFlow::DimOrdered<Idx, T> const &x) {
+  static void to_json(nlohmann::json &j,
+                      ::FlexFlow::DimOrdered<Idx, T> const &x) {
     j = std::vector<T>{x.cbegin(), x.cend()};
   }
 };

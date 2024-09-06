@@ -1,5 +1,4 @@
 #include "utils/graph/digraph/algorithms/get_imm_dominators_map.h"
-#include "utils/containers/vector_of.h"
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/filter_values.h"
 #include "utils/containers/generate_map.h"
@@ -7,6 +6,7 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/vector_of.h"
 #include "utils/graph/digraph/algorithms/get_dominators_map.h"
 #include "utils/graph/node/algorithms.h"
 

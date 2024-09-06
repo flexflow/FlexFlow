@@ -1,9 +1,9 @@
 #include "utils/containers/require_no_duplicates.h"
-#include <doctest/doctest.h>
-#include "test/utils/doctest/fmt/unordered_set.h"
-#include "test/utils/doctest/fmt/unordered_multiset.h"
-#include "test/utils/doctest/fmt/set.h"
 #include "test/utils/doctest/fmt/multiset.h"
+#include "test/utils/doctest/fmt/set.h"
+#include "test/utils/doctest/fmt/unordered_multiset.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

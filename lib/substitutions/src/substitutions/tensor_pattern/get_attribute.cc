@@ -1,7 +1,7 @@
 #include "substitutions/tensor_pattern/get_attribute.h"
 #include "op-attrs/parallel_tensor_dims.h"
-#include "utils/containers/vector_of.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/vector_of.h"
 #include "utils/integer_conversions.h"
 
 namespace FlexFlow {

@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_RAPIDCHECK_OPTIONAL_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_RAPIDCHECK_OPTIONAL_H
 
-#include <rapidcheck.h>
 #include <optional>
+#include <rapidcheck.h>
 
 namespace rc {
 

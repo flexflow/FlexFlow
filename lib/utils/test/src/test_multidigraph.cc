@@ -1,7 +1,7 @@
-#include <doctest/doctest.h>
 #include "utils/graph/adjacency_multidigraph.h"
 #include "utils/graph/multidiedge.h"
 #include "utils/graph/multidigraph_interfaces.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

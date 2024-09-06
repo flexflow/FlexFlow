@@ -2,35 +2,32 @@
 
 namespace FlexFlow {
 
-BinarySPDecompositionTree make_series_split(BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+BinarySPDecompositionTree
+    make_series_split(BinarySPDecompositionTree const &lhs,
+                      BinarySPDecompositionTree const &rhs) {
   return BinarySPDecompositionTree{
-    GenericBinarySPDecompositionTree<Node>{
-      GenericBinarySeriesSplit<Node>{
-        lhs.raw_tree,
-        rhs.raw_tree
+      GenericBinarySPDecompositionTree<Node>{
+          GenericBinarySeriesSplit<Node>{lhs.raw_tree, rhs.raw_tree},
       },
-    },
   };
 }
 
-BinarySPDecompositionTree make_parallel_split(BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+BinarySPDecompositionTree
+    make_parallel_split(BinarySPDecompositionTree const &lhs,
+                        BinarySPDecompositionTree const &rhs) {
   return BinarySPDecompositionTree{
-    GenericBinarySPDecompositionTree<Node>{
-      GenericBinaryParallelSplit<Node>{
-        lhs.raw_tree,
-        rhs.raw_tree
+      GenericBinarySPDecompositionTree<Node>{
+          GenericBinaryParallelSplit<Node>{lhs.raw_tree, rhs.raw_tree},
       },
-    },
   };
 }
 
 BinarySPDecompositionTree make_leaf_node(Node const &n) {
   return BinarySPDecompositionTree{
-    GenericBinarySPDecompositionTree<Node>{
-      n,
-    },
+      GenericBinarySPDecompositionTree<Node>{
+          n,
+      },
   };
 }
-
 
 } // namespace FlexFlow

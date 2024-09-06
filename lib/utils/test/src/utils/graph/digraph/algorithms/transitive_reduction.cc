@@ -1,9 +1,9 @@
 #include "utils/graph/digraph/algorithms/transitive_reduction.h"
+#include "test/utils/doctest/fmt/optional.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/node/algorithms.h"
 #include <doctest/doctest.h>
-#include "test/utils/doctest/fmt/optional.h"
 
 using namespace ::FlexFlow;
 

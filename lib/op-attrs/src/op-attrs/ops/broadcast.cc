@@ -14,7 +14,8 @@ RecordFormatter as_dot(BroadcastAttrs const &attrs) {
   };
 
   for (int i = 0; i < num_dims(attrs.target_dims); i++) {
-    r << kv(fmt::format("target_dims[{}]", i), dim_at_idx(attrs.target_dims, ff_dim_t{i}));
+    r << kv(fmt::format("target_dims[{}]", i),
+            dim_at_idx(attrs.target_dims, ff_dim_t{i}));
   }
 
   return r;

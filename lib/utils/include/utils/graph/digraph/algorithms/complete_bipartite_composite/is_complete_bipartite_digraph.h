@@ -6,7 +6,8 @@
 namespace FlexFlow {
 
 bool is_complete_bipartite_digraph(DiGraphView const &);
-bool is_complete_bipartite_digraph(DiGraphView const &, std::unordered_set<Node> const &srcs);
+bool is_complete_bipartite_digraph(DiGraphView const &,
+                                   std::unordered_set<Node> const &srcs);
 
 } // namespace FlexFlow
 

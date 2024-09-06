@@ -130,10 +130,9 @@ tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,
   }
 }
 
-tensor_guid_t
-    ComputationGraphBuilder::broadcast(tensor_guid_t const &input,
-                                       TensorDims const &target_dims,
-                                       std::string const &name) {
+tensor_guid_t ComputationGraphBuilder::broadcast(tensor_guid_t const &input,
+                                                 TensorDims const &target_dims,
+                                                 std::string const &name) {
   TensorShape input_shape = this->get_shape(input);
   if (input_shape.dims == target_dims) {
     return input;

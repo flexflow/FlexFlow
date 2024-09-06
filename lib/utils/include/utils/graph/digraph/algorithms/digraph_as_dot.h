@@ -5,7 +5,9 @@
 
 namespace FlexFlow {
 
-std::string digraph_as_dot(DiGraphView const &, std::function<std::string(Node const &)> const &get_node_label);
+std::string digraph_as_dot(
+    DiGraphView const &,
+    std::function<std::string(Node const &)> const &get_node_label);
 
 } // namespace FlexFlow
 

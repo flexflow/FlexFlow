@@ -1,4 +1,3 @@
-#include <doctest/doctest.h>
 #include "substitutions/unlabelled/find_pattern_matches.h"
 #include "substitutions/unlabelled/match_additional_criterion.h"
 #include "substitutions/unlabelled/pattern_matching.h"
@@ -11,6 +10,7 @@
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_inputs.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph.h"
 #include "utils/overload.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

@@ -1,7 +1,7 @@
 #include "utils/containers/try_merge_nondisjoint_unordered_maps.h"
-#include <doctest/doctest.h>
 #include "test/utils/doctest/fmt/optional.h"
 #include "test/utils/doctest/fmt/unordered_map.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

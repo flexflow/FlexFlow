@@ -1,8 +1,8 @@
 #include "substitutions/unlabelled/unlabelled_graph_pattern.h"
-#include <doctest/doctest.h>
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

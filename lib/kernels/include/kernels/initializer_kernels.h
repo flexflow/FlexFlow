@@ -3,8 +3,8 @@
 
 #include "accessor.h"
 #include "kernels/cpu.h"
-#include "utils/variant.h"
 #include "op-attrs/datatype_value.dtg.h"
+#include "utils/variant.h"
 
 namespace FlexFlow {
 

@@ -1,18 +1,18 @@
 #include "pcg/computation_graph.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
+#include "utils/graph/digraph/algorithms/get_subgraph_successors.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
-#include "utils/graph/node/algorithms.h"
-#include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
-#include "utils/graph/dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
-#include "utils/record_formatter.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/as_dot.h"
-#include "op-attrs/computation_graph_op_attrs.h"
-#include "utils/graph/digraph/algorithms/get_subgraph_successors.h"
+#include "utils/graph/node/algorithms.h"
+#include "utils/record_formatter.h"
 
 namespace FlexFlow {
 
@@ -46,8 +46,7 @@ std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg) {
 
 std::vector<layer_guid_t>
     reverse_topological_ordering(ComputationGraph const &cg) {
-  std::vector<Node> layers =
-      reversed(get_topological_ordering(cg.raw_graph));
+  std::vector<Node> layers = reversed(get_topological_ordering(cg.raw_graph));
   return transform(
       layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }
@@ -68,10 +67,8 @@ std::unordered_set<ComputationGraphEdge> get_subgraph_incoming_edges(
     ComputationGraph const &cg,
     std::unordered_set<layer_guid_t> const &subgraph_nodes) {
 
-  std::unordered_set<Node> raw_subgraph_nodes =
-      transform(subgraph_nodes, [](layer_guid_t const &l) {
-        return l.raw_node;
-      });
+  std::unordered_set<Node> raw_subgraph_nodes = transform(
+      subgraph_nodes, [](layer_guid_t const &l) { return l.raw_node; });
   std::unordered_set<DataflowEdge> raw_incoming_edges =
       get_subgraph_incoming_edges(cg.raw_graph, raw_subgraph_nodes);
 
@@ -84,10 +81,8 @@ std::unordered_set<ComputationGraphEdge> get_subgraph_outgoing_edges(
     ComputationGraph const &cg,
     std::unordered_set<layer_guid_t> const &subgraph_nodes) {
 
-  std::unordered_set<Node> raw_subgraph_nodes =
-      transform(subgraph_nodes, [](layer_guid_t const &l) {
-        return l.raw_node;
-      });
+  std::unordered_set<Node> raw_subgraph_nodes = transform(
+      subgraph_nodes, [](layer_guid_t const &l) { return l.raw_node; });
   std::unordered_set<DataflowEdge> raw_outgoing_edges =
       get_subgraph_outgoing_edges(cg.raw_graph, raw_subgraph_nodes);
 
@@ -99,17 +94,14 @@ std::unordered_set<ComputationGraphEdge> get_subgraph_outgoing_edges(
 std::unordered_set<layer_guid_t> get_subgraph_successors(
     ComputationGraph const &cg,
     std::unordered_set<layer_guid_t> const &subgraph_nodes) {
-  
-  std::unordered_set<Node> raw_subgraph_nodes =
-      transform(subgraph_nodes, [](layer_guid_t const &l) {
-        return l.raw_node;
-      });
+
+  std::unordered_set<Node> raw_subgraph_nodes = transform(
+      subgraph_nodes, [](layer_guid_t const &l) { return l.raw_node; });
   std::unordered_set<Node> raw_successors =
       get_subgraph_successors(cg.raw_graph, raw_subgraph_nodes);
 
-  return transform(raw_successors, [](Node const &n) {
-    return layer_guid_t{n};
-  });
+  return transform(raw_successors,
+                   [](Node const &n) { return layer_guid_t{n}; });
 }
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n) {
@@ -152,7 +144,9 @@ std::string as_dot(ComputationGraph const &cg) {
     return oss.str();
   };
 
-  return as_dot(view_as_labelled_open_dataflow_graph(cg.raw_graph), get_node_label, get_input_label);
+  return as_dot(view_as_labelled_open_dataflow_graph(cg.raw_graph),
+                get_node_label,
+                get_input_label);
 }
 
 void debug_print_dot(ComputationGraph const &cg) {

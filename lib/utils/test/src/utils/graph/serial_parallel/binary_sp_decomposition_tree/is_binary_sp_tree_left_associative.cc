@@ -22,12 +22,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("just series") {
         BinarySPDecompositionTree input = BinarySPDecompositionTree::series(
-          BinarySPDecompositionTree::series(
-            BinarySPDecompositionTree::node(n1),
-            BinarySPDecompositionTree::node(n2)
-          ),
-          BinarySPDecompositionTree::node(n3)
-        );
+            BinarySPDecompositionTree::series(
+                BinarySPDecompositionTree::node(n1),
+                BinarySPDecompositionTree::node(n2)),
+            BinarySPDecompositionTree::node(n3));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = true;
@@ -37,12 +35,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("just parallel") {
         BinarySPDecompositionTree input = BinarySPDecompositionTree::parallel(
-          BinarySPDecompositionTree::parallel(
-            BinarySPDecompositionTree::node(n1),
-            BinarySPDecompositionTree::node(n2)
-          ),
-          BinarySPDecompositionTree::node(n3)
-        );
+            BinarySPDecompositionTree::parallel(
+                BinarySPDecompositionTree::node(n1),
+                BinarySPDecompositionTree::node(n2)),
+            BinarySPDecompositionTree::node(n3));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = true;
@@ -52,15 +48,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("nested") {
         BinarySPDecompositionTree input = BinarySPDecompositionTree::series(
-          BinarySPDecompositionTree::parallel(
-            BinarySPDecompositionTree::node(n1),
-            BinarySPDecompositionTree::node(n2)
-          ),
-          BinarySPDecompositionTree::parallel(
-            BinarySPDecompositionTree::node(n3),
-            BinarySPDecompositionTree::node(n4)
-          )
-        );
+            BinarySPDecompositionTree::parallel(
+                BinarySPDecompositionTree::node(n1),
+                BinarySPDecompositionTree::node(n2)),
+            BinarySPDecompositionTree::parallel(
+                BinarySPDecompositionTree::node(n3),
+                BinarySPDecompositionTree::node(n4)));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = true;
@@ -72,12 +65,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("input is not left associative") {
       SUBCASE("just series") {
         BinarySPDecompositionTree input = BinarySPDecompositionTree::series(
-          BinarySPDecompositionTree::node(n1),
-          BinarySPDecompositionTree::series(
-            BinarySPDecompositionTree::node(n2),
-            BinarySPDecompositionTree::node(n3)
-          )
-        );
+            BinarySPDecompositionTree::node(n1),
+            BinarySPDecompositionTree::series(
+                BinarySPDecompositionTree::node(n2),
+                BinarySPDecompositionTree::node(n3)));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = false;
@@ -87,12 +78,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("just parallel") {
         BinarySPDecompositionTree input = BinarySPDecompositionTree::parallel(
-          BinarySPDecompositionTree::node(n1),
-          BinarySPDecompositionTree::parallel(
-            BinarySPDecompositionTree::node(n2),
-            BinarySPDecompositionTree::node(n3)
-          )
-        );
+            BinarySPDecompositionTree::node(n1),
+            BinarySPDecompositionTree::parallel(
+                BinarySPDecompositionTree::node(n2),
+                BinarySPDecompositionTree::node(n3)));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = false;

@@ -1,6 +1,6 @@
-#include <doctest/doctest.h>
 #include "test/utils/rapidcheck.h"
 #include "utils/stack_string.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

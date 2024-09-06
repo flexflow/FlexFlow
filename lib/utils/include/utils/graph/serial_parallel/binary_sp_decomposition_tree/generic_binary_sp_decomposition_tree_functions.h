@@ -6,24 +6,28 @@
 namespace FlexFlow {
 
 template <typename T>
-GenericBinarySPDecompositionTree<T> get_left_child(GenericBinarySPDecompositionTree<T> const &tt) {
-  return tt.template visit<GenericBinarySPDecompositionTree<T>>(overload {
-    [](GenericBinarySeriesSplit<T> const &s) { return s.left_child(); },
-    [](GenericBinaryParallelSplit<T> const &p) { return p.right_child(); },
-    [](T const &t) -> GenericBinarySPDecompositionTree<T> { 
-      throw mk_runtime_error("get_left_child incorrectly called on leaf node");
-    },
+GenericBinarySPDecompositionTree<T>
+    get_left_child(GenericBinarySPDecompositionTree<T> const &tt) {
+  return tt.template visit<GenericBinarySPDecompositionTree<T>>(overload{
+      [](GenericBinarySeriesSplit<T> const &s) { return s.left_child(); },
+      [](GenericBinaryParallelSplit<T> const &p) { return p.right_child(); },
+      [](T const &t) -> GenericBinarySPDecompositionTree<T> {
+        throw mk_runtime_error(
+            "get_left_child incorrectly called on leaf node");
+      },
   });
 }
 
 template <typename T>
-GenericBinarySPDecompositionTree<T> get_right_child(GenericBinarySPDecompositionTree<T> const &tt) {
-  return tt.template visit<GenericBinarySPDecompositionTree<T>>(overload {
-    [](GenericBinarySeriesSplit<T> const &s) { return s.right_child(); },
-    [](GenericBinaryParallelSplit<T> const &p) { return p.right_child(); },
-    [](T const &t) -> GenericBinarySPDecompositionTree<T> { 
-      throw mk_runtime_error("get_right_child incorrectly called on leaf node");
-    },
+GenericBinarySPDecompositionTree<T>
+    get_right_child(GenericBinarySPDecompositionTree<T> const &tt) {
+  return tt.template visit<GenericBinarySPDecompositionTree<T>>(overload{
+      [](GenericBinarySeriesSplit<T> const &s) { return s.right_child(); },
+      [](GenericBinaryParallelSplit<T> const &p) { return p.right_child(); },
+      [](T const &t) -> GenericBinarySPDecompositionTree<T> {
+        throw mk_runtime_error(
+            "get_right_child incorrectly called on leaf node");
+      },
   });
 }
 

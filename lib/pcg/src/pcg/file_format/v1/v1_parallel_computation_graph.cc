@@ -5,7 +5,7 @@ namespace FlexFlow {
 
 V1ParallelComputationGraph to_v1(ParallelComputationGraph const &g) {
   return V1ParallelComputationGraph{
-    to_v1<ParallelLayerAttrs, ParallelTensorAttrs>(g.raw_graph),
+      to_v1<ParallelLayerAttrs, ParallelTensorAttrs>(g.raw_graph),
   };
 }
 

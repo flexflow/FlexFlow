@@ -15,5 +15,4 @@ struct StringMaker<tl::expected<T, E>> {
 
 } // namespace doctest
 
-
 #endif

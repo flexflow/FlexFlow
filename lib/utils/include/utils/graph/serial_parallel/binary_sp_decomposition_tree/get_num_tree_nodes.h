@@ -8,21 +8,27 @@ namespace FlexFlow {
 
 template <typename T>
 int get_num_tree_nodes(GenericBinarySPDecompositionTree<T> const &t) {
-  return t.template visit<int>(overload {
-    [](Node const &n) { return 1; },
-    [](GenericBinarySeriesSplit<T> const &s) { return get_num_tree_nodes(s); },
-    [](GenericBinaryParallelSplit<T> const &p) { return get_num_tree_nodes(p); },
+  return t.template visit<int>(overload{
+      [](Node const &n) { return 1; },
+      [](GenericBinarySeriesSplit<T> const &s) {
+        return get_num_tree_nodes(s);
+      },
+      [](GenericBinaryParallelSplit<T> const &p) {
+        return get_num_tree_nodes(p);
+      },
   });
 }
 
 template <typename T>
 int get_num_tree_nodes(GenericBinarySeriesSplit<T> const &s) {
-  return 1 + get_num_tree_nodes(s.left_child()) + get_num_tree_nodes(s.right_child());
+  return 1 + get_num_tree_nodes(s.left_child()) +
+         get_num_tree_nodes(s.right_child());
 }
 
 template <typename T>
 int get_num_tree_nodes(GenericBinaryParallelSplit<T> const &p) {
-  return 1 + get_num_tree_nodes(p.left_child()) + get_num_tree_nodes(p.right_child());
+  return 1 + get_num_tree_nodes(p.left_child()) +
+         get_num_tree_nodes(p.right_child());
 }
 
 } // namespace FlexFlow

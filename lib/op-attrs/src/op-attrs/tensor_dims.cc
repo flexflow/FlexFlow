@@ -3,9 +3,9 @@
 #include "op-attrs/replica_parallel_dim_set.h"
 #include "op-attrs/shard_parallel_dim.dtg.h"
 #include "utils/containers/all_of.h"
-#include "utils/containers/vector_of.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/zip.h"
 #include "utils/integer_conversions.h"
 

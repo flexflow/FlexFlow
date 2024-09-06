@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include "utils/type_index.h"
+#include <doctest/doctest.h>
 #include <typeindex>
 
 using namespace FlexFlow;

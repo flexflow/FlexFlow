@@ -13,6 +13,7 @@
 #include "utils/containers/keys.h"
 #include "utils/containers/merge_maps.h"
 #include "utils/containers/require_no_duplicates.h"
+#include "utils/containers/vector_of.h"
 #include "utils/exception.h"
 #include "utils/graph/graph_split.dtg.h"
 #include "utils/graph/node/algorithms.h"
@@ -20,7 +21,6 @@
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
 #include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
 #include "utils/graph/serial_parallel/serial_parallel_splits.h"
-#include "utils/containers/vector_of.h"
 
 namespace FlexFlow {
 
@@ -115,9 +115,11 @@ std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
 GraphSplit
     get_graph_split(SerialParallelDecomposition const &pre_decomposition,
                     SerialParallelDecomposition const &post_decomposition) {
-  std::unordered_set<Node> pre_nodes = require_no_duplicates(get_nodes(pre_decomposition));
-  std::unordered_set<Node> post_nodes = require_no_duplicates(get_nodes(post_decomposition));
-  assert (are_disjoint(pre_nodes, post_nodes));
+  std::unordered_set<Node> pre_nodes =
+      require_no_duplicates(get_nodes(pre_decomposition));
+  std::unordered_set<Node> post_nodes =
+      require_no_duplicates(get_nodes(post_decomposition));
+  assert(are_disjoint(pre_nodes, post_nodes));
   return GraphSplit{pre_nodes, post_nodes};
 }
 

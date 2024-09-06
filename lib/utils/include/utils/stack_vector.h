@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_UTILS_STACK_VECTOR_H
 #define _FLEXFLOW_UTILS_STACK_VECTOR_H
 
-#include <nlohmann/json.hpp>
 #include "utils/hash-utils.h"
 #include "utils/join_strings.h"
 #include "utils/test_types.h"
@@ -9,6 +8,7 @@
 #include <array>
 #include <cassert>
 #include <fmt/format.h>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <rapidcheck.h>
 #include <type_traits>

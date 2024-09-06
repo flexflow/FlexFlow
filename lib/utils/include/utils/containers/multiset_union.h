@@ -1,13 +1,15 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_MULTISET_UNION_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_MULTISET_UNION_H
 
-#include <unordered_set>
 #include <set>
+#include <unordered_set>
 
 namespace FlexFlow {
 
 template <typename T>
-std::unordered_multiset<T> multiset_union(std::unordered_multiset<T> const &lhs, std::unordered_multiset<T> const &rhs) {
+std::unordered_multiset<T>
+    multiset_union(std::unordered_multiset<T> const &lhs,
+                   std::unordered_multiset<T> const &rhs) {
   std::unordered_multiset<T> result = lhs;
 
   for (T const &t : rhs) {
@@ -18,7 +20,8 @@ std::unordered_multiset<T> multiset_union(std::unordered_multiset<T> const &lhs,
 }
 
 template <typename T>
-std::multiset<T> multiset_union(std::multiset<T> const &lhs, std::multiset<T> const &rhs) {
+std::multiset<T> multiset_union(std::multiset<T> const &lhs,
+                                std::multiset<T> const &rhs) {
   std::multiset<T> result = lhs;
 
   for (T const &t : rhs) {
@@ -39,7 +42,6 @@ std::unordered_multiset<T> multiset_union(C const &c) {
 
   return result;
 }
-
 
 } // namespace FlexFlow
 

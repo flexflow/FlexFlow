@@ -1,13 +1,13 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_REQUIRED_H
 
-#include <nlohmann/json.hpp>
+#include "utils/fmt/vector.h"
+#include "utils/json/is_json_deserializable.h"
+#include "utils/json/is_json_serializable.h"
+#include "utils/json/is_jsonable.h"
 #include "utils/required_core.h"
 #include "utils/type_traits.h"
-#include "utils/json/is_json_serializable.h"
-#include "utils/json/is_json_deserializable.h"
-#include "utils/json/is_jsonable.h"
-#include "utils/fmt/vector.h"
+#include <nlohmann/json.hpp>
 
 namespace FlexFlow {
 

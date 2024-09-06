@@ -5,8 +5,11 @@
 
 namespace FlexFlow {
 
-BinarySPDecompositionTree make_series_split(BinarySPDecompositionTree const &, BinarySPDecompositionTree const &);
-BinarySPDecompositionTree make_parallel_split(BinarySPDecompositionTree const &, BinarySPDecompositionTree const &);
+BinarySPDecompositionTree make_series_split(BinarySPDecompositionTree const &,
+                                            BinarySPDecompositionTree const &);
+BinarySPDecompositionTree
+    make_parallel_split(BinarySPDecompositionTree const &,
+                        BinarySPDecompositionTree const &);
 BinarySPDecompositionTree make_leaf_node(Node const &);
 
 } // namespace FlexFlow

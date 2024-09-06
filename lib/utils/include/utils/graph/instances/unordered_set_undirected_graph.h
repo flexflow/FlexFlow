@@ -17,9 +17,11 @@ public:
   void remove_edge(UndirectedEdge const &) override;
 
   std::unordered_set<Node> query_nodes(NodeQuery const &) const override;
-  std::unordered_set<UndirectedEdge> query_edges(UndirectedEdgeQuery const &) const override;
+  std::unordered_set<UndirectedEdge>
+      query_edges(UndirectedEdgeQuery const &) const override;
 
   UnorderedSetUndirectedGraph *clone() const override;
+
 private:
   UnorderedSetUndirectedGraph(NodeSource const &,
                               std::unordered_set<Node> const &,

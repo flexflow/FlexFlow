@@ -1,6 +1,6 @@
 #include "utils/rapidcheck/optional.h"
-#include <doctest/doctest.h>
 #include "test/utils/rapidcheck.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

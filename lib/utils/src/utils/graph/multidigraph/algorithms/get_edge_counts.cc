@@ -1,7 +1,7 @@
 #include "utils/graph/multidigraph/algorithms/get_edge_counts.h"
-#include "utils/containers/vector_of.h"
 #include "utils/containers/get_element_counts.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/vector_of.h"
 #include "utils/graph/multidigraph/algorithms/get_directed_edge.h"
 #include "utils/graph/multidigraph/algorithms/get_edges.h"
 

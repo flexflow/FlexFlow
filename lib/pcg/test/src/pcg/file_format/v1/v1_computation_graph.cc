@@ -1,6 +1,6 @@
-#include <doctest/doctest.h>
 #include "pcg/file_format/v1/v1_computation_graph.h"
 #include "pcg/computation_graph_builder.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
@@ -10,10 +10,11 @@ TEST_SUITE(FF_TEST_SUITE) {
       ComputationGraphBuilder b;
 
       TensorShape input_shape = TensorShape{
-        TensorDims{FFOrdered<size_t>{
-          12, 16,
-        }},
-        DataType::FLOAT,
+          TensorDims{FFOrdered<size_t>{
+              12,
+              16,
+          }},
+          DataType::FLOAT,
       };
 
       tensor_guid_t input = b.create_tensor(input_shape, CreateGrad::YES);

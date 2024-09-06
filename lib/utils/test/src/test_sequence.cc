@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include "utils/sequence.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

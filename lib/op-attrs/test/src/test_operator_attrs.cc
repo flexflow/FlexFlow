@@ -1,8 +1,8 @@
 #include "op-attrs/computation_graph_op_attrs.dtg.h"
 #include "op-attrs/pcg_operator_attrs.dtg.h"
-#include <nlohmann/json.hpp>
 #include <doctest/doctest.h>
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <sstream>
 
 using namespace ::FlexFlow;

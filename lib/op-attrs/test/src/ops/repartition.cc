@@ -1,6 +1,6 @@
 #include "op-attrs/ops/repartition.h"
-#include <doctest/doctest.h>
 #include "test/utils/doctest/fmt/expected.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

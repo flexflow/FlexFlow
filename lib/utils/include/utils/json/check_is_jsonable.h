@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_CHECK_IS_JSONABLE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_CHECK_IS_JSONABLE_H
 
-#include "utils/json/is_json_serializable.h"
 #include "utils/json/is_json_deserializable.h"
+#include "utils/json/is_json_serializable.h"
 
 namespace FlexFlow {
 
