@@ -37,6 +37,9 @@ std::unordered_set<ComputationGraphEdge> get_subgraph_incoming_edges(
 std::unordered_set<ComputationGraphEdge> get_subgraph_outgoing_edges(
     ComputationGraph const &,
     std::unordered_set<layer_guid_t> const &);
+std::unordered_set<layer_guid_t> get_subgraph_successors(
+    ComputationGraph const &,
+    std::unordered_set<layer_guid_t> const &);
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
 

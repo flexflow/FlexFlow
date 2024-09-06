@@ -16,10 +16,10 @@
 namespace FlexFlow {
 
 std::optional<SerialParallelDecomposition>
-    get_serial_parallel_decomposition(DiGraphView const &x) {
+    get_serial_parallel_decomposition(DiGraphView const &g) {
 
-  DiGraphView transitively_reduced = transitive_reduction(x);
-  // DiGraphView transitively_reduced = x;
+  DiGraphView transitively_reduced = transitive_reduction(g);
+
   InverseLineGraphResult inverse_line_graph_result = ({
     std::optional<InverseLineGraphResult> maybe_line_graph =
         get_inverse_line_graph(transitively_reduced);
@@ -38,7 +38,7 @@ std::optional<SerialParallelDecomposition>
           inverse_line_graph_result.inverse_edge_to_line_node_bidict
               .as_unordered_map(),
           [](Node const &n) {
-            return BinarySPDecompositionTree{n};
+            return make_leaf_node(n);
           });
 
   while (true) {
@@ -50,12 +50,10 @@ std::optional<SerialParallelDecomposition>
       auto [e1, e2] = parallel_reduction.edges.ordered();
       MultiDiEdge merged = apply_parallel_reduction(ttsp, parallel_reduction);
       BinarySPDecompositionTree new_tree =
-          BinarySPDecompositionTree{
-            BinaryParallelSplit{
-              ttsp_edge_to_sp_tree.at(e1), 
-              ttsp_edge_to_sp_tree.at(e2),
-            },
-          };
+          make_parallel_split(
+            ttsp_edge_to_sp_tree.at(e1), 
+            ttsp_edge_to_sp_tree.at(e2)
+          );
       ttsp_edge_to_sp_tree.erase(e1);
       ttsp_edge_to_sp_tree.erase(e2);
       ttsp_edge_to_sp_tree.insert({merged, new_tree});
@@ -71,12 +69,10 @@ std::optional<SerialParallelDecomposition>
       MultiDiEdge e2 = series_reduction.second;
       MultiDiEdge merged = apply_series_reduction(ttsp, series_reduction);
       BinarySPDecompositionTree new_tree =
-          BinarySPDecompositionTree{
-            BinarySeriesSplit{
-              ttsp_edge_to_sp_tree.at(e1), 
-              ttsp_edge_to_sp_tree.at(e2),
-            },
-          };
+        make_series_split(
+          ttsp_edge_to_sp_tree.at(e1), 
+          ttsp_edge_to_sp_tree.at(e2)
+        );
       ttsp_edge_to_sp_tree.erase(e1);
       ttsp_edge_to_sp_tree.erase(e2);
       ttsp_edge_to_sp_tree.insert({merged, new_tree});

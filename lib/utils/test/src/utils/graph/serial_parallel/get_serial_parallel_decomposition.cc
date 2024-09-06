@@ -160,12 +160,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == correct);
   }
 
-  TEST_CASE("get_serial_parallel_decomposition (transitive reduction)") {
+  TEST_CASE("get_serial_parallel_decomposition (requires transitive reduction)") {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
 
     std::vector<Node> n = add_nodes(g, 4);
 
-    // N-graph
     add_edges(g,
               {
                   DirectedEdge{n.at(0), n.at(1)},

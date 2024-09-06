@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "BinarySPDecompositionTree"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.h",
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "raw_tree"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<::FlexFlow::Node>"

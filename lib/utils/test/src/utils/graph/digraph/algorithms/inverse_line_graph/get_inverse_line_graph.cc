@@ -141,7 +141,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    SUBCASE("sp n-graph") {
+    SUBCASE("sp n-graph (inverse line graph does not exist)") {
       // Tests that the inverse line graph of the sp n-graph
       //
       // a-b

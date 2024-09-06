@@ -18,6 +18,8 @@ CLIArgumentKey cli_add_positional_argument(CLISpec &, CLIPositionalArgumentSpec 
 tl::expected<CLIParseResult, std::string> cli_parse(CLISpec const &, std::vector<std::string> const &);
 tl::expected<CLIParseResult, std::string> cli_parse(CLISpec const &, int argc, char const * const *argv);
 
+std::string cli_get_help_message(std::string const &program_name, CLISpec const &);
+
 } // namespace FlexFlow
 
 #endif

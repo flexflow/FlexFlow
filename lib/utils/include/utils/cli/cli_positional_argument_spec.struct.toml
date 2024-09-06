@@ -19,5 +19,9 @@ src_includes = [
 ]
 
 [[fields]]
+name = "name"
+type = "std::string"
+
+[[fields]]
 name = "options"
 type = "std::optional<std::unordered_set<std::string>>"

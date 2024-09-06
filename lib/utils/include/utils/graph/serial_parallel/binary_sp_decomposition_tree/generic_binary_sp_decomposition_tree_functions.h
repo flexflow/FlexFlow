@@ -1,0 +1,32 @@
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_FUNCTIONS_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_FUNCTIONS_H
+
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.h"
+
+namespace FlexFlow {
+
+template <typename T>
+GenericBinarySPDecompositionTree<T> get_left_child(GenericBinarySPDecompositionTree<T> const &tt) {
+  return tt.template visit<GenericBinarySPDecompositionTree<T>>(overload {
+    [](GenericBinarySeriesSplit<T> const &s) { return s.left_child(); },
+    [](GenericBinaryParallelSplit<T> const &p) { return p.right_child(); },
+    [](T const &t) -> GenericBinarySPDecompositionTree<T> { 
+      throw mk_runtime_error("get_left_child incorrectly called on leaf node");
+    },
+  });
+}
+
+template <typename T>
+GenericBinarySPDecompositionTree<T> get_right_child(GenericBinarySPDecompositionTree<T> const &tt) {
+  return tt.template visit<GenericBinarySPDecompositionTree<T>>(overload {
+    [](GenericBinarySeriesSplit<T> const &s) { return s.right_child(); },
+    [](GenericBinaryParallelSplit<T> const &p) { return p.right_child(); },
+    [](T const &t) -> GenericBinarySPDecompositionTree<T> { 
+      throw mk_runtime_error("get_right_child incorrectly called on leaf node");
+    },
+  });
+}
+
+} // namespace FlexFlow
+
+#endif

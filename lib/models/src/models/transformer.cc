@@ -150,11 +150,11 @@ ComputationGraph
       DataType::FLOAT,
   };
   tensor_guid_t input = cgb.create_tensor(input_shape, CreateGrad::YES);
-  // tensor_guid_t target = cgb.create_tensor(input_shape, CreateGrad::YES);
+  tensor_guid_t target = cgb.create_tensor(input_shape, CreateGrad::YES);
 
   tensor_guid_t encoder_output = create_transformer_encoder(cgb, config, input);
   tensor_guid_t decoder_output =
-      create_transformer_decoder(cgb, config, input, encoder_output);
+      create_transformer_decoder(cgb, config, target, encoder_output);
 
   tensor_guid_t out_prob = cgb.softmax(cgb.dense(decoder_output,
                                                  /*outDim=*/config.vocab_size,

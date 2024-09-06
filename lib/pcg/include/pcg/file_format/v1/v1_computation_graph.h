@@ -3,10 +3,16 @@
 
 #include "pcg/file_format/v1/v1_computation_graph.dtg.h"
 #include "pcg/computation_graph.dtg.h"
+#include "pcg/layer_guid_t.dtg.h"
 
 namespace FlexFlow {
 
 V1ComputationGraph to_v1(ComputationGraph const &);
+
+std::pair<
+  V1ComputationGraph,
+  bidict<int, layer_guid_t>
+> to_v1_including_node_numbering(ComputationGraph const &);
 
 } // namespace FlexFlow
 

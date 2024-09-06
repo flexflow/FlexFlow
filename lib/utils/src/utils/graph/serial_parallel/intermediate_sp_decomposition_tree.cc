@@ -47,10 +47,10 @@ std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(
 }
 
 std::variant<IntermediateSpDecompositionTree, Node>
-    from_binary_sp_tree(BinarySPDecompositionTree const &binary) {
+    from_binary_sp_tree(GenericBinarySPDecompositionTree<Node> const &binary) {
   return binary.visit<std::variant<IntermediateSpDecompositionTree, Node>>(overload {
     [](Node const &n) { return n; },
-    [](BinarySeriesSplit const &s) { 
+    [](GenericBinarySeriesSplit<Node> const &s) { 
       return IntermediateSpDecompositionTree{
         SplitType::SERIAL,
         {
@@ -59,7 +59,7 @@ std::variant<IntermediateSpDecompositionTree, Node>
         },
       };
     },
-    [](BinaryParallelSplit const &p) {
+    [](GenericBinaryParallelSplit<Node> const &p) {
       return IntermediateSpDecompositionTree{
         SplitType::PARALLEL,
         {
@@ -69,6 +69,11 @@ std::variant<IntermediateSpDecompositionTree, Node>
       };
     },
   });
+}
+
+std::variant<IntermediateSpDecompositionTree, Node>
+    from_binary_sp_tree(BinarySPDecompositionTree const &binary) {
+  return from_binary_sp_tree(binary.raw_tree);
 }
 
 } // namespace FlexFlow

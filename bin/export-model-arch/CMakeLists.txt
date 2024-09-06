@@ -8,4 +8,5 @@ ff_add_executable(
   DEPS
     utils
     models
+    compiler
 )
