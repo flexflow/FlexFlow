@@ -36,11 +36,11 @@ public:
     return this->unlabelled.get_inputs();
   }
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel at(Node const &n) const override {
     return this->node_labels.at(n);
   }
 
-  ValueLabel const &at(OpenDataflowValue const &v) const override {
+  ValueLabel at(OpenDataflowValue const &v) const override {
     return this->value_labels.at(v);
   }
 

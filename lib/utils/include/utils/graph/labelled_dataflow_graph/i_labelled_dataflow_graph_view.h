@@ -8,8 +8,8 @@ namespace FlexFlow {
 template <typename NodeLabel, typename OutputLabel>
 struct ILabelledDataflowGraphView : virtual public IDataflowGraphView {
 public:
-  virtual NodeLabel const &at(Node const &) const = 0;
-  virtual OutputLabel const &at(DataflowOutput const &) const = 0;
+  virtual NodeLabel at(Node const &) const = 0;
+  virtual OutputLabel at(DataflowOutput const &) const = 0;
 
   virtual ~ILabelledDataflowGraphView() = default;
 };

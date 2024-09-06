@@ -1,4 +1,5 @@
 #include "op-attrs/ops/cast.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "test/utils/doctest.h"
 
 TEST_SUITE(FF_TEST_SUITE) {

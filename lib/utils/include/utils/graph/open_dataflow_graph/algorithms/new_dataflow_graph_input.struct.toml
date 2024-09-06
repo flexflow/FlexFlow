@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "NewDataflowGraphInput"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/open_dataflow_graph/dataflow_graph_input.dtg.h",
+]
+
+[[fields]]
+name = "raw_input"
+type = "::FlexFlow::DataflowGraphInput"

@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_TUPLE_H
 #define _FLEXFLOW_UTILS_TUPLE_H
 
-#include "utils/exception.decl.h"
+#include "utils/exception.h"
 #include "utils/type_traits_core.h"
 #include <any>
 #include <cstddef>

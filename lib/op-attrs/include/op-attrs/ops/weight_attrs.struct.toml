@@ -8,4 +8,11 @@ features = [
   "rapidcheck",
   "fmt",
 ]
-fields = []
+
+includes = [
+  "op-attrs/tensor_shape.dtg.h",
+]
+
+[[fields]]
+name = "tensor_shape"
+type = "::FlexFlow::TensorShape"
