@@ -1,7 +1,7 @@
-#ifndef _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_TRANSFORMER_H
-#define _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_TRANSFORMER_H
+#ifndef _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_TRANSFORMER_TRANSFORMER_H
+#define _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_TRANSFORMER_TRANSFORMER_H
 
-#include "models/transformer_config.dtg.h"
+#include "models/transformer/transformer_config.dtg.h"
 #include "pcg/computation_graph_builder.h"
 
 namespace FlexFlow {

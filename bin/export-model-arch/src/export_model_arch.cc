@@ -1,7 +1,7 @@
 #include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
 #include "export_model_arch/json_sp_model_export.dtg.h"
-#include "models/transformer.h"
+#include "models/transformer/transformer.h"
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "pcg/computation_graph.h"
 #include "pcg/computation_graph/computation_graph_edge.h"
@@ -16,6 +16,7 @@
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
+#include "models/split_test/split_test.h"
 
 using namespace ::FlexFlow;
 
@@ -47,6 +48,9 @@ tl::expected<ComputationGraph, std::string>
     get_model_computation_graph(std::string const &model_name) {
   if (model_name == "transformer") {
     return get_default_transformer_computation_graph();
+  } else if (model_name == "split_test") {
+    int batch_size = 8;
+    return get_split_test_computation_graph(batch_size);
   } else {
     return tl::unexpected(fmt::format("Unknown model name: {}", model_name));
   }
@@ -95,7 +99,7 @@ int main(int argc, char **argv) {
   CLIArgumentKey key_dot = cli_add_flag(cli, CLIFlagSpec{"dot", std::nullopt});
   CLIArgumentKey key_preprocessed_dot =
       cli_add_flag(cli, CLIFlagSpec{"preprocessed-dot", std::nullopt});
-  std::unordered_set<std::string> model_options = {"transformer"};
+  std::unordered_set<std::string> model_options = {"transformer", "split_test"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
       cli, CLIPositionalArgumentSpec{"model", model_options});
 
