@@ -2,13 +2,24 @@
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/get_op_type.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/ops/attention.h"
+#include "op-attrs/ops/batch_norm.h"
+#include "op-attrs/ops/broadcast.h"
+#include "op-attrs/ops/conv_2d.h"
+#include "op-attrs/ops/dropout.h"
 #include "op-attrs/ops/element_binary.h"
+#include "op-attrs/ops/element_unary.h"
 #include "op-attrs/ops/embedding.h"
+#include "op-attrs/ops/gather.h"
+#include "op-attrs/ops/layer_norm.h"
+#include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/softmax.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "pcg/computation_graph.h"
 #include "utils/containers/any_of.h"
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/enumerate_vector.h"
+#include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
 #include "utils/expected.h"
 #include <fmt/format.h>
@@ -49,7 +60,7 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
           return fmt::format("{}.weights[{}]", layer_name, weight_idx);
         });
     LayerAttrs weight_layer_attrs = LayerAttrs{
-        ComputationGraphOpAttrs{WeightAttrs{}},
+        ComputationGraphOpAttrs{WeightAttrs{weight_tensor_attrs.shape}},
         weight_name,
     };
     std::vector<DataflowOutput> weight_layer_inputs = {};
@@ -451,7 +462,7 @@ tensor_guid_t ComputationGraphBuilder::embedding(
   return this->add_layer(layer, {input}, {weight_attrs}, output_shape);
 }
 
-std::vector<tensor_guid_t> ComputationGraphBuilder::gather(
+tensor_guid_t ComputationGraphBuilder::gather(
     tensor_guid_t const &input,
     tensor_guid_t const &index,
     ff_dim_t dim,
@@ -469,10 +480,10 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::gather(
                            DataType::INT32,
                            DataType::INT64);
   }
-  std::vector<TensorShape> output_shapes =
-      get_output_shapes(attrs, this->get_shape(input), this->get_shape(index));
+  TensorShape output_shape =
+      get_output_shape(attrs, this->get_shape(input), this->get_shape(index));
 
-  return this->add_layer(layer, {input}, {}, output_shapes);
+  return this->add_layer(layer, {input}, {}, output_shape);
 }
 
 /* std::vector<TensorShape>

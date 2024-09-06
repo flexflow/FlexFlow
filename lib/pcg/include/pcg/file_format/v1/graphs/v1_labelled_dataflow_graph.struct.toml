@@ -22,11 +22,11 @@ includes = [
 
 [[fields]]
 name = "node_labels"
-type = "std::unordered_map<size_t, NodeLabel>"
+type = "std::unordered_map<int, NodeLabel>"
 
 [[fields]]
 name = "output_labels"
-type = "std::unordered_map<size_t, std::vector<OutputLabel>>"
+type = "std::unordered_map<int, std::vector<OutputLabel>>"
 
 [[fields]]
 name = "graph"

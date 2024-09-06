@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "LossFunction"
+features = [
+  "fmt",
+  "hash",
+  "rapidcheck",
+  "json",
+]
+
+[[values]]
+name = "CATEGORICAL_CROSSENTROPY"
+
+[[values]]
+name = "SPARSE_CATEGORICAL_CROSSENTROPY"
+
+[[values]]
+name = "MEAN_SQUARED_ERROR_AVG_REDUCE"
+
+[[values]]
+name = "MEAN_SQUARED_ERROR_SUM_REDUCE"
+
+[[values]]
+name = "IDENTITY"

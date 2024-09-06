@@ -114,11 +114,10 @@ public:
       std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
   // Add a gather layer
-  std::vector<tensor_guid_t>
-      gather(tensor_guid_t const &input,
-             tensor_guid_t const &index,
-             ff_dim_t dim,
-             std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t gather(tensor_guid_t const &input,
+                       tensor_guid_t const &index,
+                       ff_dim_t dim,
+                       std::optional<std::string> const &name = std::nullopt);
   // Add a cache layer
   tensor_guid_t
       cache(tensor_guid_t const &input,

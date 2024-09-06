@@ -16,6 +16,10 @@
 #include "utils/graph/labelled_open_dataflow_graph/i_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_source.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_edges.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_inputs.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_graph_inputs.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_values.h"
 #include "utils/graph/open_dataflow_graph/dataflow_graph_input_source.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_edge_query.h"
@@ -109,11 +113,11 @@ public:
     return this->inputs;
   }
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel at(Node const &n) const override {
     return this->nodes.at(n);
   }
 
-  ValueLabel const &at(OpenDataflowValue const &v) const override {
+  ValueLabel at(OpenDataflowValue const &v) const override {
     return this->values.at(v);
   }
 
@@ -134,6 +138,26 @@ public:
     this->values = map_keys(labelled_outputs, [](DataflowOutput const &o) {
       return OpenDataflowValue{o};
     });
+  }
+
+  virtual void inplace_materialize_from(
+      LabelledOpenDataflowGraphView<NodeLabel, ValueLabel> const &view)
+      override {
+
+    std::unordered_map<Node, NodeLabel> nodes = generate_map(
+        get_nodes(view), [&](Node const &n) { return view.at(n); });
+    std::unordered_set<OpenDataflowEdge> edges = get_edges(view);
+    std::unordered_set<DataflowGraphInput> inputs =
+        ::FlexFlow::get_open_dataflow_graph_inputs(view);
+
+    std::unordered_map<OpenDataflowValue, ValueLabel> values =
+        generate_map(get_open_dataflow_values(view),
+                     [&](OpenDataflowValue const &v) { return view.at(v); });
+
+    this->inputs = inputs;
+    this->nodes = nodes;
+    this->edges = edges;
+    this->values = values;
   }
 
   UnorderedSetLabelledOpenDataflowGraph *clone() const override {

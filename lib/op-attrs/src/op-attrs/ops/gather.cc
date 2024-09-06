@@ -2,6 +2,18 @@
 
 namespace FlexFlow {
 
+TensorShape get_output_shape(GatherAttrs const &,
+                             TensorShape const &input,
+                             TensorShape const &index) {
+  NOT_IMPLEMENTED();
+}
+
+ParallelTensorShape get_output_shape(GatherAttrs const &,
+                                     ParallelTensorShape const &input,
+                                     ParallelTensorShape const &index) {
+  NOT_IMPLEMENTED();
+}
+
 /* bool GatherAttrs::is_valid(ParallelTensorShape const &lhs,
  * ParallelTensorShape const &rhs) const { */
 /*   if (lhs.num_dims() != rhs.num_dims()) { */
