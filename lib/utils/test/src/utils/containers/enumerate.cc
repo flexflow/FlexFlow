@@ -19,10 +19,23 @@ TEST_SUITE(FF_TEST_SUITE) {
         {2, "two"},
         {3, "three"},
     };
-  
+
     std::map<int, std::string> result = enumerate(input);
 
     CHECK(result == correct);
+
+    SUBCASE("check iteration order") {
+      std::vector<std::pair<int const, std::string>> iterated_result =
+          as_vector(result);
+      std::vector<std::pair<int const, std::string>> correct_iteration_order = {
+          {0, "zero"},
+          {1, "one"},
+          {2, "two"},
+          {3, "three"},
+      };
+
+      CHECK(iterated_result == correct_iteration_order);
+    }
   }
 
   TEST_CASE("enumerate(std::unordered_set<T>)") {

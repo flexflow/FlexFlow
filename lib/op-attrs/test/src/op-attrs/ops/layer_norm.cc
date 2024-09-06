@@ -1,5 +1,6 @@
 #include "op-attrs/ops/layer_norm.h"
 #include <doctest/doctest.h>
+#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/expected.h"
 #include "utils/fmt/expected.h"
 #include "utils/fmt/optional.h"
