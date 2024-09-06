@@ -37,6 +37,30 @@ using namespace ::FlexFlow;
 //   return right_associative_binary_sp_tree_from_nary(nary_sp_decomposition);
 // }
 
+ComputationGraph get_single_operator_computation_graph() {
+  ComputationGraphBuilder b;
+
+  size_t batch_size = 8;
+  size_t in_channels = 16;
+  size_t out_channels = 12;
+  TensorShape input_shape = TensorShape{
+    TensorDims{FFOrdered<size_t>{
+      batch_size,
+      in_channels,
+      out_channels,
+    }},
+    DataType::FLOAT,
+  };
+      
+  tensor_guid_t input = b.create_tensor(input_shape, CreateGrad::YES);
+
+  InitializerAttrs kernel_initializer = InitializerAttrs{GlorotUniformAttrs{/*seed=*/12}};
+  InitializerAttrs bias_initializer = InitializerAttrs{ZeroInitializerAttrs{}};
+  tensor_guid_t output = b.dense(input, in_channels, Activation::RELU, /*use_bias=*/true, DataType::FLOAT, kernel_initializer, bias_initializer, "my_example_operator");
+
+  return b.computation_graph;
+}
+
 ComputationGraph get_default_transformer_computation_graph() {
   TransformerConfig config = get_default_transformer_config();
   ComputationGraph cg = get_transformer_computation_graph(config);
@@ -51,6 +75,8 @@ tl::expected<ComputationGraph, std::string>
   } else if (model_name == "split_test") {
     int batch_size = 8;
     return get_split_test_computation_graph(batch_size);
+  } else if (model_name == "single_operator") {
+    return get_single_operator_computation_graph();
   } else {
     return tl::unexpected(fmt::format("Unknown model name: {}", model_name));
   }
@@ -99,7 +125,7 @@ int main(int argc, char **argv) {
   CLIArgumentKey key_dot = cli_add_flag(cli, CLIFlagSpec{"dot", std::nullopt});
   CLIArgumentKey key_preprocessed_dot =
       cli_add_flag(cli, CLIFlagSpec{"preprocessed-dot", std::nullopt});
-  std::unordered_set<std::string> model_options = {"transformer", "split_test"};
+  std::unordered_set<std::string> model_options = {"transformer", "split_test", "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
       cli, CLIPositionalArgumentSpec{"model", model_options});
 
