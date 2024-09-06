@@ -13,6 +13,7 @@
 #include "utils/graph/digraph/algorithms/get_incoming_edges.h"
 #include "utils/graph/digraph/algorithms/get_node_with_greatest_topo_rank.h"
 #include "utils/graph/digraph/algorithms/get_outgoing_edges.h"
+#include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/digraph/directed_edge_query.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_query.h"

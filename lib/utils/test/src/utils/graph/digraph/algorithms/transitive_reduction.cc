@@ -38,6 +38,50 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
+    SUBCASE("linear graph with additional edge") {
+      std::vector<Node> n = add_nodes(g, 6);
+      add_edges(g,
+                {
+                    DirectedEdge{n.at(0), n.at(1)},
+                    DirectedEdge{n.at(1), n.at(2)},
+                    DirectedEdge{n.at(2), n.at(3)},
+                    DirectedEdge{n.at(0), n.at(3)},
+                });
+
+      DiGraphView result = transitive_reduction(g);
+      std::unordered_set<DirectedEdge> result_edges = get_edges(result);
+      std::unordered_set<DirectedEdge> correct_edges = {
+          DirectedEdge{n.at(0), n.at(1)},
+          DirectedEdge{n.at(1), n.at(2)},
+          DirectedEdge{n.at(2), n.at(3)},
+      };
+      CHECK(result_edges == correct_edges);
+    }
+
+    SUBCASE("linear graph with 2 additional edges") {
+      std::vector<Node> n = add_nodes(g, 6);
+      add_edges(g,
+                {
+                    DirectedEdge{n.at(0), n.at(1)},
+                    DirectedEdge{n.at(1), n.at(2)},
+                    DirectedEdge{n.at(2), n.at(3)},
+                    DirectedEdge{n.at(3), n.at(4)},
+
+                    DirectedEdge{n.at(0), n.at(3)},
+                    DirectedEdge{n.at(1), n.at(4)},
+                });
+
+      DiGraphView result = transitive_reduction(g);
+      std::unordered_set<DirectedEdge> result_edges = get_edges(result);
+      std::unordered_set<DirectedEdge> correct_edges = {
+          DirectedEdge{n.at(0), n.at(1)},
+          DirectedEdge{n.at(1), n.at(2)},
+          DirectedEdge{n.at(2), n.at(3)},
+          DirectedEdge{n.at(3), n.at(4)},
+      };
+      CHECK(result_edges == correct_edges);
+    }
+
     SUBCASE("nontrivial graph") {
       // from
       // https://en.wikipedia.org/w/index.php?title=Transitive_reduction&oldid=1226082357#In_directed_acyclic_graphs

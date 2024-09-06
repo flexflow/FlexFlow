@@ -64,13 +64,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(get_predecessors(g, {n[1], n[2], n[3]}) == expected_result);
 
     SUBCASE("get_imm_dominators") {
-      std::unordered_map<Node, optional<Node>> result = get_imm_dominators(g);
+      std::unordered_map<Node, std::optional<Node>> result =
+          get_imm_dominators(g);
 
-      std::unordered_map<Node, optional<Node>> expected_result = {
+      std::unordered_map<Node, std::optional<Node>> expected_result = {
           {n[2], n[0]},
           {n[1], n[0]},
           {n[3], n[0]},
-          {n[0], nullopt},
+          {n[0], std::nullopt},
       };
       CHECK(result == expected_result);
     }
@@ -138,7 +139,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("nonlinear") {
       g.add_edge({n[1], n[3]});
-      CHECK(is_acyclic(g) == true); // TODO, maybe a bug about the unchecked_dfs
+      CHECK(is_acyclic(g) == true);
     }
 
     SUBCASE("not connected") {

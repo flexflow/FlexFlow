@@ -1,7 +1,11 @@
 #include "utils/graph/digraph/algorithms/transitive_reduction.h"
+#include "utils/containers/contains.h"
 #include "utils/graph/digraph/algorithms.h"
+#include "utils/graph/digraph/algorithms/get_descendants.h"
+#include "utils/graph/digraph/algorithms/is_acyclic.h"
 #include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
 #include "utils/graph/instances/adjacency_digraph.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
@@ -23,30 +27,25 @@ DirectedEdgeMaskView *DirectedEdgeMaskView::clone() const {
   return new DirectedEdgeMaskView(this->g, this->edge_mask);
 }
 
-DiGraphView transitive_reduction(DiGraphView const &g) {
+DiGraphView unchecked_transitive_reduction(DiGraphView const &g) {
   std::unordered_set<DirectedEdge> edge_mask = get_edges(g);
-
-  while (true) {
-    std::unordered_set<DirectedEdge> new_edge_mask = edge_mask;
-    for (DirectedEdge const &e1 : edge_mask) {
-      for (DirectedEdge const &e2 : edge_mask) {
-        if (e1.dst == e2.src && e1 != e2) {
-          DirectedEdge trans_edge = DirectedEdge{e1.src, e2.dst};
-          if (contains(new_edge_mask, trans_edge)) {
-            new_edge_mask.erase(trans_edge);
-          }
-        }
+  std::unordered_set<Node> nodes = get_nodes(g);
+  for (Node const &n1 : nodes) {
+    for (Node const &n2 : get_descendants(g, n1)) {
+      for (Node const &n3 : get_descendants(g, n2)) {
+        // if there is a path from n1 to n2, and a path from n2 to n3, edge
+        // {n1,n3} is redundant
+        // if edge {n1, n3} does not exist, this is a no-op
+        edge_mask.erase(DirectedEdge{n1, n3});
       }
     }
-
-    if (new_edge_mask == edge_mask) {
-      break;
-    } else {
-      edge_mask = new_edge_mask;
-    }
   }
-
   return DiGraphView::create<DirectedEdgeMaskView>(g, edge_mask);
+}
+
+DiGraphView transitive_reduction(DiGraphView const &g) {
+  assert(is_acyclic(g));
+  return unchecked_transitive_reduction(g);
 }
 
 } // namespace FlexFlow

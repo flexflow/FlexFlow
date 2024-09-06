@@ -6,6 +6,7 @@
 namespace FlexFlow {
 
 std::unordered_set<DirectedEdge> get_edges(DiGraphView const &);
+int num_edges(DiGraphView const &);
 std::unordered_set<Node> get_sources(DiGraphView const &);
 std::unordered_set<Node> get_sinks(DiGraphView const &);
 

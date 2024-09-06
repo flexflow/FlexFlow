@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_FLATTENED_DECOMPOSITION_TREE_H
-#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_FLATTENED_DECOMPOSITION_TREE_H
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_SERIAL_PARALLEL_SPLITS_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_SERIAL_PARALLEL_SPLITS_H
 
 #include "utils/graph/node/node.dtg.h"
 #include <unordered_set>
@@ -12,10 +12,11 @@ struct ParallelSplit;
 
 struct SerialSplit {
 public:
-  SerialSplit() = delete;
+  SerialSplit();
   explicit SerialSplit(std::vector<std::variant<ParallelSplit, Node>> const &);
   explicit SerialSplit(
       std::initializer_list<std::variant<ParallelSplit, Node>> const &);
+  explicit SerialSplit(std::vector<Node> const &nodes);
 
   bool operator==(SerialSplit const &) const;
   bool operator!=(SerialSplit const &) const;
@@ -46,11 +47,12 @@ namespace FlexFlow {
 
 struct ParallelSplit {
 public:
-  ParallelSplit() = delete;
+  ParallelSplit();
   explicit ParallelSplit(
       std::unordered_set<std::variant<SerialSplit, Node>> const &);
   explicit ParallelSplit(
       std::initializer_list<std::variant<SerialSplit, Node>> const &);
+  explicit ParallelSplit(std::unordered_set<Node> const &nodes);
 
   bool operator==(ParallelSplit const &) const;
   bool operator!=(ParallelSplit const &) const;

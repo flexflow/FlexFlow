@@ -1,0 +1,9 @@
+ff_add_executable(
+  NAME
+    sp-ization-benchmarking
+  SRC_PATTERNS
+    *.cc
+  DEPS
+    utils
+    rapidcheck
+)
