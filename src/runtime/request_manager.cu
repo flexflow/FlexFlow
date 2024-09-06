@@ -78,7 +78,6 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
                                        int32_t *kv_indices_h,
                                        int32_t *kv_last_page_len_h,
                                        int32_t *qk_indptr_h) {
-  std::cerr << "prepare_inference_params_kernel_h" << std::endl;
   int batch_size = batch_config->num_active_requests();
   // we just search for the page number for each request
   // kv_last_page_len can be handled
@@ -100,12 +99,6 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
       kv_indptr_h[indptr_idx + 1] = batch_config->requestsInfo[req_idx].num_kv_pages + kv_indptr_h[indptr_idx];
 
-      std::cerr << "Expected num_kv_pages: " << (kv_len + kPagesize - 1) / kPagesize << std::endl;
-      std::cerr << "Actual num_kv_pages: " << batch_config->requestsInfo[req_idx].num_kv_pages << std::endl;
-      std::cerr << "kv_len: " << kv_len << std::endl;
-      std::cerr << "kPagesize: " << kPagesize << std::endl;
-      std::cerr << "last page len: " << batch_config->requestsInfo[req_idx].kv_last_page_len << std::endl;
-      std::cerr << "Request Index: " << req_idx << std::endl;
       assert(batch_config->requestsInfo[req_idx].num_kv_pages == (kv_len + kPagesize - 1) / kPagesize);
       assert(batch_config->requestsInfo[req_idx].kv_last_page_len <= 64);
       std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
@@ -486,8 +479,6 @@ void RequestManager::load_batch_config_task(
                                           kv_indices_h,
                                           kv_last_page_len_h,
                                           qk_indptr_h);
-        // print 
-        printf("load batch config task%d\n");
         // we only have two requests for now
 
         // Update gpu-side custom mask referring from CaualMask
