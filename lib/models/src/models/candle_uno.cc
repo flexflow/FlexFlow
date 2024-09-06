@@ -80,7 +80,7 @@ ComputationGraph
   }
 
   tensor_guid_t output =
-      cgb.concat(encoded_inputs.size(), encoded_inputs, /*axis=*/-1);
+      cgb.concat(encoded_inputs, /*axis=*/-1);
   for (auto const dense_layer_dim : config.dense_layers) {
     output = cgb.dense(
         output, dense_layer_dim, Activation::RELU, /*use_bias=*/false);

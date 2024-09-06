@@ -1,5 +1,4 @@
 #include "op-attrs/tensor_dims.h"
-#include "op-attrs/dim_ordered/zip.h"
 #include "op-attrs/replica_parallel_dim_set.h"
 #include "op-attrs/shard_parallel_dim.dtg.h"
 #include "utils/containers/all_of.h"
@@ -57,33 +56,6 @@ std::optional<TensorDims>
   }
 
   return std::nullopt;
-}
-
-ParallelTensorDims lift_to_parallel(TensorDims const &dims) {
-  std::vector<int> shard_degrees(num_dims(dims),
-                                 1); // 1 repeated num_dims(dims) times
-  return lift_to_parallel_with_degrees(
-      dims, SumDegree{1}, DiscardCopyDegree{1}, shard_degrees);
-}
-
-ParallelTensorDims
-    lift_to_parallel_with_degrees(TensorDims const &dims,
-                                  SumDegree sum_degree,
-                                  DiscardCopyDegree discard_copy_degree,
-                                  FFOrdered<int> const &shard_degrees) {
-  std::vector<ShardParallelDim> lifted =
-      transform(zip(as_vector(dims.ff_ordered), as_vector(shard_degrees)),
-                [](std::pair<size_t, int> const &p) {
-                  size_t size = p.first;
-                  int degree = p.second;
-                  return ShardParallelDim(size, degree);
-                });
-
-  return ParallelTensorDims{FFOrdered<ShardParallelDim>{lifted},
-                            ReplicaParallelDimSet{
-                                sum_degree,
-                                discard_copy_degree,
-                            }};
 }
 
 } // namespace FlexFlow

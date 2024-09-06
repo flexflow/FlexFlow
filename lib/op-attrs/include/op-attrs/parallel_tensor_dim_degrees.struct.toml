@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "ParallelTensorDimDegrees"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+  "rapidcheck",
+]
+
+includes = [
+  "op-attrs/parallel_tensor_shape/sum_degree.dtg.h",
+  "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h",
+  "op-attrs/dim_ordered.h",
+]
+
+[[fields]]
+name = "sum_degree"
+type = "::FlexFlow::SumDegree"
+
+[[fields]]
+name = "discard_copy_degree"
+type = "::FlexFlow::DiscardCopyDegree"
+
+[[fields]]
+name = "shard_degrees"
+type = "::FlexFlow::FFOrdered<int>"

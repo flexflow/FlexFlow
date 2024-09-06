@@ -38,7 +38,7 @@ std::vector<ParallelTensorShape>
         return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
       },
       [&](ConcatAttrs const &attrs) -> std::vector<ParallelTensorShape> {
-        return {get_output_shape(attrs, inputs)};
+        return {throw_if_unexpected(get_output_shape(attrs, inputs))};
       },
       [&](Conv2DAttrs const &attrs) -> std::vector<ParallelTensorShape> {
         return {get_output_shape(attrs, inputs.at(0))};

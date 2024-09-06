@@ -17,13 +17,6 @@ bool tensor_dims_is_broadcastable_to(TensorDims const &curr,
 std::optional<TensorDims>
     get_broadcast_target_dims(std::unordered_set<TensorDims> const &);
 
-ParallelTensorDims lift_to_parallel(TensorDims const &);
-ParallelTensorDims
-    lift_to_parallel_with_degrees(TensorDims const &,
-                                  SumDegree sum_degree,
-                                  DiscardCopyDegree discard_copy_degree,
-                                  FFOrdered<int> const &shard_degrees);
-
 } // namespace FlexFlow
 
 #endif

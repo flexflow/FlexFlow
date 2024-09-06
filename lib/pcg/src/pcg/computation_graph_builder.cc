@@ -5,6 +5,7 @@
 #include "op-attrs/ops/attention.h"
 #include "op-attrs/ops/batch_norm.h"
 #include "op-attrs/ops/broadcast.h"
+#include "op-attrs/ops/concat.h"
 #include "op-attrs/ops/conv_2d.h"
 #include "op-attrs/ops/dropout.h"
 #include "op-attrs/ops/element_binary.h"
@@ -720,13 +721,21 @@ tensor_guid_t ComputationGraphBuilder::softmax(
 }
 
 tensor_guid_t ComputationGraphBuilder::concat(
-    int n,
-    std::vector<tensor_guid_t> const &tensors,
+    std::vector<tensor_guid_t> const &inputs,
     int axis,
     std::optional<std::string> const &maybe_name) {
-  // NOT_IMPLEMENTED
-  tensor_guid_t dummy_output = tensors.at(0);
-  return dummy_output;
+
+  ConcatAttrs attrs = ConcatAttrs{ff_dim_t{axis}};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  std::vector<TensorShape> input_shapes = transform(inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shapes));
+  
+  return this->add_layer(layer, inputs, {}, output_shape);
 }
 
 } // namespace FlexFlow

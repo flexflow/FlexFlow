@@ -168,8 +168,7 @@ public:
                      std::optional<std::string> const &name = std::nullopt);
   // Add a concat layer
   tensor_guid_t
-      concat(int n,
-             std::vector<tensor_guid_t> const &tensors,
+      concat(std::vector<tensor_guid_t> const &tensors,
              int axis,
              std::optional<std::string> const &maybe_name = std::nullopt);
   // Add a mean layer

@@ -31,15 +31,6 @@
 
 namespace FlexFlow {
 
-template <typename Container, typename Element>
-Element sum(Container const &container) {
-  Element result = 0;
-  for (Element const &element : container) {
-    result += element;
-  }
-  return result;
-}
-
 template <typename Container, typename ConditionF, typename Element>
 Element sum_where(Container const &container, ConditionF const &condition) {
   Element result = 0;
@@ -129,17 +120,6 @@ std::optional<bool> optional_all_of(Container const &container,
     }
 
     if (!condition.value()) {
-      return false;
-    }
-  }
-  return true;
-}
-
-template <typename C>
-bool are_all_same(C const &c) {
-  auto const &first = *c.cbegin();
-  for (auto const &v : c) {
-    if (v != first) {
       return false;
     }
   }

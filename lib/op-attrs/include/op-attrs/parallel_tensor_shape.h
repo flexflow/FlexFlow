@@ -5,6 +5,7 @@
 #include "op-attrs/replica_parallel_dim.dtg.h"
 #include "op-attrs/tensor_shape.h"
 #include <vector>
+#include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 
 namespace FlexFlow {
 
@@ -17,12 +18,17 @@ FFOrdered<int> ff_ordered_shard_degrees(ParallelTensorShape const &);
 std::optional<ShardParallelDim>
     try_get_shard_dim_at_idx(ParallelTensorShape const &, ff_dim_t);
 
+ParallelTensorDimDegrees get_parallel_degrees(ParallelTensorShape const &);
+
 ParallelTensorShape lift_to_parallel(TensorShape const &);
 ParallelTensorShape
     lift_to_parallel_with_degrees(TensorShape const &,
-                                  SumDegree sum_degree,
-                                  DiscardCopyDegree discard_copy_degree,
+                                  SumDegree const &,
+                                  DiscardCopyDegree const &,
                                   FFOrdered<int> const &shard_degrees);
+ParallelTensorShape
+    lift_to_parallel_with_degrees(TensorShape const &, 
+                                  ParallelTensorDimDegrees const &);
 
 std::unordered_set<ReplicaParallelDim>
     replica_dims(ParallelTensorShape const &);
