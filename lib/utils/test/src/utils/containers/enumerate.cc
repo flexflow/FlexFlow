@@ -1,9 +1,12 @@
 #include "utils/containers/enumerate.h"
 #include "test/utils/doctest/fmt/map.h"
 #include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include "test/utils/doctest/fmt/pair.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/unordered_set_of.h"
 #include "utils/containers/values.h"
+#include "utils/containers/vector_of.h"
 #include <doctest/doctest.h>
 #include <string>
 
@@ -26,7 +29,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("check iteration order") {
       std::vector<std::pair<int const, std::string>> iterated_result =
-          as_vector(result);
+          vector_of(result);
       std::vector<std::pair<int const, std::string>> correct_iteration_order = {
           {0, "zero"},
           {1, "one"},

@@ -6,6 +6,7 @@
 #include "pcg/computation_graph.h"
 #include "pcg/computation_graph/computation_graph_edge.h"
 #include "pcg/file_format/v1/v1_computation_graph.h"
+#include "utils/cli/cli_get_help_message.h"
 #include "utils/cli/cli_parse_result.h"
 #include "utils/cli/cli_spec.h"
 #include "utils/exception.h"
@@ -13,8 +14,8 @@
 #include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
 #include "utils/graph/digraph/algorithms/transitive_reduction.h"
 #include "utils/graph/instances/adjacency_digraph.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
 #include "models/split_test/split_test.h"
 
@@ -125,7 +126,7 @@ int main(int argc, char **argv) {
   CLIArgumentKey key_dot = cli_add_flag(cli, CLIFlagSpec{"dot", std::nullopt});
   CLIArgumentKey key_preprocessed_dot =
       cli_add_flag(cli, CLIFlagSpec{"preprocessed-dot", std::nullopt});
-  std::unordered_set<std::string> model_options = {"transformer", "split_test", "single_operator"};
+  std::vector<std::string> model_options = {"transformer", "split_test", "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
       cli, CLIPositionalArgumentSpec{"model", model_options});
 

@@ -1,17 +1,21 @@
 #include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree_functions.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/get_nodes.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/left_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_node_type.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_left_child.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_right_child.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_nodes.h"
 
 namespace FlexFlow {
 
 SPDecompositionTreeNodeType
     get_node_type(ComputationGraphBinarySPDecomposition const &d) {
-  return d.raw_tree.get_node_type();
+  return get_node_type(d.raw_tree);
 }
 
 ComputationGraphBinarySPDecomposition
@@ -29,7 +33,7 @@ ComputationGraphBinarySPDecomposition
 }
 
 layer_guid_t require_node(ComputationGraphBinarySPDecomposition const &d) {
-  return d.raw_tree.require_node();
+  return require_node(d.raw_tree);
 }
 
 std::optional<ComputationGraphBinarySPDecomposition>

@@ -19,9 +19,11 @@ TEST_SUITE(FF_TEST_SUITE) {
         },
         {
             CLIPositionalArgumentSpec{
+                "pos-arg-1",
                 std::nullopt,
             },
             CLIPositionalArgumentSpec{
+                "pos-arg-2",
                 std::nullopt,
             },
         },

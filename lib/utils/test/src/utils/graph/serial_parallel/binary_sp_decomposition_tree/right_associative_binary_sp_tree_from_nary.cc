@@ -1,4 +1,5 @@
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
@@ -17,15 +18,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       BinarySPDecompositionTree result =
           right_associative_binary_sp_tree_from_nary(input);
-      BinarySPDecompositionTree correct = BinarySPDecompositionTree{
-          BinarySeriesSplit{
-              BinarySPDecompositionTree{n1},
-              BinarySPDecompositionTree{BinarySeriesSplit{
-                  BinarySPDecompositionTree{n2},
-                  BinarySPDecompositionTree{n3},
-              }},
-          },
-      };
+      BinarySPDecompositionTree correct = \
+        make_series_split(
+          make_leaf_node(n1),
+          make_series_split(
+            make_leaf_node(n2),
+            make_leaf_node(n3)));
 
       CHECK(result == correct);
     }
