@@ -213,34 +213,6 @@ struct Request {
   double get_slo_ratio();
 };
 
-// A comparator for std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>
-// This is used to sort the token tree nodes in ascending order
-struct SharedTokenTreeNodePtrRequestWeightedGreater {
-  bool operator()(
-      std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &lhs,
-      std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &rhs) const {
-    if (lhs.first->gumbel) {
-      assert(rhs.first->gumbel);
-      return lhs.first->gumbel_logit * lhs.second.get_length_weight() >
-             rhs.first->gumbel_logit * rhs.second.get_length_weight();
-    }
-    return lhs.first->log_accumulated_prob * lhs.second.get_length_weight() >
-           rhs.first->log_accumulated_prob * rhs.second.get_length_weight();
-  }
-};
-
-struct SharedTokenTreeNodePtrRequestGreater {
-  bool operator()(
-      std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &lhs,
-      std::pair<std::shared_ptr<TokenTreeNode>, Request &> const &rhs) const {
-    if (lhs.first->gumbel) {
-      assert(rhs.first->gumbel);
-      return lhs.first->gumbel_logit > rhs.first->gumbel_logit;
-    }
-    return lhs.first->log_accumulated_prob > rhs.first->log_accumulated_prob;
-  }
-};
-
 class RequestManager {
 public:
   enum State {
@@ -301,6 +273,7 @@ public:
   void set_streaming_cache(bool streaming_cache);
   bool get_memory_occupancy();
   void set_memory_occupancy(bool memory_occupancy);
+  Request &get_request_with_guid(RequestGuid guid);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -360,6 +333,20 @@ public:
 
   int get_num_active_requests();
   int get_empty_request_index();
+
+  // Comparters
+  struct SharedTokenTreeNodePtrRequestGuidWeightedGreater {
+    bool operator()(
+        std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &lhs,
+        std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &rhs)
+        const;
+  };
+  struct SharedTokenTreeNodePtrRequestGuidGreater {
+    bool operator()(
+        std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &lhs,
+        std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &rhs)
+        const;
+  };
 
 private:
   // configuration parameters
