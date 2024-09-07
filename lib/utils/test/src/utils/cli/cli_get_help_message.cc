@@ -237,7 +237,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    SUBCASE("options and argument alignment") {
+    SUBCASE("flag and positional argument alignment") {
       SUBCASE("flags are longer") {
         CLISpec cli = CLISpec{
             {

@@ -11,8 +11,8 @@ namespace FlexFlow {
 std::string cli_get_help_message(std::string const &program_name,
                                  CLISpec const &cli) {
   auto render_pos_arg = [](CLIPositionalArgumentSpec const &pos_arg_spec) {
-    if (pos_arg_spec.options.has_value()) {
-      return "{" + join_strings(pos_arg_spec.options.value(), ",") + "}";
+    if (pos_arg_spec.choices.has_value()) {
+      return "{" + join_strings(pos_arg_spec.choices.value(), ",") + "}";
     } else {
       return pos_arg_spec.name;
     }

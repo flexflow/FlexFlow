@@ -23,7 +23,7 @@ name = "name"
 type = "std::string"
 
 [[fields]]
-name = "options"
+name = "choices"
 type = "std::optional<std::vector<std::string>>"
 
 [[fields]]
