@@ -12,6 +12,7 @@
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
+#include "utils/cli/cli_parse.h"
 
 using namespace ::FlexFlow;
 
