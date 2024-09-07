@@ -96,9 +96,9 @@ jobs:
         run: |
           build_target.sh models
 
-      - name: Build substitutions-to-dot
+      - name: Build substitution-to-dot
         run: |
-          build_target.sh substitutions-to-dot
+          build_target.sh substitution-to-dot
 
       - name: Build export-model-arch
         run: |
