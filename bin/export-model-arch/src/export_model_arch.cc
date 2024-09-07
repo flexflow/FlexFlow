@@ -1,6 +1,7 @@
 #include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
 #include "export_model_arch/json_sp_model_export.dtg.h"
+#include "models/split_test/split_test.h"
 #include "models/transformer/transformer.h"
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "pcg/computation_graph.h"
@@ -14,10 +15,9 @@
 #include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
 #include "utils/graph/digraph/algorithms/transitive_reduction.h"
 #include "utils/graph/instances/adjacency_digraph.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
+#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
-#include "models/split_test/split_test.h"
 
 using namespace ::FlexFlow;
 
@@ -45,19 +45,27 @@ ComputationGraph get_single_operator_computation_graph() {
   size_t in_channels = 16;
   size_t out_channels = 12;
   TensorShape input_shape = TensorShape{
-    TensorDims{FFOrdered<size_t>{
-      batch_size,
-      in_channels,
-      out_channels,
-    }},
-    DataType::FLOAT,
+      TensorDims{FFOrdered<size_t>{
+          batch_size,
+          in_channels,
+          out_channels,
+      }},
+      DataType::FLOAT,
   };
-      
+
   tensor_guid_t input = b.create_tensor(input_shape, CreateGrad::YES);
 
-  InitializerAttrs kernel_initializer = InitializerAttrs{GlorotUniformAttrs{/*seed=*/12}};
+  InitializerAttrs kernel_initializer =
+      InitializerAttrs{GlorotUniformAttrs{/*seed=*/12}};
   InitializerAttrs bias_initializer = InitializerAttrs{ZeroInitializerAttrs{}};
-  tensor_guid_t output = b.dense(input, in_channels, Activation::RELU, /*use_bias=*/true, DataType::FLOAT, kernel_initializer, bias_initializer, "my_example_operator");
+  tensor_guid_t output = b.dense(input,
+                                 in_channels,
+                                 Activation::RELU,
+                                 /*use_bias=*/true,
+                                 DataType::FLOAT,
+                                 kernel_initializer,
+                                 bias_initializer,
+                                 "my_example_operator");
 
   return b.computation_graph;
 }
@@ -126,7 +134,8 @@ int main(int argc, char **argv) {
   CLIArgumentKey key_dot = cli_add_flag(cli, CLIFlagSpec{"dot", std::nullopt});
   CLIArgumentKey key_preprocessed_dot =
       cli_add_flag(cli, CLIFlagSpec{"preprocessed-dot", std::nullopt});
-  std::vector<std::string> model_options = {"transformer", "split_test", "single_operator"};
+  std::vector<std::string> model_options = {
+      "transformer", "split_test", "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
       cli, CLIPositionalArgumentSpec{"model", model_options});
 

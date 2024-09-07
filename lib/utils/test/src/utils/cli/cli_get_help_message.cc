@@ -29,18 +29,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
     std::string program_name = "prog_name";
 
-    std::string correct = (
-      "usage: prog_name [-h] [-f] [--flag-2] pos-arg-1 {red,green,blue}\n"
-      "\n"
-      "positional arguments:\n"
-      "  pos-arg-1\n"
-      "  {red,green,blue}\n"
-      "\n"
-      "options:\n"
-      "  -h, --help    show this help message and exit\n"
-      "  -f, --flag-1  \n"
-      "  --flag-2\n"
-    );
+    std::string correct =
+        ("usage: prog_name [-h] [-f] [--flag-2] pos-arg-1 {red,green,blue}\n"
+         "\n"
+         "positional arguments:\n"
+         "  pos-arg-1\n"
+         "  {red,green,blue}\n"
+         "\n"
+         "options:\n"
+         "  -h, --help    show this help message and exit\n"
+         "  -f, --flag-1  \n"
+         "  --flag-2\n");
 
     std::string result = cli_get_help_message(program_name, cli);
 

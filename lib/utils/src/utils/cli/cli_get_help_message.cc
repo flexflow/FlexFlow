@@ -51,5 +51,4 @@ std::string cli_get_help_message(std::string const &program_name,
   return oss.str();
 }
 
-
 } // namespace FlexFlow

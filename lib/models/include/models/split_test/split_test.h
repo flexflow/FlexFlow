@@ -6,10 +6,11 @@
 namespace FlexFlow {
 
 /**
- * @brief Get the computation graph of the old FlexFlow test model <tt>split_test</tt>
+ * @brief Get the computation graph of the old FlexFlow test model
+ * <tt>split_test</tt>
  *
- * @note This is a tiny model developed for testing the original Unity implementation.
- * It is not a "real" model and has never been trained.
+ * @note This is a tiny model developed for testing the original Unity
+ * implementation. It is not a "real" model and has never been trained.
  */
 ComputationGraph get_split_test_computation_graph(int batch_size);
 

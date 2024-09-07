@@ -6,7 +6,8 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("is_binary_sp_tree_left_associative(GenericBinarySPDecompositionTree<int>)") {
+  TEST_CASE("is_binary_sp_tree_left_associative("
+            "GenericBinarySPDecompositionTree<int>)") {
     int n1 = 1;
     int n2 = 2;
     int n3 = 3;
@@ -14,7 +15,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("input is actually left associative") {
       SUBCASE("just node") {
-        GenericBinarySPDecompositionTree<int> input = make_generic_binary_sp_leaf(n1);
+        GenericBinarySPDecompositionTree<int> input =
+            make_generic_binary_sp_leaf(n1);
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = true;
@@ -23,11 +25,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("just series") {
-        GenericBinarySPDecompositionTree<int> input = make_generic_binary_series_split(
-          make_generic_binary_series_split(
-            make_generic_binary_sp_leaf(n1),
-            make_generic_binary_sp_leaf(n2)),
-          make_generic_binary_sp_leaf(n3));
+        GenericBinarySPDecompositionTree<int> input =
+            make_generic_binary_series_split(
+                make_generic_binary_series_split(
+                    make_generic_binary_sp_leaf(n1),
+                    make_generic_binary_sp_leaf(n2)),
+                make_generic_binary_sp_leaf(n3));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = true;
@@ -36,11 +39,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("just parallel") {
-        GenericBinarySPDecompositionTree<int> input = make_generic_binary_parallel_split(
-          make_generic_binary_parallel_split(
-            make_generic_binary_sp_leaf(n1),
-            make_generic_binary_sp_leaf(n2)),
-          make_generic_binary_sp_leaf(n3));
+        GenericBinarySPDecompositionTree<int> input =
+            make_generic_binary_parallel_split(
+                make_generic_binary_parallel_split(
+                    make_generic_binary_sp_leaf(n1),
+                    make_generic_binary_sp_leaf(n2)),
+                make_generic_binary_sp_leaf(n3));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = true;
@@ -49,14 +53,14 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("nested") {
-        GenericBinarySPDecompositionTree<int> input = \
-          make_generic_binary_series_split(
-            make_generic_binary_parallel_split(
-              make_generic_binary_sp_leaf(n1),
-              make_generic_binary_sp_leaf(n2)),
-            make_generic_binary_parallel_split(
-              make_generic_binary_sp_leaf(n3),
-              make_generic_binary_sp_leaf(n4)));
+        GenericBinarySPDecompositionTree<int> input =
+            make_generic_binary_series_split(
+                make_generic_binary_parallel_split(
+                    make_generic_binary_sp_leaf(n1),
+                    make_generic_binary_sp_leaf(n2)),
+                make_generic_binary_parallel_split(
+                    make_generic_binary_sp_leaf(n3),
+                    make_generic_binary_sp_leaf(n4)));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = true;
@@ -67,13 +71,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("input is not left associative") {
       SUBCASE("just series") {
-        GenericBinarySPDecompositionTree<int> input = \
-          make_generic_binary_series_split(
-            make_generic_binary_sp_leaf(n1),
+        GenericBinarySPDecompositionTree<int> input =
             make_generic_binary_series_split(
-              make_generic_binary_sp_leaf(n2),
-              make_generic_binary_sp_leaf(n3)));
-
+                make_generic_binary_sp_leaf(n1),
+                make_generic_binary_series_split(
+                    make_generic_binary_sp_leaf(n2),
+                    make_generic_binary_sp_leaf(n3)));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = false;
@@ -82,12 +85,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("just parallel") {
-        GenericBinarySPDecompositionTree<int> input = \
-          make_generic_binary_parallel_split(
-            make_generic_binary_sp_leaf(n1),
+        GenericBinarySPDecompositionTree<int> input =
             make_generic_binary_parallel_split(
-              make_generic_binary_sp_leaf(n2),
-              make_generic_binary_sp_leaf(n3)));
+                make_generic_binary_sp_leaf(n1),
+                make_generic_binary_parallel_split(
+                    make_generic_binary_sp_leaf(n2),
+                    make_generic_binary_sp_leaf(n3)));
 
         bool result = is_binary_sp_tree_left_associative(input);
         bool correct = false;
@@ -95,6 +98,5 @@ TEST_SUITE(FF_TEST_SUITE) {
         CHECK(result == correct);
       }
     }
-
   }
 }

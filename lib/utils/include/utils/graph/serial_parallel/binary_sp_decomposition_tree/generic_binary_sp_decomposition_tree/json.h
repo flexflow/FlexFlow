@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_JSON_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIAL_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_JSON_H
 
+#include "utils/exception.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_left_child.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_right_child.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/visit.h"
 #include <nlohmann/json.hpp>
-#include "utils/exception.h"
 
 namespace nlohmann {
 
@@ -76,27 +76,28 @@ struct adl_serializer<::FlexFlow::GenericBinarySPDecompositionTree<T>> {
       to_json(json &j,
               ::FlexFlow::GenericBinarySPDecompositionTree<T> const &v) {
     j["__type"] = "BinarySPDecompositionTree";
-    ::FlexFlow::visit<std::monostate>(v, ::FlexFlow::overload{
-        [&](::FlexFlow::GenericBinarySeriesSplit<T> const &s) {
-          j["type"] = "series";
-          j["value"] = s;
-          return std::monostate{};
-        },
-        [&](::FlexFlow::GenericBinaryParallelSplit<T> const &p) {
-          j["type"] = "parallel";
-          j["value"] = p;
-          return std::monostate{};
-        },
-        [&](T const &t) {
-          j["type"] = "node";
-          j["value"] = t;
-          return std::monostate{};
-        },
-    });
+    ::FlexFlow::visit<std::monostate>(
+        v,
+        ::FlexFlow::overload{
+            [&](::FlexFlow::GenericBinarySeriesSplit<T> const &s) {
+              j["type"] = "series";
+              j["value"] = s;
+              return std::monostate{};
+            },
+            [&](::FlexFlow::GenericBinaryParallelSplit<T> const &p) {
+              j["type"] = "parallel";
+              j["value"] = p;
+              return std::monostate{};
+            },
+            [&](T const &t) {
+              j["type"] = "node";
+              j["value"] = t;
+              return std::monostate{};
+            },
+        });
   }
 };
 
 } // namespace nlohmann
-
 
 #endif

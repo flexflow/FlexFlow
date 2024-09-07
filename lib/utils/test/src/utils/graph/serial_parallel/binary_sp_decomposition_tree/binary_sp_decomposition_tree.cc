@@ -9,7 +9,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     FAIL("TODO");
     // for (int i = 0; i < 100; i++) {
     //   BinarySPDecompositionTree generated =
-    //       *rc::gen::resize(20, rc::gen::arbitrary<BinarySPDecompositionTree>());
+    //       *rc::gen::resize(20,
+    //       rc::gen::arbitrary<BinarySPDecompositionTree>());
     //
     //   int num_tree_nodes = get_num_tree_nodes(generated);
     //

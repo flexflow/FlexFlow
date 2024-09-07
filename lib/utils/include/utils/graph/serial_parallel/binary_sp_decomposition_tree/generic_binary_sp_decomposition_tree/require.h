@@ -7,12 +7,14 @@
 namespace FlexFlow {
 
 template <typename T>
-GenericBinarySeriesSplit<T> const &require_series(GenericBinarySPDecompositionTree<T> const &t) {
+GenericBinarySeriesSplit<T> const &
+    require_series(GenericBinarySPDecompositionTree<T> const &t) {
   return get<GenericBinarySeriesSplit<T>>(t);
 }
 
 template <typename T>
-GenericBinaryParallelSplit<T> const &require_parallel(GenericBinarySPDecompositionTree<T> const &t) {
+GenericBinaryParallelSplit<T> const &
+    require_parallel(GenericBinarySPDecompositionTree<T> const &t) {
   return get<GenericBinaryParallelSplit<T>>(t);
 }
 

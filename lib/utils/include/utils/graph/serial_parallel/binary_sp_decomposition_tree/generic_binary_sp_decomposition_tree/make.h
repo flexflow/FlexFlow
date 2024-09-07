@@ -6,24 +6,26 @@
 namespace FlexFlow {
 
 template <typename T>
-GenericBinarySPDecompositionTree<T> make_generic_binary_series_split(GenericBinarySPDecompositionTree<T> const &lhs,
-                                                                     GenericBinarySPDecompositionTree<T> const &rhs) {
+GenericBinarySPDecompositionTree<T> make_generic_binary_series_split(
+    GenericBinarySPDecompositionTree<T> const &lhs,
+    GenericBinarySPDecompositionTree<T> const &rhs) {
   return GenericBinarySPDecompositionTree<T>{
-    GenericBinarySeriesSplit<T>{
-      lhs,
-      rhs,
-    },
+      GenericBinarySeriesSplit<T>{
+          lhs,
+          rhs,
+      },
   };
 }
 
 template <typename T>
-GenericBinarySPDecompositionTree<T> make_generic_binary_parallel_split(GenericBinarySPDecompositionTree<T> const &lhs, 
-                                                                       GenericBinarySPDecompositionTree<T> const &rhs) {
+GenericBinarySPDecompositionTree<T> make_generic_binary_parallel_split(
+    GenericBinarySPDecompositionTree<T> const &lhs,
+    GenericBinarySPDecompositionTree<T> const &rhs) {
   return GenericBinarySPDecompositionTree<T>{
-    GenericBinaryParallelSplit<T>{
-      lhs,
-      rhs,
-    },
+      GenericBinaryParallelSplit<T>{
+          lhs,
+          rhs,
+      },
   };
 }
 

@@ -18,12 +18,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       BinarySPDecompositionTree result =
           right_associative_binary_sp_tree_from_nary(input);
-      BinarySPDecompositionTree correct = \
-        make_series_split(
+      BinarySPDecompositionTree correct = make_series_split(
           make_leaf_node(n1),
-          make_series_split(
-            make_leaf_node(n2),
-            make_leaf_node(n3)));
+          make_series_split(make_leaf_node(n2), make_leaf_node(n3)));
 
       CHECK(result == correct);
     }

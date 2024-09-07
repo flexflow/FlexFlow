@@ -31,5 +31,4 @@ struct hash<::FlexFlow::GenericBinarySPDecompositionTree<T>> {
 
 } // namespace std
 
-
 #endif
