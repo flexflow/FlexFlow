@@ -803,14 +803,6 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     // Indicates that the LLM prefilling phase finishes
     prefill_request->tokens.push_back(
         result.token_ids[prefill_request->num_tokens_in_batch - 1]);
-    // std::cout << std::endl;
-    // std::cout << std::endl;
-    // std::cout << std::endl;
-    // std::cout << result.token_ids[prefill_request->num_tokens_in_batch - 1]
-    //           << std::endl;
-    // std::cout << std::endl;
-    // std::cout << std::endl;
-    // std::cout << std::endl;
     prefill_completed = true;
 
     if (prefill_request->tokens.back() == eos_token_id) {
