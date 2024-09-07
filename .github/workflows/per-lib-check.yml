@@ -62,71 +62,79 @@ jobs:
 
       - name: Build utils
         run: |
-          build_libs.sh utils
+          build_target.sh utils
 
       - name: Build op-attrs
         run: |
-          build_libs.sh op-attrs
+          build_target.sh op-attrs
 
       - name: Build pcg
         run: |
-          build_libs.sh pcg
+          build_target.sh pcg
 
       - name: Build kernels
         run: |
-          build_libs.sh kernels
+          build_target.sh kernels
 
       - name: Build substitutions
         run: |
-          build_libs.sh substitutions
+          build_target.sh substitutions
 
       - name: Build compiler
         run: |
-          build_libs.sh compiler
+          build_target.sh compiler
 
       - name: Build substitution-generator
         run: |
-          build_libs.sh substitution-generator
+          build_target.sh substitution-generator
 
       - name: Build local-execution
         run: |
-          build_libs.sh local-execution
+          build_target.sh local-execution
 
       - name: Build models
         run: |
-          build_libs.sh models
+          build_target.sh models
+
+      - name: Build substitutions-to-dot
+        run: |
+          build_target.sh substitutions-to-dot
+
+      - name: Build export-model-arch
+        run: |
+          build_target.sh export-model-arch
 
       - name: Test utils
         run: |
-          test_libs.sh utils
+          test_target.sh utils
 
       - name: Test op-attrs
         run: |
-          test_libs.sh op-attrs
+          test_target.sh op-attrs
 
       - name: Test pcg
         run: |
-          test_libs.sh pcg
+          test_target.sh pcg
 
       - name: Test substitutions
         run: |
-          test_libs.sh substitutions
+          test_target.sh substitutions
 
       # - name: Test compiler
       #   run: |
-      #     test_libs.sh compiler
+      #     test_target.sh compiler
 
       - name: Test substitution-generator
         run: |
-          test_libs.sh substitution-generator
+          test_target.sh substitution-generator
 
       - name: Test local-execution
         run: |
-          test_libs.sh local-execution
+          test_target.sh local-execution
 
       - name: Test models
         run: |
-          test_libs.sh models
+          test_target.sh models
 
       - name: Generate code coverage
         run: |
