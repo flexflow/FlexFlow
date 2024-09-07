@@ -379,6 +379,7 @@ void dispatchARKernels(AllReduceStrategyType algo,
     twoShotAllReduceKernel<T, RANKS_PER_NODE>
         <<<blocks_per_grid, threads_per_block, 0, stream>>>(param);
   }
+  multiGpuBarrierKernel<<<1, param.ranks_per_node, 0, stream>>>(param);
 }
 
 template <typename T>
