@@ -2547,12 +2547,6 @@ void RequestManager::add_tokens_to_spec_token_tree(
         }
         int result_idx = child_prob.second;
 
-        //   std::cout << "Probability at result index " << result_idx << ":
-        //   "
-        //             << ssm_inference_result.probs[result_idx] << "\t";
-        //   std::cout << "Token id: "
-        //             << ssm_inference_result.token_ids[result_idx] <<
-        //             std::endl;
         assert(logit != -std::numeric_limits<float>::infinity() &&
                "Child log probability should not be -inf.");
 
