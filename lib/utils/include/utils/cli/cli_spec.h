@@ -13,6 +13,7 @@ namespace FlexFlow {
 CLISpec empty_cli_spec();
 std::unordered_set<std::string> cli_get_all_keys(CLISpec const &);
 bool cli_has_key(CLISpec const &, std::string const &);
+CLIArgumentKey cli_add_help_flag(CLISpec &);
 CLIArgumentKey cli_add_flag(CLISpec &, CLIFlagSpec const &);
 CLIArgumentKey cli_add_positional_argument(CLISpec &,
                                            CLIPositionalArgumentSpec const &);

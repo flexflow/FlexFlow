@@ -19,6 +19,11 @@ CLISpec empty_cli_spec() {
   return CLISpec{{}, {}};
 }
 
+CLIArgumentKey cli_add_help_flag(CLISpec &cli) {
+  CLIFlagSpec help_flag = CLIFlagSpec{"help", 'h', "show this help message and exit"};
+  return cli_add_flag(cli, help_flag);
+}
+
 std::vector<CLIFlagKey> get_flag_keys(CLISpec const &cli) {
   return transform(count(cli.flags.size()),
                    [](int idx) { return CLIFlagKey{idx}; });
@@ -77,7 +82,7 @@ tl::expected<CLIParseResult, std::string>
 
     if (arg_spec.options.has_value() &&
         !contains(arg_spec.options.value(), arg)) {
-      return fmt::format("Invalid option for positional argument: {}", arg);
+      return fmt::format("Invalid option for positional argument \"{}\": \"{}\"", arg_spec.name, arg);
     }
 
     result.positional_arguments.insert(

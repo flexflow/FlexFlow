@@ -5,38 +5,15 @@
 #include "models/transformer/transformer.h"
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "pcg/computation_graph.h"
-#include "pcg/computation_graph/computation_graph_edge.h"
 #include "pcg/file_format/v1/v1_computation_graph.h"
 #include "utils/cli/cli_get_help_message.h"
 #include "utils/cli/cli_parse_result.h"
 #include "utils/cli/cli_spec.h"
-#include "utils/exception.h"
-#include "utils/graph/digraph/algorithms/digraph_as_dot.h"
-#include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
-#include "utils/graph/digraph/algorithms/transitive_reduction.h"
-#include "utils/graph/instances/adjacency_digraph.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
 #include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
 
 using namespace ::FlexFlow;
-
-// tl::expected<BinarySPDecompositionTree, std::string>
-// get_computation_graph_right_assoc_sp_decomposition(ComputationGraph const
-// &cg) {
-//   SerialParallelDecomposition nary_sp_decomposition = ({
-//     std::optional<SerialParallelDecomposition> result =
-//     get_computation_graph_series_parallel_decomposition(cg); if
-//     (!result.has_value()) {
-//       return tl::unexpected("Failed to generate series-parallel decomposition
-//       of computation graph.");
-//     }
-//
-//     result.value();
-//   });
-//
-//   return right_associative_binary_sp_tree_from_nary(nary_sp_decomposition);
-// }
 
 ComputationGraph get_single_operator_computation_graph() {
   ComputationGraphBuilder b;
@@ -129,23 +106,32 @@ tl::expected<JsonSPModelExport, std::string>
 
 int main(int argc, char **argv) {
   CLISpec cli = empty_cli_spec();
+
+  CLIArgumentKey arg_key_help = cli_add_help_flag(cli);
+
   CLIArgumentKey key_sp_decomposition =
-      cli_add_flag(cli, CLIFlagSpec{"include-sp-decomposition", std::nullopt});
-  CLIArgumentKey key_dot = cli_add_flag(cli, CLIFlagSpec{"dot", std::nullopt});
+      cli_add_flag(cli, CLIFlagSpec{"sp-decomposition", std::nullopt, "also output a serial parallel decomposition of the model's computation graph"});
+
+  CLIArgumentKey key_dot = cli_add_flag(cli, CLIFlagSpec{"dot", std::nullopt, "output a dot representation of the model's computation graph"});
+
   CLIArgumentKey key_preprocessed_dot =
-      cli_add_flag(cli, CLIFlagSpec{"preprocessed-dot", std::nullopt});
+      cli_add_flag(cli, CLIFlagSpec{"preprocessed-dot", std::nullopt, "output a dot representation of model's computation graph for preprocessed to help check serial-parallel structure"});
+
   std::vector<std::string> model_options = {
       "transformer", "split_test", "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
-      cli, CLIPositionalArgumentSpec{"model", model_options});
+      cli, CLIPositionalArgumentSpec{"model", model_options, "name of the model to export"});
+
+
+  assert(argc >= 1);
+  std::string prog_name = argv[0];
 
   CLIParseResult parsed = ({
     tl::expected<CLIParseResult, std::string> result =
         cli_parse(cli, argc, argv);
     if (!result.has_value()) {
       std::string error_msg = result.error();
-      assert(argc >= 1);
-      std::cerr << cli_get_help_message(argv[0], cli);
+      std::cerr << cli_get_help_message(prog_name, cli);
       std::cerr << std::endl;
       std::cerr << "error: " << error_msg << std::endl;
       return 1;
@@ -153,6 +139,12 @@ int main(int argc, char **argv) {
 
     result.value();
   });
+
+  bool help = cli_get_flag(parsed, arg_key_help);
+  if (help) {
+    std::cerr << cli_get_help_message(prog_name, cli);
+    return 1;
+  }
 
   std::string model_name = cli_get_argument(parsed, key_model_name);
   bool sp_decompositition = cli_get_flag(parsed, key_sp_decomposition);

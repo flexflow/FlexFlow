@@ -25,3 +25,7 @@ type = "std::string"
 [[fields]]
 name = "options"
 type = "std::optional<std::vector<std::string>>"
+
+[[fields]]
+name = "description"
+type = "std::optional<std::string>"

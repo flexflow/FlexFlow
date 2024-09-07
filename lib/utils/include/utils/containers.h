@@ -179,10 +179,6 @@ std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
 }
 
-template <typename C>
-typename C::value_type maximum(C const &v) {
-  return *std::max_element(v.begin(), v.end());
-}
 
 template <typename T>
 std::vector<T> value_all(std::vector<std::optional<T>> const &v) {

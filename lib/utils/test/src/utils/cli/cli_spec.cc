@@ -11,20 +11,24 @@ TEST_SUITE(FF_TEST_SUITE) {
             CLIFlagSpec{
                 "flag-1",
                 'f',
+                std::nullopt,
             },
             CLIFlagSpec{
                 "flag-2",
                 std::nullopt,
+                "a description of this flag",
             },
         },
         {
             CLIPositionalArgumentSpec{
                 "pos-arg-1",
                 std::nullopt,
+                std::nullopt,
             },
             CLIPositionalArgumentSpec{
                 "pos-arg-2",
                 std::nullopt,
+                "a description of this argument",
             },
         },
     };
