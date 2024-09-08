@@ -159,7 +159,8 @@ public:
       std::optional<Activation> activation = std::nullopt,
       bool use_bias = true,
       DataType data_type = DataType::FLOAT,
-      std::optional<InitializerAttrs> const &projection_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &projection_initializer =
+          std::nullopt,
       std::optional<InitializerAttrs> const &bias_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt,
       std::optional<std::string> const &projection_name = std::nullopt,
@@ -227,7 +228,10 @@ public:
       bool add_zero_attn = false,
       std::optional<InitializerAttrs> initializer = std::nullopt,
       std::optional<std::string> const &maybe_name = std::nullopt);
-  tensor_guid_t create_input(TensorShape const &, CreateGrad, std::optional<std::string> const &maybe_name = std::nullopt);
+  tensor_guid_t
+      create_input(TensorShape const &,
+                   CreateGrad,
+                   std::optional<std::string> const &maybe_name = std::nullopt);
   tensor_guid_t create_weight(
       TensorShape const &,
       CreateGrad create_grad = CreateGrad::YES,

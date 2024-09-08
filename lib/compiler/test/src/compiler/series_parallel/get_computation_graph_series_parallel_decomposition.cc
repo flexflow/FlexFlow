@@ -1,18 +1,20 @@
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
+#include "models/split_test/split_test.h"
+#include "models/transformer/transformer.h"
 #include "pcg/computation_graph.h"
 #include "pcg/computation_graph_builder.h"
 #include <doctest/doctest.h>
-#include "models/split_test/split_test.h"
-#include "models/transformer/transformer.h"
 
-using namespace ::FlexFlow; 
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("get_computation_graph_series_parallel_decomposition(ComputationGraph)") {
+  TEST_CASE(
+      "get_computation_graph_series_parallel_decomposition(ComputationGraph)") {
     SUBCASE("empty computation graph") {
       ComputationGraph cg = make_empty_computation_graph();
 
-      std::optional<SeriesParallelDecomposition> result = get_computation_graph_series_parallel_decomposition(cg);
+      std::optional<SeriesParallelDecomposition> result =
+          get_computation_graph_series_parallel_decomposition(cg);
       // technically an empty graph is non-SP
       std::optional<SeriesParallelDecomposition> correct = std::nullopt;
 
@@ -22,25 +24,24 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("just a single input") {
       std::string input_layer_name = "my input";
       ComputationGraph cg = [&] {
-        ComputationGraphBuilder b; 
+        ComputationGraphBuilder b;
 
-        TensorShape input_shape = 
-          TensorShape{
-            TensorDims{FFOrdered<size_t>{
-              10,
-              12,
-            }},
-            DataType::FLOAT
-          };
+        TensorShape input_shape = TensorShape{TensorDims{FFOrdered<size_t>{
+                                                  10,
+                                                  12,
+                                              }},
+                                              DataType::FLOAT};
         b.create_input(input_shape, CreateGrad::YES, input_layer_name);
-        
+
         return b.computation_graph;
       }();
 
       layer_guid_t input_layer = get_layer_by_name(cg, input_layer_name);
 
-      std::optional<SeriesParallelDecomposition> result = get_computation_graph_series_parallel_decomposition(cg);
-      std::optional<SeriesParallelDecomposition> correct = SeriesParallelDecomposition{input_layer.raw_node};
+      std::optional<SeriesParallelDecomposition> result =
+          get_computation_graph_series_parallel_decomposition(cg);
+      std::optional<SeriesParallelDecomposition> correct =
+          SeriesParallelDecomposition{input_layer.raw_node};
 
       CHECK(result == correct);
     }
@@ -51,21 +52,19 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string bias_weights_layer_name = "my bias weights";
       std::string operator_name = "my operator";
       ComputationGraph cg = [&] {
-        ComputationGraphBuilder b; 
+        ComputationGraphBuilder b;
 
-        TensorShape input_shape = 
-          TensorShape{
-            TensorDims{FFOrdered<size_t>{
-              10,
-              12,
-            }},
-            DataType::FLOAT
-          };
-        tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES, input_layer_name);
+        TensorShape input_shape = TensorShape{TensorDims{FFOrdered<size_t>{
+                                                  10,
+                                                  12,
+                                              }},
+                                              DataType::FLOAT};
+        tensor_guid_t input =
+            b.create_input(input_shape, CreateGrad::YES, input_layer_name);
 
-        b.dense(input, 
-                /*outDim=*/14, 
-                /*activation=*/std::nullopt, 
+        b.dense(input,
+                /*outDim=*/14,
+                /*activation=*/std::nullopt,
                 /*use_bias=*/true,
                 /*data_type=*/DataType::FLOAT,
                 /*projection_initializer=*/std::nullopt,
@@ -78,28 +77,30 @@ TEST_SUITE(FF_TEST_SUITE) {
       }();
 
       layer_guid_t input_layer = get_layer_by_name(cg, input_layer_name);
-      layer_guid_t projection_weights_layer = get_layer_by_name(cg, projection_weights_layer_name);
-      layer_guid_t bias_weights_layer = get_layer_by_name(cg, bias_weights_layer_name);
+      layer_guid_t projection_weights_layer =
+          get_layer_by_name(cg, projection_weights_layer_name);
+      layer_guid_t bias_weights_layer =
+          get_layer_by_name(cg, bias_weights_layer_name);
       layer_guid_t operator_layer = get_layer_by_name(cg, operator_name);
 
-      std::optional<SeriesParallelDecomposition> result = get_computation_graph_series_parallel_decomposition(cg);
-      std::optional<SeriesParallelDecomposition> correct = SeriesParallelDecomposition{
-        SeriesSplit{
-          ParallelSplit{
-            input_layer.raw_node,
-            projection_weights_layer.raw_node,
-            bias_weights_layer.raw_node,
-          },
-          operator_layer.raw_node,
-        }
-      };
+      std::optional<SeriesParallelDecomposition> result =
+          get_computation_graph_series_parallel_decomposition(cg);
+      std::optional<SeriesParallelDecomposition> correct =
+          SeriesParallelDecomposition{SeriesSplit{
+              ParallelSplit{
+                  input_layer.raw_node,
+                  projection_weights_layer.raw_node,
+                  bias_weights_layer.raw_node,
+              },
+              operator_layer.raw_node,
+          }};
 
       CHECK(result == correct);
     }
 
     SUBCASE("SP without weight nodes but non-SP with weight nodes") {
-      // A minimal computation graph where without weights (w1 and w2) the computation
-      // graph is series-parallel, but with weight nodes it is not
+      // A minimal computation graph where without weights (w1 and w2) the
+      // computation graph is series-parallel, but with weight nodes it is not
       //
       // w1   input   w2
       //  \   /   \   /
@@ -112,21 +113,21 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string op2_name = "op2";
 
       ComputationGraph cg = [&] {
-        ComputationGraphBuilder b;   
+        ComputationGraphBuilder b;
 
-        TensorShape input_shape = 
-          TensorShape{
+        TensorShape input_shape = TensorShape{
             TensorDims{FFOrdered<size_t>{
-              10, 
-              12,
+                10,
+                12,
             }},
             DataType::FLOAT,
-          };
-        tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES, input_name);
+        };
+        tensor_guid_t input =
+            b.create_input(input_shape, CreateGrad::YES, input_name);
 
         b.dense(input,
-                /*outDim=*/14, 
-                /*activation=*/std::nullopt, 
+                /*outDim=*/14,
+                /*activation=*/std::nullopt,
                 /*use_bias=*/false,
                 /*data_type=*/DataType::FLOAT,
                 /*projection_initializer=*/std::nullopt,
@@ -134,8 +135,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                 /*name=*/op1_name,
                 /*projection_name=*/w1_name);
         b.dense(input,
-                /*outDim=*/14, 
-                /*activation=*/std::nullopt, 
+                /*outDim=*/14,
+                /*activation=*/std::nullopt,
                 /*use_bias=*/false,
                 /*data_type=*/DataType::FLOAT,
                 /*projection_initializer=*/std::nullopt,
@@ -152,23 +153,24 @@ TEST_SUITE(FF_TEST_SUITE) {
       layer_guid_t op1 = get_layer_by_name(cg, op1_name);
       layer_guid_t op2 = get_layer_by_name(cg, op2_name);
 
-      std::optional<SeriesParallelDecomposition> result = get_computation_graph_series_parallel_decomposition(cg);
-      std::optional<SeriesParallelDecomposition> correct = SeriesParallelDecomposition{
-        SeriesSplit{
-          ParallelSplit{
-            w1.raw_node,
-            input.raw_node,
-            w2.raw_node,
-          },
-          ParallelSplit{
-            op1.raw_node,
-            op2.raw_node,
-          },
-        }
-      };
+      std::optional<SeriesParallelDecomposition> result =
+          get_computation_graph_series_parallel_decomposition(cg);
+      std::optional<SeriesParallelDecomposition> correct =
+          SeriesParallelDecomposition{SeriesSplit{
+              ParallelSplit{
+                  w1.raw_node,
+                  input.raw_node,
+                  w2.raw_node,
+              },
+              ParallelSplit{
+                  op1.raw_node,
+                  op2.raw_node,
+              },
+          }};
     }
 
-    SUBCASE("SP with or without preprocessing, but preprocessing would SP decomposition") {
+    SUBCASE("SP with or without preprocessing, but preprocessing would SP "
+            "decomposition") {
       // computation graph:
       //
       //  input1   input2
@@ -181,18 +183,19 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string op2_name = "op2";
 
       ComputationGraph cg = [&] {
-        ComputationGraphBuilder b;   
+        ComputationGraphBuilder b;
 
-        TensorShape input_shape = 
-          TensorShape{
+        TensorShape input_shape = TensorShape{
             TensorDims{FFOrdered<size_t>{
-              10, 
-              12,
+                10,
+                12,
             }},
             DataType::FLOAT,
-          };
-        tensor_guid_t input1 = b.create_input(input_shape, CreateGrad::YES, input1_name);
-        tensor_guid_t input2 = b.create_input(input_shape, CreateGrad::YES, input2_name);
+        };
+        tensor_guid_t input1 =
+            b.create_input(input_shape, CreateGrad::YES, input1_name);
+        tensor_guid_t input2 =
+            b.create_input(input_shape, CreateGrad::YES, input2_name);
 
         b.relu(input1, op1_name);
         b.relu(input2, op2_name);
@@ -205,31 +208,31 @@ TEST_SUITE(FF_TEST_SUITE) {
       layer_guid_t op1 = get_layer_by_name(cg, op1_name);
       layer_guid_t op2 = get_layer_by_name(cg, op2_name);
 
-      std::optional<SeriesParallelDecomposition> result = get_computation_graph_series_parallel_decomposition(cg);
-      std::optional<SeriesParallelDecomposition> correct = SeriesParallelDecomposition{
-        ParallelSplit{
-          SeriesSplit{
-            input1.raw_node,
-            op1.raw_node,
-          },
-          SeriesSplit{
-            input2.raw_node,
-            op2.raw_node,
-          },
-        }
-      };
+      std::optional<SeriesParallelDecomposition> result =
+          get_computation_graph_series_parallel_decomposition(cg);
+      std::optional<SeriesParallelDecomposition> correct =
+          SeriesParallelDecomposition{ParallelSplit{
+              SeriesSplit{
+                  input1.raw_node,
+                  op1.raw_node,
+              },
+              SeriesSplit{
+                  input2.raw_node,
+                  op2.raw_node,
+              },
+          }};
     }
 
     SUBCASE("not SP with or without weight nodes") {
       // computation graph:
       //
-      //    input1   
+      //    input1
       //     /  \
       //   op1  op2
       //    | \  |
       //    |  \ |
       //   op3  op4
-      
+
       std::string input1_name = "input1";
       std::string op1_name = "op1";
       std::string op2_name = "op2";
@@ -237,17 +240,17 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string op4_name = "op4";
 
       ComputationGraph cg = [&] {
-        ComputationGraphBuilder b;   
+        ComputationGraphBuilder b;
 
-        TensorShape input_shape = 
-          TensorShape{
+        TensorShape input_shape = TensorShape{
             TensorDims{FFOrdered<size_t>{
-              10, 
-              12,
+                10,
+                12,
             }},
             DataType::FLOAT,
-          };
-        tensor_guid_t input1 = b.create_input(input_shape, CreateGrad::YES, input1_name);
+        };
+        tensor_guid_t input1 =
+            b.create_input(input_shape, CreateGrad::YES, input1_name);
 
         tensor_guid_t op1_output = b.relu(input1, op1_name);
         tensor_guid_t op2_output = b.relu(input1, op2_name);
@@ -263,48 +266,51 @@ TEST_SUITE(FF_TEST_SUITE) {
       layer_guid_t op3 = get_layer_by_name(cg, op3_name);
       layer_guid_t op4 = get_layer_by_name(cg, op4_name);
 
-      std::optional<SeriesParallelDecomposition> result = get_computation_graph_series_parallel_decomposition(cg);
+      std::optional<SeriesParallelDecomposition> result =
+          get_computation_graph_series_parallel_decomposition(cg);
       std::optional<SeriesParallelDecomposition> correct = std::nullopt;
     }
 
     SUBCASE("real models") {
       SUBCASE("split_test") {
-        ComputationGraph cg = get_split_test_computation_graph(/*batch_size=*/8);
+        ComputationGraph cg =
+            get_split_test_computation_graph(/*batch_size=*/8);
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition = get_computation_graph_series_parallel_decomposition(cg);
-        
+        std::optional<SeriesParallelDecomposition> sp_decomposition =
+            get_computation_graph_series_parallel_decomposition(cg);
+
         CHECK(sp_decomposition.has_value());
       }
 
       SUBCASE("transformer") {
-        ComputationGraph cg = get_transformer_computation_graph(get_default_transformer_config());
+        ComputationGraph cg =
+            get_transformer_computation_graph(get_default_transformer_config());
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition = get_computation_graph_series_parallel_decomposition(cg);
-        
+        std::optional<SeriesParallelDecomposition> sp_decomposition =
+            get_computation_graph_series_parallel_decomposition(cg);
+
         CHECK(sp_decomposition.has_value());
       }
     }
   }
 
-  TEST_CASE("render_preprocessed_computation_graph_for_sp_decomposition(ComputationGraph)") {
+  TEST_CASE("render_preprocessed_computation_graph_for_sp_decomposition("
+            "ComputationGraph)") {
     // currently there's not really a good way to test this, and its arguable
     // how much its output really should be validated as its primarily for
     // visualization and so there's not really a strict definition of
     // correctness, so for now we just run it on some models and make sure it
     // doesn't crash. Don't use this as an example.
-   
+
     SUBCASE("basic single-operator model") {
       ComputationGraph cg = [&] {
-        ComputationGraphBuilder b; 
+        ComputationGraphBuilder b;
 
-        TensorShape input_shape = 
-          TensorShape{
-            TensorDims{FFOrdered<size_t>{
-              10,
-              12,
-            }},
-            DataType::FLOAT
-          };
+        TensorShape input_shape = TensorShape{TensorDims{FFOrdered<size_t>{
+                                                  10,
+                                                  12,
+                                              }},
+                                              DataType::FLOAT};
         tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
 
         b.dense(input, /*outDim=*/14);
@@ -312,19 +318,23 @@ TEST_SUITE(FF_TEST_SUITE) {
         return b.computation_graph;
       }();
 
-      std::string result = render_preprocessed_computation_graph_for_sp_decomposition(cg);
+      std::string result =
+          render_preprocessed_computation_graph_for_sp_decomposition(cg);
     }
 
     SUBCASE("split_test") {
       ComputationGraph cg = get_split_test_computation_graph(/*batch_size=*/8);
 
-      std::string result = render_preprocessed_computation_graph_for_sp_decomposition(cg);
+      std::string result =
+          render_preprocessed_computation_graph_for_sp_decomposition(cg);
     }
 
     SUBCASE("transformer") {
-        ComputationGraph cg = get_transformer_computation_graph(get_default_transformer_config());
+      ComputationGraph cg =
+          get_transformer_computation_graph(get_default_transformer_config());
 
-      std::string result = render_preprocessed_computation_graph_for_sp_decomposition(cg);
+      std::string result =
+          render_preprocessed_computation_graph_for_sp_decomposition(cg);
     }
   }
 }

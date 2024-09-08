@@ -1,10 +1,10 @@
 #include "utils/cli/cli_get_help_message.h"
 #include "utils/containers/concat_vectors.h"
+#include "utils/containers/maximum.h"
+#include "utils/containers/transform.h"
 #include "utils/integer_conversions.h"
 #include "utils/join_strings.h"
 #include <sstream>
-#include "utils/containers/transform.h"
-#include "utils/containers/maximum.h"
 
 namespace FlexFlow {
 
@@ -45,22 +45,25 @@ std::string cli_get_help_message(std::string const &program_name,
   oss << std::endl;
 
   std::vector<std::string> all_arg_columns = concat_vectors(std::vector{
-    transform(cli.positional_arguments, render_pos_arg),
-    transform(cli.flags, render_flag_option_column_key),
+      transform(cli.positional_arguments, render_pos_arg),
+      transform(cli.flags, render_flag_option_column_key),
   });
-  std::vector<size_t> all_arg_column_widths = transform(all_arg_columns, [](std::string const &s) { return s.size(); });
+  std::vector<size_t> all_arg_column_widths =
+      transform(all_arg_columns, [](std::string const &s) { return s.size(); });
 
   if (!all_arg_columns.empty()) {
-    int max_column_width = std::min(int_from_size_t(maximum(all_arg_column_widths).value()), 20);
+    int max_column_width =
+        std::min(int_from_size_t(maximum(all_arg_column_widths).value()), 20);
 
-    auto render_column = [&](std::string const &key, std::optional<std::string> const &description) {
+    auto render_column = [&](std::string const &key,
+                             std::optional<std::string> const &description) {
       if (description.has_value()) {
         if (key.size() > max_column_width) {
           return "  " + key + "\n" + std::string(24, ' ') + description.value();
         } else {
-
         }
-        return fmt::format("  {:<{}}  {}", key, max_column_width, description.value());
+        return fmt::format(
+            "  {:<{}}  {}", key, max_column_width, description.value());
       } else {
         return fmt::format("  {}", key);
       }
@@ -73,7 +76,9 @@ std::string cli_get_help_message(std::string const &program_name,
       if (!cli.positional_arguments.empty()) {
         for (CLIPositionalArgumentSpec const &pos_arg_spec :
              cli.positional_arguments) {
-          oss << render_column(render_pos_arg(pos_arg_spec), pos_arg_spec.description) << std::endl;
+          oss << render_column(render_pos_arg(pos_arg_spec),
+                               pos_arg_spec.description)
+              << std::endl;
         }
       }
     }
@@ -83,7 +88,9 @@ std::string cli_get_help_message(std::string const &program_name,
       oss << "options:" << std::endl;
 
       for (CLIFlagSpec const &flag_spec : cli.flags) {
-        oss << render_column(render_flag_option_column_key(flag_spec), flag_spec.description) << std::endl;
+        oss << render_column(render_flag_option_column_key(flag_spec),
+                             flag_spec.description)
+            << std::endl;
       }
     }
   }

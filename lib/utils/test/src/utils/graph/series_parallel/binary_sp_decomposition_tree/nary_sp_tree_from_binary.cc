@@ -24,124 +24,107 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("left associative series") {
-      BinarySPDecompositionTree input = 
-        make_series_split(
-          make_series_split(
-            make_leaf_node(n2),
-            make_leaf_node(n1)),
+      BinarySPDecompositionTree input = make_series_split(
+          make_series_split(make_leaf_node(n2), make_leaf_node(n1)),
           make_leaf_node(n3));
 
-      
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
-      SeriesParallelDecomposition correct = SeriesParallelDecomposition{SeriesSplit{n2, n1, n3}};
+      SeriesParallelDecomposition correct =
+          SeriesParallelDecomposition{SeriesSplit{n2, n1, n3}};
 
       CHECK(result == correct);
     }
 
     SUBCASE("right associative series") {
-      BinarySPDecompositionTree input = 
-        make_series_split(
+      BinarySPDecompositionTree input = make_series_split(
           make_leaf_node(n2),
-          make_series_split(
-            make_leaf_node(n1),
-            make_leaf_node(n3)));
+          make_series_split(make_leaf_node(n1), make_leaf_node(n3)));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
-      SeriesParallelDecomposition correct = SeriesParallelDecomposition{SeriesSplit{n2, n1, n3}};
+      SeriesParallelDecomposition correct =
+          SeriesParallelDecomposition{SeriesSplit{n2, n1, n3}};
 
       CHECK(result == correct);
     }
 
     SUBCASE("series with duplicate children") {
-      BinarySPDecompositionTree input = 
-        make_series_split(
-          make_leaf_node(n1),
-          make_leaf_node(n1));
+      BinarySPDecompositionTree input =
+          make_series_split(make_leaf_node(n1), make_leaf_node(n1));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
-      SeriesParallelDecomposition correct = SeriesParallelDecomposition{SeriesSplit{n1, n1}};
+      SeriesParallelDecomposition correct =
+          SeriesParallelDecomposition{SeriesSplit{n1, n1}};
 
       CHECK(get_nodes(result).size() == 2);
       CHECK(result == correct);
     }
 
     SUBCASE("left associative parallel") {
-      BinarySPDecompositionTree input = 
-        make_parallel_split(
-          make_parallel_split(
-            make_leaf_node(n2),
-            make_leaf_node(n1)),
+      BinarySPDecompositionTree input = make_parallel_split(
+          make_parallel_split(make_leaf_node(n2), make_leaf_node(n1)),
           make_leaf_node(n3));
 
-      
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
-      SeriesParallelDecomposition correct = SeriesParallelDecomposition{ParallelSplit{n2, n1, n3}};
+      SeriesParallelDecomposition correct =
+          SeriesParallelDecomposition{ParallelSplit{n2, n1, n3}};
 
       CHECK(result == correct);
     }
 
     SUBCASE("right associative parallel") {
-      BinarySPDecompositionTree input = 
-        make_parallel_split(
+      BinarySPDecompositionTree input = make_parallel_split(
           make_leaf_node(n2),
-          make_parallel_split(
-            make_leaf_node(n1),
-            make_leaf_node(n3)));
+          make_parallel_split(make_leaf_node(n1), make_leaf_node(n3)));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
-      SeriesParallelDecomposition correct = SeriesParallelDecomposition{ParallelSplit{n2, n1, n3}};
+      SeriesParallelDecomposition correct =
+          SeriesParallelDecomposition{ParallelSplit{n2, n1, n3}};
 
       CHECK(result == correct);
     }
 
     SUBCASE("parallel with duplicate children") {
-      BinarySPDecompositionTree input = 
-        make_parallel_split(
-          make_leaf_node(n1),
-          make_leaf_node(n1));
+      BinarySPDecompositionTree input =
+          make_parallel_split(make_leaf_node(n1), make_leaf_node(n1));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
-      SeriesParallelDecomposition correct = SeriesParallelDecomposition{ParallelSplit{n1, n1}};
+      SeriesParallelDecomposition correct =
+          SeriesParallelDecomposition{ParallelSplit{n1, n1}};
 
       CHECK(get_nodes(result).size() == 2);
       CHECK(result == correct);
     }
 
     SUBCASE("nested") {
-      BinarySPDecompositionTree input = 
-        make_parallel_split(
+      BinarySPDecompositionTree input = make_parallel_split(
           make_parallel_split(
-            make_parallel_split(
-              make_leaf_node(n1),
-              make_series_split(
-                make_series_split(
+              make_parallel_split(
+                  make_leaf_node(n1),
                   make_series_split(
-                    make_leaf_node(n2),
-                    make_leaf_node(n3)),
-                  make_leaf_node(n3)),
-                make_leaf_node(n5))),
-            make_series_split(
-              make_leaf_node(n6),
-              make_leaf_node(n4))),
+                      make_series_split(make_series_split(make_leaf_node(n2),
+                                                          make_leaf_node(n3)),
+                                        make_leaf_node(n3)),
+                      make_leaf_node(n5))),
+              make_series_split(make_leaf_node(n6), make_leaf_node(n4))),
           make_leaf_node(n5));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
       SeriesParallelDecomposition correct = SeriesParallelDecomposition{
           ParallelSplit{
-            n1, 
-            SeriesSplit{
-              n2,
-              n3,
-              n3,
+              n1,
+              SeriesSplit{
+                  n2,
+                  n3,
+                  n3,
+                  n5,
+              },
+              SeriesSplit{
+                  n6,
+                  n4,
+              },
               n5,
-            },
-            SeriesSplit{
-              n6,
-              n4,
-            },
-            n5,
           },
-        };
+      };
 
       CHECK(result == correct);
     }

@@ -1,6 +1,6 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/json.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/make.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/fmt.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/make.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
@@ -11,9 +11,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       GenericBinarySPDecompositionTree<int> tt = make_generic_binary_sp_leaf(5);
 
       nlohmann::json tt_json = {
-        {"__type", "GenericBinarySPDecompositionTree"},
-        {"type", "leaf"},
-        {"value", 5},
+          {"__type", "GenericBinarySPDecompositionTree"},
+          {"type", "leaf"},
+          {"value", 5},
       };
 
       SUBCASE("to_json") {
@@ -24,7 +24,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("from_json") {
-        GenericBinarySPDecompositionTree<int> result = tt_json.get<GenericBinarySPDecompositionTree<int>>();
+        GenericBinarySPDecompositionTree<int> result =
+            tt_json.get<GenericBinarySPDecompositionTree<int>>();
         GenericBinarySPDecompositionTree<int> correct = tt;
 
         CHECK(result == correct);
@@ -32,36 +33,35 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("series split") {
-      GenericBinarySPDecompositionTree<int> tt = 
-        make_generic_binary_series_split(
-          make_generic_binary_sp_leaf(2),
-          make_generic_binary_sp_leaf(5));
+      GenericBinarySPDecompositionTree<int> tt =
+          make_generic_binary_series_split(make_generic_binary_sp_leaf(2),
+                                           make_generic_binary_sp_leaf(5));
 
       nlohmann::json tt_json = {
-        {"__type", "GenericBinarySPDecompositionTree"},
-        {"type", "series"},
-        {
-          "value", 
+          {"__type", "GenericBinarySPDecompositionTree"},
+          {"type", "series"},
           {
-            {"__type", "GenericBinarySeriesSplit"},
-            {
-              "left_child",
+              "value",
               {
-                {"__type", "GenericBinarySPDecompositionTree"},
-                {"type", "leaf"},
-                {"value", 2},
+                  {"__type", "GenericBinarySeriesSplit"},
+                  {
+                      "left_child",
+                      {
+                          {"__type", "GenericBinarySPDecompositionTree"},
+                          {"type", "leaf"},
+                          {"value", 2},
+                      },
+                  },
+                  {
+                      "right_child",
+                      {
+                          {"__type", "GenericBinarySPDecompositionTree"},
+                          {"type", "leaf"},
+                          {"value", 5},
+                      },
+                  },
               },
-            },
-            {
-              "right_child",
-              {
-                {"__type", "GenericBinarySPDecompositionTree"},
-                {"type", "leaf"},
-                {"value", 5},
-              },
-            },
           },
-        },
       };
 
       SUBCASE("to_json") {
@@ -72,7 +72,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("from_json") {
-        GenericBinarySPDecompositionTree<int> result = tt_json.get<GenericBinarySPDecompositionTree<int>>();
+        GenericBinarySPDecompositionTree<int> result =
+            tt_json.get<GenericBinarySPDecompositionTree<int>>();
         GenericBinarySPDecompositionTree<int> correct = tt;
 
         CHECK(result == correct);
@@ -80,36 +81,35 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("parallel split") {
-      GenericBinarySPDecompositionTree<int> tt = 
-        make_generic_binary_parallel_split(
-          make_generic_binary_sp_leaf(2),
-          make_generic_binary_sp_leaf(5));
+      GenericBinarySPDecompositionTree<int> tt =
+          make_generic_binary_parallel_split(make_generic_binary_sp_leaf(2),
+                                             make_generic_binary_sp_leaf(5));
 
       nlohmann::json tt_json = {
-        {"__type", "GenericBinarySPDecompositionTree"},
-        {"type", "parallel"},
-        {
-          "value", 
+          {"__type", "GenericBinarySPDecompositionTree"},
+          {"type", "parallel"},
           {
-            {"__type", "GenericBinaryParallelSplit"},
-            {
-              "left_child",
+              "value",
               {
-                {"__type", "GenericBinarySPDecompositionTree"},
-                {"type", "leaf"},
-                {"value", 2},
+                  {"__type", "GenericBinaryParallelSplit"},
+                  {
+                      "left_child",
+                      {
+                          {"__type", "GenericBinarySPDecompositionTree"},
+                          {"type", "leaf"},
+                          {"value", 2},
+                      },
+                  },
+                  {
+                      "right_child",
+                      {
+                          {"__type", "GenericBinarySPDecompositionTree"},
+                          {"type", "leaf"},
+                          {"value", 5},
+                      },
+                  },
               },
-            },
-            {
-              "right_child",
-              {
-                {"__type", "GenericBinarySPDecompositionTree"},
-                {"type", "leaf"},
-                {"value", 5},
-              },
-            },
           },
-        },
       };
 
       SUBCASE("to_json") {
@@ -120,7 +120,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("from_json") {
-        GenericBinarySPDecompositionTree<int> result = tt_json.get<GenericBinarySPDecompositionTree<int>>();
+        GenericBinarySPDecompositionTree<int> result =
+            tt_json.get<GenericBinarySPDecompositionTree<int>>();
         GenericBinarySPDecompositionTree<int> correct = tt;
 
         CHECK(result == correct);

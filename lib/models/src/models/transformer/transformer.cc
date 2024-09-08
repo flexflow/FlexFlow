@@ -150,7 +150,8 @@ ComputationGraph
       DataType::FLOAT,
   };
   tensor_guid_t input = cgb.create_input(input_shape, CreateGrad::YES, "input");
-  tensor_guid_t target = cgb.create_input(input_shape, CreateGrad::YES, "target");
+  tensor_guid_t target =
+      cgb.create_input(input_shape, CreateGrad::YES, "target");
 
   tensor_guid_t encoder_output = create_transformer_encoder(cgb, config, input);
   tensor_guid_t decoder_output =

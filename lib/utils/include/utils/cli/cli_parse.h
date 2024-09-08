@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CLI_CLI_PARSE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CLI_CLI_PARSE_H
 
-#include "utils/cli/cli_spec.dtg.h"
 #include "utils/cli/cli_parse_result.dtg.h"
+#include "utils/cli/cli_spec.dtg.h"
 #include <tl/expected.hpp>
 
 namespace FlexFlow {

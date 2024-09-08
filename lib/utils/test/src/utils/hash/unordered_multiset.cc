@@ -1,7 +1,7 @@
 #include "utils/hash/unordered_multiset.h"
 #include <doctest/doctest.h>
 
-using namespace ::FlexFlow; 
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("std::hash<std::unordered_multiset<int>>") {

@@ -44,10 +44,10 @@ TensorShape ComputationGraphBuilder::get_shape(tensor_guid_t const &t) const {
   return get_tensor_attrs(this->computation_graph, t).shape;
 }
 
-
-tensor_guid_t ComputationGraphBuilder::create_input(TensorShape const &shape,
-                                                     CreateGrad create_grad,
-                                                     std::optional<std::string> const &maybe_name) {
+tensor_guid_t ComputationGraphBuilder::create_input(
+    TensorShape const &shape,
+    CreateGrad create_grad,
+    std::optional<std::string> const &maybe_name) {
   TensorAttrs tensor_attrs =
       TensorAttrs{shape, std::nullopt, std::nullopt, create_grad};
   LayerAttrs layer_attrs = LayerAttrs{
@@ -58,11 +58,12 @@ tensor_guid_t ComputationGraphBuilder::create_input(TensorShape const &shape,
   return this->add_layer(layer_attrs, {}, {}, tensor_attrs);
 }
 
-tensor_guid_t ComputationGraphBuilder::create_weight(TensorShape const &shape,
-                                                     CreateGrad create_grad,
-                                                     std::optional<InitializerAttrs> const &initializer,
-                                                     std::optional<ParamSync> param_sync,
-                                                     std::optional<std::string> const &maybe_name) {
+tensor_guid_t ComputationGraphBuilder::create_weight(
+    TensorShape const &shape,
+    CreateGrad create_grad,
+    std::optional<InitializerAttrs> const &initializer,
+    std::optional<ParamSync> param_sync,
+    std::optional<std::string> const &maybe_name) {
   TensorAttrs tensor_attrs =
       TensorAttrs{shape, initializer, param_sync, create_grad};
   LayerAttrs layer_attrs = LayerAttrs{
@@ -72,7 +73,6 @@ tensor_guid_t ComputationGraphBuilder::create_weight(TensorShape const &shape,
 
   return this->add_layer(layer_attrs, {}, {}, tensor_attrs);
 }
-
 
 std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
     LayerAttrs const &layer,
@@ -121,7 +121,6 @@ tensor_guid_t
   return get_only(this->add_layer(layer, inputs, weights, outputs));
 }
 
-
 std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
     LayerAttrs const &layer,
     std::vector<tensor_guid_t> const &inputs,
@@ -131,24 +130,29 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
       layer, inputs, weights, transform(outputs, make_output_attrs));
 }
 
-tensor_guid_t ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
-                                                 std::vector<tensor_guid_t> const &inputs,
-                                                 std::vector<tensor_guid_t> const &weights,
-                                                 TensorShape const &output_shape) {
+tensor_guid_t ComputationGraphBuilder::add_layer(
+    LayerAttrs const &layer,
+    std::vector<tensor_guid_t> const &inputs,
+    std::vector<tensor_guid_t> const &weights,
+    TensorShape const &output_shape) {
 
   TensorAttrs output_attrs = make_output_attrs(output_shape);
-  LayerAddedResult added = ::FlexFlow::add_layer(this->computation_graph, layer, concat_vectors(inputs, weights), {output_attrs});
+  LayerAddedResult added =
+      ::FlexFlow::add_layer(this->computation_graph,
+                            layer,
+                            concat_vectors(inputs, weights),
+                            {output_attrs});
   return get_only(added.outputs);
 }
 
-tensor_guid_t ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
-                                                 std::vector<tensor_guid_t> const &inputs,
-                                                 TensorShape const &output_shape) {
+tensor_guid_t
+    ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
+                                       std::vector<tensor_guid_t> const &inputs,
+                                       TensorShape const &output_shape) {
 
   std::vector<tensor_guid_t> weights = {};
   return this->add_layer(layer, inputs, weights, output_shape);
 }
-
 
 tensor_guid_t
     ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
@@ -674,11 +678,12 @@ tensor_guid_t ComputationGraphBuilder::dense(
   TensorShape projection_shape =
       throw_if_unexpected(get_kernel_shape(attrs, this->get_shape(input)));
 
-  tensor_guid_t projection_weights = this->create_weight(projection_shape, 
-                                                         CreateGrad::YES,
-                                                         projection_initializer, 
-                                                         /*sync_type=*/std::nullopt, 
-                                                         projection_name);
+  tensor_guid_t projection_weights =
+      this->create_weight(projection_shape,
+                          CreateGrad::YES,
+                          projection_initializer,
+                          /*sync_type=*/std::nullopt,
+                          projection_name);
 
   weights.push_back(projection_weights);
 

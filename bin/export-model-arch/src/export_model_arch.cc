@@ -7,12 +7,12 @@
 #include "pcg/computation_graph.h"
 #include "pcg/file_format/v1/v1_computation_graph.h"
 #include "utils/cli/cli_get_help_message.h"
+#include "utils/cli/cli_parse.h"
 #include "utils/cli/cli_parse_result.h"
 #include "utils/cli/cli_spec.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/series_parallel/get_series_parallel_decomposition.h"
-#include "utils/cli/cli_parse.h"
 
 using namespace ::FlexFlow;
 
@@ -111,18 +111,32 @@ int main(int argc, char **argv) {
   CLIArgumentKey arg_key_help = cli_add_help_flag(cli);
 
   CLIArgumentKey key_sp_decomposition =
-      cli_add_flag(cli, CLIFlagSpec{"sp-decomposition", std::nullopt, "also output a series parallel decomposition of the model's computation graph"});
+      cli_add_flag(cli,
+                   CLIFlagSpec{"sp-decomposition",
+                               std::nullopt,
+                               "also output a series parallel decomposition of "
+                               "the model's computation graph"});
 
-  CLIArgumentKey key_dot = cli_add_flag(cli, CLIFlagSpec{"dot", std::nullopt, "output a dot representation of the model's computation graph"});
+  CLIArgumentKey key_dot = cli_add_flag(
+      cli,
+      CLIFlagSpec{
+          "dot",
+          std::nullopt,
+          "output a dot representation of the model's computation graph"});
 
-  CLIArgumentKey key_preprocessed_dot =
-      cli_add_flag(cli, CLIFlagSpec{"preprocessed-dot", std::nullopt, "output a dot representation of model's computation graph for preprocessed to help check series-parallel structure"});
+  CLIArgumentKey key_preprocessed_dot = cli_add_flag(
+      cli,
+      CLIFlagSpec{"preprocessed-dot",
+                  std::nullopt,
+                  "output a dot representation of model's computation graph "
+                  "for preprocessed to help check series-parallel structure"});
 
   std::vector<std::string> model_options = {
       "transformer", "split_test", "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
-      cli, CLIPositionalArgumentSpec{"model", model_options, "name of the model to export"});
-
+      cli,
+      CLIPositionalArgumentSpec{
+          "model", model_options, "name of the model to export"});
 
   assert(argc >= 1);
   std::string prog_name = argv[0];

@@ -65,7 +65,8 @@ std::optional<SeriesParallelDecomposition>
 
   {
     DiGraphView unpreprocessed_digraph = cg.raw_graph;
-    std::optional<SeriesParallelDecomposition> unpreprocessed_sp_decomposition = get_series_parallel_decomposition(unpreprocessed_digraph);
+    std::optional<SeriesParallelDecomposition> unpreprocessed_sp_decomposition =
+        get_series_parallel_decomposition(unpreprocessed_digraph);
     if (unpreprocessed_sp_decomposition.has_value()) {
       return unpreprocessed_sp_decomposition.value();
     }

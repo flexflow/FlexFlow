@@ -15,7 +15,8 @@ std::vector<CLIFlagKey> cli_get_flag_keys(CLISpec const &cli) {
 }
 
 CLIArgumentKey cli_add_help_flag(CLISpec &cli) {
-  CLIFlagSpec help_flag = CLIFlagSpec{"help", 'h', "show this help message and exit"};
+  CLIFlagSpec help_flag =
+      CLIFlagSpec{"help", 'h', "show this help message and exit"};
   return cli_add_flag(cli, help_flag);
 }
 

@@ -1,24 +1,26 @@
 #include "utils/containers/maximum.h"
-#include <doctest/doctest.h>
-#include <vector>
-#include <unordered_set>
-#include <set>
-#include "test/utils/doctest/fmt/vector.h"
-#include "test/utils/doctest/fmt/unordered_set.h"
-#include "test/utils/doctest/fmt/unordered_multiset.h"
-#include "test/utils/doctest/fmt/set.h"
 #include "test/utils/doctest/fmt/multiset.h"
 #include "test/utils/doctest/fmt/optional.h"
+#include "test/utils/doctest/fmt/set.h"
+#include "test/utils/doctest/fmt/unordered_multiset.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include <doctest/doctest.h>
+#include <set>
+#include <unordered_set>
+#include <vector>
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE_TEMPLATE("maximum(T)", T, std::vector<int>, 
-                                      std::unordered_set<int>,
-                                      std::unordered_multiset<int>,
-                                      std::set<int>,
-                                      std::multiset<int>) {
-    
+  TEST_CASE_TEMPLATE("maximum(T)",
+                     T,
+                     std::vector<int>,
+                     std::unordered_set<int>,
+                     std::unordered_multiset<int>,
+                     std::set<int>,
+                     std::multiset<int>) {
+
     SUBCASE("input is empty") {
       T input = {};
 

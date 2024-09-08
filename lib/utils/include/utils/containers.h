@@ -179,7 +179,6 @@ std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
 }
 
-
 template <typename T>
 std::vector<T> value_all(std::vector<std::optional<T>> const &v) {
   return transform(v, [](std::optional<T> const &element) {

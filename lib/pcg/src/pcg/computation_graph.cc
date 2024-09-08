@@ -31,13 +31,16 @@ LayerAddedResult add_layer(ComputationGraph &computation_graph,
                            LayerAttrs const &attrs,
                            std::vector<tensor_guid_t> const &inputs,
                            std::vector<TensorAttrs> const &outputs) {
-  std::vector<DataflowOutput> raw_inputs = transform(inputs, [](tensor_guid_t const &t) { return t.raw_graph_output; });
+  std::vector<DataflowOutput> raw_inputs = transform(
+      inputs, [](tensor_guid_t const &t) { return t.raw_graph_output; });
 
-  NodeAddedResult added = computation_graph.raw_graph.add_node(attrs, raw_inputs, outputs);
+  NodeAddedResult added =
+      computation_graph.raw_graph.add_node(attrs, raw_inputs, outputs);
 
   return LayerAddedResult{
-    layer_guid_t{added.node},
-    transform(added.outputs, [](DataflowOutput const &o) { return tensor_guid_t{o}; }),
+      layer_guid_t{added.node},
+      transform(added.outputs,
+                [](DataflowOutput const &o) { return tensor_guid_t{o}; }),
   };
 }
 

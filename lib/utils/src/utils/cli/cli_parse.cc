@@ -1,7 +1,7 @@
 #include "utils/cli/cli_parse.h"
-#include "utils/containers/enumerate.h"
 #include "utils/cli/cli_spec.h"
 #include "utils/containers/contains.h"
+#include "utils/containers/enumerate.h"
 #include "utils/containers/generate_map.h"
 
 namespace FlexFlow {
@@ -24,7 +24,6 @@ tl::expected<CLIFlagKey, std::string> cli_parse_flag(CLISpec const &cli,
   return tl::unexpected(fmt::format("Encountered unknown flag {}", arg));
 }
 
-
 tl::expected<CLIParseResult, std::string>
     cli_parse(CLISpec const &cli, std::vector<std::string> const &args) {
   CLIParseResult result = CLIParseResult{
@@ -46,7 +45,10 @@ tl::expected<CLIParseResult, std::string>
 
     if (arg_spec.choices.has_value() &&
         !contains(arg_spec.choices.value(), arg)) {
-      return fmt::format("Invalid option for positional argument \"{}\": \"{}\"", arg_spec.name, arg);
+      return fmt::format(
+          "Invalid option for positional argument \"{}\": \"{}\"",
+          arg_spec.name,
+          arg);
     }
 
     result.positional_arguments.insert(
@@ -90,6 +92,5 @@ tl::expected<CLIParseResult, std::string>
 
   return cli_parse(cli, args);
 }
-
 
 } // namespace FlexFlow
