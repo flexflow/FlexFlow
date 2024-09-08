@@ -5,12 +5,12 @@
 #include "pcg/computation_graph.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h"
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
+#include "utils/graph/series_parallel/series_parallel_decomposition.dtg.h"
 
 namespace FlexFlow {
 
-SerialParallelDecomposition
-    get_serial_parallel_decomposition(ParallelComputationGraph const &pcg);
+SeriesParallelDecomposition
+    get_series_parallel_decomposition(ParallelComputationGraph const &pcg);
 
 ParallelComputationGraph cg_to_pcg(ComputationGraph const &g);
 SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &g);

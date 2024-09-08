@@ -46,7 +46,7 @@ using namespace FlexFlow;
 // namespace rc {
 
 // Gen<MultiDiGraph> serialParallelMultiDiGraph() {
-//   return gen::map(gen::arbitrary<SerialParallelDecomposition>(),
+//   return gen::map(gen::arbitrary<SeriesParallelDecomposition>(),
 //                   multidigraph_from_sp_decomposition);
 // }
 
@@ -113,12 +113,12 @@ using namespace FlexFlow;
 // };
 
 // template <>
-// struct Arbitrary<SerialParallelDecomposition> {
-//   static Gen<SerialParallelDecomposition> arbitrary() {
+// struct Arbitrary<SeriesParallelDecomposition> {
+//   static Gen<SeriesParallelDecomposition> arbitrary() {
 //     return gen::mapcat(gen::arbitrary<bool>(), [](bool is_serial) {
-//       return is_serial ? gen::construct<SerialParallelDecomposition>(
+//       return is_serial ? gen::construct<SeriesParallelDecomposition>(
 //                              gen::arbitrary<Serial>())
-//                        : gen::construct<SerialParallelDecomposition>(
+//                        : gen::construct<SeriesParallelDecomposition>(
 //                              gen::arbitrary<Parallel>());
 //     });
 //   }

@@ -1,15 +1,15 @@
 #include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_left_child.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_node_type.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_nodes.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_right_child.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/left_associative_binary_sp_tree_from_nary.h"
-#include "utils/graph/serial_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_left_child.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_node_type.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_nodes.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_right_child.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/left_associative_binary_sp_tree_from_nary.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 
 namespace FlexFlow {
 
@@ -39,8 +39,8 @@ layer_guid_t require_node(ComputationGraphBinarySPDecomposition const &d) {
 std::optional<ComputationGraphBinarySPDecomposition>
     get_computation_graph_left_assoc_binary_sp_decomposition(
         ComputationGraph const &cg) {
-  SerialParallelDecomposition sp_decomposition = ({
-    std::optional<SerialParallelDecomposition> result =
+  SeriesParallelDecomposition sp_decomposition = ({
+    std::optional<SeriesParallelDecomposition> result =
         get_computation_graph_series_parallel_decomposition(cg);
     if (!result.has_value()) {
       return std::nullopt;
@@ -58,8 +58,8 @@ std::optional<ComputationGraphBinarySPDecomposition>
 std::optional<ComputationGraphBinarySPDecomposition>
     get_computation_graph_right_assoc_binary_sp_decomposition(
         ComputationGraph const &cg) {
-  SerialParallelDecomposition sp_decomposition = ({
-    std::optional<SerialParallelDecomposition> result =
+  SeriesParallelDecomposition sp_decomposition = ({
+    std::optional<SeriesParallelDecomposition> result =
         get_computation_graph_series_parallel_decomposition(cg);
     if (!result.has_value()) {
       return std::nullopt;

@@ -3,7 +3,7 @@
 
 #include "compiler/series_parallel/computation_graph_binary_sp_decomposition.dtg.h"
 #include "pcg/computation_graph.dtg.h"
-#include "utils/graph/serial_parallel/sp_decomposition_tree_node_type.dtg.h"
+#include "utils/graph/series_parallel/sp_decomposition_tree_node_type.dtg.h"
 
 namespace FlexFlow {
 

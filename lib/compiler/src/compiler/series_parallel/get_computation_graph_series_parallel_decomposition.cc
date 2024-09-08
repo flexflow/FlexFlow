@@ -6,7 +6,7 @@
 #include "utils/graph/digraph/algorithms/materialize_digraph_view.h"
 #include "utils/graph/digraph/algorithms/transitive_reduction.h"
 #include "utils/graph/instances/adjacency_digraph.h"
-#include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
+#include "utils/graph/series_parallel/get_series_parallel_decomposition.h"
 #include "utils/record_formatter.h"
 
 namespace FlexFlow {
@@ -59,7 +59,7 @@ std::string render_preprocessed_computation_graph_for_sp_decomposition(
   return preprocessed_dot;
 }
 
-std::optional<SerialParallelDecomposition>
+std::optional<SeriesParallelDecomposition>
     get_computation_graph_series_parallel_decomposition(
         ComputationGraph const &cg) {
   std::unordered_set<layer_guid_t> weight_and_input_layers =
@@ -82,7 +82,7 @@ std::optional<SerialParallelDecomposition>
     return digraph;
   }();
 
-  return get_serial_parallel_decomposition(preprocessed_digraph);
+  return get_series_parallel_decomposition(preprocessed_digraph);
 }
 
 } // namespace FlexFlow
