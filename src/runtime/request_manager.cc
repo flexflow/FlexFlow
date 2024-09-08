@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/request_manager.h"
 #include "flexflow/parallel_ops/parallel_op.h"
+#include "flexflow/request_manager.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
 #include <cmath>
@@ -260,6 +260,11 @@ bool RequestManager::get_memory_occupancy() {
 
 void RequestManager::set_memory_occupancy(bool memory_occupancy_) {
   memory_occupancy = memory_occupancy_;
+}
+
+double RequestManager::get_request_expected_latency(Request &request) {
+  return request.get_slo_ratio() * baseline_latency_ms *
+         (request.tokens.size() - request.llm_prefill_len);
 }
 
 Request &RequestManager::get_request_with_guid(RequestGuid guid) {
@@ -1554,9 +1559,7 @@ bool RequestManager::update_llm_verify_results(
       // Request is completed
       request_completed = true;
       request_complete_clean_up(request_index);
-    } else if (request.decode_latency_ms > request.tokens.size() *
-                                               baseline_latency_ms *
-                                               request.get_slo_ratio()) {
+    } else if (request.decode_latency_ms > get_request_expected_latency(request)) {
       // The request violates the SLO, drop that request
       request_completed = true;
       request_complete_clean_up(request_index);
@@ -2649,8 +2652,7 @@ void RequestManager::prune_token_tree() {
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
     double spare_latency =
-        request.get_slo_ratio() * baseline_latency_ms * request.tokens.size() -
-        request.decode_latency_ms;
+        get_request_expected_latency(request) - request.decode_latency_ms;
     assert(spare_latency >= 0.0);
     spare_latency_2_request_index.push_back(
         std::make_pair(spare_latency, request_index));

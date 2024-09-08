@@ -273,6 +273,7 @@ public:
   void set_streaming_cache(bool streaming_cache);
   bool get_memory_occupancy();
   void set_memory_occupancy(bool memory_occupancy);
+  double get_request_expected_latency(Request &request);
   Request &get_request_with_guid(RequestGuid guid);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
