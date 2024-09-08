@@ -31,7 +31,7 @@ ComputationGraph get_single_operator_computation_graph() {
       DataType::FLOAT,
   };
 
-  tensor_guid_t input = b.create_tensor(input_shape, CreateGrad::YES);
+  tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
 
   InitializerAttrs kernel_initializer =
       InitializerAttrs{GlorotUniformAttrs{/*seed=*/12}};
