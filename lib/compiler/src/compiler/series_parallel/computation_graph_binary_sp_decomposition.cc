@@ -2,7 +2,7 @@
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_left_child.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_node_type.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_nodes.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_leaves.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_right_child.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
@@ -84,7 +84,7 @@ bool is_right_associative(ComputationGraphBinarySPDecomposition const &d) {
 
 std::unordered_multiset<layer_guid_t>
     get_layers(ComputationGraphBinarySPDecomposition const &d) {
-  return get_nodes(d.raw_tree);
+  return get_leaves(d.raw_tree);
 }
 
 } // namespace FlexFlow

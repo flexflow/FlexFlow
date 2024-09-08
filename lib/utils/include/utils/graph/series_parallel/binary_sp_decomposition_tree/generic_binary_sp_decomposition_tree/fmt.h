@@ -47,7 +47,7 @@ std::string format_as(GenericBinarySPDecompositionTree<T> const &tt) {
             return fmt::format("<GenericBinarySPDecompositionTree {}>", s);
           },
           [](T const &t) {
-            return fmt::format("<BinarySPDecompositionTree {}>", t);
+            return fmt::format("<GenericBinarySPDecompositionTree {}>", t);
           },
       });
 }

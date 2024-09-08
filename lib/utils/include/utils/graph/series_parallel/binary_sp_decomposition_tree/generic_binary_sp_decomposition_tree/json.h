@@ -62,7 +62,7 @@ struct adl_serializer<::FlexFlow::GenericBinarySPDecompositionTree<T>> {
       return ::FlexFlow::GenericBinarySPDecompositionTree<T>{
           j.at("value").get<::FlexFlow::GenericBinaryParallelSplit<T>>(),
       };
-    } else if (key == "node") {
+    } else if (key == "leaf") {
       return ::FlexFlow::GenericBinarySPDecompositionTree<T>{
           j.at("value").get<T>(),
       };
@@ -75,7 +75,7 @@ struct adl_serializer<::FlexFlow::GenericBinarySPDecompositionTree<T>> {
   static void
       to_json(json &j,
               ::FlexFlow::GenericBinarySPDecompositionTree<T> const &v) {
-    j["__type"] = "BinarySPDecompositionTree";
+    j["__type"] = "GenericBinarySPDecompositionTree";
     ::FlexFlow::visit<std::monostate>(
         v,
         ::FlexFlow::overload{
@@ -90,7 +90,7 @@ struct adl_serializer<::FlexFlow::GenericBinarySPDecompositionTree<T>> {
               return std::monostate{};
             },
             [&](T const &t) {
-              j["type"] = "node";
+              j["type"] = "leaf";
               j["value"] = t;
               return std::monostate{};
             },

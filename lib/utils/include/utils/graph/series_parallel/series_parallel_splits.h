@@ -48,7 +48,7 @@ struct ParallelSplit {
 public:
   ParallelSplit() = delete;
   explicit ParallelSplit(
-      std::unordered_set<std::variant<SeriesSplit, Node>> const &);
+      std::unordered_multiset<std::variant<SeriesSplit, Node>> const &);
   explicit ParallelSplit(
       std::initializer_list<std::variant<SeriesSplit, Node>> const &);
 
@@ -56,7 +56,7 @@ public:
   bool operator!=(ParallelSplit const &) const;
 
 public:
-  std::unordered_set<std::variant<SeriesSplit, Node>> children;
+  std::unordered_multiset<std::variant<SeriesSplit, Node>> children;
 
 private:
   using Tie = std::tuple<decltype(children) const &>;

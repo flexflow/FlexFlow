@@ -2,7 +2,7 @@
 #include "utils/containers/multiset_union.h"
 #include "utils/containers/set_union.h"
 #include "utils/containers/transform.h"
-#include "utils/containers/unordered_set_of.h"
+#include "utils/containers/unordered_multiset_of.h"
 #include "utils/containers/vector_of.h"
 #include "utils/graph/series_parallel/intermediate_sp_decomposition_tree.h"
 #include "utils/hash/unordered_set.h"
@@ -22,7 +22,7 @@ struct ToFinalAST {
                 .value();
           })};
     } else {
-      return ParallelSplit{unordered_set_of(transform(
+      return ParallelSplit{unordered_multiset_of(transform(
           node.children,
           [](std::variant<IntermediateSpDecompositionTree, Node> const &s) {
             return narrow<std::variant<SeriesSplit, Node>>(

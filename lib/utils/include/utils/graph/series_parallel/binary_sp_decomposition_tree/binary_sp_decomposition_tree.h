@@ -16,7 +16,7 @@ BinarySPDecompositionTree make_leaf_node(Node const &);
 bool is_binary_sp_tree_left_associative(BinarySPDecompositionTree const &);
 bool is_binary_sp_tree_right_associative(BinarySPDecompositionTree const &);
 
-std::unordered_multiset<Node> get_nodes(BinarySPDecompositionTree const &);
+std::unordered_multiset<Node> get_leaves(BinarySPDecompositionTree const &);
 
 } // namespace FlexFlow
 

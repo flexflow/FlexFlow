@@ -1,9 +1,9 @@
 #include "utils/graph/series_parallel/series_parallel_splits.h"
-#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/unordered_multiset.h"
 #include "utils/fmt/variant.h"
 #include "utils/fmt/vector.h"
 #include "utils/hash-utils.h"
-#include "utils/hash/unordered_set.h"
+#include "utils/hash/unordered_multiset.h"
 #include "utils/hash/vector.h"
 
 namespace FlexFlow {
@@ -37,7 +37,7 @@ std::ostream &operator<<(std::ostream &s, SeriesSplit const &split) {
 }
 
 ParallelSplit::ParallelSplit(
-    std::unordered_set<std::variant<SeriesSplit, Node>> const &children)
+    std::unordered_multiset<std::variant<SeriesSplit, Node>> const &children)
     : children(children) {}
 
 ParallelSplit::ParallelSplit(

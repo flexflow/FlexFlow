@@ -1,5 +1,5 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_nodes.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_leaves.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/make.h"
@@ -36,8 +36,8 @@ bool is_binary_sp_tree_right_associative(BinarySPDecompositionTree const &tt) {
   return is_binary_sp_tree_right_associative(tt.raw_tree);
 }
 
-std::unordered_multiset<Node> get_nodes(BinarySPDecompositionTree const &tt) {
-  return get_nodes(tt.raw_tree);
+std::unordered_multiset<Node> get_leaves(BinarySPDecompositionTree const &tt) {
+  return get_leaves(tt.raw_tree);
 }
 
 } // namespace FlexFlow
