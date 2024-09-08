@@ -27,6 +27,20 @@ std::unordered_set<layer_guid_t> get_layers(ComputationGraph const &cg) {
                    [&](Node const &n) { return layer_guid_t{n}; });
 }
 
+LayerAddedResult add_layer(ComputationGraph &computation_graph,
+                           LayerAttrs const &attrs,
+                           std::vector<tensor_guid_t> const &inputs,
+                           std::vector<TensorAttrs> const &outputs) {
+  std::vector<DataflowOutput> raw_inputs = transform(inputs, [](tensor_guid_t const &t) { return t.raw_graph_output; });
+
+  NodeAddedResult added = computation_graph.raw_graph.add_node(attrs, raw_inputs, outputs);
+
+  return LayerAddedResult{
+    layer_guid_t{added.node},
+    transform(added.outputs, [](DataflowOutput const &o) { return tensor_guid_t{o}; }),
+  };
+}
+
 TensorAttrs get_tensor_attrs(ComputationGraph const &cg,
                              tensor_guid_t const &t) {
   return cg.raw_graph.at(t.raw_graph_output);

@@ -62,23 +62,32 @@ std::string render_preprocessed_computation_graph_for_sp_decomposition(
 std::optional<SeriesParallelDecomposition>
     get_computation_graph_series_parallel_decomposition(
         ComputationGraph const &cg) {
-  std::unordered_set<layer_guid_t> weight_and_input_layers =
-      filter(get_layers(cg), [&](layer_guid_t const &l) {
-        ComputationGraphOpAttrs op_attrs = get_layer_attrs(cg, l).attrs;
-        return op_attrs.has<WeightAttrs>() || op_attrs.has<InputAttrs>();
-      });
 
-  std::unordered_set<layer_guid_t> weight_and_input_layer_successors =
-      get_subgraph_successors(cg, weight_and_input_layers);
+  {
+    DiGraphView unpreprocessed_digraph = cg.raw_graph;
+    std::optional<SeriesParallelDecomposition> unpreprocessed_sp_decomposition = get_series_parallel_decomposition(unpreprocessed_digraph);
+    if (unpreprocessed_sp_decomposition.has_value()) {
+      return unpreprocessed_sp_decomposition.value();
+    }
+  }
 
   DiGraphView preprocessed_digraph = [&] {
+    std::unordered_set<layer_guid_t> weight_and_input_layers =
+        filter(get_layers(cg), [&](layer_guid_t const &l) {
+          ComputationGraphOpAttrs op_attrs = get_layer_attrs(cg, l).attrs;
+          return op_attrs.has<WeightAttrs>() || op_attrs.has<InputAttrs>();
+        });
+
+    std::unordered_set<layer_guid_t> weight_and_input_layer_successors =
+        get_subgraph_successors(cg, weight_and_input_layers);
+
     DiGraph digraph = materialize_digraph_view<AdjacencyDiGraph>(cg.raw_graph);
     for (layer_guid_t const &src : weight_and_input_layers) {
       for (layer_guid_t const &dst : weight_and_input_layer_successors) {
         digraph.add_edge(DirectedEdge{src.raw_node, dst.raw_node});
       }
     }
-    DiGraphView preprocessed_digraph = digraph;
+
     return digraph;
   }();
 

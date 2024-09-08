@@ -17,7 +17,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           DataType::FLOAT,
       };
 
-      tensor_guid_t input = b.create_tensor(input_shape, CreateGrad::YES);
+      tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
       tensor_guid_t mm_output = b.dense(input, 8);
       tensor_guid_t relu_output = b.relu(mm_output);
 

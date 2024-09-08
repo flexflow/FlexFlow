@@ -20,7 +20,7 @@ ComputationGraph get_split_test_computation_graph(int batch_size) {
       DataType::FLOAT,
   };
 
-  tensor_guid_t t = cgb.create_tensor(input_shape, CreateGrad::YES);
+  tensor_guid_t t = cgb.create_input(input_shape, CreateGrad::YES);
   t = cgb.dense(t, layer_dim2);
   t = cgb.relu(t);
   tensor_guid_t t1 = cgb.dense(t, layer_dim3);

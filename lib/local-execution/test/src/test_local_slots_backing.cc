@@ -41,11 +41,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     // build graph
     ComputationGraphBuilder cg_builder;
     tensor_guid_t query_guid =
-        cg_builder.create_tensor(query_shape, CreateGrad::YES);
+        cg_builder.create_input(query_shape, CreateGrad::YES);
     tensor_guid_t key_guid =
-        cg_builder.create_tensor(key_shape, CreateGrad::YES);
+        cg_builder.create_input(key_shape, CreateGrad::YES);
     tensor_guid_t value_guid =
-        cg_builder.create_tensor(value_shape, CreateGrad::YES);
+        cg_builder.create_input(value_shape, CreateGrad::YES);
 
     std::string layer_name = "attn1";
     tensor_guid_t output_guid =
