@@ -81,7 +81,7 @@ public:
 
   ConstantEmissionMachine(double req_per_s_)
       : EmissionMachine(EmissionMode::Constant, req_per_s_),
-        interval_ms(1e3 / req_per_s_) {}
+        interval_ms(req_per_s_ > 0 ? 1e3 / req_per_s_ : 0) {}
 
   double get_next_interval_ms() override;
 };

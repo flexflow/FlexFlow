@@ -475,7 +475,6 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
       requests.push_back(GenerationRequest(text, 1.0));
-      // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
     ConstantEmissionMachine emission_machine(1.0);
     tree_model.generate(requests, emission_machine);
