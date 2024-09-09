@@ -824,9 +824,12 @@ public:
   // ========================================
   // Inference APIs
   // ========================================
-  std::vector<GenerationResult> generate(std::vector<std::string> &prompts);
+  std::vector<GenerationResult> generate(std::vector<std::string> &prompts,
+                                         EmissionMachine &emission_machine);
 
-  std::vector<GenerationResult> generate(std::vector<GenerationRequest> &requests);
+  std::vector<GenerationResult>
+      generate(std::vector<GenerationRequest> &requests,
+               EmissionMachine &emission_machine);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],

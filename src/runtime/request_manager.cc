@@ -2043,7 +2043,8 @@ void RequestManager::get_verify_results_greedy(
 }
 
 std::vector<GenerationResult>
-    FFModel::generate(std::vector<GenerationRequest> &requests) {
+    FFModel::generate(std::vector<GenerationRequest> &requests,
+                      EmissionMachine &emission_machine) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
   for (GenerationRequest &request : requests) {
@@ -2051,6 +2052,7 @@ std::vector<GenerationResult>
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
+    emission_machine.wait_until_next_request();
   }
   std::vector<GenerationResult> results;
   for (int i = 0; i < guids.size(); i++) {
@@ -2060,12 +2062,13 @@ std::vector<GenerationResult>
 }
 
 std::vector<GenerationResult>
-    FFModel::generate(std::vector<std::string> &prompts) {
+    FFModel::generate(std::vector<std::string> &prompts,
+                      EmissionMachine &emission_machine) {
   std::vector<GenerationRequest> requests;
   for (std::string &prompt : prompts) {
-    requests.push_back(GenerationRequest(prompt));
+    requests.push_back(GenerationRequest(prompt, 1.0));
   }
-  return generate(requests);
+  return generate(requests, emission_machine);
 }
 
 void RequestManager::start_background_server(FFModel *model) {
