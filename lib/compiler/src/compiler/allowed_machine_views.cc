@@ -41,9 +41,7 @@ static std::unordered_multiset<num_points_t>
 
 bool is_valid_machine_view(MachineView const &mv,
                            MachineSpecification const &machine_spec) {
-
-  int num_devices = get_num_devices(machine_spec, get_device_type(mv));
-  return (num_devices > get_raw_id(get_maximum_device_id(mv)));
+  return false; // TODO: fix
 }
 
 bool is_valid_machine_view(MachineView const &mv,
@@ -57,9 +55,11 @@ bool is_valid_machine_view(MachineView const &mv,
 }
 
 /* Generates a set of candidate `MachineView`s.
- * The returned set includes all valid machine views, and might contain invalid
+ * The returned set includes all valid machine views, and might contain
+ invalid
  * ones. This function should never be used externally (see
- * `get_allowed_machine_views` instead). There is no guarantee that a non-empty
+ * `get_allowed_machine_views` instead). There is no guarantee that a
+ non-empty
  * returned set contains a valid machine view (i.e. its possible for all
  * `MachineView`s to be invalid)
  */
@@ -68,29 +68,6 @@ static std::unordered_set<MachineView>
                                 ParallelTensorShape const &shape,
                                 DeviceType const &device_type) {
 
-  // Explanation for `candidate_strides`:
-  //
-  // Naively, we could think that, given, for example, a (2,3) stride, it would
-  // result in 3*2=6 tiles device-slots occupied for every actual device, and so
-  // we could say `max_stride_product =
-  // num_total_devicesnum_devices_used_by_tensor` (where
-  // num_devices_used_by_tensor is the product of the parallel dims) and thus
-  // that the max stride across any dimension is `max_stride_product`.
-  //
-  // This however, doesn't quite work: consider, for example, a 2D  MachineView
-  // with 2x2 devices, and stride 2 across each dimension, and suppose there are
-  // 9 total device. While the "volume" of the MachineView is technically 4x4,
-  // it can really fit into a 3x3 (since part of the "external layer" of the 4x4
-  // is not actually occupied by any of the 4 devices) and thus we could fit it
-  // with the existing devices. To address this, we thus compute not the number
-  // of total devices used by the tensor, but, the total number of "inner"
-  // devices, essentially the ones such that they have associated with them a
-  // full stride "volume". So we find the max stride for these using the
-  // previous naive procedure (which works since they all have full stride
-  // volume) and we know that if a given stride is too large for them then
-  // surely it'll be too large for the full set of devices, which essentially
-  // contains them. (Note that we are overestimating `max_stride_upper_bound`
-  // by a huge margin).
   auto candidate_strides =
       [](std::vector<num_points_t> const &tensor_dims,
          int total_devices) -> std::unordered_multiset<MultiDimensionalStride> {
@@ -113,6 +90,21 @@ static std::unordered_set<MachineView>
     return strides;
   };
 
+  auto candidate_starts = [](std::vector<num_points_t> ordered_tensor_dims) {
+    std::vector<std::vector<int>> coordinate_ranges =
+        transform(ordered_tensor_dims, [&](num_points_t const &num_points) {
+          return range(num_points.unwrapped);
+        });
+
+    std::unordered_set<std::vector<int>> raw_coordinates =
+        unordered_set_of(cartesian_product(coordinate_ranges));
+    std::unordered_set<DeviceCoordinates> device_coordinates =
+        transform(raw_coordinates, [](std::vector<int> const &point) {
+          return DeviceCoordinates(point);
+        });
+    return device_coordinates;
+  };
+
   std::unordered_multiset<num_points_t> tensor_dims =
       get_num_devices_per_parallel_dim(shape);
   int total_devices = get_num_devices(machine_spec, device_type);
@@ -122,12 +114,12 @@ static std::unordered_set<MachineView>
   for (MultiDimensionalStride const &strides :
        candidate_strides(sorted(tensor_dims), total_devices)) {
     StridedRectangle rect = get_strided_rectangle(strides, sorted(tensor_dims));
-    StartInvariantMachineView start_inv_mv = StartInvariantMachineView{rect};
+    StartInvariantMachineView start_inv_mv =
+        StartInvariantMachineView{rect, device_type};
 
-    for (int start_id : range(total_devices)) {
-      device_id_t start_device = device_id_from_index(start_id, device_type);
+    for (DeviceCoordinates start : candidate_starts(sorted(tensor_dims))) {
       machine_views.insert(
-          machine_view_from_start_invariant(start_inv_mv, start_device));
+          machine_view_from_start_invariant(start_inv_mv, start));
     }
   }
 

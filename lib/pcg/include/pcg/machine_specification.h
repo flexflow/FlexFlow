@@ -10,6 +10,8 @@ int get_num_gpus(MachineSpecification const &ms);
 int get_num_cpus(MachineSpecification const &ms);
 int get_num_devices(MachineSpecification const &ms,
                     DeviceType const &device_type);
+int get_num_devices_per_node(MachineSpecification const &ms,
+                             DeviceType const &device_type);
 
 } // namespace FlexFlow
 

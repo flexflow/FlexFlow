@@ -10,14 +10,19 @@ features = [
 ]
 
 includes = [ 
-  "pcg/device_id_t.dtg.h",
   "pcg/strided_rectangle.h",
+  "pcg/device_coordinates.dtg.h",
+  "pcg/device_type.dtg.h",
 ]
 
 [[fields]]
 name = "start"
-type = "::FlexFlow::device_id_t"
+type = "::FlexFlow::DeviceCoordinates"
 
 [[fields]]
 name = "rect"
 type = "::FlexFlow::StridedRectangle"
+
+[[fields]]
+name = "device_type"
+type = "::FlexFlow::DeviceType"

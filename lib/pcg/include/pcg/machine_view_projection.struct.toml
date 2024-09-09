@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "MachineViewProjection"
+features = [
+  "eq",
+  # "ord",
+  "hash",
+  # "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "pcg/machine_view.dtg.h", 
+  "pcg/machine_view_dim_idx_t.dtg.h",
+  "pcg/machine_specification_dimension.dtg.h",
+  "utils/hash/unordered_map.h",
+  "utils/fmt/unordered_map.h",
+]
+
+[[fields]]
+name = "raw_projection"
+type = "std::unordered_map<::FlexFlow::machine_view_dim_idx_t, ::FlexFlow::MachineSpecificationDimension>"

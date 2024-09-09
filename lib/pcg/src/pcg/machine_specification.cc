@@ -21,4 +21,16 @@ int get_num_devices(MachineSpecification const &ms,
       throw mk_runtime_error("Unknown DeviceType {}", device_type);
   }
 }
+
+int get_num_devices_per_node(MachineSpecification const &ms,
+                             DeviceType const &device_type) {
+  switch (device_type) {
+    case DeviceType::GPU:
+      return ms.num_gpus_per_node;
+    case DeviceType::CPU:
+      return ms.num_cpus_per_node;
+    default:
+      throw mk_runtime_error("Unknown DeviceType {}", device_type);
+  }
+}
 } // namespace FlexFlow

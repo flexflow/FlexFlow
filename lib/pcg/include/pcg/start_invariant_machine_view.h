@@ -8,13 +8,12 @@ namespace FlexFlow {
 
 MachineView
     machine_view_from_start_invariant(StartInvariantMachineView const &mv,
-                                      device_id_t const &start_id);
+                                      DeviceCoordinates const &start_id);
 StartInvariantMachineView
     start_invariant_from_machine_view(MachineView const &mv);
 
-StartInvariantMachineView
-    make_1d_start_invariant_machine_view(num_points_t num_points,
-                                         stride_t stride);
+StartInvariantMachineView make_1d_start_invariant_machine_view(
+    num_points_t num_points, stride_t stride, DeviceType device_type);
 
 } // namespace FlexFlow
 

@@ -11,8 +11,13 @@ features = [
 
 includes = [ 
   "pcg/strided_rectangle.h",
+  "pcg/device_type.dtg.h",
 ]
 
 [[fields]]
 name = "rect"
 type = "::FlexFlow::StridedRectangle"
+
+[[fields]]
+name = "device_type"
+type = "::FlexFlow::DeviceType"

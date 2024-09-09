@@ -20,14 +20,14 @@ TEST_SUITE(FF_TEST_SUITE) {
         },
         DataType::FLOAT,
     };
-    MachineView view = MachineView{
-        device_id_from_index(0, DeviceType::GPU),
-        StridedRectangle{{
-            StridedRectangleSide{num_points_t(2), stride_t(1)},
-            StridedRectangleSide{num_points_t(2), stride_t(4)},
-            StridedRectangleSide{num_points_t(3), stride_t(1)},
-        }},
-    };
+    MachineView view =
+        MachineView{DeviceCoordinates{{0, 0, 0}},
+                    StridedRectangle{{
+                        StridedRectangleSide{num_points_t(2), stride_t(1)},
+                        StridedRectangleSide{num_points_t(2), stride_t(4)},
+                        StridedRectangleSide{num_points_t(3), stride_t(1)},
+                    }},
+                    DeviceType::GPU};
 
     bidict<machine_view_dim_idx_t, parallel_tensor_dim_idx_t> b1 = {
         {machine_view_dim_idx_t(2), parallel_tensor_dim_idx_t{ff_dim_t(0)}},

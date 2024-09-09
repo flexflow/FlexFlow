@@ -4,8 +4,10 @@
 #include "pcg/device_coordinates.dtg.h"
 #include "pcg/device_id.h"
 #include "pcg/device_type.dtg.h"
+#include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_view.dtg.h"
 #include "pcg/machine_view_dim_idx_t.dtg.h"
+#include "pcg/machine_view_projection.dtg.h"
 #include "pcg/num_points_t.dtg.h"
 #include "pcg/side_size_t.dtg.h"
 #include <cstddef>
@@ -13,47 +15,40 @@
 
 namespace FlexFlow {
 
-std::unordered_set<device_id_t> get_device_ids(MachineView const &mv);
-device_id_t get_maximum_device_id(MachineView const &mv);
+std::unordered_set<DeviceCoordinates>
+    get_devices_coordinates(MachineView const &mv);
+DeviceCoordinates get_maximum_device_coordinates(MachineView const &mv);
 StridedRectangleSide get_side_at_idx(MachineView const &mv,
                                      machine_view_dim_idx_t const &idx);
+
+device_id_t get_device_id(MachineView const &mv,
+                          DeviceCoordinates const &coordinates,
+                          MachineSpecification const &ms,
+                          MachineViewProjection const &projection);
+std::unordered_set<device_id_t>
+    get_device_ids(MachineView const &mv,
+                   MachineSpecification const &ms,
+                   MachineViewProjection const &projection);
 
 size_t num_dims(MachineView const &mv);
 size_t num_devices(MachineView const &mv);
 std::vector<num_points_t> get_num_devices_per_dim(MachineView const &mv);
 std::vector<side_size_t> get_side_size_per_dim(MachineView const &mv);
 
-DeviceType get_device_type(MachineView const &mv);
+MachineView make_1d_machine_view(int start,
+                                 int stop,
+                                 stride_t stride = stride_t{1},
+                                 DeviceType device_type = DeviceType::GPU);
 
-MachineView make_1d_machine_view(gpu_id_t start,
-                                 gpu_id_t stop,
-                                 stride_t stride = stride_t{1});
-MachineView make_1d_machine_view(cpu_id_t start,
-                                 cpu_id_t stop,
-                                 stride_t stride = stride_t{1});
-MachineView make_1d_machine_view(device_id_t start,
-                                 device_id_t stop,
-                                 stride_t stride = stride_t{1});
+MachineView make_1d_machine_view(int start,
+                                 num_points_t num_points,
+                                 stride_t stride = stride_t{1},
+                                 DeviceType device_type = DeviceType::GPU);
 
-MachineView make_1d_machine_view(cpu_id_t start,
-                                 num_points_t num_points,
-                                 stride_t stride = stride_t{1});
-MachineView make_1d_machine_view(gpu_id_t start,
-                                 num_points_t num_points,
-                                 stride_t stride = stride_t{1});
-MachineView make_1d_machine_view(device_id_t start,
-                                 num_points_t num_points,
-                                 stride_t stride = stride_t{1});
-
-MachineView make_1d_machine_view(cpu_id_t start,
+MachineView make_1d_machine_view(int start,
                                  side_size_t interval_size,
-                                 stride_t stride = stride_t{1});
-MachineView make_1d_machine_view(gpu_id_t start,
-                                 side_size_t interval_size,
-                                 stride_t stride = stride_t{1});
-MachineView make_1d_machine_view(device_id_t start,
-                                 side_size_t interval_size,
-                                 stride_t stride = stride_t{1});
+                                 stride_t stride = stride_t{1},
+                                 DeviceType device_type = DeviceType::GPU);
 
 } // namespace FlexFlow
 
