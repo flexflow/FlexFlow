@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 #include "flexflow/request_manager.h"
 // #include "flexflow/tokenizers.h"
@@ -25,6 +26,7 @@
 #include <random>
 #include <stack>
 #include <stdexcept>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -373,67 +375,7 @@ size_t RequestManager::get_num_ssms() {
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt) {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
-
-  // Add a new request
-  Request request;
-  request.status = Request::PENDING;
-  request.guid = next_available_guid++;
-
-  if (prompt.size() >= get_max_sequence_length()) {
-    std::cout << "Warning: too many tokens in prompt, only load up to "
-              << get_max_sequence_length() << " tokens, but got "
-              << prompt.size() << ".\n";
-
-    printf("tokens size: %zu\n", request.tokens.size());
-    return INVALID_GUID;
-  } else {
-    request.tokens = prompt;
-  }
-
-  if (get_num_ssms() == 0) {
-    std::cout << "No small speculative model registered, using incremental "
-                 "decoding."
-              << std::endl;
-  } else {
-    std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
-    assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
-    init_token_tree(request.guid);
-  }
-
-  request.streaming_cache_info = StreamingCacheInfo(
-      BatchConfig::SINK_SIZE,
-      BatchConfig::MAX_STREAMING_POS - BatchConfig::SINK_SIZE -
-          BatchConfig::get_max_tree_depth());
-
-  pending_request_queue.push(request);
-  all_requests[request.guid] = request;
-  {
-    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
-    request_to_promise[request.guid] = new std::promise<void>();
-  }
-
-  if (verbose) {
-    std::cout << "new req: " << request.tokens.size() << std::endl;
-    for (int i = 0; i < request.tokens.size(); i++) {
-      std::cout << i << " : " << request.tokens[i] << std::endl;
-    }
-  }
-
-  GenerationResult gr;
-  gr.guid = request.guid;
-  gr.input_text = "";
-  gr.input_tokens = prompt;
-  gr.output_text = "";
-  gr.output_tokens = prompt;
-  request_generation_results[request.guid] = gr;
-
-  return request.guid;
-}
-
-RequestManager::RequestGuid
-    RequestManager::register_new_request(std::string const &prompt) {
+    RequestManager::register_new_request(GenerationRequest const &req) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
@@ -442,7 +384,7 @@ RequestManager::RequestGuid
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
-  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
+  std::vector<int32_t> tokens = this->tokenizer_->Encode(req.prompt);
   if (tokens.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
               << get_max_sequence_length() << " tokens, but got "
@@ -454,7 +396,9 @@ RequestManager::RequestGuid
   for (int i = 0; i < tokens.size(); i++) {
     std::cout << "[" << i << "]" << tokens.at(i) << "\n";
   }
+  std::cout << "[slo ratio] " << req.slo_ratio << std::endl;
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
+  request.set_slo_ratio(req.slo_ratio);
 
   if (get_num_ssms() == 0) {
     std::cout << "No small speculative model registered, using incremental "
@@ -490,9 +434,9 @@ RequestManager::RequestGuid
 
   GenerationResult gr;
   gr.guid = request.guid;
-  gr.input_text = prompt;
+  gr.input_text = req.prompt;
   gr.input_tokens = request.tokens;
-  gr.output_text = prompt;
+  gr.output_text = req.prompt;
   gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
   return request.guid;
@@ -1559,7 +1503,8 @@ bool RequestManager::update_llm_verify_results(
       // Request is completed
       request_completed = true;
       request_complete_clean_up(request_index);
-    } else if (request.decode_latency_ms > get_request_expected_latency(request)) {
+    } else if (request.decode_latency_ms >
+               get_request_expected_latency(request)) {
       // The request violates the SLO, drop that request
       request_completed = true;
       request_complete_clean_up(request_index);
@@ -2097,13 +2042,12 @@ void RequestManager::get_verify_results_greedy(
   profiling.generated_tokens_per_step.push_back(total_nb_generated_tokens);
 }
 
-// TODO: the max_seq_length is not used in the current implementation
 std::vector<GenerationResult>
-    FFModel::generate(std::vector<std::string> &prompts, int max_seq_length) {
+    FFModel::generate(std::vector<GenerationRequest> &requests) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
-  for (int i = 0; i < prompts.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i));
+  for (GenerationRequest &request : requests) {
+    RequestManager::RequestGuid guid = rm->register_new_request(request);
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
@@ -2113,6 +2057,15 @@ std::vector<GenerationResult>
     results.push_back(rm->get_generation_result(guids[i]));
   }
   return results;
+}
+
+std::vector<GenerationResult>
+    FFModel::generate(std::vector<std::string> &prompts) {
+  std::vector<GenerationRequest> requests;
+  for (std::string &prompt : prompts) {
+    requests.push_back(GenerationRequest(prompt));
+  }
+  return generate(requests);
 }
 
 void RequestManager::start_background_server(FFModel *model) {

@@ -288,8 +288,7 @@ public:
   void serve_spec_infer_sync(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt);
+  RequestGuid register_new_request(GenerationRequest const &req);
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();

@@ -477,7 +477,7 @@ void FlexFlow::top_level_task(Task const *task,
       prompts.push_back(text);
       // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
-    tree_model.generate(prompts, 128 /*max_sequence_length*/);
+    tree_model.generate(prompts);
   }
 
   // terminate the request manager by stopping the background thread

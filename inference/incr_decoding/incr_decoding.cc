@@ -296,7 +296,7 @@ void FlexFlow::top_level_task(Task const *task,
       prompts.push_back(text);
     }
     std::vector<GenerationResult> result =
-        model.generate(prompts, 128 /*max_sequence_length*/);
+        model.generate(prompts);
   }
 
   // terminate the request manager by stopping the background thread

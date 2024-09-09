@@ -1607,7 +1607,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
                 max_seq_length);
   }
   std::vector<GenerationResult> results =
-      handle->generate(prompts, max_seq_length);
+      handle->generate(prompts);
   // If the prompt exceeds max seq len, check that we return the prompt with no
   // additional token. Otherwise, check that the output does not exceed the max
   // sequence length.

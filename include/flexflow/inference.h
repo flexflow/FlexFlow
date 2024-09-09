@@ -40,6 +40,17 @@ struct GenerationConfig {
   }
 };
 
+struct GenerationRequest {
+  std::string prompt;
+  double slo_ratio;
+
+  GenerationRequest(std::string const &prompt_, double slo_ratio_)
+      : prompt(prompt_), slo_ratio(slo_ratio_) {}
+
+  GenerationRequest(std::string const &prompt_)
+      : prompt(prompt_), slo_ratio(1.0) {}
+};
+
 struct GenerationResult {
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
