@@ -440,7 +440,7 @@ private:
   ProfileInfo profiling;
   std::unordered_map<RequestGuid, RequestProfileInfo> profiling_requests;
   double total_request_run_time;
-  void load_pending_request_to_batch();
+  bool load_pending_request_to_batch();
   void request_complete_clean_up(int batch_index);
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);

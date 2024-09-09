@@ -26,6 +26,7 @@
 #include <random>
 #include <stack>
 #include <stdexcept>
+#include <thread>
 #include <vector>
 
 namespace FlexFlow {
@@ -527,7 +528,20 @@ BatchConfig
   return prepare_next_batch();
 }
 
-void RequestManager::load_pending_request_to_batch() {
+// Return value: true if load a pending request to the batch
+bool RequestManager::load_pending_request_to_batch() {
+  if (pending_request_queue.empty()) {
+    if (num_available_requests > 0) {
+      // No pending request to process, but there are available requests
+      // in the batch, do nothing
+      return false;
+    }
+    // Wait until there is a pending request
+    while (pending_request_queue.empty()) {
+      printf("Waiting for pending request to process...\n");
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+  }
   assert(!pending_request_queue.empty() && "No pending request to process.");
   RequestGuid guid = pending_request_queue.front().guid;
   pending_request_queue.pop();
@@ -549,6 +563,7 @@ void RequestManager::load_pending_request_to_batch() {
   profiling_requests[guid] = RequestProfileInfo();
   profiling_requests[guid].start_time =
       Realm::Clock::current_time_in_microseconds();
+  return true;
 }
 
 void RequestManager::request_complete_clean_up(int batch_index) {
@@ -648,14 +663,12 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 
   if (num_available_requests == 0) {
     // Update nothing
-    if (!pending_request_queue.empty()) {
-      // Load the pending request to the batch
-      load_pending_request_to_batch();
-      request_manager_status = PREFILLING;
-      if (decoding_mode == SPECULATIVE_DECODING) {
-        prefill_model = SSM;
-        current_ssm_step = 0;
-      }
+    // Load the pending request to the batch
+    load_pending_request_to_batch();
+    request_manager_status = PREFILLING;
+    if (decoding_mode == SPECULATIVE_DECODING) {
+      prefill_model = SSM;
+      current_ssm_step = 0;
     }
     return;
   }
@@ -670,9 +683,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 
           // Check if there are more empty slots
           if (num_available_requests < get_max_requests_per_batch() &&
-              !pending_request_queue.empty()) {
+              load_pending_request_to_batch()) {
             // Load the pending request to the batch
-            load_pending_request_to_batch();
             request_manager_status = PREFILLING;
           } else {
             // No more empty slots, start the decoding
@@ -700,9 +712,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             prefill_request = nullptr;
             // Check if there are more empty slots
             if (num_available_requests < get_max_requests_per_batch() &&
-                !pending_request_queue.empty()) {
+                load_pending_request_to_batch()) {
               // Load the pending request to the batch
-              load_pending_request_to_batch();
               prefill_model = SSM;
               current_ssm_step = 0;
             } else {
@@ -727,26 +738,24 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     case DECODING:
       if (update_llm_decode_results(result)) {
         // A request completed after the decode
-        if (pending_request_queue.empty()) {
+        if (load_pending_request_to_batch() == false) {
           // No pending request to process, continue the speculation
           request_manager_status = DECODING;
         } else {
           request_manager_status = PREFILLING;
-          load_pending_request_to_batch();
         }
       }
       break;
     case LLM_VERIFY:
       if (update_llm_verify_results(result)) {
         // A request completed after the verification
-        if (pending_request_queue.empty()) {
+        if (load_pending_request_to_batch() == false) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
           current_ssm_step = 0;
           ssm_completed = false;
         } else {
           request_manager_status = PREFILLING;
-          load_pending_request_to_batch();
           prefill_model = SSM;
           current_ssm_step = 0;
         }
