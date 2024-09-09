@@ -6,9 +6,20 @@
 #include "utils/containers/all_of.h"
 #include "utils/containers/any_of.h"
 #include "utils/containers/contains.h"
+#include "utils/containers/extend.h"
 #include "utils/containers/filter.h"
 
 namespace FlexFlow {
+
+std::vector<IncomingTensorRole> get_layer_norm_incoming_tensor_roles(LayerNormAttrs const &attrs) {
+  std::vector<IncomingTensorRole> result = {IncomingTensorRole::INPUT};
+
+  if (attrs.elementwise_affine) {
+    extend(result, std::vector{IncomingTensorRole::WEIGHT, IncomingTensorRole::WEIGHT});
+  }
+
+  return result;
+}
 
 static std::optional<std::string>
     check_input_shape(LayerNormAttrs const &attrs,

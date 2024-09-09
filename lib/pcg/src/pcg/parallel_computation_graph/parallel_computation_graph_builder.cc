@@ -8,6 +8,7 @@
 #include "utils/containers/enumerate_vector.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
+#include "op-attrs/get_incoming_tensor_roles.h"
 
 namespace FlexFlow {
 
@@ -35,13 +36,13 @@ ParallelComputationGraphBuilder::ParallelComputationGraphBuilder()
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::create_input_tensor(
     ParallelTensorShape const &shape,
-    bool create_grad,
+    CreateGrad create_grad,
     std::optional<std::string> const &name) {
   ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
       /*shape=*/shape,
       /*sync_type=*/std::nullopt,
       /*initializer=*/std::nullopt,
-      /*create_gradients=*/(create_grad ? CreateGrad::YES : CreateGrad::NO),
+      /*create_gradients=*/create_grad,
   };
   ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
       PCGOperatorAttrs{InputAttrs{}},
@@ -205,7 +206,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::dense(
 
   {
     ParallelTensorShape kernel_shape =
-        throw_if_unexpected(get_kernel_shape(attrs, input_shape));
+        throw_if_unexpected(get_projection_shape(attrs, input_shape));
     weights.push_back(make_weight_attrs(kernel_shape, kernel_initializer));
   }
 
@@ -580,11 +581,25 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::add_weight(
   return parallel_tensor_guid_t{current_raw_weight_tensor};
 }
 
+static void check_incoming_tensor_roles(ParallelLayerAttrs const &layer, int num_inputs, int num_weights) {
+  std::vector<IncomingTensorRole> correct = get_incoming_tensor_roles(layer.op_attrs, num_inputs + num_weights);
+  std::vector<IncomingTensorRole> current = concat_vectors(
+     std::vector<IncomingTensorRole>(num_inputs, IncomingTensorRole::INPUT),
+     std::vector<IncomingTensorRole>(num_weights, IncomingTensorRole::WEIGHT));
+
+  if (correct != current) {
+    throw mk_runtime_error(fmt::format("check_incoming_tensor_roles found deviation in incoming tensors: expected {}, received {}", correct, current));
+  }
+}
+
 std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
     ParallelLayerAttrs const &layer,
     std::vector<parallel_tensor_guid_t> const &inputs,
     std::vector<ParallelTensorAttrs> const &weights,
     std::vector<ParallelTensorAttrs> const &outputs) {
+
+  check_incoming_tensor_roles(layer, inputs.size(), weights.size());
+
   std::vector<DataflowOutput> raw_weight_tensors;
   for (auto const &kv : enumerate_vector(weights)) {
     int weight_idx = kv.first;
@@ -603,6 +618,7 @@ std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
       transform(inputs, [](parallel_tensor_guid_t const &t) {
         return t.raw_graph_output;
       });
+
   std::vector<DataflowOutput> raw_outputs =
       this->pcg.raw_graph
           .add_node(

@@ -42,7 +42,8 @@ tensor_guid_t create_transformer_encoder_layer(ComputationGraphBuilder &cgb,
                                                          config.num_heads,
                                                          kdim,
                                                          vdim,
-                                                         config.dropout);
+                                                         config.dropout,
+                                                         /*bias=*/false);
   assert(are_tensor_guid_shapes_equivalent(
       cgb.computation_graph, input, self_attention));
 
@@ -88,7 +89,8 @@ tensor_guid_t
                                                          config.num_heads,
                                                          kdim,
                                                          vdim,
-                                                         config.dropout);
+                                                         config.dropout,
+                                                         /*bias=*/false);
   assert(are_tensor_guid_shapes_equivalent(
       cgb.computation_graph, input, self_attention));
 
@@ -107,7 +109,8 @@ tensor_guid_t
                                               config.num_heads,
                                               kdim,
                                               vdim,
-                                              config.dropout);
+                                              config.dropout,
+                                              /*bias=*/false);
   assert(are_tensor_guid_shapes_equivalent(cgb.computation_graph, input, mha));
 
   tensor_guid_t mha_normalized =
@@ -149,7 +152,7 @@ ComputationGraph
           config.batch_size, config.sequence_length, config.num_features}},
       DataType::FLOAT,
   };
-  tensor_guid_t input = cgb.create_tensor(input_shape, CreateGrad::YES);
+  tensor_guid_t input = cgb.create_input(input_shape, CreateGrad::YES);
 
   tensor_guid_t encoder_output = create_transformer_encoder(cgb, config, input);
   tensor_guid_t decoder_output =

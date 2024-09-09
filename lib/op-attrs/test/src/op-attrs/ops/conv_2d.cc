@@ -5,6 +5,48 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("get_conv2d_incoming_tensor_roles(Conv2DAttrs") {
+    auto make_attrs = [](bool use_bias) {
+      return Conv2DAttrs{
+          /*out_channels=*/4,
+          /*kernel_h=*/3,
+          /*kernel_w=*/2,
+          /*stride_h=*/2,
+          /*stride_w=*/2,
+          /*padding_h=*/1,
+          /*padding_w=*/1,
+          /*groups=*/1,
+          /*activation=*/std::nullopt,
+          /*use_bias=*/use_bias
+      };
+    };
+
+    SUBCASE("with bias") {
+      Conv2DAttrs attrs = make_attrs(true);
+
+      std::vector<IncomingTensorRole> result = get_conv2d_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> correct = {
+        IncomingTensorRole::INPUT,
+        IncomingTensorRole::WEIGHT,
+        IncomingTensorRole::WEIGHT,
+      };
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("without bias") {
+      Conv2DAttrs attrs = make_attrs(false);
+
+      std::vector<IncomingTensorRole> result = get_conv2d_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> correct = {
+        IncomingTensorRole::INPUT,
+        IncomingTensorRole::WEIGHT,
+      };
+
+      CHECK(result == correct);
+    }
+  }
+
   TEST_CASE("Conv2D shape inference") {
     int out_channels = 4;
     int kernel_h = 3;

@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_H
 
+#include "op-attrs/incoming_tensor_role.dtg.h"
 #include "pcg/computation_graph.dtg.h"
 #include "pcg/computation_graph/layer_added_result.dtg.h"
 #include "pcg/layer_guid_t.dtg.h"
@@ -29,6 +30,9 @@ std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
 
 std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n);
+
+std::vector<tensor_guid_t> get_incoming_inputs(ComputationGraph const &, layer_guid_t const &);
+std::vector<tensor_guid_t> get_incoming_weights(ComputationGraph const &, layer_guid_t const &);
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
 

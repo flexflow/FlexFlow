@@ -1,5 +1,5 @@
 #include "doctest/doctest.h"
-#include "op-attrs/dim_ordered.h"
+#include "op-attrs/dim_ordered/dim_ordered.h"
 #include "test/utils/rapidcheck.h"
 
 using namespace FlexFlow;

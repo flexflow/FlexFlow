@@ -23,8 +23,20 @@
 #include "utils/containers/transform.h"
 #include "utils/expected.h"
 #include <fmt/format.h>
+#include "op-attrs/get_incoming_tensor_roles.h"
 
 namespace FlexFlow {
+
+static TensorAttrs make_weight_attrs(
+    TensorShape const &shape,
+    std::optional<InitializerAttrs> const &initializer_attrs) {
+  return TensorAttrs{shape, initializer_attrs, std::nullopt, CreateGrad::YES};
+}
+
+static TensorAttrs make_output_attrs(
+    TensorShape const &shape) {
+  return TensorAttrs{shape, std::nullopt, std::nullopt, CreateGrad::YES};
+}
 
 ComputationGraphBuilder::ComputationGraphBuilder()
     : computation_graph(make_empty_computation_graph()) {}
@@ -33,83 +45,68 @@ TensorShape ComputationGraphBuilder::get_shape(tensor_guid_t const &t) const {
   return get_tensor_attrs(this->computation_graph, t).shape;
 }
 
-tensor_guid_t ComputationGraphBuilder::create_tensor(TensorShape const &shape,
-                                                     CreateGrad create_grad) {
+tensor_guid_t ComputationGraphBuilder::create_input(TensorShape const &shape,
+                                                    CreateGrad create_grad, 
+                                                    std::optional<std::string> const &name) {
   TensorAttrs tensor_attrs =
       TensorAttrs{shape, std::nullopt, std::nullopt, create_grad};
   LayerAttrs layer_attrs = LayerAttrs{
       ComputationGraphOpAttrs{InputAttrs{}},
-      std::nullopt,
+      name,
   };
 
-  return this->add_layer(layer_attrs, {}, {}, tensor_attrs);
+  return get_only(
+    this->add_layer(layer_attrs, std::vector<tensor_guid_t>{}, std::vector<tensor_guid_t>{}, {tensor_attrs})
+  );
 }
 
-std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
-    LayerAttrs const &layer,
-    std::vector<tensor_guid_t> const &inputs,
-    std::vector<TensorAttrs> const &weights,
-    std::vector<TensorAttrs> const &outputs) {
-  std::vector<DataflowOutput> raw_weight_tensors;
-  for (auto const &kv : enumerate_vector(weights)) {
-    int weight_idx = kv.first;
-    TensorAttrs weight_tensor_attrs = kv.second;
+tensor_guid_t ComputationGraphBuilder::create_weight(
+    TensorAttrs const &tensor_attrs,
+    std::optional<std::string> const &maybe_name) {
+  LayerAttrs layer_attrs = LayerAttrs{
+      ComputationGraphOpAttrs{InputAttrs{}},
+      maybe_name,
+  };
 
-    std::optional<std::string> weight_name =
-        transform(layer.name, [&](std::string const &layer_name) {
-          return fmt::format("{}.weights[{}]", layer_name, weight_idx);
-        });
-    LayerAttrs weight_layer_attrs = LayerAttrs{
-        ComputationGraphOpAttrs{WeightAttrs{weight_tensor_attrs.shape}},
-        weight_name,
-    };
-    std::vector<DataflowOutput> weight_layer_inputs = {};
-    std::vector<TensorAttrs> weight_output_attrs = {weight_tensor_attrs};
-    raw_weight_tensors.push_back(get_only(this->computation_graph.raw_graph
-                                              .add_node(weight_layer_attrs,
-                                                        weight_layer_inputs,
-                                                        weight_output_attrs)
-                                              .outputs));
+  return get_only(
+    this->add_layer(layer_attrs, std::vector<tensor_guid_t>{}, std::vector<tensor_guid_t>{}, {tensor_attrs})
+  );
+}
+
+tensor_guid_t ComputationGraphBuilder::create_weight(
+    TensorShape const &shape,
+    CreateGrad create_grad,
+    std::optional<InitializerAttrs> const &initializer,
+    std::optional<ParamSync> param_sync,
+    std::optional<std::string> const &maybe_name) {
+  TensorAttrs tensor_attrs =
+      TensorAttrs{shape, initializer, param_sync, create_grad};
+  
+  return this->create_weight(tensor_attrs, maybe_name);
+}
+
+static void check_incoming_tensor_roles(LayerAttrs const &layer, int num_inputs, int num_weights) {
+  std::vector<IncomingTensorRole> correct = get_incoming_tensor_roles(layer.attrs, num_inputs + num_weights);
+  std::vector<IncomingTensorRole> current = concat_vectors(
+     std::vector<IncomingTensorRole>(num_inputs, IncomingTensorRole::INPUT),
+     std::vector<IncomingTensorRole>(num_weights, IncomingTensorRole::WEIGHT));
+
+  if (correct != current) {
+    throw mk_runtime_error(fmt::format("check_incoming_tensor_roles found deviation in incoming tensors: expected {}, received {}", correct, current));
   }
-
-  std::vector<DataflowOutput> raw_inputs = transform(
-      inputs, [](tensor_guid_t const &t) { return t.raw_graph_output; });
-  std::vector<DataflowOutput> raw_outputs =
-      this->computation_graph.raw_graph
-          .add_node(
-              layer, concat_vectors(raw_inputs, raw_weight_tensors), outputs)
-          .outputs;
-  return transform(raw_outputs,
-                   [](DataflowOutput const &o) { return tensor_guid_t{o}; });
 }
 
-tensor_guid_t
-    ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
-                                       std::vector<tensor_guid_t> const &inputs,
-                                       std::vector<TensorAttrs> const &weights,
-                                       TensorAttrs const &output) {
-  std::vector<TensorAttrs> outputs = {output};
-  return get_only(this->add_layer(layer, inputs, weights, outputs));
-}
+std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
+                                                              std::vector<tensor_guid_t> const &inputs,
+                                                              std::vector<tensor_guid_t> const &weights,
+                                                              std::vector<TensorAttrs> const &outputs) {
+  check_incoming_tensor_roles(layer, inputs.size(), weights.size());
 
-std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
-    LayerAttrs const &layer,
-    std::vector<tensor_guid_t> const &inputs,
-    std::vector<TensorAttrs> const &weights,
-    std::vector<TensorShape> const &outputs) {
-  return this->add_layer(
-      layer, inputs, weights, transform(outputs, [](TensorShape const &s) {
-        return TensorAttrs{s, std::nullopt, std::nullopt, CreateGrad::YES};
-      }));
-}
-
-tensor_guid_t
-    ComputationGraphBuilder::add_layer(LayerAttrs const &layer,
-                                       std::vector<tensor_guid_t> const &inputs,
-                                       std::vector<TensorAttrs> const &weights,
-                                       TensorShape const &output) {
-  return get_only(this->add_layer(
-      layer, inputs, weights, std::vector<TensorShape>{output}));
+  LayerAddedResult added = ::FlexFlow::add_layer(this->computation_graph,
+                                                 layer,
+                                                 concat_vectors(inputs, weights),
+                                                 outputs);
+  return added.outputs;
 }
 
 tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,
@@ -147,7 +144,9 @@ tensor_guid_t
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, input_shape));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t
@@ -184,7 +183,9 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::element_binary(
@@ -217,7 +218,9 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
   TensorShape output_shape = throw_if_unexpected(get_output_shape(
       attrs, this->get_shape(lhs_input), this->get_shape(rhs_input)));
 
-  return this->add_layer(layer, {lhs_input, rhs_input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {lhs_input, rhs_input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t
@@ -359,12 +362,6 @@ tensor_guid_t
   return this->element_unary(OperatorType::ELU, input, std::nullopt, name);
 }
 
-static TensorAttrs make_weight_attrs(
-    TensorShape const &shape,
-    std::optional<InitializerAttrs> const &initializer_attrs) {
-  return TensorAttrs{shape, initializer_attrs, std::nullopt, CreateGrad::YES};
-}
-
 tensor_guid_t ComputationGraphBuilder::conv2d(
     tensor_guid_t const &x,
     int outChannels,
@@ -413,7 +410,12 @@ tensor_guid_t ComputationGraphBuilder::conv2d(
                                         bias_initializer));
   }
 
-  return this->add_layer(layer, {input}, weights, output_shape);
+  return get_only(
+    this->add_layer(layer, 
+                    {input}, 
+                    transform(weights, [&](TensorAttrs const &a) { return this->create_weight(a); }),
+                    {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::dropout(
@@ -431,7 +433,9 @@ tensor_guid_t ComputationGraphBuilder::dropout(
 
   TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::embedding(
@@ -459,7 +463,12 @@ tensor_guid_t ComputationGraphBuilder::embedding(
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
-  return this->add_layer(layer, {input}, {weight_attrs}, output_shape);
+  return get_only(
+    this->add_layer(layer, 
+                    {input}, 
+                    {this->create_weight(weight_attrs)}, 
+                    {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::gather(
@@ -483,41 +492,13 @@ tensor_guid_t ComputationGraphBuilder::gather(
   TensorShape output_shape =
       get_output_shape(attrs, this->get_shape(input), this->get_shape(index));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, 
+                    {input}, 
+                    {}, 
+                    {make_output_attrs(output_shape)})
+  );
 }
-
-/* std::vector<TensorShape>
- * ComputationGraphBuilder::get_shapes(std::vector<tensor_guid_t> const &ts)
- * const { */
-/*   return transform(ts, [&](tensor_guid_t const &t) { return
- * this->get_shape(t); }); */
-/* } */
-
-// tensor_guid_t ComputationGraphBuilder::aggregate(
-//     tensor_guid_t const &gate_preds,
-//     tensor_guid_t const &gate_assign,
-//     tensor_guid_t const &true_gate_assign,
-//     tensor_guid_t const &full_gate_gradients,
-//     std::vector<tensor_guid_t> const &exp_preds,
-//     int n,
-//     float lambda_bal,
-//     std::optional<std::string> const &maybe_name) {
-//   AggregateAttrs attrs = {n, lambda_bal};
-//   std::string name = maybe_name.value_or(get_default_name(attrs));
-
-//   LayerAttrs layer = {attrs, name};
-//   TensorShape output_shape = get_output_shape(attrs,
-//                                              this->get_shape(gate_preds),
-//                                              this->get_shape(gate_assign),
-//                                              this->get_shape(true_gate_assign),
-//                                              this->get_shape(full_gate_gradients),
-//                                              this->get_shape(exp_preds));
-
-//   std::vector<tensor_guid_t> inputs = {
-//       gate_preds, gate_assign, true_gate_assign, full_gate_gradients};
-//   extend(inputs, exp_preds);
-//   return this->add_layer(layer, inputs, {}, output_shape);
-// }
 
 tensor_guid_t ComputationGraphBuilder::batch_norm(
     tensor_guid_t const &input,
@@ -531,7 +512,9 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
 
   TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::multihead_attention(
@@ -549,6 +532,16 @@ tensor_guid_t ComputationGraphBuilder::multihead_attention(
     std::optional<InitializerAttrs> initializer,
     std::optional<std::string> const &maybe_name) {
 
+  if (add_bias_kv) {
+    throw mk_runtime_error("ComputationGraphBuilder::multihead_attention received currently unsupported argument add_bias_kv=true. "
+                           "If you need this functionality, please create an issue.");
+  }
+
+  if (add_zero_attn) {
+    throw mk_runtime_error("ComputationGraphBuilder::multihead_attention received currently unsupported argument add_zero_attn=true. "
+                           "If you need this functionality, please create an issue.");
+  }
+
   MultiHeadAttentionAttrs attrs = MultiHeadAttentionAttrs{embed_dim,
                                                           num_heads,
                                                           kdim,
@@ -561,24 +554,48 @@ tensor_guid_t ComputationGraphBuilder::multihead_attention(
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
 
+  TensorShape query_shape = this->get_shape(query);
+  TensorShape key_shape = this->get_shape(key);
+  TensorShape value_shape = this->get_shape(value);
+
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs,
-                                           this->get_shape(query),
-                                           this->get_shape(key),
-                                           this->get_shape(value)));
+                                           query_shape,
+                                           key_shape,
+                                           value_shape));
+
+  std::vector<TensorAttrs> weights;
 
   TensorShape weights_shape =
       throw_if_unexpected(get_weights_shape(attrs,
-                                            this->get_shape(query),
-                                            this->get_shape(key),
-                                            this->get_shape(value)));
-  TensorAttrs weight_attrs = make_weight_attrs(weights_shape, initializer);
+                                            query_shape,
+                                            key_shape,
+                                            value_shape));
+  weights.push_back(make_weight_attrs(weights_shape, initializer));
 
-  return this->add_layer(layer,
-                         std::vector<tensor_guid_t>{query, key, value},
-                         {weight_attrs},
-                         output_shape);
+  if (bias) {
+    TensorShape input_bias_shape = 
+      throw_if_unexpected(get_input_bias_shape(attrs, query_shape, key_shape, value_shape));
+    // initializer chosen based on https://github.com/pytorch/pytorch/blob/31c4e0d37d8efc37a0697159e5b9121ec34d5141/torch/nn/modules/activation.py#L1120-L1121 
+    InitializerAttrs input_bias_initializer = InitializerAttrs{ConstantInitializerAttrs{float{0}}};
+
+    weights.push_back(make_weight_attrs(input_bias_shape, input_bias_initializer));
+
+    TensorShape output_bias_shape = 
+      throw_if_unexpected(get_output_bias_shape(attrs, query_shape, key_shape, value_shape));
+    // initializer chosen based on https://github.com/pytorch/pytorch/blob/31c4e0d37d8efc37a0697159e5b9121ec34d5141/torch/nn/modules/activation.py#L1120-L1121 
+    InitializerAttrs output_bias_initializer = InitializerAttrs{ConstantInitializerAttrs{float{0}}};
+
+    weights.push_back(make_weight_attrs(output_bias_shape, output_bias_initializer));
+  }
+
+  return get_only(
+    this->add_layer(layer,
+                    {query, key, value},
+                    transform(weights, [&](TensorAttrs const &a) { return this->create_weight(a); }),
+                    {make_output_attrs(output_shape)})
+  );
 }
 
 TensorShape ComputationGraphBuilder::get_broadcast_target_shape(
@@ -610,9 +627,11 @@ tensor_guid_t ComputationGraphBuilder::dense(
     std::optional<Activation> activation,
     bool use_bias,
     DataType data_type,
-    std::optional<InitializerAttrs> const &kernel_initializer,
+    std::optional<InitializerAttrs> const &projection_initializer,
     std::optional<InitializerAttrs> const &bias_initializer,
-    std::optional<std::string> const &maybe_name) {
+    std::optional<std::string> const &maybe_name,
+    std::optional<std::string> const &projection_name,
+    std::optional<std::string> const &bias_name) {
   LinearAttrs attrs =
       LinearAttrs{outDim, use_bias, data_type, activation, std::nullopt};
 
@@ -623,18 +642,38 @@ tensor_guid_t ComputationGraphBuilder::dense(
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
-  std::vector<FlexFlow::TensorAttrs> weights;
-  TensorShape kernel_shape =
-      throw_if_unexpected(get_kernel_shape(attrs, this->get_shape(input)));
-  weights.push_back(make_weight_attrs(kernel_shape, kernel_initializer));
+  std::vector<tensor_guid_t> weights;
+
+  TensorShape projection_shape =
+      throw_if_unexpected(get_projection_shape(attrs, this->get_shape(input)));
+
+  tensor_guid_t projection_weights =
+      this->create_weight(projection_shape,
+                          CreateGrad::YES,
+                          projection_initializer,
+                          /*sync_type=*/std::nullopt,
+                          projection_name);
+
+  weights.push_back(projection_weights);
 
   if (use_bias) {
     TensorShape bias_shape =
         throw_if_unexpected(get_bias_shape(attrs, this->get_shape(input)));
-    weights.push_back(make_weight_attrs(bias_shape, bias_initializer));
+
+    tensor_guid_t bias_weights = this->create_weight(bias_shape,
+                                                     CreateGrad::YES,
+                                                     bias_initializer,
+                                                     /*sync_type=*/std::nullopt,
+                                                     bias_name);
+    weights.push_back(bias_weights);
   }
 
-  return this->add_layer(layer, {input}, weights, output_shape);
+  return get_only(
+    this->add_layer(layer, 
+                    {input}, 
+                    weights, 
+                    {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::layer_norm(
@@ -687,7 +726,12 @@ tensor_guid_t ComputationGraphBuilder::layer_norm(
     weights.push_back(make_weight_attrs(beta_shape, beta_initializer));
   }
 
-  return this->add_layer(layer, {input}, weights, output_shape);
+  return get_only(
+    this->add_layer(layer, 
+                    {input}, 
+                    transform(weights, [&](TensorAttrs const &a) { return this->create_weight(a); }), 
+                    {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::softmax(
@@ -716,7 +760,9 @@ tensor_guid_t ComputationGraphBuilder::softmax(
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, input_shape));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 } // namespace FlexFlow
