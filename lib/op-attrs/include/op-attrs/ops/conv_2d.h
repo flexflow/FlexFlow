@@ -11,7 +11,8 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(Conv2DAttrs);
 
-std::vector<IncomingTensorRole> get_conv2d_incoming_tensor_roles(Conv2DAttrs const &);
+std::vector<IncomingTensorRole>
+    get_conv2d_incoming_tensor_roles(Conv2DAttrs const &);
 
 TensorShape get_kernel_shape(Conv2DAttrs const &attrs,
                              TensorShape const &input);

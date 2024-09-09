@@ -9,7 +9,8 @@
 
 namespace FlexFlow {
 
-std::vector<IncomingTensorRole> get_layer_norm_incoming_tensor_roles(LayerNormAttrs const &);
+std::vector<IncomingTensorRole>
+    get_layer_norm_incoming_tensor_roles(LayerNormAttrs const &);
 
 tl::expected<TensorShape, std::string> get_output_shape(LayerNormAttrs const &,
                                                         TensorShape const &);

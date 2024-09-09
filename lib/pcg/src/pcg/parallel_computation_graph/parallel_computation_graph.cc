@@ -1,4 +1,5 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
+#include "op-attrs/get_incoming_tensor_roles.h"
 #include "utils/containers/filtrans.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
@@ -6,7 +7,6 @@
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
-#include "op-attrs/get_incoming_tensor_roles.h"
 
 namespace FlexFlow {
 
@@ -58,38 +58,45 @@ std::vector<parallel_tensor_guid_t>
       [](DataflowOutput const &o) { return parallel_tensor_guid_t{o}; });
 }
 
-static std::vector<parallel_tensor_guid_t> get_incoming_tensors_with_role(ParallelComputationGraph const &pcg, 
-                                                                          parallel_layer_guid_t const &l,
-                                                                          IncomingTensorRole desired_role) {
+static std::vector<parallel_tensor_guid_t>
+    get_incoming_tensors_with_role(ParallelComputationGraph const &pcg,
+                                   parallel_layer_guid_t const &l,
+                                   IncomingTensorRole desired_role) {
   PCGOperatorAttrs attrs = get_parallel_layer_attrs(pcg, l).op_attrs;
 
-  std::vector<parallel_tensor_guid_t> incoming_tensors = get_incoming_tensors(pcg, l);
+  std::vector<parallel_tensor_guid_t> incoming_tensors =
+      get_incoming_tensors(pcg, l);
 
-  std::vector<IncomingTensorRole> incoming_tensor_roles = get_incoming_tensor_roles(attrs, incoming_tensors.size());
+  std::vector<IncomingTensorRole> incoming_tensor_roles =
+      get_incoming_tensor_roles(attrs, incoming_tensors.size());
 
-  assert (incoming_tensors.size() == incoming_tensor_roles.size());
+  assert(incoming_tensors.size() == incoming_tensor_roles.size());
 
-  std::vector<parallel_tensor_guid_t> result = filtrans(zip(incoming_tensors, incoming_tensor_roles), 
-                                                        [&](std::pair<parallel_tensor_guid_t, IncomingTensorRole> const &p) -> std::optional<parallel_tensor_guid_t> {
-                                                          parallel_tensor_guid_t tensor = p.first;
-                                                          IncomingTensorRole role = p.second;
+  std::vector<parallel_tensor_guid_t> result = filtrans(
+      zip(incoming_tensors, incoming_tensor_roles),
+      [&](std::pair<parallel_tensor_guid_t, IncomingTensorRole> const &p)
+          -> std::optional<parallel_tensor_guid_t> {
+        parallel_tensor_guid_t tensor = p.first;
+        IncomingTensorRole role = p.second;
 
-                                                          if (role == desired_role) {
-                                                            return tensor;
-                                                          } else {
-                                                            return std::nullopt;
-                                                          }
-                                                        });
+        if (role == desired_role) {
+          return tensor;
+        } else {
+          return std::nullopt;
+        }
+      });
   return result;
 }
 
-std::vector<parallel_tensor_guid_t> get_incoming_inputs(ParallelComputationGraph const &pcg, 
-                                                        parallel_layer_guid_t const &l) {
+std::vector<parallel_tensor_guid_t>
+    get_incoming_inputs(ParallelComputationGraph const &pcg,
+                        parallel_layer_guid_t const &l) {
   return get_incoming_tensors_with_role(pcg, l, IncomingTensorRole::INPUT);
 }
 
-std::vector<parallel_tensor_guid_t> get_incoming_weights(ParallelComputationGraph const &pcg, 
-                                                         parallel_layer_guid_t const &l) {
+std::vector<parallel_tensor_guid_t>
+    get_incoming_weights(ParallelComputationGraph const &pcg,
+                         parallel_layer_guid_t const &l) {
   return get_incoming_tensors_with_role(pcg, l, IncomingTensorRole::WEIGHT);
 }
 

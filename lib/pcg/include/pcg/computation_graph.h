@@ -31,8 +31,10 @@ std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
 std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n);
 
-std::vector<tensor_guid_t> get_incoming_inputs(ComputationGraph const &, layer_guid_t const &);
-std::vector<tensor_guid_t> get_incoming_weights(ComputationGraph const &, layer_guid_t const &);
+std::vector<tensor_guid_t> get_incoming_inputs(ComputationGraph const &,
+                                               layer_guid_t const &);
+std::vector<tensor_guid_t> get_incoming_weights(ComputationGraph const &,
+                                                layer_guid_t const &);
 
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
 

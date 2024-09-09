@@ -11,7 +11,8 @@
 
 namespace FlexFlow {
 
-std::vector<IncomingTensorRole> get_linear_incoming_tensor_roles(LinearAttrs const &);
+std::vector<IncomingTensorRole>
+    get_linear_incoming_tensor_roles(LinearAttrs const &);
 
 CHECK_VALID_OP_ATTR(LinearAttrs);
 
@@ -26,7 +27,7 @@ tl::expected<TensorShape, std::string>
 
 tl::expected<ParallelTensorShape, std::string>
     get_projection_shape(LinearAttrs const &attrs,
-                     ParallelTensorShape const &input);
+                         ParallelTensorShape const &input);
 tl::expected<ParallelTensorShape, std::string>
     get_bias_shape(LinearAttrs const &attrs, ParallelTensorShape const &input);
 tl::expected<ParallelTensorShape, std::string>

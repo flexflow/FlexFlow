@@ -5,10 +5,11 @@
 
 namespace FlexFlow {
 
-std::vector<IncomingTensorRole> get_conv2d_incoming_tensor_roles(Conv2DAttrs const &attrs) {
+std::vector<IncomingTensorRole>
+    get_conv2d_incoming_tensor_roles(Conv2DAttrs const &attrs) {
   std::vector<IncomingTensorRole> result = {
-    IncomingTensorRole::INPUT,
-    IncomingTensorRole::WEIGHT,
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::WEIGHT,
   };
 
   if (attrs.use_bias) {

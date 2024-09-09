@@ -2,8 +2,7 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(TopKAttrs const &,
-                             TensorShape const &) {
+TensorShape get_output_shape(TopKAttrs const &, TensorShape const &) {
   NOT_IMPLEMENTED();
 }
 

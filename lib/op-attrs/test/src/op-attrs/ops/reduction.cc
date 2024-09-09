@@ -1,6 +1,6 @@
 #include "op-attrs/ops/reduction.h"
-#include <doctest/doctest.h>
 #include "utils/fmt/expected.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

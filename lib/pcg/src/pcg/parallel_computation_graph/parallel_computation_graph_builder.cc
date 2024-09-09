@@ -1,4 +1,5 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
+#include "op-attrs/get_incoming_tensor_roles.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "op-attrs/parallel_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
@@ -8,7 +9,6 @@
 #include "utils/containers/enumerate_vector.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
-#include "op-attrs/get_incoming_tensor_roles.h"
 
 namespace FlexFlow {
 
@@ -581,14 +581,21 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::add_weight(
   return parallel_tensor_guid_t{current_raw_weight_tensor};
 }
 
-static void check_incoming_tensor_roles(ParallelLayerAttrs const &layer, int num_inputs, int num_weights) {
-  std::vector<IncomingTensorRole> correct = get_incoming_tensor_roles(layer.op_attrs, num_inputs + num_weights);
+static void check_incoming_tensor_roles(ParallelLayerAttrs const &layer,
+                                        int num_inputs,
+                                        int num_weights) {
+  std::vector<IncomingTensorRole> correct =
+      get_incoming_tensor_roles(layer.op_attrs, num_inputs + num_weights);
   std::vector<IncomingTensorRole> current = concat_vectors(
-     std::vector<IncomingTensorRole>(num_inputs, IncomingTensorRole::INPUT),
-     std::vector<IncomingTensorRole>(num_weights, IncomingTensorRole::WEIGHT));
+      std::vector<IncomingTensorRole>(num_inputs, IncomingTensorRole::INPUT),
+      std::vector<IncomingTensorRole>(num_weights, IncomingTensorRole::WEIGHT));
 
   if (correct != current) {
-    throw mk_runtime_error(fmt::format("check_incoming_tensor_roles found deviation in incoming tensors: expected {}, received {}", correct, current));
+    throw mk_runtime_error(
+        fmt::format("check_incoming_tensor_roles found deviation in incoming "
+                    "tensors: expected {}, received {}",
+                    correct,
+                    current));
   }
 }
 

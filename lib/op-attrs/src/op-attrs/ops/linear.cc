@@ -8,10 +8,11 @@
 
 namespace FlexFlow {
 
-std::vector<IncomingTensorRole> get_linear_incoming_tensor_roles(LinearAttrs const &attrs) {
+std::vector<IncomingTensorRole>
+    get_linear_incoming_tensor_roles(LinearAttrs const &attrs) {
   std::vector<IncomingTensorRole> result = {
-    IncomingTensorRole::INPUT,
-    IncomingTensorRole::WEIGHT,
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::WEIGHT,
   };
 
   if (attrs.use_bias) {
@@ -38,7 +39,8 @@ RecordFormatter as_dot(LinearAttrs const &attrs) {
 }
 
 tl::expected<TensorShape, std::string>
-    get_projection_shape(LinearAttrs const &attrs, TensorShape const &input_shape) {
+    get_projection_shape(LinearAttrs const &attrs,
+                         TensorShape const &input_shape) {
   size_t in_channels = dim_at_idx(input_shape, ff_dim_t{-1});
 
   return TensorShape{
@@ -70,7 +72,7 @@ tl::expected<TensorShape, std::string>
 
 tl::expected<ParallelTensorShape, std::string>
     get_projection_shape(LinearAttrs const &attrs,
-                     ParallelTensorShape const &input) {
+                         ParallelTensorShape const &input) {
   TensorShape unpar = ({
     tl::expected<TensorShape, std::string> result_unpar =
         get_projection_shape(attrs, get_reduced_shape(input));

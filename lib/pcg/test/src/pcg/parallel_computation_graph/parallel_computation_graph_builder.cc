@@ -13,11 +13,12 @@
 #include "utils/containers/without_nullopts.h"
 #include "utils/hash/pair.h"
 
-// Stylistically these tests are not great (they're rather complicated 
+// Stylistically these tests are not great (they're rather complicated
 // and hard to read) and should not be used as a model for other FlexFlow
 // tests.
-// 
-// Improving them is being tracked in https://github.com/flexflow/FlexFlow/issues/1474
+//
+// Improving them is being tracked in
+// https://github.com/flexflow/FlexFlow/issues/1474
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ParallelComputationGraphBuilder::add") {
     ParallelComputationGraphBuilder b;

@@ -38,7 +38,6 @@ std::optional<OperatorAttributeValue> get_attribute(BroadcastAttrs const &p,
   }
 }
 
-
 std::optional<OperatorAttributeValue> get_attribute(CastAttrs const &p,
                                                     OperatorAttributeKey key) {
   switch (key) {

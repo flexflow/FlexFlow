@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_ATTENTION_ATTRS_H
 #define _FLEXFLOW_ATTENTION_ATTRS_H
 
+#include "op-attrs/incoming_tensor_role.dtg.h"
 #include "op-attrs/ops/attention/multihead_attention_inputs.dtg.h"
 #include "op-attrs/ops/attention/multihead_attention_parallel_inputs.dtg.h"
 #include "op-attrs/ops/attention_attrs.dtg.h"
@@ -8,7 +9,6 @@
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
 #include <tl/expected.hpp>
-#include "op-attrs/incoming_tensor_role.dtg.h"
 
 namespace FlexFlow {
 
@@ -39,7 +39,7 @@ int get_num_samples(MultiHeadAttentionParallelInputs const &);
 int get_num_samples(MultiHeadAttentionInputs const &);
 
 std::vector<IncomingTensorRole>
-  get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs const &);
+    get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs const &);
 
 tl::expected<TensorShape, std::string>
     get_weights_shape(MultiHeadAttentionAttrs const &,

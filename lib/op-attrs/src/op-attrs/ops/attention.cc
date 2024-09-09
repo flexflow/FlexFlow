@@ -93,17 +93,18 @@ int get_num_samples(MultiHeadAttentionInputs const &inputs) {
 }
 
 std::vector<IncomingTensorRole>
-  get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs const &attrs) {
+    get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs const &attrs) {
 
   std::vector<IncomingTensorRole> roles = std::vector{
-    IncomingTensorRole::INPUT,
-    IncomingTensorRole::INPUT,
-    IncomingTensorRole::INPUT,
-    IncomingTensorRole::WEIGHT,
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::WEIGHT,
   };
 
   if (attrs.bias) {
-    extend(roles, std::vector{IncomingTensorRole::WEIGHT, IncomingTensorRole::WEIGHT});
+    extend(roles,
+           std::vector{IncomingTensorRole::WEIGHT, IncomingTensorRole::WEIGHT});
   }
 
   return roles;

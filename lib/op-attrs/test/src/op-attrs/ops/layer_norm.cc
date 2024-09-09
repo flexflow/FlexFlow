@@ -11,20 +11,21 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_layer_norm_incoming_tensor_roles(LayerNormAttrs)") {
     auto make_attrs = [](bool elementwise_affine) {
       return LayerNormAttrs{
-        /*axes=*/{ff_dim_t{0}, ff_dim_t{2}},
-        elementwise_affine,
-        /*eps=*/1.0,
+          /*axes=*/{ff_dim_t{0}, ff_dim_t{2}},
+          elementwise_affine,
+          /*eps=*/1.0,
       };
     };
 
     SUBCASE("elementwise_affine = true") {
       LayerNormAttrs attrs = make_attrs(/*elementwise_affine=*/true);
 
-      std::vector<IncomingTensorRole> result = get_layer_norm_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> result =
+          get_layer_norm_incoming_tensor_roles(attrs);
       std::vector<IncomingTensorRole> correct = {
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::WEIGHT,
-        IncomingTensorRole::WEIGHT,
+          IncomingTensorRole::INPUT,
+          IncomingTensorRole::WEIGHT,
+          IncomingTensorRole::WEIGHT,
       };
 
       CHECK(result == correct);
@@ -33,9 +34,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("elementwise_affine = false") {
       LayerNormAttrs attrs = make_attrs(/*elementwise_affine=*/false);
 
-      std::vector<IncomingTensorRole> result = get_layer_norm_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> result =
+          get_layer_norm_incoming_tensor_roles(attrs);
       std::vector<IncomingTensorRole> correct = {
-        IncomingTensorRole::INPUT,
+          IncomingTensorRole::INPUT,
       };
 
       CHECK(result == correct);

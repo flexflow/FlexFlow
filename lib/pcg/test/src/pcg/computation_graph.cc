@@ -11,15 +11,17 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string input_name = "input";
       ComputationGraph cg = [&] {
         ComputationGraphBuilder b;
-        
+
         TensorShape input_shape = TensorShape{
-          TensorDims{FFOrdered<size_t>{
-            10, 12,
-          }},
-          DataType::FLOAT,
+            TensorDims{FFOrdered<size_t>{
+                10,
+                12,
+            }},
+            DataType::FLOAT,
         };
 
-        tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES, input_name);
+        tensor_guid_t input =
+            b.create_input(input_shape, CreateGrad::YES, input_name);
 
         return b.computation_graph;
       }();
@@ -36,12 +38,13 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string layer_name = "my op";
 
       ComputationGraphBuilder b;
-      
+
       TensorShape input_shape = TensorShape{
-        TensorDims{FFOrdered<size_t>{
-          10, 12,
-        }},
-        DataType::FLOAT,
+          TensorDims{FFOrdered<size_t>{
+              10,
+              12,
+          }},
+          DataType::FLOAT,
       };
 
       tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
@@ -61,16 +64,17 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string layer_name = "my op";
 
       ComputationGraphBuilder b;
-      
+
       TensorShape input_shape = TensorShape{
-        TensorDims{FFOrdered<size_t>{
-          10, 12,
-        }},
-        DataType::FLOAT,
+          TensorDims{FFOrdered<size_t>{
+              10,
+              12,
+          }},
+          DataType::FLOAT,
       };
 
       tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
-      b.dense(input, 
+      b.dense(input,
               /*outDim=*/14,
               /*activation=*/Activation::RELU,
               /*use_bias=*/true,
@@ -85,7 +89,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<tensor_guid_t> result = get_incoming_inputs(cg, dense_layer);
       std::vector<tensor_guid_t> correct = {
-        input,
+          input,
       };
 
       CHECK(result == correct);
@@ -97,15 +101,17 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::string input_name = "input";
       ComputationGraph cg = [&] {
         ComputationGraphBuilder b;
-        
+
         TensorShape input_shape = TensorShape{
-          TensorDims{FFOrdered<size_t>{
-            10, 12,
-          }},
-          DataType::FLOAT,
+            TensorDims{FFOrdered<size_t>{
+                10,
+                12,
+            }},
+            DataType::FLOAT,
         };
 
-        tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES, input_name);
+        tensor_guid_t input =
+            b.create_input(input_shape, CreateGrad::YES, input_name);
 
         return b.computation_graph;
       }();
@@ -123,12 +129,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       ComputationGraph cg = [&] {
         ComputationGraphBuilder b;
-        
+
         TensorShape input_shape = TensorShape{
-          TensorDims{FFOrdered<size_t>{
-            10, 12,
-          }},
-          DataType::FLOAT,
+            TensorDims{FFOrdered<size_t>{
+                10,
+                12,
+            }},
+            DataType::FLOAT,
         };
 
         tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
@@ -152,16 +159,17 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       ComputationGraph cg = [&] {
         ComputationGraphBuilder b;
-        
+
         TensorShape input_shape = TensorShape{
-          TensorDims{FFOrdered<size_t>{
-            10, 12,
-          }},
-          DataType::FLOAT,
+            TensorDims{FFOrdered<size_t>{
+                10,
+                12,
+            }},
+            DataType::FLOAT,
         };
 
         tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
-        b.dense(input, 
+        b.dense(input,
                 /*outDim=*/14,
                 /*activation=*/Activation::RELU,
                 /*use_bias=*/true,
@@ -177,16 +185,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       layer_guid_t dense_layer = get_layer_by_name(cg, layer_name);
 
-      layer_guid_t projection_weight_layer = get_layer_by_name(cg, projection_name);
-      tensor_guid_t projection_weight = get_only(get_outgoing_tensors(cg, projection_weight_layer));
+      layer_guid_t projection_weight_layer =
+          get_layer_by_name(cg, projection_name);
+      tensor_guid_t projection_weight =
+          get_only(get_outgoing_tensors(cg, projection_weight_layer));
 
       layer_guid_t bias_weight_layer = get_layer_by_name(cg, bias_name);
-      tensor_guid_t bias_weight = get_only(get_outgoing_tensors(cg, bias_weight_layer));
+      tensor_guid_t bias_weight =
+          get_only(get_outgoing_tensors(cg, bias_weight_layer));
 
       std::vector<tensor_guid_t> result = get_incoming_weights(cg, dense_layer);
       std::vector<tensor_guid_t> correct = {
-        projection_weight, 
-        bias_weight,
+          projection_weight,
+          bias_weight,
       };
 
       CHECK(result == correct);

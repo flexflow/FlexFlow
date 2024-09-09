@@ -26,9 +26,10 @@ RecordFormatter as_dot(PCGOperatorAttrs const &attrs) {
   });
 }
 
-PCGOperatorAttrs pcg_op_attrs_from_compgraph_op_attrs(ComputationGraphOpAttrs const &cg_attrs) {
-  return cg_attrs.visit<PCGOperatorAttrs>(overload {
-    [](auto const &attrs) { return PCGOperatorAttrs{attrs}; },
+PCGOperatorAttrs pcg_op_attrs_from_compgraph_op_attrs(
+    ComputationGraphOpAttrs const &cg_attrs) {
+  return cg_attrs.visit<PCGOperatorAttrs>(overload{
+      [](auto const &attrs) { return PCGOperatorAttrs{attrs}; },
   });
 }
 

@@ -21,13 +21,15 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("without bias") {
       MultiHeadAttentionAttrs attrs = make_attrs(/*bias=*/false);
 
-      tl::expected<std::vector<IncomingTensorRole>, std::string> result = get_attention_incoming_tensor_roles(attrs);
-      tl::expected<std::vector<IncomingTensorRole>, std::string> correct = std::vector{
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::WEIGHT,
-      };
+      tl::expected<std::vector<IncomingTensorRole>, std::string> result =
+          get_attention_incoming_tensor_roles(attrs);
+      tl::expected<std::vector<IncomingTensorRole>, std::string> correct =
+          std::vector{
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::WEIGHT,
+          };
 
       CHECK(result == correct);
     }
@@ -35,15 +37,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("with bias") {
       MultiHeadAttentionAttrs attrs = make_attrs(/*bias=*/true);
 
-      tl::expected<std::vector<IncomingTensorRole>, std::string> result = get_attention_incoming_tensor_roles(attrs);
-      tl::expected<std::vector<IncomingTensorRole>, std::string> correct = std::vector{
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::WEIGHT,
-        IncomingTensorRole::WEIGHT,
-        IncomingTensorRole::WEIGHT,
-      };
+      tl::expected<std::vector<IncomingTensorRole>, std::string> result =
+          get_attention_incoming_tensor_roles(attrs);
+      tl::expected<std::vector<IncomingTensorRole>, std::string> correct =
+          std::vector{
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::WEIGHT,
+              IncomingTensorRole::WEIGHT,
+              IncomingTensorRole::WEIGHT,
+          };
 
       CHECK(result == correct);
     }

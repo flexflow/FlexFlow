@@ -1,4 +1,5 @@
 #include "pcg/computation_graph.h"
+#include "op-attrs/get_incoming_tensor_roles.h"
 #include "utils/containers/filtrans.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/reversed.h"
@@ -7,7 +8,6 @@
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
-#include "op-attrs/get_incoming_tensor_roles.h"
 
 namespace FlexFlow {
 
@@ -26,12 +26,15 @@ LayerAddedResult add_layer(ComputationGraph &computation_graph,
                            LayerAttrs const &attrs,
                            std::vector<tensor_guid_t> const &inputs,
                            std::vector<TensorAttrs> const &outputs) {
-  NodeAddedResult raw_added = computation_graph.raw_graph.add_node(attrs,
-                                                                   transform(inputs, [](tensor_guid_t const &t) { return t.raw_graph_output; }),
-                                                                   outputs);
+  NodeAddedResult raw_added = computation_graph.raw_graph.add_node(
+      attrs,
+      transform(inputs,
+                [](tensor_guid_t const &t) { return t.raw_graph_output; }),
+      outputs);
   return LayerAddedResult{
-    layer_guid_t{raw_added.node},
-    transform(raw_added.outputs, [](DataflowOutput const &o) { return tensor_guid_t{o}; }),
+      layer_guid_t{raw_added.node},
+      transform(raw_added.outputs,
+                [](DataflowOutput const &o) { return tensor_guid_t{o}; }),
   };
 }
 
@@ -72,34 +75,42 @@ std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
                    [](DataflowOutput const &o) { return tensor_guid_t{o}; });
 }
 
-static std::vector<tensor_guid_t> get_incoming_tensors_with_role(ComputationGraph const &cg, layer_guid_t const &l, IncomingTensorRole desired_role) {
+static std::vector<tensor_guid_t>
+    get_incoming_tensors_with_role(ComputationGraph const &cg,
+                                   layer_guid_t const &l,
+                                   IncomingTensorRole desired_role) {
   ComputationGraphOpAttrs attrs = get_layer_attrs(cg, l).attrs;
 
   std::vector<tensor_guid_t> incoming_tensors = get_incoming_tensors(cg, l);
 
-  std::vector<IncomingTensorRole> incoming_tensor_roles = get_incoming_tensor_roles(attrs, incoming_tensors.size());
+  std::vector<IncomingTensorRole> incoming_tensor_roles =
+      get_incoming_tensor_roles(attrs, incoming_tensors.size());
 
-  assert (incoming_tensors.size() == incoming_tensor_roles.size());
+  assert(incoming_tensors.size() == incoming_tensor_roles.size());
 
-  std::vector<tensor_guid_t> result = filtrans(zip(incoming_tensors, incoming_tensor_roles), 
-                                               [&](std::pair<tensor_guid_t, IncomingTensorRole> const &p) -> std::optional<tensor_guid_t> {
-                                                 tensor_guid_t tensor = p.first;
-                                                 IncomingTensorRole role = p.second;
+  std::vector<tensor_guid_t> result =
+      filtrans(zip(incoming_tensors, incoming_tensor_roles),
+               [&](std::pair<tensor_guid_t, IncomingTensorRole> const &p)
+                   -> std::optional<tensor_guid_t> {
+                 tensor_guid_t tensor = p.first;
+                 IncomingTensorRole role = p.second;
 
-                                                 if (role == desired_role) {
-                                                   return tensor;
-                                                 } else {
-                                                   return std::nullopt;
-                                                 }
-                                               });
+                 if (role == desired_role) {
+                   return tensor;
+                 } else {
+                   return std::nullopt;
+                 }
+               });
   return result;
 }
 
-std::vector<tensor_guid_t> get_incoming_inputs(ComputationGraph const &cg, layer_guid_t const &l) {
+std::vector<tensor_guid_t> get_incoming_inputs(ComputationGraph const &cg,
+                                               layer_guid_t const &l) {
   return get_incoming_tensors_with_role(cg, l, IncomingTensorRole::INPUT);
 }
 
-std::vector<tensor_guid_t> get_incoming_weights(ComputationGraph const &cg, layer_guid_t const &l) {
+std::vector<tensor_guid_t> get_incoming_weights(ComputationGraph const &cg,
+                                                layer_guid_t const &l) {
   return get_incoming_tensors_with_role(cg, l, IncomingTensorRole::WEIGHT);
 }
 

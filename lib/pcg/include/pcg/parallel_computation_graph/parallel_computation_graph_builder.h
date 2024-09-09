@@ -54,7 +54,8 @@ public:
       std::optional<Activation> activation = std::nullopt,
       bool use_bias = true,
       DataType data_type = DataType::FLOAT,
-      std::optional<InitializerAttrs> const &projection_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &projection_initializer =
+          std::nullopt,
       std::optional<InitializerAttrs> const &bias_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
 

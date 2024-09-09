@@ -7,22 +7,23 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_linear_incoming_tensor_roles(LinearAttrs)") {
     auto make_attrs = [](bool use_bias) {
       return LinearAttrs{
-        /*out_channels=*/16,
-        /*use_bias=*/use_bias,
-        /*data_type=*/DataType::FLOAT,
-        /*activation=*/Activation::RELU,
-        /*regularizer=*/std::nullopt,
+          /*out_channels=*/16,
+          /*use_bias=*/use_bias,
+          /*data_type=*/DataType::FLOAT,
+          /*activation=*/Activation::RELU,
+          /*regularizer=*/std::nullopt,
       };
     };
 
     SUBCASE("use_bias = true") {
       LinearAttrs attrs = make_attrs(/*use_bias=*/true);
 
-      std::vector<IncomingTensorRole> result = get_linear_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> result =
+          get_linear_incoming_tensor_roles(attrs);
       std::vector<IncomingTensorRole> correct = {
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::WEIGHT,
-        IncomingTensorRole::WEIGHT,
+          IncomingTensorRole::INPUT,
+          IncomingTensorRole::WEIGHT,
+          IncomingTensorRole::WEIGHT,
       };
 
       CHECK(result == correct);
@@ -31,10 +32,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("use_bias = false") {
       LinearAttrs attrs = make_attrs(/*use_bias=*/false);
 
-      std::vector<IncomingTensorRole> result = get_linear_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> result =
+          get_linear_incoming_tensor_roles(attrs);
       std::vector<IncomingTensorRole> correct = {
-        IncomingTensorRole::INPUT,
-        IncomingTensorRole::WEIGHT,
+          IncomingTensorRole::INPUT,
+          IncomingTensorRole::WEIGHT,
       };
 
       CHECK(result == correct);
@@ -139,9 +141,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     auto make_projection = [&](SumDegree o_sum,
-                           DiscardCopyDegree o_eq,
-                           int o_inchannel,
-                           int o_outchannel) {
+                               DiscardCopyDegree o_eq,
+                               int o_inchannel,
+                               int o_outchannel) {
       return lift_to_parallel_with_degrees(
           projection, o_sum, o_eq, FFOrdered<int>{o_inchannel, o_outchannel});
     };
@@ -178,11 +180,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       {
         tl::expected<ParallelTensorShape, std::string> result =
             get_projection_shape(attrs, par_input);
-        tl::expected<ParallelTensorShape, std::string> correct = make_projection(
-            SumDegree{1},
-            DiscardCopyDegree{input_sum_degree * degree * extra_dim_degree},
-            1,
-            1);
+        tl::expected<ParallelTensorShape, std::string> correct =
+            make_projection(
+                SumDegree{1},
+                DiscardCopyDegree{input_sum_degree * degree * extra_dim_degree},
+                1,
+                1);
         CHECK(result == correct);
       }
 
@@ -219,8 +222,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       {
         tl::expected<ParallelTensorShape, std::string> result =
             get_projection_shape(attrs, par_input);
-        tl::expected<ParallelTensorShape, std::string> correct = make_projection(
-            SumDegree{1}, DiscardCopyDegree{input_sum_degree}, degree, 1);
+        tl::expected<ParallelTensorShape, std::string> correct =
+            make_projection(
+                SumDegree{1}, DiscardCopyDegree{input_sum_degree}, degree, 1);
         CHECK(result == correct);
       }
 
@@ -251,8 +255,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       {
         tl::expected<ParallelTensorShape, std::string> result =
             get_projection_shape(attrs, par_input);
-        tl::expected<ParallelTensorShape, std::string> correct = make_projection(
-            SumDegree{1}, DiscardCopyDegree{input_sum_degree}, 1, degree);
+        tl::expected<ParallelTensorShape, std::string> correct =
+            make_projection(
+                SumDegree{1}, DiscardCopyDegree{input_sum_degree}, 1, degree);
         CHECK(result == correct);
       }
 
