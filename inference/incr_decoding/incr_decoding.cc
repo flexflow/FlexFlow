@@ -288,16 +288,16 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    std::vector<std::string> prompts;
+    std::vector<GenerationRequest> requests;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       total_num_requests++;
-      prompts.push_back(text);
+      requests.push_back(GenerationRequest(text, 1.0));
     }
     ConstantEmissionMachine emission_machine(1.0);
     std::vector<GenerationResult> result =
-        model.generate(prompts, emission_machine);
+        model.generate(requests, emission_machine);
   }
 
   // terminate the request manager by stopping the background thread

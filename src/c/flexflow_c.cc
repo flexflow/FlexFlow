@@ -1606,8 +1606,9 @@ void flexflow_model_generate(flexflow_model_t handle_,
                 text_str.c_str(),
                 max_seq_length);
   }
+  ConstantEmissionMachine emission_machine(1.0);
   std::vector<GenerationResult> results =
-      handle->generate(prompts);
+      handle->generate(prompts, emission_machine);
   // If the prompt exceeds max seq len, check that we return the prompt with no
   // additional token. Otherwise, check that the output does not exceed the max
   // sequence length.
