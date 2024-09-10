@@ -1,5 +1,6 @@
 #include "utils/bidict/bidict.h"
 #include "test/utils/doctest.h"
+#include "utils/fmt/vector.h"
 
 using namespace FlexFlow;
 
@@ -59,7 +60,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("bidict::end") {
       auto it = dict.end();
-      CHECK(it == dict.end());
+
+      CHECK_WITHOUT_STRINGIFY(it == dict.end());
     }
 
     SUBCASE("map_keys(bidict<K, V>, F)") {

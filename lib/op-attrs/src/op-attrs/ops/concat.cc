@@ -11,4 +11,14 @@ namespace FlexFlow {
 /*   return valid; */
 /* } */
 
+TensorShape get_output_shape(ConcatAttrs const &,
+                             std::vector<TensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
+ParallelTensorShape get_output_shape(ConcatAttrs const &,
+                                     std::vector<ParallelTensorShape> const &) {
+  NOT_IMPLEMENTED();
+}
+
 } // namespace FlexFlow

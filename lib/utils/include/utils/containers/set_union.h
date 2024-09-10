@@ -16,7 +16,7 @@ std::unordered_set<T> set_union(std::unordered_set<T> const &l,
 template <typename C, typename T = typename C::value_type::value_type>
 std::unordered_set<T> set_union(C const &sets) {
   std::unordered_set<T> result;
-  for (std::unordered_set<T> const &s : sets) {
+  for (auto const &s : sets) {
     for (T const &element : s) {
       result.insert(element);
     }

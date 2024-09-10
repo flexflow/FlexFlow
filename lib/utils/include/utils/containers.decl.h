@@ -34,11 +34,15 @@ template <typename Container, typename Element>
 std::optional<std::size_t> index_of(Container const &c, Element const &e);
 
 template <typename K, typename V>
+std::unordered_map<K, V> restrict_keys(std::unordered_map<K, V> const &m,
+                                       std::unordered_set<K> const &mask);
+
+template <typename K, typename V>
 std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
                                     std::unordered_map<K, V> const &rhs);
 
-template <typename K, typename V>
-bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs);
+template <typename E>
+std::optional<E> at_idx(std::vector<E> const &v, size_t idx);
 
 template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m);

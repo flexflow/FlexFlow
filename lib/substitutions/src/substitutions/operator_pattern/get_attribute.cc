@@ -190,9 +190,7 @@ std::optional<OperatorAttributeValue> get_attribute(LinearAttrs const &p,
     case OperatorAttributeKey::OUT_CHANNELS:
       return p.out_channels;
     case OperatorAttributeKey::USE_BIAS:
-      return bool(p.use_bias); // NOTE(@wmd): Without casting to bool, it will
-                               // return an OperatorAttributeValue with
-                               // underlying type int. Might be a req issue.
+      return p.use_bias;
     case OperatorAttributeKey::DATA_TYPE:
       return p.data_type;
     case OperatorAttributeKey::ACTIVATION:
@@ -213,6 +211,8 @@ std::optional<OperatorAttributeValue>
       return p.num_heads;
     case OperatorAttributeKey::USE_BIAS:
       return p.bias;
+    case OperatorAttributeKey::DROPOUT:
+      return p.dropout;
     default:
       return std::nullopt;
   }
@@ -248,7 +248,7 @@ std::optional<OperatorAttributeValue> get_attribute(Pool2DAttrs const &p,
     case OperatorAttributeKey::POOL_TYPE:
       return p.pool_type;
     case OperatorAttributeKey::ACTIVATION:
-      return p.activation;
+      return std::optional<Activation>{p.activation};
     default:
       return std::nullopt;
   }

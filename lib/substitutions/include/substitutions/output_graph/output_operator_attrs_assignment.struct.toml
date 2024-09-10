@@ -11,6 +11,7 @@ features = [
 includes = [
   "substitutions/operator_pattern/operator_attribute_key.dtg.h",
   "substitutions/output_graph/output_operator_attribute_expr.dtg.h",
+  "substitutions/unlabelled/pattern_node.dtg.h",
   "<unordered_map>",
 ]
 
@@ -18,6 +19,10 @@ src_includes = [
   "utils/hash/unordered_map.h",
   "utils/fmt/unordered_map.h",
 ]
+
+# [[fields]]
+# name = "clone_operator"
+# type = "std::optional<PatternNode>"
 
 # NOTE(@wmdi): Not sure if it aligns with other design. Or alternatively we can
 # define the assignment for each operator type.

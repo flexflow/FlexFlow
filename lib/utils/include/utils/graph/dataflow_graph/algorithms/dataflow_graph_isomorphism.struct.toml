@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "DataflowGraphIsomorphism"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/bidict/bidict.h",
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "node_mapping"
+type = "::FlexFlow::bidict<::FlexFlow::Node, ::FlexFlow::Node>"

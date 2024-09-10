@@ -44,7 +44,7 @@ std::vector<parallel_tensor_guid_t>
     get_layer_inputs(ParallelComputationGraph const &pcg,
                      parallel_layer_guid_t const &l) {
   return transform(
-      get_inputs(pcg.raw_graph, l.raw_graph_node),
+      get_input_values(pcg.raw_graph, l.raw_graph_node),
       [](DataflowOutput const &o) { return parallel_tensor_guid_t{o}; });
 }
 
