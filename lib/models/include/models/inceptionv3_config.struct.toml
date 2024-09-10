@@ -1,0 +1,31 @@
+namespace = "FlexFlow"
+name = "InceptionV3Config"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "input_height"
+type = "size_t"
+
+[[fields]]
+name = "input_width"
+type = "size_t"
+
+[[fields]]
+name = "input_num_channels"
+type = "size_t"
+
+[[fields]]
+name = "num_classes"
+type = "size_t"
+
+[[fields]]
+name = "batch_size"
+type = "size_t"

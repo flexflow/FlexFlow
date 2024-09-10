@@ -1,10 +1,31 @@
 #include "op-attrs/ops/pool_2d.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(Pool2DAttrs const &, TensorShape const &) {
-  NOT_IMPLEMENTED();
+TensorShape get_output_shape(Pool2DAttrs const &attrs,
+                             TensorShape const &input_shape) {
+  size_t num_samples = dim_at_idx(input_shape, ff_dim_t{0});
+  size_t num_channels = dim_at_idx(input_shape, ff_dim_t{1});
+  size_t input_height = dim_at_idx(input_shape, ff_dim_t{2});
+  size_t input_width = dim_at_idx(input_shape, ff_dim_t{3});
+
+  size_t output_height =
+      (input_height + 2 * attrs.padding_h - attrs.kernel_h) / attrs.stride_h +
+      1;
+
+  size_t output_width =
+      (input_width + 2 * attrs.padding_w - attrs.kernel_w) / attrs.stride_w + 1;
+
+  return TensorShape{TensorDims{FFOrdered<size_t>{
+                         num_samples,
+                         num_channels,
+                         output_height,
+                         output_width,
+                     }},
+                     input_shape.data_type};
 }
+// TODO(@pietro): add tests for this and concat
 
 ParallelTensorShape get_output_shape(Pool2DAttrs const &,
                                      ParallelTensorShape const &) {

@@ -5,6 +5,7 @@
 #include "op-attrs/ops/attention.h"
 #include "op-attrs/ops/batch_norm.h"
 #include "op-attrs/ops/broadcast.h"
+#include "op-attrs/ops/concat.h"
 #include "op-attrs/ops/conv_2d.h"
 #include "op-attrs/ops/dropout.h"
 #include "op-attrs/ops/element_binary.h"
@@ -13,6 +14,7 @@
 #include "op-attrs/ops/gather.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/pool_2d.h"
 #include "op-attrs/ops/softmax.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "pcg/computation_graph.h"
@@ -485,6 +487,33 @@ tensor_guid_t ComputationGraphBuilder::gather(
 
   return this->add_layer(layer, {input}, {}, output_shape);
 }
+tensor_guid_t ComputationGraphBuilder::pool2d(
+    tensor_guid_t const &x,
+    int kernelH,
+    int kernelW,
+    int strideH,
+    int strideW,
+    int paddingH,
+    int paddingW,
+    PoolOp type,
+    Activation const &activation,
+    std::optional<std::string> const &maybe_name) {
+
+  Pool2DAttrs attrs = Pool2DAttrs{
+      kernelH, kernelW, strideH, strideW, paddingH, paddingW, type, activation};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  tensor_guid_t input =
+      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+
+  return this->add_layer(layer, {input}, {}, output_shape);
+}
 
 /* std::vector<TensorShape>
  * ComputationGraphBuilder::get_shapes(std::vector<tensor_guid_t> const &ts)
@@ -635,6 +664,31 @@ tensor_guid_t ComputationGraphBuilder::dense(
   }
 
   return this->add_layer(layer, {input}, weights, output_shape);
+}
+
+tensor_guid_t ComputationGraphBuilder::concat(
+    int n,
+    std::vector<tensor_guid_t> const &tensors,
+    int axis,
+    std::optional<std::string> const &maybe_name) {
+  assert(n == tensors.size());
+  ConcatAttrs attrs = ConcatAttrs{ff_dim_t{axis}, n};
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  std::vector<tensor_guid_t> inputs =
+      transform(tensors, [&](tensor_guid_t const &t) {
+        return this->as_type(t, DataType::FLOAT, name + "input_pre_cast");
+      });
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  TensorShape output_shape =
+      get_output_shape(attrs, transform(inputs, [&](tensor_guid_t const &t) {
+                         return this->get_shape(t);
+                       }));
+
+  return this->add_layer(layer, inputs, {}, output_shape);
 }
 
 tensor_guid_t ComputationGraphBuilder::layer_norm(

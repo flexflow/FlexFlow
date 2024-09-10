@@ -135,8 +135,8 @@ public:
              int paddingH,
              int paddingW,
              PoolOp type = PoolOp::MAX,
-             std::optional<Activation> const &activation = std::nullopt,
-             std::optional<std::string> const &name = std::nullopt);
+             Activation const &activation = Activation::RELU,
+             std::optional<std::string> const &maybe_name = std::nullopt);
   tensor_guid_t
       layer_norm(tensor_guid_t const &input,
                  std::vector<int> const &axes,
