@@ -43,8 +43,8 @@ void OPT::create_opt_model(FFModel &ff,
   ff.set_position_offset(2);
   {
     int const token_dims[] = {
-        (mode == TREE_VERIFY_MODE || mode == TREE_SEARCH_MODE)
-            ? BatchConfig::max_verify_tokens_per_batch()
+        mode == TREE_SEARCH_MODE 
+            ? BatchConfig::max_tokens_per_ssm_batch()
             : BatchConfig::max_tokens_per_batch(),
         1};
     input = ff.create_tensor<2>(token_dims, DT_INT32);

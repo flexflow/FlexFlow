@@ -467,7 +467,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       DT const *bias_ptr,
                       hipStream_t stream) {
   // here because we need postion info in infernece 1
-  int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+  int max_tokens_per_batch = bc->max_tokens_per_ssm_batch();
   checkCUDA(
       hipMemcpyAsync(m->token_infos,
                      &(bc->tokensInfo),
@@ -618,7 +618,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+    int max_tokens_per_batch = BatchConfig::max_tokens_per_ssm_batch();
     size_t beam_tokeninfo_size =
         max_tokens_per_batch * TreeSearchBatchConfig::MAX_BEAM_WIDTH;
     size_t requestinfo_size = TreeSearchBatchConfig::max_requests_per_batch();

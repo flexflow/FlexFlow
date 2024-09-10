@@ -47,6 +47,7 @@ void parse_input_args(char **argv,
                       float &topp,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
+                      int &max_tokens_per_ssm_batch,
                       int &max_sequence_length,
                       int &sampling_seed,
                       bool &streaming_cache) {
@@ -103,6 +104,10 @@ void parse_input_args(char **argv,
       max_tokens_per_batch = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--max-tokens-per-ssm-batch")) {
+      max_tokens_per_ssm_batch = std::stoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--max-sequence-length")) {
       max_sequence_length = std::stoi(argv[++i]);
       continue;
@@ -145,6 +150,7 @@ void FlexFlow::top_level_task(Task const *task,
   float topp = 0.6f;
   int max_requests_per_batch = 1;
   int max_tokens_per_batch = 128;
+  int max_tokens_per_ssm_batch = -1;
   int max_sequence_length = 256;
   RequestManager::DecodingMode decoding_mode =
       RequestManager::INCREMENTAL_DECODING;
@@ -165,9 +171,13 @@ void FlexFlow::top_level_task(Task const *task,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
+                    max_tokens_per_ssm_batch,
                    max_sequence_length,
                    sampling_seed,
                    streaming_cache);
+  if (max_tokens_per_ssm_batch == -1) {
+    max_tokens_per_ssm_batch = max_tokens_per_batch;
+  }
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -227,6 +237,7 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(max_requests_per_batch);
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
+  rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_decoding_mode(decoding_mode);
   rm->set_max_spec_tree_token_num(64);

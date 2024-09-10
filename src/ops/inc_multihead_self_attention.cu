@@ -476,7 +476,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch = BatchConfig::max_tokens_per_batch();
+    int max_tokens_per_batch = infer_mode == TREE_SEARCH_MODE
+                                   ? BatchConfig::max_tokens_per_ssm_batch()
+                                   : BatchConfig::max_tokens_per_batch();
     size_t qkv_max_proj_size =
         max_tokens_per_batch *
         (qk_dim * num_q_heads + qk_dim * num_q_heads + v_dim * num_q_heads);
@@ -494,7 +496,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       case TREE_SEARCH_MODE:
       case TREE_VERIFY_MODE: {
         query_tmp_size =
-            num_q_heads * qk_dim * BatchConfig::max_tokens_per_batch();
+            num_q_heads * qk_dim * max_tokens_per_batch;
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_kv_heads * qk_dim *
                          BatchConfig::max_requests_per_batch() * max_num_pages *
@@ -506,7 +508,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
           size_t max_post_pos_enc_pages =
               round_up_pages(BatchConfig::MAX_STREAMING_POS -
                              BatchConfig::get_max_tree_depth() +
-                             max(BatchConfig::max_tokens_per_batch(),
+                             max(max_tokens_per_batch,
                                  BatchConfig::max_spec_tree_token_num()));
           key_cache_size = num_kv_heads * qk_dim *
                            BatchConfig::max_requests_per_batch() *

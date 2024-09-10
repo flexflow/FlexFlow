@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/batch_config.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
 #include "flexflow/inference.h"
@@ -55,11 +56,13 @@ bool parallel_tensor_list_overlaps(std::vector<ParallelTensor> const &list1,
   return false;
 }
 
-void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
+void InferenceManager::compile_model_and_allocate_buffer(FFModel *model,
+                                                         bool is_llm) {
   // TODO: currently assume there is a single data-parallel pipeline
   // (i.e., data-parallel-degree == 1)
   assert(model->config.data_parallelism_degree == 1);
-  model->config.batchSize = BatchConfig::max_tokens_per_batch();
+  model->config.batchSize = is_llm ? BatchConfig::max_tokens_per_batch()
+                                   : BatchConfig::max_tokens_per_ssm_batch();
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;

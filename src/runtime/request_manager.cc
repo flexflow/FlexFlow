@@ -111,6 +111,7 @@ RequestManager::RequestManager()
   // ffmodel.compile()
   max_requests_per_batch = -1;
   max_tokens_per_batch = -1;
+  max_tokens_per_ssm_batch = -1;
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
   max_tree_depth = -1;
@@ -139,6 +140,13 @@ void RequestManager::set_max_tokens_per_batch(int max_num_tokens) {
   assert(max_tokens_per_batch <= BatchConfig::MAX_NUM_TOKENS);
 }
 
+void RequestManager::set_max_tokens_per_ssm_batch(int max_num_ssm_tokens) {
+  assert(max_tokens_per_ssm_batch == -1 ||
+         max_tokens_per_ssm_batch == max_num_ssm_tokens);
+  max_tokens_per_ssm_batch = max_num_ssm_tokens;
+  assert(max_tokens_per_ssm_batch <= BatchConfig::MAX_NUM_TOKENS);
+}
+
 void RequestManager::set_max_spec_tree_token_num(int max_num_tokens) {
   assert(max_spec_tree_token_num == -1 ||
          max_spec_tree_token_num == max_num_tokens);
@@ -151,14 +159,14 @@ int RequestManager::get_max_tokens_per_batch() {
   return max_tokens_per_batch;
 }
 
+int RequestManager::get_max_tokens_per_ssm_batch() {
+  assert(max_tokens_per_ssm_batch > 0);
+  return max_tokens_per_ssm_batch;
+}
+
 int RequestManager::get_max_spec_tree_token_num() {
   assert(max_spec_tree_token_num > 0);
   return max_spec_tree_token_num;
-}
-
-int RequestManager::get_max_verify_tokens_per_batch() {
-  assert(max_tokens_per_batch > 0);
-  return max_tokens_per_batch;
 }
 
 void RequestManager::set_max_sequence_length(int max_seq_length) {
@@ -1024,7 +1032,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
   bc.requestsInfo[request_index].first_token_index_in_request =
       prefill_request->ssm_cache_size;
-  int num_tokens_in_batch = std::min(get_max_tokens_per_batch(),
+  int num_tokens_in_batch = std::min(get_max_tokens_per_ssm_batch(),
                                      (int)prefill_request->tokens.size() -
                                          prefill_request->ssm_prefill_len);
   bc.requestsInfo[request_index].num_tokens_in_batch = num_tokens_in_batch;
@@ -2217,7 +2225,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   for (size_t i = 0; i < get_num_ssms(); i++) {
     // Compile the i-th ssm
     FFModel *ssm = get_ssm_model(i);
-    im->compile_model_and_allocate_buffer(ssm);
+    im->compile_model_and_allocate_buffer(ssm, false);
     assert(im->model_weights_loaders.find(ssm) !=
            im->model_weights_loaders.end());
     // Load model weights
@@ -2290,7 +2298,7 @@ void RequestManager::serve_spec_infer_sync(FFModel *llm) {
   for (size_t i = 0; i < get_num_ssms(); i++) {
     // Compile the i-th ssm
     FFModel *ssm = get_ssm_model(i);
-    im->compile_model_and_allocate_buffer(ssm);
+    im->compile_model_and_allocate_buffer(ssm, false);
     assert(im->model_weights_loaders.find(ssm) !=
            im->model_weights_loaders.end());
     // Load model weights

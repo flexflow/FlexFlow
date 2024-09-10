@@ -976,6 +976,9 @@ void flexflow_request_manager_set_max_requests_per_batch(
 void flexflow_request_manager_set_max_tokens_per_batch(
     flexflow_request_manager_t handle_, int max_num_tokens);
 
+void flexflow_request_manager_set_max_tokens_per_ssm_batch(
+    flexflow_request_manager_t handle_, int max_num_ssm_tokens);
+
 void flexflow_request_manager_set_max_spec_tree_token_num(
     flexflow_request_manager_t handle_, int max_num_tokens);
 

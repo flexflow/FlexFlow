@@ -34,7 +34,7 @@ class InferenceManager {
 public:
   InferenceManager();
   static InferenceManager *get_inference_manager();
-  void compile_model_and_allocate_buffer(FFModel *model);
+  void compile_model_and_allocate_buffer(FFModel *model, bool is_llm = true);
   void init_operators_inference(FFModel *model);
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
@@ -249,9 +249,10 @@ public:
   int get_max_requests_per_batch();
   void set_max_tokens_per_batch(int max_num_tokens);
   int get_max_tokens_per_batch();
+  void set_max_tokens_per_ssm_batch(int max_num_ssm_tokens);
+  int get_max_tokens_per_ssm_batch();
   void set_max_spec_tree_token_num(int max_num_tokens);
   int get_max_spec_tree_token_num();
-  int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
   void set_decoding_mode(DecodingMode mode);
@@ -354,6 +355,7 @@ private:
   // configuration parameters
   int max_requests_per_batch;
   int max_tokens_per_batch;
+  int max_tokens_per_ssm_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
   int max_tree_depth;
