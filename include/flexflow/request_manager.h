@@ -136,6 +136,7 @@ struct Request {
   double decode_latency_ms = 0.0;
   int ssm_prefill_len = 0;
   int llm_prefill_len = 0;
+  bool attained = false;
 
   int first_token_offset_in_batch = 0;
   int num_tokens_in_batch = 0;
@@ -442,7 +443,7 @@ private:
   std::unordered_map<RequestGuid, RequestProfileInfo> profiling_requests;
   double total_request_run_time;
   bool load_pending_request_to_batch();
-  void request_complete_clean_up(int batch_index);
+  void request_complete_clean_up(int batch_index, bool attained);
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
   bool update_llm_decode_results(InferenceResult const &result);

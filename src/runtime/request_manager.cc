@@ -571,7 +571,7 @@ bool RequestManager::load_pending_request_to_batch() {
   return true;
 }
 
-void RequestManager::request_complete_clean_up(int batch_index) {
+void RequestManager::request_complete_clean_up(int batch_index, bool attained) {
   RequestGuid guid = guid_of_requests[batch_index];
   profiling_requests[guid].finish_time =
       Realm::Clock::current_time_in_microseconds();
@@ -580,6 +580,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   request_available[batch_index] = false;
   num_available_requests--;
   request.status = Request::COMPLETED;
+  request.attained = attained;
 
   // Find the sos and eos in the sequence
   auto bos_it = std::find(
@@ -806,7 +807,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     prefill_completed = true;
 
     if (prefill_request->tokens.back() == eos_token_id) {
-      request_complete_clean_up(prefill_request->batch_index);
+      request_complete_clean_up(prefill_request->batch_index, true);
     }
 
     if (decoding_mode == SPECULATIVE_DECODING) {
@@ -855,7 +856,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     if (request.tokens.back() == eos_token_id or
         request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
-      request_complete_clean_up(request_index);
+      request_complete_clean_up(request_index, true);
     }
 
     if (verbose) {
@@ -1518,12 +1519,12 @@ bool RequestManager::update_llm_verify_results(
     if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_completed = true;
-      request_complete_clean_up(request_index);
+      request_complete_clean_up(request_index, true);
     } else if (request.decode_latency_ms >
                get_request_expected_latency(request)) {
       // The request violates the SLO, drop that request
       request_completed = true;
-      request_complete_clean_up(request_index);
+      request_complete_clean_up(request_index, false);
     } else {
       update_bitmask_prompt(guid, request.committed_tokens.size() - 1);
     }
@@ -2440,6 +2441,19 @@ void RequestManager::terminate_background_server() {
     mean_generated_tokens_per_step += std::to_string(mean_generated_tokens);
     mean_generated_tokens_per_step += ")";
     str += mean_generated_tokens_per_step;
+
+    std::string slo_attainment = "\n slo_attainment( ";
+    double attainment = 0;
+    for (auto request_pair : all_requests) {
+      Request &request = request_pair.second;
+      if (request.attained) {
+        attainment += 1;
+      }
+    }
+    attainment /= total_requests;
+    slo_attainment += std::to_string(attainment);
+    slo_attainment += ")";
+    str += slo_attainment;
 
     write_to_output_file("", str);
     background_server_status = TERMINATED;
