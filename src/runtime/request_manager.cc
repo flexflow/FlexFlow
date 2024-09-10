@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "flexflow/request_manager.h"
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
-#include "flexflow/request_manager.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
 #include <cmath>
@@ -538,7 +538,8 @@ bool RequestManager::load_pending_request_to_batch() {
       return false;
     }
     // Wait until there is a pending request
-    while (pending_request_queue.empty() && !is_background_server_terminated()) {
+    while (pending_request_queue.empty() &&
+           !is_background_server_terminated()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
     if (is_background_server_terminated()) {
