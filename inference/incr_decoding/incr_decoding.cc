@@ -299,7 +299,7 @@ void FlexFlow::top_level_task(Task const *task,
       total_num_requests++;
       requests.push_back(GenerationRequest(text, slo_ratio));
     }
-    ConstantEmissionMachine emission_machine(1.0);
+    PoissonEmissionMachine emission_machine(1.0);
     std::vector<GenerationResult> result =
         model.generate(requests, emission_machine);
   }
