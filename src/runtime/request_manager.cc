@@ -19,6 +19,7 @@
 // #include "flexflow/tokenizers.h"
 #include <bitset>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <future>
 #include <iomanip>
@@ -537,11 +538,14 @@ bool RequestManager::load_pending_request_to_batch() {
       return false;
     }
     // Wait until there is a pending request
-    while (pending_request_queue.empty()) {
-      printf("Waiting for pending request to process...\n");
+    while (pending_request_queue.empty() && !is_background_server_terminated()) {
       std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
+    if (is_background_server_terminated()) {
+      return false;
+    }
   }
+  std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
   assert(!pending_request_queue.empty() && "No pending request to process.");
   RequestGuid guid = pending_request_queue.front().guid;
   pending_request_queue.pop();
@@ -659,7 +663,6 @@ void RequestManager::request_complete_clean_up(int batch_index) {
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const rm_state_lock(rm_state_mutex);
-  std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
 
   if (num_available_requests == 0) {
     // Update nothing
@@ -888,6 +891,9 @@ void RequestManager::update_ssm_prefill_results(
 }
 
 BatchConfig RequestManager::prepare_next_batch() {
+  if (is_background_server_terminated()) {
+    return BatchConfig();
+  }
   switch (request_manager_status) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
@@ -2056,6 +2062,12 @@ std::vector<GenerationResult>
                       EmissionMachine &emission_machine) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
+
+  // Wait until the request manager is ready
+  while (!rm->is_background_server_serving()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
   for (GenerationRequest &request : requests) {
     RequestManager::RequestGuid guid = rm->register_new_request(request);
     if (guid != RequestManager::INVALID_GUID) {
@@ -2082,7 +2094,6 @@ std::vector<GenerationResult>
 
 void RequestManager::start_background_server(FFModel *model) {
   assert(background_server_status == INITIALIZED);
-  background_server_status = SERVING;
   // Start background task
   Runtime *runtime = Runtime::get_runtime();
   Context ctx = Runtime::get_context();
@@ -2158,6 +2169,7 @@ void RequestManager::serve_decoding(FFModel *llm) {
   { batch_pipeline.push(last_irf); }
 
   reset_profiling_statistics();
+  background_server_status = SERVING;
   while (!is_background_server_terminated()) {
 
     if (batch_pipeline.size() >= 4) {
@@ -2226,6 +2238,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   infer_result_future_pipeline.push(irf_0);
 
   reset_profiling_statistics();
+  background_server_status = SERVING;
   while (!is_background_server_terminated()) {
     if (infer_result_future_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
@@ -2294,6 +2307,7 @@ void RequestManager::serve_spec_infer_sync(FFModel *llm) {
   request_manager_status = PREFILLING;
   prefill_model = SSM;
 
+  background_server_status = SERVING;
   while (!is_background_server_terminated()) {
     BatchConfigFuture bcf = get_next_batch_config(irf_0, ctx, runtime);
     bcf.get_void_result();
@@ -2331,7 +2345,7 @@ void RequestManager::terminate_background_server_at_exit() {
 }
 
 void RequestManager::terminate_background_server() {
-  if (background_server_status == SERVING) {
+  if (is_background_server_serving()) {
     assert(profiling.llm_step_times.size() ==
            profiling.requests_per_step.size());
     // Write the last profiling statistics to output file
@@ -2433,6 +2447,10 @@ void RequestManager::terminate_background_server() {
     Context ctx = Runtime::get_context();
     background_server_handler.get_void_result();
   }
+}
+
+bool RequestManager::is_background_server_serving() {
+  return background_server_status == SERVING;
 }
 
 bool RequestManager::is_background_server_terminated() {

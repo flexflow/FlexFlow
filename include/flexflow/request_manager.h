@@ -291,6 +291,7 @@ public:
   RequestGuid register_new_request(GenerationRequest const &req);
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
+  bool is_background_server_serving();
   bool is_background_server_terminated();
   void terminate_background_server();
   static void terminate_background_server_at_exit();
