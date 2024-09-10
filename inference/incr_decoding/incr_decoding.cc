@@ -290,10 +290,14 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*ignore_comments */ true);
     std::vector<GenerationRequest> requests;
     for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      std::string text = prompt["prompt"].get<std::string>();
+      double slo_ratio = prompt["slo_ratio"].get<double>();
+      printf("Prompt[%d] with slo %.3f: %s\n",
+             total_num_requests,
+             slo_ratio,
+             text.c_str());
       total_num_requests++;
-      requests.push_back(GenerationRequest(text, 1.0));
+      requests.push_back(GenerationRequest(text, slo_ratio));
     }
     ConstantEmissionMachine emission_machine(1.0);
     std::vector<GenerationResult> result =
