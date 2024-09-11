@@ -2,27 +2,33 @@
 
 namespace FlexFlow {
 
-bool InitOpTaskImplFunction::operator==(InitOpTaskImplFunction const &other) const {
+bool InitOpTaskImplFunction::operator==(
+    InitOpTaskImplFunction const &other) const {
   return this->function_ptr == other.function_ptr;
 }
 
-bool InitOpTaskImplFunction::operator!=(InitOpTaskImplFunction const &other) const {
+bool InitOpTaskImplFunction::operator!=(
+    InitOpTaskImplFunction const &other) const {
   return this->function_ptr != other.function_ptr;
 }
 
-bool InitOpTaskImplFunction::operator<(InitOpTaskImplFunction const &other) const {
+bool InitOpTaskImplFunction::operator<(
+    InitOpTaskImplFunction const &other) const {
   return this->function_ptr < other.function_ptr;
 }
 
-bool InitOpTaskImplFunction::operator>(InitOpTaskImplFunction const &other) const {
+bool InitOpTaskImplFunction::operator>(
+    InitOpTaskImplFunction const &other) const {
   return this->function_ptr > other.function_ptr;
 }
 
-bool InitOpTaskImplFunction::operator<=(InitOpTaskImplFunction const &other) const {
+bool InitOpTaskImplFunction::operator<=(
+    InitOpTaskImplFunction const &other) const {
   return this->function_ptr <= other.function_ptr;
 }
 
-bool InitOpTaskImplFunction::operator>=(InitOpTaskImplFunction const &other) const {
+bool InitOpTaskImplFunction::operator>=(
+    InitOpTaskImplFunction const &other) const {
   return this->function_ptr >= other.function_ptr;
 }
 

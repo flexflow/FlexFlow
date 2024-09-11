@@ -11,9 +11,10 @@
 namespace FlexFlow {
 
 TaskSignature get_update_signature(OptimizerAttrs const &);
-TaskInvocation get_update_invocation(OptimizerAttrs const &,
-                                     tensor_guid_t const &weight,
-                                     std::vector<tensor_guid_t> const &grad_buffer_tensors);
+TaskInvocation get_update_invocation(
+    OptimizerAttrs const &,
+    tensor_guid_t const &weight,
+    std::vector<tensor_guid_t> const &grad_buffer_tensors);
 TaskImplFunction get_update_task_impl(OptimizerAttrs const &);
 
 TaskSignature get_sgd_update_signature();

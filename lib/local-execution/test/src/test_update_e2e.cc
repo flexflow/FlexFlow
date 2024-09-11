@@ -106,8 +106,8 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                                             /*epsilon=*/1e-8}};
       std::optional<ModelTrainingInstance> model_training_instance =
           ModelTrainingInstance{
-              LossAttrs{
-                  NonconfigurableLossAttrs{LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
+              LossAttrs{NonconfigurableLossAttrs{
+                  LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
               label_tensor,
               logit_tensor,
               optimizer_attrs};

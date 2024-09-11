@@ -19,11 +19,11 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         EnableProfiling::NO,
         ProfilingSettings{/*warmup_iters=*/0, /*measure_iters=*/0}};
 
-    OptimizerAttrs optimizer_attrs = OptimizerAttrs{SGDOptimizerAttrs{
-      /*lr=*/0.0, 
-      /*momentum=*/0.0, 
-      /*nesterov=*/false, 
-      /*weight_decay=*/0.0}};
+    OptimizerAttrs optimizer_attrs =
+        OptimizerAttrs{SGDOptimizerAttrs{/*lr=*/0.0,
+                                         /*momentum=*/0.0,
+                                         /*nesterov=*/false,
+                                         /*weight_decay=*/0.0}};
 
     // construct graph
     ComputationGraphBuilder cg_builder;

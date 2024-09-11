@@ -35,7 +35,7 @@ void add_return_value(TaskSignature &task_signature) {
 
 /**
  * @brief Adds an argument slot without checking if it is serializable.
- * 
+ *
  * This function is used for arguments that are device-specific.
  */
 
@@ -46,7 +46,7 @@ void add_unchecked_arg_slot(TaskSignature &task_signature, int name) {
 
 /**
  * @brief Adds an argument slot without checking if it is serializable.
- * 
+ *
  * This function is used for arguments that are device-specific.
  */
 
