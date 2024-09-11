@@ -361,9 +361,9 @@ private:
   int max_tree_width;
   int k;
   // Profile based latency
-  double baseline_latency_ms = 1000;
-  double ssm_spec_latency_ms = 50;
-  double llm_verify_latency_ms = 50;
+  double baseline_latency_ms = 43;
+  double ssm_spec_latency_ms = 17;
+  double llm_verify_latency_ms = 65;
   double correction_factor = 1.05;
 
   State request_manager_status;
