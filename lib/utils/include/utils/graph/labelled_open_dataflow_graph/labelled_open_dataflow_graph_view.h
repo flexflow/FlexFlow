@@ -20,11 +20,11 @@ public:
   LabelledOpenDataflowGraphView &
       operator=(LabelledOpenDataflowGraphView const &) = default;
 
-  NodeLabel const &at(Node const &n) const {
+  NodeLabel at(Node const &n) const {
     return this->get_interface().at(n);
   }
 
-  ValueLabel const &at(OpenDataflowValue const &v) const {
+  ValueLabel at(OpenDataflowValue const &v) const {
     return this->get_interface().at(v);
   }
 

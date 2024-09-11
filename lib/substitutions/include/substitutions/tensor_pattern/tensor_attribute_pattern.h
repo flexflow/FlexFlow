@@ -1,0 +1,12 @@
+#ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_TENSOR_PATTERN_TENSOR_ATTRIBUTE_PATTERN_H
+#define _FLEXFLOW_LIB_SUBSTITUTIONS_INCLUDE_SUBSTITUTIONS_TENSOR_PATTERN_TENSOR_ATTRIBUTE_PATTERN_H
+
+#include "substitutions/tensor_pattern/tensor_attribute_pattern.dtg.h"
+
+namespace FlexFlow {
+
+TensorAttributePattern tensor_attribute_pattern_match_all();
+
+} // namespace FlexFlow
+
+#endif

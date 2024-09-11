@@ -3,8 +3,8 @@
 
 #include "op-attrs/ops/cast_attrs.dtg.h"
 #include "op-attrs/ops/core.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "op-attrs/tensor_shape.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
+#include "op-attrs/tensor_shape.dtg.h"
 #include <tl/expected.hpp>
 
 namespace FlexFlow {

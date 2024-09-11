@@ -92,6 +92,10 @@ jobs:
         run: |
           build_libs.sh local-execution
 
+      - name: Build models
+        run: |
+          build_libs.sh models
+
       - name: Test utils
         run: |
           test_libs.sh utils
@@ -119,6 +123,10 @@ jobs:
       - name: Test local-execution
         run: |
           test_libs.sh local-execution
+
+      - name: Test models
+        run: |
+          test_libs.sh models
 
       - name: Generate code coverage
         run: |

@@ -90,37 +90,6 @@ std::optional<std::size_t> index_of(Container const &c, Element const &e) {
 }
 
 template <typename K, typename V>
-std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
-                                    std::unordered_map<K, V> const &rhs) {
-  assert(are_disjoint(keys(lhs), keys(rhs)));
-
-  std::unordered_map<K, V> result;
-  for (auto const &kv : lhs) {
-    result.insert(kv);
-  }
-  for (auto const &kv : rhs) {
-    result.insert(kv);
-  }
-
-  return result;
-}
-
-template <typename K, typename V>
-bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
-  assert(are_disjoint(keys(lhs), keys(rhs)));
-
-  bidict<K, V> result;
-  for (auto const &kv : lhs) {
-    result.equate(kv.first, kv.second);
-  }
-  for (auto const &kv : rhs) {
-    result.equate(kv.first, kv.second);
-  }
-
-  return result;
-}
-
-template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
   return [&m](K const &k) -> V { return m.at(k); };
 }

@@ -10,7 +10,7 @@
 #include "utils/containers/zip.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
-#include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_inputs.h"
 
 namespace FlexFlow {
 
@@ -37,7 +37,8 @@ static std::optional<UnlabelledDataflowGraphPatternMatch>
 
   std::vector<PatternValue> pattern_node_inputs =
       get_inputs_to_pattern_node(pattern, pattern_node);
-  std::unordered_set<PatternInput> pattern_graph_inputs = get_inputs(pattern);
+  std::unordered_set<PatternInput> pattern_graph_inputs =
+      get_graph_inputs(pattern);
 
   assert(unordered_set_of(pattern_node_inputs) ==
          transform(pattern_graph_inputs,

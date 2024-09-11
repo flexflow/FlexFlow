@@ -25,6 +25,12 @@ TensorAttrs get_tensor_attrs(ComputationGraph const &cg,
   return cg.raw_graph.at(t.raw_graph_output);
 }
 
+bool are_tensor_guid_shapes_equivalent(ComputationGraph const &cg,
+                                       tensor_guid_t const &t1,
+                                       tensor_guid_t const &t2) {
+  return get_tensor_attrs(cg, t1).shape == get_tensor_attrs(cg, t2).shape;
+}
+
 std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg) {
   std::vector<Node> layers = get_topological_ordering(cg.raw_graph);
   return transform(
@@ -47,7 +53,7 @@ std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
 
 std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n) {
-  return transform(get_inputs(cg.raw_graph, n.raw_node),
+  return transform(get_input_values(cg.raw_graph, n.raw_node),
                    [](DataflowOutput const &o) { return tensor_guid_t{o}; });
 }
 

@@ -13,6 +13,7 @@ ff_add_library(
     fmt
     json
     cuda
+    doctest
 )      
 
 add_subdirectory(ffi)

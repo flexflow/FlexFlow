@@ -61,7 +61,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       SUBCASE("full_pattern_values_to_subpattern_2_inputs") {
         bidict<PatternValue, PatternInput> result =
             split_result.full_pattern_values_to_subpattern_2_inputs;
-        PatternInput i0 = get_only(get_inputs(split_result.subpattern_2));
+        PatternInput i0 = get_only(get_graph_inputs(split_result.subpattern_2));
         bidict<PatternValue, PatternInput> correct = {
             {pv0, i0},
         };
@@ -117,7 +117,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             split_result.full_pattern_values_to_subpattern_1_inputs;
         bidict<PatternValue, PatternInput> correct = {
             {PatternValue{pi0},
-             get_only(get_inputs(split_result.subpattern_1))},
+             get_only(get_graph_inputs(split_result.subpattern_1))},
         };
         CHECK(result == correct);
       }
@@ -126,7 +126,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             split_result.full_pattern_values_to_subpattern_2_inputs;
         bidict<PatternValue, PatternInput> correct = {
             {PatternValue{pi1},
-             get_only(get_inputs(split_result.subpattern_2))},
+             get_only(get_graph_inputs(split_result.subpattern_2))},
         };
         CHECK(result == correct);
       }

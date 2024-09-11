@@ -5,6 +5,7 @@
 #include "utils/fmt/pair.h"
 #include "utils/join_strings.h"
 #include <algorithm>
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <unordered_map>
 #include <vector>
@@ -46,5 +47,16 @@ std::ostream &operator<<(std::ostream &s, std::unordered_map<K, V> const &m) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename K, typename V>
+struct StringMaker<std::unordered_map<K, V>> {
+  static String convert(std::unordered_map<K, V> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

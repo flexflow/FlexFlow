@@ -16,10 +16,10 @@ public:
   LabelledDataflowGraphView &
       operator=(LabelledDataflowGraphView const &) = default;
 
-  NodeLabel const &at(Node const &n) const {
+  NodeLabel at(Node const &n) const {
     return this->get_interface().at(n);
   }
-  OutputLabel const &at(DataflowOutput const &o) const {
+  OutputLabel at(DataflowOutput const &o) const {
     return this->get_interface().at(o);
   }
 

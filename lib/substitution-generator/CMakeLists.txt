@@ -11,6 +11,7 @@ ff_add_library(
     utils
     op-attrs
     pcg
+    substitutions
 )
 
 # add_subdirectory(ffi)
