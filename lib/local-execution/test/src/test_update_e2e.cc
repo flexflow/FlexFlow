@@ -55,7 +55,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                                              /*weight_decay=*/0.001}};
         std::optional<ModelTrainingInstance> model_training_instance =
             ModelTrainingInstance{
-                LossAttrs{OtherLossAttrs{
+                LossAttrs{NonconfigurableLossAttrs{
                     LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
                 label_tensor,
                 logit_tensor,
@@ -78,7 +78,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                                              /*weight_decay=*/0.001}};
         std::optional<ModelTrainingInstance> model_training_instance =
             ModelTrainingInstance{
-                LossAttrs{OtherLossAttrs{
+                LossAttrs{NonconfigurableLossAttrs{
                     LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
                 label_tensor,
                 logit_tensor,
@@ -107,7 +107,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       std::optional<ModelTrainingInstance> model_training_instance =
           ModelTrainingInstance{
               LossAttrs{
-                  OtherLossAttrs{LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
+                  NonconfigurableLossAttrs{LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
               label_tensor,
               logit_tensor,
               optimizer_attrs};

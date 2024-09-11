@@ -12,7 +12,7 @@ LossFunction get_loss_function(LossAttrs const &attrs) {
       overload{[&](SparseCategoricalCrossEntropyLossAttrs const &s) {
                  return LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY;
                },
-               [&](OtherLossAttrs const &s) { return s.loss_type; }});
+               [&](NonconfigurableLossAttrs const &s) { return s.loss_type; }});
 }
 
 LossFunction parse_loss_name(std::string const &raw_name) {

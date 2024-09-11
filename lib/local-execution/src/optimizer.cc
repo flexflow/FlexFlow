@@ -35,8 +35,9 @@ TaskInvocation sgd_update(SGDOptimizerAttrs const &attrs,
   if (CHOSEN_SYNC_TYPE == ParamSync::NCCL) {
     b.bind_arg(HANDLE, ff_handle());
     return {task_id_t::SGD_UPD_NCCL_TASK_ID, b};
+  } else  {
+    return {task_id_t::SGD_UPD_PS_TASK_ID, b};
   }
-  return {task_id_t::SGD_UPD_PS_TASK_ID, b};
 }
 
 static void sgd_update_task_impl(TaskArgumentAccessor const &acc) {
@@ -183,8 +184,8 @@ TaskImplFunction get_adam_update_task_impl() {
 
 TaskSignature get_update_signature(OptimizerAttrs const &attrs) {
   return attrs.visit<TaskSignature>(overload{
-      [&](SGDOptimizerAttrs const &s) { return get_sgd_update_signature(); },
-      [&](AdamOptimizerAttrs const &s) {
+      [&](SGDOptimizerAttrs const &) { return get_sgd_update_signature(); },
+      [&](AdamOptimizerAttrs const &) {
         return get_adam_update_signature();
       }});
 }
@@ -192,21 +193,21 @@ TaskSignature get_update_signature(OptimizerAttrs const &attrs) {
 TaskInvocation
     get_update_invocation(OptimizerAttrs const &attrs,
                           tensor_guid_t const &weight,
-                          std::vector<tensor_guid_t> const &buffer_tensors) {
+                          std::vector<tensor_guid_t> const &grad_buffer_tensors) {
   return attrs.visit<TaskInvocation>(
       overload{[&](SGDOptimizerAttrs const &s) {
-                 return sgd_update(s, weight, buffer_tensors.at(0));
+                 return sgd_update(s, weight, grad_buffer_tensors.at(0));
                },
                [&](AdamOptimizerAttrs const &s) {
                  return adam_update(
-                     s, weight, buffer_tensors.at(0), buffer_tensors.at(1));
+                     s, weight, grad_buffer_tensors.at(0), grad_buffer_tensors.at(1));
                }});
 }
 
 TaskImplFunction get_update_task_impl(OptimizerAttrs const &attrs) {
   return attrs.visit<TaskImplFunction>(overload{
-      [&](SGDOptimizerAttrs const &s) { return get_sgd_update_task_impl(); },
-      [&](AdamOptimizerAttrs const &s) {
+      [&](SGDOptimizerAttrs const &) { return get_sgd_update_task_impl(); },
+      [&](AdamOptimizerAttrs const &) {
         return get_adam_update_task_impl();
       }});
 }

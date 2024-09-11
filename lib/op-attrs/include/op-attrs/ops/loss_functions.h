@@ -1,11 +1,11 @@
 #ifndef _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_LOSS_FUNCTIONS_H
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_OPS_LOSS_FUNCTIONS_H
 
-#include "core.h"
-#include "loss_attrs.dtg.h"
-#include "loss_function.dtg.h"
-#include "other_loss_attrs.dtg.h"
-#include "sparse_categorical_ce_loss_attrs.dtg.h"
+#include "op-attrs/ops/core.h"
+#include "op-attrs/ops/loss_attrs.dtg.h"
+#include "op-attrs/ops/loss_function.dtg.h"
+#include "op-attrs/ops/nonconfigurable_loss_attrs.dtg.h"
+#include "op-attrs/ops/sparse_categorical_ce_loss_attrs.dtg.h"
 
 namespace FlexFlow {
 

@@ -1,5 +1,6 @@
 #include "local-execution/local_slots_backing.h"
 #include "utils/containers/contains_key.h"
+#include "utils/containers/map_values.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {
@@ -55,17 +56,17 @@ void LocalSlotsBacking::allocate_optimizer_tensors(
     TaskSignature const &sig) {
   GenericTensorAccessorW weight_backing =
       get_tensor_backing(weight, IsGrad::NO);
-  int num_buffer_tensors =
+  int num_grad_buffer_tensors =
       sig.tensor_guid_slots.size() - 2; // ignore 2 (weight and weight_grad)
-  std::vector<tensor_guid_t> buffer_tensors =
+  std::vector<tensor_guid_t> grad_buffer_tensors =
       get_new_tensor_guids_for_layer_without_graph_insertion(
-          cg, weight_layer, num_buffer_tensors);
-  for (auto const &tensor_guid : buffer_tensors) {
+          cg, weight_layer, num_grad_buffer_tensors);
+  for (tensor_guid_t const &tensor_guid : grad_buffer_tensors) {
     GenericTensorAccessorW buffer_backing = allocator.allocate_tensor(
         get_tensor_shape(weight_backing.shape, weight_backing.data_type));
     this->gradient_tensor_mapping.insert({tensor_guid, buffer_backing});
   }
-  this->weight_optimizer_tensor_guids.insert({weight, buffer_tensors});
+  this->weight_optimizer_tensor_guids.insert({weight, grad_buffer_tensors});
 }
 
 bool LocalSlotsBacking::is_tensor_allocated(
@@ -123,8 +124,7 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
         break;
       default:
         throw mk_runtime_error(
-            fmt::format("Invalid TensorRole")); // inserting role yields
-                                                // "type_is_unformattable" error
+            fmt::format("Invalid TensorRole {}", tensor_spec.role));
     }
 
     IsGrad is_grad = slot_grad_id.is_grad;
@@ -154,41 +154,29 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
 
 ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
     OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
-  ArgSlotsBacking mapping;
-  for (auto const &arg_binding : binding.get_arg_bindings()) {
-    slot_id_t arg_slot = arg_binding.first;
-    OpArgSpec op_arg_spec = arg_binding.second;
-
-    mapping.insert({arg_slot,
-                    op_arg_spec.visit<ConcreteArgSpec>(overload{
-                        [&](OpArgRefSpec const &s) {
-                          return this->resolve_op_arg_ref_spec(s, op_guid);
-                        },
-                        [&](RuntimeArgRefSpec const &s) {
-                          return this->resolve_runtime_arg_ref_spec(s);
-                        },
-                        [](ConcreteArgSpec const &s) { return s; },
-                    })});
-  }
-  return mapping;
+  return map_values(binding.get_arg_bindings(), [&](auto const &arg_binding){
+    return arg_binding.template visit<ConcreteArgSpec>(overload{
+      [&](OpArgRefSpec const &s) {
+        return this->resolve_op_arg_ref_spec(s, op_guid);
+      },
+      [&](RuntimeArgRefSpec const &s) {
+        return this->resolve_runtime_arg_ref_spec(s);
+      },
+      [](ConcreteArgSpec const &s) { return s; }
+    });
+  });
 }
 
 ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
     TaskBinding const &binding) const {
-  ArgSlotsBacking mapping;
-  for (auto const &arg_binding : binding.get_arg_bindings()) {
-    slot_id_t arg_slot = arg_binding.first;
-    TaskArgSpec task_arg_spec = arg_binding.second;
-
-    mapping.insert({arg_slot,
-                    task_arg_spec.visit<ConcreteArgSpec>(overload{
-                        [&](RuntimeArgRefSpec const &s) {
-                          return this->resolve_runtime_arg_ref_spec(s);
-                        },
-                        [](ConcreteArgSpec const &s) { return s; },
-                    })});
-  }
-  return mapping;
+  return map_values(binding.get_arg_bindings(), [&](auto const &arg_binding){
+    return arg_binding.template visit<ConcreteArgSpec>(overload{
+      [&](RuntimeArgRefSpec const &s) {
+        return this->resolve_runtime_arg_ref_spec(s);
+      },
+      [](ConcreteArgSpec const &s) { return s; }
+    });
+  });;
 }
 
 ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(

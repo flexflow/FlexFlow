@@ -8,18 +8,18 @@ features = [
 ]
 
 includes = [
-  "local-execution/init_task_impl_function.h",
-  "local-execution/fwd_bwd_task_impl_function.h",
+  "local-execution/init_op_task_impl_function.h",
+  "local-execution/fwd_bwd_op_task_impl_function.h",
   "local-execution/generic_task_impl_function.h",
 ]
 
 [[values]]
-type = "::FlexFlow::InitTaskImplFunction"
-key = "init_task_impl_function"
+type = "::FlexFlow::InitOpTaskImplFunction"
+key = "init_op_task_impl_function"
 
 [[values]]
-type = "::FlexFlow::FwdBwdTaskImplFunction"
-key = "fwd_bwd_task_impl_function"
+type = "::FlexFlow::FwdBwdOpTaskImplFunction"
+key = "fwd_bwd_op_task_impl_function"
 
 [[values]]
 type = "::FlexFlow::GenericTaskImplFunction"

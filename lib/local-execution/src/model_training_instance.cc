@@ -22,8 +22,9 @@ ModelTrainingInstance next(ModelTrainingInstance const &old_training_instance) {
                                  old_training_instance.label_tensor,
                                  old_training_instance.logit_tensor,
                                  new_attrs};
+  } else {
+    return old_training_instance;
   }
-  return old_training_instance;
 }
 
 } // namespace FlexFlow

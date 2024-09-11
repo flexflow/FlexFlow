@@ -10,7 +10,7 @@ features = [
 
 includes = [
   "op-attrs/ops/sparse_categorical_ce_loss_attrs.dtg.h",
-  "op-attrs/ops/other_loss_attrs.dtg.h"
+  "op-attrs/ops/nonconfigurable_loss_attrs.dtg.h"
 ]
 
 [[values]]
@@ -18,5 +18,5 @@ type = "::FlexFlow::SparseCategoricalCrossEntropyLossAttrs"
 key = "sparse_categorical_ce_loss_attrs"
 
 [[values]]
-type = "::FlexFlow::OtherLossAttrs"
-key = "other_loss_attrs"
+type = "::FlexFlow::NonconfigurableLossAttrs"
+key = "nonconfigurable_loss_attrs"

@@ -19,7 +19,11 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         EnableProfiling::NO,
         ProfilingSettings{/*warmup_iters=*/0, /*measure_iters=*/0}};
 
-    OptimizerAttrs optimizer_attrs = make_empty_sgd_attrs();
+    OptimizerAttrs optimizer_attrs = OptimizerAttrs{SGDOptimizerAttrs{
+      /*lr=*/0.0, 
+      /*momentum=*/0.0, 
+      /*nesterov=*/false, 
+      /*weight_decay=*/0.0}};
 
     // construct graph
     ComputationGraphBuilder cg_builder;
@@ -76,7 +80,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
 
       SUBCASE("LossFunction::CATEGORICAL_CROSSENTROPY") {
         std::optional<ModelTrainingInstance> model_training_instance =
-            ModelTrainingInstance{LossAttrs{OtherLossAttrs{
+            ModelTrainingInstance{LossAttrs{NonconfigurableLossAttrs{
                                       LossFunction::CATEGORICAL_CROSSENTROPY}},
                                   label_tensor,
                                   logit_tensor,
@@ -94,7 +98,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       SUBCASE("LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE") {
         std::optional<ModelTrainingInstance> model_training_instance =
             ModelTrainingInstance{
-                LossAttrs{OtherLossAttrs{
+                LossAttrs{NonconfigurableLossAttrs{
                     LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
                 label_tensor,
                 logit_tensor,
@@ -112,7 +116,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       SUBCASE("LossFunction::IDENTITY") {
         std::optional<ModelTrainingInstance> model_training_instance =
             ModelTrainingInstance{
-                LossAttrs{OtherLossAttrs{LossFunction::IDENTITY}},
+                LossAttrs{NonconfigurableLossAttrs{LossFunction::IDENTITY}},
                 label_tensor,
                 logit_tensor,
                 optimizer_attrs};

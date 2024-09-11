@@ -3,17 +3,22 @@ name = "TaskSignature"
 features = [
   "eq",
   "fmt",
+  "hash"
 ]
 
 includes = [
   "local-execution/tensor_guid_slot_spec.dtg.h",
-  "utils/type_index.h",
-  "utils/optional.h"
+  "<typeindex>",
+  "<optional>"
 ]
 
 src_includes = [
   "utils/fmt/unordered_map.h",
   "utils/fmt/unordered_set.h",
+  "utils/hash/unordered_map.h",
+  "utils/hash/unordered_set.h",
+  "utils/fmt/optional.h",
+  "utils/type_index.h"
 ]
 
 [[fields]]

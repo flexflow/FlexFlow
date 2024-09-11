@@ -60,7 +60,7 @@ DeviceSpecificDeviceStates
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
   auto fn =
-      task_sig_impl.impl_function.get<InitTaskImplFunction>().function_ptr;
+      task_sig_impl.impl_function.get<InitOpTaskImplFunction>().function_ptr;
   return fn(acc);
 }
 
@@ -70,7 +70,7 @@ std::optional<float>
   TaskSignatureAndImpl task_sig_impl =
       this->task_registry.task_mapping.at(task_id);
   auto fn =
-      task_sig_impl.impl_function.get<FwdBwdTaskImplFunction>().function_ptr;
+      task_sig_impl.impl_function.get<FwdBwdOpTaskImplFunction>().function_ptr;
   return fn(acc);
 }
 
@@ -160,13 +160,13 @@ void LocalTrainingBacking::execute_update() {
       // get tensors
       tensor_guid_t weight_tensor =
           get_only(get_outgoing_tensors(this->computation_graph, node));
-      std::vector<tensor_guid_t> buffer_tensors =
+      std::vector<tensor_guid_t> grad_buffer_tensors =
           this->local_slots_backing.weight_optimizer_tensor_guids.at(
               weight_tensor);
 
       // get invocation
       TaskInvocation invocation =
-          get_update_invocation(attrs, weight_tensor, buffer_tensors);
+          get_update_invocation(attrs, weight_tensor, grad_buffer_tensors);
       assert(is_invocation_valid(get_update_signature(attrs), invocation));
 
       // execute update

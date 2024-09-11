@@ -29,19 +29,13 @@ cudaError_t get_legion_stream(cudaStream_t *stream) {
 #error "Unknown device, please make sure if CUDA is enabled"
 #endif
 
-__global__ void scale_kernel(float *ptr, coord_t size, float a, float b) {
+__global__ void scale_kernel(float *ptr, size_t size, float a, float b) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = (b - a) * ptr[i] + a;
   }
 }
 
-__global__ void scale_kernel(float *ptr, unsigned long size, float a, float b) {
-  CUDA_KERNEL_LOOP(i, size) {
-    ptr[i] = (b - a) * ptr[i] + a;
-  }
-}
-
-__global__ void ones_kernel(float *ptr, coord_t size) {
+__global__ void ones_kernel(float *ptr, size_t size) {
   CUDA_KERNEL_LOOP(i, size) {
     ptr[i] = 1.0f;
   }
