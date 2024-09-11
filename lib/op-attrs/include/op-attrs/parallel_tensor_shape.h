@@ -1,11 +1,11 @@
 #ifndef _OP_META_PARALLEL_TENSOR_SHAPE_H
 #define _OP_META_PARALLEL_TENSOR_SHAPE_H
 
+#include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/replica_parallel_dim.dtg.h"
 #include "op-attrs/tensor_shape.h"
 #include <vector>
-#include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 
 namespace FlexFlow {
 
@@ -27,7 +27,7 @@ ParallelTensorShape
                                   DiscardCopyDegree const &,
                                   FFOrdered<int> const &shard_degrees);
 ParallelTensorShape
-    lift_to_parallel_with_degrees(TensorShape const &, 
+    lift_to_parallel_with_degrees(TensorShape const &,
                                   ParallelTensorDimDegrees const &);
 
 std::unordered_set<ReplicaParallelDim>

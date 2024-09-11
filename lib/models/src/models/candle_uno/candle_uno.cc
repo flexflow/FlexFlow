@@ -1,4 +1,4 @@
-#include "models/candle_uno.h"
+#include "models/candle_uno/candle_uno.h"
 
 namespace FlexFlow {
 
@@ -7,8 +7,9 @@ CandleUnoConfig get_default_candle_uno_config() {
       /*batch_size=*/64,
       /*dense_layers=*/std::vector<int>(4, 4192),
       /*dense_feature_layers=*/std::vector<int>(8, 4192),
-      /*feature_shapes=*/std::map<std::string, int>(),
-      /*input_features=*/std::map<std::string, std::string>());
+      /*feature_shapes=*/std::map<std::string, int>{},
+      /*input_features=*/std::map<std::string, std::string>{},
+      /*dropout=*/0.1);
 
   config.feature_shapes["dose"] = 1;
   config.feature_shapes["cell.rnaseq"] = 942;
@@ -40,7 +41,8 @@ ComputationGraph
     get_candle_uno_computation_graph(CandleUnoConfig const &config) {
   ComputationGraphBuilder cgb;
 
-  auto create_input_tensor = [&](FFOrdered<size_t> dims) -> tensor_guid_t {
+  auto create_input_tensor =
+      [&](FFOrdered<size_t> const &dims) -> tensor_guid_t {
     TensorShape input_shape = TensorShape{
         TensorDims{dims},
         DataType::FLOAT,
@@ -63,15 +65,12 @@ ComputationGraph
   std::vector<tensor_guid_t> encoded_inputs;
 
   for (auto const &input_feature : config.input_features) {
-    auto const &feature_name = input_feature.second;
-    assert(config.feature_shapes.find(feature_name) !=
-           config.feature_shapes.end());
-
+    std::string const &feature_name = input_feature.second;
     size_t shape = config.feature_shapes.at(feature_name);
     tensor_guid_t input = create_input_tensor({config.batch_size, shape});
     all_inputs.push_back(input);
 
-    if (input_models.find(feature_name) != input_models.end()) {
+    if (contains(input_models, feature_name)) {
       encoded_inputs.emplace_back(
           create_candle_uno_feature_model(cgb, config, input));
     } else {
@@ -79,9 +78,8 @@ ComputationGraph
     }
   }
 
-  tensor_guid_t output =
-      cgb.concat(encoded_inputs, /*axis=*/-1);
-  for (auto const dense_layer_dim : config.dense_layers) {
+  tensor_guid_t output = cgb.concat(encoded_inputs, /*axis=*/1);
+  for (auto const &dense_layer_dim : config.dense_layers) {
     output = cgb.dense(
         output, dense_layer_dim, Activation::RELU, /*use_bias=*/false);
   }

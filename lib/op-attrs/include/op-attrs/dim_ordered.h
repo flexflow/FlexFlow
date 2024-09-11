@@ -10,7 +10,7 @@ namespace FlexFlow {
 
 template <typename Idx, typename T>
 struct DimOrdered {
-  DimOrdered() { }
+  DimOrdered() {}
 
   DimOrdered(std::initializer_list<T> const &l)
       : contents(l.begin(), l.end()) {}

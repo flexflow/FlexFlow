@@ -1,4 +1,4 @@
-#include "models/candle_uno.h"
+#include "models/candle_uno/candle_uno.h"
 #include "pcg/computation_graph.h"
 #include <doctest/doctest.h>
 
@@ -12,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("num layers") {
       int result_num_layers = get_layers(result).size();
-      int correct_num_layers = 97;
+      int correct_num_layers = 98;
       CHECK(result_num_layers == correct_num_layers);
     }
   }

@@ -732,9 +732,11 @@ tensor_guid_t ComputationGraphBuilder::concat(
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  std::vector<TensorShape> input_shapes = transform(inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
-  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shapes));
-  
+  std::vector<TensorShape> input_shapes = transform(
+      inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, input_shapes));
+
   return this->add_layer(layer, inputs, {}, output_shape);
 }
 

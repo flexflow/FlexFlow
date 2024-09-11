@@ -42,3 +42,7 @@ type = "std::map<std::string, int>"
 [[fields]]
 name = "input_features"
 type = "std::map<std::string, std::string>"
+
+[[fields]]
+name = "dropout"
+type = "float"
