@@ -496,11 +496,19 @@ tensor_guid_t ComputationGraphBuilder::pool2d(
     int paddingH,
     int paddingW,
     PoolOp type,
-    Activation const &activation,
+    std::optional<Activation> const &activation,
     std::optional<std::string> const &maybe_name) {
 
   Pool2DAttrs attrs = Pool2DAttrs{
-      kernelH, kernelW, strideH, strideW, paddingH, paddingW, type, activation};
+    /*kernel_h=*/kernelH, 
+    /*kernel_w=*/kernelW, 
+    /*stride_h=*/strideH, 
+    /*stride_w=*/strideW, 
+    /*padding_h=*/paddingH, 
+    /*padding_w=*/paddingW, 
+    /*pool_type=*/type, 
+    /*activation=*/activation,
+  };
 
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
@@ -510,7 +518,7 @@ tensor_guid_t ComputationGraphBuilder::pool2d(
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, output_shape);
 }
@@ -667,27 +675,20 @@ tensor_guid_t ComputationGraphBuilder::dense(
 }
 
 tensor_guid_t ComputationGraphBuilder::concat(
-    int n,
-    std::vector<tensor_guid_t> const &tensors,
+    std::vector<tensor_guid_t> const &inputs,
     int axis,
     std::optional<std::string> const &maybe_name) {
-  assert(n == tensors.size());
-  ConcatAttrs attrs = ConcatAttrs{ff_dim_t{axis}, n};
+
+  ConcatAttrs attrs = ConcatAttrs{ff_dim_t{axis}};
+
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
 
-  std::vector<tensor_guid_t> inputs =
-      transform(tensors, [&](tensor_guid_t const &t) {
-        return this->as_type(t, DataType::FLOAT, name + "input_pre_cast");
-      });
-
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape =
-      get_output_shape(attrs, transform(inputs, [&](tensor_guid_t const &t) {
-                         return this->get_shape(t);
-                       }));
-
+  std::vector<TensorShape> input_shapes = transform(inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shapes));
+  
   return this->add_layer(layer, inputs, {}, output_shape);
 }
 

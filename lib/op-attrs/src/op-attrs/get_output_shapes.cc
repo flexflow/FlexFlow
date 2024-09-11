@@ -14,6 +14,7 @@
 #include "op-attrs/ops/input.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/pool_2d.h"
 #include "op-attrs/ops/replicate.h"
 #include "op-attrs/ops/weight.h"
 #include "utils/overload.h"
@@ -38,7 +39,7 @@ std::vector<ParallelTensorShape>
         return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
       },
       [&](ConcatAttrs const &attrs) -> std::vector<ParallelTensorShape> {
-        return {get_output_shape(attrs, inputs)};
+        return {throw_if_unexpected(get_output_shape(attrs, inputs))};
       },
       [&](Conv2DAttrs const &attrs) -> std::vector<ParallelTensorShape> {
         return {get_output_shape(attrs, inputs.at(0))};
@@ -69,6 +70,9 @@ std::vector<ParallelTensorShape>
         return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
       },
       [&](LinearAttrs const &attrs) -> std::vector<ParallelTensorShape> {
+        return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
+      },
+      [&](Pool2DAttrs const &attrs) -> std::vector<ParallelTensorShape> {
         return {throw_if_unexpected(get_output_shape(attrs, inputs.at(0)))};
       },
       [&](ReplicateAttrs const &attrs) -> std::vector<ParallelTensorShape> {

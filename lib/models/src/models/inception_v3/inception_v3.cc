@@ -1,4 +1,4 @@
-#include "models/inceptionv3.h"
+#include "models/inception_v3/inception_v3.h"
 #include "pcg/computation_graph.h"
 #include "pcg/computation_graph_builder.h"
 
@@ -51,7 +51,7 @@ tensor_guid_t create_inception_module_a(ComputationGraphBuilder &cgb,
   tensor_guid_t branch_pool = cgb.pool2d(input, 3, 3, 1, 1, 1, 1, PoolOp::AVG);
   branch_pool = create_conv_block(cgb, branch_pool, pool_features, 1, 1);
 
-  return cgb.concat(4, {branch1x1, branch5x5, branch3x3dbl, branch_pool}, 3);
+  return cgb.concat({branch1x1, branch5x5, branch3x3dbl, branch_pool}, /*axis=*/3);
 }
 
 tensor_guid_t create_inception_module_b(ComputationGraphBuilder &cgb,
@@ -64,7 +64,7 @@ tensor_guid_t create_inception_module_b(ComputationGraphBuilder &cgb,
 
   tensor_guid_t branch_pool = cgb.pool2d(input, 3, 3, 2, 2, 0, 0, PoolOp::MAX);
 
-  return cgb.concat(3, {branch3x3, branch3x3dbl, branch_pool}, 3);
+  return cgb.concat({branch3x3, branch3x3dbl, branch_pool}, 3);
 }
 
 tensor_guid_t create_inception_module_c(ComputationGraphBuilder &cgb,
@@ -90,7 +90,7 @@ tensor_guid_t create_inception_module_c(ComputationGraphBuilder &cgb,
   tensor_guid_t branch_pool = cgb.pool2d(input, 3, 3, 1, 1, 1, 1, PoolOp::AVG);
   branch_pool = create_conv_block(cgb, branch_pool, 192, 1, 1);
 
-  return cgb.concat(4, {branch1x1, branch7x7, branch7x7dbl, branch_pool}, 3);
+  return cgb.concat({branch1x1, branch7x7, branch7x7dbl, branch_pool}, 3);
 }
 
 tensor_guid_t create_inception_module_d(ComputationGraphBuilder &cgb,
@@ -105,7 +105,7 @@ tensor_guid_t create_inception_module_d(ComputationGraphBuilder &cgb,
 
   tensor_guid_t branch_pool = cgb.pool2d(input, 3, 3, 2, 2, 0, 0, PoolOp::MAX);
 
-  return cgb.concat(3, {branch3x3, branch7x7x3, branch_pool}, 3);
+  return cgb.concat({branch3x3, branch7x7x3, branch_pool}, 3);
 }
 
 tensor_guid_t create_inception_module_e(ComputationGraphBuilder &cgb,
@@ -117,7 +117,7 @@ tensor_guid_t create_inception_module_e(ComputationGraphBuilder &cgb,
       create_conv_block(cgb, branch3x3, 384, 1, 3, 1, 1, 0, 1);
   tensor_guid_t branch3x3_2 =
       create_conv_block(cgb, branch3x3, 384, 3, 1, 1, 1, 1, 0);
-  branch3x3 = cgb.concat(2, {branch3x3_1, branch3x3_2}, 3);
+  branch3x3 = cgb.concat({branch3x3_1, branch3x3_2}, 3);
 
   tensor_guid_t branch3x3dbl = create_conv_block(cgb, input, 448, 1, 1);
   branch3x3dbl = create_conv_block(cgb, branch3x3dbl, 384, 3, 3, 1, 1, 1, 1);
@@ -125,12 +125,12 @@ tensor_guid_t create_inception_module_e(ComputationGraphBuilder &cgb,
       create_conv_block(cgb, branch3x3dbl, 384, 1, 3, 1, 1, 0, 1);
   tensor_guid_t branch3x3dbl_2 =
       create_conv_block(cgb, branch3x3dbl, 384, 3, 1, 1, 1, 1, 0);
-  branch3x3dbl = cgb.concat(2, {branch3x3dbl_1, branch3x3dbl_2}, 3);
+  branch3x3dbl = cgb.concat({branch3x3dbl_1, branch3x3dbl_2}, 3);
 
   tensor_guid_t branch_pool = cgb.pool2d(input, 3, 3, 1, 1, 1, 1, PoolOp::AVG);
   branch_pool = create_conv_block(cgb, branch_pool, 192, 1, 1);
 
-  return cgb.concat(4, {branch1x1, branch3x3, branch3x3dbl, branch_pool}, 3);
+  return cgb.concat({branch1x1, branch3x3, branch3x3dbl, branch_pool}, 3);
 }
 
 tensor_guid_t create_initial_layers(ComputationGraphBuilder &cgb,

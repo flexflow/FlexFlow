@@ -1,10 +1,16 @@
 #include "op-attrs/ops/pool_2d.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(Pool2DAttrs const &attrs,
+tl::expected<TensorShape, std::string>
+  get_output_shape(Pool2DAttrs const &attrs,
                              TensorShape const &input_shape) {
+  if (num_dims(input_shape) != 4) {
+    return tl::unexpected(fmt::format("get_output_shape for Pool2DAttrs expected input tensor to have 4 dims, but received shape {}", input_shape));
+  }
+
   size_t num_samples = dim_at_idx(input_shape, ff_dim_t{0});
   size_t num_channels = dim_at_idx(input_shape, ff_dim_t{1});
   size_t input_height = dim_at_idx(input_shape, ff_dim_t{2});
@@ -25,59 +31,42 @@ TensorShape get_output_shape(Pool2DAttrs const &attrs,
                      }},
                      input_shape.data_type};
 }
-// TODO(@pietro): add tests for this and concat
 
-ParallelTensorShape get_output_shape(Pool2DAttrs const &,
-                                     ParallelTensorShape const &) {
-  NOT_IMPLEMENTED();
-}
-
-} // namespace FlexFlow
-
-/*
-#include "op-attrs/ops/pool_2d.h"
-#include "parallel_dim_mapping_record.h"
-#include "parallel_dim_mapping_record_solver.h"
-
-namespace FlexFlow {
-
-namespace Input {
-constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
-              REPLICA = 4;
-};
-
-namespace Output {
-constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
-              REPLICA = 4;
-};
-
-bool Pool2DAttrs::is_valid(ParallelTensorShape const &input) const {
-  ParallelTensorShape output_shape = this->calculate_output_shape(input);
-
-  return output_shape.is_valid() && (input.at(Input::REPLICA).degree == 1);
-}
-
-static std::vector<ParallelDimMappingRecord>
-    construct_mappings(ParallelTensorShape const &input_shape) {
-  auto const outputMappings = construct_output_parallel_dims({
-      {Input::REPLICA, MappingOperation::PARTITION, Output::REPLICA},
-      {Input::SAMPLE, MappingOperation::PARTITION, Output::SAMPLE},
-      {Input::CHANNEL, MappingOperation::PARTITION, Output::CHANNEL},
-      {Input::HEIGHT, MappingOperation::PARTITION, Output::HEIGHT},
-      {Input::WIDTH, MappingOperation::PARTITION, Output::WIDTH},
+tl::expected<ParallelTensorShape, std::string>
+  get_output_shape(Pool2DAttrs const &attrs, ParallelTensorShape const &input_shape) {
+  TensorShape unpar = ({
+    tl::expected<TensorShape, std::string> result_unpar =
+        get_output_shape(attrs, get_reduced_shape(input_shape));
+    if (!result_unpar.has_value()) {
+      return tl::unexpected(result_unpar.error());
+    }
+    result_unpar.value();
   });
 
-  return outputMappings;
+  ParallelTensorDimDegrees degrees = ({
+    tl::expected<ParallelTensorDimDegrees, std::string> result_degrees =
+        get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+    if (!result_degrees.has_value()) {
+      return tl::unexpected(result_degrees.error());
+    }
+    result_degrees.value();
+  });
+
+  return lift_to_parallel_with_degrees(unpar, degrees);
 }
 
-static ParallelDimMappingSolution
-    solve_mappings(ParallelTensorShape const &input) {
-  return solve_parallel_dim_mappings(construct_mappings(input), {input}, 0, 1);
-}
-
-ParallelTensorShape Pool2DAttrs::calculate_output_shape(ParallelTensorShape
-const &input) const { return solve_mappings(input).output_shapes.at(0);
+tl::expected<ParallelTensorDimDegrees, std::string>
+  get_output_parallel_dim_degrees(Pool2DAttrs const &attrs,
+                   ParallelTensorDimDegrees const &input_degrees) {
+  if (input_degrees.sum_degree.value > 1) {
+    if (attrs.pool_type == PoolOp::MAX) {
+      return tl::unexpected(fmt::format("get_output_parallel_dim_degrees for Pool2DAttrs with PoolOp::MAX expected input sum degree == 1, but received {}", input_degrees));
+    } else if (attrs.activation.has_value()) { 
+      return tl::unexpected(fmt::format("get_output_parallel_dim_degrees for Pool2DAttrs with activation={} expected input sum degree == 1, but received {}", attrs.activation.value(), input_degrees));
+    }
+  }
+    
+  return input_degrees;
 }
 
 } // namespace FlexFlow
-*/

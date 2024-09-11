@@ -21,7 +21,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   // }
 
   TEST_CASE("evaluate_substitution_output(SubParallelComputationGraph, "
-            "Substituion, PCGPatternMatch)") {
+            "Substitution, PCGPatternMatch)") {
     // Currently Substitution creation is very verbose.
     // This is being addressed in
     // https://github.com/flexflow/FlexFlow/issues/1473.

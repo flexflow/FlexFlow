@@ -1,4 +1,4 @@
-#include "models/transformer.h"
+#include "models/transformer/transformer.h"
 #include "pcg/computation_graph.h"
 
 namespace FlexFlow {

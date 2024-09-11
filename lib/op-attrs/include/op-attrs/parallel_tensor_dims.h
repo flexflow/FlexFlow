@@ -4,6 +4,7 @@
 #include "op-attrs/parallel_dim.h"
 #include "op-attrs/parallel_tensor_dims.dtg.h"
 #include "op-attrs/tensor_dims.dtg.h"
+#include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 
 namespace FlexFlow {
 
@@ -13,6 +14,8 @@ std::unordered_set<ReplicaParallelDim> replica_dims(ParallelTensorDims const &);
 
 /* size_t get_volume(ParallelTensorDims const &); */
 size_t num_shard_dims(ParallelTensorDims const &);
+
+ParallelTensorDimDegrees get_parallel_degrees(ParallelTensorDims const &);
 
 int total_replica_degree(ParallelTensorDims const &);
 int total_shard_degree(ParallelTensorDims const &);
