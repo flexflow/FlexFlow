@@ -495,8 +495,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
       case INC_DECODING_MODE:
       case TREE_SEARCH_MODE:
       case TREE_VERIFY_MODE: {
-        query_tmp_size =
-            num_q_heads * qk_dim * max_tokens_per_batch;
+        query_tmp_size = num_q_heads * qk_dim * max_tokens_per_batch;
         // a K-ary tree max node is (k^n - 1) / 2
         key_cache_size = num_kv_heads * qk_dim *
                          BatchConfig::max_requests_per_batch() * max_num_pages *

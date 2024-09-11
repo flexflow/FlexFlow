@@ -171,7 +171,7 @@ void FlexFlow::top_level_task(Task const *task,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
-                    max_tokens_per_ssm_batch,
+                   max_tokens_per_ssm_batch,
                    max_sequence_length,
                    sampling_seed,
                    streaming_cache);
