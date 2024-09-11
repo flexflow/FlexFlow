@@ -240,7 +240,6 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_decoding_mode(decoding_mode);
-  rm->set_max_spec_tree_token_num(64);
   rm->set_max_tree_depth(8);
   rm->set_max_tree_width(16);
   rm->set_verbose(verbose);

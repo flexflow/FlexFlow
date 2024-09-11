@@ -251,7 +251,6 @@ public:
   int get_max_tokens_per_batch();
   void set_max_tokens_per_ssm_batch(int max_num_ssm_tokens);
   int get_max_tokens_per_ssm_batch();
-  void set_max_spec_tree_token_num(int max_num_tokens);
   int get_max_spec_tree_token_num();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();

@@ -147,13 +147,6 @@ void RequestManager::set_max_tokens_per_ssm_batch(int max_num_ssm_tokens) {
   assert(max_tokens_per_ssm_batch <= BatchConfig::MAX_NUM_TOKENS);
 }
 
-void RequestManager::set_max_spec_tree_token_num(int max_num_tokens) {
-  assert(max_spec_tree_token_num == -1 ||
-         max_spec_tree_token_num == max_num_tokens);
-  max_spec_tree_token_num = max_num_tokens;
-  assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
-}
-
 int RequestManager::get_max_tokens_per_batch() {
   assert(max_tokens_per_batch > 0);
   return max_tokens_per_batch;
@@ -210,6 +203,10 @@ void RequestManager::set_max_tree_depth(int max_tree_depth) {
          max_tree_depth <= BatchConfig::MAX_TREE_DEPTH and
          "Invalid max_tree_depth");
   this->max_tree_depth = max_tree_depth;
+  if (max_tree_width > 0) {
+    max_spec_tree_token_num = max_tree_depth * max_tree_width + 1;
+    assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  }
 }
 
 int RequestManager::get_max_tree_width() {
@@ -224,6 +221,10 @@ void RequestManager::set_max_tree_width(int max_tree_width) {
          max_tree_width <= BatchConfig::MAX_TREE_WIDTH and
          "Invalid max_tree_width");
   this->max_tree_width = max_tree_width;
+  if (max_tree_depth > 0) {
+    max_spec_tree_token_num = max_tree_depth * max_tree_width + 1;
+    assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  }
 }
 
 void RequestManager::set_speculative_sampling(bool speculative_sampling_) {
