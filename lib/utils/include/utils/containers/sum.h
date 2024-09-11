@@ -12,7 +12,6 @@ T sum(C const &c) {
   return result;
 }
 
-
 } // namespace FlexFlow
 
 #endif

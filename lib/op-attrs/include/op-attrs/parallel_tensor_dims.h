@@ -2,9 +2,9 @@
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_TENSOR_DIMS_H
 
 #include "op-attrs/parallel_dim.h"
+#include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 #include "op-attrs/parallel_tensor_dims.dtg.h"
 #include "op-attrs/tensor_dims.dtg.h"
-#include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 
 namespace FlexFlow {
 

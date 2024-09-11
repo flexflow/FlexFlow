@@ -11,8 +11,7 @@ namespace FlexFlow {
 CHECK_VALID_OP_ATTR(ConcatAttrs);
 
 tl::expected<TensorShape, std::string>
-    get_output_shape(ConcatAttrs const &,
-                     std::vector<TensorShape> const &);
+    get_output_shape(ConcatAttrs const &, std::vector<TensorShape> const &);
 tl::expected<ParallelTensorShape, std::string>
     get_output_shape(ConcatAttrs const &,
                      std::vector<ParallelTensorShape> const &);

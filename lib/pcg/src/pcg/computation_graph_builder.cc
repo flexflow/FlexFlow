@@ -500,14 +500,14 @@ tensor_guid_t ComputationGraphBuilder::pool2d(
     std::optional<std::string> const &maybe_name) {
 
   Pool2DAttrs attrs = Pool2DAttrs{
-    /*kernel_h=*/kernelH, 
-    /*kernel_w=*/kernelW, 
-    /*stride_h=*/strideH, 
-    /*stride_w=*/strideW, 
-    /*padding_h=*/paddingH, 
-    /*padding_w=*/paddingW, 
-    /*pool_type=*/type, 
-    /*activation=*/activation,
+      /*kernel_h=*/kernelH,
+      /*kernel_w=*/kernelW,
+      /*stride_h=*/strideH,
+      /*stride_w=*/strideW,
+      /*padding_h=*/paddingH,
+      /*padding_w=*/paddingW,
+      /*pool_type=*/type,
+      /*activation=*/activation,
   };
 
   std::string name =
@@ -518,7 +518,8 @@ tensor_guid_t ComputationGraphBuilder::pool2d(
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return this->add_layer(layer, {input}, {}, output_shape);
 }
@@ -686,9 +687,11 @@ tensor_guid_t ComputationGraphBuilder::concat(
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  std::vector<TensorShape> input_shapes = transform(inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
-  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shapes));
-  
+  std::vector<TensorShape> input_shapes = transform(
+      inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, input_shapes));
+
   return this->add_layer(layer, inputs, {}, output_shape);
 }
 

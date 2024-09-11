@@ -31,9 +31,9 @@ size_t num_shard_dims(ParallelTensorDims const &dims) {
 
 ParallelTensorDimDegrees get_parallel_degrees(ParallelTensorDims const &d) {
   return ParallelTensorDimDegrees{
-    d.replica_dims.sum_degree,
-    d.replica_dims.discard_copy_degree,
-    ff_ordered_shard_degrees(d),
+      d.replica_dims.sum_degree,
+      d.replica_dims.discard_copy_degree,
+      ff_ordered_shard_degrees(d),
   };
 }
 

@@ -9,13 +9,18 @@ namespace FlexFlow {
 template <typename C, typename T = typename C::value_type>
 tl::expected<T, std::string> require_all_same1(C const &c) {
   if (c.empty()) {
-    return tl::unexpected(fmt::format("require_all_same1 expected non-empty container, but received {}", c));
+    return tl::unexpected(fmt::format(
+        "require_all_same1 expected non-empty container, but received {}", c));
   }
 
   T const &first = *c.cbegin();
   for (T const &v : c) {
     if (v != first) {
-      return tl::unexpected(fmt::format("require_all_same1 found non-same elements {} and {} in containers {}", first, v, c));
+      return tl::unexpected(fmt::format("require_all_same1 found non-same "
+                                        "elements {} and {} in containers {}",
+                                        first,
+                                        v,
+                                        c));
     }
   }
   return first;

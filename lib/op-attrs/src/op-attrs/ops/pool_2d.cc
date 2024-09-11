@@ -5,10 +5,12 @@
 namespace FlexFlow {
 
 tl::expected<TensorShape, std::string>
-  get_output_shape(Pool2DAttrs const &attrs,
-                             TensorShape const &input_shape) {
+    get_output_shape(Pool2DAttrs const &attrs, TensorShape const &input_shape) {
   if (num_dims(input_shape) != 4) {
-    return tl::unexpected(fmt::format("get_output_shape for Pool2DAttrs expected input tensor to have 4 dims, but received shape {}", input_shape));
+    return tl::unexpected(
+        fmt::format("get_output_shape for Pool2DAttrs expected input tensor to "
+                    "have 4 dims, but received shape {}",
+                    input_shape));
   }
 
   size_t num_samples = dim_at_idx(input_shape, ff_dim_t{0});
@@ -33,7 +35,8 @@ tl::expected<TensorShape, std::string>
 }
 
 tl::expected<ParallelTensorShape, std::string>
-  get_output_shape(Pool2DAttrs const &attrs, ParallelTensorShape const &input_shape) {
+    get_output_shape(Pool2DAttrs const &attrs,
+                     ParallelTensorShape const &input_shape) {
   TensorShape unpar = ({
     tl::expected<TensorShape, std::string> result_unpar =
         get_output_shape(attrs, get_reduced_shape(input_shape));
@@ -45,7 +48,8 @@ tl::expected<ParallelTensorShape, std::string>
 
   ParallelTensorDimDegrees degrees = ({
     tl::expected<ParallelTensorDimDegrees, std::string> result_degrees =
-        get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+        get_output_parallel_dim_degrees(attrs,
+                                        get_parallel_degrees(input_shape));
     if (!result_degrees.has_value()) {
       return tl::unexpected(result_degrees.error());
     }
@@ -56,16 +60,24 @@ tl::expected<ParallelTensorShape, std::string>
 }
 
 tl::expected<ParallelTensorDimDegrees, std::string>
-  get_output_parallel_dim_degrees(Pool2DAttrs const &attrs,
-                   ParallelTensorDimDegrees const &input_degrees) {
+    get_output_parallel_dim_degrees(
+        Pool2DAttrs const &attrs,
+        ParallelTensorDimDegrees const &input_degrees) {
   if (input_degrees.sum_degree.value > 1) {
     if (attrs.pool_type == PoolOp::MAX) {
-      return tl::unexpected(fmt::format("get_output_parallel_dim_degrees for Pool2DAttrs with PoolOp::MAX expected input sum degree == 1, but received {}", input_degrees));
-    } else if (attrs.activation.has_value()) { 
-      return tl::unexpected(fmt::format("get_output_parallel_dim_degrees for Pool2DAttrs with activation={} expected input sum degree == 1, but received {}", attrs.activation.value(), input_degrees));
+      return tl::unexpected(fmt::format(
+          "get_output_parallel_dim_degrees for Pool2DAttrs with PoolOp::MAX "
+          "expected input sum degree == 1, but received {}",
+          input_degrees));
+    } else if (attrs.activation.has_value()) {
+      return tl::unexpected(fmt::format(
+          "get_output_parallel_dim_degrees for Pool2DAttrs with activation={} "
+          "expected input sum degree == 1, but received {}",
+          attrs.activation.value(),
+          input_degrees));
     }
   }
-    
+
   return input_degrees;
 }
 

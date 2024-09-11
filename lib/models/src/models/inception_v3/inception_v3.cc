@@ -51,7 +51,8 @@ tensor_guid_t create_inception_module_a(ComputationGraphBuilder &cgb,
   tensor_guid_t branch_pool = cgb.pool2d(input, 3, 3, 1, 1, 1, 1, PoolOp::AVG);
   branch_pool = create_conv_block(cgb, branch_pool, pool_features, 1, 1);
 
-  return cgb.concat({branch1x1, branch5x5, branch3x3dbl, branch_pool}, /*axis=*/3);
+  return cgb.concat({branch1x1, branch5x5, branch3x3dbl, branch_pool},
+                    /*axis=*/3);
 }
 
 tensor_guid_t create_inception_module_b(ComputationGraphBuilder &cgb,
