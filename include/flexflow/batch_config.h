@@ -67,7 +67,7 @@ public:
   int num_active_tokens() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
-  static int max_verify_tokens_per_batch();
+  static int max_tokens_per_ssm_batch();
   static int max_spec_tree_token_num();
   static int max_sequence_length();
   static int get_max_tree_depth();
@@ -80,12 +80,13 @@ public:
   // Maximum possible values for different parameters
   // These maximum values are used for copying BatchConfig
   // across workers
-  inline static int const MAX_NUM_REQUESTS = 8;
+  inline static int const MAX_NUM_REQUESTS = 64;
   inline static int const MAX_NUM_TOKENS = 1024;
-  inline static int const MAX_SPEC_TREE_TOKEN_NUM = 128;
   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 4;
   inline static int const MAX_TREE_DEPTH = 16;
-  inline static int const MAX_TREE_WIDTH = 64;
+  inline static int const MAX_TREE_WIDTH = 16;
+  inline static int const MAX_SPEC_TREE_TOKEN_NUM =
+      MAX_TREE_DEPTH * MAX_TREE_WIDTH + 1;
   inline static int const MAX_K_LOGITS = 16;
 
   // The Constants for the Streaming KVCache
@@ -152,7 +153,7 @@ public:
         std::fill(std::begin(bits), std::end(bits), 0);
       }
 
-      uint64_t bits[MAX_SPEC_TREE_TOKEN_NUM / 64];
+      uint64_t bits[(MAX_SPEC_TREE_TOKEN_NUM + 63) / 64];
     };
 
     Bitset bit_mask[MAX_SPEC_TREE_TOKEN_NUM];

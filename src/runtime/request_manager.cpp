@@ -35,9 +35,17 @@ void RequestManager::load_tokens_task(
 
   // Extreme long prompts are not supported, only load up to
   // max_tokens_per_batch as prompt
-  if (batch_config->num_tokens > BatchConfig::max_tokens_per_batch()) {
+  if (batch_config->num_tokens > BatchConfig::max_tokens_per_batch() &&
+      (batch_config->get_mode() == INC_DECODING_MODE ||
+       batch_config->get_mode() == TREE_VERIFY_MODE)) {
     printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
            BatchConfig::max_tokens_per_batch());
+    printf("Got: %d tokens\n", batch_config->num_tokens);
+  } else if (batch_config->num_tokens >
+                 BatchConfig::max_tokens_per_ssm_batch() &&
+             batch_config->get_mode() == TREE_SEARCH_MODE) {
+    printf("Warning: too many tokens in prompt, only load up to %d tokens\n",
+           BatchConfig::max_tokens_per_ssm_batch());
     printf("Got: %d tokens\n", batch_config->num_tokens);
   }
 

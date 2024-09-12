@@ -47,6 +47,7 @@ void parse_input_args(char **argv,
                       float &topp,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
+                      int &max_tokens_per_ssm_batch,
                       int &max_sequence_length,
                       int &sampling_seed,
                       bool &streaming_cache) {
@@ -103,6 +104,10 @@ void parse_input_args(char **argv,
       max_tokens_per_batch = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--max-tokens-per-ssm-batch")) {
+      max_tokens_per_ssm_batch = std::stoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--max-sequence-length")) {
       max_sequence_length = std::stoi(argv[++i]);
       continue;
@@ -145,6 +150,7 @@ void FlexFlow::top_level_task(Task const *task,
   float topp = 0.6f;
   int max_requests_per_batch = 1;
   int max_tokens_per_batch = 128;
+  int max_tokens_per_ssm_batch = -1;
   int max_sequence_length = 256;
   RequestManager::DecodingMode decoding_mode =
       RequestManager::INCREMENTAL_DECODING;
@@ -165,9 +171,13 @@ void FlexFlow::top_level_task(Task const *task,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
+                   max_tokens_per_ssm_batch,
                    max_sequence_length,
                    sampling_seed,
                    streaming_cache);
+  if (max_tokens_per_ssm_batch == -1) {
+    max_tokens_per_ssm_batch = max_tokens_per_batch;
+  }
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -227,9 +237,9 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(max_requests_per_batch);
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
+  rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_decoding_mode(decoding_mode);
-  rm->set_max_spec_tree_token_num(64);
   rm->set_max_tree_depth(8);
   rm->set_max_tree_width(16);
   rm->set_verbose(verbose);
@@ -288,15 +298,20 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    std::vector<std::string> prompts;
+    std::vector<GenerationRequest> requests;
     for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      std::string text = prompt["prompt"].get<std::string>();
+      double slo_ratio = prompt["slo_ratio"].get<double>();
+      printf("Prompt[%d] with slo %.3f: %s\n",
+             total_num_requests,
+             slo_ratio,
+             text.c_str());
       total_num_requests++;
-      prompts.push_back(text);
+      requests.push_back(GenerationRequest(text, slo_ratio));
     }
+    PoissonEmissionMachine emission_machine(1.0);
     std::vector<GenerationResult> result =
-        model.generate(prompts, 128 /*max_sequence_length*/);
+        model.generate(requests, emission_machine);
   }
 
   // terminate the request manager by stopping the background thread

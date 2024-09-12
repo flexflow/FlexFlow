@@ -34,7 +34,7 @@ class InferenceManager {
 public:
   InferenceManager();
   static InferenceManager *get_inference_manager();
-  void compile_model_and_allocate_buffer(FFModel *model);
+  void compile_model_and_allocate_buffer(FFModel *model, bool is_llm = true);
   void init_operators_inference(FFModel *model);
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
@@ -136,6 +136,7 @@ struct Request {
   double decode_latency_ms = 0.0;
   int ssm_prefill_len = 0;
   int llm_prefill_len = 0;
+  bool attained = false;
 
   int first_token_offset_in_batch = 0;
   int num_tokens_in_batch = 0;
@@ -248,9 +249,9 @@ public:
   int get_max_requests_per_batch();
   void set_max_tokens_per_batch(int max_num_tokens);
   int get_max_tokens_per_batch();
-  void set_max_spec_tree_token_num(int max_num_tokens);
+  void set_max_tokens_per_ssm_batch(int max_num_ssm_tokens);
+  int get_max_tokens_per_ssm_batch();
   int get_max_spec_tree_token_num();
-  int get_max_verify_tokens_per_batch();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
   void set_decoding_mode(DecodingMode mode);
@@ -273,6 +274,7 @@ public:
   void set_streaming_cache(bool streaming_cache);
   bool get_memory_occupancy();
   void set_memory_occupancy(bool memory_occupancy);
+  double get_request_expected_latency(Request &request);
   Request &get_request_with_guid(RequestGuid guid);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
@@ -287,10 +289,10 @@ public:
   void serve_spec_infer_sync(FFModel *model);
   void serve_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt);
+  RequestGuid register_new_request(GenerationRequest const &req);
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
+  bool is_background_server_serving();
   bool is_background_server_terminated();
   void terminate_background_server();
   static void terminate_background_server_at_exit();
@@ -352,15 +354,16 @@ private:
   // configuration parameters
   int max_requests_per_batch;
   int max_tokens_per_batch;
+  int max_tokens_per_ssm_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
   int max_tree_depth;
   int max_tree_width;
   int k;
   // Profile based latency
-  double baseline_latency_ms = 1000;
-  double ssm_spec_latency_ms = 50;
-  double llm_verify_latency_ms = 50;
+  double baseline_latency_ms = 43;
+  double ssm_spec_latency_ms = 17;
+  double llm_verify_latency_ms = 65;
   double correction_factor = 1.05;
 
   State request_manager_status;
@@ -440,8 +443,8 @@ private:
   ProfileInfo profiling;
   std::unordered_map<RequestGuid, RequestProfileInfo> profiling_requests;
   double total_request_run_time;
-  void load_pending_request_to_batch();
-  void request_complete_clean_up(int batch_index);
+  bool load_pending_request_to_batch();
+  void request_complete_clean_up(int batch_index, bool attained);
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
   bool update_llm_decode_results(InferenceResult const &result);

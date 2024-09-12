@@ -62,8 +62,8 @@ void parse_input_args(char **argv,
                       bool &verbose,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
+                      int &max_tokens_per_ssm_batch,
                       int &max_sequence_length,
-                      int &max_spec_tree_token_num,
                       int &max_tree_width,
                       int &max_tree_depth,
                       int &expansion_degree,
@@ -121,12 +121,12 @@ void parse_input_args(char **argv,
       max_tokens_per_batch = std::stoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "--max-sequence-length")) {
-      max_sequence_length = std::stoi(argv[++i]);
+    if (!strcmp(argv[i], "--max-tokens-per-ssm-batch")) {
+      max_tokens_per_ssm_batch = std::stoi(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "--max-spec-tree-token-num")) {
-      max_spec_tree_token_num = std::stoi(argv[++i]);
+    if (!strcmp(argv[i], "--max-sequence-length")) {
+      max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--max-tree-width")) {
@@ -312,8 +312,8 @@ void FlexFlow::top_level_task(Task const *task,
   bool verbose = false;
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 128;
+  int max_tokens_per_ssm_batch = -1;
   int max_sequence_length = 512;
-  int max_spec_tree_token_num = 64;
   int expansion_degree = 3;
   int max_tree_depth = 8;
   int max_tree_width = 16;
@@ -335,8 +335,8 @@ void FlexFlow::top_level_task(Task const *task,
                    verbose,
                    max_requests_per_batch,
                    max_tokens_per_batch,
+                   max_tokens_per_ssm_batch,
                    max_sequence_length,
-                   max_spec_tree_token_num,
                    max_tree_width,
                    max_tree_depth,
                    expansion_degree,
@@ -344,6 +344,9 @@ void FlexFlow::top_level_task(Task const *task,
                    do_sample,
                    sampling_seed,
                    streaming_cache);
+  if (max_tokens_per_ssm_batch == -1) {
+    max_tokens_per_ssm_batch = max_tokens_per_batch;
+  }
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
@@ -358,7 +361,7 @@ void FlexFlow::top_level_task(Task const *task,
   RequestManager *rm = RequestManager::get_request_manager();
   rm->set_max_requests_per_batch(max_requests_per_batch);
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
-  rm->set_max_spec_tree_token_num(max_spec_tree_token_num);
+  rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_max_tree_depth(max_tree_depth);
   rm->set_max_tree_width(max_tree_width);
@@ -469,15 +472,19 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
 
-    std::vector<std::string> prompts;
+    std::vector<GenerationRequest> requests;
     for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      std::string text = prompt["prompt"].get<std::string>();
+      double slo_ratio = prompt["slo_ratio"].get<double>();
+      printf("Prompt[%d] with slo %.3f: %s\n",
+             total_num_requests,
+             slo_ratio,
+             text.c_str());
       total_num_requests++;
-      prompts.push_back(text);
-      // tree_model.generate(text, 128 /*max_sequence_length*/);
+      requests.push_back(GenerationRequest(text, slo_ratio));
     }
-    tree_model.generate(prompts, 128 /*max_sequence_length*/);
+    PoissonEmissionMachine emission_machine(1.0);
+    tree_model.generate(requests, emission_machine);
   }
 
   // terminate the request manager by stopping the background thread

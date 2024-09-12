@@ -40,6 +40,14 @@ struct GenerationConfig {
   }
 };
 
+struct GenerationRequest {
+  std::string prompt;
+  double slo_ratio;
+
+  GenerationRequest(std::string const &prompt_, double slo_ratio_)
+      : prompt(prompt_), slo_ratio(slo_ratio_) {}
+};
+
 struct GenerationResult {
   using RequestGuid = BatchConfig::RequestGuid;
   using TokenId = BatchConfig::TokenId;
@@ -48,6 +56,45 @@ struct GenerationResult {
   std::string output_text;
   std::vector<TokenId> input_tokens;
   std::vector<TokenId> output_tokens;
+};
+
+// Contains the configuration for how to emit requests to the server,
+// managing the request arrival rate.
+class EmissionMachine {
+public:
+  enum class EmissionMode { Constant, Poisson, Trace };
+  EmissionMode mode;
+  double last_request_time_ms;
+  double req_per_s;
+
+  EmissionMachine(EmissionMode mode_, double req_per_s_)
+      : mode(mode_), last_request_time_ms(0), req_per_s(req_per_s_) {}
+  void wait_until_next_request();
+
+  // Simulate next request arrival time
+  virtual double get_next_interval_ms() = 0;
+};
+
+class ConstantEmissionMachine : public EmissionMachine {
+public:
+  double interval_ms;
+
+  ConstantEmissionMachine(double req_per_s_)
+      : EmissionMachine(EmissionMode::Constant, req_per_s_),
+        interval_ms(req_per_s_ > 0 ? 1e3 / req_per_s_ : 0) {}
+
+  double get_next_interval_ms() override;
+};
+
+class PoissonEmissionMachine : public EmissionMachine {
+public:
+  double lambda;
+
+  PoissonEmissionMachine(double req_per_s_)
+      : EmissionMachine(EmissionMode::Poisson, req_per_s_), lambda(req_per_s_) {
+  }
+
+  double get_next_interval_ms() override;
 };
 
 #include <string>

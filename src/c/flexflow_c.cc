@@ -1606,8 +1606,9 @@ void flexflow_model_generate(flexflow_model_t handle_,
                 text_str.c_str(),
                 max_seq_length);
   }
+  ConstantEmissionMachine emission_machine(1.0);
   std::vector<GenerationResult> results =
-      handle->generate(prompts, max_seq_length);
+      handle->generate(prompts, emission_machine);
   // If the prompt exceeds max seq len, check that we return the prompt with no
   // additional token. Otherwise, check that the output does not exceed the max
   // sequence length.
@@ -2588,12 +2589,12 @@ void flexflow_request_manager_set_max_tokens_per_batch(
   DEBUG_PRINT("[RequestManager] set max_tokens_per_batch %d", max_num_tokens);
 }
 
-void flexflow_request_manager_set_max_spec_tree_token_num(
-    flexflow_request_manager_t handle_, int max_num_tokens) {
+void flexflow_request_manager_set_max_tokens_per_ssm_batch(
+    flexflow_request_manager_t handle_, int max_num_ssm_tokens) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
-  handle->set_max_spec_tree_token_num(max_num_tokens);
-  DEBUG_PRINT("[RequestManager] set max_spec_tree_token_num %d",
-              max_num_tokens);
+  handle->set_max_tokens_per_ssm_batch(max_num_ssm_tokens);
+  DEBUG_PRINT("[RequestManager] set max_tokens_per_ssm_batch %d",
+              max_num_ssm_tokens);
 }
 
 void flexflow_request_manager_set_max_sequence_length(

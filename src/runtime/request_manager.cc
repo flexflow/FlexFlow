@@ -14,10 +14,12 @@
  */
 
 #include "flexflow/request_manager.h"
+#include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
 #include <cmath>
+#include <cstdio>
 #include <filesystem>
 #include <future>
 #include <iomanip>
@@ -25,6 +27,8 @@
 #include <random>
 #include <stack>
 #include <stdexcept>
+#include <thread>
+#include <vector>
 
 namespace FlexFlow {
 
@@ -107,6 +111,7 @@ RequestManager::RequestManager()
   // ffmodel.compile()
   max_requests_per_batch = -1;
   max_tokens_per_batch = -1;
+  max_tokens_per_ssm_batch = -1;
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
   max_tree_depth = -1;
@@ -135,11 +140,11 @@ void RequestManager::set_max_tokens_per_batch(int max_num_tokens) {
   assert(max_tokens_per_batch <= BatchConfig::MAX_NUM_TOKENS);
 }
 
-void RequestManager::set_max_spec_tree_token_num(int max_num_tokens) {
-  assert(max_spec_tree_token_num == -1 ||
-         max_spec_tree_token_num == max_num_tokens);
-  max_spec_tree_token_num = max_num_tokens;
-  assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+void RequestManager::set_max_tokens_per_ssm_batch(int max_num_ssm_tokens) {
+  assert(max_tokens_per_ssm_batch == -1 ||
+         max_tokens_per_ssm_batch == max_num_ssm_tokens);
+  max_tokens_per_ssm_batch = max_num_ssm_tokens;
+  assert(max_tokens_per_ssm_batch <= BatchConfig::MAX_NUM_TOKENS);
 }
 
 int RequestManager::get_max_tokens_per_batch() {
@@ -147,14 +152,14 @@ int RequestManager::get_max_tokens_per_batch() {
   return max_tokens_per_batch;
 }
 
+int RequestManager::get_max_tokens_per_ssm_batch() {
+  assert(max_tokens_per_ssm_batch > 0);
+  return max_tokens_per_ssm_batch;
+}
+
 int RequestManager::get_max_spec_tree_token_num() {
   assert(max_spec_tree_token_num > 0);
   return max_spec_tree_token_num;
-}
-
-int RequestManager::get_max_verify_tokens_per_batch() {
-  assert(max_tokens_per_batch > 0);
-  return max_tokens_per_batch;
 }
 
 void RequestManager::set_max_sequence_length(int max_seq_length) {
@@ -198,6 +203,10 @@ void RequestManager::set_max_tree_depth(int max_tree_depth) {
          max_tree_depth <= BatchConfig::MAX_TREE_DEPTH and
          "Invalid max_tree_depth");
   this->max_tree_depth = max_tree_depth;
+  if (max_tree_width > 0) {
+    max_spec_tree_token_num = max_tree_depth * max_tree_width + 1;
+    assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  }
 }
 
 int RequestManager::get_max_tree_width() {
@@ -212,6 +221,10 @@ void RequestManager::set_max_tree_width(int max_tree_width) {
          max_tree_width <= BatchConfig::MAX_TREE_WIDTH and
          "Invalid max_tree_width");
   this->max_tree_width = max_tree_width;
+  if (max_tree_depth > 0) {
+    max_spec_tree_token_num = max_tree_depth * max_tree_width + 1;
+    assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  }
 }
 
 void RequestManager::set_speculative_sampling(bool speculative_sampling_) {
@@ -260,6 +273,11 @@ bool RequestManager::get_memory_occupancy() {
 
 void RequestManager::set_memory_occupancy(bool memory_occupancy_) {
   memory_occupancy = memory_occupancy_;
+}
+
+double RequestManager::get_request_expected_latency(Request &request) {
+  return request.get_slo_ratio() * baseline_latency_ms *
+         (request.tokens.size() - request.llm_prefill_len);
 }
 
 Request &RequestManager::get_request_with_guid(RequestGuid guid) {
@@ -368,67 +386,7 @@ size_t RequestManager::get_num_ssms() {
 }
 
 RequestManager::RequestGuid
-    RequestManager::register_new_request(std::vector<TokenId> const &prompt) {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
-
-  // Add a new request
-  Request request;
-  request.status = Request::PENDING;
-  request.guid = next_available_guid++;
-
-  if (prompt.size() >= get_max_sequence_length()) {
-    std::cout << "Warning: too many tokens in prompt, only load up to "
-              << get_max_sequence_length() << " tokens, but got "
-              << prompt.size() << ".\n";
-
-    printf("tokens size: %zu\n", request.tokens.size());
-    return INVALID_GUID;
-  } else {
-    request.tokens = prompt;
-  }
-
-  if (get_num_ssms() == 0) {
-    std::cout << "No small speculative model registered, using incremental "
-                 "decoding."
-              << std::endl;
-  } else {
-    std::cout << "Num of SSMs: " << get_num_ssms() << std::endl;
-    assert(get_num_ssms() == 1 && "Only one SSM is supported now.");
-    init_token_tree(request.guid);
-  }
-
-  request.streaming_cache_info = StreamingCacheInfo(
-      BatchConfig::SINK_SIZE,
-      BatchConfig::MAX_STREAMING_POS - BatchConfig::SINK_SIZE -
-          BatchConfig::get_max_tree_depth());
-
-  pending_request_queue.push(request);
-  all_requests[request.guid] = request;
-  {
-    std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
-    request_to_promise[request.guid] = new std::promise<void>();
-  }
-
-  if (verbose) {
-    std::cout << "new req: " << request.tokens.size() << std::endl;
-    for (int i = 0; i < request.tokens.size(); i++) {
-      std::cout << i << " : " << request.tokens[i] << std::endl;
-    }
-  }
-
-  GenerationResult gr;
-  gr.guid = request.guid;
-  gr.input_text = "";
-  gr.input_tokens = prompt;
-  gr.output_text = "";
-  gr.output_tokens = prompt;
-  request_generation_results[request.guid] = gr;
-
-  return request.guid;
-}
-
-RequestManager::RequestGuid
-    RequestManager::register_new_request(std::string const &prompt) {
+    RequestManager::register_new_request(GenerationRequest const &req) {
   std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
@@ -437,7 +395,7 @@ RequestManager::RequestGuid
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
-  std::vector<int32_t> tokens = this->tokenizer_->Encode(prompt);
+  std::vector<int32_t> tokens = this->tokenizer_->Encode(req.prompt);
   if (tokens.size() >= get_max_sequence_length()) {
     std::cout << "Warning: too many tokens in prompt, only load up to "
               << get_max_sequence_length() << " tokens, but got "
@@ -449,7 +407,9 @@ RequestManager::RequestGuid
   for (int i = 0; i < tokens.size(); i++) {
     std::cout << "[" << i << "]" << tokens.at(i) << "\n";
   }
+  std::cout << "[slo ratio] " << req.slo_ratio << std::endl;
   request.tokens.insert(request.tokens.end(), tokens.begin(), tokens.end());
+  request.set_slo_ratio(req.slo_ratio);
 
   if (get_num_ssms() == 0) {
     std::cout << "No small speculative model registered, using incremental "
@@ -485,9 +445,9 @@ RequestManager::RequestGuid
 
   GenerationResult gr;
   gr.guid = request.guid;
-  gr.input_text = prompt;
+  gr.input_text = req.prompt;
   gr.input_tokens = request.tokens;
-  gr.output_text = prompt;
+  gr.output_text = req.prompt;
   gr.output_tokens = request.tokens;
   request_generation_results[request.guid] = gr;
   return request.guid;
@@ -578,7 +538,24 @@ BatchConfig
   return prepare_next_batch();
 }
 
-void RequestManager::load_pending_request_to_batch() {
+// Return value: true if load a pending request to the batch
+bool RequestManager::load_pending_request_to_batch() {
+  if (pending_request_queue.empty()) {
+    if (num_available_requests > 0) {
+      // No pending request to process, but there are available requests
+      // in the batch, do nothing
+      return false;
+    }
+    // Wait until there is a pending request
+    while (pending_request_queue.empty() &&
+           !is_background_server_terminated()) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    if (is_background_server_terminated()) {
+      return false;
+    }
+  }
+  std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
   assert(!pending_request_queue.empty() && "No pending request to process.");
   RequestGuid guid = pending_request_queue.front().guid;
   pending_request_queue.pop();
@@ -600,9 +577,10 @@ void RequestManager::load_pending_request_to_batch() {
   profiling_requests[guid] = RequestProfileInfo();
   profiling_requests[guid].start_time =
       Realm::Clock::current_time_in_microseconds();
+  return true;
 }
 
-void RequestManager::request_complete_clean_up(int batch_index) {
+void RequestManager::request_complete_clean_up(int batch_index, bool attained) {
   RequestGuid guid = guid_of_requests[batch_index];
   profiling_requests[guid].finish_time =
       Realm::Clock::current_time_in_microseconds();
@@ -611,6 +589,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   request_available[batch_index] = false;
   num_available_requests--;
   request.status = Request::COMPLETED;
+  request.attained = attained;
 
   // Find the sos and eos in the sequence
   auto bos_it = std::find(
@@ -695,18 +674,15 @@ void RequestManager::request_complete_clean_up(int batch_index) {
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   std::lock_guard<std::mutex> const rm_state_lock(rm_state_mutex);
-  std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
 
   if (num_available_requests == 0) {
     // Update nothing
-    if (!pending_request_queue.empty()) {
-      // Load the pending request to the batch
-      load_pending_request_to_batch();
-      request_manager_status = PREFILLING;
-      if (decoding_mode == SPECULATIVE_DECODING) {
-        prefill_model = SSM;
-        current_ssm_step = 0;
-      }
+    // Load the pending request to the batch
+    load_pending_request_to_batch();
+    request_manager_status = PREFILLING;
+    if (decoding_mode == SPECULATIVE_DECODING) {
+      prefill_model = SSM;
+      current_ssm_step = 0;
     }
     return;
   }
@@ -721,9 +697,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 
           // Check if there are more empty slots
           if (num_available_requests < get_max_requests_per_batch() &&
-              !pending_request_queue.empty()) {
+              load_pending_request_to_batch()) {
             // Load the pending request to the batch
-            load_pending_request_to_batch();
             request_manager_status = PREFILLING;
           } else {
             // No more empty slots, start the decoding
@@ -751,9 +726,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             prefill_request = nullptr;
             // Check if there are more empty slots
             if (num_available_requests < get_max_requests_per_batch() &&
-                !pending_request_queue.empty()) {
+                load_pending_request_to_batch()) {
               // Load the pending request to the batch
-              load_pending_request_to_batch();
               prefill_model = SSM;
               current_ssm_step = 0;
             } else {
@@ -778,26 +752,24 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
     case DECODING:
       if (update_llm_decode_results(result)) {
         // A request completed after the decode
-        if (pending_request_queue.empty()) {
+        if (load_pending_request_to_batch() == false) {
           // No pending request to process, continue the speculation
           request_manager_status = DECODING;
         } else {
           request_manager_status = PREFILLING;
-          load_pending_request_to_batch();
         }
       }
       break;
     case LLM_VERIFY:
       if (update_llm_verify_results(result)) {
         // A request completed after the verification
-        if (pending_request_queue.empty()) {
+        if (load_pending_request_to_batch() == false) {
           // No pending request to process, continue the speculation
           request_manager_status = SSM_SPEC;
           current_ssm_step = 0;
           ssm_completed = false;
         } else {
           request_manager_status = PREFILLING;
-          load_pending_request_to_batch();
           prefill_model = SSM;
           current_ssm_step = 0;
         }
@@ -844,7 +816,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     prefill_completed = true;
 
     if (prefill_request->tokens.back() == eos_token_id) {
-      request_complete_clean_up(prefill_request->batch_index);
+      request_complete_clean_up(prefill_request->batch_index, true);
     }
 
     if (decoding_mode == SPECULATIVE_DECODING) {
@@ -893,7 +865,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     if (request.tokens.back() == eos_token_id or
         request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
-      request_complete_clean_up(request_index);
+      request_complete_clean_up(request_index, true);
     }
 
     if (verbose) {
@@ -930,6 +902,9 @@ void RequestManager::update_ssm_prefill_results(
 }
 
 BatchConfig RequestManager::prepare_next_batch() {
+  if (is_background_server_terminated()) {
+    return BatchConfig();
+  }
   switch (request_manager_status) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
@@ -1058,7 +1033,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   bc.requestsInfo[request_index].first_token_offset_in_batch = 0;
   bc.requestsInfo[request_index].first_token_index_in_request =
       prefill_request->ssm_cache_size;
-  int num_tokens_in_batch = std::min(get_max_tokens_per_batch(),
+  int num_tokens_in_batch = std::min(get_max_tokens_per_ssm_batch(),
                                      (int)prefill_request->tokens.size() -
                                          prefill_request->ssm_prefill_len);
   bc.requestsInfo[request_index].num_tokens_in_batch = num_tokens_in_batch;
@@ -1553,13 +1528,12 @@ bool RequestManager::update_llm_verify_results(
     if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_completed = true;
-      request_complete_clean_up(request_index);
-    } else if (request.decode_latency_ms > request.tokens.size() *
-                                               baseline_latency_ms *
-                                               request.get_slo_ratio()) {
+      request_complete_clean_up(request_index, true);
+    } else if (request.decode_latency_ms >
+               get_request_expected_latency(request)) {
       // The request violates the SLO, drop that request
       request_completed = true;
-      request_complete_clean_up(request_index);
+      request_complete_clean_up(request_index, false);
     } else {
       update_bitmask_prompt(guid, request.committed_tokens.size() - 1);
     }
@@ -2094,16 +2068,23 @@ void RequestManager::get_verify_results_greedy(
   profiling.generated_tokens_per_step.push_back(total_nb_generated_tokens);
 }
 
-// TODO: the max_seq_length is not used in the current implementation
 std::vector<GenerationResult>
-    FFModel::generate(std::vector<std::string> &prompts, int max_seq_length) {
+    FFModel::generate(std::vector<GenerationRequest> &requests,
+                      EmissionMachine &emission_machine) {
   RequestManager *rm = RequestManager::get_request_manager();
   std::vector<RequestManager::RequestGuid> guids;
-  for (int i = 0; i < prompts.size(); i++) {
-    RequestManager::RequestGuid guid = rm->register_new_request(prompts.at(i));
+
+  // Wait until the request manager is ready
+  while (!rm->is_background_server_serving()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  for (GenerationRequest &request : requests) {
+    RequestManager::RequestGuid guid = rm->register_new_request(request);
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
+    emission_machine.wait_until_next_request();
   }
   std::vector<GenerationResult> results;
   for (int i = 0; i < guids.size(); i++) {
@@ -2112,9 +2093,18 @@ std::vector<GenerationResult>
   return results;
 }
 
+std::vector<GenerationResult>
+    FFModel::generate(std::vector<std::string> &prompts,
+                      EmissionMachine &emission_machine) {
+  std::vector<GenerationRequest> requests;
+  for (std::string &prompt : prompts) {
+    requests.push_back(GenerationRequest(prompt, 1.0));
+  }
+  return generate(requests, emission_machine);
+}
+
 void RequestManager::start_background_server(FFModel *model) {
   assert(background_server_status == INITIALIZED);
-  background_server_status = SERVING;
   // Start background task
   Runtime *runtime = Runtime::get_runtime();
   Context ctx = Runtime::get_context();
@@ -2190,6 +2180,7 @@ void RequestManager::serve_decoding(FFModel *llm) {
   { batch_pipeline.push(last_irf); }
 
   reset_profiling_statistics();
+  background_server_status = SERVING;
   while (!is_background_server_terminated()) {
 
     if (batch_pipeline.size() >= 4) {
@@ -2235,7 +2226,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   for (size_t i = 0; i < get_num_ssms(); i++) {
     // Compile the i-th ssm
     FFModel *ssm = get_ssm_model(i);
-    im->compile_model_and_allocate_buffer(ssm);
+    im->compile_model_and_allocate_buffer(ssm, false);
     assert(im->model_weights_loaders.find(ssm) !=
            im->model_weights_loaders.end());
     // Load model weights
@@ -2258,6 +2249,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   infer_result_future_pipeline.push(irf_0);
 
   reset_profiling_statistics();
+  background_server_status = SERVING;
   while (!is_background_server_terminated()) {
     if (infer_result_future_pipeline.size() >= 4) {
       // Block here to avoid launching too many batches
@@ -2307,7 +2299,7 @@ void RequestManager::serve_spec_infer_sync(FFModel *llm) {
   for (size_t i = 0; i < get_num_ssms(); i++) {
     // Compile the i-th ssm
     FFModel *ssm = get_ssm_model(i);
-    im->compile_model_and_allocate_buffer(ssm);
+    im->compile_model_and_allocate_buffer(ssm, false);
     assert(im->model_weights_loaders.find(ssm) !=
            im->model_weights_loaders.end());
     // Load model weights
@@ -2326,6 +2318,7 @@ void RequestManager::serve_spec_infer_sync(FFModel *llm) {
   request_manager_status = PREFILLING;
   prefill_model = SSM;
 
+  background_server_status = SERVING;
   while (!is_background_server_terminated()) {
     BatchConfigFuture bcf = get_next_batch_config(irf_0, ctx, runtime);
     bcf.get_void_result();
@@ -2363,7 +2356,7 @@ void RequestManager::terminate_background_server_at_exit() {
 }
 
 void RequestManager::terminate_background_server() {
-  if (background_server_status == SERVING) {
+  if (is_background_server_serving()) {
     assert(profiling.llm_step_times.size() ==
            profiling.requests_per_step.size());
     // Write the last profiling statistics to output file
@@ -2458,6 +2451,19 @@ void RequestManager::terminate_background_server() {
     mean_generated_tokens_per_step += ")";
     str += mean_generated_tokens_per_step;
 
+    std::string slo_attainment = "\n slo_attainment( ";
+    double attainment = 0;
+    for (auto request_pair : all_requests) {
+      Request &request = request_pair.second;
+      if (request.attained) {
+        attainment += 1;
+      }
+    }
+    attainment /= total_requests;
+    slo_attainment += std::to_string(attainment);
+    slo_attainment += ")";
+    str += slo_attainment;
+
     write_to_output_file("", str);
     background_server_status = TERMINATED;
     // Wait for the background server to terminate
@@ -2465,6 +2471,10 @@ void RequestManager::terminate_background_server() {
     Context ctx = Runtime::get_context();
     background_server_handler.get_void_result();
   }
+}
+
+bool RequestManager::is_background_server_serving() {
+  return background_server_status == SERVING;
 }
 
 bool RequestManager::is_background_server_terminated() {
@@ -2649,8 +2659,7 @@ void RequestManager::prune_token_tree() {
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
     double spare_latency =
-        request.get_slo_ratio() * baseline_latency_ms * request.tokens.size() -
-        request.decode_latency_ms;
+        get_request_expected_latency(request) - request.decode_latency_ms;
     assert(spare_latency >= 0.0);
     spare_latency_2_request_index.push_back(
         std::make_pair(spare_latency, request_index));

@@ -13,13 +13,16 @@
  * limitations under the License.
  */
 
+#include "flexflow/batch_config.h"
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/graph.h"
+#include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/fused.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 #include "flexflow/request_manager.h"
+#include <random>
 
 namespace FlexFlow {
 
@@ -53,11 +56,13 @@ bool parallel_tensor_list_overlaps(std::vector<ParallelTensor> const &list1,
   return false;
 }
 
-void InferenceManager::compile_model_and_allocate_buffer(FFModel *model) {
+void InferenceManager::compile_model_and_allocate_buffer(FFModel *model,
+                                                         bool is_llm) {
   // TODO: currently assume there is a single data-parallel pipeline
   // (i.e., data-parallel-degree == 1)
   assert(model->config.data_parallelism_degree == 1);
-  model->config.batchSize = BatchConfig::max_tokens_per_batch();
+  model->config.batchSize = is_llm ? BatchConfig::max_tokens_per_batch()
+                                   : BatchConfig::max_tokens_per_ssm_batch();
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;
@@ -673,4 +678,31 @@ std::string join_path(std::vector<std::string> const &paths) {
   return joined;
 }
 
+void EmissionMachine::wait_until_next_request() {
+  // use last_request_time to determine the next request time
+  // and sleep until then
+  if (last_request_time_ms == 0) {
+    last_request_time_ms = Realm::Clock::current_time_in_microseconds() * 1e-3;
+  }
+  double current_time = Realm::Clock::current_time_in_microseconds() * 1e-3;
+  double time_to_sleep =
+      get_next_interval_ms() - (current_time - last_request_time_ms);
+  if (time_to_sleep > 0) {
+    usleep(static_cast<useconds_t>(time_to_sleep * 1e3));
+  }
+  last_request_time_ms = Realm::Clock::current_time_in_microseconds() * 1e-3;
+}
+
+double ConstantEmissionMachine::get_next_interval_ms() {
+  return interval_ms;
+}
+
+double PoissonEmissionMachine::get_next_interval_ms() {
+  // Note that these are static so multiple instances will share the same
+  // generator and distribution.
+  static std::default_random_engine generator(
+      std::chrono::system_clock::now().time_since_epoch().count());
+  static std::exponential_distribution<double> distribution(lambda);
+  return distribution(generator) * 1e3;
+}
 }; // namespace FlexFlow
