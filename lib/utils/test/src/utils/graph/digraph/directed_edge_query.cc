@@ -64,8 +64,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
         CHECK(matches_edge(result, DirectedEdge{n.at(1), n.at(3)}));
         CHECK(matches_edge(result, DirectedEdge{n.at(2), n.at(4)}));
-        // CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(2), n.at(3)}));
-        // CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(1), n.at(4)}));
+        CHECK(matches_edge(result, DirectedEdge{n.at(2), n.at(3)}));
+        CHECK(matches_edge(result, DirectedEdge{n.at(1), n.at(4)}));
+        CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(0), n.at(4)}));
+        CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(2), n.at(0)}));
       }
     }
   }
