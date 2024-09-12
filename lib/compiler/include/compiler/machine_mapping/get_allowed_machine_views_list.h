@@ -8,15 +8,17 @@
 namespace FlexFlow {
 
 std::vector<std::unordered_map<parallel_layer_guid_t, MachineView>>
-    get_allowed_machine_views_list(MachineMappingContext const &context,
-                             std::unordered_set<parallel_layer_guid_t> const &layers,
-                             MachineSpecification const &resource);
+    get_allowed_machine_views_list(
+        MachineMappingContext const &context,
+        std::unordered_set<parallel_layer_guid_t> const &layers,
+        MachineSpecification const &resource);
 
 std::vector<std::unordered_map<parallel_tensor_guid_t, MachineView>>
-    get_allowed_src_machine_views_list(MachineMappingContext const &context,
-                             std::unordered_set<parallel_tensor_guid_t> const &values,
-                             MachineSpecification const &resource);
+    get_allowed_src_machine_views_list(
+        MachineMappingContext const &context,
+        std::unordered_set<parallel_tensor_guid_t> const &values,
+        MachineSpecification const &resource);
 
-}
+} // namespace FlexFlow
 
 #endif

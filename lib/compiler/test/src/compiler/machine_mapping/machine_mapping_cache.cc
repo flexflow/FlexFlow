@@ -60,23 +60,29 @@ TEST_SUITE(FF_TEST_SUITE) {
     MachineMappingState state2(subgraph2, machine_spec, {});
 
     MachineMappingResult result0(
-        2, MachineMapping(std::unordered_map<Node, MachineView>{}));
+        2,
+        MachineMapping(
+            std::unordered_map<parallel_layer_guid_t, MachineView>{}));
     MachineMappingResult result1(
-        1, MachineMapping(std::unordered_map<Node, MachineView>{}));
+        1,
+        MachineMapping(
+            std::unordered_map<parallel_layer_guid_t, MachineView>{}));
     MachineMappingResult result2(
-        1, MachineMapping(std::unordered_map<Node, MachineView>{}));
+        1,
+        MachineMapping(
+            std::unordered_map<parallel_layer_guid_t, MachineView>{}));
 
     MachineMappingCache cache;
 
     cache.save(state0, result0);
     CHECK(cache.load(state0).value() == result0);
-    CHECK(cache.load(state1) == std::nullopt);
-    CHECK(cache.load(state2) == std::nullopt);
+    CHECK(!cache.load(state1));
+    CHECK(!cache.load(state2));
 
     cache.save(state1, result1);
     CHECK(cache.load(state0).value() == result0);
     CHECK(cache.load(state1).value() == result1);
-    CHECK(cache.load(state2) == std::nullopt);
+    CHECK(!cache.load(state2));
 
     cache.save(state2, result2);
     CHECK(cache.load(state0).value() == result0);

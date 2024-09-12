@@ -46,12 +46,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     // `machine_mapping` is determined by the PCG and the device mapping
     // algorithm, and `runtime` is determined by the PCG and the device mapping,
     // so their values here do not matter.
-    std::unordered_map<Node, MachineView> empty_machine_views;
+    std::unordered_map<parallel_layer_guid_t, MachineView> empty_machine_views;
     MachineMapping empty_machine_mapping(empty_machine_views);
-    CHECK(
+    bool result1 =
         GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping),
                            0) ==
-        GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping), 0));
+        GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping), 0);
+    bool correct1 = true;
+    CHECK(result1 == correct1);
 
     ParallelComputationGraphBuilder builder_;
 
@@ -68,9 +70,11 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     ParallelComputationGraph pcg_ = builder.pcg;
 
-    CHECK(GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping),
-                             0) !=
-          GraphOptimizeState(GraphOptimizeResult(pcg_, empty_machine_mapping),
-                             0));
+    bool result2 =
+        GraphOptimizeState(GraphOptimizeResult(pcg, empty_machine_mapping),
+                           0) ==
+        GraphOptimizeState(GraphOptimizeResult(pcg_, empty_machine_mapping), 0);
+    bool correct2 = false;
+    CHECK(result2 == correct2);
   }
 }

@@ -20,7 +20,7 @@ MachineMappingResult parallel_combine(MachineMappingResult const &s1,
 MachineMappingResult get_infinity_machine_mapping_result() {
   return MachineMappingResult(
       std::numeric_limits<float>::infinity(),
-      MachineMapping(std::unordered_map<Node, MachineView>{}));
+      MachineMapping(std::unordered_map<parallel_layer_guid_t, MachineView>{}));
 }
 
 void minimize_runtime(MachineMappingResult &m1,

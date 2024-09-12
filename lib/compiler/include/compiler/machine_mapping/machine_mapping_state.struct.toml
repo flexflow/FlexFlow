@@ -10,8 +10,7 @@ includes = [
   "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h",
   "pcg/machine_specification.dtg.h",
   "pcg/machine_view.dtg.h",
-  "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h",
-  "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
+  "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h",
 ]
 
 src_includes = [
@@ -29,4 +28,4 @@ type = "::FlexFlow::MachineSpecification"
 
 [[fields]]
 name = "fixed_machine_views"
-type = "std::unordered_map<::FlexFlow::OpenDataflowValue, ::FlexFlow::MachineView>"
+type = "std::unordered_map<::FlexFlow::parallel_tensor_guid_t, ::FlexFlow::MachineView>"

@@ -1,4 +1,5 @@
 #include "compiler/graph_optimize_state.h"
+#include "pcg/parallel_computation_graph/parallel_tensor_guid_t.h"
 
 namespace FlexFlow {
 
@@ -71,8 +72,7 @@ size_t hash<::FlexFlow::GraphOptimizeState>::operator()(
     ::FlexFlow::hash_combine(seed, inputs.size());
     for (auto input : inputs) {
       for (size_t i = 0; i < layers.size(); ++i) {
-        if (get_source_layer(state.graph_optimize_result.pcg, input) ==
-            layers[i]) {
+        if (get_source_layer(input) == layers[i]) {
           ::FlexFlow::hash_combine(seed, i);
           break;
         }
