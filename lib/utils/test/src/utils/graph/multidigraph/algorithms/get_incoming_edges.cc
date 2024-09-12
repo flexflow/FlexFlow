@@ -11,21 +11,29 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("MultiDiGraph - get_incoming_edges") {
+  TEST_CASE("get_incoming_edges(MultiDiGraphView, Node)") {
     MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
     std::vector<Node> n = add_nodes(g, 3);
 
     std::vector<std::pair<Node, Node>> input = {
-        {n.at(0), n.at(1)},
-        {n.at(0), n.at(1)},
-        {n.at(1), n.at(1)},
         {n.at(0), n.at(0)},
+        {n.at(0), n.at(1)},
+        {n.at(0), n.at(1)},
+        {n.at(1), n.at(0)},
     };
 
     std::vector<MultiDiEdge> edges = add_edges(g, input);
 
-    CHECK(get_incoming_edges(g, n[1]) ==
-          std::unordered_set<MultiDiEdge>{edges[0], edges[1], edges[2]});
-    CHECK(get_incoming_edges(g, n[2]) == std::unordered_set<MultiDiEdge>{});
+    SUBCASE("node has incoming edges") {
+      std::unordered_set<MultiDiEdge> result = get_incoming_edges(g, n.at(1));
+      std::unordered_set<MultiDiEdge> correct = {edges.at(1), edges.at(2)};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("node has no incoming edges") {
+      std::unordered_set<MultiDiEdge> result = get_incoming_edges(g, n.at(2));
+      std::unordered_set<MultiDiEdge> correct = {};
+      CHECK(result == correct);
+    }
   }
 }

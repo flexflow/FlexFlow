@@ -16,9 +16,9 @@ std::vector<T> subvec(std::vector<T> const &v,
   auto resolve_loc = [&](int idx) ->
       typename std::vector<T>::iterator::difference_type {
         if (idx < 0) {
-          return v.size() + idx;
+          return std::max(0, (int)v.size() + idx);
         } else {
-          return idx;
+          return std::min(idx, (int)v.size());
         }
       };
 
@@ -27,6 +27,9 @@ std::vector<T> subvec(std::vector<T> const &v,
   }
   if (maybe_end.has_value()) {
     end_iter = v.cbegin() + resolve_loc(maybe_end.value());
+  }
+  if (begin_iter >= end_iter) {
+    return {};
   }
 
   std::vector<T> output(begin_iter, end_iter);

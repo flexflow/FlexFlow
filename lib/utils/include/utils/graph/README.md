@@ -18,7 +18,9 @@ At their core, they are as follows:
 - `UndirectedGraph`: at most one edge allowed between every pair of nodes, edges are undirected.
 - `DiGraph`: at most one edge allowed between every ordered pair of nodes, edges are directed (i.e., have a source node and a destination node)
 - `MultiDiGraph`: arbitrary numbers of directed edges allowed between every pair of nodes.
-- `DataFlowGraph`: similar to `MultiDiGraph`, but the edges entering, exiting a given nodes now have a well-defined order.
+- `DataflowGraph`: similar to `MultiDiGraph`, but the edges entering, exiting a given nodes now have a well-defined order. Due to the interface used to construct them (where essentially a node can only be added to the graph after all of its predecessor nodes have been added) `DataflowGraph`s are directed acyclic graphs. Each node has an associated ordered sequence of inputs and outputs, with the restriction that one and only one edge can enter an individual input.
+Conceptually, `DataflowGraph` is used within FlexFlow to represent computation-style graphs, where edges represent value uses and nodes represent multivariate functions from tuples of inputs to tuples of outputs. 
+   
 Examples of the different graph variants are shown below.
 
 Example of `UndirectedGraph`:
@@ -85,7 +87,7 @@ In addition, nodes should only be used in the context of their graph, so compari
 All three core graph variants allow insertion and deletion of both edges and nodes. 
 To add a node to an `UndirectedGraph g`, simply call `g.add_node()` (the interface is identical for `DiGraph` and `MultiDiGraph`).
 To add an edge between two nodes `Node n1` and `Node n2` to an `UndirectedGraph g`, call `g.add_edge({n1, n2})`.
-In `UndirectedGraph` the order of the arguments of `add_edge` doesn't matter as edges are undirected, but the order does matter for `DiGraph`, `MultiDiGraph` and `DataFlowGraph`.
+In `UndirectedGraph` the order of the arguments of `add_edge` doesn't matter as edges are undirected, but the order does matter for `DiGraph`, `MultiDiGraph` and `DataflowGraph`.
 
 The last paragraph covered the base API used to write to graphs, but we also want to be able to read from graphs.
 Reading from graphs is implemented with the `query_nodes` and `query_edges` methods, which can be thought of as executing a database query over the nodes and edges of the target graph, respectively (where queries are restricted to an incredibly simple set of operations).
@@ -126,7 +128,10 @@ This graph class is particularly useful for processing a sub-graph of a given gr
 ### Labelled Dataflow Variant
 
 As nice as all of the above is, graphs without labels are mostly useless--in practice, nodes and edges represent some other system and the properties of that system (or at least a way to map the result of graph algorithms back to the underlying system) are necessary.
-Thus, FlexFlow's graph library provides the ability to add labels to `DataFlowGraph`, through the `LabelleledDataFlowGraph` and `OpenLabelleledDataFlowGraph`, which allow users to label both nodes and edges. 
+Thus, FlexFlow's graph library provides the ability to add labels to `DataflowGraph`, through the `LabelleledDataflowGraph` and `OpenLabelleledDataflowGraph`, which allow users to label different components of the graph. 
+- `LabelledDataflowGraph` allows for labelling of `Node`s and `DataflowOutput`s.
+- `OpenLabelledDataflowGraph` allows for labelling of `Node`s and `OpenDataflowValue`s, which is a variant describing both `DataflowOutput`s and `DataflowGraphInput`s, which represent the open inputs to the graph (i.e. the inputs for which their corresponding output is not present in the graph).
+
 While the interfaces of these graphs differ slightly from the core graph variants, they still have the corresponding `add_node`/`add_edge` methods, and `query_nodes`/`query_edges` methods.
 Note that all of the labelled graph types require that each element of the labelled types have a label, which is enforced via the interfaces they provide.
 Partial labelling can be implement via wrapping the label type in `optional`.

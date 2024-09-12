@@ -6,7 +6,6 @@
 #include "pcg/machine_view.dtg.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
-#include "utils/containers.h"
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/as_vector.h"
 #include "utils/containers/contains_key.h"

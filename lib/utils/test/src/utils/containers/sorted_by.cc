@@ -1,4 +1,5 @@
 #include "utils/containers/sorted_by.h"
+#include "utils/fmt/vector.h"
 #include <doctest/doctest.h>
 #include <unordered_set>
 #include <vector>
@@ -6,13 +7,21 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Testing sorted_by function") {
-    std::unordered_set<int> s = {5, 2, 3, 4, 1};
-    auto sorted_s = sorted_by(s, [](int a, int b) { return a < b; });
-    CHECK(sorted_s == std::vector<int>({1, 2, 3, 4, 5}));
+  TEST_CASE("sorted_by") {
+    SUBCASE("sort increasing") {
+      std::unordered_set<int> s = {5, 2, 3, 4, 1};
+      std::vector<int> result =
+          sorted_by(s, [](int a, int b) { return a < b; });
+      std::vector<int> correct = {1, 2, 3, 4, 5};
+      CHECK(result == correct);
+    }
 
-    std::unordered_set<int> s2 = {-5, -1, -3, -2, -4};
-    auto sorted_s2 = sorted_by(s2, [](int a, int b) { return a > b; });
-    CHECK(sorted_s2 == std::vector<int>({-1, -2, -3, -4, -5}));
+    SUBCASE("sort decreasing") {
+      std::unordered_set<int> input = {-5, -1, -3, -2, -4};
+      std::vector<int> result =
+          sorted_by(input, [](int a, int b) { return a > b; });
+      std::vector<int> correct = {-1, -2, -3, -4, -5};
+      CHECK(result == correct);
+    }
   }
 }

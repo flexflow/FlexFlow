@@ -1,7 +1,7 @@
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/get_cbc_decomposition.h"
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/extend.h"
-#include "utils/containers/get_first.h"
+#include "utils/containers/get_one_of.h"
 #include "utils/containers/set_minus.h"
 #include "utils/containers/values.h"
 #include "utils/graph/digraph/algorithms.h"
@@ -28,7 +28,7 @@ std::optional<CompleteBipartiteCompositeDecomposition>
       CompleteBipartiteCompositeDecomposition{{}};
 
   while (!edges_to_process.empty()) {
-    DirectedEdge e = get_first(edges_to_process);
+    DirectedEdge e = get_one_of(edges_to_process);
 
     std::unordered_set<Node> head = get_predecessors(g, e.dst);
     std::unordered_set<Node> tail = get_successors(g, e.src);

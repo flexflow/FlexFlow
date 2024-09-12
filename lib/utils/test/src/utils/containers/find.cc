@@ -1,12 +1,33 @@
 #include "utils/containers/find.h"
-#include <doctest/doctest.h>
+#include "test/utils/doctest.h"
+#include <algorithm>
+#include <set>
+#include <unordered_set>
+#include <vector>
 
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("find") {
-    std::vector<int> v = {1, 2, 3, 4, 5};
-    CHECK(find(v, 3) != v.cend());
-    CHECK(find(v, 6) == v.cend());
+
+    SUBCASE("vector") {
+      std::vector<int> v = {1, 2, 3, 4, 5};
+      CHECK_WITHOUT_STRINGIFY(find(v, 3) == std::find(v.begin(), v.end(), 3));
+      CHECK_WITHOUT_STRINGIFY(find(v, 6) == std::find(v.begin(), v.end(), 6));
+    }
+
+    SUBCASE("unordered_set") {
+      std::unordered_set<int> us = {1, 2, 3, 4, 5};
+      CHECK_WITHOUT_STRINGIFY(find(us, 3) ==
+                              std::find(us.begin(), us.end(), 3));
+      CHECK_WITHOUT_STRINGIFY(find(us, 6) ==
+                              std::find(us.begin(), us.end(), 6));
+    }
+
+    SUBCASE("set") {
+      std::set<int> s = {1, 2, 3, 4, 5};
+      CHECK_WITHOUT_STRINGIFY(find(s, 3) == std::find(s.begin(), s.end(), 3));
+      CHECK_WITHOUT_STRINGIFY(find(s, 6) == std::find(s.begin(), s.end(), 6));
+    }
   }
 }

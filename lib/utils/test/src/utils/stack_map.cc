@@ -46,7 +46,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<std::pair<int, int>> expected = {{1, 10}, {2, 20}, {3, 30}};
       std::vector<std::pair<int, int>> actual = map;
-      CHECK(actual == expected);
+      CHECK_WITHOUT_STRINGIFY(actual == expected);
     }
   }
 }

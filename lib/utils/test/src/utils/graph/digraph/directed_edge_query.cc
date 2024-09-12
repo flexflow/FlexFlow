@@ -14,41 +14,59 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::vector<Node> n = add_nodes(g, 5);
 
     add_edges(g,
-              {DirectedEdge{n[0], n[1]},
-               DirectedEdge{n[0], n[2]},
-               DirectedEdge{n[1], n[2]},
-               DirectedEdge{n[2], n[4]},
-               DirectedEdge{n[1], n[3]}});
+              {DirectedEdge{n.at(0), n.at(1)},
+               DirectedEdge{n.at(0), n.at(2)},
+               DirectedEdge{n.at(1), n.at(2)},
+               DirectedEdge{n.at(2), n.at(4)},
+               DirectedEdge{n.at(1), n.at(3)}});
 
     SUBCASE("directed_edge_query_all") {
 
       DirectedEdgeQuery result = directed_edge_query_all();
 
-      CHECK(matches_edge(result, DirectedEdge{n[0], n[1]}));
-      CHECK(matches_edge(result, DirectedEdge{n[0], n[2]}));
-      CHECK(matches_edge(result, DirectedEdge{n[1], n[2]}));
-      CHECK(matches_edge(result, DirectedEdge{n[2], n[4]}));
-      CHECK(matches_edge(result, DirectedEdge{n[1], n[3]}));
+      CHECK(matches_edge(result, DirectedEdge{n.at(0), n.at(1)}));
+      CHECK(matches_edge(result, DirectedEdge{n.at(0), n.at(2)}));
+      CHECK(matches_edge(result, DirectedEdge{n.at(1), n.at(2)}));
+      CHECK(matches_edge(result, DirectedEdge{n.at(2), n.at(4)}));
+      CHECK(matches_edge(result, DirectedEdge{n.at(1), n.at(3)}));
     }
 
     SUBCASE("matches_edge") {
-      DirectedEdgeQuery q{{n[0]}, {n[1]}};
+      DirectedEdgeQuery q =
+          DirectedEdgeQuery{query_set{n.at(0)}, query_set{n.at(1)}};
 
-      CHECK(matches_edge(q, DirectedEdge{n[0], n[1]}));
-      CHECK_FALSE(matches_edge(q, DirectedEdge{n[1], n[2]}));
+      CHECK(matches_edge(q, DirectedEdge{n.at(0), n.at(1)}));
+      CHECK_FALSE(matches_edge(q, DirectedEdge{n.at(1), n.at(2)}));
     }
 
     SUBCASE("query_intersection") {
-      DirectedEdgeQuery q1{{n[0], n[1]}, {n[1], n[2], n[4]}};
-      DirectedEdgeQuery q2{{n[1], n[2]}, {n[2], n[3]}};
+      SUBCASE("standard intersection") {
+        DirectedEdgeQuery q1 = DirectedEdgeQuery{
+            query_set{n.at(0), n.at(1)}, query_set{n.at(1), n.at(2), n.at(4)}};
+        DirectedEdgeQuery q2 = DirectedEdgeQuery{query_set{n.at(1), n.at(2)},
+                                                 query_set{n.at(2), n.at(3)}};
 
-      DirectedEdgeQuery result = query_intersection(q1, q2);
+        DirectedEdgeQuery result = query_intersection(q1, q2);
+        DirectedEdgeQuery correct = DirectedEdgeQuery{
+            query_set{n.at(1)},
+            query_set{n.at(2)},
+        };
 
-      std::unordered_set<Node> expected_srcs = {n[1]};
-      std::unordered_set<Node> expected_dsts = {n[2]};
+        CHECK(result == correct);
+      }
+      SUBCASE("intersection with std::nullopt") {
+        DirectedEdgeQuery q1 =
+            DirectedEdgeQuery{query_set{n.at(1), n.at(2)}, matchall<Node>()};
+        DirectedEdgeQuery q2 =
+            DirectedEdgeQuery{matchall<Node>(), query_set{n.at(3), n.at(4)}};
 
-      CHECK(result.srcs == expected_srcs);
-      CHECK(result.dsts == expected_dsts);
+        DirectedEdgeQuery result = query_intersection(q1, q2);
+
+        CHECK(matches_edge(result, DirectedEdge{n.at(1), n.at(3)}));
+        CHECK(matches_edge(result, DirectedEdge{n.at(2), n.at(4)}));
+        // CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(2), n.at(3)}));
+        // CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(1), n.at(4)}));
+      }
     }
   }
 }

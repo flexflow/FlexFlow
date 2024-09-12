@@ -1,7 +1,6 @@
 #include "substitutions/unlabelled/multidigraph_pattern_match.h"
 // #include "substitutions/unlabelled/edge_splits.h"
 // #include "substitutions/unlabelled/pattern_edge.h"
-#include "utils/containers.h"
 
 namespace FlexFlow {
 

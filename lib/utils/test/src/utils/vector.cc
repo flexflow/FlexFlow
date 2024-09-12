@@ -1,5 +1,6 @@
 #include "utils/vector.h"
-#include "test/utils/doctest.h"
+#include "utils/fmt/vector.h"
+#include <doctest/doctest.h>
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("concat function") {

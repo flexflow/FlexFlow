@@ -1,6 +1,7 @@
 #include "utils/stack_vector.h"
 #include "test/utils/doctest.h"
 #include "test/utils/rapidcheck.h"
+#include "utils/fmt/vector.h"
 #include <iterator>
 
 using namespace FlexFlow;
@@ -12,14 +13,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     StackVector vector;
 
     vector.push_back(10);
-    std::vector<T> res = vector;
-    std::vector<T> expected = {10};
-    CHECK(res == expected);
+    std::vector<T> result = vector;
+    std::vector<T> correct = {10};
+    CHECK(result == correct);
 
     vector.push_back(20);
-    expected = {10, 20};
-    res = vector;
-    CHECK(res == expected);
+    correct = {10, 20};
+    result = vector;
+    CHECK(result == correct);
   }
 
   TEST_CASE_TEMPLATE("OperatorIndex", T, int, double, char) {
@@ -63,7 +64,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     vector2.push_back(15);
     vector2.push_back(20);
 
-    CHECK(vector1 == vector2);
+    CHECK_WITHOUT_STRINGIFY(vector1 == vector2);
   }
 
   TEST_CASE_TEMPLATE("EmplaceBack", T, int, double, char) {

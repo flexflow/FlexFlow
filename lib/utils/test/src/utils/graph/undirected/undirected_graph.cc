@@ -46,8 +46,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       if (num_nodes > 0) {
         e = *gen::unique<std::vector<UndirectedEdge>>(
             num_edges,
-            gen::construct<UndirectedEdge>(gen::elementOf(n),
-                                           gen::elementOf(n)));
+            gen::construct<UndirectedEdge>(
+                gen::construct<commutative_pair<Node>>(gen::elementOf(n),
+                                                       gen::elementOf(n))));
       }
       for (UndirectedEdge const &edge : e) {
         g.add_edge(edge);

@@ -43,7 +43,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     auto result = tuple_prepend(value, t1);
     std::tuple<int, float, double> expected(42, 3.14f, 2.71828);
-    CHECK(result == expected);
+    CHECK(tuple_compare(result, expected));
   }
 
   TEST_CASE("Testing tuple_head_t") {

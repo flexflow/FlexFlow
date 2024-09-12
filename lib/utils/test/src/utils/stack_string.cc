@@ -49,11 +49,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     StackString str2{"def"};
     StackString str3{"abc"};
 
-    CHECK(str1 == str1);
-    CHECK(str1 == str3);
-    CHECK(str1 != str2);
-    CHECK(str2 != str3);
-    CHECK(str1 < str2);
+    CHECK_WITHOUT_STRINGIFY(str1 == str1);
+    CHECK_WITHOUT_STRINGIFY(str1 == str3);
+    CHECK_WITHOUT_STRINGIFY(str1 != str2);
+    CHECK_WITHOUT_STRINGIFY(str2 != str3);
+    CHECK_WITHOUT_STRINGIFY(str1 < str2);
   }
 
   TEST_CASE_TEMPLATE("StackStringSize", T, char) {
@@ -80,5 +80,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     StackString str{"Hello"};
     std::string stdStr = static_cast<std::string>(str);
     CHECK(stdStr == "Hello");
+  }
+
+  TEST_CASE("Arbitrary<stack_string>") {
+    constexpr std::size_t MAXSIZE = 10;
+    RC_SUBCASE([&](stack_string<MAXSIZE> const &s) {
+      RC_ASSERT(s.size() <= MAXSIZE);
+    });
   }
 }

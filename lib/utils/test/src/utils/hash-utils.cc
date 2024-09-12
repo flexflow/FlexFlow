@@ -90,7 +90,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       CHECK(hash1 != hash2);
 
-      tuple1 = tuple2;
+      std::get<0>(tuple1) = 2;
       hash1 = get_std_hash(tuple1);
       CHECK(hash1 == hash2);
     }

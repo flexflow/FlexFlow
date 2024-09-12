@@ -6,6 +6,13 @@
 
 namespace FlexFlow {
 
+/**
+ * @brief Applies the given function to all the keys within the given map and
+ * returns the updated map.
+ *
+ * @details Note that if multiple original keys are transformed to the same new
+ * key, which value will be associated to the new key is undefined.
+ */
 template <typename K,
           typename V,
           typename F,

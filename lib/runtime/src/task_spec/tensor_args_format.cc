@@ -1,5 +1,5 @@
 #include "tensor_args_format.h"
-#include "utils/containers.h"
+#include "utils/containers/flatmap.h"
 
 namespace FlexFlow {
 

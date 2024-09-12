@@ -4,7 +4,7 @@
 #include "utils/bidict/algorithms/right_entries.h"
 #include "utils/containers/as_vector.h"
 #include "utils/containers/get_all_permutations.h"
-#include "utils/containers/get_first.h"
+#include "utils/containers/get_one_of.h"
 #include "utils/containers/is_subseteq_of.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/values.h"

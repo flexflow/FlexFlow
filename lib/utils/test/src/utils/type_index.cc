@@ -9,13 +9,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("int type") {
       std::type_index idx = get_type_index_for_type<int>();
       std::type_index expected_idx = typeid(int);
-      CHECK(idx == expected_idx);
+      CHECK_WITHOUT_STRINGIFY(idx == expected_idx);
     }
 
     SUBCASE("string type") {
       std::type_index idx = get_type_index_for_type<std::string>();
       std::type_index expected_idx = typeid(std::string);
-      CHECK(idx == expected_idx);
+      CHECK_WITHOUT_STRINGIFY(idx == expected_idx);
     }
   }
 
@@ -23,13 +23,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::type_index idx = typeid(float);
 
     SUBCASE("matching type") {
-      bool result = matches<float>(idx);
-      CHECK(result == true);
+      CHECK(matches<float>(idx));
     }
 
     SUBCASE("non-matching type") {
-      bool result = matches<int>(idx);
-      CHECK(result == false);
+      CHECK_FALSE(matches<int>(idx));
     }
   }
 }

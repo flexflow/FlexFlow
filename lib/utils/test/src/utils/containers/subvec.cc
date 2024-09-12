@@ -1,17 +1,66 @@
 #include "utils/containers/subvec.h"
+#include "utils/fmt/vector.h"
 #include <doctest/doctest.h>
 #include <vector>
 
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Testing subvec function") {
+  TEST_CASE("subvec") {
     std::vector<int> v = {1, 2, 3, 4, 5};
-    auto subvec_v = subvec(v, std::optional<int>(1), std::optional<int>(4));
 
-    CHECK(subvec_v == std::vector<int>({2, 3, 4}));
+    SUBCASE("Basic subvector") {
+      auto result = subvec(v, 1, 4);
+      std::vector<int> correct = {2, 3, 4};
+      CHECK(result == correct);
+    }
 
-    auto subvec_v2 = subvec(v, std::nullopt, std::optional<int>(3));
-    CHECK(subvec_v2 == std::vector<int>({1, 2, 3}));
+    SUBCASE("From beginning to index") {
+      auto result = subvec(v, std::nullopt, 3);
+      std::vector<int> correct = {1, 2, 3};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("From index to end") {
+      auto result = subvec(v, 2, std::nullopt);
+      std::vector<int> correct = {3, 4, 5};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("All of the vector") {
+      auto result = subvec(v, std::nullopt, std::nullopt);
+      std::vector<int> correct = {1, 2, 3, 4, 5};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("Start greater than end") {
+      auto result = subvec(v, 3, 1);
+      std::vector<int> correct = {};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("Start equal to end") {
+      auto result = subvec(v, 3, 3);
+      std::vector<int> correct = {};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("Negative indices") {
+      auto result = subvec(v, -3, -1);
+      std::vector<int> correct = {3, 4};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("Out of bounds index from above") {
+      auto result = subvec(v, 2, 100);
+      std::vector<int> correct = {3, 4, 5};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("Out of bounds index from below") {
+      auto result = subvec(v, -100, 2);
+      std::vector<int> correct = {1, 2};
+      CHECK(result == correct);
+    }
   }
 }

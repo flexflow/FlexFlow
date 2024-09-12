@@ -5,6 +5,7 @@ features = [
   "ord",
   "hash",
   "fmt",
+  "rapidcheck"
 ]
 
 includes = [

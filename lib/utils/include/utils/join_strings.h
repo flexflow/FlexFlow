@@ -38,6 +38,12 @@ std::string join_strings(Container const &c, std::string const &delimiter) {
   return join_strings(c.cbegin(), c.cend(), delimiter);
 }
 
+template <typename Container, typename F>
+std::string
+    join_strings(Container const &c, std::string const &delimiter, F const &f) {
+  return join_strings(c.cbegin(), c.cend(), delimiter, f);
+}
+
 } // namespace FlexFlow
 
 #endif

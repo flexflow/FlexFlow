@@ -3,6 +3,8 @@
 
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/keys.h"
+#include "utils/exception.h"
+#include <cassert>
 #include <unordered_map>
 
 namespace FlexFlow {
@@ -10,7 +12,10 @@ namespace FlexFlow {
 template <typename K, typename V>
 std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
                                     std::unordered_map<K, V> const &rhs) {
-  assert(are_disjoint(keys(lhs), keys(rhs)));
+  if (!are_disjoint(keys(lhs), keys(rhs))) {
+    throw mk_runtime_error(
+        "Key sets of merge_maps parameters are non-disjoint");
+  }
 
   std::unordered_map<K, V> result;
   for (auto const &kv : lhs) {

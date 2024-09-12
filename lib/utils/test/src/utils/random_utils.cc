@@ -1,67 +1,56 @@
 #include "utils/random_utils.h"
 #include "test/utils/doctest.h"
+#include "utils/containers/contains.h"
+#include "utils/containers/filter.h"
+#include "utils/containers/repeat.h"
+#include "utils/containers/sum.h"
+#include "utils/containers/zip.h"
 #include <algorithm>
 
-void checkProbabilities(std::vector<int> const &counts,
-                        int numIterations,
-                        std::vector<float> const &weights,
-                        float totalWeight) {
-  for (int i = 0; i < counts.size(); i++) {
-    float expectedProbability = weights[i] / totalWeight;
-    float observedProbability = static_cast<float>(counts[i]) / numIterations;
-    CHECK(observedProbability ==
-          doctest::Approx(expectedProbability).epsilon(0.01f));
-  }
-}
-
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("select_random") {
+  TEST_CASE("select_random(std::vector<T>)") {
     std::vector<int> values = {1, 2, 3, 4, 5};
 
-    SUBCASE("Select random value") {
-      int result = select_random(values);
-
-      CHECK(std::find(values.begin(), values.end(), result) != values.end());
-    }
-
-    SUBCASE("Invalid arguments") {
-      std::vector<float> weights = {0.1f, 0.3f, 0.2f};
-      CHECK(select_random(values, weights) == 2);
-    }
-  }
-
-  TEST_CASE("select_random - Weighted Random Selection") {
-    SUBCASE("Test with equal weights") {
-      std::vector<int> values = {1, 2, 3, 4, 5};
-      std::vector<float> weights = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
-
-      std::vector<int> counts(values.size(), 0);
-      int const numIterations = 10000;
-      for (int i = 0; i < numIterations; i++) {
-        int selected = select_random(values, weights);
-        counts[selected - 1]++;
+    SUBCASE("selected value is in container") {
+      SUBCASE("equal weights") {
+        int result = select_random(values);
+        CHECK(contains(values, result));
       }
 
-      checkProbabilities(counts, numIterations, weights, values.size());
+      SUBCASE("unequal weights") {
+        std::vector<float> weights = {0.1f, 0.3f, 0.2f, 0.2f, 0.2f};
+        int result = select_random(values, weights);
+        CHECK(contains(values, result));
+      }
     }
 
-    SUBCASE("Test with different weights") {
-      std::vector<int> values = {1, 2, 3, 4, 5};
-      std::vector<float> weights = {0.1f, 0.2f, 0.3f, 0.2f, 0.2f};
+    SUBCASE("correct distribution") {
+      auto check_probabilities = [](std::vector<int> values,
+                                    std::vector<float> const &weights) {
+        int num_iterations = 10'000;
+        std::vector<int> trials = repeat(
+            num_iterations, [&]() { return select_random(values, weights); });
 
-      std::vector<int> counts(values.size(), 0);
-      int const numIterations = 10000;
-      for (int i = 0; i < numIterations; i++) {
-        int selected = select_random(values, weights);
-        counts[selected - 1]++;
+        for (auto const [v, w] : zip(values, weights)) {
+          float expectedProbability = w / sum(weights);
+          int num_occurrences =
+              filter(trials, [&](int c) { return (c == v); }).size();
+          float observedProbability =
+              static_cast<float>(num_occurrences) / num_iterations;
+          CHECK(observedProbability ==
+                doctest::Approx(expectedProbability).epsilon(0.01f));
+        }
+      };
+
+      SUBCASE("equal weights") {
+        std::vector<float> weights = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
+        check_probabilities(values, weights);
       }
 
-      float totalWeight = 0.0f;
-      for (float weight : weights) {
-        totalWeight += weight;
+      SUBCASE("unequal weights") {
+        std::vector<float> weights = {0.1f, 0.2f, 0.3f, 0.2f, 0.2f};
+        check_probabilities(values, weights);
       }
-
-      checkProbabilities(counts, numIterations, weights, totalWeight);
     }
   }
 }

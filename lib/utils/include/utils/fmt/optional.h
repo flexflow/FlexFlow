@@ -30,6 +30,14 @@ struct formatter<
   }
 };
 
+template <typename Char>
+struct formatter<std::nullopt_t, Char> : formatter<std::string> {
+  template <typename FormatContext>
+  auto format(std::nullopt_t, FormatContext &ctx) -> decltype(ctx.out()) {
+    return formatter<std::string>::format("nullopt", ctx);
+  }
+};
+
 } // namespace fmt
 
 namespace FlexFlow {
@@ -41,6 +49,10 @@ std::ostream &operator<<(std::ostream &s, std::optional<T> const &t) {
   return s << fmt::to_string(t);
 }
 
+inline std::ostream &operator<<(std::ostream &s, std::nullopt_t) {
+  return s << "nullopt";
+}
+
 } // namespace FlexFlow
 
 namespace doctest {
@@ -49,6 +61,13 @@ template <typename T>
 struct StringMaker<std::optional<T>> {
   static String convert(std::optional<T> const &m) {
     return toString(fmt::to_string(m));
+  }
+};
+
+template <>
+struct StringMaker<std::nullopt_t> {
+  static String convert(std::nullopt_t) {
+    return toString("nullopt");
   }
 };
 

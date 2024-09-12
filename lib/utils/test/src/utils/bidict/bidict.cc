@@ -10,7 +10,26 @@ TEST_SUITE(FF_TEST_SUITE) {
     dict.equate(1, "one");
     dict.equate(2, "two");
 
-    // Test the equate() function
+    SUBCASE("bidict::contains_l") {
+      CHECK(dict.contains_l(1));
+      CHECK_FALSE(dict.contains_l(3));
+    }
+
+    SUBCASE("bidict::contains_r") {
+      CHECK(dict.contains_r(std::string("one")));
+      CHECK_FALSE(dict.contains_r(std::string("three")));
+    }
+    SUBCASE("bidict::contains_r, bidict::contains_r - same type") {
+      bidict<int, int> bd;
+      bd.equate(1, 3);
+      bd.equate(2, 4);
+
+      CHECK(bd.contains_l(1));
+      CHECK_FALSE(bd.contains_l(3));
+      CHECK(bd.contains_r(3));
+      CHECK_FALSE(bd.contains_r(1));
+    }
+
     SUBCASE("bidict::equate") {
       CHECK(dict.at_l(1) == "one");
       CHECK(dict.at_r("one") == 1);
@@ -18,7 +37,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(dict.at_r("two") == 2);
     }
 
-    // Test the erase_l() function
     SUBCASE("bidict::erase_l") {
       dict.erase_l(1);
       CHECK(dict.size() == 1);
@@ -26,7 +44,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(dict.at_r("two") == 2);
     }
 
-    // Test the erase_r() function
     SUBCASE("bidict::erase_r") {
       dict.erase_r("one");
       CHECK(dict.size() == 1);
@@ -34,14 +51,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(dict.at_l(2) == "two");
     }
 
-    // Test the reversed() function
     SUBCASE("bidict::reversed") {
       bidict<std::string, int> reversed_dict = dict.reversed();
       CHECK(reversed_dict.at_l("one") == 1);
       CHECK(reversed_dict.at_r(2) == "two");
     }
 
-    // Test the size() function
     SUBCASE("bidict::size") {
       CHECK(dict.size() == 2);
     }
