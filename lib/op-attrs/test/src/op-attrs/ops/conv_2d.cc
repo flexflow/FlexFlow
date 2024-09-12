@@ -20,7 +20,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     SUBCASE("with bias") {
-      Conv2DAttrs attrs = make_attrs(true);
+      Conv2DAttrs attrs = make_attrs(/*use_bias=*/true);
 
       std::vector<IncomingTensorRole> result =
           get_conv2d_incoming_tensor_roles(attrs);
@@ -34,7 +34,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("without bias") {
-      Conv2DAttrs attrs = make_attrs(false);
+      Conv2DAttrs attrs = make_attrs(/*use_bias=*/false);
 
       std::vector<IncomingTensorRole> result =
           get_conv2d_incoming_tensor_roles(attrs);
