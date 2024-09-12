@@ -88,10 +88,6 @@ float singleton_subgraph_cost(
                                 machine_views.at(input),
                                 layer_machine_view));
   }
-  std::cerr << "layer inputs: " << get_layer_inputs(pcg, layer).size()
-            << std::endl;
-  std::cerr << "computation_cost: " << computation_cost
-            << " communication_cost: " << communication_cost << std::endl;
   return computation_cost + communication_cost;
 }
 
@@ -216,8 +212,6 @@ MachineMappingResult get_optimal_machine_mapping_internal(
                            machine_views_for_split_edge))));
   }
 
-  std::cerr << "serial result: " << optimal_result.runtime << std::endl;
-
   return optimal_result;
 }
 
@@ -264,8 +258,6 @@ MachineMappingResult get_optimal_machine_mapping_internal(
                                                  fixed_machine_views2)));
   }
 
-  std::cerr << "parallel result: " << optimal_result.runtime << std::endl;
-
   return optimal_result;
 }
 
@@ -302,8 +294,6 @@ MachineMappingResult get_optimal_machine_mapping_internal(
         MachineMappingResult(runtime, machine_mapping);
     minimize_runtime(optimal_result, curr_result);
   }
-
-  std::cerr << "node result: " << optimal_result.runtime << std::endl;
 
   return optimal_result;
 }
