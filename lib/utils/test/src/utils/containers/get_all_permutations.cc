@@ -51,4 +51,77 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
   }
+
+  TEST_CASE("get_all_permutations_with_repetition") {
+    SUBCASE("container size =  3, n = 1") {
+      std::vector<int> input = {1, 2, 3};
+
+      std::unordered_multiset<std::vector<int>> result =
+          unordered_multiset_of(get_all_permutations_with_repetition(input, 1));
+      std::unordered_multiset<std::vector<int>> correct = {
+          {1},
+          {2},
+          {3},
+      };
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("container size 3, n = 2") {
+      std::vector<int> input = {1, 2, 3};
+
+      std::unordered_multiset<std::vector<int>> result =
+          unordered_multiset_of(get_all_permutations_with_repetition(input, 2));
+      std::unordered_multiset<std::vector<int>> correct = {
+          {1, 1},
+          {1, 2},
+          {1, 3},
+          {2, 1},
+          {2, 2},
+          {2, 3},
+          {3, 1},
+          {3, 2},
+          {3, 3},
+      };
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("container size 2, n = 3") {
+      std::vector<int> input = {1, 2};
+
+      std::unordered_multiset<std::vector<int>> result =
+          unordered_multiset_of(get_all_permutations_with_repetition(input, 3));
+      std::unordered_multiset<std::vector<int>> correct = {
+          {1, 1, 1},
+          {1, 1, 2},
+          {1, 2, 1},
+          {1, 2, 2},
+          {2, 1, 1},
+          {2, 1, 2},
+          {2, 2, 1},
+          {2, 2, 2},
+      };
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("duplicate elements") {
+      std::vector<int> input = {1, 2, 2};
+
+      std::unordered_multiset<std::vector<int>> result =
+          unordered_multiset_of(get_all_permutations_with_repetition(input, 2));
+      std::unordered_multiset<std::vector<int>> correct = {{1, 1},
+                                                           {1, 2},
+                                                           {1, 2},
+                                                           {2, 1},
+                                                           {2, 1},
+                                                           {2, 2},
+                                                           {2, 2},
+                                                           {2, 2},
+                                                           {2, 2}};
+
+      CHECK(result == correct);
+    }
+  }
 }

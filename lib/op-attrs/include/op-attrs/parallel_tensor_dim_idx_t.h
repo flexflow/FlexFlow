@@ -1,8 +1,9 @@
 #ifndef _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_TENSOR_DIM_IDX_H
 #define _FLEXFLOW_OP_ATTRS_INCLUDE_OP_ATTRS_PARALLEL_TENSOR_DIM_IDX_H
 
+#include "op-attrs/parallel_dim.dtg.h"
 #include "op-attrs/parallel_tensor_dim_idx_t.dtg.h"
-#include "op-attrs/parallel_tensor_shape.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 
 namespace FlexFlow {
 

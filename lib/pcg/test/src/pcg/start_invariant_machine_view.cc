@@ -6,7 +6,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("StartInvariantMachineView") {
 
-    DeviceCoordinates start = DeviceCoordinates{{0}};
+    MachineViewCoordinates start = MachineViewCoordinates{{0}};
     StridedRectangle rect = StridedRectangle{{
         StridedRectangleSide(num_points_t{2}, stride_t{3}),
         StridedRectangleSide(num_points_t{2}, stride_t{2}),

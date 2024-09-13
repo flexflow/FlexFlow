@@ -1,7 +1,7 @@
 #include "pcg/machine_view.h"
-#include "pcg/device_coordinates.dtg.h"
 #include "pcg/device_id.h"
 #include "pcg/machine_specification.h"
+#include "pcg/machine_view_coordinates.dtg.h"
 #include "pcg/machine_view_dim_idx_t.dtg.h"
 #include "pcg/machine_view_projection.dtg.h"
 #include "pcg/strided_rectangle.h"
@@ -23,7 +23,7 @@
 
 namespace FlexFlow {
 
-std::unordered_set<DeviceCoordinates>
+std::unordered_set<MachineViewCoordinates>
     get_devices_coordinates(MachineView const &mv) {
 
   std::vector<std::vector<int>> coordinate_ranges =
@@ -33,21 +33,23 @@ std::unordered_set<DeviceCoordinates>
 
   std::unordered_set<std::vector<int>> raw_coordinates =
       unordered_set_of(cartesian_product(coordinate_ranges));
-  std::unordered_set<DeviceCoordinates> device_coordinates =
+  std::unordered_set<MachineViewCoordinates> machine_view_coordinates =
       transform(raw_coordinates, [](std::vector<int> const &point) {
-        return DeviceCoordinates(point);
+        return MachineViewCoordinates(point);
       });
-  return device_coordinates;
+  return machine_view_coordinates;
 }
 
-DeviceCoordinates get_maximum_device_coordinates(MachineView const &mv) {
+MachineViewCoordinates get_maximum_device_coordinates(MachineView const &mv) {
   return maximum(get_devices_coordinates(mv));
 }
 
-device_id_t get_device_id(MachineView const &mv,
-                          DeviceCoordinates const &coordinates,
-                          MachineSpecification const &ms,
-                          MachineViewProjection const &projection) {
+MachineSpecificationCoordinates get_machine_specification_coordinates(
+    MachineView const &mv,
+    MachineViewCoordinates const &coordinates,
+    MachineSpecification const &ms,
+    MachineViewProjection const &projection) {
+
   auto inter_projection = filter_values(
       projection.raw_projection, [](MachineSpecificationDimension const &dim) {
         return dim == MachineSpecificationDimension::INTER;
@@ -57,13 +59,15 @@ device_id_t get_device_id(MachineView const &mv,
         return dim == MachineSpecificationDimension::INTRA;
       });
 
-  DeviceCoordinates transformed_coordinates = DeviceCoordinates{transform(
-      zip(coordinates.raw_coords, mv.rect.get_sides()), [&](auto const &pair) {
-        return pair.first * pair.second.stride.unwrapped;
-      })};
-  transformed_coordinates = DeviceCoordinates{
+  MachineViewCoordinates transformed_coordinates = MachineViewCoordinates{
+      transform(zip(coordinates.raw_coords, mv.rect.get_sides()),
+                [&](auto const &pair) {
+                  return pair.first * pair.second.stride.unwrapped;
+                })};
+  transformed_coordinates = MachineViewCoordinates{
       transform(zip(transformed_coordinates.raw_coords, mv.start.raw_coords),
                 [&](auto const &pair) { return pair.first + pair.second; })};
+
   auto get_coordinate = [&](auto const &sub_projection) {
     std::vector<machine_view_dim_idx_t> relevant_dimensions =
         sorted(keys(sub_projection));
@@ -89,14 +93,17 @@ device_id_t get_device_id(MachineView const &mv,
   };
   int inter_coordinate = get_coordinate(inter_projection);
   int intra_coordinate = get_coordinate(intra_projection);
-  if (inter_coordinate >= ms.num_nodes ||
-      intra_coordinate >= get_num_devices_per_node(ms, mv.device_type)) {
-    throw mk_runtime_error(
-        fmt::format("DeviceCoordinates{} is out of bound", coordinates));
-  }
-  int idx = inter_coordinate * get_num_devices_per_node(ms, mv.device_type) +
-            intra_coordinate;
-  return device_id_from_index(idx, mv.device_type);
+  return MachineSpecificationCoordinates{
+      inter_coordinate, intra_coordinate, mv.device_type};
+}
+
+device_id_t get_device_id(MachineView const &mv,
+                          MachineViewCoordinates const &coordinates,
+                          MachineSpecification const &ms,
+                          MachineViewProjection const &projection) {
+  MachineSpecificationCoordinates coords =
+      get_machine_specification_coordinates(mv, coordinates, ms, projection);
+  return get_device_id(ms, coords);
 }
 
 std::unordered_set<device_id_t>
@@ -104,7 +111,8 @@ std::unordered_set<device_id_t>
                    MachineSpecification const &ms,
                    MachineViewProjection const &projection) {
   std::unordered_set<device_id_t> devices_ids;
-  for (DeviceCoordinates const &coordinates : get_devices_coordinates(mv)) {
+  for (MachineViewCoordinates const &coordinates :
+       get_devices_coordinates(mv)) {
     devices_ids.insert(get_device_id(mv, coordinates, ms, projection));
   }
   return devices_ids;
@@ -148,7 +156,7 @@ MachineView make_1d_machine_view(int start,
                                  stride_t stride,
                                  DeviceType device_type) {
   StridedRectangle rect = make_1d_rect(start, stop, stride);
-  DeviceCoordinates start_coordinate = DeviceCoordinates{{start}};
+  MachineViewCoordinates start_coordinate = MachineViewCoordinates{{start}};
   return MachineView{start_coordinate, rect, device_type};
 }
 
@@ -163,7 +171,7 @@ MachineView make_1d_machine_view(int start,
                                  stride_t stride,
                                  DeviceType device_type) {
   StridedRectangle rect = make_1d_rect(start, num_points, stride);
-  DeviceCoordinates start_coordinate = DeviceCoordinates{{start}};
+  MachineViewCoordinates start_coordinate = MachineViewCoordinates{{start}};
   return MachineView{start_coordinate, rect, device_type};
 }
 
@@ -177,7 +185,7 @@ MachineView make_1d_machine_view(int start,
                                  stride_t stride,
                                  DeviceType device_type) {
   StridedRectangle rect = make_1d_rect(start, interval_size, stride);
-  DeviceCoordinates start_coordinate = DeviceCoordinates{{start}};
+  MachineViewCoordinates start_coordinate = MachineViewCoordinates{{start}};
   return MachineView{start_coordinate, rect, device_type};
 }
 

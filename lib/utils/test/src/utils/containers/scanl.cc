@@ -1,7 +1,9 @@
 #include "utils/containers/scanl.h"
+#include "utils/fmt/vector.h"
 #include <doctest/doctest.h>
 #include <string>
 #include <vector>
+
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {

@@ -1,11 +1,12 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_MACHINE_VIEW_H
 
-#include "pcg/device_coordinates.dtg.h"
 #include "pcg/device_id.h"
 #include "pcg/device_type.dtg.h"
 #include "pcg/machine_specification.dtg.h"
+#include "pcg/machine_specification_coordinates.dtg.h"
 #include "pcg/machine_view.dtg.h"
+#include "pcg/machine_view_coordinates.dtg.h"
 #include "pcg/machine_view_dim_idx_t.dtg.h"
 #include "pcg/machine_view_projection.dtg.h"
 #include "pcg/num_points_t.dtg.h"
@@ -15,14 +16,20 @@
 
 namespace FlexFlow {
 
-std::unordered_set<DeviceCoordinates>
+std::unordered_set<MachineViewCoordinates>
     get_devices_coordinates(MachineView const &mv);
-DeviceCoordinates get_maximum_device_coordinates(MachineView const &mv);
+MachineViewCoordinates get_maximum_device_coordinates(MachineView const &mv);
+
+MachineSpecificationCoordinates get_machine_specification_coordinates(
+    MachineView const &mv,
+    MachineViewCoordinates const &coordinates,
+    MachineSpecification const &ms,
+    MachineViewProjection const &projection);
 StridedRectangleSide get_side_at_idx(MachineView const &mv,
                                      machine_view_dim_idx_t const &idx);
 
 device_id_t get_device_id(MachineView const &mv,
-                          DeviceCoordinates const &coordinates,
+                          MachineViewCoordinates const &coordinates,
                           MachineSpecification const &ms,
                           MachineViewProjection const &projection);
 std::unordered_set<device_id_t>

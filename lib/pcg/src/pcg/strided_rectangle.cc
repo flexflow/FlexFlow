@@ -1,7 +1,7 @@
 #include "pcg/strided_rectangle.h"
 #include "op-attrs/dim_ordered/transform.h"
-#include "pcg/device_coordinates.dtg.h"
 #include "pcg/device_id_t.dtg.h"
+#include "pcg/machine_view_coordinates.dtg.h"
 #include "pcg/strided_rectangle_side.dtg.h"
 #include "pcg/strided_rectangle_side.h"
 #include "utils/containers/as_vector.h"

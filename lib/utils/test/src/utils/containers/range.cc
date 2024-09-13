@@ -1,4 +1,5 @@
 #include "utils/containers/range.h"
+#include "utils/fmt/vector.h"
 #include "utils/hash/unordered_set.h"
 #include <doctest/doctest.h>
 #include <unordered_set>

@@ -3,6 +3,7 @@
 #include "utils/fmt/map.h"
 #include "utils/fmt/set.h"
 #include "utils/fmt/unordered_map.h"
+#include "utils/fmt/unordered_multiset.h"
 #include "utils/fmt/unordered_set.h"
 #include "utils/fmt/vector.h"
 

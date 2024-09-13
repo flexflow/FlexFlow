@@ -1,5 +1,6 @@
 
 #include "op-attrs/parallel_tensor_dim_idx_t.h"
+#include "op-attrs/parallel_tensor_dims.h"
 #include "utils/containers/extend.h"
 #include "utils/containers/range.h"
 #include "utils/containers/transform.h"
@@ -25,7 +26,7 @@ ParallelDim get_parallel_dim_at_idx(ParallelTensorShape const &shape,
 std::unordered_set<parallel_tensor_dim_idx_t>
     get_parallel_tensor_indices(ParallelTensorShape const &shape) {
   std::unordered_set<parallel_tensor_dim_idx_t> indices;
-  extend(indices, transform(range(num_shard_dims(shape)), [](int idx) {
+  extend(indices, transform(range(num_shard_dims(shape.dims)), [](int idx) {
            return parallel_tensor_dim_idx_t(ff_dim_t(idx));
          }));
   indices.insert(parallel_tensor_dim_idx_t(ReplicaType::SUM));

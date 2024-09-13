@@ -3,6 +3,8 @@
 #include "pcg/strided_rectangle_side.h"
 #include "test/utils/doctest.h"
 #include "utils/containers/transform.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 
 using namespace FlexFlow;
 
@@ -10,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("MachineView - utility functions") {
     MachineView mv = MachineView{
-        DeviceCoordinates{{0, 0, 0}},
+        MachineViewCoordinates{{0, 0, 0}},
         StridedRectangle{{StridedRectangleSide(num_points_t{7}, stride_t{5}),
                           StridedRectangleSide(num_points_t{10}, stride_t{2}),
                           StridedRectangleSide(num_points_t{1}, stride_t{4})}},
@@ -42,19 +44,19 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("2D MachineView") {
 
       MachineView mv =
-          MachineView{DeviceCoordinates{{0, 0}},
+          MachineView{MachineViewCoordinates{{0, 0}},
                       StridedRectangle{{
                           StridedRectangleSide(num_points_t(2), stride_t{3}),
                           StridedRectangleSide(num_points_t(2), stride_t{2}),
                       }},
                       DeviceType::GPU};
       SUBCASE("get_devices_coordinates") {
-        std::unordered_set<DeviceCoordinates> expected = {
-            {DeviceCoordinates{{0, 0}},
-             DeviceCoordinates{{0, 1}},
-             DeviceCoordinates{{1, 0}},
-             DeviceCoordinates{{1, 1}}}};
-        std::unordered_set<DeviceCoordinates> result =
+        std::unordered_set<MachineViewCoordinates> expected = {
+            {MachineViewCoordinates{{0, 0}},
+             MachineViewCoordinates{{0, 1}},
+             MachineViewCoordinates{{1, 0}},
+             MachineViewCoordinates{{1, 1}}}};
+        std::unordered_set<MachineViewCoordinates> result =
             get_devices_coordinates(mv);
         CHECK(expected == result);
       }
@@ -73,7 +75,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       // have 1, 13, 4, 16 as device-ids
 
       MachineView mv =
-          MachineView{DeviceCoordinates{{0, 1, 2}},
+          MachineView{MachineViewCoordinates{{0, 1, 2}},
                       StridedRectangle{{
                           StridedRectangleSide(num_points_t(1), stride_t{3}),
                           StridedRectangleSide(num_points_t(2), stride_t{1}),
@@ -82,12 +84,12 @@ TEST_SUITE(FF_TEST_SUITE) {
                       DeviceType::GPU};
 
       SUBCASE("get_devices_coordinates") {
-        std::unordered_set<DeviceCoordinates> expected = {
-            {DeviceCoordinates{{0, 0, 0}},
-             DeviceCoordinates{{0, 0, 1}},
-             DeviceCoordinates{{0, 1, 0}},
-             DeviceCoordinates{{0, 1, 1}}}};
-        std::unordered_set<DeviceCoordinates> result =
+        std::unordered_set<MachineViewCoordinates> expected = {
+            {MachineViewCoordinates{{0, 0, 0}},
+             MachineViewCoordinates{{0, 0, 1}},
+             MachineViewCoordinates{{0, 1, 0}},
+             MachineViewCoordinates{{0, 1, 1}}}};
+        std::unordered_set<MachineViewCoordinates> result =
             get_devices_coordinates(mv);
         CHECK(expected == result);
       }
@@ -98,7 +100,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("2D MachineView") {
 
       MachineView mv =
-          MachineView{DeviceCoordinates{{0, 0}},
+          MachineView{MachineViewCoordinates{{0, 0}},
                       StridedRectangle{{
                           StridedRectangleSide(num_points_t(2), stride_t{3}),
                           StridedRectangleSide(num_points_t(2), stride_t{2}),
@@ -106,14 +108,15 @@ TEST_SUITE(FF_TEST_SUITE) {
                       DeviceType::GPU};
 
       SUBCASE("get_maximum_device_coordinates") {
-        CHECK(get_maximum_device_coordinates(mv) == DeviceCoordinates{{1, 1}});
+        CHECK(get_maximum_device_coordinates(mv) ==
+              MachineViewCoordinates{{1, 1}});
       }
     }
 
     SUBCASE("3D MachineView") {
 
       MachineView mv =
-          MachineView{DeviceCoordinates{{0, 1, 2}},
+          MachineView{MachineViewCoordinates{{0, 1, 2}},
                       StridedRectangle{{
                           StridedRectangleSide(num_points_t(1), stride_t{3}),
                           StridedRectangleSide(num_points_t(2), stride_t{1}),
@@ -123,14 +126,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("get_maximum_device_coordinates") {
         CHECK(get_maximum_device_coordinates(mv) ==
-              DeviceCoordinates{{0, 1, 1}});
+              MachineViewCoordinates{{0, 1, 1}});
       }
     }
   }
 
   TEST_CASE("make_1d_machine_view") {
 
-    DeviceCoordinates start = DeviceCoordinates{{1}};
+    MachineViewCoordinates start = MachineViewCoordinates{{1}};
     MachineView mv = MachineView{
         start,
         StridedRectangle{{StridedRectangleSide{num_points_t{7}, stride_t{5}}}},
@@ -171,21 +174,21 @@ TEST_SUITE(FF_TEST_SUITE) {
           {{machine_view_dim_idx_t{0}, MachineSpecificationDimension::INTRA}}};
 
       SUBCASE("Device 0") {
-        DeviceCoordinates device = DeviceCoordinates{{0}};
+        MachineViewCoordinates device = MachineViewCoordinates{{0}};
         device_id_t correct = device_id_from_index(1, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
       }
 
       SUBCASE("Device 1") {
-        DeviceCoordinates device = DeviceCoordinates{{1}};
+        MachineViewCoordinates device = MachineViewCoordinates{{1}};
         device_id_t correct = device_id_from_index(3, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
       }
 
       SUBCASE("Device 2") {
-        DeviceCoordinates device = DeviceCoordinates{{2}};
+        MachineViewCoordinates device = MachineViewCoordinates{{2}};
         device_id_t correct = device_id_from_index(5, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
@@ -193,7 +196,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("2D case") {
       MachineView mv =
-          MachineView{DeviceCoordinates{{1, 2}},
+          MachineView{MachineViewCoordinates{{1, 2}},
                       StridedRectangle{
                           {StridedRectangleSide(num_points_t(2), stride_t{1}),
                            StridedRectangleSide(num_points_t(2), stride_t{2})}},
@@ -205,26 +208,26 @@ TEST_SUITE(FF_TEST_SUITE) {
            {machine_view_dim_idx_t{1}, MachineSpecificationDimension::INTRA}}};
 
       SUBCASE("Device (0,0)") {
-        DeviceCoordinates device = DeviceCoordinates{{0, 0}};
+        MachineViewCoordinates device = MachineViewCoordinates{{0, 0}};
         device_id_t correct = device_id_from_index(7, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
       }
 
       SUBCASE("Device (0,1)") {
-        DeviceCoordinates device = DeviceCoordinates{{0, 1}};
+        MachineViewCoordinates device = MachineViewCoordinates{{0, 1}};
         device_id_t correct = device_id_from_index(9, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
       }
       SUBCASE("Device (1,0)") {
-        DeviceCoordinates device = DeviceCoordinates{{1, 0}};
+        MachineViewCoordinates device = MachineViewCoordinates{{1, 0}};
         device_id_t correct = device_id_from_index(12, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
       }
       SUBCASE("Device (1,1)") {
-        DeviceCoordinates device = DeviceCoordinates{{1, 1}};
+        MachineViewCoordinates device = MachineViewCoordinates{{1, 1}};
         device_id_t correct = device_id_from_index(14, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
@@ -233,7 +236,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("3D case") {
       MachineView mv =
-          MachineView{DeviceCoordinates{{0, 2, 0}},
+          MachineView{MachineViewCoordinates{{0, 2, 0}},
                       StridedRectangle{
                           {StridedRectangleSide(num_points_t(2), stride_t{1}),
                            StridedRectangleSide(num_points_t(2), stride_t{2}),
@@ -247,14 +250,14 @@ TEST_SUITE(FF_TEST_SUITE) {
            {machine_view_dim_idx_t{2}, MachineSpecificationDimension::INTRA}}};
 
       SUBCASE("Device (0,0,1)") {
-        DeviceCoordinates device = DeviceCoordinates{{0, 1, 0}};
+        MachineViewCoordinates device = MachineViewCoordinates{{0, 1, 0}};
         device_id_t correct = device_id_from_index(3, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);
       }
 
       SUBCASE("Device (1, 1, 0)") {
-        DeviceCoordinates device = DeviceCoordinates{{1, 0, 1}};
+        MachineViewCoordinates device = MachineViewCoordinates{{1, 0, 1}};
         device_id_t correct = device_id_from_index(14, DeviceType::GPU);
         device_id_t result = get_device_id(mv, device, ms, projection);
         CHECK(correct == result);

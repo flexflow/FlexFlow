@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "DeviceCoordinates"
+name = "MachineViewCoordinates"
 features = [
   "eq",
   "ord",

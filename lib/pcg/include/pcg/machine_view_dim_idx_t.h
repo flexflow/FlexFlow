@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-std::unordered_set<machine_view_dim_idx_t>
+std::vector<machine_view_dim_idx_t>
     get_machine_view_indices(MachineView const &mv);
 
 } // namespace FlexFlow

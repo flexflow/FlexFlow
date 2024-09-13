@@ -1,4 +1,6 @@
 #include "utils/containers/replicate.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/fmt/vector.h"
 #include "utils/hash/unordered_set.h"
 #include <doctest/doctest.h>
 #include <unordered_set>

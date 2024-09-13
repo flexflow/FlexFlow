@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 MachineView
     machine_view_from_start_invariant(StartInvariantMachineView const &mv,
-                                      DeviceCoordinates const &start_id);
+                                      MachineViewCoordinates const &start_id);
 StartInvariantMachineView
     start_invariant_from_machine_view(MachineView const &mv);
 

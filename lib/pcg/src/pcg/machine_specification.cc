@@ -1,7 +1,6 @@
 #include "pcg/machine_specification.h"
 #include "pcg/device_id.h"
 #include "utils/exception.h"
-
 namespace FlexFlow {
 
 int get_num_gpus(MachineSpecification const &ms) {
@@ -33,4 +32,20 @@ int get_num_devices_per_node(MachineSpecification const &ms,
       throw mk_runtime_error("Unknown DeviceType {}", device_type);
   }
 }
+bool is_valid_machine_specification_coordinates(
+    MachineSpecification const &ms,
+    MachineSpecificationCoordinates const &coords) {
+  return (coords.inter < ms.num_nodes) &&
+         (coords.intra < get_num_devices_per_node(ms, coords.device_type));
+}
+
+device_id_t get_device_id(MachineSpecification const &ms,
+                          MachineSpecificationCoordinates const &coords) {
+  assert(is_valid_machine_specification_coordinates(ms, coords));
+  int raw_idx =
+      coords.inter * get_num_devices_per_node(ms, coords.device_type) +
+      coords.intra;
+  return device_id_from_index(raw_idx, coords.device_type);
+}
+
 } // namespace FlexFlow

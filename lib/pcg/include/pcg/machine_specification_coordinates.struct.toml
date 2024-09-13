@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "MachineView"
+name = "MachineSpecificationCoordinates"
 features = [
   "eq",
   "ord",
@@ -10,18 +10,16 @@ features = [
 ]
 
 includes = [ 
-  "pcg/strided_rectangle.h",
-  "pcg/machine_view_coordinates.dtg.h",
   "pcg/device_type.dtg.h",
 ]
 
 [[fields]]
-name = "start"
-type = "::FlexFlow::MachineViewCoordinates"
+name = "inter"
+type = "int"
 
 [[fields]]
-name = "rect"
-type = "::FlexFlow::StridedRectangle"
+name = "intra"
+type = "int"
 
 [[fields]]
 name = "device_type"

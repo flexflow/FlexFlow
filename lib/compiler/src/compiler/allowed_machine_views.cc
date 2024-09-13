@@ -12,6 +12,7 @@
 #include "utils/containers/extend.h"
 #include "utils/containers/filter.h"
 #include "utils/containers/get_all_permutations.h"
+#include "utils/containers/map_from_keys_and_values.h"
 #include "utils/containers/product.h"
 #include "utils/containers/range.h"
 #include "utils/containers/replicate.h"
@@ -39,9 +40,13 @@ static std::unordered_multiset<num_points_t>
                    [&](int num_devices) { return num_points_t{num_devices}; });
 }
 
-bool is_valid_machine_view(MachineView const &mv,
-                           MachineSpecification const &machine_spec) {
-  return false; // TODO: fix
+bool is_valid_partial_machine_view_mapping(MachineView const &mv,
+                                           MachineSpecification const &ms,
+                                           MachineViewProjection const &proj) {
+  MachineSpecificationCoordinates maximum_device_coords =
+      get_machine_specification_coordinates(
+          mv, get_maximum_device_coordinates(mv), ms, proj);
+  return is_valid_machine_specification_coordinates(ms, maximum_device_coords);
 }
 
 bool is_valid_machine_view(MachineView const &mv,
@@ -54,19 +59,20 @@ bool is_valid_machine_view(MachineView const &mv,
   return unordered_multiset_of(mv_num_devices) == tensor_num_devices;
 }
 
-/* Generates a set of candidate `MachineView`s.
+/* Generates a set of candidate `MachineView`s and their associate
+ `MachineViewProjection`.
  * The returned set includes all valid machine views, and might contain
- invalid
- * ones. This function should never be used externally (see
- * `get_allowed_machine_views` instead). There is no guarantee that a
- non-empty
- * returned set contains a valid machine view (i.e. its possible for all
+ invalid ones. This function should never be used externally (see
+ * `get_allowed_partial_machine_view_mappings` instead). There is no guarantee
+ that a non-empty returned set contains a valid machine view (i.e. its possible
+ for all
  * `MachineView`s to be invalid)
  */
-static std::unordered_set<MachineView>
-    get_candidate_machine_views(MachineSpecification const &machine_spec,
-                                ParallelTensorShape const &shape,
-                                DeviceType const &device_type) {
+static std::unordered_set<std::pair<MachineView, MachineViewProjection>>
+    get_candidate_partial_machine_view_mappings(
+        MachineSpecification const &machine_spec,
+        ParallelTensorShape const &shape,
+        DeviceType const &device_type) {
 
   auto candidate_strides =
       [](std::vector<num_points_t> const &tensor_dims,
@@ -98,54 +104,81 @@ static std::unordered_set<MachineView>
 
     std::unordered_set<std::vector<int>> raw_coordinates =
         unordered_set_of(cartesian_product(coordinate_ranges));
-    std::unordered_set<DeviceCoordinates> device_coordinates =
+    std::unordered_set<MachineViewCoordinates> machine_view_coordinates =
         transform(raw_coordinates, [](std::vector<int> const &point) {
-          return DeviceCoordinates(point);
+          return MachineViewCoordinates(point);
         });
-    return device_coordinates;
+    return machine_view_coordinates;
+  };
+
+  auto candidate_projections = [](MachineView const &mv) {
+    std::unordered_set<MachineViewProjection> result;
+    std::unordered_set<MachineSpecificationDimension> options = {
+        MachineSpecificationDimension::INTER,
+        MachineSpecificationDimension::INTRA};
+    for (std::vector<MachineSpecificationDimension> const &proj_vec :
+         get_all_permutations_with_repetition(options, num_dims(mv))) {
+
+      result.insert(MachineViewProjection{
+          map_from_keys_and_values(get_machine_view_indices(mv), proj_vec)});
+    }
+    return result;
   };
 
   std::unordered_multiset<num_points_t> tensor_dims =
       get_num_devices_per_parallel_dim(shape);
   int total_devices = get_num_devices(machine_spec, device_type);
 
-  std::unordered_set<MachineView> machine_views;
+  std::unordered_set<std::pair<MachineView, MachineViewProjection>>
+      machine_views;
 
   for (MultiDimensionalStride const &strides :
        candidate_strides(sorted(tensor_dims), total_devices)) {
     StridedRectangle rect = get_strided_rectangle(strides, sorted(tensor_dims));
-    StartInvariantMachineView start_inv_mv =
-        StartInvariantMachineView{rect, device_type};
-
-    for (DeviceCoordinates start : candidate_starts(sorted(tensor_dims))) {
-      machine_views.insert(
-          machine_view_from_start_invariant(start_inv_mv, start));
+    auto start_inv_mv = StartInvariantMachineView{rect, device_type};
+    for (MachineViewCoordinates start : candidate_starts(sorted(tensor_dims))) {
+      MachineView mv = machine_view_from_start_invariant(start_inv_mv, start);
+      for (MachineViewProjection const &proj : candidate_projections(mv)) {
+        machine_views.insert({mv, proj});
+      }
     }
   }
-
   return machine_views;
 }
 
-std::unordered_set<MachineView>
-    get_allowed_machine_views(MachineSpecification const &machine_spec,
-                              ParallelTensorShape const &shape,
-                              DeviceType device_type) {
-
-  std::unordered_set<MachineView> views =
-      get_candidate_machine_views(machine_spec, shape, device_type);
-  return filter(views, [&](MachineView const &view) {
-    return is_valid_machine_view(view, shape) &&
-           is_valid_machine_view(view, machine_spec);
-  });
-}
-
-std::unordered_set<StartInvariantMachineView>
-    get_allowed_start_invariant_machine_views(
+std::unordered_set<std::pair<MachineView, MachineViewProjection>>
+    get_allowed_partial_machine_view_mappings(
         MachineSpecification const &machine_spec,
         ParallelTensorShape const &shape,
         DeviceType device_type) {
-  return transform(get_allowed_machine_views(machine_spec, shape, device_type),
-                   start_invariant_from_machine_view);
+
+  std::unordered_set<std::pair<MachineView, MachineViewProjection>> views =
+      get_candidate_partial_machine_view_mappings(
+          machine_spec, shape, device_type);
+  return filter(views,
+                [&](std::pair<MachineView, MachineViewProjection> const &pair) {
+                  auto &[mv, projection] = pair;
+                  return is_valid_machine_view(mv, shape) &&
+                         is_valid_partial_machine_view_mapping(
+                             mv, machine_spec, projection);
+                });
+}
+
+std::unordered_set<std::pair<StartInvariantMachineView, MachineViewProjection>>
+    get_allowed_partial_start_invariant_machine_view_mappings(
+        MachineSpecification const &machine_spec,
+        ParallelTensorShape const &shape,
+        DeviceType device_type) {
+
+  std::unordered_set<std::pair<MachineView, MachineViewProjection>> views =
+      get_allowed_partial_machine_view_mappings(
+          machine_spec, shape, device_type);
+
+  return transform(
+      views, [](std::pair<MachineView, MachineViewProjection> const &p) {
+        auto &[view, proj] = p;
+        return std::pair{start_invariant_from_machine_view(view), proj};
+      });
 }
 
 } // namespace FlexFlow
