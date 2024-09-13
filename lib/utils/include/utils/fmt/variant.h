@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_VARIANT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_VARIANT_H
 
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <variant>
 
@@ -31,5 +32,16 @@ std::ostream &operator<<(std::ostream &s, std::variant<Ts...> const &v) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename... Ts>
+struct StringMaker<std::variant<Ts...>> {
+  static String convert(std::variant<Ts...> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

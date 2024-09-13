@@ -23,8 +23,9 @@ struct bidict {
     }
   }
 
-  explicit bidict(std::vector<std::pair<L, R>> init)
-      : bidict(init.begin(), init.end()) {}
+  bool contains(L const &l, R const &r) const {
+    return this->contains_l(l) && this->at_l(l) == r;
+  }
 
   bool contains_l(L const &l) const {
     return fwd_map.find(l) != fwd_map.end();
@@ -87,6 +88,10 @@ struct bidict {
   std::size_t size() const {
     assert(fwd_map.size() == bwd_map.size());
     return fwd_map.size();
+  }
+
+  bool empty() const {
+    return this->size() == 0;
   }
 
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;

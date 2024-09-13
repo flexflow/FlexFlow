@@ -5,6 +5,7 @@
 #include "utils/containers/sorted.h"
 #include "utils/fmt/pair.h"
 #include "utils/join_strings.h"
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <map>
 
@@ -46,5 +47,16 @@ std::ostream &operator<<(std::ostream &s, std::map<K, V> const &m) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename K, typename V>
+struct StringMaker<std::map<K, V>> {
+  static String convert(std::map<K, V> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

@@ -23,18 +23,6 @@ T const &assert_unwrap(std::optional<T> const &o) {
   return o.value();
 }
 
-template <typename F, typename T>
-std::optional<std::invoke_result_t<F, T>> transform(std::optional<T> const &o,
-                                                    F &&f) {
-  using Return = std::invoke_result_t<F, T>;
-  if (o.has_value()) {
-    Return r = f(o.value());
-    return std::optional<Return>{r};
-  } else {
-    return std::nullopt;
-  }
-}
-
 } // namespace FlexFlow
 
 namespace rc {

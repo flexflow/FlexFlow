@@ -28,9 +28,6 @@ std::vector<parallel_tensor_guid_t>
     get_layer_outputs(ParallelComputationGraph const &,
                       parallel_layer_guid_t const &);
 
-parallel_layer_guid_t get_source_layer(ParallelComputationGraph const &,
-                                       parallel_tensor_guid_t const &);
-
 ParallelLayerAttrs get_parallel_layer_attrs(ParallelComputationGraph const &,
                                             parallel_layer_guid_t const &);
 ParallelTensorAttrs get_parallel_tensor_attrs(ParallelComputationGraph const &,

@@ -5,11 +5,14 @@
 #include "op-attrs/ops/linear_attrs.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
+#include "utils/record_formatter.h"
 #include <tl/expected.hpp>
 
 namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(LinearAttrs);
+
+RecordFormatter as_dot(LinearAttrs const &);
 
 tl::expected<TensorShape, std::string>
     get_kernel_shape(LinearAttrs const &attrs, TensorShape const &input);

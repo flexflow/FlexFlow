@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "NewNode"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "raw_node"
+type = "::FlexFlow::Node"

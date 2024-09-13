@@ -17,7 +17,8 @@ std::unordered_set<PatternValue> get_values(UnlabelledGraphPattern const &);
 std::vector<PatternNode>
     get_topological_ordering(UnlabelledGraphPattern const &);
 
-std::unordered_set<PatternInput> get_inputs(UnlabelledGraphPattern const &);
+std::unordered_set<PatternInput>
+    get_graph_inputs(UnlabelledGraphPattern const &);
 
 std::unordered_set<PatternEdge> get_edges(UnlabelledGraphPattern const &);
 

@@ -4,6 +4,7 @@
 #include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
 #include "utils/type_traits_core.h"
+#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <unordered_set>
 
@@ -40,5 +41,16 @@ std::ostream &operator<<(std::ostream &s, std::unordered_set<T> const &x) {
 }
 
 } // namespace FlexFlow
+
+namespace doctest {
+
+template <typename T>
+struct StringMaker<std::unordered_set<T>> {
+  static String convert(std::unordered_set<T> const &m) {
+    return toString(fmt::to_string(m));
+  }
+};
+
+} // namespace doctest
 
 #endif

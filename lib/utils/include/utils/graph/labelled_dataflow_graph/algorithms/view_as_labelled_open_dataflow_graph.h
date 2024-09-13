@@ -33,11 +33,11 @@ public:
     return {};
   }
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel at(Node const &n) const override {
     return this->g.at(n);
   }
 
-  ValueLabel const &at(OpenDataflowValue const &v) const override {
+  ValueLabel at(OpenDataflowValue const &v) const override {
     return this->g.at(v.get<DataflowOutput>());
   }
 

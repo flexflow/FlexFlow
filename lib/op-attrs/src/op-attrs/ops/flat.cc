@@ -3,15 +3,24 @@
 
 namespace FlexFlow {
 
-namespace Input {
-constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
-              REPLICA = 4;
+TensorShape get_output_shape(FlatAttrs const &, TensorShape const &) {
+  NOT_IMPLEMENTED();
 }
 
-namespace Output {
-constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
+ParallelTensorShape get_output_shape(FlatAttrs const &,
+                                     ParallelTensorShape const &) {
+  NOT_IMPLEMENTED();
 }
 
+// namespace Input {
+// constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
+//               REPLICA = 4;
+// }
+//
+// namespace Output {
+// constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
+// }
+//
 /* bool FlatAttrs::is_valid(ParallelTensorShape const &input) const { */
 /*   ParallelTensorShape output_shape = this->calculate_output_shape(input); */
 

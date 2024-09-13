@@ -4,6 +4,8 @@
 #include "utils/containers/vector_transform.h"
 #include "utils/required_core.h"
 #include <algorithm>
+#include <optional>
+#include <set>
 #include <type_traits>
 #include <vector>
 
@@ -34,9 +36,8 @@ std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
 template <typename F,
           typename In,
           typename Out = decltype(std::declval<F>()(std::declval<In>()))>
-std::unordered_multiset<Out> transform(std::unordered_multiset<In> const &v,
-                                       F const &f) {
-  std::unordered_multiset<Out> result;
+std::set<Out> transform(std::set<In> const &v, F const &f) {
+  std::set<Out> result;
   for (auto const &e : v) {
     result.insert(f(e));
   }
@@ -62,6 +63,18 @@ std::unordered_map<K2, V2> transform(std::unordered_map<K, V> const &m,
     result.insert(f(k, v));
   }
   return result;
+}
+
+template <typename F, typename T>
+std::optional<std::invoke_result_t<F, T>> transform(std::optional<T> const &o,
+                                                    F &&f) {
+  using Return = std::invoke_result_t<F, T>;
+  if (o.has_value()) {
+    Return r = f(o.value());
+    return std::optional<Return>{r};
+  } else {
+    return std::nullopt;
+  }
 }
 
 } // namespace FlexFlow

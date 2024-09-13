@@ -7,7 +7,7 @@ namespace FlexFlow {
 
 template <typename C, typename T = typename C::value_type>
 std::unordered_multiset<T> unordered_multiset_of(C const &c) {
-  return {c.cbegin(), c.cend()};
+  return std::unordered_multiset<T>{std::cbegin(c), std::cend(c)};
 }
 
 } // namespace FlexFlow
