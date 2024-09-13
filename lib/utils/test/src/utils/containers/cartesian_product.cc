@@ -10,6 +10,14 @@ using namespace FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("cartesian_product") {
 
+    SUBCASE("empty") {
+      std::vector<std::vector<int>> containers = {};
+      std::unordered_multiset<std::vector<int>> result =
+          cartesian_product(containers);
+      std::unordered_multiset<std::vector<int>> correct = {{}};
+      CHECK(result == correct);
+    }
+
     SUBCASE("single container, one element") {
       std::vector<std::vector<int>> containers = {{1}};
       std::unordered_multiset<std::vector<int>> result =

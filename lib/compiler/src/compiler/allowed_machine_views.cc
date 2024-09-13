@@ -43,7 +43,7 @@ static std::unordered_multiset<num_points_t>
 bool is_valid_partial_machine_view_mapping(MachineView const &mv,
                                            MachineSpecification const &ms,
                                            MachineViewProjection const &proj) {
-  MachineSpecificationCoordinates maximum_device_coords =
+  MachineSpecificationCoordinate maximum_device_coords =
       get_machine_specification_coordinates(
           mv, get_maximum_device_coordinates(mv), ms, proj);
   return is_valid_machine_specification_coordinates(ms, maximum_device_coords);
@@ -104,18 +104,18 @@ static std::unordered_set<std::pair<MachineView, MachineViewProjection>>
 
     std::unordered_set<std::vector<int>> raw_coordinates =
         unordered_set_of(cartesian_product(coordinate_ranges));
-    std::unordered_set<MachineViewCoordinates> machine_view_coordinates =
+    std::unordered_set<MachineViewCoordinate> machine_view_coordinate =
         transform(raw_coordinates, [](std::vector<int> const &point) {
-          return MachineViewCoordinates(point);
+          return MachineViewCoordinate(point);
         });
-    return machine_view_coordinates;
+    return machine_view_coordinate;
   };
 
   auto candidate_projections = [](MachineView const &mv) {
     std::unordered_set<MachineViewProjection> result;
     std::unordered_set<MachineSpecificationDimension> options = {
-        MachineSpecificationDimension::INTER,
-        MachineSpecificationDimension::INTRA};
+        MachineSpecificationDimension::INTER_NODE,
+        MachineSpecificationDimension::INTRA_NODE};
     for (std::vector<MachineSpecificationDimension> const &proj_vec :
          get_all_permutations_with_repetition(options, num_dims(mv))) {
 
@@ -136,7 +136,7 @@ static std::unordered_set<std::pair<MachineView, MachineViewProjection>>
        candidate_strides(sorted(tensor_dims), total_devices)) {
     StridedRectangle rect = get_strided_rectangle(strides, sorted(tensor_dims));
     auto start_inv_mv = StartInvariantMachineView{rect, device_type};
-    for (MachineViewCoordinates start : candidate_starts(sorted(tensor_dims))) {
+    for (MachineViewCoordinate start : candidate_starts(sorted(tensor_dims))) {
       MachineView mv = machine_view_from_start_invariant(start_inv_mv, start);
       for (MachineViewProjection const &proj : candidate_projections(mv)) {
         machine_views.insert({mv, proj});

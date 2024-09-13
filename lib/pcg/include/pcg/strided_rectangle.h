@@ -10,6 +10,12 @@
 
 namespace FlexFlow {
 
+/**
+ * @brief Represents a multi-dimensional rectangle with strided sides.
+ *
+ * @note This struct maintains its sides in a canonical order, which is sorted
+ * in ascending order (enforced at construction).
+ */
 struct StridedRectangle {
 
 private:

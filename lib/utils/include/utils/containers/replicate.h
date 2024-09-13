@@ -7,11 +7,7 @@ namespace FlexFlow {
 
 template <typename T>
 std::vector<T> replicate(int n, T const &element) {
-  std::vector<T> result;
-  for (int i = 0; i < n; ++i) {
-    result.push_back(element);
-  }
-  return result;
+  return std::vector<T>(n, element);
 }
 
 } // namespace FlexFlow

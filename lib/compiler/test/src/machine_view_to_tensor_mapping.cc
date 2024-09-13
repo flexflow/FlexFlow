@@ -24,10 +24,10 @@ TEST_SUITE(FF_TEST_SUITE) {
           DataType::FLOAT,
       };
       MachineView view =
-          MachineView{MachineViewCoordinates{{0, 0, 0}},
+          MachineView{MachineViewCoordinate{{0, 0, 0}},
                       StridedRectangle{{
-                          StridedRectangleSide{num_points_t(2), stride_t(1)},
-                          StridedRectangleSide{num_points_t(2), stride_t(4)},
+                          StridedRectangleSide{num_points_t{2}, stride_t{1}},
+                          StridedRectangleSide{num_points_t{2}, stride_t{4}},
                       }},
                       DeviceType::GPU};
       CHECK_THROWS_AS(get_all_machine_view_to_tensor_mappings(view, shape),
@@ -47,27 +47,35 @@ TEST_SUITE(FF_TEST_SUITE) {
           DataType::FLOAT,
       };
       MachineView view =
-          MachineView{MachineViewCoordinates{{0, 0, 0}},
+          MachineView{MachineViewCoordinate{{0, 0, 0}},
                       StridedRectangle{{
-                          StridedRectangleSide{num_points_t(2), stride_t(1)},
-                          StridedRectangleSide{num_points_t(2), stride_t(4)},
-                          StridedRectangleSide{num_points_t(3), stride_t(1)},
+                          StridedRectangleSide{num_points_t{2}, stride_t{1}},
+                          StridedRectangleSide{num_points_t{2}, stride_t{4}},
+                          StridedRectangleSide{num_points_t{3}, stride_t{1}},
                       }},
                       DeviceType::GPU};
 
+      machine_view_dim_idx_t mv_dim_0 = machine_view_dim_idx_t{0};
+      machine_view_dim_idx_t mv_dim_1 = machine_view_dim_idx_t{1};
+      machine_view_dim_idx_t mv_dim_2 = machine_view_dim_idx_t{2};
+      parallel_tensor_dim_idx_t pt_dim_0 =
+          parallel_tensor_dim_idx_t{ff_dim_t{0}};
+      parallel_tensor_dim_idx_t pt_dim_sum =
+          parallel_tensor_dim_idx_t{ReplicaType::SUM};
+      parallel_tensor_dim_idx_t pt_dim_eq =
+          parallel_tensor_dim_idx_t{ReplicaType::DISCARD_COPY};
+
       bidict<machine_view_dim_idx_t, parallel_tensor_dim_idx_t> b1 = {
-          {machine_view_dim_idx_t(2), parallel_tensor_dim_idx_t{ff_dim_t(0)}},
-          {machine_view_dim_idx_t(1),
-           parallel_tensor_dim_idx_t{ReplicaType::SUM}},
-          {machine_view_dim_idx_t(0),
-           parallel_tensor_dim_idx_t{ReplicaType::DISCARD_COPY}}};
+          {mv_dim_2, pt_dim_0},
+          {mv_dim_1, pt_dim_sum},
+          {mv_dim_0, pt_dim_eq},
+      };
 
       bidict<machine_view_dim_idx_t, parallel_tensor_dim_idx_t> b2 = {
-          {machine_view_dim_idx_t(2), parallel_tensor_dim_idx_t{ff_dim_t(0)}},
-          {machine_view_dim_idx_t(0),
-           parallel_tensor_dim_idx_t{ReplicaType::SUM}},
-          {machine_view_dim_idx_t(1),
-           parallel_tensor_dim_idx_t{ReplicaType::DISCARD_COPY}}};
+          {mv_dim_2, pt_dim_0},
+          {mv_dim_0, pt_dim_sum},
+          {mv_dim_1, pt_dim_eq},
+      };
 
       std::unordered_set<MachineViewToTensorMapping> correct = {
           MachineViewToTensorMapping{b1}, MachineViewToTensorMapping{b2}};

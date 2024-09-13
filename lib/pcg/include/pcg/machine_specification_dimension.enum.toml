@@ -8,7 +8,7 @@ features = [
 ]
 
 [[values]]
-name = "INTER"
+name = "INTER_NODE"
 
 [[values]]
-name = "INTRA"
+name = "INTRA_NODE"

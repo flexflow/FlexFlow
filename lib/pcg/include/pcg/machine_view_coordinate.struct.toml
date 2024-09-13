@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "MachineViewCoordinates"
+name = "MachineViewCoordinate"
 features = [
   "eq",
   "ord",
@@ -19,5 +19,5 @@ src_includes = [
 ]
 
 [[fields]]
-name = "raw_coords"
+name = "raw_coord"
 type = "std::vector<int>"

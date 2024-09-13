@@ -4,7 +4,7 @@
 #include "pcg/device_id_t.dtg.h"
 #include "pcg/device_type.dtg.h"
 #include "pcg/machine_specification.dtg.h"
-#include "pcg/machine_specification_coordinates.dtg.h"
+#include "pcg/machine_specification_coordinate.dtg.h"
 
 namespace FlexFlow {
 
@@ -17,10 +17,10 @@ int get_num_devices_per_node(MachineSpecification const &ms,
 
 bool is_valid_machine_specification_coordinates(
     MachineSpecification const &ms,
-    MachineSpecificationCoordinates const &coords);
+    MachineSpecificationCoordinate const &coord);
 
 device_id_t get_device_id(MachineSpecification const &ms,
-                          MachineSpecificationCoordinates const &coords);
+                          MachineSpecificationCoordinate const &coord);
 } // namespace FlexFlow
 
 #endif

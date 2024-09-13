@@ -14,9 +14,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       StridedRectangle r0 = StridedRectangle{{s0, s1}};
       StridedRectangle r1 = StridedRectangle{{s1, s0}};
-      CHECK(r0 == r1);
-      CHECK(r1.get_sides() == std::vector<StridedRectangleSide>{s0, s1});
-      CHECK(r1.get_sides() != std::vector<StridedRectangleSide>{s1, s0});
+      SUBCASE("has canonical order") {
+        CHECK(r0 == r1);
+      }
+      SUBCASE("canonical ordering is sorting") {
+        CHECK(r1.get_sides() == std::vector<StridedRectangleSide>{s0, s1});
+      }
     }
 
     SUBCASE("helper functions") {

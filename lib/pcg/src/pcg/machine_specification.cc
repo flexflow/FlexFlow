@@ -34,18 +34,17 @@ int get_num_devices_per_node(MachineSpecification const &ms,
 }
 bool is_valid_machine_specification_coordinates(
     MachineSpecification const &ms,
-    MachineSpecificationCoordinates const &coords) {
-  return (coords.inter < ms.num_nodes) &&
-         (coords.intra < get_num_devices_per_node(ms, coords.device_type));
+    MachineSpecificationCoordinate const &coord) {
+  return (coord.inter < ms.num_nodes) &&
+         (coord.intra < get_num_devices_per_node(ms, coord.device_type));
 }
 
 device_id_t get_device_id(MachineSpecification const &ms,
-                          MachineSpecificationCoordinates const &coords) {
-  assert(is_valid_machine_specification_coordinates(ms, coords));
-  int raw_idx =
-      coords.inter * get_num_devices_per_node(ms, coords.device_type) +
-      coords.intra;
-  return device_id_from_index(raw_idx, coords.device_type);
+                          MachineSpecificationCoordinate const &coord) {
+  assert(is_valid_machine_specification_coordinates(ms, coord));
+  int raw_idx = coord.inter * get_num_devices_per_node(ms, coord.device_type) +
+                coord.intra;
+  return device_id_from_index(raw_idx, coord.device_type);
 }
 
 } // namespace FlexFlow

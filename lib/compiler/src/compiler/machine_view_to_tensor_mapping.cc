@@ -22,7 +22,7 @@ std::unordered_set<MachineViewToTensorMapping>
   std::vector<machine_view_dim_idx_t> machine_view_dim_ordering =
       get_machine_view_indices(mv);
   std::unordered_set<parallel_tensor_dim_idx_t> shape_indices =
-      get_parallel_tensor_indices(shape);
+      get_parallel_tensor_dim_indices(shape);
   shape_indices =
       filter(shape_indices, [&](parallel_tensor_dim_idx_t const &idx) {
         return get_degree(get_parallel_dim_at_idx(shape, idx)) != 1;

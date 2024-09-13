@@ -11,7 +11,7 @@ ParallelDim get_parallel_dim_at_idx(ParallelTensorShape const &shape,
                                     parallel_tensor_dim_idx_t idx);
 
 std::unordered_set<parallel_tensor_dim_idx_t>
-    get_parallel_tensor_indices(ParallelTensorShape const &shape);
+    get_parallel_tensor_dim_indices(ParallelTensorShape const &shape);
 
 } // namespace FlexFlow
 

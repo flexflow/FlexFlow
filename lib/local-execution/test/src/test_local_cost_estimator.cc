@@ -66,7 +66,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
               inputs_shape, inputs_shape, inputs_shape},
           std::vector<ParallelTensorAttrs>{weight_attrs},
           std::vector<ParallelTensorAttrs>{output_attrs},
-          make_1d_machine_view(0, 1));
+          make_1d_machine_view(DeviceType::GPU, 0, 1));
 
       CHECK(result.total_elapsed_time > 0);
       CHECK(result.total_mem_usage > 0);

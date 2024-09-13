@@ -11,13 +11,13 @@ features = [
 
 includes = [ 
   "pcg/strided_rectangle.h",
-  "pcg/machine_view_coordinates.dtg.h",
+  "pcg/machine_view_coordinate.dtg.h",
   "pcg/device_type.dtg.h",
 ]
 
 [[fields]]
 name = "start"
-type = "::FlexFlow::MachineViewCoordinates"
+type = "::FlexFlow::MachineViewCoordinate"
 
 [[fields]]
 name = "rect"

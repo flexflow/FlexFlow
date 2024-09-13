@@ -5,7 +5,7 @@ namespace FlexFlow {
 
 MachineView machine_view_from_start_invariant(
     StartInvariantMachineView const &start_invariant_mv,
-    MachineViewCoordinates const &start) {
+    MachineViewCoordinate const &start) {
   return MachineView{
       start, start_invariant_mv.rect, start_invariant_mv.device_type};
 }

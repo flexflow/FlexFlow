@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "MachineSpecificationCoordinates"
+name = "MachineSpecificationCoordinate"
 features = [
   "eq",
   "ord",

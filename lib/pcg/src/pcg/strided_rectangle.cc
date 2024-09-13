@@ -1,7 +1,7 @@
 #include "pcg/strided_rectangle.h"
 #include "op-attrs/dim_ordered/transform.h"
 #include "pcg/device_id_t.dtg.h"
-#include "pcg/machine_view_coordinates.dtg.h"
+#include "pcg/machine_view_coordinate.dtg.h"
 #include "pcg/strided_rectangle_side.dtg.h"
 #include "pcg/strided_rectangle_side.h"
 #include "utils/containers/as_vector.h"
@@ -16,6 +16,8 @@
 
 namespace FlexFlow {
 
+// StridedRectangle has a canonical ordering to its sides, which are sorted in
+// ascending order at construction
 StridedRectangle::StridedRectangle(
     std::vector<::FlexFlow::StridedRectangleSide> const &sides)
     : sides(sorted(sides)) {}

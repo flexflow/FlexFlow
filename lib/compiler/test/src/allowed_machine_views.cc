@@ -33,20 +33,20 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       std::vector<MachineView> correct_mv = {
-          make_1d_machine_view(0, 3, stride_t(1)),
-          make_1d_machine_view(1, 4, stride_t(1)),
-          make_1d_machine_view(2, 5, stride_t(1)),
-          make_1d_machine_view(0, 6, stride_t(2))};
+          make_1d_machine_view(DeviceType::GPU, 0, 3, stride_t(1)),
+          make_1d_machine_view(DeviceType::GPU, 1, 4, stride_t(1)),
+          make_1d_machine_view(DeviceType::GPU, 2, 5, stride_t(1)),
+          make_1d_machine_view(DeviceType::GPU, 0, 6, stride_t(2))};
 
       std::vector<MachineViewProjection> correct_proj = {
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
       };
 
       std::unordered_set<std::pair<MachineView, MachineViewProjection>>
@@ -77,7 +77,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       auto make_2d_views =
           [&](int start_x, int start_y, int stride1, int stride2) {
             return MachineView{
-                MachineViewCoordinates{{start_x, start_y}},
+                MachineViewCoordinate{{start_x, start_y}},
                 StridedRectangle{
                     {StridedRectangleSide{num_points_t{2}, stride_t{stride1}},
                      StridedRectangleSide{num_points_t{3}, stride_t{stride2}}}},
@@ -96,30 +96,30 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<MachineViewProjection> correct_proj = {
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA},
+                                  MachineSpecificationDimension::INTRA_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER}}},
+                                  MachineSpecificationDimension::INTER_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA},
+                                  MachineSpecificationDimension::INTRA_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER}}},
+                                  MachineSpecificationDimension::INTER_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA},
+                                  MachineSpecificationDimension::INTRA_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER}}},
+                                  MachineSpecificationDimension::INTER_NODE}}},
 
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER},
+                                  MachineSpecificationDimension::INTER_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER},
+                                  MachineSpecificationDimension::INTER_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER},
+                                  MachineSpecificationDimension::INTER_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
       };
 
       std::unordered_set<std::pair<MachineView, MachineViewProjection>>
@@ -158,9 +158,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<MachineViewProjection> correct_proj = {
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
       };
 
       std::unordered_set<
@@ -207,22 +207,22 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<MachineViewProjection> correct_proj = {
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA},
+                                  MachineSpecificationDimension::INTRA_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER}}},
+                                  MachineSpecificationDimension::INTER_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA},
+                                  MachineSpecificationDimension::INTRA_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER}}},
+                                  MachineSpecificationDimension::INTER_NODE}}},
 
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER},
+                                  MachineSpecificationDimension::INTER_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
           MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER},
+                                  MachineSpecificationDimension::INTER_NODE},
                                  {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA}}},
+                                  MachineSpecificationDimension::INTRA_NODE}}},
       };
       std::unordered_set<
           std::pair<StartInvariantMachineView, MachineViewProjection>>
