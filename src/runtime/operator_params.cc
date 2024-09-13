@@ -28,6 +28,7 @@
 #include "flexflow/ops/topk.h"
 #include "flexflow/ops/transpose.h"
 #include "flexflow/parallel_ops/combine.h"
+#include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
@@ -94,6 +95,8 @@ tl::optional<OperatorParameters> get_op_parameters(Op const *op) {
       return ((Reduction *)op)->get_params();
     case OP_COMBINE:
       return ((Combine *)op)->get_params();
+    case OP_ALLREDUCE:
+      return ((AllReduce *)op)->get_params();
     case OP_FUSED_PARALLEL:
       return ((FusedParallelOp *)op)->get_params();
     case OP_TRANSPOSE:

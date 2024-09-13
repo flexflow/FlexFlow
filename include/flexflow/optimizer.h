@@ -18,6 +18,7 @@
 
 #include "flexflow/parallel_tensor.h"
 #include "legion.h"
+#include "accessor.h"
 
 namespace FlexFlow {
 
@@ -30,6 +31,7 @@ public:
   virtual void init(void) = 0;
   virtual void next(void) = 0;
   virtual void update(const ParallelTensor p) = 0;
+  virtual void unified_update(std::vector<ParallelTensor> const parameters) = 0;
   FFModel const *model;
 };
 
@@ -43,6 +45,7 @@ public:
   void init(void);
   void next(void);
   void update(const ParallelTensor p);
+  void unified_update(std::vector<ParallelTensor> const parameters);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
@@ -60,6 +63,11 @@ public:
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
+  static void
+      nccl_unified_update_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);                     
   static void nccl_update_task_gpu(SGDOptimizer const *op,
                                    OpMeta const *meta,
                                    float const *w_grad_ptr,
@@ -85,6 +93,7 @@ public:
   void init(void);
   void next(void);
   void update(const ParallelTensor p);
+  void unified_update(std::vector<ParallelTensor> const parameters);
   void set_weight_decay(double _weight_decay);
   static void ps_update_task(Legion::Task const *task,
                              std::vector<Legion::PhysicalRegion> const &regions,
@@ -103,6 +112,11 @@ public:
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
+  static void
+      nccl_unified_update_task(Legion::Task const *task,
+                       std::vector<Legion::PhysicalRegion> const &regions,
+                       Legion::Context ctx,
+                       Legion::Runtime *runtime);                     
   static void nccl_update_task_gpu(AdamOptimizer const *op,
                                    OpMeta const *meta,
                                    float const *w_grad_ptr,
@@ -110,10 +124,19 @@ public:
                                    float *w_ptr,
                                    float *v_ptr,
                                    float *m_ptr);
+  static void nccl_unified_update_task_gpu(AdamOptimizer const *op,
+                                   OpMeta const *meta,
+                                   GenericTensorAccessorR *accWGrads,
+                                   size_t *size,
+                                   GenericTensorAccessorW *accWs,
+                                   GenericTensorAccessorW *accVs,
+                                   GenericTensorAccessorW *accMs);                                 
 #endif
   double alpha, beta1, beta2, weight_decay, epsilon;
   double alpha_t, beta1_t, beta2_t;
   std::map<Legion::LogicalRegion, ParallelTensor> v_values, m_values;
+  size_t reservedWorkSpaceSize = 0;
+  int parameters_num = 0;
 };
 
 }; // namespace FlexFlow

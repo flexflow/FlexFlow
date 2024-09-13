@@ -168,6 +168,8 @@ std::string get_operator_type_name(OperatorType type) {
       return "Replicate";
     case OP_REDUCTION:
       return "Reduction";
+    case OP_ALLREDUCE:
+      return "AllReduce";
     case OP_PIPELINE:
       return "Pipeline";
     case OP_FUSED_PARALLEL:

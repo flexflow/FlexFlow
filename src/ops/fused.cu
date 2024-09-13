@@ -33,6 +33,7 @@
 #include "flexflow/ops/kernels/reshape_kernels.h"
 #include "flexflow/ops/kernels/softmax_kernels.h"
 #include "flexflow/ops/kernels/transpose_kernels.h"
+#include "flexflow/parallel_ops/kernels/allreduce_kernels.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -216,9 +217,7 @@ __host__ void FusedOp::forward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
         Kernels::Dropout::forward_kernel_wrapper(
-            m,
-            my_input_accessor[0].get_float_ptr(),
-            my_output_accessor[0].get_float_ptr());
+            m, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       case OP_LINEAR: {
@@ -460,6 +459,14 @@ __host__ void FusedOp::forward_task(Task const *task,
         } else {
           assert(false);
         }
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        AllReduceMeta const *m = (AllReduceMeta *)metas->meta[op];
+        Kernels::AllReduce::forward_kernel_wrapper(
+            m, my_input_accessor[0], my_output_accessor[0]);
         break;
       }
       case OP_TRANSPOSE: {
@@ -819,9 +826,7 @@ __host__ void FusedOp::backward_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         DropoutMeta *m = (DropoutMeta *)metas->meta[op];
         Kernels::Dropout::backward_kernel_wrapper(
-            m,
-            my_output_grad_accessor[0].get_float_ptr(),
-            my_input_grad_accessor[0].get_float_ptr());
+            m, my_output_grad_accessor[0], my_input_grad_accessor[0]);
         break;
       }
       case OP_EW_ADD:
@@ -1004,6 +1009,14 @@ __host__ void FusedOp::backward_task(Task const *task,
         } else {
           assert(false);
         }
+        break;
+      }
+      case OP_ALLREDUCE: {
+        assert(fused->op_num_inputs[op] == 1);
+        assert(fused->op_num_outputs[op] == 1);
+        AllReduceMeta const *m = (AllReduceMeta *)metas->meta[op];
+        Kernels::AllReduce::backward_kernel_wrapper(
+            m, my_input_grad_accessor[0], my_output_grad_accessor[0]);
         break;
       }
       case OP_TRANSPOSE: {

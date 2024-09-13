@@ -8,6 +8,7 @@ namespace FlexFlow {
 
 struct ElementBinaryParams {
   OperatorType type;
+  bool inplace_a;
 
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;

@@ -40,10 +40,13 @@ void SingleDataLoader::load_input(Task const *task,
   int num_dims = full_input_domain.get_dim();
   assert(num_dims + 1 == batch_input_domain.get_dim());
   // assert the leading replica dim has a degree of one
-  assert(batch_input_domain.hi()[num_dims] ==
-         batch_input_domain.lo()[num_dims]);
+  //   assert(batch_input_domain.hi()[num_dims] ==
+  //          batch_input_domain.lo()[num_dims]);
   coord_t batch_size = batch_input_domain.hi()[num_dims - 1] -
                        batch_input_domain.lo()[num_dims - 1] + 1;
+
+  coord_t replicate_num =
+      batch_input_domain.hi()[num_dims] - batch_input_domain.lo()[num_dims] + 1;
   coord_t num_elements_per_batch = batch_input_domain.get_volume() / batch_size;
   // FIXME: currently assume continous indices
   assert(batch_size == meta->num_samples);
@@ -60,11 +63,15 @@ void SingleDataLoader::load_input(Task const *task,
   // printf("ptr(%p, %p), idx0 %d nb_elements_per_batch %d, batch_size %d,
   // %d\n", acc_full_input.ptr, input_zc, start_idx, num_elements_per_batch,
   // batch_size, start_idx * num_elements_per_batch);
-  copy_kernel<DT>
+  assert(batch_input_domain.get_volume() % replicate_num == 0);
+  copy_kernel_with_replicate<DT>
       <<<GET_BLOCKS(batch_input_domain.get_volume()),
          CUDA_NUM_THREADS,
          0,
-         stream>>>(batch_input_ptr, input_zc, batch_input_domain.get_volume());
+         stream>>>(batch_input_ptr,
+                   input_zc,
+                   batch_input_domain.get_volume() / replicate_num,
+                   batch_input_domain.get_volume());
   checkCUDA(cudaDeviceSynchronize());
 }
 

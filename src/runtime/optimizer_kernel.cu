@@ -216,6 +216,103 @@ __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
       w_ptr);
   // checkCUDA(cudaDeviceSynchronize());
 }
+
+__host__ void AdamOptimizer::nccl_unified_update_task_gpu(
+    AdamOptimizer const *op,
+    OpMeta const *meta,
+    GenericTensorAccessorR *accWGrads,
+    size_t *size,
+    GenericTensorAccessorW *accWs,
+    GenericTensorAccessorW *accVs,
+    GenericTensorAccessorW *accMs) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  // assert(op->reservedWorkSpaceSize < meta->handle.workSpaceSize);
+
+  cudaEvent_t t_start, t_start1, t_start2, t_end;
+  cudaEventCreate(&t_start);
+  cudaEventCreate(&t_start1);
+  cudaEventCreate(&t_start2);
+  cudaEventCreate(&t_end);
+  cudaEventRecord(t_start, stream);
+  cudaEventRecord(t_start1, stream);
+  cudaEventRecord(t_start2, stream);
+
+  void *allocate_ptr;
+  //  = meta->handle.workSpace;
+  checkCUDA(
+      cudaMalloc(&allocate_ptr,meta->handle.workSpaceSize));
+  
+  void *workSpace_ptr = allocate_ptr;
+
+  for (int i = 0; i < op->parameters_num; i++) {
+    cudaMemcpyAsync(workSpace_ptr,
+                    accWGrads[i].get_float_ptr(),
+                    size[i] * sizeof(float),
+                    cudaMemcpyDeviceToDevice,
+                    stream);
+    workSpace_ptr =
+        static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);
+  }
+
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  float elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start1, t_end));
+  cudaEventDestroy(t_start1);
+  printf("[optimizer] data copy time = %.2lfms\n", elapsed);
+
+  // do allreduce once
+  checkNCCL(ncclAllReduce(meta->handle.workSpace,
+                          (float *)meta->handle.workSpace,
+                          meta->handle.workSpaceSize,
+                          ncclFloat,
+                          ncclSum,
+                          meta->handle.ncclComm,
+                          stream));
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start2, t_end));
+  cudaEventDestroy(t_start2);
+  printf("[optimizer] allreduce time = %.2lfms\n", elapsed);
+
+  // workSpace_ptr = static_cast<char *>(meta->handle.workSpace);
+  workSpace_ptr = static_cast<char *>(allocate_ptr);
+  float alpha_t = op->alpha_t;
+  float beta1_t = op->beta1_t;
+  float beta2_t = op->beta2_t;
+  for (int i = 0; i < op->parameters_num; i++) {
+    // update
+    // printf("update %d\n", i);
+    adam_update<<<GET_BLOCKS(size[i]), CUDA_NUM_THREADS, 0, stream>>>(
+        size[i],
+        alpha_t,
+        op->beta1,
+        op->beta2,
+        op->weight_decay,
+        op->epsilon,
+        static_cast<float *>(workSpace_ptr),
+        accMs[i].get_float_ptr(),
+        accVs[i].get_float_ptr(),
+        accWs[i].get_float_ptr());
+    workSpace_ptr =
+        static_cast<char *>(workSpace_ptr) + size[i] * sizeof(float);
+
+    // update
+    beta1_t *= op->beta1;
+    beta2_t *= op->beta2;
+    alpha_t = op->alpha * sqrt(1 - beta2_t) / (1 - beta1_t);
+  }
+  cudaEventRecord(t_end, stream);
+  checkCUDA(cudaEventSynchronize(t_end));
+  elapsed = 0;
+  checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+  cudaEventDestroy(t_start);
+  cudaEventDestroy(t_end);
+  checkCUDA(cudaFree(allocate_ptr));
+  printf("[optimizer] total time = %.2lfms\n", elapsed);
+}
 #endif
 
 }; // namespace FlexFlow

@@ -7,6 +7,7 @@
 #include "flexflow/ops/batch_matmul_params.h"
 #include "flexflow/ops/cast_params.h"
 #include "flexflow/ops/concat_params.h"
+#include "flexflow/parallel_ops/allreduce_params.h"
 #include "flexflow/ops/conv_2d_params.h"
 #include "flexflow/ops/dropout_params.h"
 #include "flexflow/ops/element_binary_params.h"
@@ -62,6 +63,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        ReplicateParams,
                                        ReductionParams,
                                        CombineParams,
+                                       AllReduceParams,
                                        FusedParallelOpParams>;
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op);
