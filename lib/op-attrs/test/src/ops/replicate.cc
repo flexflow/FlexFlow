@@ -1,5 +1,7 @@
 #include "op-attrs/ops/replicate.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Replicate shape inference") {

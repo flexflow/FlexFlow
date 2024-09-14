@@ -38,11 +38,7 @@ void AdjacencyDiGraph::add_edge(DirectedEdge const &e) {
 }
 
 void AdjacencyDiGraph::remove_edge(DirectedEdge const &e) {
-  std::unordered_set<Node> &m = this->adjacency.at(e.src);
-  auto iter = m.find(e.dst);
-  if (iter != m.end()) {
-    m.erase(iter);
-  }
+  this->adjacency.at(e.src).erase(e.dst);
 }
 
 std::unordered_set<DirectedEdge>

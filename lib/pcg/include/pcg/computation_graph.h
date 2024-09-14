@@ -2,6 +2,7 @@
 #define _FLEXFLOW_PCG_INCLUDE_PCG_COMPUTATION_GRAPH_H
 
 #include "pcg/computation_graph.dtg.h"
+#include "pcg/computation_graph/computation_graph_edge.dtg.h"
 #include "pcg/computation_graph/layer_added_result.dtg.h"
 #include "pcg/layer_guid_t.dtg.h"
 #include "pcg/tensor_attrs.dtg.h"
@@ -30,10 +31,23 @@ std::vector<tensor_guid_t> get_outgoing_tensors(ComputationGraph const &cg,
 std::vector<tensor_guid_t> get_incoming_tensors(ComputationGraph const &cg,
                                                 layer_guid_t n);
 
+std::unordered_set<ComputationGraphEdge>
+    get_subgraph_incoming_edges(ComputationGraph const &,
+                                std::unordered_set<layer_guid_t> const &);
+std::unordered_set<ComputationGraphEdge>
+    get_subgraph_outgoing_edges(ComputationGraph const &,
+                                std::unordered_set<layer_guid_t> const &);
+std::unordered_set<layer_guid_t>
+    get_subgraph_successors(ComputationGraph const &,
+                            std::unordered_set<layer_guid_t> const &);
+
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
 
 layer_guid_t get_layer_by_name(ComputationGraph const &cg,
                                std::string const &name);
+
+std::string as_dot(ComputationGraph const &);
+void debug_print_dot(ComputationGraph const &);
 
 } // namespace FlexFlow
 

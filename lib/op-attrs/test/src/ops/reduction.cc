@@ -1,5 +1,8 @@
 #include "op-attrs/ops/reduction.h"
-#include "test/utils/doctest.h"
+#include "test/utils/doctest/fmt/expected.h"
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Reduction shape inference") {

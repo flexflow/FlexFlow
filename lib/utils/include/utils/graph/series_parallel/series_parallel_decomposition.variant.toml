@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "SeriesParallelDecomposition"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/series_parallel/series_parallel_splits.h",
+  "utils/graph/node/node.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::SeriesSplit"
+
+[[values]]
+type = "::FlexFlow::ParallelSplit"
+
+[[values]]
+type = "::FlexFlow::Node"

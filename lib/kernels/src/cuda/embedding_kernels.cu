@@ -358,7 +358,7 @@ struct ForwardKernel {
            weight.data_type == DataType::DOUBLE);
 
     if (!aggr.has_value()) {
-      embed_forward_no_aggr<real_type<TI>, real_type<TD>>
+      embed_forward_no_aggr<real_type_t<TI>, real_type_t<TD>>
           <<<GET_BLOCKS(output.shape.get_volume()),
              CUDA_NUM_THREADS,
              0,
@@ -369,7 +369,7 @@ struct ForwardKernel {
                        batch_size);
     } else {
       assert(aggr == AggregateOp::AVG || aggr == AggregateOp::SUM);
-      embed_forward_with_aggr<real_type<TI>, real_type<TD>>
+      embed_forward_with_aggr<real_type_t<TI>, real_type_t<TD>>
           <<<GET_BLOCKS(output.shape.get_volume()),
              CUDA_NUM_THREADS,
              0,
@@ -400,7 +400,7 @@ struct BackwardKernel {
            output.data_type == DataType::FLOAT ||
            output.data_type == DataType::DOUBLE);
     if (!aggr.has_value()) {
-      embed_backward_no_aggr<real_type<TI>, real_type<TD>>
+      embed_backward_no_aggr<real_type_t<TI>, real_type_t<TD>>
           <<<GET_BLOCKS(output.shape.get_volume()),
              CUDA_NUM_THREADS,
              0,
@@ -410,7 +410,7 @@ struct BackwardKernel {
                        out_dim,
                        batch_size);
     } else {
-      embed_backward_with_aggr<real_type<TI>, real_type<TD>>
+      embed_backward_with_aggr<real_type_t<TI>, real_type_t<TD>>
           <<<GET_BLOCKS(output.shape.get_volume()),
              CUDA_NUM_THREADS,
              0,

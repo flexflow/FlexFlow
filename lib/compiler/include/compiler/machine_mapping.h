@@ -9,7 +9,8 @@
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "substitutions/sub_parallel_computation_graph.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
+#include "utils/graph/series_parallel/series_parallel_decomposition.dtg.h"
+#include "utils/visitable.h"
 
 namespace FlexFlow {
 

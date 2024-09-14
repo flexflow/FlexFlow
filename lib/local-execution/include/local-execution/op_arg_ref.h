@@ -5,7 +5,7 @@
 #include "local-execution/device_specific.h"
 #include "local-execution/op_arg_ref_type.dtg.h"
 #include "local-execution/per_device_op_state.h"
-#include "op-attrs/parallel_tensor_shape.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 
 namespace FlexFlow {
 

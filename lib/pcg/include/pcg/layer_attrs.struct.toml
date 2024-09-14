@@ -13,11 +13,11 @@ includes = [
   "op-attrs/computation_graph_op_attrs.dtg.h",
   "utils/stack_string.h",
   "<optional>",
-  "utils/json.h"
 ]
 
 src_includes = [
   "utils/fmt/optional.h",
+  "utils/json/optional.h",
 ]
 
 [[fields]]

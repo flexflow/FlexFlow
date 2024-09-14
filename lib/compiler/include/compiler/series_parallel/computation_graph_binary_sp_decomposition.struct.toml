@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "ComputationGraphBinarySPDecomposition"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/layer_guid_t.dtg.h",
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.h",
+]
+
+src_includes = [
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/hash.h",
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/fmt.h",
+]
+
+[[fields]]
+name = "raw_tree"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<::FlexFlow::layer_guid_t>"

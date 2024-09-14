@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_ENUMERATE_VECTOR_H
 
 #include <map>
-#include <utility>
 #include <vector>
 
 namespace FlexFlow {

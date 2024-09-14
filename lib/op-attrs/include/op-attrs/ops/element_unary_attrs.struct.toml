@@ -11,12 +11,14 @@ features = [
 ]
 
 includes = [
-  "utils/json.h",
-  "op-attrs/operator_type.h",
+  "op-attrs/operator_type.dtg.h",
+  "<optional>",
 ]
 
 src_includes = [
   "utils/fmt/optional.h",
+  "utils/json/optional.h",
+  "utils/rapidcheck/optional.h",
 ]
 
 [[fields]]
