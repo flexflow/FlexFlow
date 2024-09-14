@@ -193,7 +193,7 @@ void incr_attention(IncMultiHeadSelfAttentionMeta *m,
     }
     if (result != cudaSuccess) {
       throw std::runtime_error("Failed to run "
-                               "BatchPrefillWithPagedKVCacheWrapperDispatched" +
+                               "IncrementalDecodingAttentionForwardKernel: " +
                                std::string(cudaGetErrorString(result)));
     }
   });
