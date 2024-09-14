@@ -63,6 +63,7 @@ void parse_input_args(char **argv,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
                       int &max_tokens_per_ssm_batch,
+                      int &max_tokens_per_prefilling_batch,
                       int &max_sequence_length,
                       int &max_tree_width,
                       int &max_tree_depth,
@@ -123,6 +124,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--max-tokens-per-ssm-batch")) {
       max_tokens_per_ssm_batch = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-tokens-per-prefilling-batch")) {
+      max_tokens_per_prefilling_batch = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--max-sequence-length")) {
@@ -313,6 +318,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 128;
   int max_tokens_per_ssm_batch = -1;
+  int max_tokens_per_prefilling_batch = -1;
   int max_sequence_length = 512;
   int expansion_degree = 3;
   int max_tree_depth = 8;
@@ -336,6 +342,7 @@ void FlexFlow::top_level_task(Task const *task,
                    max_requests_per_batch,
                    max_tokens_per_batch,
                    max_tokens_per_ssm_batch,
+                   max_tokens_per_prefilling_batch,
                    max_sequence_length,
                    max_tree_width,
                    max_tree_depth,
@@ -346,6 +353,9 @@ void FlexFlow::top_level_task(Task const *task,
                    streaming_cache);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
+  }
+  if (max_tokens_per_prefilling_batch == -1) {
+    max_tokens_per_prefilling_batch = max_tokens_per_batch;
   }
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
@@ -362,6 +372,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_requests_per_batch(max_requests_per_batch);
   rm->set_max_tokens_per_batch(max_tokens_per_batch);
   rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
+  rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_max_tree_depth(max_tree_depth);
   rm->set_max_tree_width(max_tree_width);

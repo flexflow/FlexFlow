@@ -251,6 +251,8 @@ public:
   int get_max_tokens_per_batch();
   void set_max_tokens_per_ssm_batch(int max_num_ssm_tokens);
   int get_max_tokens_per_ssm_batch();
+  void set_max_tokens_per_prefilling_batch(int max_num_prefilling_tokens);
+  int get_max_tokens_per_prefilling_batch();
   int get_max_spec_tree_token_num();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
@@ -355,6 +357,7 @@ private:
   int max_requests_per_batch;
   int max_tokens_per_batch;
   int max_tokens_per_ssm_batch;
+  int max_tokens_per_prefilling_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
   int max_tree_depth;
@@ -388,7 +391,7 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
-  Request *prefill_request = nullptr;
+  std::vector<Request *> prefill_requests;
 
   // Added to make the request manager stateful. During the processing of the
   // first small model inference results, the step equals to 1. That is, every

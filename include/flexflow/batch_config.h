@@ -68,6 +68,7 @@ public:
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
   static int max_tokens_per_ssm_batch();
+  static int max_tokens_per_prefilling_batch();
   static int max_spec_tree_token_num();
   static int max_sequence_length();
   static int get_max_tree_depth();

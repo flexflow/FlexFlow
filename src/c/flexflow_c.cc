@@ -2597,6 +2597,14 @@ void flexflow_request_manager_set_max_tokens_per_ssm_batch(
               max_num_ssm_tokens);
 }
 
+void flexflow_request_manager_set_max_tokens_per_prefilling_batch(
+    flexflow_request_manager_t handle_, int max_num_prefilling_tokens) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_tokens_per_prefilling_batch(max_num_prefilling_tokens);
+  DEBUG_PRINT("[RequestManager] set max_tokens_per_prefilling_batch %d",
+              max_num_prefilling_tokens);
+}
+
 void flexflow_request_manager_set_max_sequence_length(
     flexflow_request_manager_t handle_, int max_seq_length) {
   RequestManager *handle = FFCObjectWrapper::unwrap(handle_);

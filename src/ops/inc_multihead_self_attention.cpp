@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ffconst.h"
 #include "flexflow/ffconst_utils.h"
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/utils/hip_helper.h"
@@ -951,9 +951,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch = infer_mode == TREE_SEARCH_MODE
-                                   ? BatchConfig::max_tokens_per_ssm_batch()
-                                   : BatchConfig::max_tokens_per_batch();
+    int max_tokens_per_batch = std::max(
+        infer_mode == TREE_SEARCH_MODE ? BatchConfig::max_tokens_per_ssm_batch()
+                                       : BatchConfig::max_tokens_per_batch(),
+        BatchConfig::max_tokens_per_prefilling_batch());
     size_t qkv_max_proj_size = max_tokens_per_batch * (qProjSize * num_q_heads +
                                                        kProjSize * num_q_heads +
                                                        vProjSize * num_q_heads);

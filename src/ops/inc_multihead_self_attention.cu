@@ -476,9 +476,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // allocate memory for the seqArray and reserve space
   {
-    int max_tokens_per_batch = infer_mode == TREE_SEARCH_MODE
-                                   ? BatchConfig::max_tokens_per_ssm_batch()
-                                   : BatchConfig::max_tokens_per_batch();
+    int max_tokens_per_batch = std::max(
+        infer_mode == TREE_SEARCH_MODE ? BatchConfig::max_tokens_per_ssm_batch()
+                                       : BatchConfig::max_tokens_per_batch(),
+        BatchConfig::max_tokens_per_prefilling_batch());
     size_t qkv_max_proj_size =
         max_tokens_per_batch *
         (qk_dim * num_q_heads + qk_dim * num_q_heads + v_dim * num_q_heads);
