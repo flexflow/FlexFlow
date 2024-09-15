@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "TaskSpaceCoordinate"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "<vector>",
+]
+
+src_includes = [
+  "utils/hash/vector.h",
+  "utils/fmt/vector.h",
+]
+
+[[fields]]
+name = "raw_coord"
+type = "std::vector<int>"

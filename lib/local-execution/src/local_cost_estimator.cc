@@ -5,6 +5,7 @@
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/computation_graph_builder.h"
+#include "pcg/machine_view.dtg.h"
 #include "pcg/parallel_tensor_attrs.h"
 #include "utils/containers/transform.h"
 

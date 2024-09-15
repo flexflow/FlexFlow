@@ -32,16 +32,15 @@ int get_num_devices_per_node(MachineSpecification const &ms,
       throw mk_runtime_error("Unknown DeviceType {}", device_type);
   }
 }
-bool is_valid_machine_specification_coordinates(
-    MachineSpecification const &ms,
-    MachineSpecificationCoordinate const &coord) {
+bool is_valid_machine_space_coordinates(MachineSpecification const &ms,
+                                        MachineSpaceCoordinate const &coord) {
   return (coord.inter < ms.num_nodes) &&
          (coord.intra < get_num_devices_per_node(ms, coord.device_type));
 }
 
 device_id_t get_device_id(MachineSpecification const &ms,
-                          MachineSpecificationCoordinate const &coord) {
-  assert(is_valid_machine_specification_coordinates(ms, coord));
+                          MachineSpaceCoordinate const &coord) {
+  assert(is_valid_machine_space_coordinates(ms, coord));
   int raw_idx = coord.inter * get_num_devices_per_node(ms, coord.device_type) +
                 coord.intra;
   return device_id_from_index(raw_idx, coord.device_type);

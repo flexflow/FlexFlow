@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "MachineViewCoordinate"
+name = "TaskSpaceOperator"
 features = [
   "eq",
   "ord",
@@ -11,13 +11,14 @@ features = [
 
 includes = [ 
   "<vector>",
+  "pcg/num_points_t.dtg.h"
 ]
 
 src_includes = [
-  "utils/hash/vector.h",
   "utils/fmt/vector.h",
+  "utils/hash/vector.h"
 ]
 
 [[fields]]
-name = "raw_coord"
-type = "std::vector<int>"
+name = "degrees"
+type = "std::vector<::FlexFlow::num_points_t>"

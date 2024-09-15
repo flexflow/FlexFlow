@@ -1,8 +1,5 @@
 #include "compiler/allowed_machine_views.h"
 #include "doctest/doctest.h"
-#include "pcg/machine_specification.dtg.h"
-#include "pcg/machine_view.h"
-#include "pcg/start_invariant_machine_view.h"
 #include "utils/containers/extend.h"
 #include "utils/containers/range.h"
 #include "utils/containers/transform.h"
@@ -14,46 +11,31 @@ using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
 
-  TEST_CASE("get_allowed_partial_machine_view_mappings") {
+  TEST_CASE("get_allowed_machine_views") {
 
     SUBCASE("1 degree of parallelism") {
 
       MachineSpecification ms = MachineSpecification{1, 5, 5, 0, 0};
-      ParallelTensorShape shape = ParallelTensorShape{
-          ParallelTensorDims{
-              FFOrdered<ShardParallelDim>{
-                  ShardParallelDim{10, 3},
-              },
-              ReplicaParallelDimSet{
-                  SumDegree{1},
-                  DiscardCopyDegree{1},
-              },
-          },
-          DataType::FLOAT,
+      TaskSpaceOperator task = TaskSpaceOperator{{num_points_t{3}}};
+
+      std::unordered_set<MachineView> correct = {
+          MachineView{{{stride_t{1}}},
+                      {{MachineSpecificationDimension::INTRA_NODE}},
+                      MachineSpaceCoordinate{0, 0, DeviceType::GPU}},
+
+          MachineView{{{stride_t{1}}},
+                      {{MachineSpecificationDimension::INTRA_NODE}},
+                      MachineSpaceCoordinate{0, 1, DeviceType::GPU}},
+          MachineView{{{stride_t{1}}},
+                      {{MachineSpecificationDimension::INTRA_NODE}},
+                      MachineSpaceCoordinate{0, 2, DeviceType::GPU}},
+          MachineView{{{stride_t{2}}},
+                      {{MachineSpecificationDimension::INTRA_NODE}},
+                      MachineSpaceCoordinate{0, 0, DeviceType::GPU}},
       };
 
-      std::vector<MachineView> correct_mv = {
-          make_1d_machine_view(DeviceType::GPU, 0, 3, stride_t(1)),
-          make_1d_machine_view(DeviceType::GPU, 1, 4, stride_t(1)),
-          make_1d_machine_view(DeviceType::GPU, 2, 5, stride_t(1)),
-          make_1d_machine_view(DeviceType::GPU, 0, 6, stride_t(2))};
-
-      std::vector<MachineViewProjection> correct_proj = {
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-      };
-
-      std::unordered_set<std::pair<MachineView, MachineViewProjection>>
-          correct = unordered_set_of(zip(correct_mv, correct_proj));
-
-      std::unordered_set<std::pair<MachineView, MachineViewProjection>> result =
-          get_allowed_partial_machine_view_mappings(ms, shape);
+      std::unordered_set<MachineView> result =
+          get_allowed_machine_views(ms, task, DeviceType::GPU);
 
       CHECK(correct == result);
     }
@@ -61,179 +43,37 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("2 degrees of parallelism") {
 
       MachineSpecification ms = MachineSpecification{3, 3, 3, 0, 0};
-      ParallelTensorShape shape = ParallelTensorShape{
-          ParallelTensorDims{
-              FFOrdered<ShardParallelDim>{
-                  ShardParallelDim{10, 3},
-              },
-              ReplicaParallelDimSet{
-                  SumDegree{2},
-                  DiscardCopyDegree{1},
-              },
-          },
-          DataType::FLOAT,
+      TaskSpaceOperator task =
+          TaskSpaceOperator{{num_points_t{2}, num_points_t{3}}};
+
+      auto make_2d_views = [&](int start_x,
+                               int start_y,
+                               int stride1,
+                               int stride2,
+                               MachineSpecificationDimension m1,
+                               MachineSpecificationDimension m2) {
+        return MachineView{
+            {stride_t{stride1}, stride_t{stride2}},
+            {m1, m2},
+            MachineSpaceCoordinate{start_x, start_y, DeviceType::GPU}};
       };
 
-      auto make_2d_views =
-          [&](int start_x, int start_y, int stride1, int stride2) {
-            return MachineView{
-                MachineViewCoordinate{{start_x, start_y}},
-                StridedRectangle{
-                    {StridedRectangleSide{num_points_t{2}, stride_t{stride1}},
-                     StridedRectangleSide{num_points_t{3}, stride_t{stride2}}}},
-                DeviceType::GPU};
-          };
+      auto intra = MachineSpecificationDimension::INTRA_NODE;
+      auto inter = MachineSpecificationDimension::INTER_NODE;
+      std::unordered_set<MachineView> correct = {
+          make_2d_views(0, 0, /*stride1*/ 1, /*stride2*/ 1, inter, intra),
+          make_2d_views(1, 0, /*stride1*/ 1, /*stride2*/ 1, inter, intra),
+          make_2d_views(0, 0, /*stride1*/ 2, /*stride2*/ 1, inter, intra),
 
-      std::vector<MachineView> correct_mv = {
-          make_2d_views(0, 0, /*stride1*/ 1, /*stride2*/ 1),
-          make_2d_views(1, 0, /*stride1*/ 1, /*stride2*/ 1),
-          make_2d_views(0, 0, /*stride1*/ 2, /*stride2*/ 1),
-
-          make_2d_views(0, 0, /*stride1*/ 1, /*stride2*/ 1),
-          make_2d_views(1, 0, /*stride1*/ 1, /*stride2*/ 1),
-          make_2d_views(0, 0, /*stride1*/ 2, /*stride2*/ 1),
+          make_2d_views(0, 0, /*stride1*/ 1, /*stride2*/ 1, intra, inter),
+          make_2d_views(0, 1, /*stride1*/ 1, /*stride2*/ 1, intra, inter),
+          make_2d_views(0, 0, /*stride1*/ 2, /*stride2*/ 1, intra, inter),
       };
 
-      std::vector<MachineViewProjection> correct_proj = {
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER_NODE}}},
-
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-      };
-
-      std::unordered_set<std::pair<MachineView, MachineViewProjection>>
-          correct = unordered_set_of(zip(correct_mv, correct_proj));
-
-      std::unordered_set<std::pair<MachineView, MachineViewProjection>> result =
-          get_allowed_partial_machine_view_mappings(ms, shape, DeviceType::GPU);
+      std::unordered_set<MachineView> result =
+          get_allowed_machine_views(ms, task, DeviceType::GPU);
 
       CHECK(correct == result);
-    }
-  }
-
-  TEST_CASE("get_allowed_partial_start_invariant_machine_view_mappings") {
-
-    SUBCASE("1 degree of parallelism") {
-
-      MachineSpecification ms = MachineSpecification{1, 5, 5, 0, 0};
-      ParallelTensorShape shape = ParallelTensorShape{
-          ParallelTensorDims{
-              FFOrdered<ShardParallelDim>{
-                  ShardParallelDim{10, 3},
-              },
-              ReplicaParallelDimSet{
-                  SumDegree{1},
-                  DiscardCopyDegree{1},
-              },
-          },
-          DataType::FLOAT,
-      };
-
-      std::vector<StartInvariantMachineView> correct_mv = {
-          make_1d_start_invariant_machine_view(
-              num_points_t(3), stride_t(1), DeviceType::GPU),
-          make_1d_start_invariant_machine_view(
-              num_points_t(3), stride_t(2), DeviceType::GPU)};
-
-      std::vector<MachineViewProjection> correct_proj = {
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-      };
-
-      std::unordered_set<
-          std::pair<StartInvariantMachineView, MachineViewProjection>>
-          correct = unordered_set_of(zip(correct_mv, correct_proj));
-
-      std::unordered_set<
-          std::pair<StartInvariantMachineView, MachineViewProjection>>
-          result = get_allowed_partial_start_invariant_machine_view_mappings(
-              ms, shape, DeviceType::GPU);
-
-      CHECK(correct == result);
-    }
-
-    SUBCASE("2 degrees of parallelism") {
-
-      MachineSpecification ms = MachineSpecification(3, 3, 3, 0, 0);
-      ParallelTensorShape shape = ParallelTensorShape{
-          ParallelTensorDims{
-              FFOrdered<ShardParallelDim>{
-                  ShardParallelDim{10, 3},
-              },
-              ReplicaParallelDimSet{
-                  SumDegree{2},
-                  DiscardCopyDegree{1},
-              },
-          },
-          DataType::FLOAT,
-      };
-
-      auto make_2d_view = [&](int stride1, int stride2) {
-        StridedRectangle rect = StridedRectangle{
-            {StridedRectangleSide{num_points_t(2), stride_t(stride1)},
-             StridedRectangleSide{num_points_t(3), stride_t(stride2)}}};
-        return StartInvariantMachineView{rect, DeviceType::GPU};
-      };
-
-      std::vector<StartInvariantMachineView> correct_mv = {
-          make_2d_view(/*stride1*/ 1, /*stride2*/ 1),
-          make_2d_view(/*stride1*/ 2, /*stride2*/ 1),
-          make_2d_view(/*stride1*/ 1, /*stride2*/ 1),
-          make_2d_view(/*stride1*/ 2, /*stride2*/ 1),
-      };
-
-      std::vector<MachineViewProjection> correct_proj = {
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTRA_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTER_NODE}}},
-
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-          MachineViewProjection{{{machine_view_dim_idx_t{0},
-                                  MachineSpecificationDimension::INTER_NODE},
-                                 {machine_view_dim_idx_t{1},
-                                  MachineSpecificationDimension::INTRA_NODE}}},
-      };
-      std::unordered_set<
-          std::pair<StartInvariantMachineView, MachineViewProjection>>
-          correct = unordered_set_of(zip(correct_mv, correct_proj));
-
-      std::unordered_set<
-          std::pair<StartInvariantMachineView, MachineViewProjection>>
-          result = get_allowed_partial_start_invariant_machine_view_mappings(
-              ms, shape, DeviceType::GPU);
-
-      CHECK(result == correct);
     }
   }
 }
