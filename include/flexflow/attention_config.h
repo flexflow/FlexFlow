@@ -114,8 +114,9 @@ public:
     workspace_size =
         float_workspace_size + int_workspace_size; // float + int workspace
 
-    mem_size_ = sizeof(int32_t) * indices_size +
-                sizeof(uint8_t) * custom_mask_size + workspace_size;
+    mem_size_ = alignTo(sizeof(int32_t) * indices_size +
+                            sizeof(uint8_t) * custom_mask_size + workspace_size,
+                        16);
     return mem_size_;
   }
 

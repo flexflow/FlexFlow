@@ -22,6 +22,10 @@
 
 namespace FlexFlow {
 
+inline int alignTo(int x, int y) {
+  return ((x + y - 1) / y) * y;
+}
+
 class InferenceResult;
 
 using BatchConfigFuture = Legion::Future;

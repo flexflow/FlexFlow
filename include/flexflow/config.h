@@ -83,11 +83,13 @@ struct FFHandler {
   AttentionMetaData *tree_search_attention_metadata;
   AttentionMetaData *tree_verify_attention_metadata;
 
-  size_t batch_config_metadata_size =
+  size_t batch_config_metadata_size = alignTo(
       sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-      sizeof(BatchConfig::request_available) + sizeof(BatchConfig::causalMask) +
-      sizeof(BatchConfig::streamingCacheInfo) +
-      sizeof(BatchConfig::committed_tokens) + sizeof(int);
+          sizeof(BatchConfig::request_available) +
+          sizeof(BatchConfig::causalMask) +
+          sizeof(BatchConfig::streamingCacheInfo) +
+          sizeof(BatchConfig::committed_tokens) + sizeof(int),
+      16);
 
   void *offload_reserve_space;
   size_t offload_reserve_space_size;
