@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-#include "flexflow/ffconst.h"
 #include "flexflow/request_manager.h"
+#include "flexflow/ffconst.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_runtime.h>
 

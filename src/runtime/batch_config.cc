@@ -95,7 +95,8 @@ int BatchConfig::max_tokens_per_ssm_batch() {
 
 /*static*/
 int BatchConfig::max_tokens_per_prefilling_batch() {
-  return RequestManager::get_request_manager()->get_max_tokens_per_prefilling_batch();
+  return RequestManager::get_request_manager()
+      ->get_max_tokens_per_prefilling_batch();
 }
 
 /*static*/

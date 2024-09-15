@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ffconst.h"
 #include "flexflow/ffconst_utils.h"
-#include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/utils/hip_helper.h"

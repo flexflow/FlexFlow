@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "flexflow/request_manager.h"
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
-#include "flexflow/request_manager.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
 #include <cmath>
@@ -148,7 +148,8 @@ void RequestManager::set_max_tokens_per_ssm_batch(int max_num_ssm_tokens) {
   assert(max_tokens_per_ssm_batch <= BatchConfig::MAX_NUM_TOKENS);
 }
 
-void RequestManager::set_max_tokens_per_prefilling_batch(int max_num_prefilling_tokens) {
+void RequestManager::set_max_tokens_per_prefilling_batch(
+    int max_num_prefilling_tokens) {
   assert(max_tokens_per_prefilling_batch == -1 ||
          max_tokens_per_prefilling_batch == max_num_prefilling_tokens);
   max_tokens_per_prefilling_batch = max_num_prefilling_tokens;
@@ -1070,8 +1071,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
     bc.requestsInfo[request_index].num_tokens_in_batch = num_tokens_in_batch;
 
     // Copy the streaming cache info
-    bc.streamingCacheInfo[request_index] =
-        request->streaming_cache_info;
+    bc.streamingCacheInfo[request_index] = request->streaming_cache_info;
 
     request->first_token_offset_in_batch = num_tokens;
     request->num_tokens_in_batch = num_tokens_in_batch;
