@@ -5,7 +5,7 @@ namespace FlexFlow {
 
 BertConfig get_default_bert_config() {
   return BertConfig(/*vocab_size=*/30522,
-                    /*num_features=*/768,
+                    /*hidden_size=*/768,
                     /*num_encoder_layers=*/12,
                     /*num_heads=*/12,
                     /*dim_feedforward=*/3072,
@@ -22,7 +22,7 @@ tensor_guid_t create_feedforward_network(ComputationGraphBuilder &cgb,
       input, config.dim_feedforward, Activation::GELU, /*use_bias=*/true);
   tensor_guid_t dropout_out = cgb.dropout(layer1_out, config.dropout);
   tensor_guid_t layer2_out = cgb.dense(dropout_out,
-                                       config.num_features,
+                                       config.hidden_size,
                                        /*activation=*/std::nullopt,
                                        /*use_bias=*/true);
   return cgb.dropout(layer2_out, config.dropout);
@@ -37,7 +37,7 @@ tensor_guid_t create_bert_encoder_layer(ComputationGraphBuilder &cgb,
   tensor_guid_t self_attention = cgb.multihead_attention(input,
                                                          input,
                                                          input,
-                                                         config.num_features,
+                                                         config.hidden_size,
                                                          config.num_heads,
                                                          kdim,
                                                          vdim,
@@ -77,7 +77,7 @@ ComputationGraph get_bert_computation_graph(BertConfig const &config) {
 
   TensorShape input_shape = TensorShape{
       TensorDims{FFOrdered<size_t>{
-          config.batch_size, config.sequence_length, config.num_features}},
+          config.batch_size, config.sequence_length, config.hidden_size}},
       DataType::FLOAT,
   };
   tensor_guid_t input = cgb.create_tensor(input_shape, CreateGrad::YES);
