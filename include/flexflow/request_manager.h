@@ -60,14 +60,14 @@ public:
 class TokenTreeNode {
 public:
   BatchConfig::TokenId id;
-  float log_accumulated_prob;
+  double log_accumulated_prob;
   int parent_pos;
   bool included = false;
   bool gumbel = false;
   float gumbel_logit = 0.0f;
 
   TokenTreeNode(BatchConfig::TokenId id,
-                float log_accumulated_prob,
+                double log_accumulated_prob,
                 int parent_pos,
                 bool gumbel = false,
                 float gumbel_logit = 0.0f)
@@ -82,7 +82,7 @@ bool operator<=(std::shared_ptr<TokenTreeNode> const &lhs,
                 std::shared_ptr<TokenTreeNode> const &rhs);
 
 // A comparator for std::shared_ptr<TokenTreeNode>
-// This is used to sort the token tree nodes in ascending order
+// This is used to construct a max heap for the token tree nodes
 struct SharedTokenTreeNodePtrLess {
   bool operator()(std::shared_ptr<TokenTreeNode> const &lhs,
                   std::shared_ptr<TokenTreeNode> const &rhs) const {
@@ -91,19 +91,6 @@ struct SharedTokenTreeNodePtrLess {
       return lhs->gumbel_logit < rhs->gumbel_logit;
     }
     return lhs->log_accumulated_prob < rhs->log_accumulated_prob;
-  }
-};
-
-// A comparator for std::shared_ptr<TokenTreeNode>
-// This is used in to sort the token tree nodes in descending order
-struct SharedTokenTreeNodePtrGreater {
-  bool operator()(std::shared_ptr<TokenTreeNode> const &lhs,
-                  std::shared_ptr<TokenTreeNode> const &rhs) const {
-    if (lhs->gumbel) {
-      assert(rhs->gumbel);
-      return lhs->gumbel_logit > rhs->gumbel_logit;
-    }
-    return lhs->log_accumulated_prob > rhs->log_accumulated_prob;
   }
 };
 
@@ -339,13 +326,13 @@ public:
   int get_empty_request_index();
 
   // Comparters
-  struct SharedTokenTreeNodePtrRequestGuidWeightedGreater {
+  struct SharedTokenTreeNodePtrRequestGuidWeightedLess {
     bool operator()(
         std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &lhs,
         std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &rhs)
         const;
   };
-  struct SharedTokenTreeNodePtrRequestGuidGreater {
+  struct SharedTokenTreeNodePtrRequestGuidLess {
     bool operator()(
         std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &lhs,
         std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &rhs)
@@ -502,8 +489,8 @@ private:
       reject_sampling(std::vector<std::pair<TokenId, float>> &D,
                       std::unordered_map<TokenId, float> &R,
                       int k);
-  void gumbel_conditioned_on_max(float target_max,
-                                 std::vector<std::pair<float, int>> &logits);
+  void gumbel_conditioned_on_max(double target_max,
+                                 std::vector<std::pair<double, int>> &logits);
 
   // Profiling related functions
   void reset_profiling_statistics();
