@@ -1,4 +1,4 @@
-#include "models/bert.h"
+#include "models/bert/bert.h"
 #include "pcg/computation_graph.h"
 
 namespace FlexFlow {
@@ -31,7 +31,7 @@ tensor_guid_t create_feedforward_network(ComputationGraphBuilder &cgb,
 tensor_guid_t create_bert_encoder_layer(ComputationGraphBuilder &cgb,
                                         BertConfig const &config,
                                         tensor_guid_t const &input) {
-  std::vector<int> layer_norm_axis{2}; // Normalize the last dim
+  std::vector<int> layer_norm_axis = {2}; // Normalize the last dim
   int kdim = config.dim_feedforward / config.num_heads;
   int vdim = config.dim_feedforward / config.num_heads;
   tensor_guid_t self_attention = cgb.multihead_attention(input,

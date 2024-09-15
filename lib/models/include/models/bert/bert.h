@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_BERT_H
 #define _FLEXFLOW_LIB_MODELS_INCLUDE_MODELS_BERT_H
 
-#include "models/bert_config.dtg.h"
+#include "models/bert/bert_config.dtg.h"
 #include "pcg/computation_graph_builder.h"
 
 namespace FlexFlow {
@@ -24,6 +24,8 @@ BertConfig get_default_bert_config();
 
 /**
  * @brief Get the BERT computation graph.
+ *
+ * @note This is a naive encoder-only model for pre-training.
  *
  * @param BertConfig The config of BERT model.
  * @return ComputationGraph The PCG of a BERT model.

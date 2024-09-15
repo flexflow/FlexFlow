@@ -1,4 +1,4 @@
-#include "models/bert.h"
+#include "models/bert/bert.h"
 #include "pcg/computation_graph.h"
 #include <doctest/doctest.h>
 
