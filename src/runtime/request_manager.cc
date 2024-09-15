@@ -275,6 +275,11 @@ void RequestManager::set_memory_occupancy(bool memory_occupancy_) {
   memory_occupancy = memory_occupancy_;
 }
 
+void RequestManager::set_slo_violation_early_termination(
+    bool slo_violation_early_termination_) {
+  slo_violation_early_termination = slo_violation_early_termination_;
+}
+
 double RequestManager::get_request_expected_latency(Request &request) {
   return request.get_slo_ratio() * baseline_latency_ms *
          (request.tokens.size() - request.llm_prefill_len);
@@ -1429,7 +1434,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     request.num_tokens_in_batch = token_tree_index;
 
     // TODO: REMOVE THIS OUTPUT
-    // std::cout << "Request " << request_index
+    // std::cout << "Request " << request_index << " Guid " << guid
     //           << " token tree size: " << request.num_tokens_in_batch
     //           << std::endl;
     // std::cout << "Request " << guid << " token tree: " << std::endl;
@@ -1538,8 +1543,9 @@ bool RequestManager::update_llm_verify_results(
       // Request is completed
       request_completed = true;
       request_complete_clean_up(request_index, true);
-    } else if (request.decode_latency_ms >
-               get_request_expected_latency(request)) {
+    } else if (slo_violation_early_termination and
+               request.decode_latency_ms >
+                   get_request_expected_latency(request)) {
       // The request violates the SLO, drop that request
       request_completed = true;
       request_complete_clean_up(request_index, false);
@@ -2669,7 +2675,6 @@ void RequestManager::prune_token_tree() {
     assert(request.status == Request::RUNNING);
     double spare_latency =
         get_request_expected_latency(request) - request.decode_latency_ms;
-    assert(spare_latency >= 0.0);
     spare_latency_2_request_index.push_back(
         std::make_pair(spare_latency, request_index));
   }
@@ -2843,12 +2848,11 @@ std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
     os << "Layer: " << layer_idx << std::endl;
     int token_pos = 0;
     for (auto const &node : layer) {
-      if (node->included) {
-        os << std::fixed << std::setprecision(12);
-        os << "token pos: " << token_pos << "\ttoken id: " << node->id
-           << "\tparent pos: " << node->parent_pos
-           << "\tlog prob: " << node->log_accumulated_prob << std::endl;
-      }
+      os << std::fixed << std::setprecision(12);
+      os << "token pos: " << token_pos << "\ttoken id: " << node->id
+         << "\tparent pos: " << node->parent_pos
+         << "\tlog prob: " << node->log_accumulated_prob
+         << (node->included ? " included" : " not included") << std::endl;
       token_pos++;
     }
     layer_idx++;

@@ -70,7 +70,11 @@ void parse_input_args(char **argv,
                       bool &spec_sampling,
                       bool &do_sample,
                       int &sampling_seed,
-                      bool &streaming_cache) {
+                      bool &streaming_cache,
+                      bool &slo_attainment_early_termination,
+                      int &baseline_latency_ms,
+                      int &ssm_spec_latency_ms,
+                      int &llm_verify_latency_ms) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -156,6 +160,22 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--enable-streaming-cache")) {
       streaming_cache = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--slo-attainment-early-termination")) {
+      slo_attainment_early_termination = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--baseline-latency-ms")) {
+      baseline_latency_ms = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--ssm-spec-latency-ms")) {
+      ssm_spec_latency_ms = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--llm-verify-latency-ms")) {
+      llm_verify_latency_ms = std::stoi(argv[++i]);
       continue;
     }
   }
@@ -323,6 +343,10 @@ void FlexFlow::top_level_task(Task const *task,
   bool do_sample = false;
   int sampling_seed = 0;
   bool streaming_cache = false;
+  bool slo_attainment_early_termination = false;
+  int baseline_latency_ms = 50;
+  int ssm_spec_latency_ms = 20;
+  int llm_verify_latency_ms = 50;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -343,7 +367,11 @@ void FlexFlow::top_level_task(Task const *task,
                    spec_sampling,
                    do_sample,
                    sampling_seed,
-                   streaming_cache);
+                   streaming_cache,
+                   slo_attainment_early_termination,
+                   baseline_latency_ms,
+                   ssm_spec_latency_ms,
+                   llm_verify_latency_ms);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
   }
@@ -372,6 +400,10 @@ void FlexFlow::top_level_task(Task const *task,
                          model_metadata.eos_token_id,
                          model_metadata.llm_tokenizer_path);
   rm->set_decoding_mode(decoding_mode);
+  rm->set_slo_violation_early_termination(slo_attainment_early_termination);
+  rm->set_baseline_latency(baseline_latency_ms);
+  rm->set_ssm_spec_latency(ssm_spec_latency_ms);
+  rm->set_llm_verify_latency(llm_verify_latency_ms);
   rm->register_output_filepath(file_paths.output_file_path);
 
   // Create LLM model
@@ -483,7 +515,8 @@ void FlexFlow::top_level_task(Task const *task,
       total_num_requests++;
       requests.push_back(GenerationRequest(text, slo_ratio));
     }
-    PoissonEmissionMachine emission_machine(1.0);
+    // PoissonEmissionMachine emission_machine(1.0);
+    ConstantEmissionMachine emission_machine(-1);
     tree_model.generate(requests, emission_machine);
   }
 
