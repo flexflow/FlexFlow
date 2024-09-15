@@ -46,3 +46,7 @@ type = "std::map<std::string, std::string>"
 [[fields]]
 name = "dropout"
 type = "float"
+
+[[fields]]
+name = "residual"
+type = "bool"

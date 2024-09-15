@@ -1,15 +1,17 @@
 #include "models/candle_uno/candle_uno.h"
+#include "pcg/initializers/glorot_uniform_attrs.dtg.h"
 
 namespace FlexFlow {
 
 CandleUnoConfig get_default_candle_uno_config() {
-  CandleUnoConfig config(
+  CandleUnoConfig config{
       /*batch_size=*/64,
       /*dense_layers=*/std::vector<int>(4, 4192),
       /*dense_feature_layers=*/std::vector<int>(8, 4192),
       /*feature_shapes=*/std::map<std::string, int>{},
       /*input_features=*/std::map<std::string, std::string>{},
-      /*dropout=*/0.1);
+      /*dropout=*/0.1,
+      /*residual=*/false};
 
   config.feature_shapes["dose"] = 1;
   config.feature_shapes["cell.rnaseq"] = 942;
@@ -27,12 +29,22 @@ CandleUnoConfig get_default_candle_uno_config() {
   return config;
 }
 
-tensor_guid_t create_candle_uno_feature_model(ComputationGraphBuilder &cgb,
-                                              CandleUnoConfig const &config,
-                                              tensor_guid_t const &input) {
+tensor_guid_t create_candle_uno_feature_model(
+    ComputationGraphBuilder &cgb,
+    CandleUnoConfig const &config,
+    tensor_guid_t const &input,
+    InitializerAttrs const &kernel_initializer) {
   tensor_guid_t t = input;
-  for (auto const dense_dim : config.dense_feature_layers) {
-    t = cgb.dense(t, dense_dim, Activation::RELU, /*use_bias=*/false);
+  for (int const dense_dim : config.dense_feature_layers) {
+    t = cgb.dense(t,
+                  dense_dim,
+                  Activation::RELU,
+                  /*use_bias=*/false,
+                  /*data_type=*/DataType::FLOAT,
+                  /*kernel_initializer=*/kernel_initializer);
+    if (config.dropout > 0) {
+      t = cgb.dropout(t, config.dropout);
+    }
   }
   return t;
 }
@@ -40,6 +52,8 @@ tensor_guid_t create_candle_uno_feature_model(ComputationGraphBuilder &cgb,
 ComputationGraph
     get_candle_uno_computation_graph(CandleUnoConfig const &config) {
   ComputationGraphBuilder cgb;
+  InitializerAttrs kernel_initializer =
+      InitializerAttrs{GlorotUniformAttrs{/*seed=*/0}};
 
   auto create_input_tensor =
       [&](FFOrdered<size_t> const &dims) -> tensor_guid_t {
@@ -71,20 +85,35 @@ ComputationGraph
     all_inputs.push_back(input);
 
     if (contains(input_models, feature_name)) {
-      encoded_inputs.emplace_back(
-          create_candle_uno_feature_model(cgb, config, input));
+      encoded_inputs.emplace_back(create_candle_uno_feature_model(
+          cgb, config, input, kernel_initializer));
     } else {
       encoded_inputs.emplace_back(input);
     }
   }
 
   tensor_guid_t output = cgb.concat(encoded_inputs, /*axis=*/1);
-  for (auto const &dense_layer_dim : config.dense_layers) {
-    output = cgb.dense(
-        output, dense_layer_dim, Activation::RELU, /*use_bias=*/false);
+  for (int const &dense_layer_dim : config.dense_layers) {
+    tensor_guid_t residual_input = output;
+    output = cgb.dense(output,
+                       dense_layer_dim,
+                       Activation::RELU,
+                       /*use_bias=*/false,
+                       /*data_type=*/DataType::FLOAT,
+                       /*kernel_initializer=*/kernel_initializer);
+    if (config.dropout > 0) {
+      output = cgb.dropout(output, config.dropout);
+    }
+    if (config.residual) {
+      output = cgb.add(output, residual_input);
+    }
   }
-  output =
-      cgb.dense(output, 1, /*activation=*/std::nullopt, /*use_bias=*/false);
+  output = cgb.dense(output,
+                     1,
+                     /*activation=*/std::nullopt,
+                     /*use_bias=*/false,
+                     /*data_type=*/DataType::FLOAT,
+                     /*kernel_initializer=*/kernel_initializer);
 
   return cgb.computation_graph;
 }
