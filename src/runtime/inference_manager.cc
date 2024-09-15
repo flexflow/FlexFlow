@@ -61,8 +61,10 @@ void InferenceManager::compile_model_and_allocate_buffer(FFModel *model,
   // TODO: currently assume there is a single data-parallel pipeline
   // (i.e., data-parallel-degree == 1)
   assert(model->config.data_parallelism_degree == 1);
-  model->config.batchSize = is_llm ? BatchConfig::max_tokens_per_batch()
-                                   : BatchConfig::max_tokens_per_ssm_batch();
+  model->config.batchSize =
+      std::max(is_llm ? BatchConfig::max_tokens_per_batch()
+                      : BatchConfig::max_tokens_per_ssm_batch(),
+               BatchConfig::max_tokens_per_prefilling_batch());
   model->compile_inference();
   Context ctx = model->config.lg_ctx;
   Runtime *runtime = model->config.lg_hlr;

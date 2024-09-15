@@ -289,7 +289,7 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta *m,
     }
     if (result != cudaSuccess) {
       throw std::runtime_error("Failed to run "
-                               "BatchPrefillWithPagedKVCacheWrapperDispatched" +
+                               "TreeVerifyAttentionKernel: " +
                                std::string(cudaGetErrorString(result)));
     }
   });

@@ -198,7 +198,7 @@ void tree_search_attention(SpecIncMultiHeadSelfAttentionMeta *m,
     }
     if (result != cudaSuccess) {
       throw std::runtime_error("Failed to run "
-                               "BatchPrefillWithPagedKVCacheWrapperDispatched" +
+                               "TreeSearchAttentionForwardKernel: " +
                                std::string(cudaGetErrorString(result)));
     }
   });
