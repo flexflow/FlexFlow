@@ -96,13 +96,18 @@ struct SharedTokenTreeNodePtrLess {
 
 class TokenTree {
 public:
-  std::list<std::list<shared_ptr<TokenTreeNode>>> tree_layers = {};
+  std::vector<std::vector<std::shared_ptr<TokenTreeNode>>> tree_layers = {};
   void add_layer() {
     tree_layers.emplace_back();
+    tree_layers.back().reserve(BatchConfig::MAX_TREE_WIDTH);
   }
 
   void clear() {
     tree_layers.clear();
+  }
+
+  TokenTree() {
+    tree_layers.reserve(BatchConfig::MAX_TREE_DEPTH + 1);
   }
 };
 
