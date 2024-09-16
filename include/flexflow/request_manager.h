@@ -378,6 +378,7 @@ private:
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
+  std::mutex request_result_mutex;
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
@@ -393,9 +394,6 @@ private:
   bool request_available[BatchConfig::MAX_NUM_REQUESTS];
   int num_available_requests = 0;
   int ssm_completed = true;
-
-  // rm state
-  std::mutex rm_state_mutex;
 
   // Multi-model support
   std::vector<FFModel *> ssm_models;

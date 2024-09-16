@@ -404,7 +404,6 @@ size_t RequestManager::get_num_ssms() {
 
 RequestManager::RequestGuid
     RequestManager::register_new_request(GenerationRequest const &req) {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
   // Add a new request
   Request request;
   request.status = Request::PENDING;
@@ -443,11 +442,25 @@ RequestManager::RequestGuid
       BatchConfig::MAX_STREAMING_POS - BatchConfig::SINK_SIZE -
           BatchConfig::get_max_tree_depth());
 
-  pending_request_queue.push(request);
-  all_requests[request.guid] = request;
+  GenerationResult gr;
+  gr.guid = request.guid;
+  gr.input_text = req.prompt;
+  gr.input_tokens = request.tokens;
+  gr.output_text = req.prompt;
+  gr.output_tokens = request.tokens;
+
+  {
+    std::lock_guard<std::mutex> const lock(request_queue_mutex);
+    pending_request_queue.push(request);
+    all_requests[request.guid] = request;
+  }
   {
     std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     request_to_promise[request.guid] = new std::promise<void>();
+  }
+  {
+    std::lock_guard<std::mutex> const lock(request_result_mutex);
+    request_generation_results[request.guid] = gr;
   }
 
   {
@@ -460,13 +473,6 @@ RequestManager::RequestGuid
     write_to_output_file("", output);
   }
 
-  GenerationResult gr;
-  gr.guid = request.guid;
-  gr.input_text = req.prompt;
-  gr.input_tokens = request.tokens;
-  gr.output_text = req.prompt;
-  gr.output_tokens = request.tokens;
-  request_generation_results[request.guid] = gr;
   return request.guid;
 }
 
@@ -491,7 +497,7 @@ GenerationResult
   future.get();
   // Get the generation result
   {
-    std::lock_guard<std::mutex> const lock(request_queue_mutex);
+    std::lock_guard<std::mutex> const lock(request_result_mutex);
     assert(request_generation_results.find(guid) !=
            request_generation_results.end());
     return request_generation_results[guid];
@@ -627,6 +633,15 @@ void RequestManager::request_complete_clean_up(int batch_index, bool attained) {
   std::string output =
       this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
 
+  {
+    std::lock_guard<std::mutex> const lock(request_result_mutex);
+    request_generation_results[guid].output_text = output;
+    request_generation_results[guid].output_tokens =
+        std::vector<int>(bos_it, eos_it);
+  }
+
+  trigger_request_completion_future(guid);
+
   std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
   std::cout << "<bos>" << output;
   if (eos_rit != request.tokens.rend()) {
@@ -689,14 +704,10 @@ void RequestManager::request_complete_clean_up(int batch_index, bool attained) {
   //         std::to_string(profile_info.ssm_decoding_steps) + ")";
   // }
   // write_to_output_file("", str);
-
-  trigger_request_completion_future(guid);
 }
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
-  std::lock_guard<std::mutex> const rm_state_lock(rm_state_mutex);
-
   if (num_available_requests == 0) {
     // Update nothing
     // Load the pending request to the batch
