@@ -8,6 +8,42 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("get_layer_norm_incoming_tensor_roles(LayerNormAttrs)") {
+    auto make_attrs = [](bool elementwise_affine) {
+      return LayerNormAttrs{
+          /*axes=*/{ff_dim_t{0}, ff_dim_t{2}},
+          elementwise_affine,
+          /*eps=*/1.0,
+      };
+    };
+
+    SUBCASE("elementwise_affine = true") {
+      LayerNormAttrs attrs = make_attrs(/*elementwise_affine=*/true);
+
+      std::vector<IncomingTensorRole> result =
+          get_layer_norm_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> correct = {
+          IncomingTensorRole::INPUT,
+          IncomingTensorRole::WEIGHT,
+          IncomingTensorRole::WEIGHT,
+      };
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("elementwise_affine = false") {
+      LayerNormAttrs attrs = make_attrs(/*elementwise_affine=*/false);
+
+      std::vector<IncomingTensorRole> result =
+          get_layer_norm_incoming_tensor_roles(attrs);
+      std::vector<IncomingTensorRole> correct = {
+          IncomingTensorRole::INPUT,
+      };
+
+      CHECK(result == correct);
+    }
+  }
+
   TEST_CASE("shape inference (LayerNorm)") {
     LayerNormAttrs attrs_affine_true = LayerNormAttrs{
         /*axes=*/{ff_dim_t{1}, ff_dim_t{3}},

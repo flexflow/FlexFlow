@@ -42,7 +42,8 @@ tensor_guid_t create_transformer_encoder_layer(ComputationGraphBuilder &cgb,
                                                          config.num_heads,
                                                          kdim,
                                                          vdim,
-                                                         config.dropout);
+                                                         config.dropout,
+                                                         /*bias=*/false);
   assert(are_tensor_guid_shapes_equivalent(
       cgb.computation_graph, input, self_attention));
 
@@ -88,7 +89,8 @@ tensor_guid_t
                                                          config.num_heads,
                                                          kdim,
                                                          vdim,
-                                                         config.dropout);
+                                                         config.dropout,
+                                                         /*bias=*/false);
   assert(are_tensor_guid_shapes_equivalent(
       cgb.computation_graph, input, self_attention));
 
@@ -107,7 +109,8 @@ tensor_guid_t
                                               config.num_heads,
                                               kdim,
                                               vdim,
-                                              config.dropout);
+                                              config.dropout,
+                                              /*bias=*/false);
   assert(are_tensor_guid_shapes_equivalent(cgb.computation_graph, input, mha));
 
   tensor_guid_t mha_normalized =

@@ -5,6 +5,20 @@
 
 namespace FlexFlow {
 
+std::vector<IncomingTensorRole>
+    get_conv2d_incoming_tensor_roles(Conv2DAttrs const &attrs) {
+  std::vector<IncomingTensorRole> result = {
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::WEIGHT,
+  };
+
+  if (attrs.use_bias) {
+    result.push_back(IncomingTensorRole::WEIGHT);
+  }
+
+  return result;
+}
+
 TensorShape get_kernel_shape(Conv2DAttrs const &attrs,
                              TensorShape const &raw_input_shape) {
   assert(attrs.groups == 1); // TODO(@lockshaw): currently not supported

@@ -26,6 +26,18 @@ std::optional<OperatorAttributeValue> get_attribute(BatchNormAttrs const &p,
   }
 }
 
+std::optional<OperatorAttributeValue> get_attribute(BroadcastAttrs const &p,
+                                                    OperatorAttributeKey key) {
+  switch (key) {
+    case OperatorAttributeKey::OP_TYPE:
+      return get_op_type(p);
+    case OperatorAttributeKey::TARGET_DIMS:
+      return p.target_dims;
+    default:
+      return std::nullopt;
+  }
+}
+
 std::optional<OperatorAttributeValue> get_attribute(CastAttrs const &p,
                                                     OperatorAttributeKey key) {
   switch (key) {

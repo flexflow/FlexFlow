@@ -22,11 +22,18 @@ ParallelLayerAddedResult
                        std::vector<ParallelTensorAttrs> const &output_labels);
 
 std::vector<parallel_tensor_guid_t>
-    get_layer_inputs(ParallelComputationGraph const &,
-                     parallel_layer_guid_t const &);
+    get_incoming_tensors(ParallelComputationGraph const &,
+                         parallel_layer_guid_t const &);
 std::vector<parallel_tensor_guid_t>
     get_layer_outputs(ParallelComputationGraph const &,
                       parallel_layer_guid_t const &);
+
+std::vector<parallel_tensor_guid_t>
+    get_incoming_inputs(ParallelComputationGraph const &,
+                        parallel_layer_guid_t const &);
+std::vector<parallel_tensor_guid_t>
+    get_incoming_weights(ParallelComputationGraph const &,
+                         parallel_layer_guid_t const &);
 
 ParallelLayerAttrs get_parallel_layer_attrs(ParallelComputationGraph const &,
                                             parallel_layer_guid_t const &);

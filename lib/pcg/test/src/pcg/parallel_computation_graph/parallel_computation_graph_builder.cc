@@ -15,6 +15,12 @@
 
 using namespace ::FlexFlow;
 
+// Stylistically these tests are not great (they're rather complicated
+// and hard to read) and should not be used as a model for other FlexFlow
+// tests.
+//
+// Improving them is being tracked in
+// https://github.com/flexflow/FlexFlow/issues/1474
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ParallelComputationGraphBuilder::add") {
     ParallelComputationGraphBuilder b;
@@ -44,9 +50,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t out = b.add(lhs, rhs);
     parallel_layer_guid_t layer = get_source_layer(out);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {lhs, rhs};
       CHECK(result == correct);
     }
@@ -107,9 +113,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t out = b.batch_matmul(a_tensor, b_tensor);
     parallel_layer_guid_t layer = get_source_layer(out);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {a_tensor, b_tensor};
       CHECK(result == correct);
     }
@@ -150,9 +156,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t output = b.cast(input, output_datatype);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
@@ -260,20 +266,20 @@ TEST_SUITE(FF_TEST_SUITE) {
     ParallelTensorShape correct_bias_shape =
         get_bias_shape(correct_attrs, input_shape);
 
-    std::vector<parallel_tensor_guid_t> conv_inputs =
-        get_layer_inputs(b.pcg, conv_guid);
+    std::vector<parallel_tensor_guid_t> conv_incoming =
+        get_incoming_tensors(b.pcg, conv_guid);
 
-    parallel_tensor_guid_t conv_input = conv_inputs.at(0);
+    parallel_tensor_guid_t conv_input = conv_incoming.at(0);
     ParallelTensorShape conv_input_shape =
         get_parallel_tensor_attrs(b.pcg, conv_input).shape;
     CHECK(conv_input_shape == input_shape);
 
-    parallel_tensor_guid_t conv_kernel = conv_inputs.at(1);
+    parallel_tensor_guid_t conv_kernel = conv_incoming.at(1);
     ParallelTensorShape conv_kernel_shape =
         get_parallel_tensor_attrs(b.pcg, conv_kernel).shape;
     CHECK(conv_kernel_shape == correct_kernel_shape);
 
-    parallel_tensor_guid_t conv_bias = conv_inputs.at(2);
+    parallel_tensor_guid_t conv_bias = conv_incoming.at(2);
     ParallelTensorShape conv_bias_shape =
         get_parallel_tensor_attrs(b.pcg, conv_bias).shape;
     CHECK(conv_bias_shape == correct_bias_shape);
@@ -315,9 +321,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                                             DataType::FLOAT);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       CHECK(result.at(0) == input);
 
       CHECK(result.size() == 3);
@@ -358,9 +364,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                                                 DataType::FLOAT);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       CHECK(result.at(0) == input);
 
       CHECK(result.size() == 2);
@@ -408,9 +414,9 @@ TEST_SUITE(FF_TEST_SUITE) {
         b.multihead_attention(query, key, value, embed_dim, num_heads);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       CHECK(result.at(0) == query);
       CHECK(result.at(1) == key);
       CHECK(result.at(2) == value);
@@ -449,9 +455,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t output = b.relu(input);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
@@ -488,9 +494,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t output = b.parallel_partition(input, ff_dim_t{0}, 2);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
@@ -527,9 +533,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t output = b.parallel_combine(input, ff_dim_t{0}, 2);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
@@ -566,9 +572,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t output = b.parallel_replicate(input, 2);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }
@@ -605,9 +611,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     parallel_tensor_guid_t output = b.parallel_reduce(input, 2);
     parallel_layer_guid_t layer = get_source_layer(output);
 
-    SUBCASE("inputs") {
+    SUBCASE("incoming") {
       std::vector<parallel_tensor_guid_t> result =
-          get_layer_inputs(b.pcg, layer);
+          get_incoming_tensors(b.pcg, layer);
       std::vector<parallel_tensor_guid_t> correct = {input};
       CHECK(result == correct);
     }

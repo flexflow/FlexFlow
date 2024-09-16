@@ -7,6 +7,55 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs)") {
+    auto make_attrs = [](bool bias) {
+      return MultiHeadAttentionAttrs{
+          /*embed_dim=*/32,
+          /*num_heads=*/10,
+          /*kdim=*/32,
+          /*vdim=*/32,
+          /*dropout=*/0.0,
+          /*bias=*/bias,
+          /*add_bias_kv=*/false,
+          /*add_zero_attn=*/false,
+      };
+    };
+
+    SUBCASE("without bias") {
+      MultiHeadAttentionAttrs attrs = make_attrs(/*bias=*/false);
+
+      tl::expected<std::vector<IncomingTensorRole>, std::string> result =
+          get_attention_incoming_tensor_roles(attrs);
+      tl::expected<std::vector<IncomingTensorRole>, std::string> correct =
+          std::vector{
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::WEIGHT,
+          };
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("with bias") {
+      MultiHeadAttentionAttrs attrs = make_attrs(/*bias=*/true);
+
+      tl::expected<std::vector<IncomingTensorRole>, std::string> result =
+          get_attention_incoming_tensor_roles(attrs);
+      tl::expected<std::vector<IncomingTensorRole>, std::string> correct =
+          std::vector{
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::INPUT,
+              IncomingTensorRole::WEIGHT,
+              IncomingTensorRole::WEIGHT,
+              IncomingTensorRole::WEIGHT,
+          };
+
+      CHECK(result == correct);
+    }
+  }
+
   TEST_CASE("get_output_shape(MultiHeadAttentionAttrs, TensorShape, "
             "TensorShape, TensorShape)") {
     int embed_dim = 32;

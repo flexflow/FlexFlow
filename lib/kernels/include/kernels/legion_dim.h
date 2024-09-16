@@ -2,7 +2,7 @@
 #define _FLEXFLOW_KERNELS_INCLUDE_KERNELS_LEGION_DIM_H
 
 #include "kernels/legion_dim_t.dtg.h"
-#include "op-attrs/dim_ordered.h"
+#include "op-attrs/dim_ordered/dim_ordered.h"
 
 namespace FlexFlow {
 

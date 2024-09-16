@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_ZIP_H
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_ZIP_H
 
-#include "op-attrs/dim_ordered.h"
+#include "op-attrs/dim_ordered/dim_ordered.h"
 #include "utils/containers/vector_of.h"
 #include "utils/containers/zip.h"
 

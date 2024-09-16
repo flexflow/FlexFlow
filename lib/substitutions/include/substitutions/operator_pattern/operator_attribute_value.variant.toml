@@ -70,4 +70,7 @@ type = "::FlexFlow::PoolOp"
 type = "::FlexFlow::TensorShape"
 
 [[values]]
+type = "::FlexFlow::TensorDims"
+
+[[values]]
 type = "::FlexFlow::DataType"

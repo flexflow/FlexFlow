@@ -69,7 +69,10 @@ CostDetails LocalCostEstimator::estimate_cost(
   std::vector<tensor_guid_t> output_tensor_ids =
       cg_builder.add_layer(layer_attrs,
                            input_tensor_ids,
-                           get_vector_piece_attrs(weights),
+                           transform(get_vector_piece_attrs(weights),
+                                     [&](TensorAttrs const &a) {
+                                       return cg_builder.create_weight(a);
+                                     }),
                            get_vector_piece_attrs(outputs));
 
   LocalTrainingBacking local_backing(allocator,
