@@ -25,8 +25,13 @@ std::vector<T> subvec(std::vector<T> const &v,
   if (maybe_start.has_value()) {
     begin_iter += resolve_loc(maybe_start.value());
   }
+
   if (maybe_end.has_value()) {
     end_iter = v.cbegin() + resolve_loc(maybe_end.value());
+  }
+
+  if (end_iter < begin_iter) {
+    end_iter = begin_iter; 
   }
 
   std::vector<T> output(begin_iter, end_iter);

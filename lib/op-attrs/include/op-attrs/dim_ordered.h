@@ -138,6 +138,10 @@ struct DimOrdered {
     return this->contents.size();
   }
 
+  size_t empty() const {
+    return this->contents.empty();
+  }
+
   size_t num_dims() const {
     return this->size();
   }

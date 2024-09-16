@@ -11,6 +11,13 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(Pool2DAttrs);
 
+tl::expected<Pool2DAttrs, std::string> make_adaptive_pool2d_attrs(TensorDims const &input_dims,
+                                                                  int output_h,
+                                                                  int output_w,
+                                                                  PoolOp pool_type,
+                                                                  std::optional<Activation> const &activation);
+
+
 tl::expected<TensorShape, std::string> get_output_shape(Pool2DAttrs const &,
                                                         TensorShape const &);
 

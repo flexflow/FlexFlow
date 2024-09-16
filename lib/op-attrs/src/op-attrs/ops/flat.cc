@@ -1,57 +1,72 @@
 #include "op-attrs/ops/flat.h"
+#include "op-attrs/dim_ordered/concat.h"
+#include "op-attrs/dim_ordered/slice.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "op-attrs/tensor_dims.h"
+#include "utils/containers/any_of.h"
+#include "utils/containers/product.h"
+#include "op-attrs/dim_ordered/slice.h"
 #include <cassert>
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(FlatAttrs const &, TensorShape const &) {
-  NOT_IMPLEMENTED();
+TensorShape get_output_shape(FlatAttrs const &attrs, TensorShape const &input_shape) {
+  FFOrdered<size_t> leading_dims = slice(ff_ordered(input_shape.dims), ff_dim_t{0}, attrs.start_dim);
+  FFOrdered<size_t> flattened_dims = slice(ff_ordered(input_shape.dims), attrs.start_dim, attrs.end_dim);
+  FFOrdered<size_t> trailing_dims = slice(ff_ordered(input_shape.dims), attrs.end_dim, std::nullopt);
+
+  if (flattened_dims.empty()) {
+    return input_shape;
+  }
+
+  return TensorShape{
+    TensorDims{
+      concat(std::vector{
+        leading_dims,
+        {product(flattened_dims)},
+        trailing_dims,
+      }),
+    },
+    input_shape.data_type,
+  };
 }
 
-ParallelTensorShape get_output_shape(FlatAttrs const &,
-                                     ParallelTensorShape const &) {
-  NOT_IMPLEMENTED();
+tl::expected<ParallelTensorDimDegrees, std::string> get_output_parallel_dim_degrees(FlatAttrs const &attrs,
+                                                                                    ParallelTensorDimDegrees const &input_degrees) {
+  FFOrdered<int> flattened_dim_degrees = slice(input_degrees.shard_degrees, attrs.start_dim, attrs.end_dim);
+
+  if (flattened_dim_degrees.empty()) {
+    return input_degrees;
+  }
+
+  if (any_of(flattened_dim_degrees, [](int degree) { return degree != 1; })) {
+    return tl::unexpected(fmt::format("get_output_parallel_dim_degrees for {} expected all shard degrees of flattened dimensions to be 1, but received {}", attrs, input_degrees));
+  }
+
+  return ParallelTensorDimDegrees{
+    /*sum_degree=*/input_degrees.sum_degree,
+    /*discard_copy_degree=*/input_degrees.discard_copy_degree,
+    /*shard_degrees=*/concat(std::vector{
+      slice(input_degrees.shard_degrees, ff_dim_t{0}, attrs.start_dim),
+      {product(flattened_dim_degrees)},
+      slice(input_degrees.shard_degrees, attrs.end_dim, std::nullopt),
+    }),
+  };
 }
 
-// namespace Input {
-// constexpr int NUMDIM = 5, WIDTH = 0, HEIGHT = 1, CHANNEL = 2, SAMPLE = 3,
-//               REPLICA = 4;
-// }
-//
-// namespace Output {
-// constexpr int NUMDIM = 3, CHANNEL = 0, SAMPLE = 1, REPLICA = 2;
-// }
-//
-/* bool FlatAttrs::is_valid(ParallelTensorShape const &input) const { */
-/*   ParallelTensorShape output_shape = this->calculate_output_shape(input); */
+tl::expected<ParallelTensorShape, std::string> get_output_shape(FlatAttrs const &attrs,
+                                                                ParallelTensorShape const &input_shape) {
+  TensorShape unpar = get_output_shape(attrs, get_reduced_shape(input_shape));
 
-/*   bool is_valid = true; */
-/*   is_valid &= input.is_valid(); */
-/*   is_valid &= output_shape.is_valid(); */
-/*   is_valid &= (input.at(Input::WIDTH).degree == 1); */
+  ParallelTensorDimDegrees degrees = ({
+    tl::expected<ParallelTensorDimDegrees, std::string> returned = get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+    if (!returned.has_value()) {
+      return tl::unexpected(returned.error());
+    }
+    returned.value();
+  });
 
-/*   return is_valid; */
-/* } */
-
-/* ParallelTensorShape FlatAttrs::calculate_output_shape(ParallelTensorShape
- * const &input) const { */
-/*   assert (input.num_dims() == Input::NUMDIM); */
-/*   ParallelTensorShape output_dims; */
-/*   output_dims.data_type = input.data_type; */
-
-/*   output_dims.at(Output::REPLICA) = input.at(Input::REPLICA); */
-/*   output_dims.at(Output::SAMPLE) = input.at(Input::SAMPLE); */
-
-/*   output_dims.at(Output::CHANNEL).degree = input.at(Input::CHANNEL).degree;
- */
-/*   assert (input.at(Input::HEIGHT).degree == 1); */
-/*   assert (input.at(Input::WIDTH).degree == 1); */
-
-/*   output_dims.at(Output::CHANNEL).size = input.at(Input::CHANNEL).size *
- * input.at(Input::HEIGHT).size * input.at(Input::WIDTH).size; */
-/*   output_dims.at(Output::CHANNEL).parallel_idx =
- * input.at(Input::CHANNEL).parallel_idx; */
-
-/*   return output_dims; */
-/* } */
+  return lift_to_parallel_with_degrees(unpar, degrees);
+}
 
 } // namespace FlexFlow

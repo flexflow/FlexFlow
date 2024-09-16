@@ -41,10 +41,10 @@ TensorShape get_output_shape(Conv2DAttrs const &attrs,
 
   size_t out_height =
       (input.height - (2 * attrs.padding_h) - (attrs.kernel_h - 1)) /
-      attrs.stride_h;
+      attrs.stride_h + 1;
   size_t out_width =
       (input.width - (2 * attrs.padding_w) - (attrs.kernel_w - 1)) /
-      attrs.stride_w;
+      attrs.stride_w + 1;
 
   assert(attrs.out_channels > 0);
 

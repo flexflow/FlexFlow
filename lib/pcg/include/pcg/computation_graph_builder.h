@@ -138,6 +138,13 @@ public:
              std::optional<Activation> const &activation = std::nullopt,
              std::optional<std::string> const &name = std::nullopt);
   tensor_guid_t
+      adaptive_pool2d(tensor_guid_t const &input,
+                      int output_h,
+                      int output_w,
+                      PoolOp type = PoolOp::MAX,
+                      std::optional<Activation> const &activation = std::nullopt,
+                      std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
       layer_norm(tensor_guid_t const &input,
                  std::vector<int> const &axes,
                  bool elementwise_affine,
@@ -183,6 +190,8 @@ public:
             std::optional<std::string> const &name = std::nullopt);
   // Add a flat layer
   tensor_guid_t flat(tensor_guid_t const &input,
+                     int start_dim = 0,
+                     std::optional<int> const &end_dim = std::nullopt,
                      std::optional<std::string> const &name = std::nullopt);
   // Add a softmax layer
   tensor_guid_t softmax(tensor_guid_t const &input,
@@ -238,9 +247,8 @@ public:
                                        std::vector<TensorAttrs> const &weights,
                                        std::vector<TensorAttrs> const &outputs);
 
-private:
   TensorShape get_shape(tensor_guid_t const &) const;
-
+private:
   tensor_guid_t broadcast(tensor_guid_t const &,
                           TensorShape const &,
                           std::string const &);

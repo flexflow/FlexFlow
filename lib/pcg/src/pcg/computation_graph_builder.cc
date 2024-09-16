@@ -11,6 +11,7 @@
 #include "op-attrs/ops/element_binary.h"
 #include "op-attrs/ops/element_unary.h"
 #include "op-attrs/ops/embedding.h"
+#include "op-attrs/ops/flat.h"
 #include "op-attrs/ops/gather.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/ops/linear.h"
@@ -524,38 +525,35 @@ tensor_guid_t ComputationGraphBuilder::pool2d(
   return this->add_layer(layer, {input}, {}, output_shape);
 }
 
-/* std::vector<TensorShape>
- * ComputationGraphBuilder::get_shapes(std::vector<tensor_guid_t> const &ts)
- * const { */
-/*   return transform(ts, [&](tensor_guid_t const &t) { return
- * this->get_shape(t); }); */
-/* } */
+tensor_guid_t
+    ComputationGraphBuilder::adaptive_pool2d(tensor_guid_t const &uncasted_input,
+                    int output_h,
+                    int output_w,
+                    PoolOp type,
+                    std::optional<Activation> const &activation,
+                    std::optional<std::string> const &maybe_name) {
 
-// tensor_guid_t ComputationGraphBuilder::aggregate(
-//     tensor_guid_t const &gate_preds,
-//     tensor_guid_t const &gate_assign,
-//     tensor_guid_t const &true_gate_assign,
-//     tensor_guid_t const &full_gate_gradients,
-//     std::vector<tensor_guid_t> const &exp_preds,
-//     int n,
-//     float lambda_bal,
-//     std::optional<std::string> const &maybe_name) {
-//   AggregateAttrs attrs = {n, lambda_bal};
-//   std::string name = maybe_name.value_or(get_default_name(attrs));
+  TensorDims input_dims = this->get_shape(uncasted_input).dims;
 
-//   LayerAttrs layer = {attrs, name};
-//   TensorShape output_shape = get_output_shape(attrs,
-//                                              this->get_shape(gate_preds),
-//                                              this->get_shape(gate_assign),
-//                                              this->get_shape(true_gate_assign),
-//                                              this->get_shape(full_gate_gradients),
-//                                              this->get_shape(exp_preds));
+  Pool2DAttrs attrs = throw_if_unexpected(make_adaptive_pool2d_attrs(input_dims,
+                                                                     output_h,
+                                                                     output_w,
+                                                                     type,
+                                                                     activation));
 
-//   std::vector<tensor_guid_t> inputs = {
-//       gate_preds, gate_assign, true_gate_assign, full_gate_gradients};
-//   extend(inputs, exp_preds);
-//   return this->add_layer(layer, inputs, {}, output_shape);
-// }
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  tensor_guid_t casted_input =
+      this->as_type(uncasted_input, DataType::FLOAT, name + "input_pre_cast");
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, this->get_shape(casted_input)));
+
+  return this->add_layer(layer, {casted_input}, {}, output_shape);
+}
 
 tensor_guid_t ComputationGraphBuilder::batch_norm(
     tensor_guid_t const &input,
@@ -693,6 +691,28 @@ tensor_guid_t ComputationGraphBuilder::concat(
       throw_if_unexpected(get_output_shape(attrs, input_shapes));
 
   return this->add_layer(layer, inputs, {}, output_shape);
+}
+
+tensor_guid_t ComputationGraphBuilder::flat(tensor_guid_t const &input,
+                                            int start_dim,
+                                            std::optional<int> const &end_dim,
+                                            std::optional<std::string> const &maybe_name) {
+  int input_num_dims = num_dims(this->get_shape(input));
+
+  FlatAttrs attrs = FlatAttrs{
+    /*start_dim=*/ff_dim_t{start_dim},
+    /*end_dim=*/ff_dim_t{end_dim.value_or(input_num_dims)},
+  }; 
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  TensorShape output_shape = 
+    get_output_shape(attrs, this->get_shape(input));
+
+  return this->add_layer(layer, {input}, {}, output_shape);
 }
 
 tensor_guid_t ComputationGraphBuilder::layer_norm(

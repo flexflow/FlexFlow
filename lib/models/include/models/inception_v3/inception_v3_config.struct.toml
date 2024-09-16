@@ -11,21 +11,13 @@ features = [
 ]
 
 [[fields]]
-name = "input_height"
-type = "size_t"
-
-[[fields]]
-name = "input_width"
-type = "size_t"
-
-[[fields]]
-name = "input_num_channels"
-type = "size_t"
-
-[[fields]]
 name = "num_classes"
-type = "size_t"
+type = "int"
 
 [[fields]]
 name = "batch_size"
-type = "size_t"
+type = "int"
+
+[[fields]]
+name = "aux_logits"
+type = "bool"

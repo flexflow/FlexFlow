@@ -2,11 +2,130 @@
 #include "utils/expected.h"
 #include "utils/fmt/expected.h"
 #include "utils/fmt/optional.h"
+#include "utils/integer_conversions.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
+  TEST_CASE("make_adaptive_pool2d") {
+    size_t input_n = 10;
+    size_t input_c = 11;
+    size_t input_h = 15;
+    size_t input_w = 20;
+    Activation activation = Activation::RELU;
+    PoolOp op = PoolOp::AVG;
+
+    TensorDims input_dims = TensorDims{FFOrdered<size_t>{
+      input_n, input_c, input_h, input_w
+    }};
+
+    SUBCASE("input_h divisible by output_h && input_w divisible by output_w") {
+      int output_h = 5;
+      int output_w = 2;
+
+      Pool2DAttrs correct_attrs = Pool2DAttrs{
+        /*kernel_h=*/3,
+        /*kernel_w=*/10,
+        /*stride_h=*/3,
+        /*stride_w=*/10,
+        /*padding_h=*/0,
+        /*padding_w=*/0,
+        /*pool_type=*/op,
+        /*activation=*/activation,
+      };
+
+      SUBCASE("returns correct attrs") {
+        tl::expected<Pool2DAttrs, std::string> result = make_adaptive_pool2d_attrs(input_dims,
+                                                                                   output_h,
+                                                                                   output_w,
+                                                                                   op,
+                                                                                   activation);
+        tl::expected<Pool2DAttrs, std::string> correct = correct_attrs;
+
+        CHECK(result == correct);
+      }
+
+      SUBCASE("confirm that output shape is as expected for the expected attrs") {
+        TensorShape input_shape = TensorShape{input_dims, DataType::FLOAT};         
+
+        tl::expected<TensorShape, std::string> result = get_output_shape(correct_attrs, input_shape);
+        tl::expected<TensorShape, std::string> correct = TensorShape{
+          TensorDims{FFOrdered<size_t>{
+            input_n, input_c, size_t_from_int(output_h), size_t_from_int(output_w),
+          }},
+          DataType::FLOAT,
+        };
+
+        CHECK(result == correct);
+      }
+    }
+
+    SUBCASE("input_h not divisible by output_h") {
+      int output_h = 6;
+      int output_w = 2;
+
+      std::optional<Pool2DAttrs> result = optional_from_expected(make_adaptive_pool2d_attrs(input_dims,
+                                                                                            output_h,
+                                                                                            output_w,
+                                                                                            op,
+                                                                                            activation));
+      std::optional<Pool2DAttrs> correct = std::nullopt;
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("input_w not divisible by output_w") {
+      int output_h = 5;
+      int output_w = 3;
+
+      std::optional<Pool2DAttrs> result = optional_from_expected(make_adaptive_pool2d_attrs(input_dims,
+                                                                                            output_h,
+                                                                                            output_w,
+                                                                                            op,
+                                                                                            activation));
+      std::optional<Pool2DAttrs> correct = std::nullopt;
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("input_h == output_h and input_w == output_w") {
+      int output_h = input_h;
+      int output_w = input_w;
+
+      Pool2DAttrs correct_attrs = Pool2DAttrs{
+        /*kernel_h=*/1,
+        /*kernel_w=*/1,
+        /*stride_h=*/1,
+        /*stride_w=*/1,
+        /*padding_h=*/0,
+        /*padding_w=*/0,
+        /*pool_type=*/op,
+        /*activation=*/activation,
+      };
+
+      SUBCASE("returns correct attrs") {
+        tl::expected<Pool2DAttrs, std::string> result = make_adaptive_pool2d_attrs(input_dims,
+                                                                                   output_h,
+                                                                                   output_w,
+                                                                                   op,
+                                                                                   activation);
+        tl::expected<Pool2DAttrs, std::string> correct = correct_attrs;
+
+        CHECK(result == correct);
+      }
+
+      SUBCASE("confirm that output shape is as expected for the expected attrs") {
+        TensorShape input_shape = TensorShape{input_dims, DataType::FLOAT};         
+
+        tl::expected<TensorShape, std::string> result = get_output_shape(correct_attrs, input_shape);
+        tl::expected<TensorShape, std::string> correct = input_shape;
+
+        CHECK(result == correct);
+      }
+    }
+  }
+
   TEST_CASE("get_output_shape(Pool2DAttrs, TensorShape)") {
     Pool2DAttrs attrs = Pool2DAttrs{
         /*kernel_h=*/3,
