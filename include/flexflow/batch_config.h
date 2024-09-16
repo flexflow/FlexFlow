@@ -88,10 +88,10 @@ public:
   inline static int const MAX_NUM_REQUESTS = 64;
   inline static int const MAX_NUM_TOKENS = 1024;
   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 8;
-  inline static int const MAX_TREE_DEPTH = 16;
+  inline static int const MAX_TREE_DEPTH = 8;
   inline static int const MAX_TREE_WIDTH = 16;
   inline static int const MAX_SPEC_TREE_TOKEN_NUM =
-      MAX_TREE_DEPTH * MAX_TREE_WIDTH + 1;
+      MAX_TREE_DEPTH * MAX_TREE_WIDTH;
   inline static int const MAX_K_LOGITS = 16;
 
   // The Constants for the Streaming KVCache
