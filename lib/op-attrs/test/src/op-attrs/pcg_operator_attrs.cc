@@ -9,7 +9,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*repartition_dim=*/ff_dim_t{1},
         /*repartition_degree=*/4,
     }};
-    json j = correct;
+    nlohmann::json j = correct;
     auto result = j.get<PCGOperatorAttrs>();
 
     CHECK(result == correct);

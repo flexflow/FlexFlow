@@ -577,7 +577,7 @@ tensor_guid_t ComputationGraphBuilder::multihead_attention(
     // initializer chosen based on
     // https://github.com/pytorch/pytorch/blob/31c4e0d37d8efc37a0697159e5b9121ec34d5141/torch/nn/modules/activation.py#L1120-L1121
     InitializerAttrs input_bias_initializer =
-        InitializerAttrs{ConstantInitializerAttrs{float{0}}};
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{0}}}};
 
     weights.push_back(
         make_weight_attrs(input_bias_shape, input_bias_initializer));
@@ -587,7 +587,7 @@ tensor_guid_t ComputationGraphBuilder::multihead_attention(
     // initializer chosen based on
     // https://github.com/pytorch/pytorch/blob/31c4e0d37d8efc37a0697159e5b9121ec34d5141/torch/nn/modules/activation.py#L1120-L1121
     InitializerAttrs output_bias_initializer =
-        InitializerAttrs{ConstantInitializerAttrs{float{0}}};
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{0}}}};
 
     weights.push_back(
         make_weight_attrs(output_bias_shape, output_bias_initializer));

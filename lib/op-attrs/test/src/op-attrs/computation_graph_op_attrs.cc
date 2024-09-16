@@ -7,7 +7,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ComputationGraphOpAttrs to/from json") {
     ComputationGraphOpAttrs correct =
         ComputationGraphOpAttrs{BatchNormAttrs{true}};
-    json j = correct;
+    nlohmann::json j = correct;
     auto result = j.get<ComputationGraphOpAttrs>();
 
     CHECK(result == correct);
