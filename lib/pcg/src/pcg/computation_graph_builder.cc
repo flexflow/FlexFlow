@@ -56,8 +56,7 @@ tensor_guid_t ComputationGraphBuilder::create_input(
       maybe_name,
   };
 
-  return get_only(
-     this->add_layer(layer_attrs, {}, {}, {tensor_attrs}));
+  return get_only(this->add_layer(layer_attrs, {}, {}, {tensor_attrs}));
 }
 
 tensor_guid_t ComputationGraphBuilder::create_weight(
