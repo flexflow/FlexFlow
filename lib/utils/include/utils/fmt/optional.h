@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_OPTIONAL_H
 
 #include "utils/check_fmtable.h"
-#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <optional>
 
@@ -42,16 +41,5 @@ std::ostream &operator<<(std::ostream &s, std::optional<T> const &t) {
 }
 
 } // namespace FlexFlow
-
-namespace doctest {
-
-template <typename T>
-struct StringMaker<std::optional<T>> {
-  static String convert(std::optional<T> const &m) {
-    return toString(fmt::to_string(m));
-  }
-};
-
-} // namespace doctest
 
 #endif

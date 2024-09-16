@@ -1,4 +1,5 @@
 #include "utils/graph/digraph/algorithms/is_acyclic.h"
+#include "test/utils/doctest/fmt/optional.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/instances/adjacency_digraph.h"
 #include <doctest/doctest.h>

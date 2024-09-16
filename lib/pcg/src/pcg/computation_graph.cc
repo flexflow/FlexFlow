@@ -1,13 +1,20 @@
 #include "pcg/computation_graph.h"
+#include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/get_incoming_tensor_roles.h"
 #include "utils/containers/filtrans.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_incoming_edges.h"
+#include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
+#include "utils/graph/digraph/algorithms/get_subgraph_successors.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_open_dataflow_graph/algorithms/as_dot.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/record_formatter.h"
 
 namespace FlexFlow {
 
@@ -26,14 +33,15 @@ LayerAddedResult add_layer(ComputationGraph &computation_graph,
                            LayerAttrs const &attrs,
                            std::vector<tensor_guid_t> const &inputs,
                            std::vector<TensorAttrs> const &outputs) {
-  NodeAddedResult raw_added = computation_graph.raw_graph.add_node(
-      attrs,
-      transform(inputs,
-                [](tensor_guid_t const &t) { return t.raw_graph_output; }),
-      outputs);
+  std::vector<DataflowOutput> raw_inputs = transform(
+      inputs, [](tensor_guid_t const &t) { return t.raw_graph_output; });
+
+  NodeAddedResult added =
+      computation_graph.raw_graph.add_node(attrs, raw_inputs, outputs);
+
   return LayerAddedResult{
-      layer_guid_t{raw_added.node},
-      transform(raw_added.outputs,
+      layer_guid_t{added.node},
+      transform(added.outputs,
                 [](DataflowOutput const &o) { return tensor_guid_t{o}; }),
   };
 }
@@ -57,8 +65,7 @@ std::vector<layer_guid_t> topological_ordering(ComputationGraph const &cg) {
 
 std::vector<layer_guid_t>
     reverse_topological_ordering(ComputationGraph const &cg) {
-  std::vector<Node> layers =
-      reversed<std::vector<Node>>(get_topological_ordering(cg.raw_graph));
+  std::vector<Node> layers = reversed(get_topological_ordering(cg.raw_graph));
   return transform(
       layers, [&](Node const &e) -> layer_guid_t { return layer_guid_t{e}; });
 }
@@ -114,6 +121,49 @@ std::vector<tensor_guid_t> get_incoming_weights(ComputationGraph const &cg,
   return get_incoming_tensors_with_role(cg, l, IncomingTensorRole::WEIGHT);
 }
 
+
+
+std::unordered_set<ComputationGraphEdge> get_subgraph_incoming_edges(
+    ComputationGraph const &cg,
+    std::unordered_set<layer_guid_t> const &subgraph_nodes) {
+
+  std::unordered_set<Node> raw_subgraph_nodes = transform(
+      subgraph_nodes, [](layer_guid_t const &l) { return l.raw_node; });
+  std::unordered_set<DataflowEdge> raw_incoming_edges =
+      get_subgraph_incoming_edges(cg.raw_graph, raw_subgraph_nodes);
+
+  return transform(raw_incoming_edges, [](DataflowEdge const &e) {
+    return ComputationGraphEdge{e};
+  });
+}
+
+std::unordered_set<ComputationGraphEdge> get_subgraph_outgoing_edges(
+    ComputationGraph const &cg,
+    std::unordered_set<layer_guid_t> const &subgraph_nodes) {
+
+  std::unordered_set<Node> raw_subgraph_nodes = transform(
+      subgraph_nodes, [](layer_guid_t const &l) { return l.raw_node; });
+  std::unordered_set<DataflowEdge> raw_outgoing_edges =
+      get_subgraph_outgoing_edges(cg.raw_graph, raw_subgraph_nodes);
+
+  return transform(raw_outgoing_edges, [](DataflowEdge const &e) {
+    return ComputationGraphEdge{e};
+  });
+}
+
+std::unordered_set<layer_guid_t> get_subgraph_successors(
+    ComputationGraph const &cg,
+    std::unordered_set<layer_guid_t> const &subgraph_nodes) {
+
+  std::unordered_set<Node> raw_subgraph_nodes = transform(
+      subgraph_nodes, [](layer_guid_t const &l) { return l.raw_node; });
+  std::unordered_set<Node> raw_successors =
+      get_subgraph_successors(cg.raw_graph, raw_subgraph_nodes);
+
+  return transform(raw_successors,
+                   [](Node const &n) { return layer_guid_t{n}; });
+}
+
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n) {
   return cg.raw_graph.at(n.raw_node);
 }
@@ -125,6 +175,42 @@ layer_guid_t get_layer_by_name(ComputationGraph const &cg,
         return get_layer_attrs(cg, l).name == name;
       });
   return get_only(found);
+}
+
+std::string as_dot(ComputationGraph const &cg) {
+  std::function<std::string(LayerAttrs const &)> get_node_label =
+      [](LayerAttrs const &a) -> std::string {
+    RecordFormatter r = as_dot(a.attrs);
+
+    if (a.name.has_value()) {
+      RecordFormatter rr;
+      rr << "Name" << a.name.value();
+      r << rr;
+    }
+
+    std::ostringstream oss;
+    oss << r;
+    return oss.str();
+  };
+
+  std::function<std::string(TensorAttrs const &)> get_input_label =
+      [](TensorAttrs const &a) -> std::string {
+    RecordFormatter r;
+
+    r << fmt::to_string(a.shape);
+
+    std::ostringstream oss;
+    oss << r;
+    return oss.str();
+  };
+
+  return as_dot(view_as_labelled_open_dataflow_graph(cg.raw_graph),
+                get_node_label,
+                get_input_label);
+}
+
+void debug_print_dot(ComputationGraph const &cg) {
+  std::cout << as_dot(cg) << std::endl;
 }
 
 } // namespace FlexFlow

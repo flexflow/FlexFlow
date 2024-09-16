@@ -3,7 +3,6 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_layer_attrs.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.h"
-#include "test/utils/doctest.h"
 #include "utils/containers/count.h"
 #include "utils/containers/generate_map.h"
 #include "utils/containers/get_only.h"
@@ -12,6 +11,9 @@
 #include "utils/containers/values.h"
 #include "utils/containers/without_nullopts.h"
 #include "utils/hash/pair.h"
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 // Stylistically these tests are not great (they're rather complicated
 // and hard to read) and should not be used as a model for other FlexFlow
@@ -233,7 +235,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(num_replicate_attrs == 2);
 
     parallel_layer_guid_t conv_guid = get_only(without_nullopts(transform(
-        as_vector(items(layers)),
+        vector_of(items(layers)),
         [](std::pair<parallel_layer_guid_t, ParallelLayerAttrs> const &kv)
             -> std::optional<parallel_layer_guid_t> {
           if (get_op_type(kv.second) == OperatorType::CONV2D) {

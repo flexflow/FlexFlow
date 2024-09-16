@@ -10,7 +10,7 @@ features = [
 ]
 
 includes = [
-  "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h",
+  "utils/graph/series_parallel/series_parallel_decomposition.dtg.h",
   "pcg/machine_specification.dtg.h",
   "pcg/machine_view.dtg.h",
   "utils/graph/node/node.dtg.h",
@@ -21,7 +21,7 @@ includes = [
 
 [[fields]]
 name = "subgraph"
-type = "::FlexFlow::SerialParallelDecomposition"
+type = "::FlexFlow::SeriesParallelDecomposition"
 
 [[fields]]
 name = "resource"

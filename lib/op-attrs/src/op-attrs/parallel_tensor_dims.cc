@@ -4,9 +4,9 @@
 #include "op-attrs/replica_parallel_dim_set.h"
 #include "op-attrs/shard_parallel_dim.h"
 #include "utils/containers/all_of.h"
-#include "utils/containers/as_vector.h"
 #include "utils/containers/product.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/vector_of.h"
 #include "utils/integer_conversions.h"
 
 namespace FlexFlow {
@@ -35,7 +35,7 @@ int total_replica_degree(ParallelTensorDims const &dims) {
 }
 
 int total_shard_degree(ParallelTensorDims const &dims) {
-  return product(transform(as_vector(dims.shard_dims),
+  return product(transform(vector_of(dims.shard_dims),
                            [](ShardParallelDim const &d) { return d.degree; }));
 }
 

@@ -2,12 +2,12 @@
 #include "utils/bidict/algorithms/bidict_from_keys_and_values.h"
 #include "utils/bidict/algorithms/left_entries.h"
 #include "utils/bidict/algorithms/right_entries.h"
-#include "utils/containers/as_vector.h"
 #include "utils/containers/get_all_permutations.h"
 #include "utils/containers/get_first.h"
 #include "utils/containers/is_subseteq_of.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/values.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/zip.h"
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/node/algorithms.h"
@@ -201,7 +201,7 @@ std::unordered_set<OpenDataflowGraphIsomorphism>
                       OpenDataflowGraphView const &dst) {
   std::unordered_set<OpenDataflowGraphIsomorphism> result;
 
-  std::vector<Node> src_sink_nodes = as_vector(get_sinks(src));
+  std::vector<Node> src_sink_nodes = vector_of(get_sinks(src));
   std::unordered_set<Node> dst_sink_nodes = get_sinks(dst);
 
   if (src_sink_nodes.size() != dst_sink_nodes.size()) {
@@ -209,7 +209,7 @@ std::unordered_set<OpenDataflowGraphIsomorphism>
   }
 
   std::vector<DataflowGraphInput> src_unused_graph_inputs =
-      as_vector(get_unused_open_dataflow_graph_inputs(src));
+      vector_of(get_unused_open_dataflow_graph_inputs(src));
   std::unordered_set<DataflowGraphInput> dst_unused_graph_inputs =
       get_unused_open_dataflow_graph_inputs(dst);
 

@@ -3,6 +3,7 @@
 
 #include "op-attrs/incoming_tensor_role.dtg.h"
 #include "pcg/computation_graph.dtg.h"
+#include "pcg/computation_graph/computation_graph_edge.dtg.h"
 #include "pcg/computation_graph/layer_added_result.dtg.h"
 #include "pcg/layer_guid_t.dtg.h"
 #include "pcg/tensor_attrs.dtg.h"
@@ -36,10 +37,23 @@ std::vector<tensor_guid_t> get_incoming_inputs(ComputationGraph const &,
 std::vector<tensor_guid_t> get_incoming_weights(ComputationGraph const &,
                                                 layer_guid_t const &);
 
+std::unordered_set<ComputationGraphEdge>
+    get_subgraph_incoming_edges(ComputationGraph const &,
+                                std::unordered_set<layer_guid_t> const &);
+std::unordered_set<ComputationGraphEdge>
+    get_subgraph_outgoing_edges(ComputationGraph const &,
+                                std::unordered_set<layer_guid_t> const &);
+std::unordered_set<layer_guid_t>
+    get_subgraph_successors(ComputationGraph const &,
+                            std::unordered_set<layer_guid_t> const &);
+
 LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
 
 layer_guid_t get_layer_by_name(ComputationGraph const &cg,
                                std::string const &name);
+
+std::string as_dot(ComputationGraph const &);
+void debug_print_dot(ComputationGraph const &);
 
 } // namespace FlexFlow
 

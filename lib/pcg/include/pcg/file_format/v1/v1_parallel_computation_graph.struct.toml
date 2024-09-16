@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "V1ParallelComputationGraph"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+  "json",
+]
+
+includes = [
+  "pcg/parallel_computation_graph/parallel_layer_attrs.dtg.h",
+  "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h",
+  "pcg/file_format/v1/graphs/v1_labelled_dataflow_graph.dtg.h",
+]
+
+[[fields]]
+name = "raw_graph"
+type = "::FlexFlow::V1LabelledDataflowGraph<::FlexFlow::ParallelLayerAttrs, ::FlexFlow::ParallelTensorAttrs>"

@@ -1,5 +1,5 @@
 #include "utils/fmt/map.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

@@ -1,4 +1,5 @@
 #include "local-execution/op_task_signature.h"
+#include "utils/fmt/optional.h"
 #include "utils/fmt/unordered_map.h"
 #include "utils/fmt/unordered_set.h"
 

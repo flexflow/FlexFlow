@@ -15,7 +15,7 @@ struct IUndirectedGraph : public IUndirectedGraphView {
   virtual std::unordered_set<Node>
       query_nodes(NodeQuery const &query) const = 0;
 
-  virtual IUndirectedGraph *clone() const override = 0;
+  virtual IUndirectedGraph *clone() const = 0;
 };
 
 } // namespace FlexFlow

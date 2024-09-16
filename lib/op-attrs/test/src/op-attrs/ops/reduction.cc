@@ -1,5 +1,5 @@
 #include "op-attrs/ops/reduction.h"
-#include "utils/fmt/expected.h"
+#include "test/utils/doctest/fmt/expected.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

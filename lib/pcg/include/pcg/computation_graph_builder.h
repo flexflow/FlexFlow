@@ -255,14 +255,13 @@ public:
 private:
   TensorShape get_shape(tensor_guid_t const &) const;
 
-  tensor_guid_t broadcast(tensor_guid_t const &,
-                          TensorShape const &,
-                          std::string const &);
+  tensor_guid_t
+      broadcast(tensor_guid_t const &, TensorDims const &, std::string const &);
 
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
 
-  TensorShape get_broadcast_target_shape(std::vector<tensor_guid_t> const &);
-  TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
+  TensorDims get_broadcast_target_dims(std::vector<tensor_guid_t> const &);
+  TensorDims get_broadcast_target_dims(std::vector<TensorDims> const &);
 
   tensor_guid_t
       element_binary(OperatorType,

@@ -1,6 +1,9 @@
 #include "op-attrs/ops/element_unary.h"
 #include "op-attrs/parallel_tensor_shape.h"
-#include "test/utils/doctest.h"
+#include "test/utils/doctest/fmt/expected.h"
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ReLU shape inference") {
