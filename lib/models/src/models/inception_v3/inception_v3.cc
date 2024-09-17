@@ -215,9 +215,15 @@ static tensor_guid_t create_inception_module_b(ComputationGraphBuilder &cgb,
 }
 
 static tensor_guid_t create_inception_module_c(ComputationGraphBuilder &cgb,
-                                        tensor_guid_t const &input,
-                                        int channels_7x7) {
-  tensor_guid_t branch1x1 = create_conv_block(cgb, input, 192, 1, 1);
+                                               CheckShape const &check_shape,
+                                               tensor_guid_t const &input,
+                                               int channels_7x7) {
+  tensor_guid_t branch1x1 = create_conv_block(cgb, 
+                                              input, 
+                                              /*filters=*/192, 
+                                              /*kernel_size_h=*/1, 
+                                              /*kernel_size_w=*/1);
+  check_shape(branch1x1, 192, 17, 17);
 
   tensor_guid_t branch7x7 = [&] {
     tensor_guid_t t = input;
@@ -246,6 +252,7 @@ static tensor_guid_t create_inception_module_c(ComputationGraphBuilder &cgb,
                           /*padding_w=*/0);
     return t;
   }();
+  check_shape(branch7x7, 192, 17, 17);
 
   tensor_guid_t branch7x7dbl = [&] {
     tensor_guid_t t = input;
@@ -283,7 +290,7 @@ static tensor_guid_t create_inception_module_c(ComputationGraphBuilder &cgb,
                           /*padding_w=*/0);
     t = create_conv_block(cgb, 
                           t, 
-                          /*filters=*/channels_7x7, 
+                          /*filters=*/192, 
                           /*kernel_size_h=*/1, 
                           /*kernel_size_w=*/7, 
                           /*stride_h=*/1, 
@@ -292,6 +299,7 @@ static tensor_guid_t create_inception_module_c(ComputationGraphBuilder &cgb,
                           /*padding_w=*/3);
     return t;
   }();
+  check_shape(branch7x7dbl, 192, 17, 17);
 
   tensor_guid_t branch_pool = [&] {
     tensor_guid_t t = input;
@@ -310,6 +318,7 @@ static tensor_guid_t create_inception_module_c(ComputationGraphBuilder &cgb,
                           /*kernel_size_w=*/1);
     return t;
   }();
+  check_shape(branch_pool, 192, 17, 17);
 
   return cgb.concat({branch1x1, branch7x7, branch7x7dbl, branch_pool}, /*axis=*/1);
 }
@@ -572,7 +581,8 @@ static tensor_guid_t create_final_layers(ComputationGraphBuilder &cgb,
                   /*rate=*/0.5);
   check_shape(x, 2048, 1, 1);
   
-  x = cgb.flat(x);
+  x = cgb.flat(x,
+               /*start_dim=*/1);
   check_shape(x, 2048);
   
   // fc
@@ -611,9 +621,9 @@ static tensor_guid_t create_inception_aux(ComputationGraphBuilder &cgb,
   // conv1
   x = create_conv_block(cgb,
                         x,
-                        /*filters=*/128,
-                        /*kernel_size_h=*/1,
-                        /*kernel_size_w=*/1);
+                        /*filters=*/768,
+                        /*kernel_size_h=*/5,
+                        /*kernel_size_w=*/5);
   check_shape(x, 768, 1, 1);
 
   x = cgb.adaptive_pool2d(x,
@@ -621,7 +631,8 @@ static tensor_guid_t create_inception_aux(ComputationGraphBuilder &cgb,
                           /*output_w=*/1);
   check_shape(x, 768, 1, 1);
 
-  x = cgb.flat(input);
+  x = cgb.flat(x, 
+               /*start_dim=*/1);
   check_shape(x, 768);
 
   // fc
@@ -664,19 +675,19 @@ InceptionV3Output
   check_shape(x, 768, 17, 17);
 
   // Mixed_6b
-  x = create_inception_module_c(cgb, x, 128);
+  x = create_inception_module_c(cgb, check_shape, x, 128);
   check_shape(x, 768, 17, 17);
 
   // Mixed_6c
-  x = create_inception_module_c(cgb, x, 160);
+  x = create_inception_module_c(cgb, check_shape, x, 160);
   check_shape(x, 768, 17, 17);
 
   // Mixed_6d
-  x = create_inception_module_c(cgb, x, 160);
+  x = create_inception_module_c(cgb, check_shape, x, 160);
   check_shape(x, 768, 17, 17);
 
   // Mixed_6e
-  x = create_inception_module_c(cgb, x, 192);
+  x = create_inception_module_c(cgb, check_shape, x, 192);
   check_shape(x, 768, 17, 17);
 
   std::optional<tensor_guid_t> aux;

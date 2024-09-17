@@ -31,8 +31,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     size_t num_samples = 7;
-    size_t input_channels = 6;
-    size_t input_height = 10;
+    size_t input_channels = 4;
+    size_t input_height = 11;
     size_t input_width = 15;
 
     TensorShape input = TensorShape{
@@ -45,8 +45,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    size_t output_height = 3;
-    size_t output_width = 6;
+    size_t output_height = 6;
+    size_t output_width = 8;
 
     TensorShape output = TensorShape{
         TensorDims{FFOrdered<size_t>{
