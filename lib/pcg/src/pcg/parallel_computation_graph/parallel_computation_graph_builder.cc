@@ -332,13 +332,20 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
 parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
     parallel_tensor_guid_t const &input,
     bool affine,
+    std::optional<Activation> const &activation,
     float eps,
     std::optional<float> const &momentum,
     std::optional<std::string> const &maybe_name) {
 
+  if (activation.has_value() && activation.value() != Activation::RELU) {
+    throw mk_runtime_error(fmt::format("batch_norm currently only supports (1) no activation function, or (2) relu activation function, but received {}. "
+                                       "If you need support for additional activation functions, please create an issue.", activation));
+  }
+
   BatchNormAttrs attrs = BatchNormAttrs{
-    /*eps=*/eps,
+    /*relu=*/activation.has_value(),
     /*affine=*/affine,
+    /*eps=*/eps,
     /*momentum=*/momentum,
   };
 

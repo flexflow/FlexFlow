@@ -575,13 +575,20 @@ tensor_guid_t
 tensor_guid_t ComputationGraphBuilder::batch_norm(
     tensor_guid_t const &input,
     bool affine,
+    std::optional<Activation> const &activation,
     float eps,
     std::optional<float> const &momentum,
     std::optional<std::string> const &maybe_name) {
 
+  if (activation.has_value() && activation.value() != Activation::RELU) {
+    throw mk_runtime_error(fmt::format("batch_norm currently only supports (1) no activation function, or (2) relu activation function, but received {}. "
+                                       "If you need support for additional activation functions, please create an issue.", activation));
+  }
+
   BatchNormAttrs attrs = BatchNormAttrs{
-    /*eps=*/eps,
+    /*relu=*/activation.has_value(),
     /*affine=*/affine,
+    /*eps=*/eps,
     /*momentum=*/momentum,
   };
 
@@ -613,7 +620,11 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
   }
 
   return get_only(
-      this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
+      this->add_layer(layer, 
+                      {input}, 
+                      transform(weights, 
+                                [&](TensorAttrs const &a) { return this->create_weight(a); }),
+                      {make_output_attrs(output_shape)}));
 }
 
 tensor_guid_t ComputationGraphBuilder::multihead_attention(

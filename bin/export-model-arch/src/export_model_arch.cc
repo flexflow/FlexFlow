@@ -1,6 +1,7 @@
 #include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
 #include "export_model_arch/json_sp_model_export.dtg.h"
+#include "models/inception_v3/inception_v3.h"
 #include "models/split_test/split_test.h"
 #include "models/transformer/transformer.h"
 #include "op-attrs/computation_graph_op_attrs.h"
@@ -59,6 +60,9 @@ tl::expected<ComputationGraph, std::string>
     get_model_computation_graph(std::string const &model_name) {
   if (model_name == "transformer") {
     return get_default_transformer_computation_graph();
+  } else if (model_name == "inception_v3") {
+    return get_inception_v3_computation_graph(
+      get_default_inception_v3_training_config());
   } else if (model_name == "split_test") {
     int batch_size = 8;
     return get_split_test_computation_graph(batch_size);
@@ -132,7 +136,7 @@ int main(int argc, char **argv) {
                   "for preprocessed to help check series-parallel structure"});
 
   std::vector<std::string> model_options = {
-      "transformer", "split_test", "single_operator"};
+      "transformer", "inception_v3", "split_test", "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
       cli,
       CLIPositionalArgumentSpec{

@@ -141,7 +141,15 @@ tl::expected<ParallelTensorDimDegrees, std::string>
         "No gamma weights exist for attrs.affine = false");
   }
 
-  return input_degrees;
+  ff_dim_t channel_dim = ff_dim_t{1};
+
+  return ParallelTensorDimDegrees{
+    SumDegree{1},
+    DiscardCopyDegree{1},
+    FFOrdered<int>{
+      input_degrees.shard_degrees.at(channel_dim)
+    },
+  };
 }
 
 tl::expected<ParallelTensorDimDegrees, std::string>
@@ -159,7 +167,7 @@ tl::expected<ParallelTensorDimDegrees, std::string>
         "No beta weights exist for attrs.affine = false");
   }
 
-  return input_degrees;
+  return get_gamma_weights_parallel_dim_degrees(attrs, input_degrees);
 }
 
 

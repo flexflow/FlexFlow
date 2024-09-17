@@ -21,12 +21,16 @@ src_includes = [
 ]
 
 [[fields]]
-name = "eps"
-type = "float"
+name = "relu"
+type = "bool"
 
 [[fields]]
 name = "affine"
 type = "bool"
+
+[[fields]]
+name = "eps"
+type = "float"
 
 [[fields]]
 name = "momentum"

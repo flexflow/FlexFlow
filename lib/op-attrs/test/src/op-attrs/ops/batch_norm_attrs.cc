@@ -6,8 +6,9 @@ using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("BatchNormAttrs to/from json") {
     BatchNormAttrs correct = BatchNormAttrs{
-      /*eps=*/1e-5,
+      /*relu=*/false,
       /*affine=*/true,
+      /*eps=*/1e-5,
       /*momentum=*/0.1,
     };
 

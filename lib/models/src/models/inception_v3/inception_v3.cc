@@ -87,6 +87,7 @@ static tensor_guid_t create_conv_block(ComputationGraphBuilder &cgb,
                                   /*use_bias=*/use_bias);
   return cgb.batch_norm(conv,
                         /*affine=*/true,
+                        /*activation=*/Activation::RELU,
                         /*eps=*/1e-5,
                         /*momentum=*/0.1);
 }
@@ -591,6 +592,11 @@ static tensor_guid_t create_final_layers(ComputationGraphBuilder &cgb,
   // fc
   x = cgb.dense(x,
                 /*outDim=*/num_classes);
+  check_shape(x, num_classes);
+
+  // softmax (not in pytorch model, but shown in Table 1 on p6 of 
+  // https://arxiv.org/abs/1512.00567)
+  x = cgb.softmax(x);
   check_shape(x, num_classes);
 
   return x;

@@ -12,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("num layers") {
       int result_num_layers = get_layers(result).size();
-      int correct_num_layers = 329;
+      int correct_num_layers = 522;
       CHECK(result_num_layers == correct_num_layers);
     }
   }
