@@ -16,8 +16,8 @@ includes = [
 
 src_includes = [
   "utils/fmt/optional.h",
-  "utils/optional.h",
-  "utils/json.h",
+  "utils/json/optional.h",
+  "utils/rapidcheck/optional.h",
   "op-attrs/ff_dim.h",
 ]
 

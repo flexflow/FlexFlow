@@ -19,8 +19,12 @@ std::optional<OperatorAttributeValue> get_attribute(BatchNormAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
-    case OperatorAttributeKey::RELU:
-      return p.relu;
+    case OperatorAttributeKey::EPSILON:
+      return p.eps;
+    case OperatorAttributeKey::AFFINE:
+      return p.affine;
+    case OperatorAttributeKey::MOMENTUM:
+      return p.momentum;
     default:
       return std::nullopt;
   }
@@ -189,6 +193,10 @@ std::optional<OperatorAttributeValue> get_attribute(LayerNormAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
+    case OperatorAttributeKey::AFFINE:
+      return p.elementwise_affine;
+    case OperatorAttributeKey::AXES:
+      return vector_of(p.axes);
     default:
       return std::nullopt;
   }

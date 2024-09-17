@@ -9,7 +9,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("Concat") {
       int num_incoming = 4;
       ComputationGraphOpAttrs attrs =
-          ComputationGraphOpAttrs{ConcatAttrs{ff_dim_t{0}, num_incoming}};
+          ComputationGraphOpAttrs{ConcatAttrs{ff_dim_t{0}}};
 
       std::vector<IncomingTensorRole> result =
           get_incoming_tensor_roles(attrs, num_incoming);

@@ -6,7 +6,11 @@ using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("ComputationGraphOpAttrs to/from json") {
     ComputationGraphOpAttrs correct =
-        ComputationGraphOpAttrs{BatchNormAttrs{true}};
+        ComputationGraphOpAttrs{BatchNormAttrs{
+          /*eps=*/1e-5,
+          /*affine=*/true,
+          /*momentum=*/0.1,
+        }};
     nlohmann::json j = correct;
     auto result = j.get<ComputationGraphOpAttrs>();
 

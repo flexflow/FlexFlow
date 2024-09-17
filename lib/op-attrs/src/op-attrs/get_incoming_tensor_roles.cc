@@ -1,5 +1,6 @@
 #include "op-attrs/get_incoming_tensor_roles.h"
 #include "op-attrs/ops/attention.h"
+#include "op-attrs/ops/batch_norm.h"
 #include "op-attrs/ops/conv_2d.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/ops/linear.h"
@@ -22,8 +23,8 @@ std::vector<IncomingTensorRole>
         return std::vector{IncomingTensorRole::INPUT,
                            IncomingTensorRole::INPUT};
       },
-      [](BatchNormAttrs const &) {
-        return std::vector{IncomingTensorRole::INPUT};
+      [](BatchNormAttrs const &attrs) {
+        return get_batch_norm_incoming_tensor_roles(attrs);
       },
       [](BroadcastAttrs const &) {
         return std::vector{IncomingTensorRole::INPUT};

@@ -75,17 +75,20 @@ static tensor_guid_t create_conv_block(ComputationGraphBuilder &cgb,
                                 int padding_w = 0,
                                 bool use_bias = false) {
   tensor_guid_t conv = cgb.conv2d(input,
-                                  filters,
-                                  kernel_size_h,
-                                  kernel_size_w,
-                                  stride_h,
-                                  stride_w,
-                                  padding_h,
-                                  padding_w,
-                                  std::nullopt,
-                                  1,
-                                  use_bias);
-  return cgb.batch_norm(conv);
+                                  /*outChannels=*/filters,
+                                  /*kernelH=*/kernel_size_h,
+                                  /*kernelW=*/kernel_size_w,
+                                  /*strideH=*/stride_h,
+                                  /*strideW=*/stride_w,
+                                  /*paddingH=*/padding_h,
+                                  /*paddingW=*/padding_w,
+                                  /*activation=*/std::nullopt,
+                                  /*groups=*/1,
+                                  /*use_bias=*/use_bias);
+  return cgb.batch_norm(conv,
+                        /*affine=*/true,
+                        /*eps=*/1e-5,
+                        /*momentum=*/0.1);
 }
 
 static tensor_guid_t create_inception_module_a(ComputationGraphBuilder &cgb,
@@ -734,7 +737,7 @@ ComputationGraph
       DataType::FLOAT,
   };
 
-  tensor_guid_t input = cgb.create_tensor(input_shape, CreateGrad::YES);
+  tensor_guid_t input = cgb.create_input(input_shape, CreateGrad::YES);
   InceptionV3Output output = create_inception_v3(cgb, config, input);
 
   return cgb.computation_graph;

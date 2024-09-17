@@ -12,7 +12,7 @@ features = [
 includes = [
   "op-attrs/parallel_tensor_shape/sum_degree.dtg.h",
   "op-attrs/parallel_tensor_shape/discard_copy_degree.dtg.h",
-  "op-attrs/dim_ordered.h",
+  "op-attrs/dim_ordered/dim_ordered.h",
 ]
 
 [[fields]]

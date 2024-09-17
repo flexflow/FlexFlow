@@ -10,6 +10,24 @@ features = [
   "fmt",
 ]
 
+includes = [
+  "<optional>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/json/optional.h",
+  "utils/rapidcheck/optional.h",
+]
+
 [[fields]]
-name = "relu"
+name = "eps"
+type = "float"
+
+[[fields]]
+name = "affine"
 type = "bool"
+
+[[fields]]
+name = "momentum"
+type = "std::optional<float>"

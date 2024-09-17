@@ -87,7 +87,9 @@ public:
 
   parallel_tensor_guid_t
       batch_norm(parallel_tensor_guid_t const &input,
-                 bool relu = true,
+                 bool affine,
+                 float eps,
+                 std::optional<float> const &momentum,
                  std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t

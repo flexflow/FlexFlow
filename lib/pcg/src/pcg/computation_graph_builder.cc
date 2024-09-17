@@ -535,7 +535,9 @@ tensor_guid_t ComputationGraphBuilder::pool2d(
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t
@@ -565,20 +567,50 @@ tensor_guid_t
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(casted_input)));
 
-  return this->add_layer(layer, {casted_input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {casted_input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::batch_norm(
     tensor_guid_t const &input,
-    bool relu,
+    bool affine,
+    float eps,
+    std::optional<float> const &momentum,
     std::optional<std::string> const &maybe_name) {
-  BatchNormAttrs attrs = BatchNormAttrs{relu};
+
+  BatchNormAttrs attrs = BatchNormAttrs{
+    /*eps=*/eps,
+    /*affine=*/affine,
+    /*momentum=*/momentum,
+  };
+
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+  TensorShape input_shape = this->get_shape(input);
+  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shape));
+
+  std::vector<TensorAttrs> weights;
+
+  if (affine) {
+    // initializers chosen to match those of
+    // https://pytorch.org/docs/stable/generated/torch.nn.BatchNorm2d.html
+
+    TensorShape gamma_shape =
+        throw_if_unexpected(get_gamma_weights_shape(attrs, input_shape));
+    InitializerAttrs gamma_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{1}}}};
+    weights.push_back(make_weight_attrs(gamma_shape, gamma_initializer));
+
+    TensorShape beta_shape =
+        throw_if_unexpected(get_beta_weights_shape(attrs, input_shape));
+    InitializerAttrs beta_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{0}}}};
+    weights.push_back(make_weight_attrs(beta_shape, beta_initializer));
+  }
 
   return get_only(
       this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
@@ -760,7 +792,9 @@ tensor_guid_t ComputationGraphBuilder::concat(
   TensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, input_shapes));
 
-  return this->add_layer(layer, inputs, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, inputs, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::flat(tensor_guid_t const &input,
@@ -782,7 +816,9 @@ tensor_guid_t ComputationGraphBuilder::flat(tensor_guid_t const &input,
   TensorShape output_shape = 
     get_output_shape(attrs, this->get_shape(input));
 
-  return this->add_layer(layer, {input}, {}, output_shape);
+  return get_only(
+    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
+  );
 }
 
 tensor_guid_t ComputationGraphBuilder::layer_norm(
