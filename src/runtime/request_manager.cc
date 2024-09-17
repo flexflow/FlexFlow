@@ -1008,6 +1008,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     bc.inference_mode = InferenceMode::TREE_VERIFY_MODE;
   }
   bc.prompt_phase = true;
+  bc.num_available_requests = 0;
   int num_tokens = 0;
   for (Request *request : prefill_requests) {
     int request_index = request->batch_index;
@@ -1044,8 +1045,10 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
           request->tokens[request->llm_prefill_len + idx];
     }
     num_tokens += num_tokens_in_batch;
+    if (num_tokens_in_batch > 0) {
+      bc.num_available_requests++;
+    }
   }
-  bc.num_available_requests = prefill_requests.size();
   bc.num_tokens = num_tokens;
 
   if (verbose) {
@@ -1070,6 +1073,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   BatchConfig bc;
   bc.inference_mode = InferenceMode::TREE_SEARCH_MODE;
   bc.prompt_phase = true;
+  bc.num_available_requests = 0;
   int num_tokens = 0;
   for (Request *request : prefill_requests) {
     int request_index = request->batch_index;
@@ -1105,8 +1109,10 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
           request->tokens[request->ssm_prefill_len + idx];
     }
     num_tokens += num_tokens_in_batch;
+    if (num_tokens_in_batch > 0) {
+      bc.num_available_requests++;
+    }
   }
-  bc.num_available_requests = prefill_requests.size();
   bc.num_tokens = num_tokens;
 
   if (verbose) {
