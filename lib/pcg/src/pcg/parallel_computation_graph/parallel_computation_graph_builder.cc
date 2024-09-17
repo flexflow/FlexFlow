@@ -338,15 +338,19 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
     std::optional<std::string> const &maybe_name) {
 
   if (activation.has_value() && activation.value() != Activation::RELU) {
-    throw mk_runtime_error(fmt::format("batch_norm currently only supports (1) no activation function, or (2) relu activation function, but received {}. "
-                                       "If you need support for additional activation functions, please create an issue.", activation));
+    throw mk_runtime_error(fmt::format(
+        "batch_norm currently only supports (1) no activation function, or (2) "
+        "relu activation function, but received {}. "
+        "If you need support for additional activation functions, please "
+        "create an issue.",
+        activation));
   }
 
   BatchNormAttrs attrs = BatchNormAttrs{
-    /*relu=*/activation.has_value(),
-    /*affine=*/affine,
-    /*eps=*/eps,
-    /*momentum=*/momentum,
+      /*relu=*/activation.has_value(),
+      /*affine=*/affine,
+      /*eps=*/eps,
+      /*momentum=*/momentum,
   };
 
   std::string name =

@@ -31,7 +31,7 @@ std::vector<T> subvec(std::vector<T> const &v,
   }
 
   if (end_iter < begin_iter) {
-    end_iter = begin_iter; 
+    end_iter = begin_iter;
   }
 
   std::vector<T> output(begin_iter, end_iter);

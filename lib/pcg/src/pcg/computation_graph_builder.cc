@@ -536,25 +536,21 @@ tensor_guid_t ComputationGraphBuilder::pool2d(
       throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
 
   return get_only(
-    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
-  );
+      this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
 }
 
-tensor_guid_t
-    ComputationGraphBuilder::adaptive_pool2d(tensor_guid_t const &uncasted_input,
-                    int output_h,
-                    int output_w,
-                    PoolOp type,
-                    std::optional<Activation> const &activation,
-                    std::optional<std::string> const &maybe_name) {
+tensor_guid_t ComputationGraphBuilder::adaptive_pool2d(
+    tensor_guid_t const &uncasted_input,
+    int output_h,
+    int output_w,
+    PoolOp type,
+    std::optional<Activation> const &activation,
+    std::optional<std::string> const &maybe_name) {
 
   TensorDims input_dims = this->get_shape(uncasted_input).dims;
 
-  Pool2DAttrs attrs = throw_if_unexpected(make_adaptive_pool2d_attrs(input_dims,
-                                                                     output_h,
-                                                                     output_w,
-                                                                     type,
-                                                                     activation));
+  Pool2DAttrs attrs = throw_if_unexpected(make_adaptive_pool2d_attrs(
+      input_dims, output_h, output_w, type, activation));
 
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
@@ -564,12 +560,11 @@ tensor_guid_t
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape =
-      throw_if_unexpected(get_output_shape(attrs, this->get_shape(casted_input)));
+  TensorShape output_shape = throw_if_unexpected(
+      get_output_shape(attrs, this->get_shape(casted_input)));
 
-  return get_only(
-    this->add_layer(layer, {casted_input}, {}, {make_output_attrs(output_shape)})
-  );
+  return get_only(this->add_layer(
+      layer, {casted_input}, {}, {make_output_attrs(output_shape)}));
 }
 
 tensor_guid_t ComputationGraphBuilder::batch_norm(
@@ -581,15 +576,19 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
     std::optional<std::string> const &maybe_name) {
 
   if (activation.has_value() && activation.value() != Activation::RELU) {
-    throw mk_runtime_error(fmt::format("batch_norm currently only supports (1) no activation function, or (2) relu activation function, but received {}. "
-                                       "If you need support for additional activation functions, please create an issue.", activation));
+    throw mk_runtime_error(fmt::format(
+        "batch_norm currently only supports (1) no activation function, or (2) "
+        "relu activation function, but received {}. "
+        "If you need support for additional activation functions, please "
+        "create an issue.",
+        activation));
   }
 
   BatchNormAttrs attrs = BatchNormAttrs{
-    /*relu=*/activation.has_value(),
-    /*affine=*/affine,
-    /*eps=*/eps,
-    /*momentum=*/momentum,
+      /*relu=*/activation.has_value(),
+      /*affine=*/affine,
+      /*eps=*/eps,
+      /*momentum=*/momentum,
   };
 
   std::string name =
@@ -598,7 +597,8 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
   TensorShape input_shape = this->get_shape(input);
-  TensorShape output_shape = throw_if_unexpected(get_output_shape(attrs, input_shape));
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, input_shape));
 
   std::vector<TensorAttrs> weights;
 
@@ -619,12 +619,12 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
     weights.push_back(make_weight_attrs(beta_shape, beta_initializer));
   }
 
-  return get_only(
-      this->add_layer(layer, 
-                      {input}, 
-                      transform(weights, 
-                                [&](TensorAttrs const &a) { return this->create_weight(a); }),
-                      {make_output_attrs(output_shape)}));
+  return get_only(this->add_layer(
+      layer,
+      {input},
+      transform(weights,
+                [&](TensorAttrs const &a) { return this->create_weight(a); }),
+      {make_output_attrs(output_shape)}));
 }
 
 tensor_guid_t ComputationGraphBuilder::multihead_attention(
@@ -804,32 +804,30 @@ tensor_guid_t ComputationGraphBuilder::concat(
       throw_if_unexpected(get_output_shape(attrs, input_shapes));
 
   return get_only(
-    this->add_layer(layer, inputs, {}, {make_output_attrs(output_shape)})
-  );
+      this->add_layer(layer, inputs, {}, {make_output_attrs(output_shape)}));
 }
 
-tensor_guid_t ComputationGraphBuilder::flat(tensor_guid_t const &input,
-                                            int start_dim,
-                                            std::optional<int> const &end_dim,
-                                            std::optional<std::string> const &maybe_name) {
+tensor_guid_t ComputationGraphBuilder::flat(
+    tensor_guid_t const &input,
+    int start_dim,
+    std::optional<int> const &end_dim,
+    std::optional<std::string> const &maybe_name) {
   int input_num_dims = num_dims(this->get_shape(input));
 
   FlatAttrs attrs = FlatAttrs{
-    /*start_dim=*/ff_dim_t{start_dim},
-    /*end_dim=*/ff_dim_t{end_dim.value_or(input_num_dims)},
-  }; 
+      /*start_dim=*/ff_dim_t{start_dim},
+      /*end_dim=*/ff_dim_t{end_dim.value_or(input_num_dims)},
+  };
 
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = 
-    get_output_shape(attrs, this->get_shape(input));
+  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
 
   return get_only(
-    this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)})
-  );
+      this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
 }
 
 tensor_guid_t ComputationGraphBuilder::layer_norm(

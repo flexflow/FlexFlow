@@ -294,8 +294,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("inception_v3") {
-        ComputationGraph cg =
-            get_inception_v3_computation_graph(get_default_inception_v3_training_config());
+        ComputationGraph cg = get_inception_v3_computation_graph(
+            get_default_inception_v3_training_config());
 
         std::optional<SeriesParallelDecomposition> sp_decomposition =
             get_computation_graph_series_parallel_decomposition(cg);

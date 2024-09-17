@@ -137,13 +137,13 @@ public:
              PoolOp type = PoolOp::MAX,
              std::optional<Activation> const &activation = std::nullopt,
              std::optional<std::string> const &name = std::nullopt);
-  tensor_guid_t
-      adaptive_pool2d(tensor_guid_t const &input,
-                      int output_h,
-                      int output_w,
-                      PoolOp type = PoolOp::MAX,
-                      std::optional<Activation> const &activation = std::nullopt,
-                      std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t adaptive_pool2d(
+      tensor_guid_t const &input,
+      int output_h,
+      int output_w,
+      PoolOp type = PoolOp::MAX,
+      std::optional<Activation> const &activation = std::nullopt,
+      std::optional<std::string> const &name = std::nullopt);
   tensor_guid_t
       layer_norm(tensor_guid_t const &input,
                  std::vector<int> const &axes,
@@ -263,6 +263,7 @@ public:
                 std::vector<TensorAttrs> const &outputs);
 
   TensorShape get_shape(tensor_guid_t const &) const;
+
 private:
   tensor_guid_t
       broadcast(tensor_guid_t const &, TensorDims const &, std::string const &);

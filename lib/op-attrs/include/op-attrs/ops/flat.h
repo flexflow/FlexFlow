@@ -12,10 +12,11 @@ namespace FlexFlow {
 CHECK_VALID_OP_ATTR(FlatAttrs);
 
 TensorShape get_output_shape(FlatAttrs const &, TensorShape const &);
-tl::expected<ParallelTensorDimDegrees, std::string> get_output_parallel_dim_degrees(FlatAttrs const &,
-                                                                           ParallelTensorDimDegrees const &);
-tl::expected<ParallelTensorShape, std::string> get_output_shape(FlatAttrs const &,
-                                                                ParallelTensorShape const &);
+tl::expected<ParallelTensorDimDegrees, std::string>
+    get_output_parallel_dim_degrees(FlatAttrs const &,
+                                    ParallelTensorDimDegrees const &);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(FlatAttrs const &, ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

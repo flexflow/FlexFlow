@@ -62,7 +62,7 @@ tl::expected<ComputationGraph, std::string>
     return get_default_transformer_computation_graph();
   } else if (model_name == "inception_v3") {
     return get_inception_v3_computation_graph(
-      get_default_inception_v3_training_config());
+        get_default_inception_v3_training_config());
   } else if (model_name == "split_test") {
     int batch_size = 8;
     return get_split_test_computation_graph(batch_size);

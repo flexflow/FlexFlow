@@ -28,7 +28,6 @@ FFOrdered<T> slice(FFOrdered<T> const &d,
   return nonoverloaded_slice(d, start, end);
 }
 
-
 template <typename Idx, typename T>
 DimOrdered<Idx, T> slice(DimOrdered<Idx, T> const &d,
                          std::optional<Idx> const &start,

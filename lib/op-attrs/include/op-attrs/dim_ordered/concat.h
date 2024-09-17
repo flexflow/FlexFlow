@@ -19,10 +19,10 @@ FFOrdered<T> concat(FFOrdered<T> const &l, FFOrdered<T> const &r) {
 
 template <typename T>
 FFOrdered<T> concat(std::vector<FFOrdered<T>> const &inputs) {
-  std::vector<std::vector<T>> vec_inputs = transform(inputs, 
-                                                     [](FFOrdered<T> const &input) {
-                                                       return std::vector<T>(input.cbegin(), input.cend());
-                                                     });
+  std::vector<std::vector<T>> vec_inputs =
+      transform(inputs, [](FFOrdered<T> const &input) {
+        return std::vector<T>(input.cbegin(), input.cend());
+      });
 
   std::vector<T> raw_result = concat_vectors(vec_inputs);
 

@@ -1,5 +1,4 @@
 #include "utils/containers/require_all_same1.h"
-#include "utils/expected.h"
 #include "test/utils/doctest/fmt/expected.h"
 #include "test/utils/doctest/fmt/multiset.h"
 #include "test/utils/doctest/fmt/optional.h"
@@ -7,6 +6,7 @@
 #include "test/utils/doctest/fmt/unordered_multiset.h"
 #include "test/utils/doctest/fmt/unordered_set.h"
 #include "test/utils/doctest/fmt/vector.h"
+#include "utils/expected.h"
 #include <doctest/doctest.h>
 #include <optional>
 #include <set>
