@@ -137,6 +137,13 @@ public:
              PoolOp type = PoolOp::MAX,
              std::optional<Activation> const &activation = std::nullopt,
              std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t adaptive_pool2d(
+      tensor_guid_t const &input,
+      int output_h,
+      int output_w,
+      PoolOp type = PoolOp::MAX,
+      std::optional<Activation> const &activation = std::nullopt,
+      std::optional<std::string> const &name = std::nullopt);
   tensor_guid_t
       layer_norm(tensor_guid_t const &input,
                  std::vector<int> const &axes,
@@ -145,7 +152,10 @@ public:
                  std::optional<std::string> const &name = std::nullopt);
   tensor_guid_t
       batch_norm(tensor_guid_t const &input,
-                 bool relu = true,
+                 bool affine,
+                 std::optional<Activation> const &activation,
+                 float eps,
+                 std::optional<float> const &momentum,
                  std::optional<std::string> const &name = std::nullopt);
   tensor_guid_t
       batch_matmul(tensor_guid_t const &A,
@@ -170,11 +180,9 @@ public:
                      DataType dtype,
                      std::optional<std::string> const &name = std::nullopt);
   // Add a concat layer
-  tensor_guid_t
-      concat(int n,
-             std::vector<tensor_guid_t> const &tensors,
-             int axis,
-             std::optional<std::string> const &maybe_name = std::nullopt);
+  tensor_guid_t concat(std::vector<tensor_guid_t> const &tensors,
+                       int axis,
+                       std::optional<std::string> const &name = std::nullopt);
   // Add a mean layer
   tensor_guid_t mean(tensor_guid_t const &input,
                      std::vector<int> const &dims,
@@ -188,6 +196,8 @@ public:
             std::optional<std::string> const &name = std::nullopt);
   // Add a flat layer
   tensor_guid_t flat(tensor_guid_t const &input,
+                     int start_dim = 0,
+                     std::optional<int> const &end_dim = std::nullopt,
                      std::optional<std::string> const &name = std::nullopt);
   // Add a softmax layer
   tensor_guid_t softmax(tensor_guid_t const &input,
@@ -252,9 +262,9 @@ public:
                 std::vector<tensor_guid_t> const &weights,
                 std::vector<TensorAttrs> const &outputs);
 
-private:
   TensorShape get_shape(tensor_guid_t const &) const;
 
+private:
   tensor_guid_t
       broadcast(tensor_guid_t const &, TensorDims const &, std::string const &);
 

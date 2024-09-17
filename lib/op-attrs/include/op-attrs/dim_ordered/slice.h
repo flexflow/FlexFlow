@@ -21,6 +21,13 @@ DimOrdered<Idx, T> nonoverloaded_slice(DimOrdered<Idx, T> const &d,
       subvec(vector_of(d), to_raw_idx(start), to_raw_idx(end))};
 }
 
+template <typename T>
+FFOrdered<T> slice(FFOrdered<T> const &d,
+                   std::optional<ff_dim_t> const &start,
+                   std::optional<ff_dim_t> const &end) {
+  return nonoverloaded_slice(d, start, end);
+}
+
 template <typename Idx, typename T>
 DimOrdered<Idx, T> slice(DimOrdered<Idx, T> const &d,
                          std::optional<Idx> const &start,

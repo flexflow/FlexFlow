@@ -112,7 +112,7 @@ static std::optional<std::string>
 
   if (get_discard_copy_degree(input_shape) != 1) {
     return fmt::format(
-        "Expected discard copy degree 1, but received discartd copy degree {}",
+        "Expected discard copy degree 1, but received discard copy degree {}",
         get_discard_copy_degree(input_shape));
   }
 

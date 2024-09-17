@@ -331,18 +331,56 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
     parallel_tensor_guid_t const &input,
-    bool relu,
+    bool affine,
+    std::optional<Activation> const &activation,
+    float eps,
+    std::optional<float> const &momentum,
     std::optional<std::string> const &maybe_name) {
 
-  BatchNormAttrs attrs = BatchNormAttrs{relu};
+  if (activation.has_value() && activation.value() != Activation::RELU) {
+    throw mk_runtime_error(fmt::format(
+        "batch_norm currently only supports (1) no activation function, or (2) "
+        "relu activation function, but received {}. "
+        "If you need support for additional activation functions, please "
+        "create an issue.",
+        activation));
+  }
+
+  BatchNormAttrs attrs = BatchNormAttrs{
+      /*relu=*/activation.has_value(),
+      /*affine=*/affine,
+      /*eps=*/eps,
+      /*momentum=*/momentum,
+  };
 
   std::string name =
       maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
 
   ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
 
+  ParallelTensorShape input_shape = this->get_shape(input);
+
   ParallelTensorShape output_shape =
-      get_output_shape(attrs, this->get_shape(input));
+      throw_if_unexpected(get_output_shape(attrs, input_shape));
+
+  std::vector<ParallelTensorAttrs> weights;
+
+  if (attrs.affine) {
+    // initializers chosen to match those of
+    // https://pytorch.org/docs/stable/generated/torch.nn.BatchNorm2d.html
+
+    ParallelTensorShape gamma_shape =
+        throw_if_unexpected(get_gamma_weights_shape(attrs, input_shape));
+    InitializerAttrs gamma_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{1}}}};
+    weights.push_back(make_weight_attrs(gamma_shape, gamma_initializer));
+
+    ParallelTensorShape beta_shape =
+        throw_if_unexpected(get_beta_weights_shape(attrs, input_shape));
+    InitializerAttrs beta_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{0}}}};
+    weights.push_back(make_weight_attrs(beta_shape, beta_initializer));
+  }
 
   return this->add_layer(layer, {input}, {}, {output_shape});
 }

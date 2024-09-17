@@ -6,14 +6,17 @@
 #include "op-attrs/ops/attention.h"
 #include "op-attrs/ops/batch_norm.h"
 #include "op-attrs/ops/broadcast.h"
+#include "op-attrs/ops/concat.h"
 #include "op-attrs/ops/conv_2d.h"
 #include "op-attrs/ops/dropout.h"
 #include "op-attrs/ops/element_binary.h"
 #include "op-attrs/ops/element_unary.h"
 #include "op-attrs/ops/embedding.h"
+#include "op-attrs/ops/flat.h"
 #include "op-attrs/ops/gather.h"
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/pool_2d.h"
 #include "op-attrs/ops/softmax.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "op-attrs/tensor_dims.h"
@@ -498,21 +501,130 @@ tensor_guid_t ComputationGraphBuilder::gather(
   return get_only(
       this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
 }
+tensor_guid_t ComputationGraphBuilder::pool2d(
+    tensor_guid_t const &x,
+    int kernelH,
+    int kernelW,
+    int strideH,
+    int strideW,
+    int paddingH,
+    int paddingW,
+    PoolOp type,
+    std::optional<Activation> const &activation,
+    std::optional<std::string> const &maybe_name) {
+
+  Pool2DAttrs attrs = Pool2DAttrs{
+      /*kernel_h=*/kernelH,
+      /*kernel_w=*/kernelW,
+      /*stride_h=*/strideH,
+      /*stride_w=*/strideW,
+      /*padding_h=*/paddingH,
+      /*padding_w=*/paddingW,
+      /*pool_type=*/type,
+      /*activation=*/activation,
+  };
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  tensor_guid_t input =
+      this->as_type(x, DataType::FLOAT, name + "input_pre_cast");
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, this->get_shape(input)));
+
+  return get_only(
+      this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
+}
+
+tensor_guid_t ComputationGraphBuilder::adaptive_pool2d(
+    tensor_guid_t const &uncasted_input,
+    int output_h,
+    int output_w,
+    PoolOp type,
+    std::optional<Activation> const &activation,
+    std::optional<std::string> const &maybe_name) {
+
+  TensorDims input_dims = this->get_shape(uncasted_input).dims;
+
+  Pool2DAttrs attrs = throw_if_unexpected(make_adaptive_pool2d_attrs(
+      input_dims, output_h, output_w, type, activation));
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  tensor_guid_t casted_input =
+      this->as_type(uncasted_input, DataType::FLOAT, name + "input_pre_cast");
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  TensorShape output_shape = throw_if_unexpected(
+      get_output_shape(attrs, this->get_shape(casted_input)));
+
+  return get_only(this->add_layer(
+      layer, {casted_input}, {}, {make_output_attrs(output_shape)}));
+}
 
 tensor_guid_t ComputationGraphBuilder::batch_norm(
     tensor_guid_t const &input,
-    bool relu,
+    bool affine,
+    std::optional<Activation> const &activation,
+    float eps,
+    std::optional<float> const &momentum,
     std::optional<std::string> const &maybe_name) {
-  BatchNormAttrs attrs = BatchNormAttrs{relu};
+
+  if (activation.has_value() && activation.value() != Activation::RELU) {
+    throw mk_runtime_error(fmt::format(
+        "batch_norm currently only supports (1) no activation function, or (2) "
+        "relu activation function, but received {}. "
+        "If you need support for additional activation functions, please "
+        "create an issue.",
+        activation));
+  }
+
+  BatchNormAttrs attrs = BatchNormAttrs{
+      /*relu=*/activation.has_value(),
+      /*affine=*/affine,
+      /*eps=*/eps,
+      /*momentum=*/momentum,
+  };
+
   std::string name =
       maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
 
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
-  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+  TensorShape input_shape = this->get_shape(input);
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, input_shape));
 
-  return get_only(
-      this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
+  std::vector<TensorAttrs> weights;
+
+  if (affine) {
+    // initializers chosen to match those of
+    // https://pytorch.org/docs/stable/generated/torch.nn.BatchNorm2d.html
+
+    TensorShape gamma_shape =
+        throw_if_unexpected(get_gamma_weights_shape(attrs, input_shape));
+    InitializerAttrs gamma_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{1}}}};
+    weights.push_back(make_weight_attrs(gamma_shape, gamma_initializer));
+
+    TensorShape beta_shape =
+        throw_if_unexpected(get_beta_weights_shape(attrs, input_shape));
+    InitializerAttrs beta_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{0}}}};
+    weights.push_back(make_weight_attrs(beta_shape, beta_initializer));
+  }
+
+  return get_only(this->add_layer(
+      layer,
+      {input},
+      transform(weights,
+                [&](TensorAttrs const &a) { return this->create_weight(a); }),
+      {make_output_attrs(output_shape)}));
 }
 
 tensor_guid_t ComputationGraphBuilder::multihead_attention(
@@ -672,6 +784,50 @@ tensor_guid_t ComputationGraphBuilder::dense(
 
   return get_only(this->add_layer(
       layer, {input}, weights, {make_output_attrs(output_shape)}));
+}
+
+tensor_guid_t ComputationGraphBuilder::concat(
+    std::vector<tensor_guid_t> const &inputs,
+    int axis,
+    std::optional<std::string> const &maybe_name) {
+
+  ConcatAttrs attrs = ConcatAttrs{ff_dim_t{axis}};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  std::vector<TensorShape> input_shapes = transform(
+      inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
+  TensorShape output_shape =
+      throw_if_unexpected(get_output_shape(attrs, input_shapes));
+
+  return get_only(
+      this->add_layer(layer, inputs, {}, {make_output_attrs(output_shape)}));
+}
+
+tensor_guid_t ComputationGraphBuilder::flat(
+    tensor_guid_t const &input,
+    int start_dim,
+    std::optional<int> const &end_dim,
+    std::optional<std::string> const &maybe_name) {
+  int input_num_dims = num_dims(this->get_shape(input));
+
+  FlatAttrs attrs = FlatAttrs{
+      /*start_dim=*/ff_dim_t{start_dim},
+      /*end_dim=*/ff_dim_t{end_dim.value_or(input_num_dims)},
+  };
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
+
+  TensorShape output_shape = get_output_shape(attrs, this->get_shape(input));
+
+  return get_only(
+      this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
 }
 
 tensor_guid_t ComputationGraphBuilder::layer_norm(
