@@ -166,9 +166,12 @@ public:
       std::optional<Activation> activation = std::nullopt,
       bool use_bias = true,
       DataType data_type = DataType::FLOAT,
-      std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &projection_initializer =
+          std::nullopt,
       std::optional<InitializerAttrs> const &bias_initializer = std::nullopt,
-      std::optional<std::string> const &name = std::nullopt);
+      std::optional<std::string> const &name = std::nullopt,
+      std::optional<std::string> const &projection_name = std::nullopt,
+      std::optional<std::string> const &bias_name = std::nullopt);
   // Add a cast layer
   tensor_guid_t cast(tensor_guid_t const &input,
                      DataType dtype,
@@ -232,46 +235,39 @@ public:
       bool add_zero_attn = false,
       std::optional<InitializerAttrs> initializer = std::nullopt,
       std::optional<std::string> const &maybe_name = std::nullopt);
-  tensor_guid_t create_tensor(TensorShape const &, CreateGrad);
+  tensor_guid_t
+      create_input(TensorShape const &,
+                   CreateGrad,
+                   std::optional<std::string> const &name = std::nullopt);
+
   tensor_guid_t create_weight(
       TensorShape const &,
-      bool create_grad = true,
+      CreateGrad create_grad = CreateGrad::YES,
       std::optional<InitializerAttrs> const &initializer = std::nullopt,
-      std::optional<ParamSync> sync_type = std::nullopt);
+      std::optional<ParamSync> sync_type = std::nullopt,
+      std::optional<std::string> const &name = std::nullopt);
+  tensor_guid_t
+      create_weight(TensorAttrs const &,
+                    std::optional<std::string> const &name = std::nullopt);
 
   std::vector<tensor_guid_t> get_outputs(LayerAttrs const &) const;
   tensor_guid_t get_output(LayerAttrs const &, int idx) const;
 
-  std::vector<tensor_guid_t> add_layer(LayerAttrs const &layer,
-                                       std::vector<tensor_guid_t> const &inputs,
-                                       std::vector<TensorAttrs> const &weights,
-                                       std::vector<TensorAttrs> const &outputs);
+  std::vector<tensor_guid_t>
+      add_layer(LayerAttrs const &layer,
+                std::vector<tensor_guid_t> const &inputs,
+                std::vector<tensor_guid_t> const &weights,
+                std::vector<TensorAttrs> const &outputs);
 
   TensorShape get_shape(tensor_guid_t const &) const;
 private:
-  tensor_guid_t broadcast(tensor_guid_t const &,
-                          TensorShape const &,
-                          std::string const &);
+  tensor_guid_t
+      broadcast(tensor_guid_t const &, TensorDims const &, std::string const &);
 
   tensor_guid_t as_type(tensor_guid_t const &, DataType, std::string const &);
 
-  tensor_guid_t add_layer(LayerAttrs const &layer,
-                          std::vector<tensor_guid_t> const &inputs,
-                          std::vector<TensorAttrs> const &weights,
-                          TensorAttrs const &output);
-
-  std::vector<tensor_guid_t> add_layer(LayerAttrs const &layer,
-                                       std::vector<tensor_guid_t> const &inputs,
-                                       std::vector<TensorAttrs> const &weights,
-                                       std::vector<TensorShape> const &outputs);
-
-  tensor_guid_t add_layer(LayerAttrs const &layer,
-                          std::vector<tensor_guid_t> const &inputs,
-                          std::vector<TensorAttrs> const &weights,
-                          TensorShape const &output);
-
-  TensorShape get_broadcast_target_shape(std::vector<tensor_guid_t> const &);
-  TensorShape get_broadcast_target_shape(std::vector<TensorShape> const &);
+  TensorDims get_broadcast_target_dims(std::vector<tensor_guid_t> const &);
+  TensorDims get_broadcast_target_dims(std::vector<TensorDims> const &);
 
   tensor_guid_t
       element_binary(OperatorType,

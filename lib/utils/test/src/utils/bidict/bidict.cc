@@ -1,6 +1,8 @@
 #include "utils/bidict/bidict.h"
-#include "test/utils/doctest.h"
-#include "utils/fmt/vector.h"
+#include "test/utils/doctest/check_without_stringify.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

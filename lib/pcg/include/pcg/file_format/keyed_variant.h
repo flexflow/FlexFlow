@@ -1,10 +1,11 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_KEYED_VARIANT_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_FILE_FORMAT_KEYED_VARIANT_H
 
-#include "utils/json.h"
+#include "utils/json/is_jsonable.h"
 #include "utils/sequence.h"
 #include "utils/strong_typedef.h"
 #include "utils/variant.h"
+#include <nlohmann/json.hpp>
 
 namespace FlexFlow {
 
@@ -29,9 +30,9 @@ struct KeyedVariant {
 };
 
 struct ToJsonFunctor {
-  ToJsonFunctor(json &j) : j(j) {}
+  ToJsonFunctor(nlohmann::json &j) : j(j) {}
 
-  json &j;
+  nlohmann::json &j;
 
   template <typename T>
   void operator()(T const &t) {
@@ -42,20 +43,20 @@ struct ToJsonFunctor {
 };
 
 template <typename K, typename Variant>
-void to_json(json &j, KeyedVariant<K, Variant> const &v) {
+void to_json(nlohmann::json &j, KeyedVariant<K, Variant> const &v) {
   static_assert(is_jsonable<K>::value, "");
 
   K key = static_cast<K>(v.value.index());
   j["type"] = key;
-  json &jj = j["value"];
+  nlohmann::json &jj = j["value"];
   visit(ToJsonFunctor{j["value"]}, v.value);
 }
 
 template <typename Variant>
 struct FromJsonFunctor {
-  FromJsonFunctor(json const &j, int idx) : j(j), idx(idx) {}
+  FromJsonFunctor(nlohmann::json const &j, int idx) : j(j), idx(idx) {}
 
-  json const &j;
+  nlohmann::json const &j;
   int idx;
 
   template <typename T>
@@ -68,31 +69,31 @@ struct FromJsonFunctor {
 
 template <typename T>
 std::string get_json_name(T const &t) {
-  return json{t}.get<std::string>();
+  return nlohmann::json{t}.get<std::string>();
 }
 
 template <typename Key, typename Variant>
 struct FromJsonMoveOnlyFunctor {
-  FromJsonMoveOnlyFunctor(json const &j, Key const &key) : j(j) {}
+  FromJsonMoveOnlyFunctor(nlohmann::json const &j, Key const &key) : j(j) {}
 
-  json const &j;
+  nlohmann::json const &j;
   Key const &key;
 
   template <int Idx>
   Variant operator()(std::integral_constant<int, Idx> const &) const {
-    return j.get<typename variant_alternative<Idx, Variant>::type>();
+    return j.get<typename std::variant_alternative<Idx, Variant>::type>();
   }
 };
 
 template <typename K, typename Variant>
-Variant from_json_moveonly(json const &j, K const &key) {
+Variant from_json_moveonly(nlohmann::json const &j, K const &key) {
   FromJsonMoveOnlyFunctor<Key, Variant> func(j);
   return seq_get(func, idx, seq_count_t<variant_size<Variant>::value>{});
 }
 
 template <typename K, typename Variant>
 typename std::enable_if<std::is_default_constructible<Variant>::value>::type
-    from_json(json const &j, KeyedVariant<K, Variant> &v) {
+    from_json(nlohmann::json const &j, KeyedVariant<K, Variant> &v) {
   K key = j.at("type").get<K>();
   std::string key_string = j.at("type").get<std::string>();
 
@@ -100,7 +101,7 @@ typename std::enable_if<std::is_default_constructible<Variant>::value>::type
 }
 
 template <typename K, typename Variant>
-KeyedVariant<K, Variant> keyed_variant_from_json(json const &j) {
+KeyedVariant<K, Variant> keyed_variant_from_json(nlohmann::json const &j) {
   K key = j.at("type").get<K>();
 
   return KeyedVariant<K, Variant>{

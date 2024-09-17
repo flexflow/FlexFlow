@@ -7,7 +7,7 @@
 #include "utils/fmt/optional.h"
 #include "utils/fmt/unordered_map.h"
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Task Registry") {
@@ -127,5 +127,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 }
-
-} // namespace FlexFlow

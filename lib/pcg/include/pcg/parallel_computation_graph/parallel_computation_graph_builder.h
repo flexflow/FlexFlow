@@ -13,7 +13,7 @@ public:
 
   parallel_tensor_guid_t create_input_tensor(
       ParallelTensorShape const &shape,
-      bool create_grad = true,
+      CreateGrad create_grad = CreateGrad::YES,
       std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
@@ -54,7 +54,8 @@ public:
       std::optional<Activation> activation = std::nullopt,
       bool use_bias = true,
       DataType data_type = DataType::FLOAT,
-      std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &projection_initializer =
+          std::nullopt,
       std::optional<InitializerAttrs> const &bias_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
 

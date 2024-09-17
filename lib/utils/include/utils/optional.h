@@ -8,6 +8,15 @@
 namespace FlexFlow {
 
 template <typename T, typename F>
+T or_else(std::optional<T> const &o, F &&f) {
+  if (o.has_value()) {
+    return o.value();
+  } else {
+    return f();
+  }
+}
+
+template <typename T, typename F>
 T const &unwrap(std::optional<T> const &o, F const &f) {
   if (o.has_value()) {
     return o.value();
@@ -24,19 +33,5 @@ T const &assert_unwrap(std::optional<T> const &o) {
 }
 
 } // namespace FlexFlow
-
-namespace rc {
-
-template <typename T>
-struct Arbitrary<std::optional<T>> {
-  static Gen<std::optional<T>> arbitrary() {
-    return gen::map(
-        gen::maybe(std::move(gen::arbitrary<T>())), [](Maybe<T> &&m) {
-          return m ? std::optional<T>(std::move(*m)) : std::optional<T>();
-        });
-  }
-};
-
-} // namespace rc
 
 #endif

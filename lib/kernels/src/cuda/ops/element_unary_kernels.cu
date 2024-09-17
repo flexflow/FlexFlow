@@ -267,16 +267,16 @@ struct ForwardKernel {
     } else if (use_scalar(op_type)) {
       assert(scalar.has_value());
       size_t num_elements = input.shape.num_elements();
-      elewise_scalar_unary_forward_kernel<real_type<T>>
+      elewise_scalar_unary_forward_kernel<real_type_t<T>>
           <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
               num_elements,
-              static_cast<real_type<T>>(scalar.value()),
+              static_cast<real_type_t<T>>(scalar.value()),
               op_type,
               input.get<T>(),
               output.get<T>());
     } else {
       size_t num_elements = input.shape.num_elements();
-      elewise_unary_forward_kernel<real_type<T>>
+      elewise_unary_forward_kernel<real_type_t<T>>
           <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
               num_elements, op_type, input.get<T>(), output.get<T>());
     }
@@ -313,10 +313,10 @@ struct BackwardKernel {
     } else if (use_scalar(op_type)) {
       assert(scalar.has_value());
       size_t num_elements = input.shape.num_elements();
-      elewise_scalar_unary_backward_kernel<real_type<T>>
+      elewise_scalar_unary_backward_kernel<real_type_t<T>>
           <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
               num_elements,
-              static_cast<real_type<T>>(scalar.value()),
+              static_cast<real_type_t<T>>(scalar.value()),
               op_type,
               output.get<T>(),
               output_grad.get<T>(),
@@ -324,7 +324,7 @@ struct BackwardKernel {
               input_grad.get<T>());
     } else {
       size_t num_elements = input.shape.num_elements();
-      elewise_unary_backward_kernel<real_type<T>>
+      elewise_unary_backward_kernel<real_type_t<T>>
           <<<GET_BLOCKS(num_elements), CUDA_NUM_THREADS, 0, stream>>>(
               num_elements,
               op_type,

@@ -129,7 +129,7 @@ struct GetTensorPointerWOFunctor {
                    FieldID fid,
                    Context ctx,
                    Runtime *runtime) const {
-    return (void *)helperGetTensorPointerWO<real_type<DT>>(
+    return (void *)helperGetTensorPointerWO<real_type_t<DT>>(
         region, req, fid, ctx, runtime);
   }
 };
@@ -141,7 +141,7 @@ struct GetTensorPointerROFunctor {
                          FieldID fid,
                          Context ctx,
                          Runtime *runtime) const {
-    return (void const *)helperGetTensorPointerRO<real_type<DT>>(
+    return (void const *)helperGetTensorPointerRO<real_type_t<DT>>(
         region, req, fid, ctx, runtime);
   }
 };
@@ -153,7 +153,7 @@ struct GetTensorPointerRWFUnctor {
                    FieldID fid,
                    Context ctx,
                    Runtime *runtime) const {
-    return (void *)helperGetTensorPointerRW<real_type<DT>>(
+    return (void *)helperGetTensorPointerRW<real_type_t<DT>>(
         region, req, fid, ctx, runtime);
   }
 };

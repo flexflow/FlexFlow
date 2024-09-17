@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_ATTENTION_ATTRS_H
 #define _FLEXFLOW_ATTENTION_ATTRS_H
 
+#include "op-attrs/incoming_tensor_role.dtg.h"
 #include "op-attrs/ops/attention/multihead_attention_inputs.dtg.h"
 #include "op-attrs/ops/attention/multihead_attention_parallel_inputs.dtg.h"
 #include "op-attrs/ops/attention_attrs.dtg.h"
@@ -37,6 +38,9 @@ int get_kvSeqLength(MultiHeadAttentionInputs const &);
 int get_num_samples(MultiHeadAttentionParallelInputs const &);
 int get_num_samples(MultiHeadAttentionInputs const &);
 
+std::vector<IncomingTensorRole>
+    get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs const &);
+
 tl::expected<TensorShape, std::string>
     get_weights_shape(MultiHeadAttentionAttrs const &,
                       TensorShape const &input_q,
@@ -57,6 +61,22 @@ tl::expected<TensorShape, std::string>
                      TensorShape const &input_q,
                      TensorShape const &input_k,
                      TensorShape const &input_v);
+
+tl::expected<ParallelTensorDims, std::string>
+    get_weights_parallel_dims(MultiHeadAttentionAttrs const &,
+                              ParallelTensorShape const &input_q,
+                              ParallelTensorShape const &input_k,
+                              ParallelTensorShape const &input_v);
+tl::expected<ParallelTensorDims, std::string>
+    get_input_bias_parallel_dims(MultiHeadAttentionAttrs const &,
+                                 ParallelTensorShape const &input_q,
+                                 ParallelTensorShape const &input_k,
+                                 ParallelTensorShape const &input_v);
+tl::expected<ParallelTensorDims, std::string>
+    get_output_bias_parallel_dims(MultiHeadAttentionAttrs const &,
+                                  ParallelTensorShape const &input_q,
+                                  ParallelTensorShape const &input_k,
+                                  ParallelTensorShape const &input_v);
 
 tl::expected<ParallelTensorShape, std::string>
     get_weights_shape(MultiHeadAttentionAttrs const &,
