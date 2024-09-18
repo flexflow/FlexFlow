@@ -1,9 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_EXPECTED_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_EXPECTED_H
 
-#include "fmt/format.h"
 #include "utils/check_fmtable.h"
-#include <doctest/doctest.h>
+#include <fmt/format.h>
 #include <tl/expected.hpp>
 #include <utility>
 
@@ -43,16 +42,5 @@ std::ostream &operator<<(std::ostream &s, tl::expected<T, E> const &t) {
 }
 
 } // namespace FlexFlow
-
-namespace doctest {
-
-template <typename T, typename E>
-struct StringMaker<tl::expected<T, E>> {
-  static String convert(tl::expected<T, E> const &m) {
-    return toString(fmt::to_string(m));
-  }
-};
-
-} // namespace doctest
 
 #endif

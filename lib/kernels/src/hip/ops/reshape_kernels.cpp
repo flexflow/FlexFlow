@@ -47,7 +47,7 @@ struct BackwardKernel {
                   GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output) {
     float alpha = 1.0f;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<real_type<T>>),
+    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_add_with_scale<real_type_t<T>>),
                        GET_BLOCKS(input.shape.num_elements()),
                        CUDA_NUM_THREADS,
                        0,
@@ -55,7 +55,7 @@ struct BackwardKernel {
                        input.get<T>(),
                        output.get<T>(),
                        input.shape.num_elements(),
-                       static_cast<real_type<T>> alpha);
+                       static_cast<real_type_t<T>> alpha);
   }
 }
 

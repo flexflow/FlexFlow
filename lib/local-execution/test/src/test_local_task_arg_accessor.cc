@@ -4,7 +4,7 @@
 #include "local-execution/task_signature_impl.h"
 #include "utils/fmt/variant.h"
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("LocalTaskArgumentAccessor") {
@@ -140,5 +140,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 }
-
-} // namespace FlexFlow

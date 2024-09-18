@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/hash-utils.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 
