@@ -2615,20 +2615,23 @@ void RequestManager::add_tokens_to_spec_token_tree(
     TokenTree &spec_token_tree = request.speculative_token_trees[0];
     std::vector<std::shared_ptr<TokenTreeNode>> &last_layer =
         spec_token_tree.tree_layers.back();
+    std::vector<std::pair<double, int>> preallocated_vector;
+    preallocated_vector.reserve(get_max_tree_width());
     std::priority_queue<std::pair<double, int>,
                         std::vector<std::pair<double, int>>,
                         std::greater<std::pair<double, int>>>
-        child_probs_pq;
+        child_probs_pq(std::greater<std::pair<double, int>>(),
+                       std::move(preallocated_vector));
     int parent_pos = 0;
     for (auto const &parent_ptr : last_layer) {
       double parent_log_prob = parent_ptr->log_accumulated_prob;
       int child_start_idx =
           result_offset +
           parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
-      for (int child_pos = 0;
-           child_pos < BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
-           child_pos++) {
-        int result_idx = child_start_idx + child_pos;
+      for (int result_idx = child_start_idx;
+           result_idx <
+           child_start_idx + BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+           result_idx++) {
         double log_prob = log((double)ssm_inference_result.probs[result_idx]);
         if (log_prob == -std::numeric_limits<double>::infinity()) {
           continue;
@@ -2639,6 +2642,7 @@ void RequestManager::add_tokens_to_spec_token_tree(
         }
 
         double accumulated_log_prob = log_prob + parent_log_prob;
+
         if (child_probs_pq.size() == get_max_tree_width() and
             accumulated_log_prob > child_probs_pq.top().first) {
           // The current layer is full, and the new token has a higher
@@ -2670,7 +2674,8 @@ void RequestManager::add_tokens_to_spec_token_tree(
           accumulated_log_prob,
           parent_pos);
       spec_token_tree.tree_layers.back().push_back(node_ptr);
-      request.token_tree_nodes_pq.push(node_ptr);
+      request.token_tree_nodes_acc_prob_pair_pq.push(
+          std::make_pair(node_ptr, accumulated_log_prob));
     }
   }
 }
@@ -2730,13 +2735,14 @@ void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
   double current_added = 1.0;
 
   while (budget > 0 and current_added < num_tokens_to_decode) {
-    if (request.token_tree_nodes_pq.empty()) {
+    if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
       break;
     }
-    auto node_ptr = request.token_tree_nodes_pq.top();
-    request.token_tree_nodes_pq.pop();
+    auto [node_ptr, log_acc_prob] =
+        request.token_tree_nodes_acc_prob_pair_pq.top();
+    request.token_tree_nodes_acc_prob_pair_pq.pop();
     node_ptr->included = true;
-    current_added += exp(node_ptr->log_accumulated_prob);
+    current_added += exp(log_acc_prob);
     budget--;
   }
 }
@@ -2744,11 +2750,15 @@ void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
 void RequestManager::add_tokens_toward_memory_occupancy(int budget) {
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
+  std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>
+      global_token_tree_node_vector;
+  global_token_tree_node_vector.reserve(get_max_requests_per_batch());
   std::priority_queue<
       std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>,
       std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
       SharedTokenTreeNodePtrRequestGuidWeightedLess>
-      global_token_tree_node_pq;
+      global_token_tree_node_pq(SharedTokenTreeNodePtrRequestGuidWeightedLess(),
+                                std::move(global_token_tree_node_vector));
 
   // Initialie the priority queue with the top element in each request's token
   // tree
@@ -2760,12 +2770,13 @@ void RequestManager::add_tokens_toward_memory_occupancy(int budget) {
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    if (request.token_tree_nodes_pq.empty()) {
+    if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
       continue;
     }
-    if (!request.token_tree_nodes_pq.empty()) {
-      global_token_tree_node_pq.push({request.token_tree_nodes_pq.top(), guid});
-      request.token_tree_nodes_pq.pop();
+    if (!request.token_tree_nodes_acc_prob_pair_pq.empty()) {
+      global_token_tree_node_pq.push(
+          {request.token_tree_nodes_acc_prob_pair_pq.top().first, guid});
+      request.token_tree_nodes_acc_prob_pair_pq.pop();
     }
   }
 
@@ -2774,10 +2785,14 @@ void RequestManager::add_tokens_toward_memory_occupancy(int budget) {
     auto [node_ptr, guid] = global_token_tree_node_pq.top();
     global_token_tree_node_pq.pop();
     node_ptr->included = true;
-    if (!get_request_with_guid(guid).token_tree_nodes_pq.empty()) {
+    if (!get_request_with_guid(guid)
+             .token_tree_nodes_acc_prob_pair_pq.empty()) {
       global_token_tree_node_pq.push(
-          {get_request_with_guid(guid).token_tree_nodes_pq.top(), guid});
-      get_request_with_guid(guid).token_tree_nodes_pq.pop();
+          {get_request_with_guid(guid)
+               .token_tree_nodes_acc_prob_pair_pq.top()
+               .first,
+           guid});
+      get_request_with_guid(guid).token_tree_nodes_acc_prob_pair_pq.pop();
     }
     budget--;
   }
@@ -2791,21 +2806,30 @@ void RequestManager::add_tokens_toward_memory_occupancy(int budget) {
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    std::priority_queue<std::shared_ptr<TokenTreeNode>,
-                        std::vector<std::shared_ptr<TokenTreeNode>>,
-                        SharedTokenTreeNodePtrLess>()
-        .swap(request.token_tree_nodes_pq);
+    std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
+        _prealloc_vector;
+    _prealloc_vector.reserve(BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+    std::priority_queue<
+        std::pair<std::shared_ptr<TokenTreeNode>, double>,
+        std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>,
+        SharedTokenTreeNodePtrDoubleLess>(SharedTokenTreeNodePtrDoubleLess(),
+                                          std::move(_prealloc_vector))
+        .swap(request.token_tree_nodes_acc_prob_pair_pq);
   }
 }
 
 void RequestManager::add_tokens_toward_goodput(int budget) {
   // This is a helper data structure to store help the pruning of the token
   // trees across different requests.
+  std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>
+      global_token_tree_node_vector;
+  global_token_tree_node_vector.reserve(get_max_requests_per_batch());
   std::priority_queue<
       std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>,
       std::vector<std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid>>,
       SharedTokenTreeNodePtrRequestGuidLess>
-      global_token_tree_node_pq;
+      global_token_tree_node_pq(SharedTokenTreeNodePtrRequestGuidLess(),
+                                std::move(global_token_tree_node_vector));
 
   // Initialie the priority queue with the top element in each request's token
   // tree
@@ -2817,12 +2841,13 @@ void RequestManager::add_tokens_toward_goodput(int budget) {
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    if (request.token_tree_nodes_pq.empty()) {
+    if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
       continue;
     }
-    if (!request.token_tree_nodes_pq.empty()) {
-      global_token_tree_node_pq.push({request.token_tree_nodes_pq.top(), guid});
-      request.token_tree_nodes_pq.pop();
+    if (!request.token_tree_nodes_acc_prob_pair_pq.empty()) {
+      global_token_tree_node_pq.push(
+          {request.token_tree_nodes_acc_prob_pair_pq.top().first, guid});
+      request.token_tree_nodes_acc_prob_pair_pq.pop();
     }
   }
 
@@ -2833,10 +2858,14 @@ void RequestManager::add_tokens_toward_goodput(int budget) {
     node_ptr->included = true;
     // TODO: REMOVE THIS OUTPUT
     // std::cout << node_ptr->log_accumulated_prob << std::endl;
-    if (!get_request_with_guid(guid).token_tree_nodes_pq.empty()) {
+    if (!get_request_with_guid(guid)
+             .token_tree_nodes_acc_prob_pair_pq.empty()) {
       global_token_tree_node_pq.push(
-          {get_request_with_guid(guid).token_tree_nodes_pq.top(), guid});
-      get_request_with_guid(guid).token_tree_nodes_pq.pop();
+          {get_request_with_guid(guid)
+               .token_tree_nodes_acc_prob_pair_pq.top()
+               .first,
+           guid});
+      get_request_with_guid(guid).token_tree_nodes_acc_prob_pair_pq.pop();
     }
     budget--;
   }
@@ -2850,10 +2879,15 @@ void RequestManager::add_tokens_toward_goodput(int budget) {
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-    std::priority_queue<std::shared_ptr<TokenTreeNode>,
-                        std::vector<std::shared_ptr<TokenTreeNode>>,
-                        SharedTokenTreeNodePtrLess>()
-        .swap(request.token_tree_nodes_pq);
+    std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
+        _prealloc_vector;
+    _prealloc_vector.reserve(BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+    std::priority_queue<
+        std::pair<std::shared_ptr<TokenTreeNode>, double>,
+        std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>,
+        SharedTokenTreeNodePtrDoubleLess>(SharedTokenTreeNodePtrDoubleLess(),
+                                          std::move(_prealloc_vector))
+        .swap(request.token_tree_nodes_acc_prob_pair_pq);
   }
 }
 

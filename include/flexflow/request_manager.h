@@ -94,6 +94,16 @@ struct SharedTokenTreeNodePtrLess {
   }
 };
 
+// A comparator for std::pair<std::shared_ptr<TokenTreeNode>, double>
+// This is used to construct a max heap for the token tree nodes
+struct SharedTokenTreeNodePtrDoubleLess {
+  bool operator()(
+      std::pair<std::shared_ptr<TokenTreeNode>, double> const &lhs,
+      std::pair<std::shared_ptr<TokenTreeNode>, double> const &rhs) const {
+    return lhs.second < rhs.second;
+  }
+};
+
 class TokenTree {
 public:
   std::vector<std::vector<std::shared_ptr<TokenTreeNode>>> tree_layers = {};
@@ -196,14 +206,26 @@ struct Request {
   // 2. Committing phase after the target model verification
   StreamingCacheInfo streaming_cache_info;
 
-  std::priority_queue<std::shared_ptr<TokenTreeNode>,
-                      std::vector<std::shared_ptr<TokenTreeNode>>,
-                      SharedTokenTreeNodePtrLess>
-      token_tree_nodes_pq;
+  std::priority_queue<
+      std::pair<std::shared_ptr<TokenTreeNode>, double>,
+      std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>,
+      SharedTokenTreeNodePtrDoubleLess>
+      token_tree_nodes_acc_prob_pair_pq;
 
   double get_length_weight();
   void set_slo_ratio(double slo_ratio_);
   double get_slo_ratio();
+
+  Request() {
+    std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
+        _prealloc_vector;
+    _prealloc_vector.reserve(BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+    token_tree_nodes_acc_prob_pair_pq = std::priority_queue<
+        std::pair<std::shared_ptr<TokenTreeNode>, double>,
+        std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>,
+        SharedTokenTreeNodePtrDoubleLess>(SharedTokenTreeNodePtrDoubleLess(),
+                                          std::move(_prealloc_vector));
+  }
 };
 
 class RequestManager {
