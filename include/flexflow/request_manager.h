@@ -361,11 +361,12 @@ public:
         std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &rhs)
         const;
   };
-  struct SharedTokenTreeNodePtrRequestGuidLess {
+  struct SharedTokenTreeNodePtrDoubleRequestGuidLess {
     bool operator()(
-        std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &lhs,
-        std::pair<std::shared_ptr<TokenTreeNode>, RequestGuid> const &rhs)
-        const;
+        std::tuple<std::shared_ptr<TokenTreeNode>, double, RequestGuid> const
+            &lhs,
+        std::tuple<std::shared_ptr<TokenTreeNode>, double, RequestGuid> const
+            &rhs) const;
   };
 
 private:
