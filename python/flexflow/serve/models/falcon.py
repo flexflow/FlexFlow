@@ -115,6 +115,8 @@ class FlexFlowFalcon(FlexFlowModel):
             0,
         ]
 
+        print("token: ", token.dims)
+
         for i in range(self.falcon_config.n_layer):
             ffmodel.set_transformer_layer_id(i)
 
@@ -138,9 +140,21 @@ class FlexFlowFalcon(FlexFlowModel):
                     name=f"layers.{i}.input_layernorm",
                 )
 
+            # print("att_norm: ", att_norm.dims)
+
+            qkv_proj = ffmodel.dense(
+                att_norm,
+                3 * self.falcon_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attention.qkv_proj",
+            )
+
+            # print("qkv_proj: ", qkv_proj.dims)
+
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
-                mha = ffmodel.spec_inc_multiquery_self_attention(
-                    att_norm,
+                o_proj = ffmodel.spec_inc_multiquery_self_attention(
+                    qkv_proj,
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
                     self.falcon_config.n_head_kv,
@@ -156,8 +170,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     name=f"layers.{i}.self_attention",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
-                mha = ffmodel.inc_multiquery_self_attention_verify(
-                    att_norm,
+                o_proj = ffmodel.inc_multiquery_self_attention_verify(
+                    qkv_proj,
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
                     self.falcon_config.n_head_kv,
@@ -173,8 +187,8 @@ class FlexFlowFalcon(FlexFlowModel):
                     name=f"layers.{i}.self_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multiquery_self_attention(
-                    att_norm,
+                o_proj = ffmodel.inc_multiquery_self_attention(
+                    qkv_proj,
                     self.falcon_config.hidden_size,
                     self.falcon_config.n_head,
                     self.falcon_config.n_head_kv,
@@ -191,6 +205,18 @@ class FlexFlowFalcon(FlexFlowModel):
                 )
             else:
                 assert False
+            
+            # print("mode: ", self.mode)
+            # print(self.falcon_config.__dict__)
+            # print("o_proj: ", o_proj.dims)
+
+            mha = ffmodel.dense(
+                o_proj,
+                self.falcon_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attention.o_proj"
+            )
 
             dense_h_to_4h = ffmodel.dense(
                 att_norm,

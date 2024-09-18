@@ -142,9 +142,17 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 name=f"layers.{i}.ln_1",
             )
 
-            assert self.mode == InferenceMode.INC_DECODING_MODE
-            mha = ffmodel.inc_multiquery_self_attention(
+            qkv_proj = ffmodel.dense(
                 ln_1,
+                3 * self.starcoder_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.qkv_proj",
+            )
+
+            assert self.mode == InferenceMode.INC_DECODING_MODE
+            o_proj = ffmodel.inc_multiquery_self_attention(
+                qkv_proj,
                 self.starcoder_config.hidden_size,
                 self.starcoder_config.num_attention_heads,
                 self.starcoder_config.n_head_kv,
@@ -160,6 +168,14 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 None,  # kernel initializer
                 False,  # apply_rotary_embedding
                 name=f"layers.{i}.attn.c_attn",
+            )
+
+            mha = ffmodel.dense(
+                o_proj,
+                self.starcoder_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.o_proj"
             )
 
             residual, l2_norm = ffmodel.residual_layer_norm(

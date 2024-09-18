@@ -129,9 +129,17 @@ class FlexFlowMPT(FlexFlowModel):
                     name=f"layers.{i}.norm_1",
                 )
 
+            qkv_proj = ffmodel.dense(
+                layernorm_output,
+                3 * self.falcon_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.qkv_proj",
+            )
+
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
-                attn_outputs = ffmodel.spec_inc_multihead_self_attention(
-                    layernorm_output,
+                o_proj = ffmodel.spec_inc_multihead_self_attention(
+                    qkv_proj,
                     self.mpt_config.hidden_size,
                     self.mpt_config.n_heads,
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
@@ -151,8 +159,8 @@ class FlexFlowMPT(FlexFlowModel):
                     name=f"layers.{i}.attn",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
-                attn_outputs = ffmodel.inc_multihead_self_attention_verify(
-                    layernorm_output,
+                o_proj = ffmodel.inc_multihead_self_attention_verify(
+                    qkv_proj,
                     self.mpt_config.hidden_size,
                     self.mpt_config.n_heads,
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
@@ -172,8 +180,8 @@ class FlexFlowMPT(FlexFlowModel):
                     name=f"layers.{i}.attn",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                attn_outputs = ffmodel.inc_multihead_self_attention(
-                    layernorm_output,
+                o_proj = ffmodel.inc_multihead_self_attention(
+                    qkv_proj,
                     self.mpt_config.hidden_size,
                     self.mpt_config.n_heads,
                     self.mpt_config.hidden_size // self.mpt_config.n_heads,
@@ -194,6 +202,14 @@ class FlexFlowMPT(FlexFlowModel):
                 )
             else:
                 assert False
+
+            attn_outputs = ffmodel.dense(
+                o_proj,
+                self.mpt_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.o_proj"
+            )
 
             hidden_states, layernorm_output = ffmodel.residual_layer_norm(
                 attn_outputs,

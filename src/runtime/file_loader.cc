@@ -287,6 +287,8 @@ void load_attention_weights_to_dense_v2(DT *ptr,
   size_t one_weight_file_size =
       num_heads * single_proj_size; // size of each of Q/K/V/O for all heads
 
+  std::cout<<"hidden_dim: "<<hidden_dim<<", qkv_inner_dim: "<<qkv_inner_dim<<", num_heads: "<<num_heads<<std::endl;
+
   size_t q_size = one_weight_file_size, o_size = one_weight_file_size;
   size_t k_size = single_proj_size * num_kv_heads,
          v_size = single_proj_size * num_kv_heads;
@@ -301,8 +303,8 @@ void load_attention_weights_to_dense_v2(DT *ptr,
                        tensor_parallelism_degree;
   if (!load_o_proj) {
     for (auto filename : weight_filenames) {
-      std::cout << "Loading weight file " << filename << " to dense"
-                << std::endl;
+      // std::cout << "Loading weight file " << filename << " to dense"
+      //           << std::endl;
       std::string weight_filepath = join_path({weights_folder, filename});
 
       int data_index = 0;
@@ -349,14 +351,14 @@ void load_attention_weights_to_dense_v2(DT *ptr,
           }
         }
       }
-      std::cout << "host array going out of scope, releasing" << endl;
+      // std::cout << "host array going out of scope, releasing" << endl;
       base_index += one_partition_size;
       file_index++;
     }
     assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
                              tensor_parallelism_degree);
   } else {
-    std::cout << "Loading weight file " << o_file << std::endl;
+    // std::cout << "Loading weight file " << o_file << std::endl;
     std::string weight_filepath = join_path({weights_folder, o_file});
 
     std::ifstream in(weight_filepath, std::ios::in | std::ios::binary);
@@ -371,12 +373,29 @@ void load_attention_weights_to_dense_v2(DT *ptr,
     in.read((char *)host_array.data(), loaded_data_size);
     size_t in_get_size = in.gcount();
 
+    DT temp;
+
+    for(int i = 0; i < one_weight_file_size; i++) {
+      temp = host_array.at(i);
+    }
+
+    // std::cout<<"o_proj loaded into host array, total size: "<<one_weight_file_size<<std::endl;
+
+
     if (in_get_size != loaded_data_size) {
       std::cout << "load data error" << std::endl;
       assert(false);
     }
     assert(one_weight_file_size == host_array.size());
     int data_index = 0;
+
+    // std::cout<<"read data size checked"<<std::endl;
+
+    for(int i = 0; i < one_weight_file_size; i++) {
+      ptr[i] = temp;
+    }
+
+    // std::cout<<"ptr allocation good"<<std::endl;
 
     int one_partition_size =
         qkv_inner_dim * (num_heads / tensor_parallelism_degree);
@@ -387,6 +406,7 @@ void load_attention_weights_to_dense_v2(DT *ptr,
     in.close();
 
     assert(data_index == one_weight_file_size);
+    // std::cout << "Loaded weight file " << o_file << std::endl;
   }
 }
 
@@ -898,11 +918,16 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   for (int i = 0; i < weight->num_dims; i++) {
     dims_vec.push_back(weight->dims[i]);
     volume *= weight->dims[i];
+    // std::cout<<l->name<<" dim "<<i<<": "<<weight->dims[i]<<std::endl;
   }
   assert(data_type_size(weight->data_type) == sizeof(DT));
   DT *data = (DT *)malloc(sizeof(DT) * volume);
 
-  printf("loading weight for %s\n", l->name);
+  // printf("loading weight for %s, shapes: ", l->name);
+  // for(int i = 0; i < weight->num_dims; i++) {
+  //   printf("%d ", weight->dims[i]);
+  // }
+  // printf("\n");
 
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
   bool is_attn_proj = false, is_o_proj = false;
@@ -911,7 +936,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   // self_attn.qkv_proj or self_attn.o_proj
   // so looking for self_attn. in the name can determine if it is an attention
   // projection
-  if (weight_filename.find("self_attn.") != std::string::npos) {
+  if (weight_filename.find("self_attn.") != std::string::npos || weight_filename.find("self_attention.") != std::string::npos) {
     size_t pos = weight_filename.find(".o_proj");
     if (pos != std::string::npos) {
       weight_filename.replace(pos, std::string(".o_proj").length(), "");

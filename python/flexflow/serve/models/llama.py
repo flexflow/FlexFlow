@@ -196,6 +196,10 @@ class FlexFlowLLAMA(FlexFlowModel):
             else:
                 assert False
 
+            # print("mode: ", self.mode)
+            # print(self.llama_config.__dict__)
+            # print("o_proj: ", mha.dims)
+
             o_proj = ffmodel.dense(
                 mha,
                 self.llama_config.hidden_size,

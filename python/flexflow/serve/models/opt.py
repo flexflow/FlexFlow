@@ -145,9 +145,17 @@ class FlexFlowOPT(FlexFlowModel):
                 hidden_states = ffmodel.add(token, positional_embedding)
                 residual = hidden_states
 
+            qkv_proj = ffmodel.dense(
+               hidden_states,
+                3 * self.opt_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.qkv_proj",
+            )
+
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
-                mha = ffmodel.spec_inc_multihead_self_attention(
-                    hidden_states,
+                o_proj = ffmodel.spec_inc_multihead_self_attention(
+                    qkv_proj,
                     self.opt_config.hidden_size,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
@@ -166,8 +174,8 @@ class FlexFlowOPT(FlexFlowModel):
                     name=f"layers.{i}.self_attn",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
-                mha = ffmodel.inc_multihead_self_attention_verify(
-                    hidden_states,
+                o_proj = ffmodel.inc_multihead_self_attention_verify(
+                    qkv_proj,
                     self.opt_config.hidden_size,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
@@ -186,8 +194,8 @@ class FlexFlowOPT(FlexFlowModel):
                     name=f"layers.{i}.self_attn",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
-                mha = ffmodel.inc_multihead_self_attention(
-                    hidden_states,
+                o_proj = ffmodel.inc_multihead_self_attention(
+                    qkv_proj,
                     self.opt_config.hidden_size,
                     self.opt_config.num_attention_heads,
                     self.opt_config.hidden_size // self.opt_config.num_attention_heads,
@@ -208,6 +216,13 @@ class FlexFlowOPT(FlexFlowModel):
             else:
                 assert False
 
+            mha = ffmodel.dense(
+                o_proj,
+                self.opt_config.hidden_size,
+                ActiMode.AC_MODE_NONE,
+                False,
+                name=f"layers.{i}.self_attn.o_proj"
+            )
             # This is either a before or after attention LayerNorm. In both cases, we need to compute the LN here.
             residual, ff_norm = ffmodel.add_bias_residual_layer_norm(
                 mha,

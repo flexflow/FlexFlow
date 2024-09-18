@@ -60,6 +60,7 @@ void FALCON::create_falcon_model(FFModel &ff,
                               "word_embeddings");
 
   Tensor mha = nullptr, mlp_output = nullptr;
+  Tensor qkv_proj = nullptr, o_proj = nullptr;
   Tensor res_ln_outputs[2] = {nullptr, nullptr};
 
   for (int i = 0; i < falcon_config.n_layer; i++) {
@@ -97,10 +98,27 @@ void FALCON::create_falcon_model(FFModel &ff,
       att_norm = res_ln_outputs[1];
     }
 
+    qkv_proj = ff.dense(
+        att_norm,
+        falcon_config.hidden_size *
+            3, // q, k, v. need to change if want to remove replication.
+               // (q_heads + 2 * kv_heads) * proj_size
+        AC_MODE_NONE,
+        false,         // seems like llama does not use bias
+        DT_NONE,       // what is this
+        nullptr,       // ?
+        nullptr,       // ?
+        nullptr,       // ?
+        REG_MODE_NONE, // no regularization
+        0.0f,          // no dropout
+        std::string("layers." + std::to_string(i) + ".self_attn.qkv_proj")
+            .c_str());
+    qkv_proj->print("qkv_proj");
+
     switch (mode) {
       case BEAM_SEARCH_MODE: {
-        mha = ff.spec_inc_multiquery_self_attention(
-            att_norm,
+        o_proj = ff.spec_inc_multiquery_self_attention(
+            qkv_proj,
             falcon_config.hidden_size,
             falcon_config.n_head,
             falcon_config.n_head_kv,
@@ -124,8 +142,8 @@ void FALCON::create_falcon_model(FFModel &ff,
       }
 
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multiquery_self_attention_verify(
-            att_norm,
+        o_proj = ff.inc_multiquery_self_attention_verify(
+            qkv_proj,
             falcon_config.hidden_size,
             falcon_config.n_head,
             falcon_config.n_head_kv,
@@ -149,8 +167,8 @@ void FALCON::create_falcon_model(FFModel &ff,
       }
 
       case INC_DECODING_MODE: {
-        mha = ff.inc_multiquery_self_attention(
-            att_norm,
+        o_proj = ff.inc_multiquery_self_attention(
+            qkv_proj,
             falcon_config.hidden_size,
             falcon_config.n_head,
             falcon_config.n_head_kv,
@@ -176,6 +194,21 @@ void FALCON::create_falcon_model(FFModel &ff,
         assert(false);
       }
     }
+
+    mha = ff.dense(
+        o_proj,
+        falcon_config.hidden_size,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers." + std::to_string(i) + ".self_attn.o_proj")
+            .c_str());
+    mha->print("mha");
 
     Tensor dense_h_to_4h = ff.dense(
         att_norm,
