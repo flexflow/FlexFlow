@@ -154,27 +154,29 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
 
 ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
     OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
-  return map_values(binding.get_arg_bindings(), [&](OpArgSpec const &arg_binding) {
-    return arg_binding.template visit<ConcreteArgSpec>(
-        overload{[&](OpArgRefSpec const &s) {
-                   return this->resolve_op_arg_ref_spec(s, op_guid);
-                 },
-                 [&](RuntimeArgRefSpec const &s) {
-                   return this->resolve_runtime_arg_ref_spec(s);
-                 },
-                 [](ConcreteArgSpec const &s) { return s; }});
-  });
+  return map_values(
+      binding.get_arg_bindings(), [&](OpArgSpec const &arg_binding) {
+        return arg_binding.template visit<ConcreteArgSpec>(
+            overload{[&](OpArgRefSpec const &s) {
+                       return this->resolve_op_arg_ref_spec(s, op_guid);
+                     },
+                     [&](RuntimeArgRefSpec const &s) {
+                       return this->resolve_runtime_arg_ref_spec(s);
+                     },
+                     [](ConcreteArgSpec const &s) { return s; }});
+      });
 }
 
 ArgSlotsBacking LocalSlotsBacking::construct_arg_slots_backing(
     TaskBinding const &binding) const {
-  return map_values(binding.get_arg_bindings(), [&](TaskArgSpec const &arg_binding) {
-    return arg_binding.template visit<ConcreteArgSpec>(
-        overload{[&](RuntimeArgRefSpec const &s) {
-                   return this->resolve_runtime_arg_ref_spec(s);
-                 },
-                 [](ConcreteArgSpec const &s) { return s; }});
-  });
+  return map_values(
+      binding.get_arg_bindings(), [&](TaskArgSpec const &arg_binding) {
+        return arg_binding.template visit<ConcreteArgSpec>(
+            overload{[&](RuntimeArgRefSpec const &s) {
+                       return this->resolve_runtime_arg_ref_spec(s);
+                     },
+                     [](ConcreteArgSpec const &s) { return s; }});
+      });
   ;
 }
 

@@ -6,7 +6,7 @@
 namespace FlexFlow {
 
 bool is_invocation_valid(TaskSignature const &sig, TaskInvocation const &inv);
-  
+
 }
 
 #endif
