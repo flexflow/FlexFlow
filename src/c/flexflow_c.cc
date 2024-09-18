@@ -18,6 +18,7 @@
 #include "flexflow/mapper.h"
 #include "flexflow/request_manager.h"
 #include "flexflow/utils/file_loader.h"
+#include <vector>
 
 using namespace Legion;
 using namespace FlexFlow;
@@ -1606,7 +1607,8 @@ void flexflow_model_generate(flexflow_model_t handle_,
                 text_str.c_str(),
                 max_seq_length);
   }
-  ConstantEmissionMachine emission_machine(1.0);
+  std::vector<std::pair<double, double>> slo_ratios = {std::pair(10.0, 1.0)};
+  ConstantEmissionMachine emission_machine(1.0, slo_ratios);
   std::vector<GenerationResult> results =
       handle->generate(prompts, emission_machine);
   // If the prompt exceeds max seq len, check that we return the prompt with no

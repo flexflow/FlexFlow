@@ -2158,8 +2158,13 @@ std::vector<GenerationResult>
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 
-  for (GenerationRequest &request : requests) {
-    RequestManager::RequestGuid guid = rm->register_new_request(request);
+  for (size_t i = 0; i < requests.size(); i++) {
+    requests[i].slo_ratio = emission_machine.sample_slo_ratio();
+    printf("Prompt[%ld] with slo %.3f: %s\n",
+           i,
+           requests[i].slo_ratio,
+           requests[i].prompt.c_str());
+    RequestManager::RequestGuid guid = rm->register_new_request(requests[i]);
     if (guid != RequestManager::INVALID_GUID) {
       guids.push_back(guid);
     }
@@ -2177,7 +2182,7 @@ std::vector<GenerationResult>
                       EmissionMachine &emission_machine) {
   std::vector<GenerationRequest> requests;
   for (std::string &prompt : prompts) {
-    requests.push_back(GenerationRequest(prompt, 1.0));
+    requests.push_back(GenerationRequest(prompt, -1.0));
   }
   return generate(requests, emission_machine);
 }

@@ -20,6 +20,7 @@
 #include "models/mpt.h"
 #include "models/opt.h"
 #include "models/starcoder.h"
+#include <cassert>
 #include <wordexp.h>
 
 #include <nlohmann/json.hpp>
@@ -300,7 +301,6 @@ void FlexFlow::top_level_task(Task const *task,
 
   rm->start_background_server(&model);
 
-  int total_num_requests = 0;
   {
     using json = nlohmann::json;
     std::ifstream file_handle(file_paths.prompt_file_path);
@@ -309,18 +309,34 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
-    std::vector<GenerationRequest> requests;
-    for (auto &prompt : prompt_json) {
-      std::string text = prompt["prompt"].get<std::string>();
-      double slo_ratio = prompt["slo_ratio"].get<double>();
-      printf("Prompt[%d] with slo %.3f: %s\n",
-             total_num_requests,
-             slo_ratio,
-             text.c_str());
-      total_num_requests++;
-      requests.push_back(GenerationRequest(text, slo_ratio));
+
+    // Parse slo_ratios
+    std::vector<std::pair<double, double>> slo_ratios;
+    if (prompt_json[0].contains("slo_ratios")) {
+      for (auto &[key, value] : prompt_json[0]["slo_ratios"].items()) {
+        slo_ratios.emplace_back(std::stod(key), value.get<double>());
+      }
     }
-    PoissonEmissionMachine emission_machine(1.0);
+    double total =
+        std::accumulate(slo_ratios.begin(),
+                        slo_ratios.end(),
+                        0.0,
+                        [](double sum, std::pair<double, double> const &pair) {
+                          return sum + pair.second;
+                        });
+    if (std::abs(total - 1.0) > 1e-6) {
+      std::cerr << "Error: slo_ratios values do not sum to 1. Total sum: "
+                << total << std::endl;
+      assert(false);
+    }
+
+    std::vector<GenerationRequest> requests;
+    for (size_t i = 1; i < prompt_json.size(); ++i) {
+      requests.push_back(
+          GenerationRequest(prompt_json[i]["prompt"].get<std::string>(), -1.0));
+    }
+    // PoissonEmissionMachine emission_machine(1.0, slo_ratios);
+    ConstantEmissionMachine emission_machine(-1, slo_ratios);
     std::vector<GenerationResult> result =
         model.generate(requests, emission_machine);
   }

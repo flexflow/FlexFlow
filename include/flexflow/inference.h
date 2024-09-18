@@ -66,21 +66,32 @@ public:
   EmissionMode mode;
   double last_request_time_ms;
   double req_per_s;
+  std::vector<std::pair<double, double>> slo_ratios;
 
-  EmissionMachine(EmissionMode mode_, double req_per_s_)
-      : mode(mode_), last_request_time_ms(0), req_per_s(req_per_s_) {}
+  EmissionMachine(EmissionMode mode_,
+                  double req_per_s_,
+                  std::vector<std::pair<double, double>> slo_ratios_)
+      : mode(mode_), last_request_time_ms(0), req_per_s(req_per_s_),
+        slo_ratios(slo_ratios_) {
+    // cumulate the slo ratios for sampling
+    for (size_t i = 1; i < slo_ratios.size(); i++) {
+      slo_ratios[i].second += slo_ratios[i - 1].second;
+    }
+  }
   void wait_until_next_request();
 
   // Simulate next request arrival time
   virtual double get_next_interval_ms() = 0;
+  double sample_slo_ratio();
 };
 
 class ConstantEmissionMachine : public EmissionMachine {
 public:
   double interval_ms;
 
-  ConstantEmissionMachine(double req_per_s_)
-      : EmissionMachine(EmissionMode::Constant, req_per_s_),
+  ConstantEmissionMachine(double req_per_s_,
+                          std::vector<std::pair<double, double>> slo_ratios_)
+      : EmissionMachine(EmissionMode::Constant, req_per_s_, slo_ratios_),
         interval_ms(req_per_s_ > 0 ? 1e3 / req_per_s_ : 0) {}
 
   double get_next_interval_ms() override;
@@ -90,9 +101,10 @@ class PoissonEmissionMachine : public EmissionMachine {
 public:
   double lambda;
 
-  PoissonEmissionMachine(double req_per_s_)
-      : EmissionMachine(EmissionMode::Poisson, req_per_s_), lambda(req_per_s_) {
-  }
+  PoissonEmissionMachine(double req_per_s_,
+                         std::vector<std::pair<double, double>> slo_ratios_)
+      : EmissionMachine(EmissionMode::Poisson, req_per_s_, slo_ratios_),
+        lambda(req_per_s_) {}
 
   double get_next_interval_ms() override;
 };
