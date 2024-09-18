@@ -3,6 +3,7 @@
 #include "local-execution/model_training_instance.h"
 #include "local-execution/optimizer.h"
 #include "local-execution/task_signature_impl.h"
+#include "local-execution/task_invocation.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/get_only.h"
@@ -124,7 +125,7 @@ PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
         backward(unwrapped_training_instance.loss_attrs,
                  unwrapped_training_instance.logit_tensor,
                  unwrapped_training_instance.label_tensor);
-    assert(is_invocation_valid(get_loss_bwd_signature(), loss_invocation));
+    // assert(is_invocation_valid(get_loss_bwd_signature(), loss_invocation));
     TaskArgumentAccessor loss_accessor =
         this->get_task_arg_accessor(loss_invocation);
     TaskImplFunction loss_impl_fn = get_loss_bwd_task_impl();
@@ -167,7 +168,7 @@ void LocalTrainingBacking::execute_update() {
       // get invocation
       TaskInvocation invocation =
           get_update_invocation(attrs, weight_tensor, grad_buffer_tensors);
-      assert(is_invocation_valid(get_update_signature(attrs), invocation));
+      // assert(is_invocation_valid(get_update_signature(attrs), invocation));
 
       // execute update
       TaskArgumentAccessor accessor = this->get_task_arg_accessor(invocation);

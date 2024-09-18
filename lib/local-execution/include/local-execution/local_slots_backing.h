@@ -7,7 +7,7 @@
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/per_device_op_state.h"
 #include "local-execution/runtime_arg_config.h"
-#include "local-execution/task_invocation.h"
+#include "local-execution/task_invocation.dtg.h"
 
 namespace FlexFlow {
 

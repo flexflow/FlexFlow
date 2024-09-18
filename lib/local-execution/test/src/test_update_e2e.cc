@@ -4,7 +4,7 @@
 #include "kernels/managed_per_device_ff_handle.h"
 #include "local-execution/local_training_backing.h"
 #include "pcg/computation_graph_builder.h"
-#include "pcg/optimizer_attrs.h"
+#include "pcg/optimizer_attrs.dtg.h"
 #include "test_utils.h"
 
 namespace FlexFlow {
@@ -16,8 +16,8 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
 
     RuntimeArgConfig runtime_arg_config = RuntimeArgConfig{
         DeviceSpecific<PerDeviceFFHandle>::create(managed_handle.raw_handle()),
-        EnableProfiling::NO,
-        ProfilingSettings{/*warmup_iters=*/0, /*measure_iters=*/0}};
+        EnableProfiling::YES,
+        ProfilingSettings{/*warmup_iters=*/0, /*measure_iters=*/1}};
 
     // construct graph
     ComputationGraphBuilder cg_builder;

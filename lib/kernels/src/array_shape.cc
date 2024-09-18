@@ -1,4 +1,5 @@
 #include "kernels/array_shape.h"
+#include "op-attrs/dim_ordered/slice.h"
 #include "utils/containers/product.h"
 
 namespace FlexFlow {
@@ -18,6 +19,9 @@ ArrayShape::ArrayShape(TensorShape const &shape)
 
 ArrayShape::ArrayShape(std::vector<std::size_t> const &input_dims)
     : dims(input_dims) {}
+
+ArrayShape::ArrayShape(LegionTensorDims const &legion_tensor_dims)
+    : dims(legion_tensor_dims) {}
 
 std::size_t ArrayShape::get_volume() const {
   return this->num_elements();
@@ -51,33 +55,19 @@ std::size_t ArrayShape::at(ff_dim_t idx) const {
 }
 
 ArrayShape ArrayShape::sub_shape(legion_dim_t start, ff_dim_t end) const {
-  NOT_IMPLEMENTED();
+  legion_dim_t legion_end = legion_dim_from_ff_dim(end, num_dims());
+  return this->sub_shape(start, legion_end);
 }
 
 ArrayShape ArrayShape::sub_shape(std::optional<ff_dim_t> start,
                                  std::optional<ff_dim_t> end) const {
-  std::vector<size_t> new_shape;
-  ff_dim_t start_idx = start.value_or(ff_dim_t{0});
-  ff_dim_t end_idx = end.value_or(ff_dim_t{this->num_dims()});
-
-  while (start_idx < end_idx) {
-    new_shape.push_back(this->at(start_idx));
-    start_idx = ff_dim_t{start_idx.value + 1};
-  }
-  return ArrayShape{new_shape};
+  return ArrayShape{legion_dims_from_ff_dims(
+      slice(ff_ordered_from_legion_ordered(this->dims), start, end))};
 }
 
 ArrayShape ArrayShape::sub_shape(std::optional<legion_dim_t> start,
                                  std::optional<legion_dim_t> end) const {
-  std::vector<size_t> new_shape;
-  legion_dim_t start_idx = start.value_or(legion_dim_t{0});
-  legion_dim_t end_idx = end.value_or(legion_dim_t{this->num_dims()});
-
-  while (start_idx < end_idx) {
-    new_shape.push_back(this->at(start_idx));
-    start_idx = add_to_legion_dim(start_idx, 1);
-  }
-  return ArrayShape{new_shape};
+  return ArrayShape{slice(this->dims, start, end)};
 }
 
 std::optional<std::size_t> ArrayShape::at_maybe(legion_dim_t index) const {

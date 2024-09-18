@@ -34,9 +34,9 @@ TaskInvocation sgd_update(SGDOptimizerAttrs const &attrs,
 
   if (CHOSEN_SYNC_TYPE == ParamSync::NCCL) {
     b.bind_arg(HANDLE, ff_handle());
-    return {task_id_t::SGD_UPD_NCCL_TASK_ID, b};
+    return TaskInvocation{task_id_t::SGD_UPD_NCCL_TASK_ID, b};
   } else {
-    return {task_id_t::SGD_UPD_PS_TASK_ID, b};
+    return TaskInvocation{task_id_t::SGD_UPD_PS_TASK_ID, b};
   }
 }
 
@@ -123,9 +123,10 @@ TaskInvocation adam_update(AdamOptimizerAttrs const &attrs,
 
   if (CHOSEN_SYNC_TYPE == ParamSync::NCCL) {
     b.bind_arg(HANDLE, ff_handle());
-    return {task_id_t::ADAM_UPD_NCCL_TASK_ID, b};
+    return TaskInvocation{task_id_t::ADAM_UPD_NCCL_TASK_ID, b};
+  } else {
+    return TaskInvocation{task_id_t::ADAM_UPD_PS_TASK_ID, b};
   }
-  return {task_id_t::ADAM_UPD_PS_TASK_ID, b};
 }
 
 static void adam_update_task_impl(TaskArgumentAccessor const &acc) {

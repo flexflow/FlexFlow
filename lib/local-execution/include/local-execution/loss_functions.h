@@ -17,7 +17,7 @@
 #define _FLEXFLOW_LOCAL_EXECUTION_INCLUDE_LOCAL_EXECUTION_LOSS_FUNCTIONS_H_
 
 #include "local-execution/task_impl_function.dtg.h"
-#include "local-execution/task_invocation.h"
+#include "local-execution/task_invocation.dtg.h"
 #include "local-execution/task_signature.h"
 #include "op-attrs/ops/loss_functions.h"
 

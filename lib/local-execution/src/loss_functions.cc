@@ -41,7 +41,7 @@ TaskInvocation
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(PROFILING, profiling_settings());
 
-  return {task_id_t::LOSS_BWD_TASK_ID, b};
+  return TaskInvocation{task_id_t::LOSS_BWD_TASK_ID, b};
 }
 
 static void backward_task_impl(TaskArgumentAccessor const &acc) {
@@ -51,7 +51,7 @@ static void backward_task_impl(TaskArgumentAccessor const &acc) {
   auto logit = acc.get_tensor<Permissions::RO>(LOGIT);
   auto label = acc.get_tensor<Permissions::RO>(LABEL);
   int batch_size = logit.shape.at(legion_dim_t{1});
-  // assuming logit shape is [parallel dim(?), batch dim, num classes]
+  // assuming logit shape is [batch dim, num classes]
 
   LossFunction loss_type = get_loss_function(attrs);
   float scale_factor = 1.0f / batch_size;
@@ -61,7 +61,7 @@ static void backward_task_impl(TaskArgumentAccessor const &acc) {
   }
 
   if (loss_type == LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY) {
-    // label shape is [parallel dim(?), batch dim, 1]
+    // label shape is [batch dim, 1]
     auto scce_attrs = attrs.get<SparseCategoricalCrossEntropyLossAttrs>();
     size_t ndim = logit.shape.num_dims();
     int num_classes = logit.shape.at(legion_dim_t{0});
