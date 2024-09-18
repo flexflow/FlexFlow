@@ -884,6 +884,10 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
   bool request_completed = false;
   int nb_requests_decoded = 0;
+  long long int current_time = Realm::Clock::current_time_in_microseconds();
+  profiling.llm_step_times.push_back((current_time - profiling.llm_step_start) *
+                                     1e-3);
+
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -902,12 +906,20 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     request.tokens.push_back(
         result.token_ids[request.first_token_offset_in_batch]);
 
+    request.decode_latency_ms =
+        (current_time - profiling_requests[guid].start_decoding_time) * 1e-3;
     profiling_requests[guid].llm_decoding_steps++;
     nb_requests_decoded++;
     if (request.tokens.back() == eos_token_id or
         request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
       request_complete_clean_up(request_index, true);
+    } else if (slo_violation_early_termination and
+               request.decode_latency_ms >
+                   get_request_expected_latency(request)) {
+      // The request violates the SLO, drop that request
+      request_completed = true;
+      request_complete_clean_up(request_index, false);
     }
 
     if (verbose) {
@@ -916,10 +928,6 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
                 << output << std::endl;
     }
   }
-  profiling.llm_step_times.push_back(
-      (Realm::Clock::current_time_in_microseconds() -
-       profiling.llm_step_start) *
-      1e-3);
   profiling.requests_per_step.push_back(nb_requests_decoded);
   profiling.generated_tokens_per_step.push_back(nb_requests_decoded);
   return request_completed;
