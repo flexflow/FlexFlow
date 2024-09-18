@@ -131,10 +131,10 @@ class FlexFlowMPT(FlexFlowModel):
 
             qkv_proj = ffmodel.dense(
                 layernorm_output,
-                3 * self.falcon_config.hidden_size,
+                3 * self.mpt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers.{i}.self_attn.qkv_proj",
+                name=f"layers.{i}.attn.qkv_proj",
             )
 
             if self.mode == InferenceMode.BEAM_SEARCH_MODE:
@@ -208,7 +208,7 @@ class FlexFlowMPT(FlexFlowModel):
                 self.mpt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
                 False,
-                name=f"layers.{i}.self_attn.o_proj"
+                name=f"layers.{i}.attn.o_proj"
             )
 
             hidden_states, layernorm_output = ffmodel.residual_layer_norm(

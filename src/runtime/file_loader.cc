@@ -936,7 +936,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   // self_attn.qkv_proj or self_attn.o_proj
   // so looking for self_attn. in the name can determine if it is an attention
   // projection
-  if (weight_filename.find("self_attn.") != std::string::npos || weight_filename.find("self_attention.") != std::string::npos) {
+  if (weight_filename.find("attn.") != std::string::npos || weight_filename.find("self_attention.") != std::string::npos) {
     size_t pos = weight_filename.find(".o_proj");
     if (pos != std::string::npos) {
       weight_filename.replace(pos, std::string(".o_proj").length(), "");

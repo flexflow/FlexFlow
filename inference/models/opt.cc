@@ -101,11 +101,27 @@ void OPT::create_opt_model(FFModel &ff,
     Tensor residual = res_ln_outputs[0];
     Tensor hidden_states = res_ln_outputs[1];
 
-    Tensor mha;
+    Tensor qkv_proj = ff.dense(
+        hidden_states,
+        opt_config.hidden_size *
+            3, // q, k, v. need to change if want to remove replication.
+               // (q_heads + 2 * kv_heads) * proj_size
+        AC_MODE_NONE,
+        false,         // seems like it does not use bias
+        DT_NONE,       // what is this
+        nullptr,       // ?
+        nullptr,       // ?
+        nullptr,       // ?
+        REG_MODE_NONE, // no regularization
+        0.0f,          // no dropout
+        std::string("layers." + std::to_string(i) + ".self_attn.qkv_proj")
+            .c_str());
+
+    Tensor o_proj;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
-        mha = ff.spec_inc_multihead_self_attention(
-            hidden_states,
+        o_proj = ff.spec_inc_multihead_self_attention(
+            qkv_proj,
             opt_config.hidden_size,
             opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
@@ -128,8 +144,8 @@ void OPT::create_opt_model(FFModel &ff,
         break;
       }
       case TREE_VERIFY_MODE: {
-        mha = ff.inc_multihead_self_attention_verify(
-            hidden_states,
+        o_proj = ff.inc_multihead_self_attention_verify(
+            qkv_proj,
             opt_config.hidden_size,
             opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
@@ -152,8 +168,8 @@ void OPT::create_opt_model(FFModel &ff,
         break;
       }
       case INC_DECODING_MODE: {
-        mha = ff.inc_multihead_self_attention(
-            hidden_states,
+        o_proj = ff.inc_multihead_self_attention(
+            qkv_proj,
             opt_config.hidden_size,
             opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
@@ -179,6 +195,20 @@ void OPT::create_opt_model(FFModel &ff,
         assert(false);
       }
     }
+
+    Tensor mha = ff.dense(
+        o_proj,
+        opt_config.hidden_size,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers." + std::to_string(i) + ".self_attn.o_proj")
+            .c_str());
 
     ff.add_bias_residual_layer_norm(mha,
                                     residual,

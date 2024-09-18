@@ -104,14 +104,14 @@ void FALCON::create_falcon_model(FFModel &ff,
             3, // q, k, v. need to change if want to remove replication.
                // (q_heads + 2 * kv_heads) * proj_size
         AC_MODE_NONE,
-        false,         // seems like llama does not use bias
+        false,         // seems like it does not use bias
         DT_NONE,       // what is this
         nullptr,       // ?
         nullptr,       // ?
         nullptr,       // ?
         REG_MODE_NONE, // no regularization
         0.0f,          // no dropout
-        std::string("layers." + std::to_string(i) + ".self_attn.qkv_proj")
+        std::string("layers." + std::to_string(i) + ".self_attention.qkv_proj")
             .c_str());
     qkv_proj->print("qkv_proj");
 
@@ -206,7 +206,7 @@ void FALCON::create_falcon_model(FFModel &ff,
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers." + std::to_string(i) + ".self_attn.o_proj")
+        std::string("layers." + std::to_string(i) + ".self_attention.o_proj")
             .c_str());
     mha->print("mha");
 
