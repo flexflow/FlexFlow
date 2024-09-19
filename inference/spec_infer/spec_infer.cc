@@ -76,7 +76,8 @@ void parse_input_args(char **argv,
                       bool &slo_attainment_early_termination,
                       int &baseline_latency_ms,
                       int &ssm_spec_latency_ms,
-                      int &llm_verify_latency_ms) {
+                      int &llm_verify_latency_ms,
+                      double &request_per_second) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -182,6 +183,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--llm-verify-latency-ms")) {
       llm_verify_latency_ms = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--request-per-second")) {
+      request_per_second = std::stod(argv[++i]);
       continue;
     }
   }
@@ -354,6 +359,7 @@ void FlexFlow::top_level_task(Task const *task,
   int baseline_latency_ms = 50;
   int ssm_spec_latency_ms = 20;
   int llm_verify_latency_ms = 50;
+  double request_per_second = 1.0;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -379,7 +385,8 @@ void FlexFlow::top_level_task(Task const *task,
                    slo_attainment_early_termination,
                    baseline_latency_ms,
                    ssm_spec_latency_ms,
-                   llm_verify_latency_ms);
+                   llm_verify_latency_ms,
+                   request_per_second);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
   }
@@ -540,8 +547,8 @@ void FlexFlow::top_level_task(Task const *task,
       requests.push_back(
           GenerationRequest(prompt_json[i]["prompt"].get<std::string>(), -1.0));
     }
-    // PoissonEmissionMachine emission_machine(1.0, slo_ratios);
-    ConstantEmissionMachine emission_machine(-1, slo_ratios);
+    PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
+    // ConstantEmissionMachine emission_machine(-1, slo_ratios);
     std::vector<GenerationResult> result =
         tree_model.generate(requests, emission_machine);
   }
