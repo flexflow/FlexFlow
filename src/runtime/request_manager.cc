@@ -607,7 +607,12 @@ bool RequestManager::load_pending_request_to_batch() {
   return true;
 }
 
-void RequestManager::request_complete_clean_up(int batch_index, bool attained) {
+void RequestManager::request_update_attainment(int batch_index, bool attained) {
+  Request &request = all_requests[guid_of_requests[batch_index]];
+  request.attained &= attained;
+}
+
+void RequestManager::request_complete_clean_up(int batch_index) {
   RequestGuid guid = guid_of_requests[batch_index];
   profiling_requests[guid].finish_time =
       Realm::Clock::current_time_in_microseconds();
@@ -616,7 +621,6 @@ void RequestManager::request_complete_clean_up(int batch_index, bool attained) {
   request_available[batch_index] = false;
   num_available_requests--;
   request.status = Request::COMPLETED;
-  request.attained = attained;
 
   // Find the sos and eos in the sequence
   auto bos_it = std::find(
@@ -849,7 +853,7 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
             result.token_ids[num_tokens + request->num_tokens_in_batch - 1]);
 
         if (request->tokens.back() == eos_token_id) {
-          request_complete_clean_up(request->batch_index, true);
+          request_complete_clean_up(request->batch_index);
         }
 
         if (decoding_mode == SPECULATIVE_DECODING) {
@@ -910,13 +914,15 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     if (request.tokens.back() == eos_token_id or
         request.tokens.size() >= get_max_sequence_length()) {
       request_completed = true;
-      request_complete_clean_up(request_index, true);
-    } else if (slo_violation_early_termination and
-               request.decode_latency_ms >
-                   get_request_expected_latency(request)) {
+      request_complete_clean_up(request_index);
+    } else if (request.decode_latency_ms >
+               get_request_expected_latency(request)) {
       // The request violates the SLO, drop that request
-      request_completed = true;
-      request_complete_clean_up(request_index, false);
+      request_update_attainment(request_index, false);
+      if (slo_violation_early_termination) {
+        request_completed = true;
+        request_complete_clean_up(request_index);
+      }
     }
 
     if (verbose) {
@@ -1592,13 +1598,15 @@ bool RequestManager::update_llm_verify_results(
     if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_completed = true;
-      request_complete_clean_up(request_index, true);
-    } else if (slo_violation_early_termination and
-               request.decode_latency_ms >
-                   get_request_expected_latency(request)) {
+      request_complete_clean_up(request_index);
+    } else if (request.decode_latency_ms >
+               get_request_expected_latency(request)) {
       // The request violates the SLO, drop that request
-      request_completed = true;
-      request_complete_clean_up(request_index, false);
+      request_update_attainment(request_index, false);
+      if (slo_violation_early_termination) {
+        request_completed = true;
+        request_complete_clean_up(request_index);
+      }
     } else {
       update_bitmask_prompt(guid, request.committed_tokens.size() - 1);
     }
