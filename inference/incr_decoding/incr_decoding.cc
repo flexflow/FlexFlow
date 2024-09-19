@@ -52,7 +52,11 @@ void parse_input_args(char **argv,
                       int &max_tokens_per_prefilling_batch,
                       int &max_sequence_length,
                       int &sampling_seed,
-                      bool &streaming_cache) {
+                      bool &streaming_cache,
+                      bool &slo_attainment_early_termination,
+                      int &baseline_latency_ms,
+                      int &ssm_spec_latency_ms,
+                      int &llm_verify_latency_ms) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -126,6 +130,22 @@ void parse_input_args(char **argv,
       streaming_cache = true;
       continue;
     }
+    if (!strcmp(argv[i], "--slo-attainment-early-termination")) {
+      slo_attainment_early_termination = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--baseline-latency-ms")) {
+      baseline_latency_ms = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--ssm-spec-latency-ms")) {
+      ssm_spec_latency_ms = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--llm-verify-latency-ms")) {
+      llm_verify_latency_ms = std::stoi(argv[++i]);
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
     char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
@@ -163,6 +183,10 @@ void FlexFlow::top_level_task(Task const *task,
       RequestManager::INCREMENTAL_DECODING;
   int sampling_seed = 0;
   bool streaming_cache = false;
+  bool slo_attainment_early_termination = false;
+  int baseline_latency_ms = 50;
+  int ssm_spec_latency_ms = 20;
+  int llm_verify_latency_ms = 50;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -182,7 +206,11 @@ void FlexFlow::top_level_task(Task const *task,
                    max_tokens_per_prefilling_batch,
                    max_sequence_length,
                    sampling_seed,
-                   streaming_cache);
+                   streaming_cache,
+                   slo_attainment_early_termination,
+                   baseline_latency_ms,
+                   ssm_spec_latency_ms,
+                   llm_verify_latency_ms);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
   }
@@ -252,6 +280,10 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_decoding_mode(decoding_mode);
+  rm->set_slo_violation_early_termination(slo_attainment_early_termination);
+  rm->set_baseline_latency(baseline_latency_ms);
+  rm->set_ssm_spec_latency(ssm_spec_latency_ms);
+  rm->set_llm_verify_latency(llm_verify_latency_ms);
   rm->set_max_tree_depth(8);
   rm->set_max_tree_width(16);
   rm->set_verbose(verbose);
