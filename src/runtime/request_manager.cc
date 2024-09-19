@@ -909,20 +909,20 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
 
     request.decode_latency_ms =
         (current_time - profiling_requests[guid].start_decoding_time) * 1e-3;
+    bool attained =
+        request.decode_latency_ms <= get_request_expected_latency(request);
     profiling_requests[guid].llm_decoding_steps++;
     nb_requests_decoded++;
     if (request.tokens.back() == eos_token_id or
         request.tokens.size() >= get_max_sequence_length()) {
+      request_update_attainment(request_index, attained);
       request_completed = true;
       request_complete_clean_up(request_index);
-    } else if (request.decode_latency_ms >
-               get_request_expected_latency(request)) {
-      // The request violates the SLO, drop that request
-      request_update_attainment(request_index, false);
-      if (slo_violation_early_termination) {
-        request_completed = true;
-        request_complete_clean_up(request_index);
-      }
+    } else if (!attained and slo_violation_early_termination) {
+      // Early drop that request
+      request_update_attainment(request_index, attained);
+      request_completed = true;
+      request_complete_clean_up(request_index);
     }
 
     if (verbose) {
@@ -1578,6 +1578,8 @@ bool RequestManager::update_llm_verify_results(
 
     request.decode_latency_ms =
         (current_time - profiling_requests[guid].start_decoding_time) * 1e-3;
+    bool attained =
+        request.decode_latency_ms <= get_request_expected_latency(request);
 
     // Initialize the token tree for the request
     init_token_tree(guid);
@@ -1597,16 +1599,14 @@ bool RequestManager::update_llm_verify_results(
     }
     if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
+      request_update_attainment(request_index, attained);
       request_completed = true;
       request_complete_clean_up(request_index);
-    } else if (request.decode_latency_ms >
-               get_request_expected_latency(request)) {
-      // The request violates the SLO, drop that request
-      request_update_attainment(request_index, false);
-      if (slo_violation_early_termination) {
-        request_completed = true;
-        request_complete_clean_up(request_index);
-      }
+    } else if (!attained and slo_violation_early_termination) {
+      // Early drop that request
+      request_update_attainment(request_index, attained);
+      request_completed = true;
+      request_complete_clean_up(request_index);
     } else {
       update_bitmask_prompt(guid, request.committed_tokens.size() - 1);
     }
