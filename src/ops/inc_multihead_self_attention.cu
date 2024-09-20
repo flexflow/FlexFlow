@@ -739,7 +739,7 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
 
 // this kernel is no longer used by the attention operator because
 // there's no more weights
-// TODO: check if this is needed by the projection layers?
+// It is left in case we want to reuse this part in the future
 template <typename DT>
 void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              GenericTensorAccessorR const weight,
@@ -805,9 +805,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       BatchConfig const *bc,
                       int shard_id,
                       DT const *qkv_ptr,
-                      DT const *weight_ptr,
                       DT *output_ptr,
-                      DT const *bias_ptr,
                       cudaStream_t stream) {
 
   // phase 0: copy calculated qkv into devQKVProjArray
@@ -825,11 +823,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     //  input_ptr,
-                     //  weight_ptr,
-                     //  nullptr, // does not use weight
                      static_cast<DT *>(m->devQKVProjArray),
-                     //  bias_ptr,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
@@ -842,7 +836,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   if (bc->num_tokens > bc->num_generation_tokens) {
     // phase 4: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
-        m, bc, shard_id, bias_ptr, weight_ptr, stream);
+        m, bc, shard_id, static_cast<DT*>(nullptr), static_cast<DT*>(nullptr), stream);
   }
 
   // compute output production and bias together for all tokens
@@ -1355,14 +1349,12 @@ void peft_bwd_kernel(
       int n_ = num_tokens;
       int k_ = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
 
-      // TODO: checkout if the input grad ptr has some relation with
-      // m->devQKVProjArray so we may potentially skip this transpose and copy
-      // TODO: check if this transposeAdd can correctly implement gradient
-      // accumulation
+      // The original version uses existing result and attention's projection to
+      // do further calculation in a way different than the usual dense layer, 
+      // they are off by a transpose. So an explicit transpose is needed here.
+      // The add here is just for gradient accumulation.
       transposeAdd(C, B, n_, k_, alpha, beta, stream);
 
-      // printf("backward of raw attn grad: %d, %d, with redudant dimension
-      // %d\n", k_, n_, m_);
       if (m->inference_debugging) {
         std::string filename =
             get_peft_dbg_folder(m, shard_id) + ".self_attn.input_gradient_0";
@@ -1712,14 +1704,10 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
-    // GenericTensorAccessorR const &weight,
     GenericTensorAccessorW const &output
-    // GenericTensorAccessorR const &bias
 ) {
-  // printf("inf_k_warpper start\n");
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -1728,11 +1716,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  // if (use_bias) {
-  //   assert(input.data_type == bias.data_type);
-  // }
 
   if (input.data_type == DT_HALF) {
     Kernels::IncMultiHeadAttention::inference_kernel(
@@ -1740,9 +1724,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_half_ptr(),
-        static_cast<half const *>(nullptr), // weight_ptr is no longer used
         output.get_half_ptr(),
-        static_cast<half const *>(nullptr), // bias_ptr is no longer used
         stream);
   } else if (input.data_type == DT_FLOAT) {
     Kernels::IncMultiHeadAttention::inference_kernel(
@@ -1750,9 +1732,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_float_ptr(),
-        static_cast<float const *>(nullptr), // weight_ptr is no longer used
         output.get_float_ptr(),
-        static_cast<float const *>(nullptr), // bias_ptr is no longer used
         stream);
   } else {
     assert(false && "Unspported data type");
@@ -1775,9 +1755,7 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorW const &input_grad,
-    // GenericTensorAccessorR const &weight,
     GenericTensorAccessorR const &output_grad) {
-  // GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   bool use_bias = *m->qkv_bias || *m->final_bias;
@@ -1789,41 +1767,28 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  // assert(input.data_type == weight.data_type);
   assert(input_grad.data_type == output_grad.data_type);
-  // if (use_bias) {
-  //   assert(input_grad.data_type == bias.data_type);
-  // }
 
   if (input_grad.data_type == DT_HALF) {
     assert(!m->offload);
-    // half const *bias_ptr =
-    //     use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::peft_bwd_kernel(
         m,
         bc,
         shard_id,
         input_grad.get_half_ptr(),
-        // weight.get_half_ptr(),
         static_cast<half const *>(nullptr),
         output_grad.get_half_ptr(),
-        // bias_ptr,
         static_cast<half const *>(nullptr),
         stream);
   } else if (input_grad.data_type == DT_FLOAT) {
     assert(!m->offload);
-    // float const *bias_ptr =
-    //     use_bias ? bias.get_float_ptr() : static_cast<float const
-    //     *>(nullptr);
     Kernels::IncMultiHeadAttention::peft_bwd_kernel(
         m,
         bc,
         shard_id,
         input_grad.get_float_ptr(),
-        // weight.get_float_ptr(),
         static_cast<float const *>(nullptr),
         output_grad.get_float_ptr(),
-        // bias_ptr,
         static_cast<float const *>(nullptr),
         stream);
   } else {

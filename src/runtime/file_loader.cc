@@ -918,16 +918,9 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   for (int i = 0; i < weight->num_dims; i++) {
     dims_vec.push_back(weight->dims[i]);
     volume *= weight->dims[i];
-    // std::cout<<l->name<<" dim "<<i<<": "<<weight->dims[i]<<std::endl;
   }
   assert(data_type_size(weight->data_type) == sizeof(DT));
   DT *data = (DT *)malloc(sizeof(DT) * volume);
-
-  // printf("loading weight for %s, shapes: ", l->name);
-  // for(int i = 0; i < weight->num_dims; i++) {
-  //   printf("%d ", weight->dims[i]);
-  // }
-  // printf("\n");
 
   std::string weight_filename = removeGuidOperatorName(std::string(l->name));
   bool is_attn_proj = false, is_o_proj = false;
@@ -961,29 +954,6 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
     if (l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
         l->op_type == OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION ||
         l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION) {
-      // if (weight_idx == 0) {
-      //   load_attention_weights_v2(data,
-      //                             num_heads,
-      //                             num_kv_heads,
-      //                             hidden_dim,
-      //                             qkv_inner_dim,
-      //                             weight_filename,
-      //                             weights_folder,
-      //                             volume,
-      //                             tensor_parallelism_degree);
-      // } else {
-      //   long long value;
-      //   l->get_int_property("final_bias", value);
-      //   bool final_bias = (bool)value;
-      //   load_attention_bias_v2(data,
-      //                          num_heads,
-      //                          num_kv_heads,
-      //                          hidden_dim,
-      //                          qkv_inner_dim,
-      //                          final_bias,
-      //                          weight_filename,
-      //                          weights_folder);
-      // }
     } else if (is_attn_proj) {
       if (is_o_proj) {
         if (weight_idx == 0) {
@@ -1053,7 +1023,6 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   }
 
   // Copy the weight data from the buffer to the weight's ParallelTensor
-  printf("using default load for %s\n", l->name);
   ParallelTensor weight_pt;
   ff->get_parallel_tensor_from_tensor(weight, weight_pt);
   weight_pt->set_tensor<DT>(ff, dims_vec, data);

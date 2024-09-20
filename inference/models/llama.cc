@@ -91,7 +91,6 @@ void LLAMA::create_llama_model(FFModel &ff,
       token = token_att_norm[0];
       att_norm = token_att_norm[1];
     }
-    att_norm->print("att_norm");
     Tensor qkv_proj = ff.dense(
         att_norm,
         llama_config.hidden_size *
@@ -107,7 +106,6 @@ void LLAMA::create_llama_model(FFModel &ff,
         0.0f,          // no dropout
         std::string("layers." + std::to_string(i) + ".self_attn.qkv_proj")
             .c_str());
-    qkv_proj->print("qkv_proj");
 
     Tensor mha;
     switch (mode) {
@@ -189,7 +187,6 @@ void LLAMA::create_llama_model(FFModel &ff,
     }
 
     Tensor mha_input = mha;
-    mha_input->print("mha_input");
     mha = ff.dense(
         mha_input,
         llama_config.hidden_size,
@@ -203,7 +200,6 @@ void LLAMA::create_llama_model(FFModel &ff,
         0.0f,
         std::string("layers." + std::to_string(i) + ".self_attn.o_proj")
             .c_str());
-    mha->print("mha");
 
     // step 2: SILU activaion
     Tensor token_ff_norm[2] = {nullptr, nullptr};

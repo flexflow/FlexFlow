@@ -600,13 +600,6 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       attn->num_kv_heads / attn->tensor_parallelism_degree +
       (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
 
-  if (attn->oProjSize != output.domain.hi()[0] - output.domain.lo()[0] + 1) {
-    printf("attn o_proj size %d does not match output domain %d\n",
-           attn->oProjSize,
-           output.domain.hi()[0] - output.domain.lo()[0] + 1);
-  }
-  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] +
-  // 1);
 
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);

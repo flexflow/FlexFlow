@@ -463,8 +463,6 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
                                      BeamSearchBatchConfig const *bc,
                                      int shard_id,
                                      DT *output_ptr,
-                                     DT const *bias_ptr,
-                                     DT const *weight_ptr,
                                      cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -699,9 +697,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       BeamSearchBatchConfig const *bc,
                       int shard_id,
                       DT const *qkv_ptr,
-                      DT const *weight_ptr,
                       DT *output_ptr,
-                      DT const *bias_ptr,
                       cudaStream_t stream) {
 
   // phase 0: copy calculated qkv into devQKVProjArray
@@ -736,7 +732,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   if (bc->num_tokens > bc->num_generation_tokens) {
     compute_attention_kernel_prompt(
-        m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
+        m, bc, shard_id, output_ptr, stream);
   }
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
@@ -780,9 +776,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_half_ptr(),
-        static_cast<half const *>(nullptr),
         output.get_half_ptr(),
-        static_cast<half const *>(nullptr),
         stream);
   } else if (input.data_type == DT_FLOAT) {
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
@@ -790,9 +784,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_float_ptr(),
-        static_cast<float const *>(nullptr),
         output.get_float_ptr(),
-        static_cast<float const *>(nullptr),
         stream);
   } else {
     assert(false && "Unspported data type");

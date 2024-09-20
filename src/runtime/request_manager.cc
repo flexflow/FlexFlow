@@ -2756,7 +2756,6 @@ void RequestManager::start_background_server(FFModel *model) {
   // Register callbacks for termination
   {
     std::set_terminate([]() {
-      // assert(false && "terminate");
       RequestManager::terminate_background_server_at_exit();
       std::abort();
     });
@@ -3013,7 +3012,6 @@ void RequestManager::trigger_request_completion_future(
 /*static*/
 void RequestManager::terminate_background_server_at_exit() {
   RequestManager *rm = RequestManager::get_request_manager();
-  // assert(false && "RM terminating bg server due to exit");
   rm->terminate_background_server();
 }
 

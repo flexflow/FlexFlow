@@ -923,9 +923,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       BatchConfig const *bc,
                       int shard_id,
                       DT const *qkv_ptr,
-                      DT const *weight_ptr,
                       DT *output_ptr,
-                      DT const *bias_ptr,
                       hipStream_t stream) {
 
   if (m->offload && m->biasSize > 0) {
@@ -954,7 +952,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
   if (bc->num_tokens > bc->num_generation_tokens) {
     // phase 4: Compute attention score for prompt tokens;
     compute_attention_kernel_prompt(
-        m, bc, shard_id, bias_ptr, weight_ptr, stream);
+        m, bc, shard_id, stream);
   }
 
   // compute output production and bias together for all tokens
@@ -1482,12 +1480,11 @@ __global__ void store_query_cache(DT const *devQKVProjArray,
   }
 }
 
-template <typename DT>
+// Please refer to the implementation in .cu file.
+// This implementation is outdated
 void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                                      BatchConfig const *bc,
                                      int shard_id,
-                                     DT const *bias_ptr,
-                                     DT const *weight_ptr,
                                      hipStream_t stream) {
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
   checkCUDNN(miopenSetStream(m->handle.dnn, stream));
@@ -1802,9 +1799,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_half_ptr(),
-        m->offload ? static_cast<half *>(m->weight_ptr) : weight.get_half_ptr(),
         output.get_half_ptr(),
-        bias_ptr,
         stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
@@ -1817,10 +1812,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
         bc,
         shard_id,
         input.get_float_ptr(),
-        m->offload ? static_cast<float *>(m->weight_ptr)
-                   : weight.get_float_ptr(),
         output.get_float_ptr(),
-        bias_ptr,
         stream);
   } else {
     assert(false && "Unspported data type");
