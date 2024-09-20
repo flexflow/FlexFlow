@@ -57,7 +57,8 @@ void parse_input_args(char **argv,
                       int &baseline_latency_ms,
                       int &ssm_spec_latency_ms,
                       int &llm_verify_latency_ms,
-                      double &request_per_second) {
+                      double &request_per_second,
+                      std::string &emission_file_path) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -151,6 +152,10 @@ void parse_input_args(char **argv,
       request_per_second = std::stod(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--emission-file-path")) {
+      emission_file_path = std::string(argv[++i]);
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
     char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
@@ -193,6 +198,7 @@ void FlexFlow::top_level_task(Task const *task,
   int ssm_spec_latency_ms = 20;
   int llm_verify_latency_ms = 50;
   double request_per_second = 1.0;
+  std::string emission_file_path;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -217,7 +223,8 @@ void FlexFlow::top_level_task(Task const *task,
                    baseline_latency_ms,
                    ssm_spec_latency_ms,
                    llm_verify_latency_ms,
-                   request_per_second);
+                   request_per_second,
+                   emission_file_path);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
   }
@@ -371,13 +378,27 @@ void FlexFlow::top_level_task(Task const *task,
 
     std::vector<GenerationRequest> requests;
     for (size_t i = 1; i < prompt_json.size(); ++i) {
-      requests.push_back(
-          GenerationRequest(prompt_json[i]["prompt"].get<std::string>(), -1.0));
+      requests.push_back(GenerationRequest(
+          prompt_json[i]["prompt"].get<std::string>(), -1.0, 0));
     }
     PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
     // ConstantEmissionMachine emission_machine(-1, slo_ratios);
     std::vector<GenerationResult> result =
         model.generate(requests, emission_machine);
+
+    // output generation results as json
+    if (!emission_file_path.empty()) {
+      json output_json;
+      for (size_t i = 0; i < result.size(); ++i) {
+        json result_json;
+        result_json["prompt"] = requests[i].prompt;
+        result_json["slo_ratio"] = result[i].slo_ratio;
+        result_json["emission_time_ms"] = result[i].emission_time_ms;
+        output_json.push_back(result_json);
+      }
+      std::ofstream emission_file_handle(emission_file_path);
+      emission_file_handle << output_json.dump(2) << std::endl;
+    }
   }
 
   // terminate the request manager by stopping the background thread

@@ -691,8 +691,13 @@ void EmissionMachine::wait_until_next_request() {
       get_next_interval_ms() - (current_time - last_request_time_ms);
   if (time_to_sleep > 0) {
     usleep(static_cast<useconds_t>(time_to_sleep * 1e3));
+    elapsed_time_ms += time_to_sleep;
   }
   last_request_time_ms = Realm::Clock::current_time_in_microseconds() * 1e-3;
+}
+
+double EmissionMachine::get_elapsed_time_ms() {
+  return elapsed_time_ms;
 }
 
 double ConstantEmissionMachine::get_next_interval_ms() {

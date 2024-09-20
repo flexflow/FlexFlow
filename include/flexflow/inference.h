@@ -43,9 +43,13 @@ struct GenerationConfig {
 struct GenerationRequest {
   std::string prompt;
   double slo_ratio;
+  double emission_time_ms;
 
-  GenerationRequest(std::string const &prompt_, double slo_ratio_)
-      : prompt(prompt_), slo_ratio(slo_ratio_) {}
+  GenerationRequest(std::string const &prompt_,
+                    double slo_ratio_,
+                    double emission_time_ms_)
+      : prompt(prompt_), slo_ratio(slo_ratio_),
+        emission_time_ms(emission_time_ms_) {}
 };
 
 struct GenerationResult {
@@ -56,6 +60,8 @@ struct GenerationResult {
   std::string output_text;
   std::vector<TokenId> input_tokens;
   std::vector<TokenId> output_tokens;
+  double slo_ratio;
+  double emission_time_ms;
 };
 
 // Contains the configuration for how to emit requests to the server,
@@ -64,6 +70,7 @@ class EmissionMachine {
 public:
   enum class EmissionMode { Constant, Poisson, Trace };
   EmissionMode mode;
+  double elapsed_time_ms;
   double last_request_time_ms;
   double req_per_s;
   std::vector<std::pair<double, double>> slo_ratios;
@@ -71,8 +78,8 @@ public:
   EmissionMachine(EmissionMode mode_,
                   double req_per_s_,
                   std::vector<std::pair<double, double>> slo_ratios_)
-      : mode(mode_), last_request_time_ms(0), req_per_s(req_per_s_),
-        slo_ratios(slo_ratios_) {
+      : mode(mode_), elapsed_time_ms(0), last_request_time_ms(0),
+        req_per_s(req_per_s_), slo_ratios(slo_ratios_) {
     // cumulate the slo ratios for sampling
     for (size_t i = 1; i < slo_ratios.size(); i++) {
       slo_ratios[i].second += slo_ratios[i - 1].second;
@@ -83,6 +90,7 @@ public:
   // Simulate next request arrival time
   virtual double get_next_interval_ms() = 0;
   double sample_slo_ratio();
+  double get_elapsed_time_ms();
 };
 
 class ConstantEmissionMachine : public EmissionMachine {

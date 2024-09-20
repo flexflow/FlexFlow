@@ -447,6 +447,8 @@ RequestManager::RequestGuid
   gr.input_tokens = request.tokens;
   gr.output_text = req.prompt;
   gr.output_tokens = request.tokens;
+  gr.slo_ratio = req.slo_ratio;
+  gr.emission_time_ms = req.emission_time_ms;
 
   {
     std::lock_guard<std::mutex> const lock(request_queue_mutex);
@@ -2154,6 +2156,7 @@ std::vector<GenerationResult>
 
   for (size_t i = 0; i < requests.size(); i++) {
     requests[i].slo_ratio = emission_machine.sample_slo_ratio();
+    requests[i].emission_time_ms = emission_machine.get_elapsed_time_ms();
     printf("Prompt[%ld] with slo %.3f: %s\n",
            i,
            requests[i].slo_ratio,
@@ -2176,7 +2179,7 @@ std::vector<GenerationResult>
                       EmissionMachine &emission_machine) {
   std::vector<GenerationRequest> requests;
   for (std::string &prompt : prompts) {
-    requests.push_back(GenerationRequest(prompt, -1.0));
+    requests.push_back(GenerationRequest(prompt, -1.0, 0));
   }
   return generate(requests, emission_machine);
 }
