@@ -1,8 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_STACK_MAP_H
 #define _FLEXFLOW_UTILS_STACK_MAP_H
 
-#include "containers.h"
-#include "stack_vector.h"
+#include "utils/stack_vector.h"
 
 namespace std {
 

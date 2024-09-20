@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "OpArgSpec"
+features = [
+  "eq",
+  # "ord",
+  # "hash",
+  # "json",
+  # "fmt",
+  # "rapidcheck",
+]
+
+includes = [
+  "local-execution/concrete_arg.h",
+  "local-execution/op_arg_ref.h",
+  "local-execution/runtime_arg_ref.h",
+]
+
+[[values]]
+type = "::FlexFlow::ConcreteArgSpec"
+key = "concrete_arg"
+
+[[values]]
+type = "::FlexFlow::OpArgRefSpec"
+key = "op_arg_ref"
+
+[[values]]
+type = "::FlexFlow::RuntimeArgRefSpec"
+key = "runtime_arg_ref"

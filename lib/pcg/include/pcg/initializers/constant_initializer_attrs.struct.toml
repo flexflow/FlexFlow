@@ -10,8 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/datatype.h",
-  "utils/json.h",
+  "op-attrs/datatype_value.dtg.h",
 ]
 
 [[fields]]

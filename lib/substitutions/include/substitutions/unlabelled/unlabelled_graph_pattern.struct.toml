@@ -2,9 +2,9 @@ namespace = "FlexFlow"
 name = "UnlabelledGraphPattern"
 features = []
 includes = [
-  "utils/graph.h"
+  "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h"
 ]
 
 [[fields]]
 name = "raw_graph"
-type = "::FlexFlow::OpenMultiDiGraphView"
+type = "::FlexFlow::OpenDataflowGraphView"

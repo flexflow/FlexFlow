@@ -4,12 +4,13 @@ features = [
   "eq",
   "ord",
   "hash",
+  "fmt",
 ]
 
 includes = [
-  "utils/graph.h"
+  "utils/graph/open_dataflow_graph/dataflow_input_edge.dtg.h",
 ]
 
 [[fields]]
 name = "raw_edge"
-type = "::FlexFlow::InputMultiDiEdge"
+type = "::FlexFlow::DataflowInputEdge"

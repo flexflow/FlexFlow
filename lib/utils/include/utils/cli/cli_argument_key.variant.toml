@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "CLIArgumentKey"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<string>",
+  "utils/cli/cli_positional_argument_key.dtg.h",
+  "utils/cli/cli_flag_key.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::CLIPositionalArgumentKey"
+
+[[values]]
+type = "::FlexFlow::CLIFlagKey"

@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "OpenDataflowSubgraphResult"
+features = []
+
+includes = [
+  "utils/graph/open_dataflow_graph/open_dataflow_graph_view.h",
+  "utils/bidict/bidict.h",
+  "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
+  "utils/graph/open_dataflow_graph/dataflow_graph_input.dtg.h",
+]
+
+[[fields]]
+name = "graph"
+type = "::FlexFlow::OpenDataflowGraphView"
+
+[[fields]]
+name = "full_graph_values_to_subgraph_inputs"
+type = "::FlexFlow::bidict<::FlexFlow::OpenDataflowValue, ::FlexFlow::DataflowGraphInput>"

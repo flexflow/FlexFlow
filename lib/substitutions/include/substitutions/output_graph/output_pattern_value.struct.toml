@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "OutputPatternValue"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h",
+]
+
+[[fields]]
+name = "raw_dataflow_value"
+type = "::FlexFlow::OpenDataflowValue"

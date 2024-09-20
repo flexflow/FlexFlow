@@ -16,4 +16,3 @@ type = "float"
 [[fields]]
 name = "total_mem_usage"
 type = "size_t"
-

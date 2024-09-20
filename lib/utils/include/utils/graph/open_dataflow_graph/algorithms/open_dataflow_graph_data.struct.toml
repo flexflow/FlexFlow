@@ -1,0 +1,36 @@
+namespace = "FlexFlow"
+name = "OpenDataflowGraphData"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+  "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h",
+  "utils/graph/open_dataflow_graph/dataflow_graph_input.dtg.h",
+  "utils/graph/dataflow_graph/dataflow_output.dtg.h",
+  "<unordered_set>",
+]
+
+src_includes = [
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_set.h",
+]
+
+[[fields]]
+name = "nodes"
+type = "std::unordered_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "edges"
+type = "std::unordered_set<::FlexFlow::OpenDataflowEdge>"
+
+[[fields]]
+name = "inputs"
+type = "std::unordered_set<::FlexFlow::DataflowGraphInput>"
+
+[[fields]]
+name = "outputs"
+type = "std::unordered_set<::FlexFlow::DataflowOutput>"

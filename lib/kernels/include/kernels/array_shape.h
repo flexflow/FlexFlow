@@ -2,7 +2,7 @@
 #define _FLEXFLOW_KERNELS_ARRAY_SHAPE_H
 
 #include "legion_dim.h"
-#include "op-attrs/tensor_shape.h"
+#include "op-attrs/tensor_shape.dtg.h"
 #include "utils/stack_vector.h"
 #include "utils/visitable.h"
 #include <cstddef>
@@ -39,7 +39,8 @@ public:
   legion_dim_t last_idx() const;
   legion_dim_t neg_idx(int) const;
 
-  std::optional<std::size_t> at_maybe(std::size_t) const;
+  std::optional<std::size_t> at_maybe(legion_dim_t) const;
+  std::optional<std::size_t> at_maybe(ff_dim_t) const;
 
   ArrayShape
       sub_shape(std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
@@ -53,6 +54,9 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ArrayShape, dims);
 size_t get_volume(ArrayShape const &);
 
 TensorShape get_tensor_shape(ArrayShape const &, DataType);
+
+std::string format_as(ArrayShape const &);
+std::ostream &operator<<(std::ostream &, ArrayShape const &);
 
 } // namespace FlexFlow
 

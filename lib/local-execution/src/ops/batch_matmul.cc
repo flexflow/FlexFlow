@@ -45,13 +45,13 @@ OpTaskInvocation forward(BatchMatmulAttrs const &attrs) {
   fwd.bind_arg(PROFILING, profiling_settings());
   fwd.bind_arg(ITERATION_CONFIG, iteration_config());
 
-  return {BATCHMATMUL_FWD_TASK_ID, fwd};
+  return {task_id_t::BATCHMATMUL_FWD_TASK_ID, fwd};
 }
 
 OpTaskInvocation backward(BatchMatmulAttrs const &attrs) {
   OpTaskBinding bwd = infer_bwd_binding(forward(attrs).binding);
 
-  return {BATCHMATMUL_BWD_TASK_ID, bwd};
+  return {task_id_t::BATCHMATMUL_BWD_TASK_ID, bwd};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -153,10 +153,10 @@ static std::optional<float>
 }
 
 TaskImplFunction get_batch_matmul_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_batch_matmul_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_batch_matmul_fwd_signature() {
@@ -173,14 +173,14 @@ OpTaskSignature get_batch_matmul_fwd_signature() {
 }
 
 OpTaskSignature get_batch_matmul_bwd_signature() {
-  OpTaskSignature bwd =
-      infer_bwd_signature(fwd_signature<BATCHMATMUL_FWD_TASK_ID>());
+  OpTaskSignature bwd = infer_bwd_signature(get_batch_matmul_fwd_signature());
 
   return bwd;
 }
 
 std::vector<task_id_t> get_task_ids(BatchMatmulAttrs const &) {
-  return {BATCHMATMUL_FWD_TASK_ID, BATCHMATMUL_BWD_TASK_ID};
+  return {task_id_t::BATCHMATMUL_FWD_TASK_ID,
+          task_id_t::BATCHMATMUL_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

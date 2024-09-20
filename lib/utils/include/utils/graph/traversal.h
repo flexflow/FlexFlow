@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_UTILS_GRAPH_TRAVERSAL_H
 #define _FLEXFLOW_UTILS_GRAPH_TRAVERSAL_H
 
-#include "digraph.h"
-#include "node.h"
+#include "utils/graph/digraph/digraph_view.h"
+#include "utils/graph/node/node.dtg.h"
 #include <iterator>
 #include <queue>
 #include <vector>

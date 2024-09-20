@@ -8,13 +8,13 @@ features = [
 ]
 
 includes = [
-  "utils/graph.h",
+  "substitutions/unlabelled/pattern_node.dtg.h",
   "substitutions/operator_pattern/operator_attribute_expr.dtg.h",
 ]
 
 [[fields]]
 name = "node"
-type = "::FlexFlow::Node"
+type = "::FlexFlow::PatternNode"
 
 # NOTE(@wmdi) I am not sure whether these should be part of attribute expr.
 [[fields]]

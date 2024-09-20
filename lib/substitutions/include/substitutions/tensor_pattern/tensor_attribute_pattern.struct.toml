@@ -12,7 +12,8 @@ features = [
 includes = [
   "<unordered_set>",
   "substitutions/tensor_pattern/tensor_attribute_constraint.dtg.h",
-  "utils/hash-utils.h",
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_set.h",
 ]
 
 [[fields]]

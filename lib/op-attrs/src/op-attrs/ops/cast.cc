@@ -1,4 +1,5 @@
 #include "op-attrs/ops/cast.h"
+#include "op-attrs/datatype.h"
 
 namespace FlexFlow {
 

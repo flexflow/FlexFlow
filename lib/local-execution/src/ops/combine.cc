@@ -32,13 +32,13 @@ OpTaskInvocation forward(CombineAttrs const &attrs) {
   binding.bind(INPUT, input_tensor(0));
   binding.bind(OUTPUT, output_tensor(0));
 
-  return {COMBINE_FWD_TASK_ID, binding};
+  return {task_id_t::COMBINE_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(CombineAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {COMBINE_BWD_TASK_ID, b};
+  return {task_id_t::COMBINE_BWD_TASK_ID, b};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -82,6 +82,13 @@ OpTaskSignature get_combine_bwd_signature() {
   OpTaskSignature bwd = infer_bwd_signature(get_combine_fwd_signature());
 
   return bwd;
+}
+
+TaskImplFunction get_combine_fwd_task_impl() {
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
+}
+TaskImplFunction get_combine_bwd_task_impl() {
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 }; // namespace FlexFlow

@@ -1,5 +1,5 @@
-#include "test/utils/doctest.h"
 #include "utils/containers.h"
+#include <doctest/doctest.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -122,7 +122,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("without_order") {
     std::vector<int> v = {1, 4, 6, 4, 6};
     std::unordered_set<int> expected = {1, 4, 6};
-    CHECK(without_order(v) == expected);
+    CHECK(unordered_set_of(v) == expected);
   }
 
   TEST_CASE("index_of") {
@@ -275,9 +275,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == std::vector<int>({2, 4, 6}));
   }
 
-  TEST_CASE("as_vector") {
+  TEST_CASE("vector_of") {
     std::unordered_set<int> s = {1, 2, 3};
-    std::vector<int> result = as_vector(s);
+    std::vector<int> result = vector_of(s);
     CHECK(result == std::vector<int>({3, 2, 1}));
   }
 

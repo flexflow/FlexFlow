@@ -4,7 +4,6 @@
 #include "op-attrs/ff_dim.h"
 #include "op-attrs/get_output_shapes.h"
 #include "utils/exception.h"
-#include "utils/graph/views.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -32,7 +31,7 @@ OpTaskInvocation init(LinearAttrs const &attrs) {
   binding.bind(WEIGHT, weight_tensor(0)); // weight
   binding.bind(OUTPUT, output_tensor(0)); // output
 
-  return {LINEAR_INIT_TASK_ID, binding};
+  return {task_id_t::LINEAR_INIT_TASK_ID, binding};
 }
 
 OpTaskInvocation forward(LinearAttrs const &attrs) {
@@ -50,16 +49,16 @@ OpTaskInvocation forward(LinearAttrs const &attrs) {
                    per_device_op_state<LinearPerDeviceState>());
   binding.bind_arg(ATTRS, attrs);
 
-  return {LINEAR_FWD_TASK_ID, binding};
+  return {task_id_t::LINEAR_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(LinearAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {LINEAR_BWD_TASK_ID, b};
+  return {task_id_t::LINEAR_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<LinearAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -72,17 +71,18 @@ static DeviceSpecific<DeviceStates>
 
   float *one_ptr;
 
-  LinearPerDeviceState state = init_kernel(handle,
-                                           one_ptr,
-                                           attrs.activation,
-                                           attrs.regularizer,
-                                           attrs.use_bias,
-                                           input.data_type,
-                                           weight.data_type,
-                                           output.data_type,
-                                           batch_size,
-                                           attrs.out_channels);
-  return DeviceSpecific<DeviceStates>::create(state);
+  LinearPerDeviceState per_device_state = init_kernel(handle,
+                                                      one_ptr,
+                                                      attrs.activation,
+                                                      attrs.regularizer,
+                                                      attrs.use_bias,
+                                                      input.data_type,
+                                                      weight.data_type,
+                                                      output.data_type,
+                                                      batch_size,
+                                                      attrs.out_channels);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<LinearPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -161,13 +161,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_linear_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_linear_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_linear_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_linear_init_signature() {
@@ -204,7 +204,9 @@ OpTaskSignature get_linear_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(LinearAttrs const &) {
-  return {LINEAR_INIT_TASK_ID, LINEAR_FWD_TASK_ID, LINEAR_BWD_TASK_ID};
+  return {task_id_t::LINEAR_INIT_TASK_ID,
+          task_id_t::LINEAR_FWD_TASK_ID,
+          task_id_t::LINEAR_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

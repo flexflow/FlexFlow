@@ -1,36 +1,23 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_FMT_H
 #define _FLEXFLOW_UTILS_INCLUDE_FMT_H
 
-#include "utils/containers.h"
-#include "utils/fmt.decl.h"
+#include "utils/check_fmtable.h"
 #include "utils/test_types.h"
 #include "utils/type_traits_core.h"
+#include <fmt/format.h>
 #include <iomanip>
 #include <unordered_set>
 #include <variant>
 #include <vector>
 
-namespace fmt {
-
-template <typename... Ts>
-template <typename FormatContext>
-auto formatter<::std::variant<Ts...>>::format(::std::variant<Ts...> const &m,
-                                              FormatContext &ctx)
-    -> decltype(ctx.out()) {
-
-  std::string result =
-      std::visit([](auto &&x) { return fmt::to_string(x); }, m);
-  return formatter<std::string>::format(result, ctx);
-}
-} // namespace fmt
+#define DELEGATE_OSTREAM(...)                                                  \
+  template <>                                                                  \
+  struct delegate_ostream_operator<__VA_ARGS__> : std::true_type {}
 
 namespace FlexFlow {
 
-template <typename T>
-struct delegate_ostream_operator<std::optional<T>> : std::true_type {};
-
-template <typename... Ts>
-struct delegate_ostream_operator<std::variant<Ts...>> : std::true_type {};
+template <typename T, typename Enable = void>
+struct delegate_ostream_operator : std::false_type {};
 
 template <typename T>
 typename std::enable_if<delegate_ostream_operator<std::decay_t<T>>::value,

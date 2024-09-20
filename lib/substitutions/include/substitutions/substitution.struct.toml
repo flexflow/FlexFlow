@@ -5,6 +5,10 @@ features = []
 includes = [
   "substitutions/pcg_pattern.dtg.h",
   "substitutions/output_graph/output_graph_expr.dtg.h",
+  "substitutions/output_graph/output_graph_expr_input.dtg.h",
+  "substitutions/output_graph/output_graph_expr_node_output.dtg.h",
+  "substitutions/unlabelled/pattern_input.dtg.h",
+  "substitutions/unlabelled/pattern_node_output.dtg.h",
 ]
 
 [[fields]]
@@ -16,9 +20,9 @@ name = "output_graph_expr"
 type = "::FlexFlow::OutputGraphExpr"
 
 [[fields]]
-name = "input_edge_match_to_output"
-type = "::FlexFlow::bidict<::FlexFlow::InputMultiDiEdge, ::FlexFlow::InputMultiDiEdge>"
+name = "inputs_mapping"
+type = "::FlexFlow::bidict<::FlexFlow::PatternInput, ::FlexFlow::OutputGraphExprInput>"
 
 [[fields]]
-name = "output_edge_match_to_output"
-type = "::FlexFlow::bidict<::FlexFlow::OutputMultiDiEdge, ::FlexFlow::OutputMultiDiEdge>"
+name = "outputs_mapping"
+type = "::FlexFlow::bidict<::FlexFlow::PatternNodeOutput, ::FlexFlow::OutputGraphExprNodeOutput>"

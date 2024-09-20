@@ -13,6 +13,7 @@ includes = [
   "op-attrs/ops/attention_attrs.dtg.h", 
   "op-attrs/ops/batch_matmul.dtg.h", 
   "op-attrs/ops/batch_norm_attrs.dtg.h", 
+  "op-attrs/ops/broadcast_attrs.dtg.h", 
   "op-attrs/ops/cast_attrs.dtg.h", 
   "op-attrs/ops/combine_attrs.dtg.h", 
   "op-attrs/ops/concat_attrs.dtg.h", 
@@ -48,6 +49,10 @@ key = "batch_matmul"
 [[values]]
 type = "::FlexFlow::BatchNormAttrs"
 key = "batch_norm"
+
+[[values]]
+type = "::FlexFlow::BroadcastAttrs"
+key = "broadcast"
 
 [[values]]
 type = "::FlexFlow::CastAttrs"

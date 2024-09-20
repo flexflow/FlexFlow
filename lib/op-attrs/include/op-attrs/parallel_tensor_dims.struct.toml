@@ -10,7 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/dim_ordered.h",
+  "op-attrs/dim_ordered/dim_ordered.h",
   "op-attrs/shard_parallel_dim.dtg.h",
   "op-attrs/replica_parallel_dim_set.dtg.h",
   "<unordered_map>",

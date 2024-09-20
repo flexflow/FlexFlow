@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "TensorRole"
+features = [
+  "hash",
+  "fmt",
+  "rapidcheck",
+  "json",
+]
+
+[[values]]
+name = "INPUT"
+
+[[values]]
+name = "WEIGHT"
+
+[[values]]
+name = "OUTPUT"

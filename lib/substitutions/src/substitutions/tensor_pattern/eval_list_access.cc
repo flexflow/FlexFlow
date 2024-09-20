@@ -1,6 +1,6 @@
 #include "substitutions/tensor_pattern/eval_list_access.h"
 #include "substitutions/tensor_pattern/get_attribute.h"
-#include "utils/containers.h"
+#include "utils/containers/at_idx.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {

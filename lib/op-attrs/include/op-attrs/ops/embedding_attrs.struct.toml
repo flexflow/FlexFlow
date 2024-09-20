@@ -15,6 +15,12 @@ includes = [
   "op-attrs/datatype.dtg.h",
 ]
 
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/json/optional.h",
+  "utils/rapidcheck/optional.h",
+]
+
 [[fields]]
 name = "num_entries"
 type = "int"

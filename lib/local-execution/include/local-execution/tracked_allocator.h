@@ -18,6 +18,7 @@ struct TrackedAllocator : public IAllocator {
 
 private:
   size_t current_mem_usage = 0;
+  std::unordered_map<void *, size_t> ptr_mem_usage;
   Allocator allocator;
 };
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(TrackedAllocator);

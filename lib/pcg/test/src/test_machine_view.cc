@@ -1,7 +1,9 @@
-#include "doctest/doctest.h"
 #include "pcg/machine_view.h"
 #include "pcg/strided_rectangle.h"
 #include "pcg/strided_rectangle_side.h"
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("MachineView general util functions") {

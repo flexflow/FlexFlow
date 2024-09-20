@@ -12,7 +12,12 @@ features = [
 includes = [
   "<optional>",
   "op-attrs/activation.dtg.h",
-  "utils/json.h",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/json/optional.h",
+  "utils/rapidcheck/optional.h",
 ]
 
 fields = [

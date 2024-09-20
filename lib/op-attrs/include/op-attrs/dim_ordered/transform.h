@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_TRANSFORM_H
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_TRANSFORM_H
 
-#include "op-attrs/dim_ordered.h"
-#include "utils/containers.h"
+#include "op-attrs/dim_ordered/dim_ordered.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/vector_transform.h"
 
 namespace FlexFlow {
@@ -12,7 +12,7 @@ DimOrdered<Idx, std::invoke_result_t<F, T>>
     transform(DimOrdered<Idx, T> const &d, F f) {
   using Out = std::invoke_result_t<F, T>;
 
-  return DimOrdered<Idx, Out>{vector_transform(as_vector(d), f)};
+  return DimOrdered<Idx, Out>{vector_transform(vector_of(d), f)};
 }
 
 } // namespace FlexFlow

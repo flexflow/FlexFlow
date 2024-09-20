@@ -1,5 +1,6 @@
 #include "kernels/local_cuda_allocator.h"
 #include "kernels/device.h"
+#include "utils/containers/contains.h"
 
 namespace FlexFlow {
 void *LocalCudaAllocator::allocate(size_t requested_memory_size) {
@@ -28,7 +29,7 @@ void LocalCudaAllocator::deallocate(void *ptr) {
 }
 
 LocalCudaAllocator::~LocalCudaAllocator() {
-  for (auto ptr : ptrs) {
+  for (void *ptr : this->ptrs) {
     checkCUDA(cudaFree(ptr));
   }
 }

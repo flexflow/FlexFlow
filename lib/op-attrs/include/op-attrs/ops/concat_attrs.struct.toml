@@ -17,7 +17,3 @@ includes = [
 [[fields]]
 name = "axis"
 type = "::FlexFlow::ff_dim_t"
-
-[[fields]]
-name = "num_inputs"
-type = "int"

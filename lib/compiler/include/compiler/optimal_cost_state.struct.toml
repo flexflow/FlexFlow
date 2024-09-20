@@ -1,0 +1,36 @@
+namespace = "FlexFlow"
+name = "OptimalCostState"
+features = [
+  "eq",
+  # "ord",
+  "hash",
+  # "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/series_parallel/series_parallel_decomposition.dtg.h",
+  "pcg/machine_specification.dtg.h",
+  "pcg/machine_view.dtg.h",
+  "utils/graph/node/node.dtg.h",
+  "utils/graph/open_dataflow_graph/open_dataflow_edge.dtg.h",
+  "utils/fmt/unordered_map.h", 
+  "utils/hash/unordered_map.h", 
+]
+
+[[fields]]
+name = "subgraph"
+type = "::FlexFlow::SeriesParallelDecomposition"
+
+[[fields]]
+name = "resource"
+type = "::FlexFlow::MachineSpecification"
+
+[[fields]]
+name = "given_machine_views"
+type = "std::unordered_map<::FlexFlow::Node, ::FlexFlow::MachineView>"
+
+[[fields]]
+name = "frontier_machine_views"
+type = "std::unordered_map<::FlexFlow::OpenDataflowEdge, ::FlexFlow::MachineView>"

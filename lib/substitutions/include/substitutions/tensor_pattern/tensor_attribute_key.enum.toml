@@ -12,3 +12,9 @@ name = "DIM_SIZES"
 
 [[values]]
 name = "DIM_DEGREES"
+
+[[values]]
+name = "DISCARD_COPY_DEGREE_DIM"
+
+[[values]]
+name = "SUM_DEGREE_DIM"

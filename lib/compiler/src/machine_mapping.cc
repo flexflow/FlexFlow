@@ -1,36 +1,49 @@
 #include "compiler/machine_mapping.h"
 #include "compiler/cost_estimate.h"
-#include "graph_utils.h"
-#include "pcg/parallel_computation_graph.h"
+#include "compiler/graph_utils.h"
+#include "pcg/machine_specification.dtg.h"
+#include "pcg/machine_specification.h"
+#include "pcg/machine_view.dtg.h"
+#include "pcg/machine_view.h"
+#include "pcg/parallel_computation_graph/parallel_computation_graph.h"
+#include "utils/containers.h"
+#include "utils/containers/are_disjoint.h"
+#include "utils/containers/contains_key.h"
+#include "utils/containers/get_only.h"
+#include "utils/containers/keys.h"
+#include "utils/containers/merge_maps.h"
+#include "utils/containers/require_no_duplicates.h"
+#include "utils/containers/vector_of.h"
 #include "utils/exception.h"
-#include "utils/graph/serialparallel.h"
+#include "utils/graph/graph_split.dtg.h"
+#include "utils/graph/node/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
+#include "utils/graph/series_parallel/series_parallel_decomposition.dtg.h"
+#include "utils/graph/series_parallel/series_parallel_decomposition.h"
+#include "utils/graph/series_parallel/series_parallel_splits.h"
 
 namespace FlexFlow {
 
-MachineMapping MachineMapping::combine(MachineMapping const &s1,
-                                       MachineMapping const &s2) {
+MachineMapping combine(MachineMapping const &s1, MachineMapping const &s2) {
   return MachineMapping{merge_maps(s1.machine_views, s2.machine_views)};
 }
 
-bool MachineMapping::nodes_are_disjoint(MachineMapping const &m1,
-                                        MachineMapping const &m2) {
+bool nodes_are_disjoint(MachineMapping const &m1, MachineMapping const &m2) {
   return are_disjoint(keys(m1.machine_views), keys(m2.machine_views));
 }
 
 OptimalCostResult
     OptimalCostResult::sequential_combine(OptimalCostResult const &s1,
                                           OptimalCostResult const &s2) {
-  return OptimalCostResult{
-      s1.runtime + s2.runtime,
-      MachineMapping::combine(s1.machine_mapping, s2.machine_mapping)};
+  return OptimalCostResult{s1.runtime + s2.runtime,
+                           combine(s1.machine_mapping, s2.machine_mapping)};
 }
 
 OptimalCostResult
     OptimalCostResult::parallel_combine(OptimalCostResult const &s1,
                                         OptimalCostResult const &s2) {
-  return OptimalCostResult{
-      std::max(s1.runtime, s2.runtime),
-      MachineMapping::combine(s1.machine_mapping, s2.machine_mapping)};
+  return OptimalCostResult{std::max(s1.runtime, s2.runtime),
+                           combine(s1.machine_mapping, s2.machine_mapping)};
 }
 
 OptimalCostResult OptimalCostResult::infinity() {
@@ -71,42 +84,64 @@ std::vector<std::pair<MachineSpecification, MachineSpecification>>
 }
 
 // We may replace this by having unflattened AST
-template <typename T>
-std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
-    decompose(T const &t) {
-  if (t.children.size() == 2) {
-    return {widen<SerialParallelDecomposition>(t.children[0]),
-            widen<SerialParallelDecomposition>(t.children[1])};
+std::pair<SeriesParallelDecomposition, SeriesParallelDecomposition>
+    decompose(SeriesSplit const &serial) {
+  if (serial.children.size() == 2) {
+    return {widen<SeriesParallelDecomposition>(serial.children[0]),
+            widen<SeriesParallelDecomposition>(serial.children[1])};
   }
-  T decompn1 = t;
+  SeriesSplit decompn1 = serial;
   decompn1.children.pop_back();
-  return {decompn1, widen<SerialParallelDecomposition>(t.children.back())};
+  return {SeriesParallelDecomposition(decompn1),
+          widen<SeriesParallelDecomposition>(serial.children.back())};
+}
+
+std::pair<SeriesParallelDecomposition, SeriesParallelDecomposition>
+    decompose(ParallelSplit const &parallel) {
+  if (parallel.children.size() == 2) {
+    std::vector<SeriesParallelDecomposition> children =
+        transform(vector_of(parallel.children), [&](auto const &child) {
+          return widen<SeriesParallelDecomposition>(child);
+        });
+    return {children[0], children[1]};
+  }
+  ParallelSplit decompn1 = parallel;
+  std::variant<SeriesSplit, Node> child = *parallel.children.begin();
+  decompn1.children.erase(child);
+  return {SeriesParallelDecomposition(decompn1),
+          widen<SeriesParallelDecomposition>(child)};
 }
 
 GraphSplit
-    get_graph_split(SerialParallelDecomposition const &pre_decomposition,
-                    SerialParallelDecomposition const &post_decomposition) {
-  return {get_nodes(pre_decomposition), get_nodes(post_decomposition)};
+    get_graph_split(SeriesParallelDecomposition const &pre_decomposition,
+                    SeriesParallelDecomposition const &post_decomposition) {
+  std::unordered_set<Node> pre_nodes =
+      require_no_duplicates(get_nodes(pre_decomposition));
+  std::unordered_set<Node> post_nodes =
+      require_no_duplicates(get_nodes(post_decomposition));
+  assert(are_disjoint(pre_nodes, post_nodes));
+  return GraphSplit{pre_nodes, post_nodes};
 }
 
-float estimate_cost(SubParallelComputationGraphView const &g,
+float estimate_cost(SubParallelComputationGraph const &g,
                     CostEstimator const &estimator,
                     MachineMapping const &device_mapping,
-                    std::unordered_map<OpenMultiDiEdge, MachineView> const
+                    std::unordered_map<OpenDataflowEdge, MachineView> const
                         &frontier_machine_views) {
   // TODO: Consider parallelism
   float cost = 0;
-  for (Node const &node : get_nodes(g)) {
-    std::unordered_set<UpwardOpenMultiDiEdge> incoming_edges =
-        get_incoming_edges(g, node);
-    std::vector<ParallelTensorShape> inputs =
-        transform(as_vector(incoming_edges),
-                  [&](UpwardOpenMultiDiEdge const &input_edge) {
-                    return g.at(input_edge).get_shape();
-                  });
-    cost += estimator.estimate_cost(
-        g.at(node).attrs, inputs, device_mapping.machine_views.at(node));
-  }
+  // for (Node const &node : get_nodes(g.raw_graph)) {
+  //   std::vector<OpenDataflowEdge> incoming_edges =
+  //       get_incoming_edges(g.raw_graph, node);
+  //   std::vector<ParallelTensorShape> inputs =
+  //       transform(incoming_edges,
+  //                 [&](OpenDataflowEdge const &input_edge) {
+  //                   return g.raw_graph.at(input_edge).get_shape();
+  //                 });
+  //   cost += estimator.estimate_cost(
+  //       g.raw_graph.at(node).op_attrs, inputs,
+  //       device_mapping.machine_views.at(node));
+  // }
   return cost;
 }
 
@@ -118,7 +153,7 @@ struct MachineMappingSearcher {
   MachineMappingSearcher(
       CostEstimator cost_estimator,
       std::function<std::unordered_set<MachineView>(
-          Operator const &, MachineSpecification const &)> const
+          ParallelLayerAttrs const &, MachineSpecification const &)> const
           &allowed_machine_views,
       OptimalCostCache &cached_subgraph_costs)
       : cost_estimator(cost_estimator),
@@ -126,7 +161,7 @@ struct MachineMappingSearcher {
         cached_subgraph_costs(cached_subgraph_costs) {}
 
   CostEstimator cost_estimator;
-  std::function<std::unordered_set<MachineView>(Operator const &,
+  std::function<std::unordered_set<MachineView>(ParallelLayerAttrs const &,
                                                 MachineSpecification const &)>
       allowed_machine_views;
   OptimalCostCache &cached_subgraph_costs;
@@ -134,24 +169,27 @@ struct MachineMappingSearcher {
   struct OptimalCostFunctor {
     OptimalCostFunctor(
         MachineMappingSearcher *searcher,
-        SubParallelComputationGraphView const &g,
+        SubParallelComputationGraph const &g,
         MachineSpecification resource,
         std::unordered_map<Node, MachineView> given_machine_views,
-        std::unordered_map<OpenMultiDiEdge, MachineView> frontier_machine_views)
+        std::unordered_map<OpenDataflowEdge, MachineView>
+            frontier_machine_views)
         : searcher(searcher), g(g), resource(resource),
           given_machine_views(given_machine_views),
           frontier_machine_views(frontier_machine_views) {}
 
     MachineMappingSearcher *searcher;
-    SubParallelComputationGraphView const &g;
+    SubParallelComputationGraph const &g;
     MachineSpecification resource;
     std::unordered_map<Node, MachineView> given_machine_views;
-    std::unordered_map<OpenMultiDiEdge, MachineView> frontier_machine_views;
+    std::unordered_map<OpenDataflowEdge, MachineView> frontier_machine_views;
 
     template <typename T>
     OptimalCostResult operator()(T const &t) {
-      OptimalCostState state{
-          t, resource, given_machine_views, frontier_machine_views};
+      OptimalCostState state{SeriesParallelDecomposition{t},
+                             resource,
+                             given_machine_views,
+                             frontier_machine_views};
       std::optional<OptimalCostResult> cached_result =
           searcher->cached_subgraph_costs.load(state);
 
@@ -167,135 +205,137 @@ struct MachineMappingSearcher {
   };
 
   OptimalCostResult
-      optimal_cost(SubParallelComputationGraphView const &g,
+      optimal_cost(SubParallelComputationGraph const &g,
                    MachineSpecification resource,
-                   SerialParallelDecomposition const &sp_decomposition) {
-    return visit(OptimalCostFunctor(this, g, resource, {}, {}),
-                 sp_decomposition);
+                   SeriesParallelDecomposition const &sp_decomposition) {
+    return std::visit(OptimalCostFunctor(this, g, resource, {}, {}),
+                      sp_decomposition.raw_variant);
   }
 
   OptimalCostResult optimal_cost(
-      Serial const &serial,
-      SubParallelComputationGraphView const &g,
+      SeriesSplit const &serial,
+      SubParallelComputationGraph const &g,
       MachineSpecification const &resource,
       std::unordered_map<Node, MachineView> const &given_machine_views,
-      std::unordered_map<OpenMultiDiEdge, MachineView> const
+      std::unordered_map<OpenDataflowEdge, MachineView> const
           &frontier_machine_views) {
+    NOT_IMPLEMENTED();
+    // OptimalCostResult optimal_result = OptimalCostResult::infinity();
 
-    auto decomposed = decompose(serial);
-    SerialParallelDecomposition pre_decompn = decomposed.first;
-    SerialParallelDecomposition post_decompn = decomposed.second;
+    // auto decomposed = decompose(serial);
+    // SeriesParallelDecomposition pre_decompn = decomposed.first;
+    // SeriesParallelDecomposition post_decompn = decomposed.second;
 
-    GraphSplit graph_split = get_graph_split(pre_decompn, post_decompn);
-    SubParallelComputationGraphView pre_graph =
-        get_subgraph<OpenMultiDiSubgraphView>(g, graph_split.first);
-    SubParallelComputationGraphView post_graph =
-        get_subgraph<DownwardOpenMultiDiSubgraphView>(g, graph_split.second);
+    // GraphSplit graph_split = get_graph_split(pre_decompn, post_decompn);
+    // SubParallelComputationGraph pre_graph =
+    //     get_subgraph<OpenMultiDiSubgraphView>(g, graph_split.first);
+    // SubParallelComputationGraph post_graph =
+    //     get_subgraph<DownwardOpenMultiDiSubgraphView>(g, graph_split.second);
 
-    std::unordered_set<Node> post_graph_sources =
-        get_closed_sources(post_graph);
+    // std::unordered_set<Node> post_graph_sources =
+    //     get_closed_sources(post_graph);
 
-    assert(post_graph_sources.size() == 1); // assume perfect SP
+    // assert(post_graph_sources.size() == 1); // assume perfect SP
 
-    Node split_point = get_only(post_graph_sources);
-    OutputMultiDiEdge split_edge = get_only(get_open_outputs(pre_graph));
+    // Node split_point = get_only(post_graph_sources);
+    // OutputMultiDiEdge split_edge = get_only(get_open_outputs(pre_graph));
 
-    OptimalCostResult optimal_result = OptimalCostResult::infinity();
+    // for (MachineView const &mv :
+    //      allowed_machine_views(g.raw_graph.at(split_point), resource)) {
+    //   std::unordered_map<Node, MachineView> new_given_machine_views =
+    //       given_machine_views;
+    //   new_given_machine_views.emplace(split_point, mv);
+    //   std::unordered_map<OpenDataflowEdge, MachineView>
+    //       new_frontier_machine_views = frontier_machine_views;
+    //   new_frontier_machine_views.emplace(split_edge, mv);
+    //   minimize_runtime(
+    //       optimal_result,
+    //       OptimalCostResult::sequential_combine(
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         pre_graph,
+    //                                         resource,
+    //                                         given_machine_views,
+    //                                         new_frontier_machine_views),
+    //                      pre_decompn.raw_variant),
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         post_graph,
+    //                                         resource,
+    //                                         new_given_machine_views,
+    //                                         frontier_machine_views),
+    //                      post_decompn.raw_variant)));
+    // }
 
-    for (MachineView const &mv :
-         allowed_machine_views(g.at(split_point), resource)) {
-      std::unordered_map<Node, MachineView> new_given_machine_views =
-          given_machine_views;
-      new_given_machine_views.emplace(split_point, mv);
-      std::unordered_map<OpenMultiDiEdge, MachineView>
-          new_frontier_machine_views = frontier_machine_views;
-      new_frontier_machine_views.emplace(split_edge, mv);
-      minimize_runtime(optimal_result,
-                       OptimalCostResult::sequential_combine(
-                           visit(OptimalCostFunctor(this,
-                                                    pre_graph,
-                                                    resource,
-                                                    given_machine_views,
-                                                    new_frontier_machine_views),
-                                 pre_decompn),
-                           visit(OptimalCostFunctor(this,
-                                                    post_graph,
-                                                    resource,
-                                                    new_given_machine_views,
-                                                    frontier_machine_views),
-                                 post_decompn)));
-    }
-
-    return optimal_result;
+    // return optimal_result;
   }
 
   OptimalCostResult optimal_cost(
-      Parallel const &parallel,
-      SubParallelComputationGraphView const &g,
+      ParallelSplit const &parallel,
+      SubParallelComputationGraph const &g,
       MachineSpecification const &resource,
       std::unordered_map<Node, MachineView> const &given_machine_views,
-      std::unordered_map<OpenMultiDiEdge, MachineView> const
+      std::unordered_map<OpenDataflowEdge, MachineView> const
           &frontier_machine_views) {
-    auto decomposed = decompose(parallel);
-    SerialParallelDecomposition decompn1 = decomposed.first;
-    SerialParallelDecomposition decompn2 = decomposed.second;
 
-    GraphSplit graph_split = get_graph_split(decompn1, decompn2);
-    SubParallelComputationGraphView g1 = get_subgraph<OpenMultiDiSubgraphView>(
-                                        g, graph_split.first),
-                                    g2 = get_subgraph<OpenMultiDiSubgraphView>(
-                                        g, graph_split.second);
+    NOT_IMPLEMENTED();
+    // auto decomposed = decompose(parallel);
+    // SeriesParallelDecomposition decompn1 = decomposed.first;
+    // SeriesParallelDecomposition decompn2 = decomposed.second;
 
-    OptimalCostResult optimal_result = OptimalCostResult::sequential_combine(
-        visit(OptimalCostFunctor(this,
-                                 g1,
-                                 resource,
-                                 given_machine_views,
-                                 frontier_machine_views),
-              decompn1),
-        visit(OptimalCostFunctor(this,
-                                 g2,
-                                 resource,
-                                 given_machine_views,
-                                 frontier_machine_views),
-              decompn2));
+    // GraphSplit graph_split = get_graph_split(decompn1, decompn2);
+    // SubParallelComputationGraph g1 = get_subgraph(g, graph_split.first),
+    //                             g2 = get_subgraph(g, graph_split.second);
 
-    for (auto const &resource_split : get_resource_split(resource)) {
-      minimize_runtime(optimal_result,
-                       OptimalCostResult::parallel_combine(
-                           visit(OptimalCostFunctor(this,
-                                                    g1,
-                                                    resource_split.first,
-                                                    given_machine_views,
-                                                    frontier_machine_views),
-                                 decompn1),
-                           visit(OptimalCostFunctor(this,
-                                                    g2,
-                                                    resource_split.second,
-                                                    given_machine_views,
-                                                    frontier_machine_views),
-                                 decompn2)));
-    }
+    // OptimalCostResult optimal_result = OptimalCostResult::sequential_combine(
+    //     std::visit(OptimalCostFunctor(this,
+    //                                   g1,
+    //                                   resource,
+    //                                   given_machine_views,
+    //                                   frontier_machine_views),
+    //                decompn1.raw_variant),
+    //     std::visit(OptimalCostFunctor(this,
+    //                                   g2,
+    //                                   resource,
+    //                                   given_machine_views,
+    //                                   frontier_machine_views),
+    //                decompn2.raw_variant));
 
-    return optimal_result;
+    // for (auto const &resource_split : get_resource_split(resource)) {
+    //   minimize_runtime(
+    //       optimal_result,
+    //       OptimalCostResult::parallel_combine(
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         g1,
+    //                                         resource_split.first,
+    //                                         given_machine_views,
+    //                                         frontier_machine_views),
+    //                      decompn1.raw_variant),
+    //           std::visit(OptimalCostFunctor(this,
+    //                                         g2,
+    //                                         resource_split.second,
+    //                                         given_machine_views,
+    //                                         frontier_machine_views),
+    //                      decompn2.raw_variant)));
+    // }
+
+    // return optimal_result;
   }
 
   OptimalCostResult optimal_cost(
       Node const &node,
-      SubParallelComputationGraphView const &g,
+      SubParallelComputationGraph const &g,
       MachineSpecification const &resource,
       std::unordered_map<Node, MachineView> const &given_machine_views,
-      std::unordered_map<OpenMultiDiEdge, MachineView> const
+      std::unordered_map<OpenDataflowEdge, MachineView> const
           &frontier_machine_views) {
     if (contains_key(given_machine_views, node)) {
-      assert(contains(allowed_machine_views(g.at(node), resource),
+      assert(contains(allowed_machine_views(g.raw_graph.at(node), resource),
                       given_machine_views.at(node)));
       MachineMapping mv_map{given_machine_views};
       return {estimate_cost(g, cost_estimator, mv_map, frontier_machine_views),
               mv_map};
     } else {
       OptimalCostResult optimal_result = OptimalCostResult::infinity();
-      for (auto mv : allowed_machine_views(g.at(node), resource)) {
+      for (auto mv : allowed_machine_views(g.raw_graph.at(node), resource)) {
         MachineMapping mv_map{{{node, mv}}};
         minimize_runtime(
             optimal_result,
@@ -307,17 +347,17 @@ struct MachineMappingSearcher {
   }
 };
 
-OptimalCostResult
-    optimal_cost(ParallelComputationGraph const &g,
-                 std::function<std::unordered_set<MachineView>(
-                     Operator const &, MachineSpecification const &)> const
-                     &allowed_machine_views,
-                 CostEstimator const &cost_estimator,
-                 MachineSpecification const &resources,
-                 OptimalCostCache &cached_subgraph_costs) {
-  SerialParallelDecomposition sp_decomposition =
-      get_serial_parallel_decomposition(g);
-  SubParallelComputationGraphView subpcg = pcg_to_subpcg(g);
+OptimalCostResult optimal_cost(
+    ParallelComputationGraph const &g,
+    std::function<std::unordered_set<MachineView>(
+        ParallelLayerAttrs const &, MachineSpecification const &)> const
+        &allowed_machine_views,
+    CostEstimator const &cost_estimator,
+    MachineSpecification const &resources,
+    OptimalCostCache &cached_subgraph_costs) {
+  SeriesParallelDecomposition sp_decomposition =
+      get_series_parallel_decomposition(g);
+  SubParallelComputationGraph subpcg = pcg_to_subpcg(g);
   MachineMappingSearcher searcher(
       cost_estimator, allowed_machine_views, cached_subgraph_costs);
   return searcher.optimal_cost(subpcg, resources, sp_decomposition);

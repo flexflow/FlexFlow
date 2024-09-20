@@ -1,10 +1,21 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_QUERY_SET_H
 
-#include "utils/bidict.h"
-#include "utils/containers.decl.h"
+#include "utils/bidict/bidict.h"
+#include "utils/containers/contains.h"
+#include "utils/containers/filter.h"
+#include "utils/containers/filter_keys.h"
+#include "utils/containers/intersection.h"
+#include "utils/containers/set_union.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/exception.h"
+#include "utils/fmt/unordered_set.h"
+#include "utils/hash-utils.h"
+#include "utils/hash/set.h"
+#include "utils/optional.h"
 #include <optional>
+#include <set>
 #include <unordered_set>
 
 namespace FlexFlow {
@@ -12,25 +23,29 @@ namespace FlexFlow {
 template <typename T>
 struct query_set {
   query_set() = delete;
-  query_set(T const &t) : query(std::unordered_set<T>{t}) {}
+  query_set(T const &t) : query(std::set<T>{t}) {}
 
-  query_set(std::unordered_set<T> const &query) : query(query) {}
+  query_set(std::unordered_set<T> const &query)
+      : query(std::set<T>{query.cbegin(), query.cend()}) {}
 
-  query_set(std::optional<std::unordered_set<T>> const &query) : query(query) {}
+  query_set(std::optional<std::unordered_set<T>> const &query)
+      : query(transform(query, [](std::unordered_set<T> const &s) {
+          return std::set<T>{s.cbegin(), s.cend()};
+        })) {}
 
   query_set(std::initializer_list<T> const &l)
       : query_set(std::unordered_set<T>{l}) {}
 
   friend bool operator==(query_set const &lhs, query_set const &rhs) {
-    return lhs.value == rhs.value;
+    return lhs.query == rhs.query;
   }
 
   friend bool operator!=(query_set const &lhs, query_set const &rhs) {
-    return lhs.value != rhs.value;
+    return lhs.query != rhs.query;
   }
 
   friend bool operator<(query_set const &lhs, query_set const &rhs) {
-    return lhs.value < rhs.value;
+    return lhs.query < rhs.query;
   }
 
   friend bool is_matchall(query_set const &q) {
@@ -39,15 +54,24 @@ struct query_set {
 
   friend std::unordered_set<T> allowed_values(query_set const &q) {
     assert(!is_matchall(q));
-    return q.query.value();
+    std::set<T> query_value = q.query.value();
+    return std::unordered_set<T>{query_value.begin(), query_value.end()};
   }
 
   static query_set<T> matchall() {
     return {std::nullopt};
   }
 
+  static query_set<T> match_none() {
+    return {std::unordered_set<T>{}};
+  }
+
+  std::optional<std::set<T>> const &value() const {
+    return this->query;
+  }
+
 private:
-  std::optional<std::unordered_set<T>> query;
+  std::optional<std::set<T>> query;
 };
 
 template <typename T>
@@ -75,10 +99,11 @@ bool includes(query_set<T> const &q, T const &v) {
 template <typename T, typename C>
 std::unordered_set<T> apply_query(query_set<T> const &q, C const &c) {
   if (is_matchall(q)) {
-    return unique(c);
+    return unordered_set_of(c);
   }
 
-  return filter(unique(c), [&](T const &t) { return includes(q, t); });
+  return filter(unordered_set_of(c),
+                [&](T const &t) { return includes(q, t); });
 }
 
 template <typename C,
@@ -123,5 +148,16 @@ query_set<T> query_union(query_set<T> const &lhs, query_set<T> const &rhs) {
 }
 
 } // namespace FlexFlow
+
+namespace std {
+
+template <typename T>
+struct hash<::FlexFlow::query_set<T>> {
+  size_t operator()(::FlexFlow::query_set<T> const &q) const {
+    return ::FlexFlow::get_std_hash(q.value());
+  }
+};
+
+} // namespace std
 
 #endif

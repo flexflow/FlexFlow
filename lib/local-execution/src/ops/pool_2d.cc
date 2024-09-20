@@ -3,7 +3,6 @@
 
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/ops/pool_2d.h"
-#include "utils/exception.decl.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 
@@ -20,10 +19,10 @@ OpTaskInvocation init(Pool2DAttrs const &attrs) {
   binding.bind_arg(ATTRS, attrs);
   binding.bind_arg(HANDLE, ff_handle());
 
-  return {POOL2D_INIT_TASK_ID, binding};
+  return {task_id_t::POOL2D_INIT_TASK_ID, binding};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
   auto const &attrs = acc.get_argument<Pool2DAttrs>(ATTRS);
   PerDeviceFFHandle handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
@@ -64,25 +63,26 @@ static DeviceSpecific<DeviceStates>
     printf("Warning: changing pool_padding_w to satisfy output_w size\n");
   }
 
-  Pool2DPerDeviceState state = init_kernel(handle,
-                                           attrs.activation,
-                                           input_w,
-                                           input_h,
-                                           input_c,
-                                           input_n,
-                                           output_w,
-                                           output_h,
-                                           output_c,
-                                           output_n,
-                                           pad_h,
-                                           pad_w,
-                                           attrs.kernel_h,
-                                           attrs.kernel_w,
-                                           attrs.stride_h,
-                                           attrs.stride_w,
-                                           attrs.pool_type);
+  Pool2DPerDeviceState per_device_state = init_kernel(handle,
+                                                      attrs.activation,
+                                                      input_w,
+                                                      input_h,
+                                                      input_c,
+                                                      input_n,
+                                                      output_w,
+                                                      output_h,
+                                                      output_c,
+                                                      output_n,
+                                                      pad_h,
+                                                      pad_w,
+                                                      attrs.kernel_h,
+                                                      attrs.kernel_w,
+                                                      attrs.stride_h,
+                                                      attrs.stride_w,
+                                                      attrs.pool_type);
 
-  return DeviceSpecific<DeviceStates>::create(state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<Pool2DPerDeviceState>::create(per_device_state)};
 }
 
 OpTaskInvocation forward(Pool2DAttrs const &attrs) {
@@ -94,13 +94,13 @@ OpTaskInvocation forward(Pool2DAttrs const &attrs) {
   binding.bind_arg(PER_DEVICE_STATE,
                    per_device_op_state<Pool2DPerDeviceState>());
 
-  return {POOL2D_FWD_TASK_ID, binding};
+  return {task_id_t::POOL2D_FWD_TASK_ID, binding};
 }
 
 OpTaskInvocation backward(Pool2DAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {POOL2D_BWD_TASK_ID, b};
+  return {task_id_t::POOL2D_BWD_TASK_ID, b};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -141,13 +141,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_pool_2d_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_pool_2d_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_pool_2d_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_pool_2d_init_signature() {
@@ -178,7 +178,9 @@ OpTaskSignature get_pool_2d_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(Pool2DAttrs const &) {
-  return {POOL2D_INIT_TASK_ID, POOL2D_FWD_TASK_ID, POOL2D_BWD_TASK_ID};
+  return {task_id_t::POOL2D_INIT_TASK_ID,
+          task_id_t::POOL2D_FWD_TASK_ID,
+          task_id_t::POOL2D_BWD_TASK_ID};
 }
 
 }; // namespace FlexFlow

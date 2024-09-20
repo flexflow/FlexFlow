@@ -33,3 +33,4 @@ StridedRectangleSide get_side_at_idx(StridedRectangle const &rect,
 }
 
 } // namespace FlexFlow
+

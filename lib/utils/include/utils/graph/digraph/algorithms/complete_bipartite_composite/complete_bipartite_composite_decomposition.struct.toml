@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "CompleteBipartiteCompositeDecomposition"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/digraph/algorithms/complete_bipartite_composite/bipartite_component.dtg.h",
+]
+
+src_includes = [
+  "utils/fmt/unordered_set.h",
+  "utils/hash/unordered_set.h",
+]
+
+[[fields]]
+name = "subgraphs"
+type = "std::unordered_set<::FlexFlow::BipartiteComponent>"

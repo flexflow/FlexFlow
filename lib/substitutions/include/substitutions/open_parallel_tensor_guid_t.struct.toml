@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "open_parallel_tensor_guid_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/open_dataflow_graph/open_dataflow_value.dtg.h"
+]
+
+[[fields]]
+name = "raw_open_dataflow_value"
+type = "::FlexFlow::OpenDataflowValue"

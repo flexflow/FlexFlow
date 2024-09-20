@@ -1,6 +1,7 @@
 #include "element_unary.h"
 #include "kernels/element_unary_kernels.h"
 #include "op-attrs/get_output_shapes.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {
@@ -26,7 +27,7 @@ OpTaskInvocation init(ElementUnaryAttrs const &attrs) {
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(INPUT_SHAPE, input_parallel_tensor_shape(0));
 
-  return {ELEMENTUNARY_INIT_TASK_ID, b};
+  return {task_id_t::ELEMENTUNARY_INIT_TASK_ID, b};
 }
 
 OpTaskInvocation forward(ElementUnaryAttrs const &attrs) {
@@ -39,16 +40,16 @@ OpTaskInvocation forward(ElementUnaryAttrs const &attrs) {
   b.bind_arg(PER_DEVICE_STATE,
              per_device_op_state<ElementUnaryPerDeviceState>());
 
-  return {ELEMENTUNARY_FWD_TASK_ID, b};
+  return {task_id_t::ELEMENTUNARY_FWD_TASK_ID, b};
 }
 
 OpTaskInvocation backward(ElementUnaryAttrs const &attrs) {
   OpTaskBinding b = infer_bwd_binding(forward(attrs).binding);
 
-  return {ELEMENTUNARY_BWD_TASK_ID, b};
+  return {task_id_t::ELEMENTUNARY_BWD_TASK_ID, b};
 }
 
-static DeviceSpecific<DeviceStates>
+static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
 
   auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
@@ -61,7 +62,8 @@ static DeviceSpecific<DeviceStates>
   ElementUnaryPerDeviceState per_device_state = init_kernel(
       get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
 
-  return DeviceSpecific<DeviceStates>::create(per_device_state);
+  return DeviceSpecificDeviceStates{
+      DeviceSpecific<ElementUnaryPerDeviceState>::create(per_device_state)};
 }
 
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -112,13 +114,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_element_unary_init_task_impl() {
-  return init_task_impl;
+  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_element_unary_fwd_task_impl() {
-  return forward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_element_unary_bwd_task_impl() {
-  return backward_task_impl;
+  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_element_unary_init_signature() {
@@ -152,9 +154,9 @@ OpTaskSignature get_element_unary_bwd_signature() {
 }
 
 std::vector<task_id_t> get_task_ids(ElementUnaryAttrs const &) {
-  return {ELEMENTUNARY_INIT_TASK_ID,
-          ELEMENTUNARY_FWD_TASK_ID,
-          ELEMENTUNARY_BWD_TASK_ID};
+  return {task_id_t::ELEMENTUNARY_INIT_TASK_ID,
+          task_id_t::ELEMENTUNARY_FWD_TASK_ID,
+          task_id_t::ELEMENTUNARY_BWD_TASK_ID};
 }
 
 } // namespace FlexFlow

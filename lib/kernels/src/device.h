@@ -7,6 +7,8 @@
 #include "op-attrs/operator_type.h"
 #include <cstddef>
 
+namespace FlexFlow {
+
 #if defined(FF_USE_CUDA)
 #include <cuda_fp16.h>
 #elif defined(FF_USE_HIP_CUDA)
@@ -25,9 +27,6 @@
 #else
 #error "Unknown device"
 #endif
-
-using ::FlexFlow::DataType;
-using ::FlexFlow::OperatorType;
 
 #define checkCUDNN(status)                                                     \
   do {                                                                         \
@@ -132,14 +131,15 @@ __host__ void updateGAS(float *para_ptr,
 template <typename T>
 void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
 
-ffStatus_t
-    cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
-                                           FlexFlow::ArrayShape const &shape);
+ffStatus_t cudnnSetTensorDescriptorFromArrayShape(ffTensorDescriptor_t tensor,
+                                                  ArrayShape const &shape);
 
 ffDataType_t ff_to_cuda_datatype(DataType type);
 
 ffCudnnDataType_t ff_to_cudnn_datatype(DataType type);
 
 void handle_unimplemented_kernel(OperatorType op_type);
+
+} // namespace FlexFlow
 
 #endif

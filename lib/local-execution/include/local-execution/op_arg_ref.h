@@ -3,20 +3,11 @@
 
 #include "local-execution/arg_ref.h"
 #include "local-execution/device_specific.h"
-#include "op-attrs/parallel_tensor_shape.h"
+#include "local-execution/op_arg_ref_type.dtg.h"
+#include "local-execution/per_device_op_state.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
 
 namespace FlexFlow {
-
-enum class OpArgRefLabel { PER_DEVICE_OP_STATE, PARALLEL_TENSOR_SHAPE };
-
-struct PerDeviceOpStateRefType {};
-
-struct ParallelTensorShapeRefType {
-  int idx;
-};
-
-using OpArgRefType =
-    std::variant<PerDeviceOpStateRefType, ParallelTensorShapeRefType>;
 
 template <typename T>
 using OpArgRef = ArgRef<OpArgRefType, T>;
@@ -24,9 +15,10 @@ using OpArgRef = ArgRef<OpArgRefType, T>;
 using OpArgRefSpec = ArgRefSpec<OpArgRefType>;
 
 template <typename T>
-OpArgRef<DeviceSpecific<T>> per_device_op_state() {
-  OpArgRefType op_arg_ref_type = PerDeviceOpStateRefType{};
-  ArgRef<OpArgRefType, DeviceSpecific<T>> arg_ref = {op_arg_ref_type};
+OpArgRef<DeviceSpecificDeviceStates> per_device_op_state() {
+  OpArgRefType op_arg_ref_type = OpArgRefType{PerDeviceOpStateRefType{}};
+  static_assert(PerDeviceOpState::IsPartOfPerDeviceOpState_v<T>);
+  ArgRef<OpArgRefType, DeviceSpecificDeviceStates> arg_ref = {op_arg_ref_type};
   return arg_ref;
 }
 
