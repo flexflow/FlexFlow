@@ -510,13 +510,7 @@ size_t RequestManager::get_num_processed_requests() {
 }
 
 int RequestManager::get_num_active_requests() {
-  int count = 0;
-  for (int i = 0; i < get_max_requests_per_batch(); i++) {
-    if (guid_of_requests[i] != INVALID_GUID) {
-      count++;
-    }
-  }
-  return count;
+  return num_available_requests;
 }
 
 int RequestManager::get_empty_request_index() {
@@ -2604,6 +2598,10 @@ void RequestManager::add_tokens_to_spec_token_tree(
     InferenceResult const &ssm_inference_result) {
   // TODO: parameterize MAX_SPECULATIVE_TREE_BRANCHES
   // TODO: support gumbel sampling
+  int tree_width =
+      min(get_max_tokens_per_ssm_batch() / get_num_active_requests(),
+          get_max_tree_width());
+  assert(tree_width >= 1);
 
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
@@ -2626,7 +2624,7 @@ void RequestManager::add_tokens_to_spec_token_tree(
     std::vector<std::shared_ptr<TokenTreeNode>> &last_layer =
         spec_token_tree.tree_layers.back();
     std::vector<std::pair<double, int>> preallocated_vector;
-    preallocated_vector.reserve(get_max_tree_width());
+    preallocated_vector.reserve(tree_width);
     std::priority_queue<std::pair<double, int>,
                         std::vector<std::pair<double, int>>,
                         std::greater<std::pair<double, int>>>
@@ -2653,14 +2651,14 @@ void RequestManager::add_tokens_to_spec_token_tree(
 
         double accumulated_log_prob = log_prob + parent_log_prob;
 
-        if (child_probs_pq.size() == get_max_tree_width() and
+        if (child_probs_pq.size() == tree_width and
             accumulated_log_prob > child_probs_pq.top().first) {
           // The current layer is full, and the new token has a higher
           // log prob than the minimum node in tokens, we don't need to add
           // the new token to the priority queue, and remove the minimum node
           // from the priority queue
           child_probs_pq.pop();
-        } else if (child_probs_pq.size() == get_max_tree_width()) {
+        } else if (child_probs_pq.size() == tree_width) {
           // The current layer is full, and the new token has a lower log prob
           // than the minimum node in tokens, we don't need to add the new token
           // to the priority queue
