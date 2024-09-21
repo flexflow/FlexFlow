@@ -8,8 +8,39 @@
 
 namespace FlexFlow {
 
+std::vector<IncomingTensorRole>
+    get_linear_incoming_tensor_roles(LinearAttrs const &attrs) {
+  std::vector<IncomingTensorRole> result = {
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::WEIGHT,
+  };
+
+  if (attrs.use_bias) {
+    result.push_back(IncomingTensorRole::WEIGHT);
+  }
+
+  return result;
+}
+
+RecordFormatter as_dot(LinearAttrs const &attrs) {
+  RecordFormatter r;
+
+  auto kv = [](std::string const &label, auto const &val) {
+    RecordFormatter rr;
+    rr << label << fmt::to_string(val);
+    return rr;
+  };
+
+  r << kv("out_channels", attrs.out_channels) << kv("use_bias", attrs.use_bias)
+    << kv("data_type", attrs.data_type) << kv("activation", attrs.activation)
+    << kv("regularizer", attrs.regularizer);
+
+  return r;
+}
+
 tl::expected<TensorShape, std::string>
-    get_kernel_shape(LinearAttrs const &attrs, TensorShape const &input_shape) {
+    get_projection_shape(LinearAttrs const &attrs,
+                         TensorShape const &input_shape) {
   size_t in_channels = dim_at_idx(input_shape, ff_dim_t{-1});
 
   return TensorShape{
@@ -40,11 +71,11 @@ tl::expected<TensorShape, std::string>
 }
 
 tl::expected<ParallelTensorShape, std::string>
-    get_kernel_shape(LinearAttrs const &attrs,
-                     ParallelTensorShape const &input) {
+    get_projection_shape(LinearAttrs const &attrs,
+                         ParallelTensorShape const &input) {
   TensorShape unpar = ({
     tl::expected<TensorShape, std::string> result_unpar =
-        get_kernel_shape(attrs, get_reduced_shape(input));
+        get_projection_shape(attrs, get_reduced_shape(input));
     if (!result_unpar.has_value()) {
       return tl::unexpected(result_unpar.error());
     }

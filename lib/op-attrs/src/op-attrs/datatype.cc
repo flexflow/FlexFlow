@@ -19,7 +19,7 @@ size_t size_of_datatype(DataType data_type) {
     case DataType::DOUBLE:
       return sizeof(double);
     default:
-      throw mk_runtime_error("Unknown DataType {}", data_type);
+      throw mk_runtime_error(fmt::format("Unknown DataType {}", data_type));
   }
 }
 

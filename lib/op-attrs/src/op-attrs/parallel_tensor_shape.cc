@@ -1,4 +1,5 @@
 #include "op-attrs/parallel_tensor_shape.h"
+#include "op-attrs/parallel_tensor_dims.h"
 #include "op-attrs/tensor_dims.h"
 #include "utils/containers/product.h"
 #include "utils/containers/transform.h"
@@ -58,6 +59,10 @@ std::optional<ShardParallelDim>
   }
 }
 
+ParallelTensorDimDegrees get_parallel_degrees(ParallelTensorShape const &s) {
+  return get_parallel_degrees(s.dims);
+}
+
 ParallelTensorShape lift_to_parallel(TensorShape const &s) {
   return ParallelTensorShape{lift_to_parallel(s.dims), s.data_type};
 }
@@ -72,6 +77,28 @@ ParallelTensorShape
           s.dims, sum_degree, discard_copy_degree, shard_degrees),
       s.data_type,
   };
+}
+
+ParallelTensorShape
+    lift_to_parallel_with_degrees(TensorShape const &s,
+                                  ParallelTensorDimDegrees const &degrees) {
+  return lift_to_parallel_with_degrees(s,
+                                       degrees.sum_degree,
+                                       degrees.discard_copy_degree,
+                                       degrees.shard_degrees);
+}
+
+TensorShape require_not_parallel(ParallelTensorShape const &s) {
+  int total_degree = get_total_parallel_degree(s);
+  if (total_degree != 1) {
+    throw mk_runtime_error(
+        fmt::format("Error: require_not_parallel received a parallel tensor "
+                    "shape with parallel degree {}: {}",
+                    total_degree,
+                    s));
+  }
+
+  return get_reduced_shape(s);
 }
 
 TensorShape get_tensor_shape_unsafe(ParallelTensorShape const &) {

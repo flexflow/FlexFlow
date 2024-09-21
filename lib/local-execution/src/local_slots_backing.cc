@@ -1,4 +1,6 @@
 #include "local-execution/local_slots_backing.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "pcg/computation_graph.h"
 #include "utils/containers/contains_key.h"
 #include "utils/overload.h"
 

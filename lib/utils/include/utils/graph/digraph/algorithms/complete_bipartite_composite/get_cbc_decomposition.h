@@ -7,6 +7,9 @@
 namespace FlexFlow {
 
 std::optional<CompleteBipartiteCompositeDecomposition>
+    get_cbc_decomposition_with_edge_order_internal(
+        DiGraphView const &, std::vector<DirectedEdge> const &);
+std::optional<CompleteBipartiteCompositeDecomposition>
     get_cbc_decomposition(DiGraphView const &);
 
 } // namespace FlexFlow

@@ -7,7 +7,7 @@ bool operator_satisfies_constraint(
     PCGOperatorAttrs const &attrs,
     OperatorAttributeConstraint const &constraint) {
   std::optional<OperatorAttributeValue> expr_val =
-      evaluate_attribute_expr(attrs, constraint.attribute_expr);
+      evaluate_attribute_expr(constraint.attribute_expr, attrs);
 
   if (!expr_val.has_value()) {
     return false;

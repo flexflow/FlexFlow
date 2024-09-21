@@ -9,7 +9,7 @@ features = [
   "fmt",
 ]
 includes = [
-  "op-attrs/dim_ordered.h",
+  "op-attrs/dim_ordered/dim_ordered.h",
 ]
 
 [[fields]]

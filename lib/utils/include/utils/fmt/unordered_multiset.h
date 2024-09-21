@@ -3,7 +3,6 @@
 
 #include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
-#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <unordered_set>
 
@@ -41,16 +40,5 @@ std::ostream &operator<<(std::ostream &s, std::unordered_multiset<T> const &x) {
 }
 
 } // namespace FlexFlow
-
-namespace doctest {
-
-template <typename T>
-struct StringMaker<std::unordered_multiset<T>> {
-  static String convert(std::unordered_multiset<T> const &m) {
-    return toString(fmt::to_string(m));
-  }
-};
-
-} // namespace doctest
 
 #endif

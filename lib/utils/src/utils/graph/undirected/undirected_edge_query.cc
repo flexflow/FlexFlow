@@ -6,6 +6,10 @@ UndirectedEdgeQuery undirected_edge_query_all() {
   return UndirectedEdgeQuery{matchall<Node>()};
 }
 
+bool matches_edge(UndirectedEdgeQuery const &q, UndirectedEdge const &e) {
+  return includes(q.nodes, e.bigger) && includes(q.nodes, e.smaller);
+}
+
 UndirectedEdgeQuery query_intersection(UndirectedEdgeQuery const &lhs,
                                        UndirectedEdgeQuery const &rhs) {
   return UndirectedEdgeQuery{

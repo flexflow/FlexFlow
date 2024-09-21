@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_BIDICT_H
 
 #include "utils/fmt/unordered_map.h"
+#include "utils/hash/unordered_map.h"
 #include <cassert>
 #include <optional>
 #include <unordered_map>
@@ -20,6 +21,10 @@ struct bidict {
     for (auto it = first; it != last; it++) {
       this->equate(it->first, it->second);
     }
+  }
+
+  bool contains(L const &l, R const &r) const {
+    return this->contains_l(l) && this->at_l(l) == r;
   }
 
   bool contains_l(L const &l) const {
@@ -83,6 +88,10 @@ struct bidict {
   std::size_t size() const {
     assert(fwd_map.size() == bwd_map.size());
     return fwd_map.size();
+  }
+
+  bool empty() const {
+    return this->size() == 0;
   }
 
   using const_iterator = typename std::unordered_map<L, R>::const_iterator;
