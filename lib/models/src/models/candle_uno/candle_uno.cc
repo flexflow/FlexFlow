@@ -1,5 +1,5 @@
 #include "models/candle_uno/candle_uno.h"
-#include "pcg/initializers/glorot_uniform_attrs.dtg.h"
+#include "pcg/initializers/glorot_normal_attrs.dtg.h"
 
 namespace FlexFlow {
 
@@ -53,7 +53,7 @@ ComputationGraph
     get_candle_uno_computation_graph(CandleUnoConfig const &config) {
   ComputationGraphBuilder cgb;
   InitializerAttrs kernel_initializer =
-      InitializerAttrs{GlorotUniformAttrs{/*seed=*/0}};
+      InitializerAttrs{GlorotNormalAttrs{/*seed=*/0}};
 
   auto create_input_tensor =
       [&](FFOrdered<size_t> const &dims) -> tensor_guid_t {
@@ -69,6 +69,8 @@ ComputationGraph
     auto const &type = shape.first;
     if (type.find(".") != std::string::npos) {
       std::string base_type = type.substr(0, type.find("."));
+      // The string parsing here is to match with original implementation at
+      // https://github.com/ECP-CANDLE/Benchmarks/blob/f6a3da8818308c9edcd9fedbcf831dd5968efcdd/Pilot1/Uno/uno_baseline_keras2.py#L178.
       if (base_type == "cell" || base_type == "drug") {
         input_models.insert(type);
       }
