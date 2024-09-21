@@ -22,10 +22,10 @@ CandleUnoConfig get_default_candle_uno_config();
 /**
  * @brief Get the Candle Uno computation graph.
  *
- * @note CandleUnoConfig.feature_shapes is a map from feature name to the number
- * of channels for the feature.
- * @note CandleUnoConfig.input_features is a map from specific data identifier
- * in the dataset to the feature name used in this model.
+ * @details CandleUnoConfig.feature_shapes is a map from feature name to the
+ * number of channels for the feature, and CandleUnoConfig.input_features is a
+ * map from specific data identifier in the dataset to the feature name used in
+ * this model.
  *
  * @param CandleUnoConfig The config of the Candle Uno model.
  * @return ComputationGraph The PCG of a Transformer model.

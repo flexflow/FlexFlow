@@ -111,7 +111,7 @@ ComputationGraph
     }
   }
   output = cgb.dense(output,
-                     1,
+                     /*outDim=*/1,
                      /*activation=*/std::nullopt,
                      /*use_bias=*/false,
                      /*data_type=*/DataType::FLOAT,
