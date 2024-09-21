@@ -31,11 +31,27 @@ name = "dim_feedforward"
 type = "size_t"
 
 [[fields]]
-name = "dropout"
+name = "hidden_act"
+type = "std::string"
+
+[[fields]]
+name = "hidden_dropout_prob"
+type = "float"
+
+[[fields]]
+name = "attention_probs_dropout_prob"
+type = "float"
+
+[[fields]]
+name = "initializer_range"
 type = "float"
 
 [[fields]]
 name = "layer_norm_eps"
+type = "float"
+
+[[fields]]
+name = "classifier_dropout"
 type = "float"
 
 [[fields]]
