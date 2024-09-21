@@ -14,7 +14,7 @@ includes = [
   "pcg/initializers/zero_initializer_attrs.dtg.h",
   "pcg/initializers/uniform_initializer_attrs.h",
   "pcg/initializers/norm_initializer_attrs.dtg.h",
-  "pcg/initializers/truncated_norm_initializer_attrs.dtg.h",
+  "pcg/initializers/truncated_normal_initializer_attrs.dtg.h",
   "pcg/initializers/constant_initializer_attrs.dtg.h",
 ]
 
@@ -35,7 +35,7 @@ type = "::FlexFlow::NormInitializerAttrs"
 key = "normal"
 
 [[values]]
-type = "::FlexFlow::TruncatedNormInitializerAttrs"
+type = "::FlexFlow::TruncatedNormalInitializerAttrs"
 key = "normal"
 
 [[values]]

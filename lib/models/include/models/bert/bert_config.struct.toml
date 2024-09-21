@@ -10,6 +10,10 @@ features = [
   "fmt",
 ]
 
+includes = [
+  "op-attrs/activation.dtg.h",
+]
+
 [[fields]]
 name = "vocab_size"
 type = "size_t"
@@ -32,7 +36,7 @@ type = "size_t"
 
 [[fields]]
 name = "hidden_act"
-type = "std::string"
+type = "::FlexFlow::Activation"
 
 [[fields]]
 name = "hidden_dropout_prob"

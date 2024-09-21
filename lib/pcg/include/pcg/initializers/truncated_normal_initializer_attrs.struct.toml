@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "TruncatedNormInitializerAttrs"
+name = "TruncatedNormalInitializerAttrs"
 features = [
   "eq",
   "ord",
@@ -19,4 +19,12 @@ type = "float"
 
 [[fields]]
 name = "stddev"
+type = "float"
+
+[[fields]]
+name = "min_cutoff"
+type = "float"
+
+[[fields]]
+name = "max_cutoff"
 type = "float"
