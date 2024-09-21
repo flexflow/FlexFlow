@@ -1,4 +1,5 @@
 #include "kernels/allocation.h"
+#include "op-attrs/tensor_shape.h"
 
 namespace FlexFlow {
 

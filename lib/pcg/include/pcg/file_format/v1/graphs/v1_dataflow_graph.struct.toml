@@ -1,9 +1,9 @@
 namespace = "FlexFlow"
 name = "V1DataflowGraph"
 features = [
-  # "eq",
+  "eq",
   # "ord",
-  # "hash",
+  "hash",
   "json",
   # "rapidcheck",
   "fmt",
@@ -13,13 +13,18 @@ includes = [
   "<vector>",
   "<unordered_set>",
   "pcg/file_format/v1/graphs/v1_graph_edge.dtg.h",
+]
+
+src_includes = [
   "utils/fmt/vector.h",
+  "utils/hash/vector.h",
   "utils/fmt/unordered_set.h",
+  "utils/hash/unordered_set.h",
 ]
 
 [[fields]]
 name = "nodes"
-type = "std::vector<size_t>"
+type = "std::vector<int>"
 
 [[fields]]
 name = "edges"

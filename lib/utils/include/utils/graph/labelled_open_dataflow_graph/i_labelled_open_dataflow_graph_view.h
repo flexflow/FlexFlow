@@ -12,10 +12,10 @@ struct ILabelledOpenDataflowGraphView
     : virtual public ILabelledDataflowGraphView<NodeLabel, ValueLabel>,
       virtual public IOpenDataflowGraphView {
 public:
-  virtual NodeLabel const &at(Node const &) const override = 0;
-  virtual ValueLabel const &at(OpenDataflowValue const &) const = 0;
+  virtual NodeLabel at(Node const &) const override = 0;
+  virtual ValueLabel at(OpenDataflowValue const &) const = 0;
 
-  ValueLabel const &at(DataflowOutput const &o) const override final {
+  ValueLabel at(DataflowOutput const &o) const override final {
     return this->at(OpenDataflowValue{o});
   }
 

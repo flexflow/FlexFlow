@@ -1,6 +1,6 @@
 #include "pcg/strided_rectangle.h"
 #include "pcg/strided_rectangle_side.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

@@ -13,7 +13,7 @@ public:
 
   parallel_tensor_guid_t create_input_tensor(
       ParallelTensorShape const &shape,
-      bool create_grad = true,
+      CreateGrad create_grad = CreateGrad::YES,
       std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
@@ -54,7 +54,8 @@ public:
       std::optional<Activation> activation = std::nullopt,
       bool use_bias = true,
       DataType data_type = DataType::FLOAT,
-      std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt,
+      std::optional<InitializerAttrs> const &projection_initializer =
+          std::nullopt,
       std::optional<InitializerAttrs> const &bias_initializer = std::nullopt,
       std::optional<std::string> const &name = std::nullopt);
 
@@ -85,8 +86,36 @@ public:
       std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
+      batch_norm(parallel_tensor_guid_t const &input,
+                 bool affine,
+                 std::optional<Activation> const &activation,
+                 float eps,
+                 std::optional<float> const &momentum,
+                 std::optional<std::string> const &name = std::nullopt);
+
+  parallel_tensor_guid_t
       relu(parallel_tensor_guid_t const &x,
            std::optional<std::string> const &name = std::nullopt);
+
+  parallel_tensor_guid_t
+      identity(parallel_tensor_guid_t const &x,
+               std::optional<std::string> const &name = std::nullopt);
+
+  parallel_tensor_guid_t
+      gelu(parallel_tensor_guid_t const &x,
+           std::optional<std::string> const &name = std::nullopt);
+
+  parallel_tensor_guid_t
+      sigmoid(parallel_tensor_guid_t const &x,
+              std::optional<std::string> const &name = std::nullopt);
+
+  parallel_tensor_guid_t
+      tanh(parallel_tensor_guid_t const &x,
+           std::optional<std::string> const &name = std::nullopt);
+
+  parallel_tensor_guid_t
+      elu(parallel_tensor_guid_t const &x,
+          std::optional<std::string> const &name = std::nullopt);
 
   parallel_tensor_guid_t
       parallel_partition(parallel_tensor_guid_t const &x,
@@ -136,6 +165,15 @@ private:
                 std::vector<parallel_tensor_guid_t> const &inputs,
                 std::vector<ParallelTensorAttrs> const &weights,
                 ParallelTensorShape const &output);
+
+  parallel_tensor_guid_t
+      add_weight(ParallelTensorAttrs const &weight_tensor_attrs,
+                 std::optional<std::string> const &name = std::nullopt);
+
+  parallel_tensor_guid_t
+      element_unary(ElementUnaryAttrs const &element_unary_attrs,
+                    parallel_tensor_guid_t const &input,
+                    std::optional<std::string> const &name);
 
 public:
   ParallelComputationGraph pcg;

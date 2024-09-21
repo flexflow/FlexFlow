@@ -1,12 +1,27 @@
 #include "op-attrs/ops/layer_norm.h"
 #include "op-attrs/dim_ordered/ff_ordered_of.h"
 #include "op-attrs/dim_ordered/get_idxs.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "op-attrs/tensor_shape.h"
 #include "utils/containers/all_of.h"
 #include "utils/containers/any_of.h"
 #include "utils/containers/contains.h"
+#include "utils/containers/extend.h"
 #include "utils/containers/filter.h"
 
 namespace FlexFlow {
+
+std::vector<IncomingTensorRole>
+    get_layer_norm_incoming_tensor_roles(LayerNormAttrs const &attrs) {
+  std::vector<IncomingTensorRole> result = {IncomingTensorRole::INPUT};
+
+  if (attrs.elementwise_affine) {
+    extend(result,
+           std::vector{IncomingTensorRole::WEIGHT, IncomingTensorRole::WEIGHT});
+  }
+
+  return result;
+}
 
 static std::optional<std::string>
     check_input_shape(LayerNormAttrs const &attrs,
@@ -97,7 +112,7 @@ static std::optional<std::string>
 
   if (get_discard_copy_degree(input_shape) != 1) {
     return fmt::format(
-        "Expected discard copy degree 1, but received discartd copy degree {}",
+        "Expected discard copy degree 1, but received discard copy degree {}",
         get_discard_copy_degree(input_shape));
   }
 

@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTION_H
 #define _FLEXFLOW_SUBSTITUTIONS_SUBSTITUTION_H
 
-#include "sub_parallel_computation_graph.dtg.h"
+#include "substitutions/pcg_pattern_match.dtg.h"
+#include "substitutions/sub_parallel_computation_graph.dtg.h"
 #include "substitutions/substitution.dtg.h"
-#include "substitutions/unlabelled/unlabelled_dataflow_graph_pattern_match.dtg.h"
 
 namespace FlexFlow {
 
@@ -23,8 +23,8 @@ namespace FlexFlow {
 bool is_valid_substitution(Substitution const &);
 
 /**
- * @brief Applies substitution to sub_pcg at the location specified by match,
- * returning the resulting SubParallelComputationGraph
+ * @brief Applies \p substitution to \p sub_pcg at the location specified by \p
+ * match, returning the resulting SubParallelComputationGraph
  *
  * @param sub_pcg
  * @param substitution
@@ -39,7 +39,7 @@ bool is_valid_substitution(Substitution const &);
 SubParallelComputationGraph
     apply_substitution(SubParallelComputationGraph const &sub_pcg,
                        Substitution const &substitution,
-                       UnlabelledDataflowGraphPatternMatch const &match);
+                       PCGPatternMatch const &match);
 
 } // namespace FlexFlow
 

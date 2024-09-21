@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "InceptionV3Config"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "num_classes"
+type = "int"
+
+[[fields]]
+name = "batch_size"
+type = "int"
+
+[[fields]]
+name = "aux_logits"
+type = "bool"

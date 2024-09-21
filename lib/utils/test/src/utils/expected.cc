@@ -1,6 +1,6 @@
 #include "utils/expected.h"
-#include "utils/fmt/expected.h"
-#include "utils/fmt/optional.h"
+#include "test/utils/doctest/fmt/expected.h"
+#include "test/utils/doctest/fmt/optional.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

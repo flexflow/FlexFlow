@@ -1,17 +1,16 @@
-#include "doctest/doctest.h"
-#include "rapidcheck.h"
 #include "substitutions/unlabelled/find_pattern_matches.h"
 #include "substitutions/unlabelled/match_additional_criterion.h"
 #include "substitutions/unlabelled/pattern_matching.h"
-#include "test/utils/all.h"
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
-#include "utils/graph/open_dataflow_graph/algorithms.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_incoming_edges.h"
+#include "utils/graph/open_dataflow_graph/algorithms/get_open_dataflow_values.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph_inputs.h"
 #include "utils/graph/open_dataflow_graph/open_dataflow_graph.h"
 #include "utils/overload.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

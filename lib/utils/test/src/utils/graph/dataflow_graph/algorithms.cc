@@ -28,8 +28,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n4 = n4_added.node;
     DataflowOutput o4 = get_only(n4_added.outputs);
 
-    SUBCASE("get_inputs") {
-      std::vector<DataflowOutput> result = get_inputs(g, n4);
+    SUBCASE("get_input_values") {
+      std::vector<DataflowOutput> result = get_input_values(g, n4);
       std::vector<DataflowOutput> correct = {o1, o2, o3};
       CHECK(result == correct);
     }

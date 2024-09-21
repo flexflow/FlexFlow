@@ -1,7 +1,25 @@
 #include "op-attrs/ops/broadcast.h"
 #include "op-attrs/tensor_dims.h"
+#include "utils/record_formatter.h"
 
 namespace FlexFlow {
+
+RecordFormatter as_dot(BroadcastAttrs const &attrs) {
+  RecordFormatter r;
+
+  auto kv = [](std::string const &label, auto const &val) {
+    RecordFormatter rr;
+    rr << label << fmt::to_string(val);
+    return rr;
+  };
+
+  for (int i = 0; i < num_dims(attrs.target_dims); i++) {
+    r << kv(fmt::format("target_dims[{}]", i),
+            dim_at_idx(attrs.target_dims, ff_dim_t{i}));
+  }
+
+  return r;
+}
 
 tl::expected<TensorShape, std::string>
     get_output_shape(BroadcastAttrs const &attrs,

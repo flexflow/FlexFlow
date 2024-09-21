@@ -1,11 +1,13 @@
-#include "utils/containers/get_only.h"
-#define DOCTEST_CONFIG_NO_EXCEPTIONS_BUT_WITH_ALL_ASSERTS
+#include "substitutions/pcg_pattern.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
-#include "substitutions/pcg_pattern.h"
+#include "substitutions/open_parallel_tensor_guid_t.h"
+#include "substitutions/operator_pattern/operator_attribute_constraint.h"
 #include "substitutions/sub_parallel_computation_graph.h"
-#include "test/utils/doctest.h"
+#include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
+#include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
@@ -33,7 +35,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::string a_name = "a";
 
     parallel_tensor_guid_t a_tensor =
-        builder.create_input_tensor(a_shape, /*create_grad=*/true, a_name);
+        builder.create_input_tensor(a_shape, CreateGrad::YES, a_name);
 
     int outDim = 16;
     std::string x_matmul_name = "x_matmul";
@@ -63,14 +65,14 @@ TEST_SUITE(FF_TEST_SUITE) {
         get_parallel_layer_by_name(pcg, x_matmul_name);
     parallel_layer_guid_t y_matmul =
         get_parallel_layer_by_name(pcg, y_matmul_name);
-    std::vector<parallel_tensor_guid_t> x_inputs =
-        get_layer_inputs(pcg, x_matmul);
-    REQUIRE(x_inputs.size() == 2);
-    parallel_tensor_guid_t x_weights = x_inputs.at(1);
-    std::vector<parallel_tensor_guid_t> y_inputs =
-        get_layer_inputs(pcg, y_matmul);
-    REQUIRE(y_inputs.size() == 2);
-    parallel_tensor_guid_t y_weights = y_inputs.at(1);
+    std::vector<parallel_tensor_guid_t> x_incoming =
+        get_incoming_tensors(pcg, x_matmul);
+    REQUIRE(x_incoming.size() == 2);
+    parallel_tensor_guid_t x_weights = x_incoming.at(1);
+    std::vector<parallel_tensor_guid_t> y_incoming =
+        get_incoming_tensors(pcg, y_matmul);
+    REQUIRE(y_incoming.size() == 2);
+    parallel_tensor_guid_t y_weights = y_incoming.at(1);
 
     LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>
         g = LabelledOpenDataflowGraph<OperatorAttributePattern,
@@ -79,18 +81,20 @@ TEST_SUITE(FF_TEST_SUITE) {
                 OperatorAttributePattern,
                 TensorAttributePattern>>();
 
-    TensorAttributePattern pattern_tensor_a = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_b = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_c = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_x = TensorAttributePattern{{}};
-    TensorAttributePattern pattern_tensor_y = TensorAttributePattern{{}};
+    TensorAttributePattern pattern_tensor_a =
+        tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_b =
+        tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_c =
+        tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_x =
+        tensor_attribute_pattern_match_all();
+    TensorAttributePattern pattern_tensor_y =
+        tensor_attribute_pattern_match_all();
 
-    OperatorAttributePattern op_pattern_1 =
-        OperatorAttributePattern{{OperatorAttributeConstraint{
-            ConstraintType::EQUAL,
-            OperatorAttributeExpr{OperatorAttributeKey::OP_TYPE},
-            OperatorAttributeValue{OperatorType::LINEAR},
-        }}};
+    OperatorAttributePattern op_pattern_1 = OperatorAttributePattern{{
+        op_type_equals_constraint(OperatorType::LINEAR),
+    }};
 
     OperatorAttributePattern op_pattern_2 = op_pattern_1;
 
@@ -116,42 +120,38 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     PCGPattern pattern = PCGPattern{g};
 
-    std::unordered_set<UnlabelledDataflowGraphPatternMatch> result =
-        unordered_set_of(
-            find_pattern_matches(pattern, sub_pcg_from_full_pcg(pcg)));
+    std::unordered_set<PCGPatternMatch> result = unordered_set_of(
+        find_pattern_matches(pattern, sub_pcg_from_full_pcg(pcg)));
 
-    UnlabelledDataflowGraphPatternMatch match1 =
-        UnlabelledDataflowGraphPatternMatch{
-            bidict<PatternNode, Node>{
-                {op_pattern_1_node, x_matmul.raw_graph_node},
-                {op_pattern_2_node, y_matmul.raw_graph_node},
-            },
-            bidict<PatternInput, OpenDataflowValue>{
-                {PatternInput{pt_a},
-                 OpenDataflowValue{a_tensor.raw_graph_output}},
-                {PatternInput{pt_b},
-                 OpenDataflowValue{x_weights.raw_graph_output}},
-                {PatternInput{pt_c},
-                 OpenDataflowValue{y_weights.raw_graph_output}},
-            }};
+    PCGPatternMatch match1 =
+        PCGPatternMatch{bidict<PatternNode, parallel_layer_guid_t>{
+                            {op_pattern_1_node, x_matmul},
+                            {op_pattern_2_node, y_matmul},
+                        },
+                        bidict<PatternInput, open_parallel_tensor_guid_t>{
+                            {PatternInput{pt_a},
+                             open_parallel_tensor_guid_from_closed(a_tensor)},
+                            {PatternInput{pt_b},
+                             open_parallel_tensor_guid_from_closed(x_weights)},
+                            {PatternInput{pt_c},
+                             open_parallel_tensor_guid_from_closed(y_weights)},
+                        }};
 
-    UnlabelledDataflowGraphPatternMatch match2 =
-        UnlabelledDataflowGraphPatternMatch{
-            bidict<PatternNode, Node>{
-                {op_pattern_1_node, y_matmul.raw_graph_node},
-                {op_pattern_2_node, x_matmul.raw_graph_node},
-            },
-            bidict<PatternInput, OpenDataflowValue>{
-                {PatternInput{pt_a},
-                 OpenDataflowValue{a_tensor.raw_graph_output}},
-                {PatternInput{pt_b},
-                 OpenDataflowValue{y_weights.raw_graph_output}},
-                {PatternInput{pt_c},
-                 OpenDataflowValue{x_weights.raw_graph_output}},
-            }};
+    PCGPatternMatch match2 =
+        PCGPatternMatch{bidict<PatternNode, parallel_layer_guid_t>{
+                            {op_pattern_1_node, y_matmul},
+                            {op_pattern_2_node, x_matmul},
+                        },
+                        bidict<PatternInput, open_parallel_tensor_guid_t>{
+                            {PatternInput{pt_a},
+                             open_parallel_tensor_guid_from_closed(a_tensor)},
+                            {PatternInput{pt_b},
+                             open_parallel_tensor_guid_from_closed(y_weights)},
+                            {PatternInput{pt_c},
+                             open_parallel_tensor_guid_from_closed(x_weights)},
+                        }};
 
-    std::unordered_set<UnlabelledDataflowGraphPatternMatch> correct = {match1,
-                                                                       match2};
+    std::unordered_set<PCGPatternMatch> correct = {match1, match2};
 
     CHECK(result == correct);
   }

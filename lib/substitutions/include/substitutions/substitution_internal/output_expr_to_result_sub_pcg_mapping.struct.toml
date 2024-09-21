@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "OutputExprToResultSubPCGMapping"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/bidict/bidict.h",
+  "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
+  "substitutions/input_parallel_tensor_guid_t.dtg.h",
+  "substitutions/output_graph/output_graph_expr_node.dtg.h",
+  "substitutions/output_graph/output_graph_expr_input.dtg.h",
+]
+
+[[fields]]
+name = "node_mapping"
+type = "::FlexFlow::bidict<::FlexFlow::parallel_layer_guid_t, ::FlexFlow::OutputGraphExprNode>"
+
+[[fields]]
+name = "input_mapping"
+type = "::FlexFlow::bidict<::FlexFlow::input_parallel_tensor_guid_t, ::FlexFlow::OutputGraphExprInput>"
