@@ -18,8 +18,6 @@ ATTACH_GPUS=${ATTACH_GPUS:-true}
 gpu_arg=""
 if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
 
-# Whether to attach inference weights / files (make sure to download the weights first)
-ATTACH_INFERENCE_FILES=${ATTACH_INFERENCE_FILES:-false}
 
 # Amount of shared memory to give the Docker container access to
 # If you get a Bus Error, increase this value. If you don't have enough memory
@@ -115,9 +113,11 @@ if [[ "$(docker images -q "${image}-${FF_GPU_BACKEND}${gpu_backend_version}":lat
   exit 1
 fi
 
-inference_volumes=""
-if $ATTACH_INFERENCE_FILES ; then 
-  inference_volumes="-v ~/.cache/flexflow:/usr/FlexFlow/inference";
+hf_token_volume=""
+hf_token_path="$HOME/.cache/huggingface/token"
+if [ -f "$hf_token_path" ]; then
+  # If the token exists, add the volume mount to the Docker command
+  hf_token_volume+="-v $hf_token_path:/root/.cache/huggingface/token"
 fi
 
-eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${inference_volumes}" "${image}-${FF_GPU_BACKEND}${gpu_backend_version}:latest"
+eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${hf_token_volume}" "${image}-${FF_GPU_BACKEND}${gpu_backend_version}:latest"
