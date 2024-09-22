@@ -42,17 +42,38 @@ RUN MINICONDA_SCRIPT_NAME=Miniconda3-py311_23.5.2-0-Linux-x86_64.sh; \
         /opt/conda/bin/conda install conda-build conda-verify && \
         /opt/conda/bin/conda clean -ya
 
-# Optionally install HIP dependencies
+# set MAKEFLAGS to speedup any dependency that uses make
+ARG N_BUILD_CORES
+ENV MAKEFLAGS "${MAKEFLAGS} -j${N_BUILD_CORES}"
+
+# Set env vars
+ENV PATH /opt/conda/bin:$PATH
+ENV CUDNN_DIR /usr/local/cuda
+ENV CUDA_DIR /usr/local/cuda
+
+# GPU-specific dependencies
+ARG FF_GPU_BACKEND "cuda"
+
+# Update NCCL if FF_GPU_BACKEND is cuda
+RUN /bin/bash -c 'if [ "$FF_GPU_BACKEND" = "cuda" ]; then \
+        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Updating NCCL"; \
+        ubuntu_version=$(lsb_release -rs); \
+        ubuntu_version=${ubuntu_version//./}; \
+        wget "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${ubuntu_version}/x86_64/cuda-keyring_1.0-1_all.deb"; \
+        DEBIAN_FRONTEND=noninteractive dpkg -i cuda-keyring_1.0-1_all.deb; \
+        DEBIAN_FRONTEND=noninteractive apt-get update -y --allow-change-held-packages; \
+        rm -f cuda-keyring_1.0-1_all.deb; \
+        DEBIAN_FRONTEND=noninteractive apt install -y --allow-change-held-packages libnccl2 libnccl-dev; \
+    else \
+        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping updating NCCL"; \
+    fi'
+
+# Install hip dependencies if FF_GPU_BACKEND is hip_cuda or hip_rocm
 # Note that amd's docs say to also install the `hip-runtime-nvidia` package. This
 # package attempts to re-install cuda even though cuda is already installed
 # in the container. It also attempts to install packages for a graphical install.
 # For our container, we don't need `hip-runtime-nvidia`
-ARG FF_GPU_BACKEND "cuda"
 ARG hip_version "5.6"
-ARG N_BUILD_CORES
-# set MAKEFLAGS to speedup any dependency that uses make
-ENV MAKEFLAGS "${MAKEFLAGS} -j${N_BUILD_CORES}"
-
 RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
         # Check that hip_version is one of 5.3,5.4,5.5,5.6
@@ -82,11 +103,6 @@ RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping installing HIP dependencies"; \
     fi
 RUN rm -rf /var/lib/apt/lists/*
-
-# Set env vars
-ENV PATH /opt/conda/bin:$PATH
-ENV CUDNN_DIR /usr/local/cuda
-ENV CUDA_DIR /usr/local/cuda
 
 # Install python packages and other dependencies
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing
