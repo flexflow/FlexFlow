@@ -16,6 +16,10 @@ tensor_guid_t create_candle_uno_feature_model(ComputationGraphBuilder &,
 
 /**
  * @brief Get the default configs of Candle Uno model.
+ *
+ * @details The default configs come from the dataset used by the original
+ * model:
+ * https://github.com/ECP-CANDLE/Benchmarks/tree/f6a3da8818308c9edcd9fedbcf831dd5968efcdd/Pilot1/Uno
  */
 CandleUnoConfig get_default_candle_uno_config();
 
