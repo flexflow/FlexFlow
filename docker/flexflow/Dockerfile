@@ -27,9 +27,7 @@ RUN for pair in $BUILD_CONFIGS; do \
 # Build and install C++ and Python versions of FlexFlow
 RUN mkdir -p build && cd build && \
     eval "$BUILD_CONFIGS" ../config/config.linux && \
-    make -j $N_BUILD_CORES && \
-    eval "$BUILD_CONFIGS" ../config/config.linux && \
-    make install && \
+    make -j $N_BUILD_CORES install && \
     ldconfig
 
 ENTRYPOINT ["/bin/bash"]
