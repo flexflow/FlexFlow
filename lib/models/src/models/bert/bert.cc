@@ -126,6 +126,8 @@ ComputationGraph get_bert_computation_graph(BertConfig const &config) {
 
   tensor_guid_t encoder_output = create_bert_encoder(
       cgb, config, input, bias_initializer, projection_initializer);
+  assert(are_tensor_guid_shapes_equivalent(
+      cgb.computation_graph, input, encoder_output));
 
   tensor_guid_t out_prob =
       cgb.softmax(cgb.dense(encoder_output,
@@ -135,6 +137,14 @@ ComputationGraph get_bert_computation_graph(BertConfig const &config) {
                             /*data_type=*/DataType::FLOAT,
                             /*projection_initializer=*/projection_initializer,
                             /*bias_initializer=*/bias_initializer));
+  assert(
+      (cgb.get_shape(out_prob) ==
+       TensorShape{
+           TensorDims{FFOrdered<size_t>{
+               config.batch_size, config.sequence_length, config.vocab_size}},
+           DataType::FLOAT,
+       }));
+
   return cgb.computation_graph;
 }
 
