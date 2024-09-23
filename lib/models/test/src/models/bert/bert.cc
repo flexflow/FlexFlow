@@ -19,14 +19,15 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    SUBCASE("throws on position_embedding_type != absolute as other values are currently unsupported") {
+    SUBCASE("throws on position_embedding_type != absolute as other values are "
+            "currently unsupported") {
       BertConfig config = [] {
         BertConfig c = get_default_bert_config();
         c.position_embedding_type = "relative_key";
         return c;
       }();
 
-      CHECK_THROWS(get_bert_computation_graph(config));  
+      CHECK_THROWS(get_bert_computation_graph(config));
     }
   }
 }
