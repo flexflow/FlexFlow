@@ -16,6 +16,7 @@ BertConfig get_default_bert_config() {
                     /*attention_probs_dropout_prob=*/0.1,
                     /*initializer_range=*/0.02,
                     /*layer_norm_eps=*/1e-12,
+                    /*position_embedding_type=*/"absolute",
                     /*classifier_dropout=*/0.1,
                     /*sequence_length=*/512,
                     /*batch_size=*/64};
@@ -106,6 +107,11 @@ tensor_guid_t
 };
 
 ComputationGraph get_bert_computation_graph(BertConfig const &config) {
+  if (config.position_embedding_type != "absolute") {
+    throw mk_runtime_error(fmt::format("Currently only position_embedding_type=absolute is supported, but found position_embedding_type={}. "
+                                       "If you need support this additional position_embedding_type values, please create an issue.",
+                                       config.position_embedding_type));
+  }
 
   ComputationGraphBuilder cgb;
   InitializerAttrs projection_initializer =

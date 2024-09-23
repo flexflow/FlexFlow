@@ -55,6 +55,10 @@ name = "layer_norm_eps"
 type = "float"
 
 [[fields]]
+name = "position_embedding_type"
+type = "std::string"
+
+[[fields]]
 name = "classifier_dropout"
 type = "float"
 
