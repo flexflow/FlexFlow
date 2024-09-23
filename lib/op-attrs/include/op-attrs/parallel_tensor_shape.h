@@ -23,8 +23,8 @@ ParallelTensorDimDegrees get_parallel_degrees(ParallelTensorShape const &);
 ParallelTensorShape lift_to_parallel(TensorShape const &);
 ParallelTensorShape
     lift_to_parallel_with_degrees(TensorShape const &,
-                                  SumDegree sum_degree,
-                                  DiscardCopyDegree discard_copy_degree,
+                                  SumDegree const &,
+                                  DiscardCopyDegree const &,
                                   FFOrdered<int> const &shard_degrees);
 ParallelTensorShape
     lift_to_parallel_with_degrees(TensorShape const &,

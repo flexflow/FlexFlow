@@ -11,6 +11,7 @@ features = [
 
 includes = [
   "pcg/initializers/glorot_uniform_attrs.dtg.h",
+  "pcg/initializers/glorot_normal_attrs.dtg.h",
   "pcg/initializers/zero_initializer_attrs.dtg.h",
   "pcg/initializers/uniform_initializer_attrs.h",
   "pcg/initializers/norm_initializer_attrs.dtg.h",
@@ -21,6 +22,10 @@ includes = [
 [[values]]
 type = "::FlexFlow::GlorotUniformAttrs"
 key = "glorot_uniform"
+
+[[values]]
+type = "::FlexFlow::GlorotNormalAttrs"
+key = "glorot_normal"
 
 [[values]]
 type = "::FlexFlow::ZeroInitializerAttrs"
