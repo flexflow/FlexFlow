@@ -387,8 +387,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("bert") {
-        ComputationGraph cg =
-            get_bert_computation_graph(get_default_bert_config());
+      ComputationGraph cg =
+          get_bert_computation_graph(get_default_bert_config());
 
       std::string result =
           render_preprocessed_computation_graph_for_sp_decomposition(cg);
