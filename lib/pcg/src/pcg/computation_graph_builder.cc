@@ -918,24 +918,4 @@ tensor_guid_t ComputationGraphBuilder::softmax(
       this->add_layer(layer, {input}, {}, {make_output_attrs(output_shape)}));
 }
 
-tensor_guid_t ComputationGraphBuilder::concat(
-    std::vector<tensor_guid_t> const &inputs,
-    int axis,
-    std::optional<std::string> const &maybe_name) {
-
-  ConcatAttrs attrs = ConcatAttrs{ff_dim_t{axis}};
-
-  std::string name =
-      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
-
-  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
-
-  std::vector<TensorShape> input_shapes = transform(
-      inputs, [&](tensor_guid_t const &i) { return this->get_shape(i); });
-  TensorShape output_shape =
-      throw_if_unexpected(get_output_shape(attrs, input_shapes));
-
-  return this->add_layer(layer, inputs, {}, output_shape);
-}
-
 } // namespace FlexFlow

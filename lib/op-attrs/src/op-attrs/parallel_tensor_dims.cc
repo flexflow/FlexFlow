@@ -52,7 +52,7 @@ ParallelTensorDims
                                   DiscardCopyDegree const &discard_copy_degree,
                                   FFOrdered<int> const &shard_degrees) {
   std::vector<ShardParallelDim> lifted =
-      transform(zip(as_vector(unpar.ff_ordered), as_vector(shard_degrees)),
+      transform(zip(vector_of(unpar.ff_ordered), vector_of(shard_degrees)),
                 [](std::pair<size_t, int> const &p) {
                   size_t size = p.first;
                   int degree = p.second;

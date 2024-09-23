@@ -262,7 +262,6 @@ public:
                 std::vector<tensor_guid_t> const &weights,
                 std::vector<TensorAttrs> const &outputs);
 
-private:
   TensorShape get_shape(tensor_guid_t const &) const;
 
 private:

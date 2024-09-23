@@ -88,15 +88,6 @@ ParallelTensorShape
   };
 }
 
-ParallelTensorShape
-    lift_to_parallel_with_degrees(TensorShape const &s,
-                                  ParallelTensorDimDegrees const &degrees) {
-  return lift_to_parallel_with_degrees(s,
-                                       degrees.sum_degree,
-                                       degrees.discard_copy_degree,
-                                       degrees.shard_degrees);
-}
-
 TensorShape require_not_parallel(ParallelTensorShape const &s) {
   int total_degree = get_total_parallel_degree(s);
   if (total_degree != 1) {

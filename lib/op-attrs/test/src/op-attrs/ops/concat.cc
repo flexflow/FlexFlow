@@ -1,7 +1,8 @@
 #include "op-attrs/ops/concat.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "utils/expected.h"
-#include "utils/fmt/expected.h"
+#include "test/utils/doctest/fmt/expected.h"
+#include "test/utils/doctest/fmt/optional.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

@@ -61,7 +61,7 @@ ComputationGraph
         TensorDims{dims},
         DataType::FLOAT,
     };
-    return cgb.create_tensor(input_shape, CreateGrad::YES);
+    return cgb.create_input(input_shape, CreateGrad::YES);
   };
 
   std::set<std::string> input_models;
