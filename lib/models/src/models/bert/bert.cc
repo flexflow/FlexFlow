@@ -111,7 +111,7 @@ ComputationGraph get_bert_computation_graph(BertConfig const &config) {
     throw mk_runtime_error(
         fmt::format("Currently only position_embedding_type=absolute is "
                     "supported, but found position_embedding_type={}. "
-                    "If you need support this additional "
+                    "If you need support for additional "
                     "position_embedding_type values, please create an issue.",
                     config.position_embedding_type));
   }
