@@ -305,8 +305,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("candle_uno") {
-        ComputationGraph cg = get_candle_uno_computation_graph(
-            get_default_candle_uno_config());
+        ComputationGraph cg =
+            get_candle_uno_computation_graph(get_default_candle_uno_config());
 
         std::optional<SeriesParallelDecomposition> sp_decomposition =
             get_computation_graph_series_parallel_decomposition(cg);

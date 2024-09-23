@@ -65,8 +65,7 @@ tl::expected<ComputationGraph, std::string>
     return get_inception_v3_computation_graph(
         get_default_inception_v3_training_config());
   } else if (model_name == "candle_uno") {
-    return get_candle_uno_computation_graph(
-        get_default_candle_uno_config());
+    return get_candle_uno_computation_graph(get_default_candle_uno_config());
   } else if (model_name == "split_test") {
     int batch_size = 8;
     return get_split_test_computation_graph(batch_size);
@@ -139,8 +138,11 @@ int main(int argc, char **argv) {
                   "output a dot representation of model's computation graph "
                   "for preprocessed to help check series-parallel structure"});
 
-  std::vector<std::string> model_options = {
-      "transformer", "inception_v3", "candle_uno", "split_test", "single_operator"};
+  std::vector<std::string> model_options = {"transformer",
+                                            "inception_v3",
+                                            "candle_uno",
+                                            "split_test",
+                                            "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
       cli,
       CLIPositionalArgumentSpec{
