@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "GlorotNormalAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "seed"
+type = "int"
