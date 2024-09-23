@@ -1,4 +1,5 @@
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
+#include "models/bert/bert.h"
 #include "models/candle_uno/candle_uno.h"
 #include "models/inception_v3/inception_v3.h"
 #include "models/split_test/split_test.h"
@@ -313,6 +314,16 @@ TEST_SUITE(FF_TEST_SUITE) {
 
         CHECK(sp_decomposition.has_value());
       }
+
+      SUBCASE("bert") {
+        ComputationGraph cg =
+            get_bert_computation_graph(get_default_bert_config());
+
+        std::optional<SeriesParallelDecomposition> sp_decomposition =
+            get_computation_graph_series_parallel_decomposition(cg);
+
+        CHECK(sp_decomposition.has_value());
+      }
     }
   }
 
@@ -354,6 +365,30 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("transformer") {
       ComputationGraph cg =
           get_transformer_computation_graph(get_default_transformer_config());
+
+      std::string result =
+          render_preprocessed_computation_graph_for_sp_decomposition(cg);
+    }
+
+    SUBCASE("inception_v3") {
+      ComputationGraph cg = get_inception_v3_computation_graph(
+          get_default_inception_v3_training_config());
+
+      std::string result =
+          render_preprocessed_computation_graph_for_sp_decomposition(cg);
+    }
+
+    SUBCASE("candle_uno") {
+      ComputationGraph cg =
+          get_candle_uno_computation_graph(get_default_candle_uno_config());
+
+      std::string result =
+          render_preprocessed_computation_graph_for_sp_decomposition(cg);
+    }
+
+    SUBCASE("bert") {
+        ComputationGraph cg =
+            get_bert_computation_graph(get_default_bert_config());
 
       std::string result =
           render_preprocessed_computation_graph_for_sp_decomposition(cg);
