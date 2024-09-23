@@ -23,6 +23,9 @@ jobs:
       - name: Add helpers directory to path
         run: echo "${PWD}/.github/workflows/helpers" >> $GITHUB_PATH
 
+      - name: Free additional space on runner
+        run: free_space_on_runner.sh  
+
       - name: Install nix
         uses: cachix/install-nix-action@v25
         with:
