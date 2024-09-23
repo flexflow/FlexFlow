@@ -6,7 +6,6 @@
 #include "op-attrs/tensor_shape.h"
 #include "utils/containers/all_of.h"
 #include "utils/containers/are_all_same.h"
-#include "utils/containers/as_vector.h"
 #include "utils/containers/require_all_same1.h"
 #include "utils/containers/sum.h"
 #include "utils/containers/transform.h"

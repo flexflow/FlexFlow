@@ -7,6 +7,9 @@
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/per_device_op_state.h"
 #include "local-execution/runtime_arg_config.h"
+#include "pcg/computation_graph.dtg.h"
+#include "pcg/layer_guid_t.dtg.h"
+#include "pcg/tensor_guid_t.dtg.h"
 
 namespace FlexFlow {
 

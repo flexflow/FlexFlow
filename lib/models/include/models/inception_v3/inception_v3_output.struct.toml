@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "InceptionV3Output"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/tensor_guid_t.dtg.h",
+  "<optional>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+]
+
+[[fields]]
+name = "standard_logits"
+type = "::FlexFlow::tensor_guid_t"
+
+[[fields]]
+name = "aux_logits"
+type = "std::optional<::FlexFlow::tensor_guid_t>"

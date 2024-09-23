@@ -4,7 +4,6 @@
 #include "device.h"
 #include "kernels/allocation.h"
 #include "kernels/ff_handle.h"
-#include "utils/visitable.h"
 
 namespace FlexFlow {
 namespace Kernels {

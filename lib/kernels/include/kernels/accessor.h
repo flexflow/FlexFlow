@@ -16,7 +16,7 @@ public:
   template <DataType DT>
   typename data_type_enum_to_class<DT>::type *get() const {
     if (this->data_type == DT) {
-      return static_cast<real_type<DT> *>(this->ptr);
+      return static_cast<real_type_t<DT> *>(this->ptr);
     } else {
       throw mk_runtime_error(
           "Invalid access data type ({} != {})", this->data_type, DT);
@@ -47,7 +47,7 @@ public:
   template <DataType DT>
   typename data_type_enum_to_class<DT>::type const *get() const {
     if (this->data_type == DT) {
-      return static_cast<real_type<DT> const *>(this->ptr);
+      return static_cast<real_type_t<DT> const *>(this->ptr);
     } else {
       throw mk_runtime_error(
           "Invalid access data type ({} != {})", this->data_type, DT);
@@ -94,7 +94,7 @@ template <DataType DT>
 typename data_type_enum_to_class<DT>::type *
     get(GenericTensorAccessorW const &a) {
   if (a.data_type == DT) {
-    return static_cast<real_type<DT> *>(a.ptr);
+    return static_cast<real_type_t<DT> *>(a.ptr);
   } else {
     throw mk_runtime_error(
         "Invalid access data type ({} != {})", a.data_type, DT);
@@ -102,9 +102,9 @@ typename data_type_enum_to_class<DT>::type *
 }
 
 template <DataType DT>
-std::vector<real_type<DT> *>
+std::vector<real_type_t<DT> *>
     get(std::vector<GenericTensorAccessorW> const &accs) {
-  std::vector<real_type<DT> *> out;
+  std::vector<real_type_t<DT> *> out;
   for (auto acc : accs) {
     out.push_back(get<DT>(acc));
   }
@@ -115,7 +115,7 @@ template <DataType DT>
 typename data_type_enum_to_class<DT>::type const *
     get(GenericTensorAccessorR const &a) {
   if (a.data_type == DT) {
-    return static_cast<real_type<DT> const *>(a.ptr);
+    return static_cast<real_type_t<DT> const *>(a.ptr);
   } else {
     throw mk_runtime_error(
         "Invalid access data type ({} != {})", a.data_type, DT);
@@ -139,9 +139,9 @@ std::vector<half const *>
     get_half_ptrs(std::vector<GenericTensorAccessorR> const &);
 
 template <DataType DT>
-std::vector<real_type<DT> const *>
+std::vector<real_type_t<DT> const *>
     get(std::vector<GenericTensorAccessorR> const &accs) {
-  std::vector<real_type<DT> const *> out;
+  std::vector<real_type_t<DT> const *> out;
   for (auto acc : accs) {
     out.push_back(get<DT>(acc));
   }

@@ -68,9 +68,6 @@ std::optional<bool> optional_all_of(Container const &, Function const &);
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);
 
-template <typename C>
-typename C::value_type maximum(C const &v);
-
 template <typename T>
 T reversed(T const &t);
 

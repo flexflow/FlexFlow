@@ -25,6 +25,7 @@ includes = [
 
 src_includes = [
   "utils/fmt/optional.h",
+  "utils/json/optional.h",
   "utils/fmt/vector.h",
   "utils/hash/vector.h",
 ]
@@ -67,6 +68,9 @@ type = "::FlexFlow::PoolOp"
 
 [[values]]
 type = "::FlexFlow::TensorShape"
+
+[[values]]
+type = "::FlexFlow::TensorDims"
 
 [[values]]
 type = "::FlexFlow::DataType"

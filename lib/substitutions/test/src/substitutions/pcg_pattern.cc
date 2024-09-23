@@ -5,9 +5,9 @@
 #include "substitutions/operator_pattern/operator_attribute_constraint.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "substitutions/tensor_pattern/tensor_attribute_pattern.h"
-#include "test/utils/doctest.h"
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 
@@ -35,7 +35,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::string a_name = "a";
 
     parallel_tensor_guid_t a_tensor =
-        builder.create_input_tensor(a_shape, /*create_grad=*/true, a_name);
+        builder.create_input_tensor(a_shape, CreateGrad::YES, a_name);
 
     int outDim = 16;
     std::string x_matmul_name = "x_matmul";
@@ -65,14 +65,14 @@ TEST_SUITE(FF_TEST_SUITE) {
         get_parallel_layer_by_name(pcg, x_matmul_name);
     parallel_layer_guid_t y_matmul =
         get_parallel_layer_by_name(pcg, y_matmul_name);
-    std::vector<parallel_tensor_guid_t> x_inputs =
-        get_layer_inputs(pcg, x_matmul);
-    REQUIRE(x_inputs.size() == 2);
-    parallel_tensor_guid_t x_weights = x_inputs.at(1);
-    std::vector<parallel_tensor_guid_t> y_inputs =
-        get_layer_inputs(pcg, y_matmul);
-    REQUIRE(y_inputs.size() == 2);
-    parallel_tensor_guid_t y_weights = y_inputs.at(1);
+    std::vector<parallel_tensor_guid_t> x_incoming =
+        get_incoming_tensors(pcg, x_matmul);
+    REQUIRE(x_incoming.size() == 2);
+    parallel_tensor_guid_t x_weights = x_incoming.at(1);
+    std::vector<parallel_tensor_guid_t> y_incoming =
+        get_incoming_tensors(pcg, y_matmul);
+    REQUIRE(y_incoming.size() == 2);
+    parallel_tensor_guid_t y_weights = y_incoming.at(1);
 
     LabelledOpenDataflowGraph<OperatorAttributePattern, TensorAttributePattern>
         g = LabelledOpenDataflowGraph<OperatorAttributePattern,

@@ -1,15 +1,19 @@
-#include "doctest/doctest.h"
 #include "kernels/attention_kernels.h"
 #include "local-execution/local_cost_estimator.h"
 #include "local-execution/local_cpu_allocator.h"
 #include "local-execution/local_slots_backing.h"
+#include "op-attrs/ops/attention.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "pcg/computation_graph.h"
 #include "pcg/computation_graph_builder.h"
+#include "test/utils/doctest/fmt/pair.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/variant.h"
+#include "test/utils/doctest/fmt/vector.h"
 #include "test_utils.h"
-#include "utils/fmt/unordered_map.h"
-#include "utils/fmt/variant.h"
-#include "utils/fmt/vector.h"
+#include <doctest/doctest.h>
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("LocalSlotsBacking -- Attention Op") {
@@ -37,11 +41,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     // build graph
     ComputationGraphBuilder cg_builder;
     tensor_guid_t query_guid =
-        cg_builder.create_tensor(query_shape, CreateGrad::YES);
+        cg_builder.create_input(query_shape, CreateGrad::YES);
     tensor_guid_t key_guid =
-        cg_builder.create_tensor(key_shape, CreateGrad::YES);
+        cg_builder.create_input(key_shape, CreateGrad::YES);
     tensor_guid_t value_guid =
-        cg_builder.create_tensor(value_shape, CreateGrad::YES);
+        cg_builder.create_input(value_shape, CreateGrad::YES);
 
     std::string layer_name = "attn1";
     tensor_guid_t output_guid =
@@ -269,5 +273,3 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 }
-
-} // namespace FlexFlow

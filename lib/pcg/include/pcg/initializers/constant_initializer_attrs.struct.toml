@@ -10,12 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/datatype.h",
-  "utils/json.h",
-]
-
-src_includes = [
-  "utils/fmt/variant.h",
+  "op-attrs/datatype_value.dtg.h",
 ]
 
 [[fields]]

@@ -1,10 +1,11 @@
 #include "op-attrs/tensor_dims.h"
+#include "op-attrs/dim_ordered/zip.h"
 #include "op-attrs/replica_parallel_dim_set.h"
 #include "op-attrs/shard_parallel_dim.dtg.h"
 #include "utils/containers/all_of.h"
-#include "utils/containers/as_vector.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/zip.h"
 #include "utils/integer_conversions.h"
 
@@ -32,8 +33,8 @@ bool tensor_dims_is_broadcastable_to(TensorDims const &curr,
     return false;
   }
 
-  std::vector<size_t> curr_dims = as_vector(curr.ff_ordered);
-  std::vector<size_t> goal_dims = as_vector(goal.ff_ordered);
+  std::vector<size_t> curr_dims = vector_of(curr.ff_ordered);
+  std::vector<size_t> goal_dims = vector_of(goal.ff_ordered);
 
   for (auto const &[curr_dim, goal_dim] :
        zip(reversed(curr_dims), reversed(goal_dims))) {

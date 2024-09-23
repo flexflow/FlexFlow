@@ -15,7 +15,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    tensor_guid_t input = b.create_tensor(input_shape, CreateGrad::YES);
+    tensor_guid_t input = b.create_input(input_shape, CreateGrad::YES);
     tensor_guid_t output = b.conv2d(input,
                                     /*outChannels=*/5,
                                     /*kernelH=*/3,

@@ -8,18 +8,19 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "utils/containers.h"
 #include "utils/containers/are_disjoint.h"
-#include "utils/containers/as_vector.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/merge_maps.h"
+#include "utils/containers/require_no_duplicates.h"
+#include "utils/containers/vector_of.h"
 #include "utils/exception.h"
 #include "utils/graph/graph_split.dtg.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/open_dataflow_graph/algorithms/get_subgraph.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
-#include "utils/graph/serial_parallel/serial_parallel_splits.h"
+#include "utils/graph/series_parallel/series_parallel_decomposition.dtg.h"
+#include "utils/graph/series_parallel/series_parallel_decomposition.h"
+#include "utils/graph/series_parallel/series_parallel_splits.h"
 
 namespace FlexFlow {
 
@@ -83,39 +84,43 @@ std::vector<std::pair<MachineSpecification, MachineSpecification>>
 }
 
 // We may replace this by having unflattened AST
-std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
-    decompose(SerialSplit const &serial) {
+std::pair<SeriesParallelDecomposition, SeriesParallelDecomposition>
+    decompose(SeriesSplit const &serial) {
   if (serial.children.size() == 2) {
-    return {widen<SerialParallelDecomposition>(serial.children[0]),
-            widen<SerialParallelDecomposition>(serial.children[1])};
+    return {widen<SeriesParallelDecomposition>(serial.children[0]),
+            widen<SeriesParallelDecomposition>(serial.children[1])};
   }
-  SerialSplit decompn1 = serial;
+  SeriesSplit decompn1 = serial;
   decompn1.children.pop_back();
-  return {SerialParallelDecomposition(decompn1),
-          widen<SerialParallelDecomposition>(serial.children.back())};
+  return {SeriesParallelDecomposition(decompn1),
+          widen<SeriesParallelDecomposition>(serial.children.back())};
 }
 
-std::pair<SerialParallelDecomposition, SerialParallelDecomposition>
+std::pair<SeriesParallelDecomposition, SeriesParallelDecomposition>
     decompose(ParallelSplit const &parallel) {
   if (parallel.children.size() == 2) {
-    std::vector<SerialParallelDecomposition> children =
-        transform(as_vector(parallel.children), [&](auto const &child) {
-          return widen<SerialParallelDecomposition>(child);
+    std::vector<SeriesParallelDecomposition> children =
+        transform(vector_of(parallel.children), [&](auto const &child) {
+          return widen<SeriesParallelDecomposition>(child);
         });
     return {children[0], children[1]};
   }
   ParallelSplit decompn1 = parallel;
-  std::variant<SerialSplit, Node> child = *parallel.children.begin();
+  std::variant<SeriesSplit, Node> child = *parallel.children.begin();
   decompn1.children.erase(child);
-  return {SerialParallelDecomposition(decompn1),
-          widen<SerialParallelDecomposition>(child)};
+  return {SeriesParallelDecomposition(decompn1),
+          widen<SeriesParallelDecomposition>(child)};
 }
 
 GraphSplit
-    get_graph_split(SerialParallelDecomposition const &pre_decomposition,
-                    SerialParallelDecomposition const &post_decomposition) {
-  return GraphSplit{get_nodes(pre_decomposition),
-                    get_nodes(post_decomposition)};
+    get_graph_split(SeriesParallelDecomposition const &pre_decomposition,
+                    SeriesParallelDecomposition const &post_decomposition) {
+  std::unordered_set<Node> pre_nodes =
+      require_no_duplicates(get_nodes(pre_decomposition));
+  std::unordered_set<Node> post_nodes =
+      require_no_duplicates(get_nodes(post_decomposition));
+  assert(are_disjoint(pre_nodes, post_nodes));
+  return GraphSplit{pre_nodes, post_nodes};
 }
 
 float estimate_cost(SubParallelComputationGraph const &g,
@@ -181,7 +186,7 @@ struct MachineMappingSearcher {
 
     template <typename T>
     OptimalCostResult operator()(T const &t) {
-      OptimalCostState state{SerialParallelDecomposition{t},
+      OptimalCostState state{SeriesParallelDecomposition{t},
                              resource,
                              given_machine_views,
                              frontier_machine_views};
@@ -202,13 +207,13 @@ struct MachineMappingSearcher {
   OptimalCostResult
       optimal_cost(SubParallelComputationGraph const &g,
                    MachineSpecification resource,
-                   SerialParallelDecomposition const &sp_decomposition) {
+                   SeriesParallelDecomposition const &sp_decomposition) {
     return std::visit(OptimalCostFunctor(this, g, resource, {}, {}),
                       sp_decomposition.raw_variant);
   }
 
   OptimalCostResult optimal_cost(
-      SerialSplit const &serial,
+      SeriesSplit const &serial,
       SubParallelComputationGraph const &g,
       MachineSpecification const &resource,
       std::unordered_map<Node, MachineView> const &given_machine_views,
@@ -218,8 +223,8 @@ struct MachineMappingSearcher {
     // OptimalCostResult optimal_result = OptimalCostResult::infinity();
 
     // auto decomposed = decompose(serial);
-    // SerialParallelDecomposition pre_decompn = decomposed.first;
-    // SerialParallelDecomposition post_decompn = decomposed.second;
+    // SeriesParallelDecomposition pre_decompn = decomposed.first;
+    // SeriesParallelDecomposition post_decompn = decomposed.second;
 
     // GraphSplit graph_split = get_graph_split(pre_decompn, post_decompn);
     // SubParallelComputationGraph pre_graph =
@@ -273,8 +278,8 @@ struct MachineMappingSearcher {
 
     NOT_IMPLEMENTED();
     // auto decomposed = decompose(parallel);
-    // SerialParallelDecomposition decompn1 = decomposed.first;
-    // SerialParallelDecomposition decompn2 = decomposed.second;
+    // SeriesParallelDecomposition decompn1 = decomposed.first;
+    // SeriesParallelDecomposition decompn2 = decomposed.second;
 
     // GraphSplit graph_split = get_graph_split(decompn1, decompn2);
     // SubParallelComputationGraph g1 = get_subgraph(g, graph_split.first),
@@ -350,8 +355,8 @@ OptimalCostResult optimal_cost(
     CostEstimator const &cost_estimator,
     MachineSpecification const &resources,
     OptimalCostCache &cached_subgraph_costs) {
-  SerialParallelDecomposition sp_decomposition =
-      get_serial_parallel_decomposition(g);
+  SeriesParallelDecomposition sp_decomposition =
+      get_series_parallel_decomposition(g);
   SubParallelComputationGraph subpcg = pcg_to_subpcg(g);
   MachineMappingSearcher searcher(
       cost_estimator, allowed_machine_views, cached_subgraph_costs);
