@@ -392,6 +392,8 @@ void FlexFlow::top_level_task(Task const *task,
       for (size_t i = 0; i < result.size(); ++i) {
         json result_json;
         result_json["prompt"] = requests[i].prompt;
+        result_json["input_length"] = result[i].input_tokens.size();
+        result_json["output_length"] = result[i].output_tokens.size();
         result_json["slo_ratio"] = result[i].slo_ratio;
         result_json["emission_time_ms"] = result[i].emission_time_ms;
         output_json.push_back(result_json);
