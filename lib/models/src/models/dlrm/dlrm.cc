@@ -128,7 +128,9 @@ ComputationGraph get_dlrm_computation_graph(DLRMConfig const &config) {
                           DataType::INT64));
 
   tensor_guid_t dense_input = create_input_tensor(
-      {config.batch_size, config.mlp_bot.front()}, DataType::FLOAT);
+      {config.batch_size, config.mlp_bot.front()},
+      DataType::HALF); // TODO: change this to DataType::FLOAT after cgb.cast is
+                       // implemented.
 
   // Construct the model
   tensor_guid_t bottom_mlp_output = create_dlrm_mlp(

@@ -3,6 +3,7 @@
 #include "export_model_arch/json_sp_model_export.dtg.h"
 #include "models/bert/bert.h"
 #include "models/candle_uno/candle_uno.h"
+#include "models/dlrm/dlrm.h"
 #include "models/inception_v3/inception_v3.h"
 #include "models/split_test/split_test.h"
 #include "models/transformer/transformer.h"
@@ -69,6 +70,8 @@ tl::expected<ComputationGraph, std::string>
     return get_candle_uno_computation_graph(get_default_candle_uno_config());
   } else if (model_name == "bert") {
     return get_bert_computation_graph(get_default_bert_config());
+  } else if (model_name == "dlrm") {
+    return get_dlrm_computation_graph(get_default_dlrm_config());
   } else if (model_name == "split_test") {
     int batch_size = 8;
     return get_split_test_computation_graph(batch_size);
@@ -145,6 +148,7 @@ int main(int argc, char **argv) {
                                             "inception_v3",
                                             "candle_uno",
                                             "bert",
+                                            "dlrm",
                                             "split_test",
                                             "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(

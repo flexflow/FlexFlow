@@ -1,6 +1,7 @@
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
 #include "models/bert/bert.h"
 #include "models/candle_uno/candle_uno.h"
+#include "models/dlrm/dlrm.h"
 #include "models/inception_v3/inception_v3.h"
 #include "models/split_test/split_test.h"
 #include "models/transformer/transformer.h"
@@ -389,6 +390,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("bert") {
       ComputationGraph cg =
           get_bert_computation_graph(get_default_bert_config());
+
+      std::string result =
+          render_preprocessed_computation_graph_for_sp_decomposition(cg);
+    }
+
+    SUBCASE("dlrm") {
+      ComputationGraph cg =
+          get_dlrm_computation_graph(get_default_dlrm_config());
 
       std::string result =
           render_preprocessed_computation_graph_for_sp_decomposition(cg);
