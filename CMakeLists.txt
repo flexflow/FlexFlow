@@ -1,8 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
-project(FlexFlow LANGUAGES CXX CUDA)
+project(FlexFlow)
 
 
 include(ExternalProject)
+
+enable_language(CXX)
+enable_language(CUDA)
+if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 8)
+    message(FATAL_ERROR "Your C++ compiler is too old. Please upgrade to version 8 or higher.")
+endif()
 
 # Set policy CMP0074 to eliminate cmake warnings
 cmake_policy(SET CMP0074 NEW)
