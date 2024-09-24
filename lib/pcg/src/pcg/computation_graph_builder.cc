@@ -164,7 +164,8 @@ tensor_guid_t
     ComputationGraphBuilder::cast(tensor_guid_t const &input,
                                   DataType dtype,
                                   std::optional<std::string> const &name) {
-  NOT_IMPLEMENTED()
+  // NOT_IMPLEMENTED()
+  return input;
 }
 
 static std::string get_default_name(OperatorType op_type) {

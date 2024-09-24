@@ -1,4 +1,4 @@
-#include "models/dlrm.h"
+#include "models/dlrm/dlrm.h"
 #include "pcg/computation_graph.h"
 #include <doctest/doctest.h>
 
@@ -12,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("num layers") {
       int result_num_layers = get_layers(result).size();
-      int correct_num_layers = 0;
+      int correct_num_layers = 23;
       CHECK(result_num_layers == correct_num_layers);
     }
   }
