@@ -705,6 +705,11 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   // write_to_output_file("", str);
 }
 
+void RequestManager::update_token_tree_depth() {
+  ssm_tree_depth = min(get_max_tokens_per_batch() / get_num_active_requests(),
+                       get_max_tree_depth());
+}
+
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   if (num_available_requests == 0) {
@@ -818,6 +823,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       if (!ssm_completed) {
         ssm_completed = update_ssm_inference_results(result);
       }
+      // If the ssm speculation is completed, we do nothing
 
       if (current_ssm_step == get_max_tree_depth()) {
         request_manager_status = LLM_VERIFY;
@@ -1304,6 +1310,7 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
     }
     profiling.ssm_step_start = Realm::Clock::current_time_in_microseconds();
   }
+  update_token_tree_depth();
   if (verbose) {
     std::cout << "prepare_first_spec_batch_config NEW batchconfig:"
               << std::endl;
@@ -1653,7 +1660,8 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  if (current_ssm_step == get_max_tree_depth()) {
+  //   if (current_ssm_step == get_max_tree_depth()) {
+  if (current_ssm_step == ssm_tree_depth) {
     // Prune the token tree at the last step
     prune_token_tree();
     // Update profiling statistics before returning
@@ -2319,6 +2327,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
 
   request_manager_status = PREFILLING;
   prefill_model = SSM;
+  ssm_tree_depth = get_max_tree_depth();
 
   std::queue<InferenceResultFuture> infer_result_future_pipeline;
   infer_result_future_pipeline.push(irf_0);

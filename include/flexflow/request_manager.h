@@ -422,6 +422,7 @@ private:
   bool request_available[BatchConfig::MAX_NUM_REQUESTS];
   int num_available_requests = 0;
   int ssm_completed = true;
+  int ssm_tree_depth = 0;
 
   // Multi-model support
   std::vector<FFModel *> ssm_models;
@@ -510,6 +511,7 @@ private:
   void add_tokens_toward_slo(RequestGuid guid, int &budget);
   void add_tokens_toward_memory_occupancy(int budget);
   void add_tokens_toward_goodput(int budget);
+  void update_token_tree_depth();
 
   /* ---------- Spec Decoding Helper Functions ---------- */
   void renormalize(std::vector<std::pair<TokenId, float>> &D,
