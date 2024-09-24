@@ -37,13 +37,24 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
       STRING "Choose the type of build." FORCE)
 endif()
 
+# option for using Python
+option(FF_USE_PYTHON "Enable Python" ON)
+if (FF_USE_PYTHON)
+  find_package(Python3 COMPONENTS Interpreter Development)
+endif()
+
 if(INSTALL_DIR)
   message(STATUS "INSTALL_DIR: ${INSTALL_DIR}")
   set(CMAKE_INSTALL_PREFIX ${INSTALL_DIR} CACHE PATH "Installation directory" FORCE)
 else()
-  # Install DIR not set. Use default, unless a conda environment is active
-  if (DEFINED ENV{CONDA_PREFIX} AND NOT FF_BUILD_FROM_PYPI)
-    set(CONDA_PREFIX $ENV{CONDA_PREFIX})
+  # Install DIR not set. Use default, unless a conda environment is in use
+  if ((DEFINED ENV{CONDA_PREFIX} OR (Python3_EXECUTABLE AND Python3_EXECUTABLE MATCHES "conda")) AND NOT FF_BUILD_FROM_PYPI)
+    if (DEFINED ENV{CONDA_PREFIX})
+        set(CONDA_PREFIX $ENV{CONDA_PREFIX})
+    else()
+        get_filename_component(CONDA_PREFIX "${Python3_EXECUTABLE}" DIRECTORY)
+        get_filename_component(CONDA_PREFIX "${CONDA_PREFIX}" DIRECTORY)
+    endif()
     # Set CMAKE_INSTALL_PREFIX to the Conda environment's installation path
     set(CMAKE_INSTALL_PREFIX ${CONDA_PREFIX} CACHE PATH "Installation directory" FORCE)
     message(STATUS "Active conda environment detected. Setting CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
@@ -63,9 +74,6 @@ option(FF_BUILD_FROM_PYPI "Build from pypi" OFF)
 
 # build shared or static flexflow lib
 option(BUILD_SHARED_LIBS "Build shared libraries instead of static ones" ON)
-
-# option for using Python
-option(FF_USE_PYTHON "Enable Python" ON)
 
 # option for building legion only 
 option(BUILD_LEGION_ONLY "Build Legion only" OFF)
@@ -559,6 +567,7 @@ if(NOT BUILD_LEGION_ONLY)
   if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(inference/spec_infer)
     add_subdirectory(inference/incr_decoding)
+    add_subdirectory(inference/peft)
   endif()
 
 

@@ -19,7 +19,7 @@
 namespace FlexFlow {
 
 ReductionMeta::ReductionMeta(FFHandler handle, Reduction const *reduct)
-    : OpMeta(handle) {}
+    : OpMeta(handle, reduct) {}
 
 namespace Kernels {
 namespace Reduction {

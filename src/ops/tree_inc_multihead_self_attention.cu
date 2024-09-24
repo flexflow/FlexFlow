@@ -12,9 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
-#endif
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
@@ -390,7 +388,7 @@ void commit_tokens(TreeIncMultiHeadSelfAttentionMeta const *m,
         m->kProjSize,
         m->vProjSize,
         num_tokens_to_commit,
-        m->num_active_tokens, // number of active tokens in previous batch
+        m->num_active_infr_tokens, // number of active tokens in previous batch
         BatchConfig::max_sequence_length() +
             BatchConfig::max_spec_tree_token_num(),
         m->hidden_size);
@@ -509,17 +507,18 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
   // int num_requests = bc->num_active_requests();
   int processed_tokens_in_batch = 0;
   // int qkv_block_size =
@@ -571,7 +570,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
             m->vProjSize,
             num_new_tokens,            // num_tokens_in_branch
             processed_tokens_in_batch, // num_processed_tokens_in_batch
-            m->num_active_tokens,      // total_tokens_in_batch
+            m->num_active_infr_tokens, // total_tokens_in_batch
             BatchConfig::max_sequence_length(),
             m->hidden_size);
       }
@@ -773,6 +772,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                          ldc,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
   if (*m->final_bias && shard_id == 0) {
     int parallelism = m->oProjSize * processed_tokens_in_batch;
     int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
@@ -788,7 +788,7 @@ void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
                                   m->oProjSize);
   }
 
-  assert(processed_tokens_in_batch == bc->num_active_tokens());
+  assert(processed_tokens_in_batch == bc->num_active_infr_tokens());
 }
 
 #define LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(                             \
@@ -896,7 +896,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   }
 
   // copy committed tokens info to GPU for the commit_tokens kernel
-  // Note that m->num_active_tokens stores the number of active
+  // Note that m->num_active_infr_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
   // keys/values to the key-value cache
   // std::cout << "tokens to be committed: " << bc->num_tokens_to_commit <<
@@ -904,9 +904,9 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   commit_tokens<DT>(m, bc, stream);
 
-  // After commit we update m->num_active_tokens to be the number of active
+  // After commit we update m->num_active_infr_tokens to be the number of active
   // tokens for the current batch
-  m->num_active_tokens = bc->num_active_tokens();
+  m->num_active_infr_tokens = bc->num_active_infr_tokens();
 
   // here because we need postion info in infernece 1
   if (m->offload && m->biasSize > 0) {
@@ -1052,7 +1052,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     _num_kv_heads,
                                     attn->quantization_type,
                                     attn->offload),
-      num_active_tokens(0) {
+      num_active_infr_tokens(0) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(cudnnSetStream(handler.dnn, stream));
@@ -1060,21 +1060,13 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
   // allocate memory for the seqArray and reserve space
   {
 
-    causalMask = reinterpret_cast<BatchConfig::BitMask *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo));
+    causalMask = static_cast<BatchConfig::BitMask *>(
+        handler.batch_config_metadata->causalMask);
     committed_token_infos =
-        reinterpret_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
-            reinterpret_cast<char *>(handler.batch_config_metadata) +
-            sizeof(BatchConfig::tokensInfo) +
-            sizeof(BatchConfig::requestsInfo) +
-            sizeof(BatchConfig::causalMask));
-
-    request_completed = reinterpret_cast<bool *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo) + sizeof(BatchConfig::requestsInfo) +
-        sizeof(BatchConfig::causalMask) +
-        sizeof(TreeVerifyBatchConfig::committed_tokens));
+        static_cast<TreeVerifyBatchConfig::CommittedTokensInfo *>(
+            handler.batch_config_metadata->committed_tokens);
+    request_completed =
+        static_cast<bool *>(handler.batch_config_metadata->request_completed);
   }
 
   cudaStreamSynchronize(stream);

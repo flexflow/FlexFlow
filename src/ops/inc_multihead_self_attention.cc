@@ -363,7 +363,9 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
         dims,
         quantization_type == DT_NONE ? this->data_type : quantization_type,
         nullptr /*owner_op*/,
-        true /*create_grad*/,
+        model.config.computationMode == COMP_MODE_INFERENCE
+            ? false
+            : true /*create_grad*/,
         initializer,
         CHOSEN_SYNC_TYPE);
     if (qkv_bias || final_bias) {
@@ -871,6 +873,139 @@ void IncMultiHeadSelfAttention::inference_task(
   }
 }
 
+FutureMap IncMultiHeadSelfAttention::peft_bwd(
+    FFModel const &ff,
+    BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  int idx = 0;
+  IndexLauncher launcher(INC_MULTIHEAD_SELF_ATTENTION_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(weights[0]->part,
+                        0 /*projection id*/,
+                        READ_ONLY,
+                        EXCLUSIVE,
+                        weights[0]->region,
+                        ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+  launcher.add_field(idx++, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(idx++, FID_DATA);
+  if (qkv_bias || final_bias) {
+    launcher.add_region_requirement(
+        RegionRequirement(weights[1]->part,
+                          0 /*projection id*/,
+                          READ_ONLY,
+                          EXCLUSIVE,
+                          weights[1]->region,
+                          ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
+    launcher.add_field(idx++, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): input
+  regions[3](I): weight
+  regions[4](O): output
+*/
+void IncMultiHeadSelfAttention::peft_bwd_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  log_inc_mha.debug("BatchConfig, num_tokens: %d, num_requests: %d",
+                    bc->num_tokens,
+                    bc->num_active_requests());
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+
+  IncMultiHeadSelfAttentionMeta *m =
+      *((IncMultiHeadSelfAttentionMeta **)task->local_args);
+
+  assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
+                                           : regions.size() == 3));
+
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
+      m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR biases;
+  if (*m->qkv_bias || *m->final_bias) {
+    biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
+                                              regions[3],
+                                              task->regions[3],
+                                              FID_DATA,
+                                              ctx,
+                                              runtime);
+    Domain bias_domain = runtime->get_index_space_domain(
+        ctx, task->regions[3].region.get_index_space());
+    assert(bias_domain.get_dim() == 4);
+  }
+
+  Domain input_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[0].region.get_index_space());
+  Domain weight_domain = runtime->get_index_space_domain(
+      ctx, task->regions[1].region.get_index_space());
+  Domain output_grad_domain = runtime->get_index_space_domain(
+      ctx, task->regions[2].region.get_index_space());
+
+  assert(input_grad_domain.get_dim() == 4);
+  assert(weight_domain.get_dim() == 2);
+  assert(output_grad_domain.get_dim() == 4);
+
+  assert(task->index_point.get_dim() == 1);
+
+  IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
+      m,
+      bc,
+      task->index_point.point_data[0],
+      input_grad,
+      weight,
+      output_grad,
+      biases);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    IncMultiHeadSelfAttention::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false);
+  }
+}
+
 void IncMultiHeadSelfAttention::backward(FFModel const &ff) {
   // IncMultiHeadSelfAttention does not support backward
   assert(false);
@@ -926,7 +1061,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.quantization_type = this->quantization_type;
   params.offload = this->offload;
   params.num_kv_heads = this->num_kv_heads;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
 

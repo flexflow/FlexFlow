@@ -44,7 +44,8 @@ bool operator==(ResidualLayerNormParams const &lhs,
   return lhs.layer_guid == rhs.layer_guid && lhs.axes == rhs.axes &&
          lhs.elementwise_affine == rhs.elementwise_affine &&
          lhs.use_bias == rhs.use_bias &&
-         lhs.use_two_residuals == rhs.use_two_residuals;
+         lhs.use_two_residuals == rhs.use_two_residuals &&
+         lhs.inplace_residual == rhs.inplace_residual;
 }
 
 bool ResidualLayerNormParams::is_valid(
@@ -63,7 +64,8 @@ ResidualLayerNormParams ResidualLayerNorm::get_params() const {
   params.eps = this->eps;
   params.use_bias = this->use_bias;
   params.use_two_residuals = this->use_two_residuals;
-  if (this->name != nullptr) {
+  params.inplace_residual = this->inplace_residual;
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -78,6 +80,7 @@ void FFModel::residual_layer_norm(const Tensor input,
                                   bool elementwise_affine,
                                   float eps,
                                   bool use_bias,
+                                  bool inplace_residual,
                                   DataType data_type,
                                   char const *name) {
   // In PyTorch, axes must be the sizes of the last axes.size() dimensions of
@@ -117,7 +120,6 @@ void FFModel::residual_layer_norm(const Tensor input,
   }
 
   int num_weights = elementwise_affine ? (use_bias ? 2 : 1) : 0;
-  Layer *ln = nullptr;
   Tensor casted_input =
       (data_type != input->data_type)
           ? cast(input, data_type, "type cast for residual_layer_norm")
@@ -133,20 +135,20 @@ void FFModel::residual_layer_norm(const Tensor input,
             ? cast(residual2, data_type, "type cast for residual2_layer_norm")
             : residual2;
   }
-  ln = new Layer(this,
-                 OP_RESIDUAL_LAYERNORM,
-                 data_type,
-                 name,
-                 2 + use_two_residuals /*inputs*/,
-                 num_weights,
-                 2 /*outputs*/,
-                 casted_input,
-                 casted_residual1,
-                 casted_residual2);
+  Layer *ln = new Layer(this,
+                        OP_RESIDUAL_LAYERNORM,
+                        data_type,
+                        name,
+                        2 + use_two_residuals /*inputs*/,
+                        num_weights,
+                        2 /*outputs*/,
+                        casted_input,
+                        casted_residual1,
+                        casted_residual2);
   ln->outputs[0] = create_tensor_legion_ordering(
-      input->num_dims, input->dims, data_type, ln, 0, false /*create_grad*/);
+      input->num_dims, input->dims, data_type, ln, 0, true /*create_grad*/);
   ln->outputs[1] = create_tensor_legion_ordering(
-      input->num_dims, input->dims, data_type, ln, 1, false /*create_grad*/);
+      input->num_dims, input->dims, data_type, ln, 1, true /*create_grad*/);
   {
     int numdims = axes.size();
     int dims[numdims];
@@ -179,6 +181,7 @@ void FFModel::residual_layer_norm(const Tensor input,
   ln->add_int_vector_property("axes", axes);
   ln->add_float_property("eps", eps);
   ln->add_int_property("use_two_residuals", use_two_residuals);
+  ln->add_int_property("inplace_residual", inplace_residual);
   layers.push_back(ln);
   outputs[0] = ln->outputs[0];
   outputs[1] = ln->outputs[1];
@@ -199,6 +202,9 @@ Op *ResidualLayerNorm::create_operator_from_layer(
   layer->get_float_property("eps", eps);
   layer->get_int_property("use_two_residuals", value);
   bool use_two_residuals = (bool)value;
+  layer->get_int_property("inplace_residual", value);
+  bool inplace_residual = (bool)value;
+
   return new ResidualLayerNorm(model,
                                layer->layer_guid,
                                inputs[0],
@@ -209,6 +215,7 @@ Op *ResidualLayerNorm::create_operator_from_layer(
                                elementwise_affine,
                                use_bias,
                                eps,
+                               inplace_residual,
                                false, // allocate_weights
                                layer->name);
 }
@@ -230,6 +237,7 @@ ResidualLayerNorm::ResidualLayerNorm(
                         params.elementwise_affine,
                         params.use_bias,
                         params.eps,
+                        params.inplace_residual,
                         allocate_weights,
                         params.name) {}
 
@@ -243,6 +251,7 @@ ResidualLayerNorm::ResidualLayerNorm(FFModel &model,
                                      bool _elementwise_affine,
                                      bool _use_bias,
                                      float _eps,
+                                     bool _inplace_residual,
                                      bool allocate_weights,
                                      char const *name)
     : Op(model,
@@ -256,7 +265,8 @@ ResidualLayerNorm::ResidualLayerNorm(FFModel &model,
          _residual1,
          _use_two_residuals ? _residual2 : nullptr),
       elementwise_affine(_elementwise_affine), eps(_eps), axes(_axes),
-      use_bias(_use_bias), use_two_residuals(_use_two_residuals) {
+      use_bias(_use_bias), use_two_residuals(_use_two_residuals),
+      inplace_residual(_inplace_residual) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   outputs[0] = model.create_parallel_tensor_legion_ordering(
@@ -326,6 +336,22 @@ ResidualLayerNorm::ResidualLayerNorm(FFModel &model,
   }
 }
 
+void ResidualLayerNorm::map_output_tensors(FFModel &ff) {
+  assert(numOutputs == 2);
+  assert(outputs[0]->get_volume() == inputs[0]->get_volume());
+  if (inplace_residual) {
+    outputs[0]->parallel_is = inputs[0]->parallel_is;
+    outputs[0]->region = inputs[0]->region;
+    outputs[0]->part = inputs[0]->part;
+    outputs[0]->region_grad = inputs[0]->region_grad;
+    outputs[0]->part_grad = inputs[0]->part_grad;
+    // map output 1 to new region
+    ff.map_tensor(outputs[1], this);
+  } else {
+    Op::map_output_tensors(ff);
+  }
+}
+
 void ResidualLayerNorm::init_inference(
     FFModel const &ff,
     std::vector<ParallelTensor> const &batch_inputs,
@@ -347,13 +373,19 @@ void ResidualLayerNorm::init_inference(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  if (inplace_residual) {
+    assert(batch_outputs[0]->part == batch_inputs[0]->part);
+    assert(batch_outputs[0]->region == batch_inputs[0]->region);
+  }
   int field_id = 0;
   // input
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+  // added: input + residual(s)
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part,
+                        0 /*projection id*/,
+                        inplace_residual ? READ_WRITE : READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
   launcher.add_field(field_id++, FID_DATA);
   // residual1
   launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
@@ -371,13 +403,15 @@ void ResidualLayerNorm::init_inference(
                                                       batch_inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
-  // added: input + residual(s)
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(field_id++, FID_DATA);
+  if (!inplace_residual) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    launcher.add_field(field_id++, FID_DATA);
+  }
   // layer norm output
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
@@ -422,13 +456,17 @@ void ResidualLayerNorm::init(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  assert(outputs[0]->part == inputs[0]->part);
+  assert(outputs[0]->region == inputs[0]->region);
   int field_id = 0;
   // input
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
+  // added: input + residual(s)
+  launcher.add_region_requirement(
+      RegionRequirement(inputs[0]->part,
+                        0 /*projection id*/,
+                        inplace_residual ? READ_WRITE : READ_ONLY,
+                        EXCLUSIVE,
+                        inputs[0]->region));
   launcher.add_field(field_id++, FID_DATA);
   // residual1
   launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
@@ -439,20 +477,21 @@ void ResidualLayerNorm::init(FFModel const &ff) {
   launcher.add_field(field_id++, FID_DATA);
   // residual2
   if (use_two_residuals) {
-    launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+    launcher.add_region_requirement(RegionRequirement(inputs[2]->part,
                                                       0 /*projection id*/,
                                                       READ_ONLY,
                                                       EXCLUSIVE,
-                                                      inputs[1]->region));
+                                                      inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
-  // added: input + residual(s)
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(field_id++, FID_DATA);
+  if (!inplace_residual) {
+    launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                      0 /*projection id*/,
+                                                      WRITE_ONLY,
+                                                      EXCLUSIVE,
+                                                      outputs[0]->region));
+    launcher.add_field(field_id++, FID_DATA);
+  }
   // layer norm output
   launcher.add_region_requirement(RegionRequirement(outputs[1]->part,
                                                     0 /*projection id*/,
@@ -516,7 +555,323 @@ void ResidualLayerNorm::forward(FFModel const &ff) {
 }
 
 void ResidualLayerNorm::backward(FFModel const &ff) {
-  assert(false);
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(RESIDUAL_LAYERNORM_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  int field_id = 0;
+  // output_grad
+  launcher.add_region_requirement(RegionRequirement(outputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[1]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  // added output
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
+  launcher.add_field(field_id++, FID_DATA);
+  // input grad
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  // residual grad 1
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  if (use_two_residuals) {
+    // residual grad 2
+    launcher.add_region_requirement(RegionRequirement(inputs[2]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      inputs[2]->region_grad));
+    launcher.add_field(field_id++, FID_DATA);
+  }
+  if (elementwise_affine) {
+    // gamma
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region));
+    launcher.add_field(field_id++, FID_DATA);
+    // gamma_grad
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+                                                      0 /*projection id*/,
+                                                      READ_WRITE,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region_grad));
+    launcher.add_field(field_id++, FID_DATA);
+    if (use_bias) {
+      // beta_grad
+      launcher.add_region_requirement(
+          RegionRequirement(weights[1]->part_grad,
+                            0 /*projection id*/,
+                            READ_WRITE,
+                            EXCLUSIVE,
+                            weights[1]->region_grad));
+      launcher.add_field(field_id++, FID_DATA);
+    }
+  }
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void ResidualLayerNorm::backward_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  assert(task->regions.size() == regions.size());
+  ResidualLayerNormMeta const *m =
+      *((ResidualLayerNormMeta **)task->local_args);
+  assert(regions.size() ==
+         4 + m->use_two_residuals +
+             (m->elementwise_affine ? (m->use_bias ? 3 : 2) : 0));
+
+  int region_idx = 0, task_region_idx = 0;
+
+  GenericTensorAccessorR output_grad =
+      helperGetGenericTensorAccessorRO(m->output_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorR added_output =
+      helperGetGenericTensorAccessorRO(m->output_type[0],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW input_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual1_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual2_grad;
+  if (m->use_two_residuals) {
+    residual2_grad =
+        helperGetGenericTensorAccessorRW(m->input_type[2],
+                                         regions[region_idx++],
+                                         task->regions[task_region_idx++],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+  }
+  GenericTensorAccessorR gamma;
+  GenericTensorAccessorW gamma_grad, beta_grad;
+  if (m->elementwise_affine) {
+    assert(m->use_bias == (regions.size() == 6));
+    gamma = helperGetGenericTensorAccessorRO(m->output_type[0],
+                                             regions[region_idx++],
+                                             task->regions[task_region_idx++],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+    gamma_grad =
+        helperGetGenericTensorAccessorRW(m->output_type[0],
+                                         regions[region_idx++],
+                                         task->regions[task_region_idx++],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+    if (m->use_bias) {
+      beta_grad =
+          helperGetGenericTensorAccessorRW(m->output_type[0],
+                                           regions[region_idx++],
+                                           task->regions[task_region_idx++],
+                                           FID_DATA,
+                                           ctx,
+                                           runtime);
+    }
+  }
+  ResidualLayerNorm::backward_kernel_wrapper(m,
+                                             output_grad,
+                                             added_output,
+                                             input_grad,
+                                             residual1_grad,
+                                             residual2_grad,
+                                             gamma,
+                                             gamma_grad,
+                                             beta_grad);
+}
+
+Legion::FutureMap ResidualLayerNorm::peft_bwd(
+    FFModel const &ff,
+    BatchConfigFuture const &bc,
+    std::vector<ParallelTensor> const &batch_inputs,
+    std::vector<ParallelTensor> const &batch_outputs,
+    MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  int field_id = 0;
+  // output_grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[1]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[1]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  // input grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  // residual grad 1
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[1]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[1] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[1]->region_grad));
+  launcher.add_field(field_id++, FID_DATA);
+  if (use_two_residuals) {
+    // residual grad 2
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[2]->part_grad,
+                          0 /*projection id*/,
+                          reset_input_grads[2] ? WRITE_ONLY : READ_WRITE,
+                          EXCLUSIVE,
+                          batch_inputs[2]->region_grad));
+    launcher.add_field(field_id++, FID_DATA);
+  }
+  if (elementwise_affine) {
+    // gamma
+    launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[0]->region));
+    launcher.add_field(field_id++, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+void ResidualLayerNorm::peft_bwd_task(
+    Task const *task,
+    std::vector<PhysicalRegion> const &regions,
+    Context ctx,
+    Runtime *runtime) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  assert(task->regions.size() == regions.size());
+  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
+  assert(regions.size() == 3 + m->use_two_residuals + m->elementwise_affine);
+
+  int region_idx = 0, task_region_idx = 0;
+
+  GenericTensorAccessorR output_grad =
+      helperGetGenericTensorAccessorRO(m->output_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW input_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[0],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual1_grad =
+      helperGetGenericTensorAccessorRW(m->input_type[1],
+                                       regions[region_idx++],
+                                       task->regions[task_region_idx++],
+                                       FID_DATA,
+                                       ctx,
+                                       runtime);
+  GenericTensorAccessorW residual2_grad;
+  if (m->use_two_residuals) {
+    GenericTensorAccessorW residual2_grad =
+        helperGetGenericTensorAccessorRW(m->input_type[2],
+                                         regions[region_idx++],
+                                         task->regions[task_region_idx++],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+  }
+  GenericTensorAccessorR gamma;
+  if (m->elementwise_affine) {
+    gamma = helperGetGenericTensorAccessorRO(m->weight_type[0],
+                                             regions[region_idx++],
+                                             task->regions[task_region_idx++],
+                                             FID_DATA,
+                                             ctx,
+                                             runtime);
+  }
+  ResidualLayerNorm::peft_bwd_kernel_wrapper(
+      m, output_grad, input_grad, residual1_grad, residual2_grad, gamma);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    std::vector<GenericTensorAccessorR> input_accessors;
+    input_accessors.push_back(input_grad);
+    input_accessors.push_back(residual1_grad);
+    if (m->use_two_residuals) {
+      input_accessors.push_back(residual2_grad);
+    }
+    std::vector<GenericTensorAccessorR> weights_accessors;
+    if (m->elementwise_affine) {
+      weights_accessors.push_back(gamma);
+    }
+    ResidualLayerNorm::save_inference_tensors_to_file(m,
+                                                      shard_id,
+                                                      bc,
+                                                      input_accessors,
+                                                      weights_accessors,
+                                                      {output_grad},
+                                                      false);
+  }
 }
 
 Op *ResidualLayerNorm::materialize(FFModel &ff,
@@ -554,13 +909,19 @@ FutureMap ResidualLayerNorm::inference(
                          0 /*mapper_id*/,
                          machine_view_hash);
   launcher.add_future(bc);
+  if (inplace_residual) {
+    assert(batch_outputs[0]->part == batch_inputs[0]->part);
+    assert(batch_outputs[0]->region == batch_inputs[0]->region);
+  }
   int field_id = 0;
   // input
-  launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_inputs[0]->region));
+  // added: input + residual(s)
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part,
+                        0 /*projection id*/,
+                        inplace_residual ? READ_WRITE : READ_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region));
   launcher.add_field(field_id++, FID_DATA);
   // residual1
   launcher.add_region_requirement(RegionRequirement(batch_inputs[1]->part,
@@ -578,13 +939,15 @@ FutureMap ResidualLayerNorm::inference(
                                                       batch_inputs[2]->region));
     launcher.add_field(field_id++, FID_DATA);
   }
-  // added: input + residual(s)
-  launcher.add_region_requirement(RegionRequirement(batch_outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    batch_outputs[0]->region));
-  launcher.add_field(field_id++, FID_DATA);
+  if (!inplace_residual) {
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[0]->part,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[0]->region));
+    launcher.add_field(field_id++, FID_DATA);
+  }
   // layer norm output
   launcher.add_region_requirement(RegionRequirement(batch_outputs[1]->part,
                                                     0 /*projection id*/,
@@ -620,14 +983,13 @@ void ResidualLayerNorm::inference_task(
 
   assert(task->regions.size() == regions.size());
   BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
   if (bc->num_tokens == 0) {
     return;
   }
 
-  ResidualLayerNormMeta *m = *((ResidualLayerNormMeta **)task->local_args);
-
   assert(regions.size() ==
-         4 + m->use_two_residuals +
+         3 + m->use_two_residuals +
              (m->elementwise_affine ? (m->use_bias ? 2 : 1) : 0));
 
   int region_idx = 0, task_region_idx = 0;
@@ -655,13 +1017,23 @@ void ResidualLayerNorm::inference_task(
                                          ctx,
                                          runtime);
   }
-  GenericTensorAccessorW added_output =
-      helperGetGenericTensorAccessorWO(m->output_type[0],
-                                       regions[region_idx++],
-                                       task->regions[task_region_idx++],
-                                       FID_DATA,
-                                       ctx,
-                                       runtime);
+  GenericTensorAccessorW added_output;
+  if (m->inplace_residual) {
+    added_output = helperGetGenericTensorAccessorWO(m->output_type[0],
+                                                    regions[0],
+                                                    task->regions[0],
+                                                    FID_DATA,
+                                                    ctx,
+                                                    runtime);
+  } else {
+    added_output =
+        helperGetGenericTensorAccessorWO(m->output_type[0],
+                                         regions[region_idx++],
+                                         task->regions[task_region_idx++],
+                                         FID_DATA,
+                                         ctx,
+                                         runtime);
+  }
   GenericTensorAccessorW output =
       helperGetGenericTensorAccessorWO(m->output_type[1],
                                        regions[region_idx++],
@@ -699,8 +1071,14 @@ void ResidualLayerNorm::inference_task(
     assert(in_domain.get_volume() == residual2_domain.get_volume());
     assert(residual2_domain == in_domain);
   }
-  Domain added_out_domain = runtime->get_index_space_domain(
-      ctx, task->regions[task_region_idx++].region.get_index_space());
+  Domain added_out_domain;
+  if (m->inplace_residual) {
+    added_out_domain = runtime->get_index_space_domain(
+        ctx, task->regions[0].region.get_index_space());
+  } else {
+    added_out_domain = runtime->get_index_space_domain(
+        ctx, task->regions[task_region_idx++].region.get_index_space());
+  }
   Domain out_domain = runtime->get_index_space_domain(
       ctx, task->regions[task_region_idx++].region.get_index_space());
   Domain gamma_domain, beta_domain;
@@ -734,13 +1112,13 @@ void ResidualLayerNorm::inference_task(
          m->effective_num_elements * m->effective_batch_size);
 
   ResidualLayerNorm::inference_kernel_wrapper(
-      m, input, residual1, residual2, added_output, output, gamma, beta);
+      m, bc, input, residual1, residual2, added_output, output, gamma, beta);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     std::vector<GenericTensorAccessorR> input_accessors;
-    input_accessors.push_back(input);
+    // input_accessors.push_back(input);
     input_accessors.push_back(residual1);
     if (m->use_two_residuals) {
       input_accessors.push_back(residual2);
@@ -779,6 +1157,7 @@ void ResidualLayerNorm::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->eps);
   sez.serialize(this->use_bias);
   sez.serialize(this->use_two_residuals);
+  sez.serialize(this->inplace_residual);
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
 }
@@ -794,6 +1173,7 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
   bool elementwise_affine;
   bool use_bias;
   bool use_two_residuals;
+  bool inplace_residual;
   float eps;
   size_t id, transformer_layer_id, deserialized_model_id;
   dez.deserialize(id);
@@ -810,6 +1190,7 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
   dez.deserialize(eps);
   dez.deserialize(use_bias);
   dez.deserialize(use_two_residuals);
+  dez.deserialize(inplace_residual);
   size_t name_len;
   char name[MAX_OPNAME] = {0};
   dez.deserialize(name_len);
@@ -827,6 +1208,7 @@ Node ResidualLayerNorm::deserialize(FFModel &ff,
   params.eps = eps;
   params.use_bias = use_bias;
   params.use_two_residuals = use_two_residuals;
+  params.inplace_residual = inplace_residual;
   strcpy(params.name, name);
   if (use_two_residuals) {
     return ff.get_or_create_node<ResidualLayerNorm>(
@@ -853,6 +1235,7 @@ size_t hash<FlexFlow::ResidualLayerNormParams>::operator()(
   hash_combine(key, params.elementwise_affine);
   hash_combine(key, params.use_bias);
   hash_combine(key, params.use_two_residuals);
+  hash_combine(key, params.inplace_residual);
   return key;
 }
 }; // namespace std

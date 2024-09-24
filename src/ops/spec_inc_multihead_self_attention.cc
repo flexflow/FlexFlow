@@ -850,7 +850,7 @@ SpecIncMultiHeadSelfAttentionParams
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
   params.position_bias = this->position_bias;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
 

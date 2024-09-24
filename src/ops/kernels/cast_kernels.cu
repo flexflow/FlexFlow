@@ -13,12 +13,13 @@
  * limitations under the License.
  */
 
+#include "flexflow/ops/cast.h"
 #include "flexflow/ops/kernels/cast_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {
 
-CastMeta::CastMeta(FFHandler handle) : OpMeta(handle) {}
+CastMeta::CastMeta(FFHandler handle, Cast const *cast) : OpMeta(handle, cast) {}
 
 namespace Kernels {
 namespace Cast {

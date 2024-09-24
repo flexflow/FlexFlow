@@ -37,6 +37,11 @@ public:
                               std::vector<ParallelTensor> const &,
                               std::vector<ParallelTensor> const &,
                               MachineView const *mv = nullptr) override;
+  Legion::FutureMap peft_bwd(FFModel const &,
+                             BatchConfigFuture const &,
+                             std::vector<ParallelTensor> const &,
+                             std::vector<ParallelTensor> const &,
+                             MachineView const *mv = nullptr) override;
   void print_layer(FFModel const &model) override {
     assert(0);
   }
@@ -67,6 +72,10 @@ public:
                              std::vector<Legion::PhysicalRegion> const &regions,
                              Legion::Context ctx,
                              Legion::Runtime *runtime);
+  static void peft_bwd_task(Legion::Task const *task,
+                            std::vector<Legion::PhysicalRegion> const &regions,
+                            Legion::Context ctx,
+                            Legion::Runtime *runtime);
   static void backward_task(Legion::Task const *task,
                             std::vector<Legion::PhysicalRegion> const &regions,
                             Legion::Context ctx,
@@ -81,11 +90,6 @@ public:
                              T const *gamma_ptr,
                              T const *beta_ptr,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(LayerNormMeta const *m,
-                                     GenericTensorAccessorR const &input,
-                                     GenericTensorAccessorW &output,
-                                     GenericTensorAccessorR const &gamma,
-                                     GenericTensorAccessorR const &beta);
   template <typename T>
   static void backward_kernel(LayerNormMeta const *m,
                               T const *output_grad_ptr,
@@ -96,13 +100,34 @@ public:
                               T *beta_grad_ptr,
                               ffStream_t stream);
   template <typename T>
+  static void peft_bwd_kernel(LayerNormMeta const *m,
+                              T const *output_grad_ptr,
+                              T *input_grad_ptr,
+                              T const *gamma_ptr,
+                              ffStream_t stream);
+
+  static void forward_kernel_wrapper(LayerNormMeta const *m,
+                                     GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW &output,
+                                     GenericTensorAccessorR const &gamma,
+                                     GenericTensorAccessorR const &beta);
   static void backward_kernel_wrapper(LayerNormMeta const *m,
-                                      T const *output_grad_ptr,
-                                      T const *input_ptr,
-                                      T *input_grad_ptr,
-                                      T const *gamma_ptr,
-                                      T *gamma_grad_ptr,
-                                      T *beta_grad_ptr);
+                                      GenericTensorAccessorR const &output_grad,
+                                      GenericTensorAccessorR const &input,
+                                      GenericTensorAccessorW const &input_grad,
+                                      GenericTensorAccessorR const &gamma,
+                                      GenericTensorAccessorW const &gamma_grad,
+                                      GenericTensorAccessorW const &beta_grad);
+  static void inference_kernel_wrapper(LayerNormMeta *m,
+                                       BatchConfig const *bc,
+                                       GenericTensorAccessorR const &input,
+                                       GenericTensorAccessorW &output,
+                                       GenericTensorAccessorR const &gamma,
+                                       GenericTensorAccessorR const &beta);
+  static void peft_bwd_kernel_wrapper(LayerNormMeta const *m,
+                                      GenericTensorAccessorR const &output_grad,
+                                      GenericTensorAccessorW const &input_grad,
+                                      GenericTensorAccessorR const &gamma);
 
 public:
   bool elementwise_affine, use_bias;
@@ -124,6 +149,9 @@ public:
   float eps;
   void *mean_ptr, *rstd_ptr, *ds_ptr, *db_ptr, *scale_ptr, *bias_ptr;
   Realm::RegionInstance reserveInst;
+  // PEFT related fields
+  void *input_activation;
+  size_t allocated_peft_buffer_size = 0;
 };
 
 }; // namespace FlexFlow

@@ -23,8 +23,8 @@ remove_mnist() {
 download_mnist() {
 	if [[ ! -f train-images-idx3-ubyte || ! -f train-labels-idx1-ubyte ]]; then
 		remove_mnist
-		wget http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz
-		wget http://yann.lecun.com/exdb/mnist/train-labels-idx1-ubyte.gz
+		wget https://mnist-backup.s3.us-east-2.amazonaws.com/train-images-idx3-ubyte.gz
+		wget https://mnist-backup.s3.us-east-2.amazonaws.com/train-labels-idx1-ubyte.gz
 		gzip -d train-images-idx3-ubyte.gz
 		gzip -d train-labels-idx1-ubyte.gz
 	fi

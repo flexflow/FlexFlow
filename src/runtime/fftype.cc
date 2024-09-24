@@ -30,4 +30,29 @@ bool operator==(LayerID const &lhs, LayerID const &rhs) {
   return lhs.id == rhs.id;
 }
 
+const PEFTModelID PEFTModelID::NO_ID = PEFTModelID();
+
+PEFTModelID::PEFTModelID() : id(0) {}
+
+PEFTModelID::PEFTModelID(size_t _id) : id(_id) {
+  assert(is_valid_id());
+}
+
+bool PEFTModelID::is_valid_id() const {
+  return (id >= PEFT_MODEL_ID_FIRST_VALID && id <= PEFT_MODEL_ID_LAST_VALID);
+}
+
+bool operator==(PEFTModelID const &lhs, PEFTModelID const &rhs) {
+  return lhs.id == rhs.id;
+}
+
+std::ostream &operator<<(std::ostream &os, PEFTModelID const &peft_model_id) {
+  if (peft_model_id == PEFTModelID::NO_ID) {
+    os << "NO_ID";
+  } else {
+    os << peft_model_id.id;
+  }
+  return os;
+}
+
 }; // namespace FlexFlow

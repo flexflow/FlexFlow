@@ -187,7 +187,8 @@ OpMeta *Flat::init_task(Task const *task,
                         Context ctx,
                         Runtime *runtime) {
   FFHandler handler = *((FFHandler const *)task->local_args);
-  FlatMeta *m = new FlatMeta(handler);
+  Flat *flat = (Flat *)task->args;
+  FlatMeta *m = new FlatMeta(handler, flat);
   return m;
 }
 

@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/ops/fused.h"
+#include "flexflow/ffconst_utils.h"
 #include "flexflow/model.h"
 #include "flexflow/ops/batch_matmul.h"
 #include "flexflow/ops/batch_norm.h"
@@ -87,12 +88,32 @@ FusedOp::FusedOp(FFModel &model, Op *op)
     // weights[i]->owner_idx = i;
     weight_data_types[i] = op->weights[i]->data_type;
   }
-  numOutputs = op->numOutputs;
-  for (int i = 0; i < numOutputs; i++) {
-    outputs[i] = op->outputs[i];
-    outputs[i]->owner_op = this;
-    outputs[i]->owner_idx = i;
-    output_data_types[i] = op->outputs[i]->data_type;
+  numOutputs = 0;
+  for (int i = 0; i < op->numOutputs; i++) {
+    bool found = false;
+    // Handle in-place outputs
+    for (int j = 0; j < numInputs; j++) {
+      if (inputs[j]->region == op->outputs[i]->region) {
+        // This output is one of the inputs
+        assert(!found);
+        assert(inputs[j]->region != LogicalRegion::NO_REGION);
+        op_output_source[i] = SOURCE_INPUT;
+        op_input_idx[i] = j;
+        found = true;
+        break;
+      }
+    }
+    if (found) {
+      // do nothing
+    } else {
+      outputs[numOutputs] = op->outputs[i];
+      output_data_types[numOutputs] = op->outputs[i]->data_type;
+      op_output_source[i] = SOURCE_OUTPUT;
+      op_output_idx[i] = numOutputs;
+      outputs[numOutputs]->owner_op = this;
+      outputs[numOutputs]->owner_idx = numOutputs;
+      numOutputs++;
+    }
   }
   numOperators = 1;
   op_num_inputs[0] = op->numInputs;
@@ -109,10 +130,53 @@ FusedOp::FusedOp(FFModel &model, Op *op)
     op_weight_source[i] = SOURCE_WEIGHT;
     op_weight_idx[i] = i;
   }
-  for (int i = 0; i < numOutputs; i++) {
-    op_output_source[i] = SOURCE_OUTPUT;
-    op_output_idx[i] = i;
+  // for (int i = 0; i < numOutputs; i++) {
+  //   op_output_source[i] = SOURCE_OUTPUT;
+  //   op_output_idx[i] = i;
+  // }
+#if 0
+  int input_offset = 0, weight_offset = 0, output_offset = 0;
+  printf("\nNew fused op: %s (%s), #input:%i, #output:%i, #weights:%i. Fused: "
+         "#inputs=%i, #outputs=%i, #weights=%i\n",
+         op->name,
+         get_operator_type_name(op->op_type).c_str(),
+         op->numInputs,
+         op->numOutputs,
+         op->numWeights,
+         numInputs,
+         numOutputs,
+         numWeights);
+  printf("op_input_idx:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_idx[i]);
   }
+  printf("\n");
+  printf("op_input_source:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_source[i]);
+  }
+  printf("\n");
+  printf("op_output_idx:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_idx[i]);
+  }
+  printf("\n");
+  printf("op_output_source:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_source[i]);
+  }
+  printf("\n");
+  printf("op_weight_idx:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_idx[i]);
+  }
+  printf("\n");
+  printf("op_weight_source:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_source[i]);
+  }
+  printf("\n");
+#endif
 }
 
 bool FusedOp::use_same_regions(
@@ -165,7 +229,8 @@ bool FusedOp::add_operator(
   // op->name, op_config));
   // Cannot fuse parallel operators (except allreduce) since they have different
   // paralel_is in forward and backward
-  assert(!op->is_parallel_op() || op->op_type == OP_ALLREDUCE);
+  assert(!op->is_parallel_op() || op->op_type == OP_ALLREDUCE ||
+         op->op_type == OP_PARALLEL_IDENTITY);
   // Currently don't consider nested fusion
   assert(op->op_type != OP_FUSED);
   MachineView my_view = outputs[0]->machine_view;
@@ -271,6 +336,18 @@ bool FusedOp::add_operator(
         found = true;
         op_output_source[output_offset + i] = SOURCE_OUTPUT;
         op_output_idx[output_offset + i] = j;
+        break;
+      }
+    }
+    for (int j = 0; j < numInputs; j++) {
+      if (inputs[j]->region == op->outputs[i]->region) {
+        // This input is one of my inputs
+        assert(!found);
+        assert(inputs[j]->region != LogicalRegion::NO_REGION);
+        op_output_source[output_offset + i] = SOURCE_INPUT;
+        op_output_idx[output_offset + i] = j;
+        found = true;
+        break;
       }
     }
     if (found) {
@@ -311,6 +388,50 @@ bool FusedOp::add_operator(
             "Reach to the #outputs limit during fusion.\n"
             "Consider increase MAX_NUM_OUTPUTS to allow more fusions.\n");
   }
+
+#if 0
+  printf("\nAdd op: %s (%s), #input:%i, #output:%i, #weights:%i. Fused: "
+         "#inputs=%i, #outputs=%i, #weights=%i\n",
+         op->name,
+         get_operator_type_name(op->op_type).c_str(),
+         op->numInputs,
+         op->numOutputs,
+         op->numWeights,
+         numInputs,
+         numOutputs,
+         numWeights);
+  printf("op_input_idx:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_idx[i]);
+  }
+  printf("\n");
+  printf("op_input_source:\t");
+  for (int i = 0; i < input_offset + op->numInputs; i++) {
+    printf("%i\t", op_input_source[i]);
+  }
+  printf("\n");
+  printf("op_output_idx:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_idx[i]);
+  }
+  printf("\n");
+  printf("op_output_source:\t");
+  for (int i = 0; i < output_offset + op->numOutputs; i++) {
+    printf("%i\t", op_output_source[i]);
+  }
+  printf("\n");
+  printf("op_weight_idx:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_idx[i]);
+  }
+  printf("\n");
+  printf("op_weight_source:\t");
+  for (int i = 0; i < weight_offset + op->numWeights; i++) {
+    printf("%i\t", op_weight_source[i]);
+  }
+  printf("\n");
+#endif
+
   return true;
 }
 
@@ -404,9 +525,13 @@ void FusedOp::init_inference(FFModel const &ff,
     }
     for (int i = 0; i < op_num_outputs[op]; i++) {
       int my_off = op_output_idx[i + ooff];
-      assert(op_output_source[i + ooff] == SOURCE_OUTPUT);
-      assert(my_off < batch_outputs.size());
-      my_batch_outputs.push_back(batch_outputs[my_off]);
+      if (op_output_source[i + ooff] == SOURCE_OUTPUT) {
+        my_batch_outputs.push_back(batch_outputs[my_off]);
+      } else if (op_output_source[i + ooff] == SOURCE_INPUT) {
+        my_batch_outputs.push_back(batch_inputs[my_off]);
+      } else {
+        assert(false);
+      }
     }
     ioff += op_num_inputs[op];
     ooff += op_num_outputs[op];
@@ -526,10 +651,6 @@ FutureMap FusedOp::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
   size_t machine_view_hash = view->hash();
-  // bc is one of BatchConfig, TreeVerifyBatchConfig, and BeamSearchBatchConfig
-  // so we transfer the maximum of them
-  // size_t batch_config_size =
-  //    std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
   IndexLauncher launcher(FUSEDOP_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(nullptr, 0),
@@ -569,6 +690,83 @@ FutureMap FusedOp::inference(FFModel const &ff,
                           WRITE_ONLY,
                           EXCLUSIVE,
                           batch_outputs[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  offset += numOutputs;
+  // add softmax output grad
+  if (operators[numOperators - 1]->op_type == OP_SOFTMAX) {
+    // printf("operator %i is last SOFTMAX! adding grad for output %i\n",
+    //        numOperators - 1,
+    //        numOutputs - 1);
+    assert(outputs[numOutputs - 1]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[numOutputs - 1]->part_grad,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[numOutputs - 1]->region_grad));
+    launcher.add_field(offset, FID_DATA);
+  }
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+FutureMap FusedOp::peft_bwd(FFModel const &ff,
+                            BatchConfigFuture const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  // Set iter_config
+  iter_config = ff.iter_config;
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  size_t machine_view_hash = view->hash();
+  // bc is one of BatchConfig, TreeVerifyBatchConfig, and BeamSearchBatchConfig
+  // so we transfer the maximum of them
+  // size_t batch_config_size =
+  //    std::max(sizeof(TreeVerifyBatchConfig), sizeof(BeamSearchBatchConfig));
+  IndexLauncher launcher(FUSEDOP_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(nullptr, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  int offset = 0;
+  for (int i = 0; i < numInputs; i++) {
+    assert(inputs[i]->part != LogicalPartition::NO_PART);
+    assert(inputs[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_inputs[i]->part_grad,
+                          0 /*projection id*/,
+                          WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_inputs[i]->region_grad));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  offset += numInputs;
+  for (int i = 0; i < numWeights; i++) {
+    assert(weights[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(RegionRequirement(weights[i]->part,
+                                                      0 /*projection id*/,
+                                                      READ_ONLY,
+                                                      EXCLUSIVE,
+                                                      weights[i]->region));
+    launcher.add_field(offset + i, FID_DATA);
+  }
+  offset += numWeights;
+  for (int i = 0; i < numOutputs; i++) {
+    assert(outputs[i]->region != LogicalRegion::NO_REGION);
+    launcher.add_region_requirement(
+        RegionRequirement(batch_outputs[i]->part_grad,
+                          0 /*projection id*/,
+                          i == numOutputs - 1 ? READ_WRITE : WRITE_ONLY,
+                          EXCLUSIVE,
+                          batch_outputs[i]->region_grad));
     launcher.add_field(offset + i, FID_DATA);
   }
   return runtime->execute_index_space(ctx, launcher);

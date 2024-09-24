@@ -52,7 +52,7 @@ bool SigmoidSiluMultiParams::is_valid(
 SigmoidSiluMultiParams SigmoidSiluMulti::get_params() const {
   SigmoidSiluMultiParams params;
   params.layer_guid = this->layer_guid;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -254,7 +254,188 @@ void SigmoidSiluMulti::forward(FFModel const &ff) {
 }
 
 void SigmoidSiluMulti::backward(FFModel const &ff) {
-  assert(false);
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(SIGMOID_SILU_MULTI_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // output grad
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // input 1
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // input 2
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region));
+  launcher.add_field(2, FID_DATA);
+  // input 1 grad
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
+  launcher.add_field(3, FID_DATA);
+  // input 2 grad
+  launcher.add_region_requirement(RegionRequirement(inputs[1]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[1]->region_grad));
+  launcher.add_field(4, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): output grad
+  regions[1](I): input 1
+  regions[2](I): input 2
+  regions[3](I/O): input 1 grad
+  regions[4](I/O): input 2 grad
+*/
+void SigmoidSiluMulti::backward_task(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
+
+  assert(task->regions.size() == regions.size());
+  assert(regions.size() == 5);
+
+  SigmoidSiluMultiMeta *m = *((SigmoidSiluMultiMeta **)task->local_args);
+
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input1 = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input2 = helperGetGenericTensorAccessorRO(
+      m->input_type[1], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input1_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input2_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[1], regions[4], task->regions[4], FID_DATA, ctx, runtime);
+
+  SigmoidSiluMulti::backward_kernel_wrapper(
+      m, output_grad, input1, input2, input1_grad, input2_grad);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    SigmoidSiluMulti::save_inference_tensors_to_file(
+        m,
+        shard_id,
+        nullptr,
+        {output_grad, input1, input2},
+        {},
+        {input1_grad, input2_grad});
+  }
+}
+
+FutureMap
+    SigmoidSiluMulti::peft_bwd(FFModel const &ff,
+                               BatchConfigFuture const &bc,
+                               std::vector<ParallelTensor> const &batch_inputs,
+                               std::vector<ParallelTensor> const &batch_outputs,
+                               MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(SIGMOID_SILU_MULTI_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  // output grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // input 1 grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  // input 2 grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[1]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[1] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[1]->region_grad));
+  launcher.add_field(2, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): output grad
+  regions[3](I/O): input 1 grad
+  regions[4](I/O): input 2 grad
+*/
+void SigmoidSiluMulti::peft_bwd_task(Task const *task,
+                                     std::vector<PhysicalRegion> const &regions,
+                                     Context ctx,
+                                     Runtime *runtime) {
+
+  assert(task->regions.size() == regions.size());
+  assert(regions.size() == 3);
+
+  SigmoidSiluMultiMeta *m = *((SigmoidSiluMultiMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input1_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input2_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[1], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+
+  SigmoidSiluMulti::peft_bwd_kernel_wrapper(
+      m, bc, output_grad, input1_grad, input2_grad);
+
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    SigmoidSiluMulti::save_inference_tensors_to_file(m,
+                                                     shard_id,
+                                                     nullptr,
+                                                     {input1_grad, input2_grad},
+                                                     {},
+                                                     {output_grad},
+                                                     false);
+  }
 }
 
 FutureMap SigmoidSiluMulti::inference(
@@ -347,7 +528,7 @@ void SigmoidSiluMulti::inference_task(
   assert(input1_domain == input2_domain);
   assert(input1_domain == output_domain);
 
-  SigmoidSiluMulti::inference_kernel_wrapper(m, input1, input2, output);
+  SigmoidSiluMulti::inference_kernel_wrapper(m, bc, input1, input2, output);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

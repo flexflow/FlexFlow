@@ -45,7 +45,8 @@ using namespace FlexFlow::Kernels::AllReduce;
 
 /* Params */
 bool operator==(AllReduceParams const &lhs, AllReduceParams const &rhs) {
-  return lhs.allreduce_legion_dim == rhs.allreduce_legion_dim;
+  return lhs.allreduce_legion_dim == rhs.allreduce_legion_dim &&
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool AllReduceParams::is_valid(ParallelTensorShape const &input) const {
@@ -55,7 +56,7 @@ bool AllReduceParams::is_valid(ParallelTensorShape const &input) const {
 AllReduceParams AllReduce::get_params() const {
   AllReduceParams params;
   params.allreduce_legion_dim = this->allreduce_dim;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -110,6 +111,7 @@ OpMeta *AllReduce::init_task(Task const *task,
   meta->input_type[0] = ar->inputs[0]->data_type;
   meta->output_type[0] = ar->outputs[0]->data_type;
   assert(meta->input_type[0] == meta->output_type[0]);
+  std::strcpy(meta->op_name, ar->name);
   return meta;
 }
 
@@ -144,6 +146,102 @@ void AllReduce::init(FFModel const &ff) {
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap(ff, fm);
+}
+
+void AllReduce::forward(FFModel const &ff) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = outputs[0]->parallel_is;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  set_argumentmap_for_forward(ff, argmap);
+  IndexLauncher launcher(ALLREDUCE_FWD_TASK_ID,
+                         outputs[0]->parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    WRITE_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+/*static*/
+void AllReduce::forward_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+
+  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  assert(input.data_type == output.data_type);
+  forward_kernel_wrapper(m, input, output);
+}
+
+void AllReduce::backward(FFModel const &ff) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  IndexLauncher launcher(ALLREDUCE_BWD_TASK_ID,
+                         inputs[0]->parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         inputs[0]->machine_view.hash());
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  runtime->execute_index_space(ctx, launcher);
+}
+
+void AllReduce::backward_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
+
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  assert(input_grad.data_type == output_grad.data_type);
+  backward_kernel_wrapper(m, input_grad, output_grad);
 }
 
 void AllReduce::init_inference(FFModel const &ff,
@@ -224,64 +322,103 @@ FutureMap AllReduce::inference(FFModel const &ff,
   return runtime->execute_index_space(ctx, launcher);
 }
 
-void AllReduce::forward(FFModel const &ff) {
-  ArgumentMap argmap;
-  Context ctx = ff.config.lg_ctx;
-  Runtime *runtime = ff.config.lg_hlr;
-  parallel_is = outputs[0]->parallel_is;
-  assert(numOutputs == 1);
-  assert(numInputs == 1);
-  set_argumentmap_for_forward(ff, argmap);
-  IndexLauncher launcher(ALLREDUCE_FWD_TASK_ID,
-                         outputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
-                         argmap,
-                         Predicate::TRUE_PRED,
-                         false /*must*/,
-                         0 /*mapper_id*/,
-                         outputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region));
-  launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part,
-                                                    0 /*projection id*/,
-                                                    WRITE_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region));
-  launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+/*static*/
+void AllReduce::inference_task(Task const *task,
+                               std::vector<PhysicalRegion> const &regions,
+                               Context ctx,
+                               Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+
+  AllReduceMeta *m = *((AllReduceMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
+
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  assert(input.data_type == output.data_type);
+  inference_kernel_wrapper(m, bc, input, output);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    AllReduce::save_inference_tensors_to_file(
+        m, shard_id, bc, {input}, {}, {output});
+  }
 }
 
-void AllReduce::backward(FFModel const &ff) {
+FutureMap AllReduce::peft_bwd(FFModel const &ff,
+                              BatchConfigFuture const &bc,
+                              std::vector<ParallelTensor> const &batch_inputs,
+                              std::vector<ParallelTensor> const &batch_outputs,
+                              MachineView const *mv) {
   ArgumentMap argmap;
   Context ctx = ff.config.lg_ctx;
   Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
   assert(numOutputs == 1);
   assert(numInputs == 1);
-  IndexLauncher launcher(ALLREDUCE_BWD_TASK_ID,
-                         inputs[0]->parallel_is,
-                         TaskArgument(NULL, 0),
+  assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
+  DataType data_type = batch_inputs[0]->data_type;
+  size_t machine_view_hash =
+      mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  IndexLauncher launcher(ALLREDUCE_PEFT_BWD_TASK_ID,
+                         batch_outputs[0]->parallel_is,
+                         TaskArgument(nullptr, 0),
                          argmap,
                          Predicate::TRUE_PRED,
                          false /*must*/,
                          0 /*mapper_id*/,
-                         inputs[0]->machine_view.hash());
-  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_WRITE,
-                                                    EXCLUSIVE,
-                                                    inputs[0]->region_grad));
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
   launcher.add_field(0, FID_DATA);
-  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
-                                                    0 /*projection id*/,
-                                                    READ_ONLY,
-                                                    EXCLUSIVE,
-                                                    outputs[0]->region_grad));
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
   launcher.add_field(1, FID_DATA);
-  runtime->execute_index_space(ctx, launcher);
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+/*static*/
+void AllReduce::peft_bwd_task(Task const *task,
+                              std::vector<PhysicalRegion> const &regions,
+                              Context ctx,
+                              Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+
+  AllReduceMeta *m = *((AllReduceMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  assert(input_grad.data_type == output_grad.data_type);
+  peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    AllReduce::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {}, {output_grad}, false);
+  }
 }
 
 bool AllReduce::measure_operator_cost(Simulator *sim,
@@ -316,62 +453,6 @@ bool AllReduce::append_parallel_op_info(
   ret.parallel_degree = -1; // AllReduce does not affect parallel degree
   parallel_ops.push_back(ret);
   return true;
-}
-
-/*static*/
-void AllReduce::inference_task(Task const *task,
-                               std::vector<PhysicalRegion> const &regions,
-                               Context ctx,
-                               Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
-  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
-
-  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-  assert(input.data_type == output.data_type);
-  inference_kernel_wrapper(m, bc, input, output);
-}
-
-/*static*/
-void AllReduce::forward_task(Task const *task,
-                             std::vector<PhysicalRegion> const &regions,
-                             Context ctx,
-                             Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
-
-  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
-      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
-      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-  assert(input.data_type == output.data_type);
-  forward_kernel_wrapper(m, input, output);
-}
-
-void AllReduce::backward_task(Task const *task,
-                              std::vector<PhysicalRegion> const &regions,
-                              Context ctx,
-                              Runtime *runtime) {
-  assert(regions.size() == 2);
-  assert(task->regions.size() == 2);
-  AllReduceMeta const *m = *((AllReduceMeta **)task->local_args);
-
-  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
-      m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
-      m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-
-  assert(input_grad.data_type == output_grad.data_type);
-  backward_kernel_wrapper(m, input_grad, output_grad);
 }
 
 }; // namespace FlexFlow

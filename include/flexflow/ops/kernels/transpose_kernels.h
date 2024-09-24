@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class Transpose;
+
 class TransposeMeta : public OpMeta {
 public:
-  TransposeMeta(FFHandler handler) : OpMeta(handler){};
+  TransposeMeta(FFHandler handler, Transpose const *transpose);
   int num_dim;
   int perm[MAX_TENSOR_DIM];
 };

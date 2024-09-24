@@ -40,6 +40,7 @@ struct GenerationResult {
   std::string output_text;
   std::vector<TokenId> input_tokens;
   std::vector<TokenId> output_tokens;
+  std::vector<float> finetuning_losses;
 };
 
 #include <string>

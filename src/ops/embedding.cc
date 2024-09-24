@@ -469,7 +469,7 @@ FutureMap Embedding::inference(FFModel const &ff,
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(EMBED_FWD_TASK_ID,
+  IndexLauncher launcher(EMBED_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -559,12 +559,6 @@ void Embedding::forward_task(Task const *task,
   }
   forward_kernel_wrapper(
       m, input, output, kernel, in_dim, out_dim, effective_batch_size);
-  if (m->inference_debugging) {
-    assert(task->index_point.get_dim() == 1);
-    int shard_id = task->index_point.point_data[0];
-    Embedding::save_inference_tensors_to_file(
-        m, shard_id, nullptr, {input}, {kernel}, {output});
-  }
 }
 
 /*
@@ -670,6 +664,16 @@ void Embedding::backward(FFModel const &ff) {
                                                     weights[0]->region_grad));
   launcher.add_field(2, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+Legion::FutureMap
+    Embedding::peft_bwd(FFModel const &ff,
+                        BatchConfigFuture const &bc,
+                        std::vector<ParallelTensor> const &batch_inputs,
+                        std::vector<ParallelTensor> const &batch_outputs,
+                        MachineView const *mv) {
+  // nothing to do (backward function only updates weights)
+  return FutureMap();
 }
 
 void Embedding::backward_task(Task const *task,

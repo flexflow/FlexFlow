@@ -75,8 +75,8 @@ inline int GET_BLOCKS(int const N) {
   return (ret > BLOCK_SIZE_LIMIT) ? BLOCK_SIZE_LIMIT : ret;
 }
 
-__global__ void
-    scale_kernel(float *ptr, Legion::coord_t size, float a, float b);
+template <typename DT>
+__global__ void scale_kernel(DT *ptr, Legion::coord_t size, DT a, DT b);
 
 __global__ void ones_kernel(float *ptr, Legion::coord_t size);
 
@@ -85,6 +85,12 @@ __global__ void assign_kernel(DT *ptr, Legion::coord_t size, DT value);
 
 template <typename DT>
 __global__ void copy_kernel(DT *dst, const DT *src, Legion::coord_t size);
+
+template <typename DT>
+__global__ void copy_kernel_discrete(DT *dst,
+                                     const DT *src,
+                                     Legion::coord_t size,
+                                     size_t *index);
 
 template <typename T>
 __global__ void add_kernel(T *data_ptr, T const *grad_ptr, size_t size);
@@ -135,16 +141,28 @@ __host__ void updateGAS(float *para_ptr,
                         float learning_rate);
 
 template <typename T>
-void print_tensor(T const *ptr, size_t num_elements, char const *prefix);
+void print_tensor(T const *ptr,
+                  size_t num_elements,
+                  char const *prefix,
+                  int shard_id = 0);
+template <typename T>
+void print_beam_tensor(T const *ptr,
+                       size_t num_elements,
+                       int skip,
+                       int channel,
+                       char const *prefix);
 
 template <typename T>
 void save_tensor(T const *ptr, size_t num_elements, char const *file_name);
 
 template <typename T>
-T *download_tensor(T const *ptr, size_t num_elements);
+T *copy_tensor_dev_to_host(T const *ptr, size_t num_elements);
 
 template <typename T>
-bool download_tensor(T const *ptr, T *dst, size_t num_elements);
+void copy_tensor_dev_to_host(T const *ptr, T *dst, size_t num_elements);
+
+template <typename T>
+void copy_tensor_host_to_dev(T *dst, T const *src, size_t num_elements);
 
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain(miopenTensorDescriptor_t tensor,
@@ -153,7 +171,8 @@ miopenStatus_t
 
 miopenStatus_t
     cudnnSetTensorDescriptorFromDomain4SoftMax(miopenTensorDescriptor_t tensor,
-                                               Legion::Domain domain);
+                                               Legion::Domain domain,
+                                               DataType data_type = DT_FLOAT);
 
 hipblasDatatype_t ff_to_cuda_datatype(DataType type);
 
@@ -164,3 +183,5 @@ ncclDataType_t ff_to_nccl_datatype(DataType type);
 
 void handle_unimplemented_hip_kernel(OperatorType op_type);
 #endif
+void check_device_vs_host_ptr(void const *maybe_devicePtr);
+void check_ptr_alignment(void const *ptr);

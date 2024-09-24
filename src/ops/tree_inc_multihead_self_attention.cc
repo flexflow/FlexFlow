@@ -924,7 +924,7 @@ TreeIncMultiHeadSelfAttentionParams
   params.qk_prod_scaling = this->qk_prod_scaling;
   params.position_bias = this->position_bias;
   params.tensor_parallelism_degree = this->tensor_parallelism_degree;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

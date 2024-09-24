@@ -39,6 +39,7 @@ public:
   Legion::FutureMap inference(FFModel *model, int index, BatchConfig const &bc);
   Legion::FutureMap
       inference(FFModel *model, int index, BatchConfigFuture const &bc);
+  void peft_bwd(FFModel *model, int index, BatchConfigFuture const &bc);
   void load_input_tokens_from_batch_config(FFModel *model,
                                            BatchConfigFuture const &bc,
                                            ParallelTensor const input,
@@ -65,15 +66,34 @@ struct Request {
     FINISHING = 104, // finishing request, but not yet verified
   };
   BatchConfig::RequestGuid guid;
-  int max_sequence_length;
+  PEFTModelID peft_model_id = PEFTModelID::NO_ID;
+  int max_sequence_length = 128;
   int initial_len;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
 
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
-
+  std::string prompt;
   std::vector<struct BeamTree> beam_trees;
+  // PEFT field
+  RequestType req_type = REQ_INFERENCE;
+  size_t processed_finetuning_tokens = 0;
+  int completed_training_steps = 0;
+  int dataset_entry_processed_tokens = 0;
+  int max_training_steps = 1;
+  // how many gradient accumulation steps to do before updating the weights. if
+  // left as -1, it will be set to the number of entries in the dataset
+  int gradient_accumulation_steps = -1;
+  int benchmarking_tokens = -1;
+  std::vector<int> finetuning_tokens_per_batch;
+  bool warmup = false;
+  std::string dataset_filepath;
+  std::vector<std::pair<std::vector<BatchConfig::TokenId>,
+                        std::vector<BatchConfig::TokenId>>>
+      dataset;
+  std::vector<float> finetuning_losses;
+  friend std::ostream &operator<<(std::ostream &os, Request const &req);
 };
 
 // store the result of beam search
@@ -120,6 +140,8 @@ public:
   void set_max_sequence_length(int max_seq_length);
   void push_spec_infer_tree_width(int tree_width);
   int get_max_sequence_length();
+  void set_enable_peft_finetuning(bool enable_peft_finetuning_);
+  static void set_inference_finished(bool finished = true);
   int register_ssm_model(FFModel *model);
   void register_tokenizer(ModelType model_type,
                           int bos_token_id,
@@ -143,10 +165,9 @@ public:
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
-  RequestGuid register_new_request(std::string const &prompt,
-                                   int max_sequence_length);
-  RequestGuid register_new_request(std::vector<TokenId> const &prompt,
-                                   int max_sequence_length);
+  RequestGuid register_new_request(Request const &request_);
+  RequestGuid register_new_peft_request(Request const &request_);
+
   // Methods to start and terminate request manager's background task
   void start_background_server(FFModel *model);
   bool is_background_server_terminated();
@@ -156,6 +177,8 @@ public:
   bool is_request_completed(RequestGuid const &guid);
   void trigger_request_completion_future(RequestGuid const &guid);
   // Methods for preparing next batches
+  bool check_inf_req_completion(BatchConfig const &old_bc, int i);
+  void check_batch(BatchConfig const &old_bc, BatchConfig const &new_bc);
   BatchConfig prepare_next_batch(BatchConfig const &bc,
                                  InferenceResult const &result);
   BatchConfigFuture prepare_next_batch(BatchConfigFuture const &bc,
@@ -265,6 +288,10 @@ private:
   int max_sequence_length;
   Status request_manager_status;
 
+  // peft benchmarking
+  bool enable_peft_finetuning = false;
+  static bool inference_finished;
+
   // tree width in each speculative step, if not specified 1
   std::vector<int> spec_infer_tree_width;
 
@@ -275,7 +302,8 @@ private:
   int bos_token_id;
   int eos_token_id;
   std::string output_filepath;
-  std::queue<Request> pending_request_queue;
+  std::queue<Request> pending_infr_request_queue;
+  std::queue<Request> pending_peft_request_queue;
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
@@ -304,6 +332,8 @@ private:
     int llm_decoding_steps;
     int ssm_decoding_steps;
     double start_time, finish_time;
+    double registration_time, first_token_time;
+    bool first_token_time_set = false;
   };
   std::unordered_map<RequestGuid, ProfileInfo> profiling_requests;
   double total_request_run_time;

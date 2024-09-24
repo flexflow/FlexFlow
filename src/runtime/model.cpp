@@ -165,8 +165,8 @@ FFHandler
                                            0,
                                            Realm::ProfilingRequestSet())
         .wait();
-    handle.batch_config_metadata =
-        workspaceInst.pointer_untyped(0, sizeof(char));
+    handle.batch_config_metadata = static_cast<CombinedBatchConfigMetaStruct *>(
+        workspaceInst.pointer_untyped(0, sizeof(char)));
   } else {
     handle.batch_config_metadata = nullptr;
   }

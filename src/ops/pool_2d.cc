@@ -315,7 +315,7 @@ OpMeta *Pool2D::init_task(Task const *task,
   assert(task->regions.size() == 2);
   Pool2D const *pool = (Pool2D *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  Pool2DMeta *m = new Pool2DMeta(handle);
+  Pool2DMeta *m = new Pool2DMeta(handle, pool);
   m->profiling = pool->profiling;
   m->inference_debugging = pool->inference_debugging;
   std::strcpy(m->op_name, pool->name);
@@ -545,7 +545,7 @@ bool Pool2D::measure_operator_cost(Simulator *sim,
   int output_n = sub_output.dims[3].size;
   int pad_h = ((output_h - 1) * stride_h + kernel_h - input_h + 1) / 2;
   int pad_w = ((output_w - 1) * stride_w + kernel_w - input_w + 1) / 2;
-  Pool2DMeta *m = sim->pool2d_meta;
+  Pool2DMeta *m = new Pool2DMeta(sim->handler, this);
 
   init_kernel(m,
               input_w,

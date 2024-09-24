@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "flexflow/ops/concat.h"
 #include "flexflow/ops/kernels/concat_kernels.h"
 #include "flexflow/utils/cuda_helper.h"
 
@@ -21,6 +22,9 @@ namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
 using Legion::Rect;
+
+ConcatMeta::ConcatMeta(FFHandler handler, Concat const *cc)
+    : OpMeta(handler, cc) {}
 
 namespace Kernels {
 namespace Concat {

@@ -46,6 +46,12 @@ enum LossType {
   LOSS_IDENTITY = 54,
 };
 
+enum OptimizerType {
+  OPTIMIZER_TYPE_NONE = 60,
+  OPTIMIZER_TYPE_SGD = 61,
+  OPTIMIZER_TYPE_ADAM = 62,
+};
+
 enum CompMode {
   COMP_MODE_TRAINING = 70,
   COMP_MODE_INFERENCE = 71,
@@ -70,6 +76,11 @@ enum InferenceMode {
   INC_DECODING_MODE = 2001,
   BEAM_SEARCH_MODE = 2002,
   TREE_VERIFY_MODE = 2003,
+};
+
+enum RequestType {
+  REQ_INFERENCE = 4001,
+  REQ_FINETUNING = 4002,
 };
 
 // This is consistent with TASO's OpType
@@ -172,6 +183,8 @@ enum OperatorType {
   OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
   OP_TREE_INC_MULTIHEAD_SELF_ATTENTION,
   OP_SAMPLING,
+  // PEFT Ops
+  OP_LORA,
   // Parallel Ops
   OP_REPARTITION,
   OP_COMBINE,
@@ -179,6 +192,7 @@ enum OperatorType {
   OP_REDUCTION,
   OP_PIPELINE,
   OP_ALLREDUCE,
+  OP_PARALLEL_IDENTITY,
   OP_FUSED_PARALLEL,
   OP_INVALID,
 };
@@ -193,36 +207,37 @@ enum ModelType {
 };
 
 enum PMParameter {
-  PM_OP_TYPE,            // AnyOp
-  PM_NUM_INPUTS,         // AnyOp
-  PM_NUM_OUTPUTS,        // AnyOp
-  PM_GROUP,              // Conv2D
-  PM_KERNEL_H,           // Conv2D, Pool2D
-  PM_KERNEL_W,           // Conv2D, Pool2D
-  PM_STRIDE_H,           // Conv2D, Pool2D
-  PM_STRIDE_W,           // Conv2D, Pool2D
-  PM_PADDING_H,          // Conv2D, Pool2D
-  PM_PADDING_W,          // Conv2D, Pool2D
-  PM_ACTI,               // Conv2D, Pool2D
-  PM_NUMDIM,             // Concat, Transpose
-  PM_AXIS,               // Concat, Split
-  PM_PERM,               // Transpose
-  PM_OUTSHUFFLE,         // Transpose
-  PM_MERGE_GCONV_COUNT,  // MergeGConv
-  PM_AXES,               // Squeeze, Unsqueeze, Reduce*
-  PM_KEEP_DIMS,          // Reduce*
-  PM_EPSILON,            // BatchNorm
-  PM_REPARTITION_DIM,    // Repartition
-  PM_REPARTITION_DEGREE, // Repartition
-  PM_REPLICATE_DIM,      // Replicate
-  PM_REPLICATE_DEGREE,   // Replicate
-  PM_COMBINE_DIM,        // Combine
-  PM_COMBINE_DEGREE,     // Combine
-  PM_REDUCTION_DIM,      // Reduction
-  PM_REDUCTION_DEGREE,   // Reduction
-  PM_ALLREDUCE_DIM,      // AllReduce
-  PM_SOFTMAX_DIM,        // Softmax
-  PM_NUM_HEADS,          // MultiHeadAttention
+  PM_OP_TYPE,               // AnyOp
+  PM_NUM_INPUTS,            // AnyOp
+  PM_NUM_OUTPUTS,           // AnyOp
+  PM_GROUP,                 // Conv2D
+  PM_KERNEL_H,              // Conv2D, Pool2D
+  PM_KERNEL_W,              // Conv2D, Pool2D
+  PM_STRIDE_H,              // Conv2D, Pool2D
+  PM_STRIDE_W,              // Conv2D, Pool2D
+  PM_PADDING_H,             // Conv2D, Pool2D
+  PM_PADDING_W,             // Conv2D, Pool2D
+  PM_ACTI,                  // Conv2D, Pool2D
+  PM_NUMDIM,                // Concat, Transpose
+  PM_AXIS,                  // Concat, Split
+  PM_PERM,                  // Transpose
+  PM_OUTSHUFFLE,            // Transpose
+  PM_MERGE_GCONV_COUNT,     // MergeGConv
+  PM_AXES,                  // Squeeze, Unsqueeze, Reduce*
+  PM_KEEP_DIMS,             // Reduce*
+  PM_EPSILON,               // BatchNorm
+  PM_REPARTITION_DIM,       // Repartition
+  PM_REPARTITION_DEGREE,    // Repartition
+  PM_REPLICATE_DIM,         // Replicate
+  PM_REPLICATE_DEGREE,      // Replicate
+  PM_COMBINE_DIM,           // Combine
+  PM_COMBINE_DEGREE,        // Combine
+  PM_REDUCTION_DIM,         // Reduction
+  PM_REDUCTION_DEGREE,      // Reduction
+  PM_ALLREDUCE_DIM,         // AllReduce
+  PM_PARALLEL_IDENTITY_DIM, // AllReduce
+  PM_SOFTMAX_DIM,           // Softmax
+  PM_NUM_HEADS,             // MultiHeadAttention
   PM_INVALID,
   PM_PARALLEL_DIM,
   PM_PARALLEL_DEGREE,
@@ -268,5 +283,7 @@ enum {
   TENSOR_GUID_LAST_VALID = 3999999,
   PARALLEL_TENSOR_GUID_FIRST_VALID = 4000000,
   NODE_GUID_FIRST_VALID = 5000000,
+  PEFT_MODEL_ID_FIRST_VALID = 6000000,
+  PEFT_MODEL_ID_LAST_VALID = 6999999
 };
 #endif // _FLEXFLOW_CONST_H_

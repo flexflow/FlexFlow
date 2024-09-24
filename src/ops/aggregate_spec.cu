@@ -287,9 +287,10 @@ void AggregateSpec::backward_kernel_wrapper(AggregateSpecMeta const *m,
                                       out_dim);
 }
 
-AggregateSpecMeta::AggregateSpecMeta(FFHandler handler, int n)
-    : OpMeta(handler) {
-  checkCUDA(cudaMalloc(&dev_region_ptrs, n * sizeof(float *)));
+AggregateSpecMeta::AggregateSpecMeta(FFHandler handler,
+                                     AggregateSpec const *aggr)
+    : OpMeta(handler, aggr) {
+  checkCUDA(cudaMalloc(&dev_region_ptrs, aggr->n * sizeof(float *)));
 }
 AggregateSpecMeta::~AggregateSpecMeta(void) {
   checkCUDA(cudaFree(&dev_region_ptrs));

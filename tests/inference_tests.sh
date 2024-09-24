@@ -25,9 +25,6 @@ fi
 # Clean up before test (just in case)
 cleanup
 
-# Make sure supported version of protobuf is installed
-pip3 install protobuf==3.20.3
-
 # Create test prompt file
 mkdir -p ../inference/prompt
 echo '["Three tips for staying healthy are: "]' > ../inference/prompt/test.json

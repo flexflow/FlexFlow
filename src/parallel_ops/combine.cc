@@ -44,7 +44,8 @@ using namespace FlexFlow::Kernels::Combine;
 /* Params */
 bool operator==(CombineParams const &lhs, CombineParams const &rhs) {
   return lhs.combine_legion_dim == rhs.combine_legion_dim &&
-         lhs.combine_degree == rhs.combine_degree;
+         lhs.combine_degree == rhs.combine_degree &&
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool CombineParams::is_valid(ParallelTensorShape const &input) const {
@@ -58,7 +59,7 @@ CombineParams Combine::get_params() const {
   CombineParams params;
   params.combine_legion_dim = this->combine_dim;
   params.combine_degree = this->combine_degree;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -102,10 +103,11 @@ OpMeta *Combine::init_task(Task const *task,
                            Runtime *runtime) {
   Combine *cmb = (Combine *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  CombineMeta *m = new CombineMeta(handle);
+  CombineMeta *m = new CombineMeta(handle, cmb);
   m->input_type[0] = cmb->inputs[0]->data_type;
   m->output_type[0] = cmb->outputs[0]->data_type;
   assert(m->input_type[0] == m->output_type[0]);
+  std::strcpy(m->op_name, cmb->name);
   return m;
 }
 
@@ -202,12 +204,23 @@ void Combine::create_input_partition_inference(
   assert(ff.config.computationMode == COMP_MODE_INFERENCE);
   assert(batch_outputs[0]->part != LogicalPartition::NO_PART);
   assert(batch_inputs[0]->part != LogicalPartition::NO_PART);
-  // input_lp is a disjoint partition
+  // partition batch_inputs[0]->region into inference_input_lps[batch_inputs[0]]
+  // according to the partitioning of batch_outputs[0] (i.e. make the
+  // partitioned dimension whole again by combining the partitions)
   ff.create_disjoint_partition(batch_outputs[0]->num_dims,
                                batch_outputs[0]->dims,
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
+  // partition batch_outputs[0]->region_grad into
+  // inference_output_grad_lps[batch_outputs[0]] according to the partitioning
+  // of batch_inputs[0] (i.e. restore the partition in the dimension that was
+  // combined in the forward pass)
+  ff.create_disjoint_partition(batch_inputs[0]->num_dims,
+                               batch_inputs[0]->dims,
+                               batch_inputs[0]->parallel_is,
+                               batch_outputs[0]->region_grad,
+                               inference_output_grad_lps[batch_outputs[0]]);
 }
 
 FutureMap Combine::inference(FFModel const &ff,
@@ -226,7 +239,7 @@ FutureMap Combine::inference(FFModel const &ff,
   size_t machine_view_hash =
       mv ? mv->hash() : batch_outputs[0]->machine_view.hash();
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
-  IndexLauncher launcher(COMBINE_FWD_TASK_ID,
+  IndexLauncher launcher(COMBINE_INF_TASK_ID,
                          batch_outputs[0]->parallel_is,
                          TaskArgument(nullptr, 0),
                          argmap,
@@ -234,6 +247,7 @@ FutureMap Combine::inference(FFModel const &ff,
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.add_future(bc);
   launcher.add_region_requirement(
       RegionRequirement(inference_input_lps[batch_inputs[0]],
                         0 /*projection id*/,
@@ -276,6 +290,52 @@ void Combine::forward(FFModel const &ff) {
                                                     outputs[0]->region));
   launcher.add_field(1, FID_DATA);
   runtime->execute_index_space(ctx, launcher);
+}
+
+FutureMap Combine::peft_bwd(FFModel const &ff,
+                            BatchConfigFuture const &bc,
+                            std::vector<ParallelTensor> const &batch_inputs,
+                            std::vector<ParallelTensor> const &batch_outputs,
+                            MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  assert(numOutputs == 1);
+  assert(numInputs == 1);
+  assert(batch_inputs[0]->data_type == batch_outputs[0]->data_type);
+  DataType data_type = inputs[0]->data_type;
+
+  // Warning: we need to use batch_inputs[0] here, instead of the usual
+  // batch_outputs[0]
+  parallel_is = batch_inputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_inputs[0]->machine_view;
+
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(COMBINE_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(&data_type, sizeof(DataType)),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  launcher.add_region_requirement(
+      RegionRequirement(inference_output_grad_lps[batch_outputs[0]],
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        WRITE_ONLY,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  return runtime->execute_index_space(ctx, launcher);
 }
 
 void Combine::backward(FFModel const &ff) {
@@ -358,6 +418,37 @@ tl::optional<RecordFormatter> Combine::as_dot() const {
 }
 
 /*static*/
+void Combine::inference_task(Task const *task,
+                             std::vector<PhysicalRegion> const &regions,
+                             Context ctx,
+                             Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  CombineMeta const *m = *((CombineMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
+    return;
+  }
+  DataType data_type = m->input_type[0];
+  if (m->inference_debugging) {
+    std::cout << "INF " << m->op_name << std::endl;
+  }
+  if (data_type == DT_HALF) {
+    forward_task_with_type<half>(task, regions, ctx, runtime);
+  } else if (data_type == DT_FLOAT) {
+    forward_task_with_type<float>(task, regions, ctx, runtime);
+  } else if (data_type == DT_DOUBLE) {
+    forward_task_with_type<double>(task, regions, ctx, runtime);
+  } else if (data_type == DT_INT32) {
+    forward_task_with_type<int32_t>(task, regions, ctx, runtime);
+  } else if (data_type == DT_INT64) {
+    forward_task_with_type<int64_t>(task, regions, ctx, runtime);
+  } else {
+    assert(false && "Unsupported data type in Combine forward");
+  }
+}
+
+/*static*/
 void Combine::forward_task(Task const *task,
                            std::vector<PhysicalRegion> const &regions,
                            Context ctx,
@@ -398,6 +489,56 @@ void Combine::forward_task_with_type(Task const *task,
       regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   forward_kernel<DT>(input_ptr, output_ptr, output_domain.get_volume());
+}
+
+void Combine::peft_bwd_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  assert(regions.size() == 2);
+  assert(task->regions.size() == 2);
+  // CombineMeta const *m = *((CombineMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  // TODO: figure out why m->output_type[0] or m->input_type[0] are not working
+  DataType data_type = *((DataType *)task->args);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      data_type, regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      data_type, regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  assert(input_grad.data_type == data_type);
+  assert(output_grad.domain == input_grad.domain);
+  CombineMeta const *m = *((CombineMeta **)task->local_args);
+  int shard_id = task->index_point.point_data[0];
+  if (shard_id == 0 && m->inference_debugging) {
+    // m is null when shard_id > 0 for some reason
+    std::cout << "BWD " << m->op_name << std::endl;
+  }
+  if (data_type == DT_HALF) {
+    backward_kernel<half>(output_grad.get_half_ptr(),
+                          input_grad.get_half_ptr(),
+                          output_grad.domain.get_volume());
+  } else if (data_type == DT_FLOAT) {
+    backward_kernel<float>(output_grad.get_float_ptr(),
+                           input_grad.get_float_ptr(),
+                           output_grad.domain.get_volume());
+  } else if (data_type == DT_DOUBLE) {
+    backward_kernel<double>(output_grad.get_double_ptr(),
+                            input_grad.get_double_ptr(),
+                            output_grad.domain.get_volume());
+  } else if (data_type == DT_INT32) {
+    backward_kernel<int32_t>(output_grad.get_int32_ptr(),
+                             input_grad.get_int32_ptr(),
+                             output_grad.domain.get_volume());
+  } else if (data_type == DT_INT64) {
+    backward_kernel<int64_t>(output_grad.get_int64_ptr(),
+                             input_grad.get_int64_ptr(),
+                             output_grad.domain.get_volume());
+  } else {
+    assert(false && "Unsupported data type in Combine backward");
+  }
 }
 
 void Combine::backward_task(Task const *task,

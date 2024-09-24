@@ -36,6 +36,7 @@
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/layer_norm.h"
 #include "flexflow/ops/linear.h"
+#include "flexflow/ops/lora_linear.h"
 #include "flexflow/ops/noop.h"
 #include "flexflow/ops/pool_2d.h"
 #include "flexflow/ops/reduce.h"
@@ -54,6 +55,7 @@
 #include "flexflow/parallel_ops/allreduce.h"
 #include "flexflow/parallel_ops/combine.h"
 #include "flexflow/parallel_ops/fused_parallel_op.h"
+#include "flexflow/parallel_ops/parallel_identity.h"
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
@@ -1992,6 +1994,7 @@ std::pair<std::unique_ptr<Graph>, std::unordered_map<Node, MachineView>>
         mv.device_type = MachineView::GPU;
         mv.ndims = 1;
         int total_parallel_degree = 1;
+        assert(op->numOutputs > 0);
         for (int i = 0; i < op->outputs[0]->num_dims; i++) {
           total_parallel_degree *= op->outputs[0]->dims[i].degree;
         }
@@ -2434,6 +2437,13 @@ GraphOptimalViewSerialized
         sez.serialize(allreduce->name, strlen(allreduce->name));
         break;
       }
+      case OP_PARALLEL_IDENTITY: {
+        ParallelIdentity *parallel_identity = (ParallelIdentity *)op;
+        sez.serialize(parallel_identity->parallel_identity_dim);
+        sez.serialize(strlen(parallel_identity->name));
+        sez.serialize(parallel_identity->name, strlen(parallel_identity->name));
+        break;
+      }
       case OP_FUSED_PARALLEL: {
         FusedParallelOp *fused = (FusedParallelOp *)op;
         sez.serialize(fused->num_parallel_ops);
@@ -2475,6 +2485,7 @@ namespace FlexFlow {
 using PCG::Edge;
 using PCG::Graph;
 using PCG::GraphCostResult;
+using PCG::log_graph;
 using PCG::Node;
 
 void FFModel::register_all_machine_views(
@@ -2757,6 +2768,10 @@ void FFModel::deserialize_graph_optimal_view(
       }
       case OP_LINEAR: {
         node = Linear::deserialize(*this, dez, inputs, num_inputs);
+        break;
+      }
+      case OP_LORA: {
+        node = LoraLinear::deserialize(*this, dez, inputs, num_inputs);
         break;
       }
       case OP_MULTIHEAD_ATTENTION: {
@@ -3042,8 +3057,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Combine>(inputs[0],
-                                           {combine_dim, combine_degree});
+        CombineParams params;
+        params.combine_legion_dim = combine_dim;
+        params.combine_degree = combine_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Combine>(inputs[0], params);
         break;
       }
       case OP_REPARTITION: {
@@ -3055,8 +3073,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Repartition>(
-            inputs[0], {repartition_dim, repartition_degree});
+        RepartitionParams params;
+        params.repartition_legion_dim = repartition_dim;
+        params.repartition_degree = repartition_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Repartition>(inputs[0], params);
         break;
       }
       case OP_REPLICATE: {
@@ -3068,8 +3089,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Replicate>(inputs[0],
-                                             {replicate_dim, replicate_degree});
+        ReplicateParams params;
+        params.replicate_legion_dim = replicate_dim;
+        params.replicate_degree = replicate_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Replicate>(inputs[0], params);
         break;
       }
       case OP_REDUCTION: {
@@ -3081,8 +3105,11 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<Reduction>(inputs[0],
-                                             {reduction_dim, reduction_degree});
+        ReductionParams params;
+        params.reduction_legion_dim = reduction_dim;
+        params.reduction_degree = reduction_degree;
+        strcpy(params.name, name);
+        node = get_or_create_node<Reduction>(inputs[0], params);
         break;
       }
       case OP_ALLREDUCE: {
@@ -3093,24 +3120,43 @@ void FFModel::deserialize_graph_optimal_view(
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<AllReduce>(inputs[0], {allreduce_dim});
+        AllReduceParams params;
+        params.allreduce_legion_dim = allreduce_dim;
+        strcpy(params.name, name);
+        node = get_or_create_node<AllReduce>(inputs[0], params);
+        break;
+      }
+      case OP_PARALLEL_IDENTITY: {
+        assert(num_inputs == 1);
+        int parallel_identity_dim;
+        dez.deserialize(parallel_identity_dim);
+        size_t name_len;
+        char name[MAX_OPNAME] = {0};
+        dez.deserialize(name_len);
+        dez.deserialize(name, name_len);
+        ParallelIdentityParams params;
+        params.parallel_identity_legion_dim = parallel_identity_dim;
+        strcpy(params.name, name);
+        node = get_or_create_node<ParallelIdentity>(inputs[0], params);
         break;
       }
       case OP_FUSED_PARALLEL: {
         assert(num_inputs == 1);
-        std::vector<ParallelOpInfo> parallel_ops;
+        FusedParallelOpParams params;
         int num_parallel_ops;
         dez.deserialize(num_parallel_ops);
         for (int i = 0; i < num_parallel_ops; i++) {
           ParallelOpInfo info;
           dez.deserialize(info);
-          parallel_ops.push_back(info);
+          params.parallel_ops.push_back(info);
         }
         size_t name_len;
         char name[MAX_OPNAME] = {0};
         dez.deserialize(name_len);
         dez.deserialize(name, name_len);
-        node = get_or_create_node<FusedParallelOp>(inputs[0], {parallel_ops});
+        strcpy(params.name, name);
+
+        node = get_or_create_node<FusedParallelOp>(inputs[0], params);
         break;
       }
       default: {
@@ -3149,20 +3195,20 @@ void FFModel::deserialize_graph_optimal_view(
     optimal_views[guid_to_nodes[guid]] = view;
   }
   assert(dez.get_remaining_bytes() == 0);
-  printf("Deserialized Views...\n");
+  log_graph.debug("Deserialized Views...\n");
   for (auto const &it : optimal_views) {
-    printf("node[%zu]: type(%s) view(%d %d %d) ",
-           it.first.guid,
-           it.first.to_string().c_str(),
-           it.second.ndims,
-           it.second.dim[0],
-           it.second.start_device_id);
+    log_graph.debug("node[%zu]: type(%s) view(%d %d %d) ",
+                    it.first.guid,
+                    it.first.to_string().c_str(),
+                    it.second.ndims,
+                    it.second.dim[0],
+                    it.second.start_device_id);
     auto const &list = graph->inEdges.at(it.first);
     for (auto const &it2 : list) {
       Edge e = it2;
-      printf(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
+      log_graph.debug(" inEdge(node(%zu) idx(%d))", e.srcOp.guid, e.srcIdx);
     }
-    printf("\n");
+    log_graph.debug("\n");
   }
 }
 

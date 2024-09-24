@@ -279,7 +279,7 @@ OpMeta *BatchMatmul::init_task(Task const *task,
                                Runtime *runtime) {
   BatchMatmul const *bmm = (BatchMatmul *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  BatchMatmulMeta *m = new BatchMatmulMeta(handle);
+  BatchMatmulMeta *m = new BatchMatmulMeta(handle, bmm);
   m->profiling = bmm->profiling;
   m->inference_debugging = bmm->inference_debugging;
   m->a_seq_length_dim = bmm->a_seq_length_dim;
@@ -616,7 +616,7 @@ bool BatchMatmul::measure_operator_cost(Simulator *sim,
     batch *= sub_input0.dims[i].size;
   }
 
-  BatchMatmulMeta *meta = sim->batch_matmul_meta;
+  BatchMatmulMeta *meta = new BatchMatmulMeta(sim->handler, this);
 
   // allocate tensors in simulator
   sim->free_all();

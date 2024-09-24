@@ -23,6 +23,7 @@
 #include "flexflow/ops/inc_multihead_self_attention_params.h"
 #include "flexflow/ops/layer_norm_params.h"
 #include "flexflow/ops/linear_params.h"
+#include "flexflow/ops/lora_linear_params.h"
 #include "flexflow/ops/pool_2d_params.h"
 #include "flexflow/ops/reduce_params.h"
 #include "flexflow/ops/reshape_params.h"
@@ -40,6 +41,7 @@
 #include "flexflow/parallel_ops/allreduce_params.h"
 #include "flexflow/parallel_ops/combine_params.h"
 #include "flexflow/parallel_ops/fused_parallel_op_params.h"
+#include "flexflow/parallel_ops/parallel_identity_params.h"
 #include "flexflow/parallel_ops/partition_params.h"
 #include "flexflow/parallel_ops/reduction_params.h"
 #include "flexflow/parallel_ops/replicate_params.h"
@@ -67,6 +69,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        AddBiasResidualLayerNormParams,
                                        SigmoidSiluMultiParams,
                                        LinearParams,
+                                       LoraLinearParams,
                                        MultiHeadAttentionParams,
                                        IncMultiHeadSelfAttentionParams,
                                        BeamTopKParams,
@@ -89,6 +92,7 @@ using OperatorParameters = mp::variant<AggregateParams,
                                        ReductionParams,
                                        CombineParams,
                                        AllReduceParams,
+                                       ParallelIdentityParams,
                                        FusedParallelOpParams>;
 
 tl::optional<OperatorParameters> get_op_parameters(Op const *op);

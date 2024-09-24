@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
+class Reshape;
+
 class ReshapeMeta : public OpMeta {
 public:
-  ReshapeMeta(FFHandler handler);
+  ReshapeMeta(FFHandler handler, Reshape const *reshape);
   DataType data_type;
 };
 

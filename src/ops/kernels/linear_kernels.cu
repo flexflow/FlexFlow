@@ -63,6 +63,8 @@ LinearMeta::LinearMeta(FFHandler handler,
   // Allocate descriptors
   checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+
+  allocated_peft_buffer_size = 0;
 }
 
 LinearMeta::~LinearMeta(void) {
@@ -162,6 +164,172 @@ void forward_kernel_wrapper(LinearMeta const *m,
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("%s [Linear] forward time = %.2lfms\n", m->op_name, elapsed);
+    // print_tensor<float>((float*)input_ptr, in_dim * batch_size,
+    // "[Linear:forward:input]"); print_tensor<float>((float*)weight_ptr, in_dim
+    // * out_dim, "[Linear:forward:kernel]");
+    // print_tensor<float>((float*)output_ptr, out_dim * batch_size,
+    // "[Linear:forward:output]");
+  }
+}
+
+void inference_kernel_wrapper(LinearMeta *m,
+                              BatchConfig const *bc,
+                              void const *input_ptr,
+                              void *output_ptr,
+                              void const *weight_ptr,
+                              void const *bias_ptr,
+                              int in_dim,
+                              int out_dim,
+                              int batch_size) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  if (m->input_type[0] == DT_FLOAT) {
+    Internal::forward_kernel<float>(m,
+                                    input_ptr,
+                                    output_ptr,
+                                    weight_ptr,
+                                    bias_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    batch_size,
+                                    stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    Internal::forward_kernel<half>(m,
+                                   input_ptr,
+                                   output_ptr,
+                                   weight_ptr,
+                                   bias_ptr,
+                                   in_dim,
+                                   out_dim,
+                                   batch_size,
+                                   stream);
+  }
+
+  if (m->activation == AC_MODE_RELU || m->activation == AC_MODE_SIGMOID) {
+    // save input activation if needed for PEFT
+    if (bc->num_active_peft_tokens() > 0) {
+      // Check that we have at most one request that requires peft_bwd
+      int num_peft_requests = 0;
+      for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+        if (bc->request_completed[i]) {
+          continue;
+        }
+        if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+          continue;
+        }
+        if (bc->requestsInfo[i].peft_bwd) {
+          num_peft_requests++;
+        }
+      }
+      assert(num_peft_requests <= 1);
+
+      for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+        if (bc->request_completed[i]) {
+          continue;
+        }
+        // Skip non-PEFT requests
+        if (bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+          continue;
+        }
+        int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+        int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
+        int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
+        if (bc->requestsInfo[i].peft_bwd) {
+          size_t activation_size_needed =
+              data_type_size(m->output_type[0]) * max_peft_tokens * out_dim;
+          if (activation_size_needed > m->allocated_peft_buffer_size) {
+            MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+            m->output_activation_buffer =
+                allocator->allocate_instance_untyped(activation_size_needed);
+            m->allocated_peft_buffer_size = activation_size_needed;
+          }
+          // copy output activation
+          if (m->output_type[0] == DT_FLOAT) {
+            checkCUDA(cudaMemcpyAsync(
+                m->output_activation_buffer,
+                static_cast<float *>(output_ptr) + first_token_offset * out_dim,
+                data_type_size(m->output_type[0]) * num_peft_tokens * out_dim,
+                cudaMemcpyDeviceToDevice,
+                stream));
+          } else if (m->output_type[0] == DT_HALF) {
+            checkCUDA(cudaMemcpyAsync(
+                m->output_activation_buffer,
+                static_cast<half *>(output_ptr) + first_token_offset * out_dim,
+                data_type_size(m->output_type[0]) * num_peft_tokens * out_dim,
+                cudaMemcpyDeviceToDevice,
+                stream));
+          } else {
+            assert(false && "unsupport datatype in layernorm");
+          }
+        }
+      }
+    }
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("%s [Linear] inference time = %.2lfms\n", m->op_name, elapsed);
+  }
+}
+
+void peft_bwd_kernel_wrapper(LinearMeta const *m,
+                             void *input_grad_ptr,
+                             void *output_grad_ptr,
+                             void const *weight_ptr,
+                             int in_dim,
+                             int out_dim,
+                             int num_infr_tokens,
+                             int num_peft_tokens) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+  if (m->input_type[0] == DT_FLOAT) {
+    Internal::peft_bwd_kernel<float>(m,
+                                     input_grad_ptr,
+                                     output_grad_ptr,
+                                     weight_ptr,
+                                     in_dim,
+                                     out_dim,
+                                     num_infr_tokens,
+                                     num_peft_tokens,
+                                     stream);
+  } else if (m->input_type[0] == DT_HALF) {
+    Internal::peft_bwd_kernel<half>(m,
+                                    input_grad_ptr,
+                                    output_grad_ptr,
+                                    weight_ptr,
+                                    in_dim,
+                                    out_dim,
+                                    num_infr_tokens,
+                                    num_peft_tokens,
+                                    stream);
+  }
+
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("%s [Linear] PEFT Bwd time = %.2lfms\n", m->op_name, elapsed);
     // print_tensor<float>((float*)input_ptr, in_dim * batch_size,
     // "[Linear:forward:input]"); print_tensor<float>((float*)weight_ptr, in_dim
     // * out_dim, "[Linear:forward:kernel]");
@@ -323,17 +491,7 @@ void forward_kernel(LinearMeta const *m,
                                    : ff_to_cuda_datatype(m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
   assert(input_type == weight_type && weight_type == output_type);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  cudaDataType_t compute_type = output_type;
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_T,
                          CUBLAS_OP_N,
@@ -398,12 +556,80 @@ void forward_kernel(LinearMeta const *m,
     size_t elements = (size_t)out_dim * (size_t)batch_size;
     constexpr float B = 0.7978845608028654f;   // sqrt(2.0/M_PI)
     constexpr float C = 0.035677408136300125f; // 0.044715 * sqrt(2.0/M_PI)
-    gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS>>>(
+    gelu_forward_kernel<<<GET_BLOCKS(elements), CUDA_NUM_THREADS, 0, stream>>>(
         elements, B, C, (float *)output_ptr);
   } else if (m->activation == AC_MODE_NONE) {
     // Do nothing
   } else {
     assert(false && "Unsupported activation for Linear");
+  }
+}
+
+template <typename DT>
+void peft_bwd_kernel(LinearMeta const *m,
+                     void *input_grad_ptr,
+                     void *output_grad_ptr,
+                     void const *kernel_ptr,
+                     int in_dim,
+                     int out_dim,
+                     int num_infr_tokens,
+                     int num_peft_tokens,
+                     ffStream_t stream) {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
+  // update input_grad_ptr and output_grad_ptr offset
+  int num_infr_only_tokens = num_infr_tokens - num_peft_tokens;
+  input_grad_ptr =
+      static_cast<DT *>(input_grad_ptr) + num_infr_only_tokens * in_dim;
+  output_grad_ptr =
+      static_cast<DT *>(output_grad_ptr) + num_infr_only_tokens * out_dim;
+  cudaDataType_t compute_type = output_type;
+  int output_size = out_dim * num_peft_tokens;
+  if (m->activation == AC_MODE_RELU) {
+    relu_backward_kernel(m->output_type[0],
+                         output_grad_ptr,
+                         m->output_activation_buffer,
+                         output_size,
+                         stream);
+  } else if (m->activation == AC_MODE_SIGMOID) {
+    sigmoid_backward_kernel(m->output_type[0],
+                            output_grad_ptr,
+                            m->output_activation_buffer,
+                            output_size,
+                            stream);
+  } else {
+    // TODO: only support relu and sigmoid for now
+    assert(m->activation == AC_MODE_NONE);
+  }
+
+  // Compute data gradient
+  // NOTE: we use beta=1 for input_grad to accumulate gradients when needed
+  DT alpha = 1.0f;
+  DT beta = m->reset_input_grads[0] ? 0.0f : 1.0f;
+  if (input_grad_ptr != NULL) {
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_N,
+                           CUBLAS_OP_N,
+                           in_dim,
+                           num_peft_tokens,
+                           out_dim,
+                           &alpha,
+                           kernel_ptr,
+                           weight_type,
+                           in_dim,
+                           output_grad_ptr,
+                           output_type,
+                           out_dim,
+                           &beta,
+                           input_grad_ptr,
+                           input_type,
+                           in_dim,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 }
 
@@ -428,17 +654,7 @@ void backward_kernel(LinearMeta const *m,
   cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
   cudaDataType_t weight_type = ff_to_cuda_datatype(m->weight_type[0]);
   cudaDataType_t output_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  cudaDataType_t compute_type = output_type;
   int output_size = out_dim * batch_size;
   if (m->activation == AC_MODE_RELU) {
     relu_backward_kernel(
@@ -450,7 +666,7 @@ void backward_kernel(LinearMeta const *m,
     // TODO: only support relu and sigmoid for now
     assert(m->activation == AC_MODE_NONE);
   }
-  // Compute weight gradiant
+  // Compute weight gradient
   // NOTE: we use alpha=1 for kernel_grad to accumulate gradients
   checkCUDA(cublasGemmEx(m->handle.blas,
                          CUBLAS_OP_N,
@@ -491,7 +707,7 @@ void backward_kernel(LinearMeta const *m,
     assert(false && "Only L2 regularization is supported");
   }
 
-  // Compute bias gradiant
+  // Compute bias gradient
   // NOTE: we use alpha=1 for bias_grad to accumulate gradients
   // use_bias = True
   if (bias_grad_ptr != NULL) {
@@ -515,7 +731,7 @@ void backward_kernel(LinearMeta const *m,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
-  // Compute data gradiant
+  // Compute data gradient
   // NOTE: we use alpha=1 for input_grad to accumulate gradients
   if (input_grad_ptr != NULL) {
     checkCUDA(cublasGemmEx(m->handle.blas,

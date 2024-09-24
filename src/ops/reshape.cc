@@ -180,7 +180,7 @@ OpMeta *Reshape::init_task(Task const *task,
                            Runtime *runtime) {
   Reshape const *reshape = (Reshape *)task->args;
   FFHandler handle = *((FFHandler const *)task->local_args);
-  ReshapeMeta *m = new ReshapeMeta(handle);
+  ReshapeMeta *m = new ReshapeMeta(handle, reshape);
   std::strcpy(m->op_name, reshape->name);
   m->layer_guid = reshape->layer_guid;
   m->data_type = reshape->outputs[0]->data_type;
@@ -296,7 +296,7 @@ ReshapeParams Reshape::get_params() const {
   ReshapeParams params;
   params.shape = shape_vec;
   params.layer_guid = this->layer_guid;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;

@@ -45,7 +45,8 @@ using namespace FlexFlow::Kernels::Reduction;
 /* Params */
 bool operator==(ReductionParams const &lhs, ReductionParams const &rhs) {
   return lhs.reduction_legion_dim == rhs.reduction_legion_dim &&
-         lhs.reduction_degree == rhs.reduction_degree;
+         lhs.reduction_degree == rhs.reduction_degree &&
+         std::strcmp(lhs.name, rhs.name) == 0;
 }
 
 bool ReductionParams::is_valid(ParallelTensorShape const &input) const {
@@ -56,7 +57,7 @@ ReductionParams Reduction::get_params() const {
   ReductionParams params;
   params.reduction_legion_dim = this->reduction_dim;
   params.reduction_degree = this->reduction_degree;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -125,6 +126,13 @@ void Reduction::create_input_partition_inference(
                                batch_outputs[0]->parallel_is,
                                batch_inputs[0]->region,
                                inference_input_lps[batch_inputs[0]]);
+  // output_grad_lp is an aliased partitioning along the replica dim
+  ff.create_aliased_partition(batch_inputs[0]->num_dims,
+                              batch_inputs[0]->dims,
+                              reduction_dim,
+                              batch_inputs[0]->parallel_is,
+                              batch_outputs[0]->region_grad,
+                              inference_output_grad_lps[batch_outputs[0]]);
 }
 
 OpMeta *Reduction::init_task(Task const *task,
@@ -137,6 +145,7 @@ OpMeta *Reduction::init_task(Task const *task,
   meta->input_type[0] = reduct->inputs[0]->data_type;
   meta->output_type[0] = reduct->outputs[0]->data_type;
   assert(meta->input_type[0] == meta->output_type[0]);
+  std::strcpy(meta->op_name, reduct->name);
   return meta;
 }
 
@@ -371,6 +380,10 @@ void Reduction::forward_task(Task const *task,
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+
+  if (m->inference_debugging) {
+    std::cout << "INF " << m->op_name << std::endl;
+  }
 
   assert(input.data_type == output.data_type);
   if (input.data_type == DT_HALF) {

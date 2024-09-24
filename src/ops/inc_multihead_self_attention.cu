@@ -12,9 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 #include "cuComplex.h"
-#endif
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/inc_multihead_self_attention.h"
 #include "flexflow/ops/kernels/decompress_kernels.h"
@@ -484,6 +482,63 @@ __global__ void
 }
 
 template <typename DT>
+__global__ void
+    apply_rotary_embedding_bwd(DT *input_ptr,
+                               cuFloatComplex *complex_input,
+                               BatchConfig::PerTokenInfo const *tokenInfos,
+                               int proj_size,
+                               int num_tokens,
+                               int hidden_size) {
+  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
+    // compute indexes to visit first half proj_size of each of q/k tensor.
+    // devQKVProj has shape [num_tokens, qProjSize, num_heads, 3] in peft_bwd
+    bool q_tensor = i < (num_tokens * hidden_size / 2);
+    int real_i = q_tensor ? i : i - num_tokens * hidden_size / 2;
+    assert(hidden_size % proj_size == 0);
+    int num_heads = hidden_size / proj_size;
+
+    int token_idx = real_i % num_tokens;
+    int idx = (real_i / num_tokens) % (proj_size / 2);
+    int head_idx = real_i / (num_tokens * proj_size / 2);
+    assert(head_idx < num_heads);
+
+    int complex_part_index = (q_tensor ? 0 : 1) * num_tokens * hidden_size +
+                             head_idx * num_tokens * proj_size +
+                             idx * num_tokens + token_idx;
+    int real_part_index = complex_part_index + (proj_size / 2) * num_tokens;
+
+    complex_input[i] = {input_ptr[real_part_index],
+                        input_ptr[complex_part_index]};
+
+    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
+
+    float freq = pos * (1.0 / pow(10000.0, (float)2 * idx / proj_size));
+    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
+
+    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
+    input_ptr[real_part_index] = complex_input[i].x;
+    input_ptr[complex_part_index] = complex_input[i].y;
+  }
+}
+
+template <typename DT>
+__global__ void fill_entries_above_diagonal(DT *matrix,
+                                            size_t num_rows,
+                                            size_t num_cols,
+                                            size_t num_q_heads,
+                                            size_t entries_above_diagonal,
+                                            DT value) {
+  CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_q_heads) {
+    size_t head_idx = i / entries_above_diagonal;
+    size_t entry_idx = i % entries_above_diagonal;
+    size_t y = (-1 + sqrt(8 * (float)entry_idx + 1)) / 2;
+    size_t x = entry_idx - y * (y + 1) / 2;
+    y += (num_cols - num_rows) + 1;
+    matrix[head_idx * num_rows * num_cols + num_cols * y + x] = value;
+  }
+}
+
+template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
@@ -497,17 +552,18 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
 
   // Step 1: Compute QKV projections
   {
@@ -517,7 +573,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
     int m_k = m->kProjSize * m->num_q_heads;
     int m_v = m->vProjSize * m->num_q_heads;
     assert(m_q == m_k && m_k == m_v); // keep things simple for now
-    int n = bc->num_active_tokens();
+    int n = bc->num_active_infr_tokens();
     int k = m->qSize;
     int m_ = m_q * QKV_WEIGHT_NUM;
     // before transpositions
@@ -604,7 +660,7 @@ template <typename DT>
 void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
                             BatchConfig const *bc,
                             cudaStream_t stream) {
-  int num_tokens = bc->num_active_tokens();
+  int num_tokens = bc->num_active_infr_tokens();
   if (num_tokens > 0) {
     int parallelism = m->hidden_size * num_tokens;
     store_kv_cache<<<GET_BLOCKS(parallelism),
@@ -799,7 +855,7 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
 }
 
 template <typename DT>
-void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
+void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       BatchConfig const *bc,
                       int shard_id,
                       DT const *input_ptr,
@@ -843,6 +899,504 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta const *m,
       m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
 }
 
+std::string get_peft_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,
+                                int shard_id) {
+  std::string op_name_without_uid =
+      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  fs::path dst_filepath = get_dst_folder("bwd", m->bwd_step, shard_id);
+  if (m->layer_guid.model_id > 0) {
+    assert(false && "Model ID > 0 not supported yet");
+  }
+  std::string layername = "layers." +
+                          std::to_string(m->layer_guid.transformer_layer_id) +
+                          "." + op_name_without_uid;
+  dst_filepath /= layername;
+  return dst_filepath.string();
+}
+
+template <typename DT>
+void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                     BatchConfig const *bc,
+                     int shard_id,
+                     DT *input_grad_ptr,
+                     DT const *weight_ptr,
+                     DT const *output_grad_ptr,
+                     DT const *bias_ptr,
+                     cudaStream_t stream) {
+  assert(!m->offload);
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
+  cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
+  assert(data_type_size(m->output_type[0]) == sizeof(DT));
+  cudaDataType_t compute_type = cublas_data_type;
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
+
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i]) {
+      continue;
+    }
+    if (!bc->requestsInfo[i].peft_bwd) {
+      continue;
+    }
+    int num_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    int num_total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
+                           bc->requestsInfo[i].num_tokens_in_batch;
+    // Currently assume we are calculating gradients for all tokens
+    // of a request
+    assert(num_tokens == num_total_tokens);
+    int kt_block_size = m->kProjSize;
+    int kt_req_block_size =
+        kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+    int vt_block_size = m->vProjSize;
+    int vt_req_block_size =
+        vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length();
+    assert(m->qProjSize == m->kProjSize && m->kProjSize == m->vProjSize);
+    // Step 1: compute gradients before final projection
+    {
+      int m_ = m->vProjSize * m->num_q_heads;
+      int n_ = num_tokens;
+      int k_ = m->oProjSize;
+      int lda = m_;
+      int ldb = k_;
+      int ldc = m_;
+      float alpha = 1.0f, beta = 0.0f;
+      // matrix A: output projection weight
+      // matrix A's layout: [vProjSize * num_heads, oProjSize]
+      DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
+                                             m->kProjSize * m->num_q_heads +
+                                             m->vProjSize * m->num_q_heads);
+      // matrix B: output gradients
+      // matrix B's layout: [oProjSize, num_new_tokens]
+      DT const *B =
+          output_grad_ptr +
+          bc->requestsInfo[i].first_token_offset_in_batch * m->oProjSize;
+      // matrix C: attn_heads gradients
+      // matrix C's layout: [vProjSize * num_heads, num_new_tokens]
+      DT *C = static_cast<DT *>(m->handle.workSpace);
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_N,
+                             m_,
+                             n_,
+                             k_,
+                             &alpha,
+                             A,
+                             cublas_data_type,
+                             lda,
+                             B,
+                             cublas_data_type,
+                             ldb,
+                             &beta,
+                             C,
+                             cublas_data_type,
+                             ldc,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        // save result to file for checking
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + ".o_proj.input_gradient_0";
+        save_tensor(C, m_ * n_, filename.c_str());
+      }
+    }
+    // Step 2: compute gradients w.r.t. value
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      // matrix A: qk_prods_softmax
+      // matrix A's layout: [num_new_tokens, total_tokens, num_heads]
+      DT const *A = static_cast<DT *>(m->qk_prods_softmax);
+      // matrix B: attn_heads gradients
+      // matrix B's layout: [vProjSize * num_heads, num_new_tokens]
+      DT const *B = static_cast<DT *>(m->handle.workSpace);
+      // matrix C: gradients for value (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
+      DT *C = static_cast<DT *>(m->devQKVProjArray) +
+              2 * num_tokens *
+                  (m->qProjSize * m->num_q_heads); // skip over regions reserved
+                                                   // for Q and K gradients
+      // after transpositions
+      int m_ = num_tokens;   // total_tokens
+      int n_ = m->vProjSize; // num_new_tokens
+      int k_ = num_tokens;   // num_new_tokens
+      // before transpositions
+      int lda = num_tokens; // num_new_tokens
+      int ldb = m->vProjSize * m->num_q_heads;
+      int ldc = num_tokens; // total_tokens
+      // N.B. strides are applied before transpose operations
+      int strideA = num_tokens * num_tokens; // num_new_tokens * total_tokens
+      int strideB = m->vProjSize;
+      int strideC = num_tokens * m->vProjSize;
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      // save result to file for checking
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + ".v_proj.input_gradient_0";
+        save_tensor(C, m_ * n_ * m->num_q_heads, filename.c_str());
+        std::string filename2 =
+            get_peft_dbg_folder(m, shard_id) + ".qk_prods.softmax";
+        save_tensor(A, m_ * k_ * m->num_q_heads, filename2.c_str());
+      }
+    }
+    // Step 3: compute gradients w.r.t. the qk_prods_softmax tensor
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      // matrix A: attn_heads gradients
+      // matrix A's layout: [vProjSize * num_heads, num_new_tokens]
+      DT const *A = static_cast<DT *>(m->handle.workSpace);
+      // matrix B: value cache
+      // matrix B's layout: [vProjSize * num_heads, max_num_tokens, num_req]
+      DT const *B = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
+      // matrix C: qk_prods_softmax gradients
+      // matrix C's layout: [num_new_tokens, total_tokens, num_heads]
+      DT *C = static_cast<DT *>(m->qk_prods_softmax);
+      // after transposition & striding
+      int m_ = num_tokens; // num_new_tokens
+      int n_ = num_tokens;
+      int k_ = m->vProjSize;
+      // before transposition and striding
+      int lda = m->vProjSize * m->num_q_heads;
+      int ldb = m->vProjSize * m->num_q_heads;
+      int ldc = num_tokens; // num_new_tokens
+      int strideA = m->vProjSize;
+      int strideB = m->vProjSize;
+      int strideC = num_tokens * num_tokens; // num_new_tokens * total_tokens
+
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_N,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + ".qk_prods.softmax_grad";
+        save_tensor(
+            C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
+        std::string filename2 = get_peft_dbg_folder(m, shard_id) + ".vcache";
+        save_tensor(
+            B, m->vProjSize * m->num_q_heads * num_tokens, filename2.c_str());
+      }
+    }
+    // Step 4: softmax backpropagation
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      int n_param = m->num_q_heads;
+      int c_param = num_tokens;
+      int h_param = 1;
+      int w_param = num_tokens;
+      checkCUDNN(cudnnSetTensor4dDescriptor(m->qk_tensor,
+                                            CUDNN_TENSOR_NCHW,
+                                            cudnn_data_type,
+                                            n_param,
+                                            c_param,
+                                            h_param,
+                                            w_param));
+      checkCUDNN(cudnnSoftmaxBackward(m->handle.dnn,
+                                      CUDNN_SOFTMAX_ACCURATE,
+                                      CUDNN_SOFTMAX_MODE_CHANNEL,
+                                      &alpha,
+                                      m->qk_tensor,
+                                      m->softmax_activation_buffer,
+                                      m->qk_tensor,
+                                      m->qk_prods_softmax,
+                                      &beta,
+                                      m->qk_tensor,
+                                      m->qk_prods));
+
+      if (m->inference_debugging) {
+        DT *C = static_cast<DT *>(m->qk_prods);
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + ".qk_prods.softmax_grad_in";
+        save_tensor(
+            C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
+      }
+
+      //  TODO: fill all elements above diagonal to force causal attention
+      size_t entries_above_diagonal = num_tokens * (num_tokens - 1) / 2;
+      if (entries_above_diagonal > 0) {
+        size_t parallelism = m->num_q_heads * entries_above_diagonal;
+        fill_entries_above_diagonal<<<GET_BLOCKS(parallelism),
+                                      min((size_t)CUDA_NUM_THREADS,
+                                          parallelism),
+                                      0,
+                                      stream>>>(static_cast<DT *>(m->qk_prods),
+                                                num_tokens,
+                                                num_tokens,
+                                                m->num_q_heads,
+                                                entries_above_diagonal,
+                                                DT(0.0f));
+      }
+      if (m->inference_debugging) {
+        DT *C = static_cast<DT *>(m->qk_prods);
+        std::string filename = get_peft_dbg_folder(m, shard_id) +
+                               ".qk_prods.softmax_grad_in.masked";
+        save_tensor(
+            C, num_tokens * num_tokens * m->num_q_heads, filename.c_str());
+      }
+    }
+    // Step 5: compute gradients w.r.t. key
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      if (*m->qk_prod_scaling) {
+        alpha = 1.0f / sqrt(m->kProjSize);
+      }
+      // matrix A: gradients w.r.t. qk_prods
+      // matrix A's layout: [num_new_tokens, num_tokens, num_heads]
+      DT const *A = static_cast<DT *>(m->qk_prods);
+      // matrix B: query activation (in query_activation_buffer)
+      // matrix B's layout: [m->qProjSize * num_heads, num_new_tokens]
+      DT const *B = static_cast<DT *>(m->query_activation_buffer);
+      // matrix C: gradients for key (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
+      DT *C =
+          static_cast<DT *>(m->devQKVProjArray) +
+          num_tokens *
+              (m->qProjSize *
+               m->num_q_heads); // skip over regions reserved for Q gradients
+      // after transposition & striding
+      int m_ = num_tokens;
+      int n_ = m->kProjSize;
+      int k_ = num_tokens; // num_new_tokens
+      // before transposition and striding
+      int lda = num_tokens; // num_new_tokens
+      int ldb = m->kProjSize * m->num_q_heads;
+      int ldc = num_tokens;
+      int strideA = num_tokens * num_tokens;
+      int strideB = m->kProjSize;
+      int strideC = num_tokens * m->kProjSize;
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_T,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + ".query_activation";
+        save_tensor(
+            B, m->qProjSize * m->num_q_heads * num_tokens, filename.c_str());
+        std::string filename2 =
+            get_peft_dbg_folder(m, shard_id) + ".devkproj_pre";
+        save_tensor(
+            C, num_tokens * (m->qProjSize * m->num_q_heads), filename2.c_str());
+      }
+    }
+    // Step 6: compute gradients w.r.t query
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      if (*m->qk_prod_scaling) {
+        alpha = 1.0f / sqrt(m->kProjSize);
+      }
+      // matrix A: gradients w.r.t. qk_prods
+      // matrix A's layout: [num_new_tokens, num_tokens, num_heads]
+      DT const *A = static_cast<DT *>(m->qk_prods);
+      // matrix B: key cache
+      // matrix B's layout: [vProjSize * num_heads, max_num_tokens, num_req]
+      DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
+      // matrix C: gradients for query (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
+      DT *C = static_cast<DT *>(m->devQKVProjArray);
+      // after transposition & striding
+      int m_ = num_tokens; // num_new_tokens
+      int n_ = m->qProjSize;
+      int k_ = num_tokens;
+      // before transposition and striding
+      int lda = num_tokens; // num_new_tokens
+      int ldb = m->qProjSize * m->num_q_heads;
+      int ldc = num_tokens;
+      int strideA = num_tokens * num_tokens;
+      int strideB = m->qProjSize;
+      int strideC = num_tokens * m->qProjSize;
+      checkCUDA(cublasGemmStridedBatchedEx(m->handle.blas,
+                                           CUBLAS_OP_N,
+                                           CUBLAS_OP_T,
+                                           m_,
+                                           n_,
+                                           k_,
+                                           &alpha,
+                                           A,
+                                           cublas_data_type,
+                                           lda,
+                                           strideA,
+                                           B,
+                                           cublas_data_type,
+                                           ldb,
+                                           strideB,
+                                           &beta,
+                                           C,
+                                           cublas_data_type,
+                                           ldc,
+                                           strideC,
+                                           m->num_q_heads,
+                                           compute_type,
+                                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + ".devQKVPRojArray_pre";
+        save_tensor(C,
+                    num_tokens * m->qProjSize * m->num_q_heads * 3,
+                    filename.c_str());
+      }
+    }
+
+    // Step 7: perform rotary position embeddings (RoPE) bwd
+    {
+      if (*m->apply_rotary_embedding) {
+        assert(m->hidden_size == m->qProjSize * m->num_q_heads);
+        assert(m->qProjSize == m->kProjSize);
+        /*q&k*/
+        int parallelism = num_tokens * m->hidden_size;
+        DT *A = static_cast<DT *>(m->devQKVProjArray);
+        apply_rotary_embedding_bwd<<<GET_BLOCKS(parallelism),
+                                     min(CUDA_NUM_THREADS, parallelism),
+                                     0,
+                                     stream>>>(A,
+                                               m->complex_input,
+                                               m->token_infos,
+                                               m->qProjSize,
+                                               num_tokens,
+                                               m->hidden_size);
+        DT *C = static_cast<DT *>(m->devQKVProjArray);
+        if (m->inference_debugging) {
+          std::string filename =
+              get_peft_dbg_folder(m, shard_id) + ".devQKVPRojArray";
+          save_tensor(C,
+                      num_tokens * m->qProjSize * m->num_q_heads * 3,
+                      filename.c_str());
+        }
+      }
+
+      // matrix C: gradients for key (saved as part of m->devQKVProjArray)
+      // matrix C's layout: [num_tokens, qProjsize * num_heads, 3]
+      DT *C =
+          static_cast<DT *>(m->devQKVProjArray) +
+          num_tokens *
+              (m->qProjSize *
+               m->num_q_heads); // skip over regions reserved for Q gradients
+      if (m->inference_debugging) {
+        std::string filename = get_peft_dbg_folder(m, shard_id) + ".devkproj";
+        save_tensor(
+            C, num_tokens * (m->qProjSize * m->num_q_heads), filename.c_str());
+      }
+    }
+
+    // Step 8: compute gradients w.r.t. input
+    {
+      float alpha = 1.0f, beta = 0.0f;
+      if (!m->reset_input_grads[0]) {
+        beta = 1.0f;
+      }
+      // matrix A: QKV projection weights
+      // matrix A's layout: [qSize, qProjSize * num_q_heads, 3]
+      DT const *A = weight_ptr;
+      // matrix B: gradients w.r.t. QKV (concatenated in devQKVArray)
+      // matrix B's layout: [num_tokens, qProjsize * num_heads, 3]
+      DT const *B = static_cast<DT *>(m->devQKVProjArray);
+      // matrix C: gradients w.r.t. input
+      // matrix C's layout: [m->qSize, num_tokens]
+      DT *C = input_grad_ptr +
+              bc->requestsInfo[i].first_token_offset_in_batch * m->qSize;
+      int m_ = m->qSize;
+      int n_ = num_tokens;
+      int k_ = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
+      int lda = m_;
+      int ldb = n_;
+      int ldc = m_;
+      checkCUDA(cublasGemmEx(m->handle.blas,
+                             CUBLAS_OP_N,
+                             CUBLAS_OP_T,
+                             m_,
+                             n_,
+                             k_,
+                             &alpha,
+                             A,
+                             cublas_data_type,
+                             lda,
+                             B,
+                             cublas_data_type,
+                             ldb,
+                             &beta,
+                             C,
+                             cublas_data_type,
+                             ldc,
+                             compute_type,
+                             CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+      if (m->inference_debugging) {
+        std::string filename =
+            get_peft_dbg_folder(m, shard_id) + ".self_attn.input_gradient_0";
+        save_tensor(C, num_tokens * m->qSize, filename.c_str());
+      }
+    }
+  }
+}
+
 } // namespace IncMultiHeadAttention
 } // namespace Kernels
 
@@ -877,24 +1431,25 @@ __global__ void store_kv_cache(DT const *devQKVProjArray,
 }
 
 template <typename DT>
-__global__ void fill_entries_above_diagonal(DT *matrix,
-                                            size_t num_rows,
-                                            size_t num_cols,
-                                            size_t num_q_heads,
-                                            size_t entries_above_diagonal,
-                                            DT value) {
-  CUDA_KERNEL_LOOP(i, entries_above_diagonal * num_q_heads) {
-    size_t head_idx = i / entries_above_diagonal;
-    size_t entry_idx = i % entries_above_diagonal;
-    size_t y = (-1 + sqrt(8 * (float)entry_idx + 1)) / 2;
-    size_t x = entry_idx - y * (y + 1) / 2;
-    y += (num_cols - num_rows) + 1;
-    matrix[head_idx * num_rows * num_cols + num_cols * y + x] = value;
+__global__ void store_query_cache(DT const *devQKVProjArray,
+                                  DT *qCache_ptr,
+                                  int num_tokens,
+                                  int hidden_size) {
+  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size) {
+    int token_idx = i / hidden_size;
+    int offset = i % hidden_size;
+
+    size_t val_idx = token_idx * QKV_WEIGHT_NUM * hidden_size + offset;
+
+    DT qVal = devQKVProjArray[val_idx];
+
+    // query cache
+    qCache_ptr[i] = qVal;
   }
 }
 
 template <typename DT>
-void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
+void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                                      BatchConfig const *bc,
                                      int shard_id,
                                      DT const *bias_ptr,
@@ -905,17 +1460,18 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
   cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
   // int num_requests = bc->num_active_requests();
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
@@ -929,12 +1485,35 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
   assert(m->qProjSize == m->kProjSize);
 
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i] || (!bc->requestsInfo[i].prompt_phase)) {
+    if (bc->request_completed[i] ||
+        (!bc->requestsInfo[i].prompt_phase && !bc->requestsInfo[i].peft_bwd)) {
       continue;
     }
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
+    int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
+    // Copy query to m->query_activation_buffer if we need to compute
+    // PEFT backward
+    if (bc->requestsInfo[i].peft_bwd) {
+      size_t activation_size_needed =
+          sizeof(DT) * max_peft_tokens * m->num_q_heads * m->qProjSize;
+      if (activation_size_needed > m->allocated_peft_buffer_size1) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->query_activation_buffer =
+            allocator->allocate_instance_untyped(activation_size_needed);
+        m->allocated_peft_buffer_size1 = activation_size_needed;
+      }
+      int parallelism = m->hidden_size * num_tokens;
+      store_query_cache<<<GET_BLOCKS(parallelism),
+                          min(CUDA_NUM_THREADS, parallelism),
+                          0,
+                          stream>>>(
+          static_cast<DT *>(m->devQKVProjArray),
+          static_cast<DT *>(m->query_activation_buffer),
+          num_tokens,
+          m->hidden_size);
+    }
     // Step 1: compute query-key product QK.T/sqrt(d_k)
     {
       // Scale by sqrt(d_k) as per the original attention paper
@@ -1066,6 +1645,25 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
                                      m->qk_tensor,
                                      C_softmax));
     }
+    // Copy C_softmax to m->softmax_activation_buffer if we need to compute
+    // PEFT backward
+    if (bc->requestsInfo[i].peft_bwd) {
+      DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
+      size_t activation_size_needed =
+          sizeof(DT) * max_peft_tokens * max_peft_tokens * m->num_q_heads;
+      if (activation_size_needed > m->allocated_peft_buffer_size2) {
+        MemoryAllocator *allocator = m->handle.peft_activation_allocator;
+        m->softmax_activation_buffer =
+            allocator->allocate_instance_untyped(activation_size_needed);
+        m->allocated_peft_buffer_size2 = activation_size_needed;
+      }
+      checkCUDA(cudaMemcpyAsync(m->softmax_activation_buffer,
+                                C_softmax,
+                                sizeof(DT) * total_tokens * num_new_tokens *
+                                    m->num_q_heads,
+                                cudaMemcpyDeviceToDevice,
+                                stream));
+    }
     // Step 5: Matmul softmax(QK.T/sqrt(d_k)) by V. Implemented as V @
     // softmax(QK.T/sqrt(d_k)).T
     {
@@ -1090,7 +1688,6 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
       // To get B, skip over softmax(QK.T/sqrt(d_k)) entries from previous
       // requests (all heads)
       DT *B = static_cast<DT *>(m->qk_prods_softmax);
-      ;
       // matrix C: attn heads
       // matrix C's layout: [vProjSize, num_heads, num_new_tokens]
       // To get C, skip over softmax(QK.T/sqrt(d_k))V products from previous
@@ -1136,7 +1733,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta const *m,
 
 /*static*/
 void IncMultiHeadSelfAttention::inference_kernel_wrapper(
-    IncMultiHeadSelfAttentionMeta const *m,
+    IncMultiHeadSelfAttentionMeta *m,
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
@@ -1203,6 +1800,70 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("IncMultiHeadSelfAttention forward time = %.9fms\n", elapsed);
+  }
+}
+
+/*static*/
+void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
+    IncMultiHeadSelfAttentionMeta *m,
+    BatchConfig const *bc,
+    int shard_id,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &weight,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &bias) {
+  cudaStream_t stream;
+  checkCUDA(get_legion_stream(&stream));
+  bool use_bias = *m->qkv_bias || *m->final_bias;
+
+  cudaEvent_t t_start, t_end;
+  if (m->profiling) {
+    cudaEventCreate(&t_start);
+    cudaEventCreate(&t_end);
+    cudaEventRecord(t_start, stream);
+  }
+
+  // assert(input.data_type == weight.data_type);
+  assert(input_grad.data_type == output_grad.data_type);
+  if (use_bias) {
+    assert(input_grad.data_type == bias.data_type);
+  }
+
+  if (input_grad.data_type == DT_HALF) {
+    assert(!m->offload);
+    half const *bias_ptr =
+        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
+    Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
+                                                    bc,
+                                                    shard_id,
+                                                    input_grad.get_half_ptr(),
+                                                    weight.get_half_ptr(),
+                                                    output_grad.get_half_ptr(),
+                                                    bias_ptr,
+                                                    stream);
+  } else if (input_grad.data_type == DT_FLOAT) {
+    assert(!m->offload);
+    float const *bias_ptr =
+        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
+    Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
+                                                    bc,
+                                                    shard_id,
+                                                    input_grad.get_float_ptr(),
+                                                    weight.get_float_ptr(),
+                                                    output_grad.get_float_ptr(),
+                                                    bias_ptr,
+                                                    stream);
+  } else {
+    assert(false && "Unspported data type");
+  }
+  if (m->profiling) {
+    cudaEventRecord(t_end, stream);
+    checkCUDA(cudaEventSynchronize(t_end));
+    float elapsed = 0;
+    checkCUDA(cudaEventElapsedTime(&elapsed, t_start, t_end));
+    cudaEventDestroy(t_start);
+    cudaEventDestroy(t_end);
+    printf("IncMultiHeadSelfAttention PEFT backward time = %.9fms\n", elapsed);
   }
 }
 
@@ -1424,11 +2085,10 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     valueCache = gpu_mem_allocator.allocate_instance_untyped(value_cache_size *
                                                              size_of_dt);
 
-    token_infos =
-        static_cast<BatchConfig::PerTokenInfo *>(handler.batch_config_metadata);
-    request_infos = reinterpret_cast<BatchConfig::PerRequestInfo *>(
-        reinterpret_cast<char *>(handler.batch_config_metadata) +
-        sizeof(BatchConfig::tokensInfo));
+    token_infos = static_cast<BatchConfig::PerTokenInfo *>(
+        handler.batch_config_metadata->tokens_info);
+    request_infos = static_cast<BatchConfig::PerRequestInfo *>(
+        handler.batch_config_metadata->requestsInfo);
 
     if (offload) {
       // token_infos =
@@ -1478,6 +2138,8 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
              gpu_mem_allocator.reserved_allocated_size);
     }
   }
+  allocated_peft_buffer_size1 = 0;
+  allocated_peft_buffer_size2 = 0;
   cudaStreamSynchronize(stream);
 }
 

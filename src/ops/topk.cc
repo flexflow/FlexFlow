@@ -87,7 +87,7 @@ TopKParams TopK::get_params() const {
   TopKParams params;
   params.k = this->k;
   params.sorted = this->sorted;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -226,7 +226,7 @@ OpMeta *TopK::init_task(Task const *task,
                         Runtime *runtime) {
   TopK *topk = (TopK *)task->args;
   FFHandler handle = *((FFHandler *)task->local_args);
-  TopKMeta *m = new TopKMeta(handle);
+  TopKMeta *m = new TopKMeta(handle, topk);
   m->profiling = topk->profiling;
   m->inference_debugging = topk->inference_debugging;
   m->sorted = topk->sorted;
@@ -474,7 +474,7 @@ bool TopK::measure_operator_cost(Simulator *sim,
     return false;
   }
 
-  TopKMeta *m = new TopKMeta(sim->handler);
+  TopKMeta *m = new TopKMeta(sim->handler, this);
   m->sorted = sorted;
 
   // allocate

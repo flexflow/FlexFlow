@@ -16,6 +16,7 @@
 #pragma once
 
 #include "flexflow/ffconst.h"
+#include "flexflow/fftype.h"
 #include "legion.h"
 #include <cstddef>
 #include <cstdlib>
@@ -36,6 +37,18 @@ using BeamSearchBatchConfigFuture = Legion::Future;
 using TreeVerifyBatchConfigFuture = Legion::Future;
 using BeamInferenceResultFuture = Legion::Future;
 
+struct OptimizerTasks {
+  bool compute_gradients = true;
+  bool reset_gradients_to_zero = false;
+  bool update_weights = false;
+  bool save_updated_weights = false;
+};
+
+void set_optimizer_tasks(OptimizerTasks &tasks,
+                         int max_training_steps,
+                         int completed_training_steps,
+                         int gradient_accumulation_steps);
+
 class BatchConfig {
 public:
   using RequestGuid = size_t;
@@ -43,6 +56,8 @@ public:
   BatchConfig();
   int num_active_requests() const;
   int num_active_tokens() const;
+  int num_active_infr_tokens() const;
+  int num_active_peft_tokens() const;
   static int max_requests_per_batch();
   static int max_tokens_per_batch();
   static int max_verify_tokens_per_batch();
@@ -56,26 +71,43 @@ public:
   // Maximum possible values for different parameters
   // These maximum values are used for copying BatchConfig
   // across workers
-  static int const MAX_NUM_REQUESTS = 64;
+  static int const MAX_NUM_REQUESTS = 65;
   static int const MAX_NUM_TOKENS = 1024;
   static int const MAX_SPEC_TREE_TOKEN_NUM = 64;
 
   //  Set by update
-  int num_tokens;
+
+  int num_tokens = 0, num_peft_tokens = 0, num_peft_label_tokens = 0;
   // number of tokens in prompt phase, start offset of tokens in inc_decoding
   // phase. num_tokens - num_prompt_tokens = num_generation_tokens;
-  int num_generation_tokens;
+  int num_generation_tokens = 0;
 
   struct PerRequestInfo {
+    PerRequestInfo() {
+      first_token_depth_in_request = 0;
+      first_token_offset_in_batch = 0;
+      num_tokens_in_batch = 0;
+      max_sequence_length = 0;
+      request_guid = 0;
+      prompt_phase = false;
+      batch_config_request_id = -1;
+      peft_model_id = PEFTModelID::NO_ID;
+      peft_bwd = false;
+      optimizer_tasks = {true, false, false, false};
+    }
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
     int max_sequence_length;
 
     // request id in batch config:
-    int batch_config_request_id;
+    int batch_config_request_id = -1;
     bool prompt_phase = false;
     RequestGuid request_guid;
+    // PEFT fields
+    PEFTModelID peft_model_id;
+    bool peft_bwd;
+    OptimizerTasks optimizer_tasks;
   };
   struct PerTokenInfo {
     int abs_depth_in_request;
@@ -102,6 +134,7 @@ public:
   BitMask causalMask[MAX_NUM_REQUESTS];
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
+  PerTokenInfo labelsInfo[MAX_NUM_TOKENS];
 
   bool request_completed[MAX_NUM_REQUESTS];
   bool request_running[MAX_NUM_REQUESTS];
@@ -129,6 +162,7 @@ public:
 struct InferenceResult {
   static int const MAX_NUM_TOKENS = BatchConfig::MAX_NUM_TOKENS;
   BatchConfig::TokenId token_ids[MAX_NUM_TOKENS];
+  float finetuning_loss;
 };
 
 class BeamSearchBatchConfig : public BatchConfig {

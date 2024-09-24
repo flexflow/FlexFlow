@@ -112,7 +112,7 @@ ArgTopKParams ArgTopK::get_params() const {
   params.k = this->k;
   params.sorted = this->sorted;
   params.speculative_decoding = this->speculative_decoding;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -387,7 +387,7 @@ InferenceResult
       DT_INT32, regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorW probs;
 
-  int batch_size = bc->num_active_tokens();
+  int batch_size = bc->num_active_infr_tokens();
   ArgTopK::forward_kernel_wrapper(
       m, input, probs, indices, batch_size, nullptr);
 
@@ -399,7 +399,7 @@ InferenceResult
   }
 
   InferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size);
   return ir;
 }
@@ -431,9 +431,10 @@ BeamInferenceResult ArgTopK::inference_speculative_task(
   ArgTopK::forward_kernel_wrapper(m, input, probs, indices, batch_size, &bc);
 
   BeamInferenceResult ir;
-  download_tensor<BatchConfig::TokenId>(
+  copy_tensor_dev_to_host<BatchConfig::TokenId>(
       indices.get_int32_ptr(), ir.token_ids, batch_size * m->k);
-  download_tensor<float>(probs.get_float_ptr(), ir.probs, batch_size * m->k);
+  copy_tensor_dev_to_host<float>(
+      probs.get_float_ptr(), ir.probs, batch_size * m->k);
   return ir;
 }
 

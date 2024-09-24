@@ -187,4 +187,9 @@ gpt_tokenizer
 python/flexflow/version.txt
 
 inference_tensors
+hf_peft_tensors
+lora_training_logs
+
+Untitled-1.ipynb
+Untitled-2.ipynb
 tests/inference/python_test_configs/*.json

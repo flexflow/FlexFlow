@@ -53,7 +53,7 @@ RMSNormParams RMSNorm::get_params() const {
   params.layer_guid = this->layer_guid;
   params.eps = this->eps;
   params.dim = this->dim;
-  if (this->name != nullptr) {
+  if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
   return params;
@@ -422,12 +422,172 @@ void RMSNorm::inference_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
-  forward_kernel_wrapper(m, input, weight, output);
+  inference_kernel_wrapper(m, bc, input, weight, output);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
     RMSNorm::save_inference_tensors_to_file(
         m, shard_id, bc, {input}, {weight}, {output});
+  }
+}
+
+void RMSNorm::backward(FFModel const &ff) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  set_argumentmap_for_backward(ff, argmap);
+  IndexLauncher launcher(RMSNORM_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         outputs[0]->machine_view.hash());
+  // regions[0](I): output_grad
+  launcher.add_region_requirement(RegionRequirement(outputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // regions[1](I): input
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region));
+  launcher.add_field(1, FID_DATA);
+  // regions[2](I/O): input_grad
+  launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    inputs[0]->region_grad));
+  launcher.add_field(2, FID_DATA);
+  // regions[3](I): gamma
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(3, FID_DATA);
+  // regions[4](I/O): gamma_grad
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part_grad,
+                                                    0 /*projection id*/,
+                                                    READ_WRITE,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region_grad));
+  launcher.add_field(4, FID_DATA);
+
+  runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): output_grad
+  regions[1](I): input
+  regions[2](I/O): input_grad
+  regions[3](I): weight
+  regions[4](I/O): weight_grad
+*/
+void RMSNorm::backward_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  assert(task->regions.size() == 5);
+  assert(regions.size() == 5);
+  RMSNormMeta const *m = *((RMSNormMeta **)task->local_args);
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR input = helperGetGenericTensorAccessorRO(
+      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[3], task->regions[3], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW weight_grad = helperGetGenericTensorAccessorRW(
+      m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
+  backward_kernel_wrapper(
+      m, output_grad, input, input_grad, weight, weight_grad);
+}
+
+Legion::FutureMap
+    RMSNorm::peft_bwd(FFModel const &ff,
+                      BatchConfigFuture const &bc,
+                      std::vector<ParallelTensor> const &batch_inputs,
+                      std::vector<ParallelTensor> const &batch_outputs,
+                      MachineView const *mv) {
+  ArgumentMap argmap;
+  Context ctx = ff.config.lg_ctx;
+  Runtime *runtime = ff.config.lg_hlr;
+  parallel_is = batch_outputs[0]->parallel_is;
+  MachineView const *view = mv ? mv : &batch_outputs[0]->machine_view;
+  set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
+  size_t machine_view_hash = view->hash();
+  IndexLauncher launcher(RMSNORM_PEFT_BWD_TASK_ID,
+                         parallel_is,
+                         TaskArgument(NULL, 0),
+                         argmap,
+                         Predicate::TRUE_PRED,
+                         false /*must*/,
+                         0 /*mapper_id*/,
+                         machine_view_hash);
+  launcher.add_future(bc);
+  // regions[0](I): output_grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_outputs[0]->part_grad,
+                        0 /*projection id*/,
+                        READ_WRITE,
+                        EXCLUSIVE,
+                        batch_outputs[0]->region_grad));
+  launcher.add_field(0, FID_DATA);
+  // regions[1](I/O): input_grad
+  launcher.add_region_requirement(
+      RegionRequirement(batch_inputs[0]->part_grad,
+                        0 /*projection id*/,
+                        reset_input_grads[0] ? WRITE_ONLY : READ_WRITE,
+                        EXCLUSIVE,
+                        batch_inputs[0]->region_grad));
+  launcher.add_field(1, FID_DATA);
+  // regions[2](I): weight
+  launcher.add_region_requirement(RegionRequirement(weights[0]->part,
+                                                    0 /*projection id*/,
+                                                    READ_ONLY,
+                                                    EXCLUSIVE,
+                                                    weights[0]->region));
+  launcher.add_field(2, FID_DATA);
+
+  return runtime->execute_index_space(ctx, launcher);
+}
+
+/*
+  regions[0](I): output_grad
+  regions[1](I/O): input_grad
+  regions[2](I): weight
+*/
+void RMSNorm::peft_bwd_task(Task const *task,
+                            std::vector<PhysicalRegion> const &regions,
+                            Context ctx,
+                            Runtime *runtime) {
+  assert(task->regions.size() == 3);
+  assert(regions.size() == 3);
+  RMSNormMeta *m = *((RMSNormMeta **)task->local_args);
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_peft_tokens() == 0) {
+    return;
+  }
+  GenericTensorAccessorR output_grad = helperGetGenericTensorAccessorRO(
+      m->output_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
+  GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
+      m->input_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
+  GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
+      m->weight_type[0], regions[2], task->regions[2], FID_DATA, ctx, runtime);
+  peft_bwd_kernel_wrapper(m, bc, output_grad, input_grad, weight);
+  if (m->inference_debugging) {
+    assert(task->index_point.get_dim() == 1);
+    int shard_id = task->index_point.point_data[0];
+    RMSNorm::save_inference_tensors_to_file(
+        m, shard_id, bc, {input_grad}, {weight}, {output_grad}, false);
   }
 }
 
@@ -474,10 +634,8 @@ Op *RMSNorm::materialize(FFModel &ff,
                          ParallelTensor inputs[],
                          int num_inputs) const {
   RMSNormParams params = get_params();
-  return new RMSNorm(ff, params, inputs[0], true, this->name);
+  return new RMSNorm(ff, params, inputs[0], true, params.name);
 }
-
-void RMSNorm::backward(FFModel const &ff) {}
 
 bool RMSNorm::measure_operator_cost(Simulator *sim,
                                     MachineView const &mv,

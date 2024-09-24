@@ -414,15 +414,18 @@ void FlexFlow::top_level_task(Task const *task,
                                    /*allow_exceptions */ true,
                                    /*ignore_comments */ true);
 
-    std::vector<std::string> prompts;
+    std::vector<Request> requests;
     for (auto &prompt : prompt_json) {
       std::string text = prompt.get<std::string>();
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      // Add inference request
+      Request inference_req;
+      inference_req.prompt = text;
+      inference_req.max_sequence_length = 128;
+      requests.push_back(inference_req);
       total_num_requests++;
-      prompts.push_back(text);
-      // tree_model.generate(text, 128 /*max_sequence_length*/);
     }
-    tree_model.generate(prompts, 128 /*max_sequence_length*/);
+    tree_model.generate(requests);
   }
 
   // terminate the request manager by stopping the background thread

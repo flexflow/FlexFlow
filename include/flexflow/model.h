@@ -108,19 +108,31 @@ enum TaskIDs {
   LAYERNORM_FWD_TASK_ID,
   LAYERNORM_INF_TASK_ID,
   LAYERNORM_BWD_TASK_ID,
+  LAYERNORM_PEFT_BWD_TASK_ID,
   RESIDUAL_LAYERNORM_INIT_TASK_ID,
   RESIDUAL_LAYERNORM_INF_TASK_ID,
+  RESIDUAL_LAYERNORM_BWD_TASK_ID,
+  RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
   ADD_BIAS_RESIDUAL_LAYERNORM_INIT_TASK_ID,
   ADD_BIAS_RESIDUAL_LAYERNORM_INF_TASK_ID,
+  ADD_BIAS_RESIDUAL_LAYERNORM_BWD_TASK_ID,
+  ADD_BIAS_RESIDUAL_LAYERNORM_PEFT_BWD_TASK_ID,
   SIGMOID_SILU_MULTI_INIT_TASK_ID,
   SIGMOID_SILU_MULTI_INF_TASK_ID,
+  SIGMOID_SILU_MULTI_BWD_TASK_ID,
+  SIGMOID_SILU_MULTI_PEFT_BWD_TASK_ID,
   LINEAR_INIT_TASK_ID,
   LINEAR_INIT_PARA_TASK_ID,
   LINEAR_INF_TASK_ID,
+  LINEAR_PEFT_BWD_TASK_ID,
   LINEAR_FWD_TASK_ID,
   LINEAR_BWD_TASK_ID,
   LINEAR_BWD2_TASK_ID,
   LINEAR_UPD_TASK_ID,
+  LORA_LINEAR_INIT_TASK_ID,
+  LORA_LINEAR_REG_TASK_ID,
+  LORA_LINEAR_INF_TASK_ID,
+  LORA_LINEAR_PEFT_BWD_TASK_ID,
   FLAT_INIT_TASK_ID,
   FLAT_FWD_TASK_ID,
   FLAT_BWD_TASK_ID,
@@ -128,6 +140,7 @@ enum TaskIDs {
   SOFTMAX_FWD_TASK_ID,
   SOFTMAX_BWD_TASK_ID,
   SOFTMAX_INF_TASK_ID,
+  SOFTMAX_PEFT_BWD_TASK_ID,
   CONCAT_INIT_TASK_ID,
   CONCAT_FWD_TASK_ID,
   CONCAT_BWD_TASK_ID,
@@ -163,20 +176,26 @@ enum TaskIDs {
   RMSNORM_INIT_TASK_ID,
   RMSNORM_FWD_TASK_ID,
   RMSNORM_INF_TASK_ID,
+  RMSNORM_BWD_TASK_ID,
+  RMSNORM_PEFT_BWD_TASK_ID,
   RESIDUAL_RMSNORM_INIT_TASK_ID,
   RESIDUAL_RMSNORM_INF_TASK_ID,
+  RESIDUAL_RMSNORM_BWD_TASK_ID,
+  RESIDUAL_RMSNORM_PEFT_BWD_TASK_ID,
   BEAM_TOPK_INIT_TASK_ID,
   BEAM_TOPK_INF_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_FWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_BWD_TASK_ID,
   INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
+  INC_MULTIHEAD_SELF_ATTENTION_PEFT_BWD_TASK_ID,
   SPEC_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   SPEC_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   TREE_INC_MULTIHEAD_SELF_ATTENTION_INIT_TASK_ID,
   TREE_INC_MULTIHEAD_SELF_ATTENTION_INF_TASK_ID,
   MSELOSS_BWD_TASK_ID,
   FUSEDOP_INIT_TASK_ID,
+  FUSEDOP_PEFT_BWD_TASK_ID,
   FUSEDOP_FWD_TASK_ID,
   FUSEDOP_BWD_TASK_ID,
   FUSEDOP_INF_TASK_ID,
@@ -224,10 +243,13 @@ enum TaskIDs {
   REPARTITION_BWD_TASK_ID,
   COMBINE_INIT_TASK_ID,
   COMBINE_FWD_TASK_ID,
+  COMBINE_INF_TASK_ID,
   COMBINE_BWD_TASK_ID,
+  COMBINE_PEFT_BWD_TASK_ID,
   REPLICATE_INIT_TASK_ID,
   REPLICATE_FWD_TASK_ID,
   REPLICATE_BWD_TASK_ID,
+  REPLICATE_PEFT_BWD_TASK_ID,
   REDUCTION_INIT_TASK_ID,
   REDUCTION_FWD_TASK_ID,
   REDUCTION_BWD_TASK_ID,
@@ -235,9 +257,15 @@ enum TaskIDs {
   PIPELINE_FWD_TASK_ID,
   PIPELINE_BWD_TASK_ID,
   ALLREDUCE_INIT_TASK_ID,
-  ALLREDUCE_INF_TASK_ID,
   ALLREDUCE_FWD_TASK_ID,
   ALLREDUCE_BWD_TASK_ID,
+  ALLREDUCE_INF_TASK_ID,
+  ALLREDUCE_PEFT_BWD_TASK_ID,
+  PARALLEL_IDENTITY_INIT_TASK_ID,
+  PARALLEL_IDENTITY_FWD_TASK_ID,
+  PARALLEL_IDENTITY_BWD_TASK_ID,
+  PARALLEL_IDENTITY_INF_TASK_ID,
+  PARALLEL_IDENTITY_PEFT_BWD_TASK_ID,
   FUSED_PARALLELOP_INIT_TASK_ID,
   FUSED_PARALLELOP_FWD_TASK_ID,
   FUSED_PARALLELOP_BWD_TASK_ID,
@@ -327,6 +355,7 @@ class ResidualLayerNorm;
 class AddBiasResidualLayerNorm;
 class SigmoidSiluMulti;
 class Linear;
+class LoraLinear;
 class MultiHeadAttention;
 class IncMultiHeadSelfAttention;
 class TreeIncMultiHeadSelfAttention;
@@ -349,8 +378,11 @@ class Repartition;
 class Reduction;
 class Replicate;
 class AllReduce;
+class ParallelIdentity;
 class FusedParallelOp;
 class ParallelOpInfo;
+
+struct Request;
 
 // TODO: Move to an appropriate place
 /*
@@ -561,6 +593,7 @@ public:
                            bool elementwise_affine,
                            float eps,
                            bool use_bias = true,
+                           bool inplace_residual = false,
                            DataType data_type = DT_NONE,
                            char const *name = NULL);
   // Add a add_bias_residual_layer_norm layer
@@ -571,6 +604,7 @@ public:
                                     bool elementwise_affine,
                                     float eps,
                                     bool use_bias = true,
+                                    bool inplace_residual = false,
                                     DataType data_type = DT_NONE,
                                     char const *name = NULL);
   // Add a sigmoid_silu_multi layer
@@ -599,6 +633,7 @@ public:
                          Tensor *outputs,
                          float eps,
                          int dim,
+                         bool inplace_residual = false,
                          DataType data_type = DT_NONE,
                          char const *name = NULL);
   // Add a beam search top k layer
@@ -808,10 +843,13 @@ public:
       bool position_bias = false,
       char const *name = NULL);
   // ========================================
+  // PEFT Layers
+  // ========================================
+  PEFTModelID *add_lora_layer(LoraLinearConfig const peft_config);
+  // ========================================
   // Inference APIs
   // ========================================
-  std::vector<GenerationResult> generate(std::vector<std::string> &prompts,
-                                         int max_seq_length);
+  std::vector<GenerationResult> generate(std::vector<Request> const &requests);
 
   Tensor create_tensor_legion_ordering(int num_dim,
                                        int const dims[],
@@ -1079,6 +1117,7 @@ public:
                      bool use_propagation) const;
 #ifdef FF_USE_NCCL
   ncclComm_t *find_nccl_comms(MachineView const &view) const;
+  void finish_nccl_comms();
 #endif
 #ifdef FF_USE_PROPAGATE
   void propagate(std::map<Op *, ParallelConfig> const &current,
@@ -1102,6 +1141,9 @@ public:
   Legion::IndexSpace get_task_is(Legion::Domain const &domain) const;
   Legion::IndexSpace get_task_is(ParallelConfig const &pc) const;
   Legion::IndexSpace get_task_is(MachineView const &view) const;
+  bool need_to_add_combine(int layer_idx) const;
+  bool need_to_add_allreduce(int layer_idx) const;
+  bool need_to_add_parallel_identity(int layer_idx) const;
   bool is_mlp_block(int layer_idx) const;
   void create_operators_from_layers();
   Op *create_operator_from_layer(Layer *layer,
@@ -1116,7 +1158,7 @@ public:
   void clear_graph_search_cache();
 
 public:
-  size_t op_global_guid, layer_global_guid;
+  size_t op_global_guid, layer_global_guid, peft_model_global_guid;
   size_t tensor_global_guid, parallel_tensor_global_guid, node_global_guid;
   size_t current_transformer_layer_id;
   // positional embedding start offset
@@ -1136,6 +1178,12 @@ public:
   std::vector<Layer *> layers;
   std::vector<Op *> operators;
   std::vector<ParallelTensor> parameters;
+  // PEFT related
+  std::unordered_map<Layer *, Layer *> base_layer_to_peft_layer;
+  std::unordered_map<Layer *, std::vector<PEFTModelID>> peft_layer_to_peft_id;
+  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
+  //   std::vector<Op *> peft_operators;
+
   FFHandler handlers[MAX_NUM_WORKERS];
   Legion::Future current_metrics;
   // Cached operators: key: operator hash, value: operator pointer
@@ -1194,6 +1242,10 @@ public:
           SigmoidSiluMulti *>,
       std::unordered_map<std::pair<ParallelTensorShape, LinearParams>,
                          Linear *>,
+      std::unordered_map<
+          std::pair<std::pair<ParallelTensorShape, ParallelTensorShape>,
+                    LoraLinearParams>,
+          LoraLinear *>,
       std::unordered_map<std::pair<ParallelTensorShape, Pool2DParams>,
                          Pool2D *>,
       std::unordered_map<std::pair<std::tuple<ParallelTensorShape,
@@ -1244,6 +1296,8 @@ public:
                          Combine *>,
       std::unordered_map<std::pair<ParallelTensorShape, AllReduceParams>,
                          AllReduce *>,
+      std::unordered_map<std::pair<ParallelTensorShape, ParallelIdentityParams>,
+                         ParallelIdentity *>,
       std::unordered_map<std::pair<ParallelTensorShape, FusedParallelOpParams>,
                          FusedParallelOp *>>
       cached_ops;
