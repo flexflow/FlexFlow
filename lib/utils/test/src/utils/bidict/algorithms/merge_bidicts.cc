@@ -18,18 +18,25 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
-    SUBCASE("overlapping keys") {
+    SUBCASE("overlapping key, different associated value") {
       bidict<int, std::string> bd1 = {{1, "one"}, {2, "two"}};
       bidict<int, std::string> bd2 = {{2, "three"}, {3, "four"}};
 
-      CHECK_THROWS_AS(merge_bidicts(bd1, bd2), std::runtime_error);
+      CHECK_THROWS(merge_bidicts(bd1, bd2));
+    }
+
+    SUBCASE("overlapping key, same associated value") {
+      bidict<int, std::string> bd1 = {{1, "one"}, {2, "two"}};
+      bidict<int, std::string> bd2 = {{2, "two"}, {3, "three"}};
+
+      CHECK_THROWS(merge_bidicts(bd1, bd2));
     }
 
     SUBCASE("overlapping values") {
       bidict<int, std::string> bd1 = {{1, "one"}, {2, "two"}};
       bidict<int, std::string> bd2 = {{3, "two"}, {4, "four"}};
 
-      CHECK_THROWS_AS(merge_bidicts(bd1, bd2), std::runtime_error);
+      CHECK_THROWS(merge_bidicts(bd1, bd2));
     }
   }
 }

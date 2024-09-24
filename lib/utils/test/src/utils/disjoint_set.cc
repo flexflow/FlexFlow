@@ -1,5 +1,7 @@
 #include "utils/disjoint_set.h"
 #include "test/utils/doctest.h"
+#include "utils/fmt/optional.h"
+
 using namespace FlexFlow;
 
 template <typename T>
@@ -21,10 +23,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("SingleElementSets") {
       std::optional<T> element = generate_element<T>(1);
-      CHECK_WITHOUT_STRINGIFY(ds.find(element) == element);
+      CHECK(ds.find(element) == element);
 
       element = generate_element<T>(2);
-      CHECK_WITHOUT_STRINGIFY(ds.find(element) == element);
+      CHECK(ds.find(element) == element);
     }
 
     SUBCASE("UnionAndFind") {
@@ -34,16 +36,16 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::optional<T> element4 = generate_element<T>(4);
 
       ds.m_union(element1, element2);
-      CHECK_WITHOUT_STRINGIFY(ds.find(element1) == ds.find(element2));
+      CHECK(ds.find(element1) == ds.find(element2));
 
       ds.m_union(element3, element4);
-      CHECK_WITHOUT_STRINGIFY(ds.find(element3) == ds.find(element4));
+      CHECK(ds.find(element3) == ds.find(element4));
 
       ds.m_union(element1, element3);
-      CHECK_WITHOUT_STRINGIFY(ds.find(element1) == ds.find(element3));
-      CHECK_WITHOUT_STRINGIFY(ds.find(element2) == ds.find(element4));
-      CHECK_WITHOUT_STRINGIFY(ds.find(element1) == ds.find(element2));
-      CHECK_WITHOUT_STRINGIFY(ds.find(element1) == ds.find(element4));
+      CHECK(ds.find(element1) == ds.find(element3));
+      CHECK(ds.find(element2) == ds.find(element4));
+      CHECK(ds.find(element1) == ds.find(element2));
+      CHECK(ds.find(element1) == ds.find(element4));
     }
   }
 
@@ -61,9 +63,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         mapping = ds.get_mapping();
 
     for (auto const &kv : mapping) {
-      CHECK_WITHOUT_STRINGIFY(
-          *kv.second == *expectedMapping[kv.first]); // Compare the values
-                                                     // inside the optionals
+      CHECK(*kv.second == *expectedMapping[kv.first]); // Compare the values
+                                                       // inside the optionals
     }
   }
 }

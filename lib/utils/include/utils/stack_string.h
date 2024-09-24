@@ -134,4 +134,15 @@ CHECK_HASHABLE(stack_string<1>);
 
 } // namespace FlexFlow
 
+namespace doctest {
+
+template <size_t MAXSIZE>
+struct StringMaker<FlexFlow::stack_string<MAXSIZE>> {
+  static String convert(FlexFlow::stack_string<MAXSIZE> const &s) {
+    return toString(fmt::to_string(s));
+  }
+};
+
+} // namespace doctest
+
 #endif

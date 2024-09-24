@@ -18,7 +18,11 @@ At their core, they are as follows:
 - `UndirectedGraph`: at most one edge allowed between every pair of nodes, edges are undirected.
 - `DiGraph`: at most one edge allowed between every ordered pair of nodes, edges are directed (i.e., have a source node and a destination node)
 - `MultiDiGraph`: arbitrary numbers of directed edges allowed between every pair of nodes.
-- `DataflowGraph`: similar to `MultiDiGraph`, but the edges entering, exiting a given nodes now have a well-defined order. Due to the interface used to construct them (where essentially a node can only be added to the graph after all of its predecessor nodes have been added) `DataflowGraph`s are directed acyclic graphs. Each node has an associated ordered sequence of inputs and outputs, with the restriction that one and only one edge can enter an individual input.
+- `DataflowGraph`: similar to `MultiDiGraph`, but with the following differences:
+  - The edges entering, exiting a given nodes now have a well-defined order. 
+  - Due to the interface used to construct them (where essentially a node can only be added to the graph after all of its predecessor nodes have been added) `DataflowGraph`s are directed acyclic graphs.
+  - Each node has an associated ordered sequence of inputs and outputs, with the restriction that one and only one edge can enter an individual input.
+
 Conceptually, `DataflowGraph` is used within FlexFlow to represent computation-style graphs, where edges represent value uses and nodes represent multivariate functions from tuples of inputs to tuples of outputs. 
    
 Examples of the different graph variants are shown below.
@@ -132,7 +136,7 @@ Thus, FlexFlow's graph library provides the ability to add labels to `DataflowGr
 - `LabelledDataflowGraph` allows for labelling of `Node`s and `DataflowOutput`s.
 - `OpenLabelledDataflowGraph` allows for labelling of `Node`s and `OpenDataflowValue`s, which is a variant describing both `DataflowOutput`s and `DataflowGraphInput`s, which represent the open inputs to the graph (i.e. the inputs for which their corresponding output is not present in the graph).
 
-While the interfaces of these graphs differ slightly from the core graph variants, they still have the corresponding `add_node`/`add_edge` methods, and `query_nodes`/`query_edges` methods.
+While the interfaces of these graphs differ slightly from the core graph variants, they still have the corresponding `add_node` methods, and `query_nodes`/`query_edges` methods. (Note that there is no `add_edge` method since, for `DataflowGraph`, edges are implicitly added when we add a node and specify its predecessors)
 Note that all of the labelled graph types require that each element of the labelled types have a label, which is enforced via the interfaces they provide.
 Partial labelling can be implement via wrapping the label type in `optional`.
 Interacting with `Node` and `Edge` objects is still necessary to use the labelled graph types: intuitively the labelled graph types can be thought of as a pair of a core graph variant and a hash map the maps nodes/edges to labels.

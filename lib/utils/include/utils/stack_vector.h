@@ -369,4 +369,15 @@ struct Arbitrary<::FlexFlow::stack_vector<T, MAXSIZE>> {
 
 } // namespace rc
 
+namespace doctest {
+
+template <typename T, std::size_t MAXSIZE>
+struct StringMaker<FlexFlow::stack_vector<T, MAXSIZE>> {
+  static String convert(FlexFlow::stack_vector<T, MAXSIZE> const &v) {
+    return toString(fmt::to_string(v));
+  }
+};
+
+} // namespace doctest
+
 #endif

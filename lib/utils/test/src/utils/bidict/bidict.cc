@@ -11,14 +11,35 @@ TEST_SUITE(FF_TEST_SUITE) {
     dict.equate(2, "two");
 
     SUBCASE("bidict::contains_l") {
-      CHECK(dict.contains_l(1));
-      CHECK_FALSE(dict.contains_l(3));
+      SUBCASE("L type is not the same as R type") {
+        CHECK(dict.contains_l(1));
+        CHECK_FALSE(dict.contains_l(3));
+      }
+
+      SUBCASE("L type is the same as R type") {
+        bidict<int, int> bd;
+        bd.equate(1, 3);
+
+        CHECK(bd.contains_l(1));
+        CHECK_FALSE(bd.contains_l(3));
+      }
     }
 
     SUBCASE("bidict::contains_r") {
-      CHECK(dict.contains_r(std::string("one")));
-      CHECK_FALSE(dict.contains_r(std::string("three")));
+      SUBCASE("L type is not the same as R type") {
+        CHECK(dict.contains_r(std::string("one")));
+        CHECK_FALSE(dict.contains_r(std::string("three")));
+      }
+
+      SUBCASE("L type is the same as R type") {
+        bidict<int, int> bd;
+        bd.equate(1, 3);
+
+        CHECK(bd.contains_r(3));
+        CHECK_FALSE(bd.contains_r(1));
+      }
     }
+
     SUBCASE("bidict::contains_r, bidict::contains_r - same type") {
       bidict<int, int> bd;
       bd.equate(1, 3);

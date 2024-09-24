@@ -8,25 +8,40 @@ using namespace FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("join_strings") {
-    std::vector<std::string> const v = {"Hello", "world", "!"};
+    std::vector<std::string> v = {"Hello", "world", "!"};
 
     SUBCASE("iterator") {
-      CHECK(join_strings(v.begin(), v.end(), " ") == "Hello world !");
+      std::string result = join_strings(v.begin(), v.end(), " ");
+      std::string correct = "Hello world !";
+      CHECK(result == correct);
     }
 
     SUBCASE("join_strings with container") {
-      CHECK(join_strings(v, " ") == "Hello world !");
+      std::string result = join_strings(v, " ");
+      std::string correct = "Hello world !";
+      CHECK(result == correct);
     }
 
     SUBCASE("join_strings with transforming function") {
       auto add_exclamation = [](std::string const &str) { return str + "!"; };
-      CHECK(join_strings(v, " ", add_exclamation) == "Hello! world! !!");
+      std::string result = join_strings(v, " ", add_exclamation);
+      std::string correct = "Hello! world! !!";
+      CHECK(result == correct);
     }
 
     SUBCASE("join_strings with transforming function, iterator") {
       auto add_exclamation = [](std::string const &str) { return str + "!"; };
-      CHECK(join_strings(v.begin(), v.end(), " ", add_exclamation) ==
-            "Hello! world! !!");
+      std::string result =
+          join_strings(v.begin(), v.end(), " ", add_exclamation);
+      std::string correct = "Hello! world! !!";
+      CHECK(result == correct);
+    }
+
+    SUBCASE("empty sequence") {
+      v = {};
+      std::string result = join_strings(v, "!");
+      std::string correct = "";
+      CHECK(result == correct);
     }
   }
 }

@@ -16,9 +16,9 @@ std::vector<T> subvec(std::vector<T> const &v,
   auto resolve_loc = [&](int idx) ->
       typename std::vector<T>::iterator::difference_type {
         if (idx < 0) {
-          return std::max(0, (int)v.size() + idx);
+          return std::max(0, static_cast<int>(v.size()) + idx);
         } else {
-          return std::min(idx, (int)v.size());
+          return std::min(idx, static_cast<int>(v.size()));
         }
       };
 

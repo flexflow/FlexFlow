@@ -20,16 +20,16 @@ TEST_SUITE(FF_TEST_SUITE) {
     add_edges(g, e);
 
     SUBCASE("single node") {
-      Node node = n[2];
-      std::unordered_set<Node> correct = {n[0], n[2]};
+      Node node = n.at(2);
+      std::unordered_set<Node> correct = {n.at(0), n.at(2)};
       std::unordered_set<Node> result = get_dominators(g, node);
       CHECK(correct == result);
     }
 
     SUBCASE("multiple nodes") {
-      std::unordered_set<Node> nodes = {n[1], n[3]};
+      std::unordered_set<Node> nodes = {n.at(1), n.at(3)};
       std::unordered_set<Node> result = get_dominators(g, nodes);
-      std::unordered_set<Node> correct = {n[0]};
+      std::unordered_set<Node> correct = {n.at(0)};
       CHECK(correct == result);
     }
 
@@ -52,13 +52,17 @@ TEST_SUITE(FF_TEST_SUITE) {
                     DirectedEdge{n.at(4), n.at(1)},
                 });
 
-      std::unordered_set<Node> result = get_dominators(g, n.at(1));
-      std::unordered_set<Node> correct = {n.at(0), n.at(1)};
+      SUBCASE("node 1") {
+        std::unordered_set<Node> result = get_dominators(g, n.at(1));
+        std::unordered_set<Node> correct = {n.at(0), n.at(1)};
+        CHECK(result == correct);
+      }
 
-      result = get_dominators(g, n.at(3));
-      correct = {n.at(0), n.at(1), n.at(3)};
-
-      CHECK(result == correct);
+      SUBCASE("node 3") {
+        std::unordered_set<Node> result = get_dominators(g, n.at(3));
+        std::unordered_set<Node> correct = {n.at(0), n.at(1), n.at(3)};
+        CHECK(result == correct);
+      }
     }
   }
 }

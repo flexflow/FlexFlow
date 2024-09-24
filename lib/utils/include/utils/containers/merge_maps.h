@@ -13,8 +13,10 @@ template <typename K, typename V>
 std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
                                     std::unordered_map<K, V> const &rhs) {
   if (!are_disjoint(keys(lhs), keys(rhs))) {
-    throw mk_runtime_error(
-        "Key sets of merge_maps parameters are non-disjoint");
+    throw mk_runtime_error(fmt::format("Key sets of merge_maps parameters are "
+                                       "non-disjoint: lhs = {}, rhs = {}",
+                                       lhs,
+                                       rhs));
   }
 
   std::unordered_map<K, V> result;

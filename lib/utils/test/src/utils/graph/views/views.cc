@@ -18,17 +18,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     UndirectedGraph g = UndirectedGraph::create<HashmapUndirectedGraph>();
     std::vector<Node> n = add_nodes(g, 5);
     add_edges(g,
-              {UndirectedEdge{{n[0], n[3]}},
-               UndirectedEdge{{n[1], n[1]}},
-               UndirectedEdge{{n[1], n[2]}},
-               UndirectedEdge{{n[1], n[3]}},
-               UndirectedEdge{{n[2], n[3]}},
-               UndirectedEdge{{n[2], n[4]}}});
-    std::unordered_set<Node> sub_nodes = {n[0], n[1], n[3]};
+              {UndirectedEdge{{n.at(0), n.at(3)}},
+               UndirectedEdge{{n.at(1), n.at(1)}},
+               UndirectedEdge{{n.at(1), n.at(2)}},
+               UndirectedEdge{{n.at(1), n.at(3)}},
+               UndirectedEdge{{n.at(2), n.at(3)}},
+               UndirectedEdge{{n.at(2), n.at(4)}}});
+    std::unordered_set<Node> sub_nodes = {n.at(0), n.at(1), n.at(3)};
     UndirectedGraphView view = get_subgraph(g, sub_nodes);
 
     SUBCASE("get_nodes") {
-      std::unordered_set<Node> expected = {n[0], n[1], n[3]};
+      std::unordered_set<Node> expected = {n.at(0), n.at(1), n.at(3)};
 
       std::unordered_set<Node> result = get_nodes(view);
 
@@ -37,9 +37,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("get_edges") {
       std::unordered_set<UndirectedEdge> expected = {
-          UndirectedEdge{{n[0], n[3]}},
-          UndirectedEdge{{n[1], n[1]}},
-          UndirectedEdge{{n[1], n[3]}},
+          UndirectedEdge{{n.at(0), n.at(3)}},
+          UndirectedEdge{{n.at(1), n.at(1)}},
+          UndirectedEdge{{n.at(1), n.at(3)}},
       };
 
       std::unordered_set<UndirectedEdge> result = get_edges(view);
@@ -53,19 +53,19 @@ TEST_SUITE(FF_TEST_SUITE) {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> n = add_nodes(g, 5);
     add_edges(g,
-              {DirectedEdge{n[0], n[3]},
-               DirectedEdge{n[3], n[0]},
-               DirectedEdge{n[1], n[1]},
-               DirectedEdge{n[2], n[1]},
-               DirectedEdge{n[1], n[3]},
-               DirectedEdge{n[2], n[3]},
-               DirectedEdge{n[3], n[2]},
-               DirectedEdge{n[2], n[4]}});
-    std::unordered_set<Node> sub_nodes = {n[0], n[1], n[3]};
+              {DirectedEdge{n.at(0), n.at(3)},
+               DirectedEdge{n.at(3), n.at(0)},
+               DirectedEdge{n.at(1), n.at(1)},
+               DirectedEdge{n.at(2), n.at(1)},
+               DirectedEdge{n.at(1), n.at(3)},
+               DirectedEdge{n.at(2), n.at(3)},
+               DirectedEdge{n.at(3), n.at(2)},
+               DirectedEdge{n.at(2), n.at(4)}});
+    std::unordered_set<Node> sub_nodes = {n.at(0), n.at(1), n.at(3)};
     DiGraphView view = get_subgraph(g, sub_nodes);
 
     SUBCASE("get_nodes") {
-      std::unordered_set<Node> expected = {n[0], n[1], n[3]};
+      std::unordered_set<Node> expected = {n.at(0), n.at(1), n.at(3)};
 
       std::unordered_set<Node> result = get_nodes(view);
 
@@ -74,10 +74,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("get_edges") {
       std::unordered_set<DirectedEdge> expected = {
-          DirectedEdge{n[0], n[3]},
-          DirectedEdge{n[3], n[0]},
-          DirectedEdge{n[1], n[1]},
-          DirectedEdge{n[1], n[3]},
+          DirectedEdge{n.at(0), n.at(3)},
+          DirectedEdge{n.at(3), n.at(0)},
+          DirectedEdge{n.at(1), n.at(1)},
+          DirectedEdge{n.at(1), n.at(3)},
       };
 
       std::unordered_set<DirectedEdge> result = get_edges(view);
@@ -94,25 +94,28 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::vector<Node> n2 = add_nodes(g2, 3);
 
     add_edges(g1,
-              {UndirectedEdge{{n1[0], n1[1]}}, UndirectedEdge{{n1[1], n1[2]}}});
+              {UndirectedEdge{{n1.at(0), n1.at(1)}},
+               UndirectedEdge{{n1.at(1), n1.at(2)}}});
     add_edges(g2,
-              {UndirectedEdge{{n2[0], n2[2]}}, UndirectedEdge{{n2[1], n2[2]}}});
+              {UndirectedEdge{{n2.at(0), n2.at(2)}},
+               UndirectedEdge{{n2.at(1), n2.at(2)}}});
 
     UndirectedGraphView view = join(g1, g2);
 
-    // SUBCASE("get_nodes") {
-    //     std::unordered_set<Node> expected =
-    //     set_union(unordered_set_of(n1), unordered_set_of(n2));
+    SUBCASE("get_nodes") {
+      std::unordered_set<Node> expected =
+          set_union(unordered_set_of(n1), unordered_set_of(n2));
 
-    //     std::unordered_set<Node> result = get_nodes(view);
+      std::unordered_set<Node> result = get_nodes(view);
 
-    //     CHECK(result == expected);
-    // }
+      CHECK(result == expected);
+    }
 
     // SUBCASE("get_edges") {
     //     std::unordered_set<UndirectedEdge> expected = {
-    //         {n1[0], n1[1]}, {n1[1], n1[2]},
-    //         {n2[0], n2[2]}, {n2[1], n2[2]}
+    //         UndirectedEdge{{n1.at(0), n1.at(1)}}, UndirectedEdge{{n1.at(1),
+    //         n1.at(2)}}, UndirectedEdge{{n2.at(0), n2.at(2)}},
+    //         UndirectedEdge{{n2.at(1), n2.at(2)}}
     //     };
 
     //     std::unordered_set<UndirectedEdge> result = get_edges(view);
@@ -128,24 +131,29 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::vector<Node> n1 = add_nodes(g1, 3);
     std::vector<Node> n2 = add_nodes(g2, 3);
 
-    add_edges(g1, {DirectedEdge{n1[0], n1[1]}, DirectedEdge{n1[1], n1[2]}});
-    add_edges(g2, {DirectedEdge{n2[0], n2[2]}, DirectedEdge{n2[1], n2[2]}});
+    add_edges(
+        g1,
+        {DirectedEdge{n1.at(0), n1.at(1)}, DirectedEdge{n1.at(1), n1.at(2)}});
+    add_edges(
+        g2,
+        {DirectedEdge{n2.at(0), n2.at(2)}, DirectedEdge{n2.at(1), n2.at(2)}});
 
     DiGraphView view = join(g1, g2);
 
-    // SUBCASE("get_nodes") {
-    //     std::unordered_set<Node> expected = set_union(unordered_set_of(n1),
-    //     unordered_set_of(n2));
+    SUBCASE("get_nodes") {
+      std::unordered_set<Node> expected =
+          set_union(unordered_set_of(n1), unordered_set_of(n2));
 
-    //     std::unordered_set<Node> result = get_nodes(view);
+      std::unordered_set<Node> result = get_nodes(view);
 
-    //     CHECK(result == expected);
-    // }
+      CHECK(result == expected);
+    }
 
     //     SUBCASE("get_edges") {
     //         std::unordered_set<DirectedEdge> expected = {
-    //             DirectedEdge{n1[0], n1[1]}, DirectedEdge{n1[1], n1[2]},
-    //             DirectedEdge{n2[0], n2[2]}, DirectedEdge{n2[1], n2[2]}
+    //             DirectedEdge{n1.at(0), n1.at(1)}, DirectedEdge{n1.at(1),
+    //             n1.at(2)}, DirectedEdge{n2.at(0), n2.at(2)},
+    //             DirectedEdge{n2.at(1), n2.at(2)}
     //         };
 
     //         std::unordered_set<DirectedEdge> result = get_edges(view);
@@ -158,10 +166,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     DiGraph g = DiGraph::create<AdjacencyDiGraph>();
     std::vector<Node> n = add_nodes(g, 3);
     add_edges(g,
-              {DirectedEdge{n[0], n[1]},
-               DirectedEdge{n[1], n[2]},
-               DirectedEdge{n[2], n[0]},
-               DirectedEdge{n[0], n[2]}});
+              {DirectedEdge{n.at(0), n.at(1)},
+               DirectedEdge{n.at(1), n.at(2)},
+               DirectedEdge{n.at(2), n.at(0)},
+               DirectedEdge{n.at(0), n.at(2)}});
 
     UndirectedGraphView view = as_undirected(g);
 
@@ -175,9 +183,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("get_edges") {
       std::unordered_set<UndirectedEdge> expected = {
-          UndirectedEdge{{n[0], n[1]}},
-          UndirectedEdge{{n[1], n[2]}},
-          UndirectedEdge{{n[2], n[0]}}};
+          UndirectedEdge{{n.at(0), n.at(1)}},
+          UndirectedEdge{{n.at(1), n.at(2)}},
+          UndirectedEdge{{n.at(2), n.at(0)}}};
 
       std::unordered_set<UndirectedEdge> result = get_edges(view);
 
@@ -189,10 +197,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     UndirectedGraph g = UndirectedGraph::create<HashmapUndirectedGraph>();
     std::vector<Node> n = add_nodes(g, 3);
     add_edges(g,
-              {UndirectedEdge{{n[0], n[0]}},
-               UndirectedEdge{{n[0], n[1]}},
-               UndirectedEdge{{n[1], n[2]}},
-               UndirectedEdge{{n[2], n[0]}}});
+              {UndirectedEdge{{n.at(0), n.at(0)}},
+               UndirectedEdge{{n.at(0), n.at(1)}},
+               UndirectedEdge{{n.at(1), n.at(2)}},
+               UndirectedEdge{{n.at(2), n.at(0)}}});
 
     DiGraphView view = as_digraph(g);
 
@@ -205,13 +213,14 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("get_edges") {
-      std::unordered_set<DirectedEdge> expected = {DirectedEdge{n[0], n[0]},
-                                                   DirectedEdge{n[0], n[1]},
-                                                   DirectedEdge{n[1], n[0]},
-                                                   DirectedEdge{n[1], n[2]},
-                                                   DirectedEdge{n[2], n[1]},
-                                                   DirectedEdge{n[2], n[0]},
-                                                   DirectedEdge{n[0], n[2]}};
+      std::unordered_set<DirectedEdge> expected = {
+          DirectedEdge{n.at(0), n.at(0)},
+          DirectedEdge{n.at(0), n.at(1)},
+          DirectedEdge{n.at(1), n.at(0)},
+          DirectedEdge{n.at(1), n.at(2)},
+          DirectedEdge{n.at(2), n.at(1)},
+          DirectedEdge{n.at(2), n.at(0)},
+          DirectedEdge{n.at(0), n.at(2)}};
 
       std::unordered_set<DirectedEdge> result = get_edges(view);
 

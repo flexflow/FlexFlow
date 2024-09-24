@@ -6,7 +6,14 @@ using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_one_of") {
-    std::unordered_set<int> s = {1, 2, 3};
-    CHECK(contains(s, get_one_of(s)));
+    SUBCASE("non-empty set") {
+      std::unordered_set<int> s = {1, 2, 3};
+      CHECK(contains(s, get_one_of(s)));
+    }
+
+    SUBCASE("empty set") {
+      std::unordered_set<int> s = {};
+      CHECK_THROWS_AS(get_one_of(s), std::runtime_error);
+    }
   }
 }

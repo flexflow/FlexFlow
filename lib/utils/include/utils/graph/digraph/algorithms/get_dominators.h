@@ -6,8 +6,7 @@
 namespace FlexFlow {
 
 /**
- * @brief A node `d` is said to dominate a node `n` if every path from the root
- * node to `n` must go through `d`.
+ * @brief See https://en.wikipedia.org/wiki/Dominator_(graph_theory)
  *
  * @note By definition, the root node dominates every node and every node
  * dominates itself.
@@ -16,8 +15,11 @@ namespace FlexFlow {
 std::unordered_set<Node> get_dominators(DiGraphView const &, Node const &);
 
 /**
- * @brief Returns the intersection of the dominators of the input nodes.
- *
+ * @brief Returns the intersection of the dominators of the given set of nodes.
+ * @note This is conceptually equivalent to merging the given set of nodes and
+ * then finding the set of dominators of the new merged node (where merged means
+ * that all edges belonging to the set of nodes now pass through a single
+ * unified node).
  */
 std::unordered_set<Node> get_dominators(DiGraphView const &,
                                         std::unordered_set<Node> const &);

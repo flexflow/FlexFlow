@@ -26,19 +26,6 @@ typename It::value_type product(It begin, It end) {
       });
 }
 
-template <typename Container,
-          typename ConditionF,
-          typename Element = typename Container::value_type>
-Element product_where(Container const &container, ConditionF const &condition) {
-  Element result = 1;
-  for (Element const &element : container) {
-    if (condition(element)) {
-      result *= element;
-    }
-  }
-  return result;
-}
-
 } // namespace FlexFlow
 
 #endif

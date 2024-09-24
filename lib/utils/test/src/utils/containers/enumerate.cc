@@ -44,11 +44,10 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("enumerate(std::unordered_set<T>)") {
-    std::unordered_set<std::string> input = {"zero", "one", "two", "three"};
+    std::unordered_set<std::string> input = {"A", "B", "C", "D"};
 
     std::unordered_set<int> correct_keys = {0, 1, 2, 3};
-    std::unordered_multiset<std::string> correct_values = {
-        "zero", "one", "two", "three"};
+    std::unordered_multiset<std::string> correct_values = {"A", "B", "C", "D"};
     std::map<int, std::string> result = enumerate(input);
 
     CHECK(keys(result) == correct_keys);

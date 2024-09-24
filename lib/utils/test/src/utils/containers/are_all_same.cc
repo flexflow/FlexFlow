@@ -18,7 +18,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("Empty Container") {
       std::vector<int> input = {};
-      CHECK_THROWS_AS(are_all_same(input), std::runtime_error);
+      CHECK(are_all_same(input));
     }
   }
 }

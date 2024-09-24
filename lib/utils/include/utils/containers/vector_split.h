@@ -12,7 +12,8 @@ template <typename T>
 std::pair<std::vector<T>, std::vector<T>> vector_split(std::vector<T> const &v,
                                                        int idx) {
   if (idx < 0 || idx > static_cast<int>(v.size())) {
-    throw std::out_of_range("Index out of range in vector_split");
+    throw std::out_of_range(fmt::format(
+        "Index out of range in vector_split: index = {}, vector = {}", idx, v));
   }
 
   std::vector<T> prefix(v.begin(), v.begin() + idx);

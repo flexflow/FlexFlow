@@ -7,7 +7,8 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE_TEMPLATE("PushBack", T, int, double, char) {
+  TEST_CASE_TEMPLATE(
+      "stack_vector<T, MAXSIZE>::push_back", T, int, double, char) {
     constexpr std::size_t MAXSIZE = 5;
     using StackVector = stack_vector<T, MAXSIZE>;
     StackVector vector;
@@ -23,7 +24,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == correct);
   }
 
-  TEST_CASE_TEMPLATE("OperatorIndex", T, int, double, char) {
+  TEST_CASE_TEMPLATE(
+      "stack_vector<T, MAXSIZE>::operator[]", T, int, double, char) {
     constexpr std::size_t MAXSIZE = 5;
     using StackVector = stack_vector<T, MAXSIZE>;
     StackVector vector;
@@ -37,7 +39,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(vector[2] == 30);
   }
 
-  TEST_CASE_TEMPLATE("Size", T, int, double, char) {
+  TEST_CASE_TEMPLATE("stack_vector<T, MAXSIZE>::size", T, int, double, char) {
     constexpr std::size_t MAXSIZE = 5;
     using StackVector = stack_vector<T, MAXSIZE>;
     StackVector vector;
@@ -51,7 +53,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(vector.size() == 2);
   }
 
-  TEST_CASE_TEMPLATE("==", T, int, double, char) {
+  TEST_CASE_TEMPLATE(
+      "stack_vector<T, MAXSIZE>::operator==", T, int, double, char) {
     constexpr std::size_t MAXSIZE = 5;
     using StackVector = stack_vector<T, MAXSIZE>;
     StackVector vector1, vector2;
@@ -64,10 +67,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     vector2.push_back(15);
     vector2.push_back(20);
 
-    CHECK_WITHOUT_STRINGIFY(vector1 == vector2);
+    CHECK(vector1 == vector2);
   }
 
-  TEST_CASE_TEMPLATE("EmplaceBack", T, int, double, char) {
+  TEST_CASE_TEMPLATE("stack_vector<T, MAXSIZE>::back", T, int, double, char) {
     constexpr std::size_t MAXSIZE = 5;
     using StackVector = stack_vector<T, MAXSIZE>;
     StackVector vector;
@@ -79,7 +82,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(vector.back() == 20);
   }
 
-  TEST_CASE_TEMPLATE("Arbitrary<stack_vector>", T, int, double, char) {
+  TEST_CASE_TEMPLATE(
+      "stack_vector<T, MAXSIZE> - check for size bound", T, int, double, char) {
     constexpr std::size_t MAXSIZE = 10;
     RC_SUBCASE("within bound", [&](stack_vector<T, MAXSIZE> v) {
       RC_ASSERT(v.size() <= MAXSIZE);

@@ -10,8 +10,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   //     RC_ASSERT(comb.machine_views.size() ==
   //               m0.machine_views.size() + m1.machine_views.size());
-  //     RC_ASSERT(is_submap(comb.machine_views, m0.machine_views));
-  //     RC_ASSERT(is_submap(comb.machine_views, m1.machine_views));
+  //     RC_ASSERT(is_submapeq_of(comb.machine_views, m0.machine_views));
+  //     RC_ASSERT(is_submapeq_of(comb.machine_views, m1.machine_views));
   //   });
   // }
 

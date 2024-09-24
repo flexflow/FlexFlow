@@ -6,7 +6,7 @@
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Testing the 'reversed' function") {
+  TEST_CASE("reversed(std::vector<int>)") {
     std::vector<int> input_vec = {1, 2, 3, 4, 5};
     std::vector<int> result = reversed(input_vec);
     std::vector<int> correct = {5, 4, 3, 2, 1};

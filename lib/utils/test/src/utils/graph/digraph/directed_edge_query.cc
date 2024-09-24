@@ -61,13 +61,9 @@ TEST_SUITE(FF_TEST_SUITE) {
             DirectedEdgeQuery{matchall<Node>(), query_set{n.at(3), n.at(4)}};
 
         DirectedEdgeQuery result = query_intersection(q1, q2);
-
-        CHECK(matches_edge(result, DirectedEdge{n.at(1), n.at(3)}));
-        CHECK(matches_edge(result, DirectedEdge{n.at(2), n.at(4)}));
-        CHECK(matches_edge(result, DirectedEdge{n.at(2), n.at(3)}));
-        CHECK(matches_edge(result, DirectedEdge{n.at(1), n.at(4)}));
-        CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(0), n.at(4)}));
-        CHECK_FALSE(matches_edge(result, DirectedEdge{n.at(2), n.at(0)}));
+        DirectedEdgeQuery correct = DirectedEdgeQuery{
+            query_set{n.at(1), n.at(2)}, query_set{n.at(3), n.at(4)}};
+        CHECK(result == correct);
       }
     }
   }

@@ -39,9 +39,8 @@ void HashmapUndirectedGraph::add_edge(UndirectedEdge const &e) {
 }
 
 void HashmapUndirectedGraph::remove_edge(UndirectedEdge const &e) {
-  std::unordered_set<Node> &m = this->adjacency.at(e.endpoints.max());
-  m.erase(e.endpoints.min());
-  m.erase(e.endpoints.max());
+  this->adjacency.at(e.endpoints.max()).erase(e.endpoints.min());
+  this->adjacency.at(e.endpoints.min()).erase(e.endpoints.max());
 }
 
 std::unordered_set<UndirectedEdge> HashmapUndirectedGraph::query_edges(
@@ -49,13 +48,20 @@ std::unordered_set<UndirectedEdge> HashmapUndirectedGraph::query_edges(
   std::unordered_set<UndirectedEdge> result;
   std::unordered_set<Node> nodes =
       keys(query_keys(query.nodes, this->adjacency));
-  for (auto const &src_kv : query_keys(query.nodes, this->adjacency)) {
-    for (auto const &dst : src_kv.second) {
+  for (auto const &[src, n] : query_keys(query.nodes, this->adjacency)) {
+    for (auto const &dst : n) {
+      result.insert(UndirectedEdge{{src, dst}});
+    }
+  }
+  for (auto const &[src, n] :
+       query_keys(query_set<Node>::matchall(), this->adjacency)) {
+    for (auto const &dst : n) {
       if (contains(nodes, dst)) {
-        result.insert(UndirectedEdge{{src_kv.first, dst}});
+        result.insert(UndirectedEdge{{src, dst}});
       }
     }
   }
+
   return result;
 }
 

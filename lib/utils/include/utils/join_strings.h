@@ -13,15 +13,12 @@ std::string join_strings(InputIt first,
                          F const &f) {
   std::ostringstream oss;
   bool first_iter = true;
-  /* int i = 0; */
   for (; first != last; first++) {
     if (!first_iter) {
       oss << delimiter;
     }
     oss << f(*first);
-    /* break; */
     first_iter = false;
-    /* i++; */
   }
   return oss.str();
 }

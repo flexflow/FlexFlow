@@ -15,14 +15,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     MultiDiGraph g = MultiDiGraph::create<AdjacencyMultiDiGraph>();
     std::vector<Node> n = add_nodes(g, 3);
 
-    std::vector<std::pair<Node, Node>> input = {
-        {n.at(0), n.at(0)},
-        {n.at(0), n.at(1)},
-        {n.at(0), n.at(1)},
-        {n.at(1), n.at(0)},
-    };
-
-    std::vector<MultiDiEdge> edges = add_edges(g, input);
+    std::vector<MultiDiEdge> edges = add_edges(g,
+                                               {{n.at(0), n.at(0)},
+                                                {n.at(0), n.at(1)},
+                                                {n.at(0), n.at(1)},
+                                                {n.at(1), n.at(0)}});
 
     SUBCASE("node has incoming edges") {
       std::unordered_set<MultiDiEdge> result = get_incoming_edges(g, n.at(1));

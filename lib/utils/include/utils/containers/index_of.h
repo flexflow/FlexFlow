@@ -3,11 +3,12 @@
 
 #include <algorithm>
 #include <optional>
+
 namespace FlexFlow {
 
 /**
  * @details If multiple `e` are present within the container, the function
- *returns the index of the first appearance
+ * returns the index of the first appearance
  **/
 template <typename Container, typename Element>
 std::optional<std::size_t> index_of(Container const &c, Element const &e) {

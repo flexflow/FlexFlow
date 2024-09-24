@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 template <typename C>
 typename C::value_type maximum(C const &c) {
-  if (c.size() == 0) {
+  if (c.empty()) {
     throw mk_runtime_error(
         "input to function maximum must be non-empty container");
   }

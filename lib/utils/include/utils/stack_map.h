@@ -130,4 +130,15 @@ CHECK_WELL_BEHAVED_VALUE_TYPE_NO_HASH(stack_map<int, int, 10>);
 
 } // namespace FlexFlow
 
+namespace doctest {
+
+template <typename K, typename V, std::size_t MAXSIZE>
+struct StringMaker<FlexFlow::stack_map<K, V, MAXSIZE>> {
+  static String convert(FlexFlow::stack_map<K, V, MAXSIZE> const &map) {
+    return toString(fmt::to_string(map));
+  }
+};
+
+} // namespace doctest
+
 #endif

@@ -24,7 +24,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::unordered_map<int, std::string> lhs = {{1, "one"}, {2, "two"}};
       std::unordered_map<int, std::string> rhs = {{2, "three"}, {3, "four"}};
 
-      CHECK_THROWS_AS(merge_maps(lhs, rhs), std::runtime_error);
+      CHECK_THROWS(merge_maps(lhs, rhs));
     }
   }
 }

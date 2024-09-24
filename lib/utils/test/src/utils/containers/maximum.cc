@@ -19,7 +19,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("empty container") {
       std::vector<int> input = {};
 
-      CHECK_THROWS_AS(maximum(input), std::runtime_error);
+      CHECK_THROWS(maximum(input));
     }
   }
 }

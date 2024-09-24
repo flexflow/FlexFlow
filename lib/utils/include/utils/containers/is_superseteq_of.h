@@ -7,9 +7,9 @@
 namespace FlexFlow {
 
 template <typename T>
-bool is_superseteq_of(std::unordered_set<T> const &l,
-                      std::unordered_set<T> const &r) {
-  return is_subseteq_of<T>(r, l);
+bool is_superseteq_of(std::unordered_set<T> const &super,
+                      std::unordered_set<T> const &sub) {
+  return is_subseteq_of<T>(sub, super);
 }
 
 } // namespace FlexFlow

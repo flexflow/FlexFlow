@@ -22,7 +22,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(postfix == std::vector<int>({1, 2, 3, 4, 5}));
     }
 
-    SUBCASE("Boundary case: idx = 5") {
+    SUBCASE("Boundary case: idx is the last index in the list") {
       auto [prefix, postfix] = vector_split(v, 5);
       CHECK(prefix == std::vector<int>({1, 2, 3, 4, 5}));
       CHECK(postfix.empty());
@@ -32,7 +32,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK_THROWS_AS(vector_split(v, -1), std::out_of_range);
     }
 
-    SUBCASE("Out of bounds case: idx = 6") {
+    SUBCASE("Out of bounds case: idx == list_size + 1") {
       CHECK_THROWS_AS(vector_split(v, 6), std::out_of_range);
     }
   }

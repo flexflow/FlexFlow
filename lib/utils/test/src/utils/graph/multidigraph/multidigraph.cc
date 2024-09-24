@@ -32,21 +32,23 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("add_edge") {
-      MultiDiEdge e7 = g.add_edge(n2, n1);
-      std::unordered_set<MultiDiEdge> result =
-          g.query_edges(MultiDiEdgeQuery({n2}, {n1}));
-      std::unordered_set<MultiDiEdge> correct = {e7};
-      CHECK(result == correct);
-    }
+      SUBCASE("non-duplicate edge") {
+        MultiDiEdge e7 = g.add_edge(n2, n1);
+        std::unordered_set<MultiDiEdge> result =
+            g.query_edges(MultiDiEdgeQuery({n2}, {n1}));
+        std::unordered_set<MultiDiEdge> correct = {e7};
+        CHECK(result == correct);
+      }
 
-    SUBCASE("add_edges") {
-      MultiDiEdge e7 = g.add_edge(n1, n2);
-      MultiDiEdge e8 = g.add_edge(n2, n1);
+      SUBCASE("duplicate edge") {
+        MultiDiEdge e7 = g.add_edge(n2, n1);
+        MultiDiEdge e8 = g.add_edge(n2, n1);
 
-      std::unordered_set<MultiDiEdge> result =
-          g.query_edges(MultiDiEdgeQuery({n0, n1}, {n2}));
-      std::unordered_set<MultiDiEdge> correct = {e0, e3, e4, e7};
-      CHECK(result == correct);
+        std::unordered_set<MultiDiEdge> result =
+            g.query_edges(MultiDiEdgeQuery({n2}, {n1}));
+        std::unordered_set<MultiDiEdge> correct = {e7, e8};
+        CHECK(result == correct);
+      }
     }
 
     SUBCASE("remove_node") {
@@ -57,7 +59,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(node_result == node_correct);
 
       std::unordered_set<MultiDiEdge> edge_result =
-          g.query_edges(MultiDiEdgeQuery({n0}, {n0}));
+          g.query_edges(MultiDiEdgeQuery({n0}, {n1, n2}));
       std::unordered_set<MultiDiEdge> edge_correct = {};
       CHECK(edge_result == edge_correct);
     }
@@ -68,31 +70,20 @@ TEST_SUITE(FF_TEST_SUITE) {
           g.query_edges(MultiDiEdgeQuery({n1}, {n2}));
       std::unordered_set<MultiDiEdge> correct = {e4};
       CHECK(result == correct);
-    }
 
-    SUBCASE("remove_edges") {
-      g.remove_edge(e0);
-      g.remove_edge(e1);
-      g.remove_edge(e3);
-
-      SUBCASE("edges from n0 to n2") {
+      SUBCASE("remove non-duplicate edge") {
+        g.remove_edge(e0);
         std::unordered_set<MultiDiEdge> result =
             g.query_edges(MultiDiEdgeQuery({n0}, {n2}));
         std::unordered_set<MultiDiEdge> correct = {};
         CHECK(result == correct);
       }
 
-      SUBCASE("edges from n1 to n0") {
+      SUBCASE("remove duplicate edge") {
+        g.remove_edge(e1);
         std::unordered_set<MultiDiEdge> result =
             g.query_edges(MultiDiEdgeQuery({n1}, {n0}));
         std::unordered_set<MultiDiEdge> correct = {e2};
-        CHECK(result == correct);
-      }
-
-      SUBCASE("edges from n1 to n2") {
-        std::unordered_set<MultiDiEdge> result =
-            g.query_edges(MultiDiEdgeQuery({n1}, {n2}));
-        std::unordered_set<MultiDiEdge> correct = {e4};
         CHECK(result == correct);
       }
     }

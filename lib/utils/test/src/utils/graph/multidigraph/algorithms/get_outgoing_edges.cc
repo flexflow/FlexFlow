@@ -24,14 +24,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     std::vector<MultiDiEdge> edges = add_edges(g, input);
 
-    SUBCASE("node has incoming edges") {
+    SUBCASE("node has outgoing edges") {
       std::unordered_set<MultiDiEdge> result = get_outgoing_edges(g, n.at(0));
       std::unordered_set<MultiDiEdge> correct = {
           edges.at(0), edges.at(1), edges.at(2)};
       CHECK(result == correct);
     }
 
-    SUBCASE("node has no incoming edges") {
+    SUBCASE("node has no outgoing edges") {
       std::unordered_set<MultiDiEdge> result = get_outgoing_edges(g, n.at(2));
       std::unordered_set<MultiDiEdge> correct = {};
       CHECK(result == correct);

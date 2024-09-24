@@ -9,20 +9,22 @@ namespace FlexFlow {
 
 template <typename T>
 std::vector<T> value_all(std::vector<std::optional<T>> const &v) {
-  return transform(v, [](std::optional<T> const &element) {
-    return unwrap(element, [] {
-      throw mk_runtime_error(
-          "Encountered element without value in call to value_all");
+  return transform(v, [&](std::optional<T> const &element) {
+    return unwrap(element, [&] {
+      throw mk_runtime_error(fmt::format(
+          "value_all expected all elements to have values, but received {}",
+          v));
     });
   });
 }
 
 template <typename T>
 std::unordered_set<T> value_all(std::unordered_set<std::optional<T>> const &v) {
-  return transform(v, [](std::optional<T> const &element) {
-    return unwrap(element, [] {
-      throw mk_runtime_error(
-          "Encountered element without value in call to value_all");
+  return transform(v, [&](std::optional<T> const &element) {
+    return unwrap(element, [&] {
+      throw mk_runtime_error(fmt::format(
+          "value_all expected all elements to have values, but received {}",
+          v));
     });
   });
 }

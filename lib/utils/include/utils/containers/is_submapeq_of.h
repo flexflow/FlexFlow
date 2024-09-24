@@ -8,8 +8,8 @@
 namespace FlexFlow {
 
 template <typename K, typename V>
-bool is_submap(std::unordered_map<K, V> const &m,
-               std::unordered_map<K, V> const &sub) {
+bool is_submapeq_of(std::unordered_map<K, V> const &sub,
+                    std::unordered_map<K, V> const &m) {
   return restrict_keys(m, keys(sub)) == sub;
 }
 

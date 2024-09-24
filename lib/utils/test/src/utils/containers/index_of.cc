@@ -8,15 +8,17 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("index_of") {
-    SUBCASE("unique elements") {
-      std::vector<int> v = {1, 2, 3, 4, 5};
-      CHECK(index_of(v, 3).value() == 2);
-      CHECK(index_of(v, 6) == std::nullopt);
+
+    std::vector<int> v = {1, 2, 3, 4, 3, 5};
+
+    SUBCASE("unique element") {
+      CHECK(index_of(v, 4).value() == 3);
     }
     SUBCASE("duplicate elements") {
-      std::vector<int> v = {1, 2, 3, 4, 3, 5};
-      CHECK(index_of(v, 3).value() == 2);
-      CHECK(index_of(v, 6) == std::nullopt);
+      CHECK(index_of(v, 3).value() == 2); // Returns first occurrence
+    }
+    SUBCASE("element not present") {
+      CHECK(index_of(v, 7) == std::nullopt);
     }
   }
 }

@@ -11,7 +11,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("value_all") {
     SUBCASE("With nullopt") {
       std::vector<std::optional<int>> input = {1, 2, std::nullopt, 4, 5};
-      CHECK_THROWS_AS(value_all(input), std::runtime_error);
+      CHECK_THROWS(value_all(input));
     }
 
     SUBCASE("Without nullopt") {

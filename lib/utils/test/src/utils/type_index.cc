@@ -19,7 +19,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE("matches function") {
+  TEST_CASE("matches<T>(std::type_index)") {
     std::type_index idx = typeid(float);
 
     SUBCASE("matching type") {

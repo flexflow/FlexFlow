@@ -23,5 +23,13 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<int> correct = {-1, -2, -3, -4, -5};
       CHECK(result == correct);
     }
+
+    SUBCASE("duplicates") {
+      std::vector<int> input = {3, 1, 3, -4, 1};
+      std::vector<int> result =
+          sorted_by(input, [](int a, int b) { return a < b; });
+      std::vector<int> correct = {-4, 1, 1, 3, 3};
+      CHECK(result == correct);
+    }
   }
 }
