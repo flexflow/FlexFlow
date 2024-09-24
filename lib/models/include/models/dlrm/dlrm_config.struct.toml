@@ -1,0 +1,69 @@
+namespace = "FlexFlow"
+name = "DLRMConfig"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "<vector>",
+  "<string>",
+]
+
+src_includes = [
+  "utils/fmt/vector.h",
+  "utils/hash/vector.h",
+]
+
+[[fields]]
+name = "sparse_feature_size"
+type = "int"
+
+[[fields]]
+name = "sigmoid_bot"
+type = "int"
+
+[[fields]]
+name = "sigmoid_top"
+type = "int"
+
+[[fields]]
+name = "embedding_bag_size"
+type = "size_t"
+
+[[fields]]
+name = "loss_threshold"
+type = "float"
+
+[[fields]]
+name = "embedding_size"
+type = "std::vector<int>"
+
+[[fields]]
+name = "mlp_bot"
+type = "std::vector<size_t>"
+
+[[fields]]
+name = "mlp_top"
+type = "std::vector<size_t>"
+
+[[fields]]
+name = "arch_interaction_op"
+type = "std::string"
+
+[[fields]]
+name = "dataset_path"
+type = "std::string"
+
+[[fields]]
+name = "data_size"
+type = "int"
+
+[[fields]]
+name = "batch_size"
+type = "size_t"
