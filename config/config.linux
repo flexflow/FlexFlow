@@ -112,7 +112,9 @@ function get_build_configs() {
 }
 
 #install raft
+echo "Building raft dependency ..."
 INSTALL_PREFIX=./install $(dirname $0)/../deps/raft/build.sh libraft > /dev/null
+echo "Building raft dependency ... Done"
 
 if [[ -n "$1" && ( "$1" == "CMAKE_FLAGS" || "$1" == "CUDA_PATH" ) ]]; then
     . $(dirname $0)/config.inc

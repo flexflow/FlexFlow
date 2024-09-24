@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(FlexFlow)
+project(FlexFlow LANGUAGES CXX CUDA)
 
 
 include(ExternalProject)
@@ -204,11 +204,9 @@ if(NOT BUILD_LEGION_ONLY)
   # optional
   include(optional)
 
+  set(CMAKE_PREFIX_PATH ${CMAKE_PREFIX_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/deps/raft/cpp/build/install)
+  find_package(raft)
   list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/raft/cpp/include)
-
-  list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/rmm/include)
-
-  list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/spdlog/include)
 
   list(APPEND FLEXFLOW_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/deps/flashinfer/include)
 
@@ -413,6 +411,8 @@ if(NOT BUILD_LEGION_ONLY)
     # to link FlexFlow to ${LEGION_LIBRARY}
     target_link_libraries(flexflow ${LEGION_LIBRARY} ${FLEXFLOW_EXT_LIBRARIES} nlohmann_json::nlohmann_json mpark_variant optional)
   endif()
+
+  target_link_libraries(flexflow raft::raft)
 
   #library api version, bump from time to time
   set(SOVERSION 1)
