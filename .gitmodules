@@ -23,16 +23,9 @@
 	path = deps/tokenizers-cpp
 	url = https://github.com/mlc-ai/tokenizers-cpp.git
 	fetchRecurseSubmodules = true
-[submodule "deps/spdlog"]
-	path = deps/spdlog
-	url = https://github.com/gabime/spdlog.git
-[submodule "deps/rmm"]
-	path = deps/rmm
-	url = https://github.com/rapidsai/rmm.git
-[submodule "deps/raft"]
-	path = deps/raft
-	url = https://github.com/rapidsai/raft.git
-	ignore = dirty
 [submodule "deps/flashinfer"]
 	path = deps/flashinfer
 	url = https://github.com/flashinfer-ai/flashinfer.git
+[submodule "deps/raft"]
+	path = deps/raft
+	url = https://github.com/rapidsai/raft.git
