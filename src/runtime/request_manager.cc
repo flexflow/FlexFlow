@@ -705,6 +705,11 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   // write_to_output_file("", str);
 }
 
+void RequestManager::update_token_tree_depth() {
+  ssm_tree_depth = min(get_max_tokens_per_batch() / get_num_active_requests(),
+                       get_max_tree_depth());
+}
+
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
   if (num_available_requests == 0) {
@@ -818,6 +823,7 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
       if (!ssm_completed) {
         ssm_completed = update_ssm_inference_results(result);
       }
+      // If the ssm speculation is completed, we do nothing
 
       if (current_ssm_step == get_max_tree_depth()) {
         request_manager_status = LLM_VERIFY;
@@ -1304,6 +1310,7 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
     }
     profiling.ssm_step_start = Realm::Clock::current_time_in_microseconds();
   }
+  update_token_tree_depth();
   if (verbose) {
     std::cout << "prepare_first_spec_batch_config NEW batchconfig:"
               << std::endl;
@@ -1653,7 +1660,8 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  if (current_ssm_step == get_max_tree_depth()) {
+  //   if (current_ssm_step == get_max_tree_depth()) {
+  if (current_ssm_step == ssm_tree_depth) {
     // Prune the token tree at the last step
     prune_token_tree();
     // Update profiling statistics before returning
@@ -2319,6 +2327,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
 
   request_manager_status = PREFILLING;
   prefill_model = SSM;
+  ssm_tree_depth = get_max_tree_depth();
 
   std::queue<InferenceResultFuture> infer_result_future_pipeline;
   infer_result_future_pipeline.push(irf_0);
@@ -2623,13 +2632,9 @@ void RequestManager::add_tokens_to_spec_token_tree(
     TokenTree &spec_token_tree = request.speculative_token_trees[0];
     std::vector<std::shared_ptr<TokenTreeNode>> &last_layer =
         spec_token_tree.tree_layers.back();
-    std::vector<std::pair<double, int>> preallocated_vector;
-    preallocated_vector.reserve(tree_width);
-    std::priority_queue<std::pair<double, int>,
-                        std::vector<std::pair<double, int>>,
-                        std::greater<std::pair<double, int>>>
-        child_probs_pq(std::greater<std::pair<double, int>>(),
-                       std::move(preallocated_vector));
+    std::vector<std::pair<double, int>> child_probs_v;
+    child_probs_v.reserve(BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES *
+                          get_max_tree_width());
     int parent_pos = 0;
     for (auto const &parent_ptr : last_layer) {
       double parent_log_prob = parent_ptr->log_accumulated_prob;
@@ -2651,30 +2656,22 @@ void RequestManager::add_tokens_to_spec_token_tree(
 
         double accumulated_log_prob = log_prob + parent_log_prob;
 
-        if (child_probs_pq.size() == tree_width and
-            accumulated_log_prob > child_probs_pq.top().first) {
-          // The current layer is full, and the new token has a higher
-          // log prob than the minimum node in tokens, we don't need to add
-          // the new token to the priority queue, and remove the minimum node
-          // from the priority queue
-          child_probs_pq.pop();
-        } else if (child_probs_pq.size() == tree_width) {
-          // The current layer is full, and the new token has a lower log prob
-          // than the minimum node in tokens, we don't need to add the new token
-          // to the priority queue
-          continue;
-        }
-        child_probs_pq.push(std::make_pair(accumulated_log_prob, result_idx));
+        child_probs_v.emplace_back(accumulated_log_prob, result_idx);
       }
       parent_pos++;
     }
 
     spec_token_tree.add_layer();
-    while (!child_probs_pq.empty()) {
-      std::pair<double, int> child_pair = child_probs_pq.top();
-      child_probs_pq.pop();
-      double accumulated_log_prob = child_pair.first;
-      int result_idx = child_pair.second;
+    int actual_width = min(tree_width, (int)child_probs_v.size());
+    if (actual_width == 0) {
+      continue;
+    }
+    std::partial_sort(child_probs_v.begin(),
+                      child_probs_v.begin() + actual_width,
+                      child_probs_v.end(),
+                      std::greater<std::pair<double, int>>());
+    for (int i = 0; i < actual_width; i++) {
+      auto [accumulated_log_prob, result_idx] = child_probs_v[i];
       int parent_pos = (result_idx - result_offset) /
                        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
       std::shared_ptr<TokenTreeNode> node_ptr = std::make_shared<TokenTreeNode>(
