@@ -15,59 +15,12 @@
 
 #include "flexflow/ops/arg_topk.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "raft/matrix/detail/select_radix.cuh"
+#include "raft/core/device_resources.hpp"
+#include "raft/matrix/detail/select_k.cuh"
 
 namespace FlexFlow {
 // declare Legion names
 using Legion::coord_t;
-
-// Adopted from Raft's select_k
-// https://github.com/rapidsai/raft/blob/branch-23.04/cpp/include/raft/matrix/detail/select_radix.cuh#L1113
-template <typename T, typename idxT>
-void raft_radix_11bits_kernel(T const *in,
-                              int batch_size,
-                              idxT len,
-                              idxT k,
-                              T *out,
-                              idxT *out_idx = nullptr,
-                              bool greater = true,
-                              cudaStream_t stream = 0) {
-  raft::matrix::detail::select::radix::select_k<T, idxT, 11, 512>(
-      in,
-      static_cast<idxT *>(nullptr),
-      batch_size,
-      len,
-      k,
-      out,
-      out_idx,
-      !greater,
-      true, // fused_last_filter
-      stream);
-}
-
-// Adopted from Raft's select_k
-// https://github.com/rapidsai/raft/blob/branch-23.04/cpp/include/raft/matrix/detail/select_radix.cuh#L1113
-template <typename T, typename idxT>
-void raft_radix_11bits_extra_pass_kernel(T const *in,
-                                         int batch_size,
-                                         idxT len,
-                                         idxT k,
-                                         T *out,
-                                         idxT *out_idx = nullptr,
-                                         bool greater = true,
-                                         cudaStream_t stream = 0) {
-  raft::matrix::detail::select::radix::select_k<T, idxT, 11, 512>(
-      in,
-      static_cast<idxT *>(nullptr),
-      batch_size,
-      len,
-      k,
-      out,
-      out_idx,
-      !greater,
-      false, // fused_last_filter
-      stream);
-}
 
 __global__ void half2float_kernel(half const *__restrict__ in,
                                   float *__restrict__ out,
@@ -126,6 +79,9 @@ __global__ void renormalize_kernel(DT *topk_values,
   }
 }
 
+// Adopted from Raft's select_k
+// https://github.com/rapidsai/raft/blob/branch-24.10/cpp/include/raft/matrix/detail/select_k.cuh
+
 /*static*/
 template <typename DT>
 void ArgTopK::forward_kernel(
@@ -141,15 +97,25 @@ void ArgTopK::forward_kernel(
     /* Reserved: BatchConfig Updated */ BatchConfig const *bc,
     cudaStream_t stream) {
   assert(bc->num_active_requests() >= 0);
-  raft_radix_11bits_extra_pass_kernel<DT, int>(
-      input_ptr, batch_size, length, k, output_ptr, indices_ptr, true, stream);
-  if (sorted) {
-    assert(output_ptr != nullptr);
-    insertion_sort_kernel<<<GET_BLOCKS(batch_size),
-                            min((size_t)CUDA_NUM_THREADS, batch_size),
-                            0,
-                            stream>>>(output_ptr, indices_ptr, batch_size, k);
-  }
+  raft::device_resources handle(stream);
+  raft::matrix::detail::select_k(handle,
+                                 input_ptr,
+                                 (int *)nullptr,
+                                 batch_size,
+                                 (size_t)length,
+                                 k,
+                                 output_ptr,
+                                 indices_ptr,
+                                 /*select_min=*/false,
+                                 sorted);
+  // if (sorted) {
+  //   assert(output_ptr != nullptr);
+  //   insertion_sort_kernel<<<GET_BLOCKS(batch_size),
+  //                           min((size_t)CUDA_NUM_THREADS, batch_size),
+  //                           0,
+  //                           stream>>>(output_ptr, indices_ptr, batch_size,
+  //                           k);
+  // }
   if (renormalize) {
     assert(output_ptr != nullptr);
     renormalize_kernel<<<GET_BLOCKS(batch_size),
