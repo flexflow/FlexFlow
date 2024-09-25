@@ -1905,7 +1905,6 @@ void RequestManager::get_verify_results_sample(
     }
 
     if (verbose) {
-      std::cout << "Request_s " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
         std::cout << committed_token.token_id << " ("
                   << tokenizer_->Decode({committed_token.token_id}) << ") ";
@@ -1930,11 +1929,6 @@ void RequestManager::get_verify_results_greedy(
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
-
-    // traverse the llm_verify_result
-    // for (int i = 0; i < 100; i++) {
-      // printf("llm_verify_result[%d]: %d\n", i, llm_verify_result.token_ids[i]);
-    // }
 
     int llm_result_offset = request.first_token_offset_in_batch;
     int llm_cache_size = request.tokens.size() - 1;
@@ -1979,9 +1973,6 @@ void RequestManager::get_verify_results_greedy(
         } else {
           // The token's parent is accepted, and no token has been accepted in
           // this layer yet
-          // printf("llm_result_offset: %d\n", llm_result_offset);
-          // printf("last_accepted_token_index: %d\n", last_accepted_token_index);
-          // printf("the target token here is: %d\n", llm_verify_result.token_ids[llm_result_offset + last_accepted_token_index]);
           if (node_ptr->id ==
               llm_verify_result
                   .token_ids[llm_result_offset + last_accepted_token_index]) {
@@ -2008,7 +1999,6 @@ void RequestManager::get_verify_results_greedy(
       }
       if (!token_accepted_this_layer) {
         // No token is accepted in this layer, we should stop the traversal
-        // printf("no token is accepted in this layer\n");
         break;
       }
     }
@@ -2028,7 +2018,7 @@ void RequestManager::get_verify_results_greedy(
 
     total_nb_generated_tokens += request.committed_tokens.size() - 1;
     if (verbose) {
-      std::cout << "Request_g " << request.guid << " committed tokens: ";
+      std::cout << "Request " << request.guid << " committed tokens: ";
       for (auto const &committed_token : request.committed_tokens) {
         std::cout << committed_token.token_id << " ("
                   << tokenizer_->Decode({committed_token.token_id}) << ") ";
