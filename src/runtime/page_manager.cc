@@ -14,7 +14,6 @@
  */
 
 #include "flexflow/page_manager.h"
-#include "flexflow/parallel_ops/parallel_op.h"
 
 namespace FlexFlow {
 
@@ -23,7 +22,6 @@ PageManager *page_manager_singleton = nullptr;
 
 LogicalTokenBlock::LogicalTokenBlock(int block_number, uint32_t block_size)
     : block_number(block_number), block_size(block_size), num_tokens(0), num_commit_tokens(0), num_spec_tokens(0) {
-        // WARNING: init token lists as empty vector
     }
 
 bool LogicalTokenBlock::is_empty() const {
@@ -34,7 +32,7 @@ bool LogicalTokenBlock::is_empty() const {
 
 int LogicalTokenBlock::get_num_empty_slots() const {
     assert(num_spec_tokens + num_commit_tokens == num_tokens);
-     assert(num_tokens <= block_size);
+    assert(num_tokens <= block_size);
     return block_size - num_tokens;
 }
 
@@ -82,14 +80,6 @@ std::vector<TokenId> LogicalTokenBlock::get_token_ids() const {
     return token_ids;
 }
 
-// @TODO: to be deleted
-// int LogicalTokenBlock::get_last_token_id() const {
-//     if (num_tokens == 0) {
-//         throw std::runtime_error("Block is empty! Cannot get last token id.");
-//     }
-//     return token_ids.back();
-// }
-
 PhysicalTokenBlock::PhysicalTokenBlock(int block_number, uint32_t block_size)
     : block_number(block_number), block_size(block_size), ref_count(0) {}
 
@@ -124,7 +114,6 @@ void BlockAllocator::free(PhysicalTokenBlock& block) {
     }
 }
 
-// Get the number of free blocks
 size_t BlockAllocator::get_num_free_blocks() const {
     assert(free_blocks.size() <= static_cast<size_t>(num_blocks));
     if (free_blocks.size() > static_cast<size_t>(num_blocks)) {
@@ -139,10 +128,9 @@ PageManager::PageManager(uint32_t block_size, int num_total_blocks)
     : block_size(block_size), num_total_blocks(num_total_blocks),
       block_allocator(block_size, num_total_blocks) {}
 
-// initalize for blocks
 bool PageManager::prefill(const RequestGuid& request_guid, const std::vector<TokenId>& token_ids) {
     BlockTable block_table;
-    for (size_t logical_idx = 0; logical_idx < token_ids.size(); ++logical_idx) {
+    for (size_t logical_idx = 0; logical_idx < token_ids.size(); logical_idx++) {
         PhysicalTokenBlock block = block_allocator.allocate();
         block_table.push_back(block);
     }
@@ -151,7 +139,6 @@ bool PageManager::prefill(const RequestGuid& request_guid, const std::vector<Tok
     return true;
 }
 
-//TODO: check these functions later
 bool PageManager::can_allocate(const RequestGuid& request_guid) const {
     int num_free_gpu_blocks = block_allocator.get_num_free_blocks();
     return num_free_gpu_blocks > 0;
@@ -165,11 +152,9 @@ bool PageManager::allocate(const RequestGuid& request_guid) {
     BlockTable& block_table = block_tables[request_guid];
 
     PhysicalTokenBlock block = block_allocator.allocate();
-    block_table.push_back(block);
-    // printf("allocated block %d\n", block.block_number);
+    block_table.push_back(block);;
     return true;
 }
-
 
 void PageManager::_free_block_table(BlockTable& block_table) {
     for (auto& block : block_table) {
@@ -217,9 +202,11 @@ void PageManager::erase_last_pages(const RequestGuid& request_guid, int last_com
     assert(block_tables.find(request_guid) != block_tables.end());
     auto& block_table = block_tables[request_guid];
     assert(last_commit_page < block_table.size());
+    // free the blocks that are used for spec tokens and put them back to the queue
     for (int i = last_commit_page + 1; i < block_table.size(); i++) {
         block_allocator.free(block_table[i]);
     }
+    // erase the blocks that are used for spec tokens in the block table of given request
     block_table = std::vector<PhysicalTokenBlock>(block_table.begin(), block_table.begin() + last_commit_page + 1);
     // need to put the last blocks back to the free list
     block_tables[request_guid] = block_table;
@@ -228,11 +215,9 @@ void PageManager::erase_last_pages(const RequestGuid& request_guid, int last_com
 
 PageManager *PageManager::get_page_manager() {
   if (page_manager_singleton == nullptr) {
-    // FIXME: These values are hardcoded for now
     int num_total_blocks = (BatchConfig::max_spec_tree_token_num() +
         BatchConfig::max_sequence_length() + kPagesize - 1) /
         kPagesize * BatchConfig::max_requests_per_batch();
-        std::cerr << "num_total_blocks is: " << num_total_blocks << std::endl;
     page_manager_singleton = new PageManager(kPagesize, num_total_blocks);
   }
   return page_manager_singleton;
