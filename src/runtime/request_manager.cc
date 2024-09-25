@@ -510,7 +510,6 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
-  // page attention: Clean up the logical blocks
   PageManager::get_page_manager()->free(guid);
 
   // Find the sos and eos in the sequence
@@ -1276,7 +1275,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
         new_bc.num_tokens;
     new_bc.requestsInfo[request_index].num_tokens_in_batch = 0;
 
-    //page attention:  delete the spec tokens in the logical block
     assert(request.blocks.size() == page_manager->get_num_allocated_blocks(guid));
     std::vector<int> block_table = page_manager->get_block_table_indices(guid);
     std::vector<int> block_table_copy = block_table;
