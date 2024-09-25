@@ -154,30 +154,7 @@ Tensor
   int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
   int weight_size = qParas * num_q_heads + kParas * num_q_heads +
                     vParas * num_q_heads + oParas * num_q_heads;
-  // {
-  //   int dims[1] = {weight_size};
-  //   li->weights[0] = create_weight_legion_ordering(1,
-  //                                                  dims,
-  //                                                  data_type,
-  //                                                  li,
-  //                                                  true /*create_grad*/,
-  //                                                  kernel_initializer,
-  //                                                  CHOSEN_SYNC_TYPE);
-  // }
-  // if (qkv_bias || final_bias) {
-  //   // q, k, v, o
-  //   int qkv_bias_size =
-  //       qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-  //   int dims[1] = {(qkv_bias ? qkv_bias_size : 0) +
-  //                  (final_bias ? oProjSize : 0)};
-  //   li->weights[1] = create_weight_legion_ordering(1,
-  //                                                  dims,
-  //                                                  data_type,
-  //                                                  li,
-  //                                                  true /*create_grad*/,
-  //                                                  kernel_initializer,
-  //                                                  CHOSEN_SYNC_TYPE);
-  // }
+
   li->data_type = data_type;
   li->add_int_property("embed_dim", embed_dim);
   li->add_int_property("num_q_heads", num_q_heads);
@@ -323,37 +300,10 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     dims[1].is_replica_dim = false;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-    // weights[0] = model.create_parallel_weight<2>(dims,
-    //                                              this->data_type,
-    //                                              NULL /*owner_op*/,
-    //                                              true /*create_grad*/,
-    //                                              initializer,
-    //                                              CHOSEN_SYNC_TYPE);
-    // if (qkv_bias || final_bias) {
-    //   ParallelTensorShape bias_shape = _input->get_shape();
-    //   int qkv_bias_size =
-    //       qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-    //   bias_shape.dims[0].size =
-    //       (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
-    //   bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
-    //   weights[1] =
-    //       model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
-    //                                                    bias_shape.dims,
-    //                                                    this->data_type,
-    //                                                    nullptr /*owner_op*/,
-    //                                                    true /*create_grad*/,
-    //                                                    initializer,
-    //                                                    CHOSEN_SYNC_TYPE);
-    // }
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, this->data_type, this);
-  /* for (int i = 0; i < numdim; i++) { */
-  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
-  /* } */
-  /* // Check correctness */
-  /* assert(check_output_input_weight_parallel_dims()); */
 }
 
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
@@ -426,40 +376,10 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     // dims[2].size = qParas + kParas + vParas + oParas;
     int seed = std::rand();
     Initializer *initializer = new GlorotUniform(seed);
-    // weights[0] = model.create_parallel_weight<2>(dims,
-    //                                              this->data_type,
-    //                                              NULL /*owner_op*/,
-    //                                              true /*create_grad*/,
-    //                                              initializer,
-    //                                              CHOSEN_SYNC_TYPE);
-    // if (qkv_bias || final_bias) {
-    //   ParallelTensorShape bias_shape = _input->get_shape();
-    //   int qkv_bias_size =
-    //       qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-    //   bias_shape.dims[0].size =
-    //       (qkv_bias ? qkv_bias_size : 0) + (final_bias ? oProjSize : 0);
-    //   bias_shape.dims[1].size = bias_shape.dims[2].size = 1;
-    //   weights[1] =
-    //       model.create_parallel_weight_legion_ordering(bias_shape.num_dims,
-    //                                                    bias_shape.dims,
-    //                                                    this->data_type,
-    //                                                    nullptr /*owner_op*/,
-    //                                                    true /*create_grad*/,
-    //                                                    initializer,
-    //                                                    CHOSEN_SYNC_TYPE);
-    // }
   }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, this->data_type, this);
-
-  /* for (int i = 0; i < numdim; i++) { */
-  /*   register_output_input_parallel_dims(outputs[0], i, inputs[0], i); */
-  /* } */
-  /* register_output_weight_parallel_dims(outputs[0], numdim-1, _weight, 1); */
-  /* register_output_weight_parallel_dims(outputs[0], numdim-2, _weight, 2); */
-  // Check correctness
-  /* assert(check_output_input_weight_parallel_dims()); */
 }
 
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(

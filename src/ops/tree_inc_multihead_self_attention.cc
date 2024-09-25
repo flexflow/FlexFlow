@@ -598,13 +598,6 @@ OpMeta *TreeIncMultiHeadSelfAttention::init_task(
   int num_kv_heads =
       attn->num_kv_heads / attn->tensor_parallelism_degree +
       (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
-  if (attn->oProjSize != output.domain.hi()[0] - output.domain.lo()[0] + 1) {
-    std::cout << "attn->oProjSize: " << attn->oProjSize
-              << " does not match output domain dim[0]: "
-              << output.domain.hi()[0] - output.domain.lo()[0] + 1 << std::endl;
-  }
-  // assert(attn->oProjSize == output.domain.hi()[0] - output.domain.lo()[0] +
-  // 1);
 
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);

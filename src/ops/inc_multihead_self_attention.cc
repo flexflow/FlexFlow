@@ -394,8 +394,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     dims[i] = _input->dims[i];
   }
   dims[0].size = _embed_dim;
-  // Currently require no parallelism along this dim, is this consistent with
-  // the removal of the previous assert?
+  // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
   if (allocate_weights) {
     // Create weight tensor
@@ -694,7 +693,6 @@ void IncMultiHeadSelfAttention::inference_task(
                     bc->num_tokens,
                     bc->num_active_requests());
   if (bc->num_tokens == 0) {
-    // printf("returned early because no tokens\n");
     return;
   }
 
@@ -714,7 +712,6 @@ void IncMultiHeadSelfAttention::inference_task(
       ctx, task->regions[1].region.get_index_space());
 
   assert(input_domain.get_dim() == 4);
-  // assert(weight_domain.get_dim() == 2);
   assert(output_domain.get_dim() == 4);
 
   assert(task->index_point.get_dim() == 1);
@@ -760,14 +757,6 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
                         EXCLUSIVE,
                         batch_inputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
-  // launcher.add_region_requirement(
-  //     RegionRequirement(weights[0]->part,
-  //                       0 /*projection id*/,
-  //                       READ_ONLY,
-  //                       EXCLUSIVE,
-  //                       weights[0]->region,
-  //                       ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
-  // launcher.add_field(idx++, FID_DATA);
   launcher.add_region_requirement(
       RegionRequirement(batch_outputs[0]->part_grad,
                         0 /*projection id*/,
@@ -775,16 +764,6 @@ FutureMap IncMultiHeadSelfAttention::peft_bwd(
                         EXCLUSIVE,
                         batch_outputs[0]->region_grad));
   launcher.add_field(idx++, FID_DATA);
-  // if (qkv_bias || final_bias) {
-  //   launcher.add_region_requirement(
-  //       RegionRequirement(weights[1]->part,
-  //                         0 /*projection id*/,
-  //                         READ_ONLY,
-  //                         EXCLUSIVE,
-  //                         weights[1]->region,
-  //                         ff.cpu_offload ? MAP_TO_ZC_MEMORY : 0));
-  //   launcher.add_field(idx++, FID_DATA);
-  // }
   return runtime->execute_index_space(ctx, launcher);
 }
 
@@ -811,44 +790,20 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
   IncMultiHeadSelfAttentionMeta *m =
       *((IncMultiHeadSelfAttentionMeta **)task->local_args);
 
-  // assert(((*m->qkv_bias || *m->final_bias) ? regions.size() == 4
-  //                                          : regions.size() == 3));
   assert(regions.size() == 2); // input grad, output grad
 
   GenericTensorAccessorW input_grad = helperGetGenericTensorAccessorRW(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
-  // GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
-  //     m->weight_type[0], regions[1], task->regions[1], FID_DATA, ctx,
-  //     runtime);
-  // GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
-  //     m->output_type[0], regions[2], task->regions[2], FID_DATA, ctx,
-  //     runtime);
   GenericTensorAccessorW output_grad = helperGetGenericTensorAccessorRW(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
   GenericTensorAccessorR biases;
-  // if (*m->qkv_bias || *m->final_bias) {
-  //   biases = helperGetGenericTensorAccessorRO(m->weight_type[1],
-  //                                             regions[3],
-  //                                             task->regions[3],
-  //                                             FID_DATA,
-  //                                             ctx,
-  //                                             runtime);
-  //   Domain bias_domain = runtime->get_index_space_domain(
-  //       ctx, task->regions[3].region.get_index_space());
-  //   assert(bias_domain.get_dim() == 4);
-  // }
 
   Domain input_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
-  // Domain weight_domain = runtime->get_index_space_domain(
-  //     ctx, task->regions[1].region.get_index_space());
-  // Domain output_grad_domain = runtime->get_index_space_domain(
-  //     ctx, task->regions[2].region.get_index_space());
   Domain output_grad_domain = runtime->get_index_space_domain(
       ctx, task->regions[1].region.get_index_space());
 
   assert(input_grad_domain.get_dim() == 4);
-  // assert(weight_domain.get_dim() == 2);
   assert(output_grad_domain.get_dim() == 4);
 
   assert(task->index_point.get_dim() == 1);
@@ -858,9 +813,7 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
       bc,
       task->index_point.point_data[0],
       input_grad,
-      // weight,
       output_grad);
-  // biases);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);

@@ -932,29 +932,15 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     //  input_ptr,
-                     //  weight_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
-                     //  bias_ptr,
                      stream);
 
   // phase 2: No need to update key/val cache
-  // IncMultiHeadSelfAttention::update_kv_cache_kernel(
-  //    m, bc, stream);
-  // use the new kernel
   compute_attention_kernel_fused<DT>(
       m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
-  // compute_o_prod_bias(m,
-  //                     bc,
-  //                     shard_id,
-  //                     output_ptr,
-  //                     weight_ptr,
-  //                     bias_ptr,
-  //                     processed_tokens_in_batch,
-  //                     stream);
   int num_tokens = bc->num_active_tokens();
   cudaMemcpyAsync(output_ptr,
                   m->attn_heads,

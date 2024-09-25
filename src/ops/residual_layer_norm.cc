@@ -109,10 +109,7 @@ void FFModel::residual_layer_norm(const Tensor input,
     assert(input->num_dims == residual2->num_dims);
   }
   for (int i = 0; i < input->num_dims; i++) {
-    if(input->dims[i] != residual1->dims[i]) {
-      printf("failed: res_norm %s: input dim %d != res dim %d\n", name, input->dims[i], residual1->dims[i]);
-    }
-    // assert(input->dims[i] == residual1->dims[i]);
+    assert(input->dims[i] == residual1->dims[i]);
     if (use_two_residuals) {
       assert(input->dims[i] == residual2->dims[i]);
     }

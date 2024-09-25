@@ -631,8 +631,6 @@ void peft_bwd_kernel(LinearMeta const *m,
                            in_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // printf("%s: input_grad has shape %d, %d\n", m->op_name, in_dim,
-    // num_peft_tokens);
   }
 }
 
