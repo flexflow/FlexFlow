@@ -99,7 +99,18 @@ with st.sidebar:
         st.header("🏋️‍♂️ LoRA Finetuning")
         
         # Hugging Face token input
-        hf_token = st.text_input("Enter your Hugging Face token:", type="password")
+        # hf_token = st.text_input("Enter your Hugging Face token:", type="password")
+        if 'hf_token' in st.session_state.keys():
+            st.success('HF token already provided!', icon='✅')
+            hf_token = st.session_state.hf_token
+            print(hf_token)
+        else:
+            hf_token = st.text_input('Enter your Hugging Face token:', type='password')
+            if not (hf_token.startswith('hf_') and len(hf_token)==37):
+                st.warning('Please enter valid credentials!', icon='⚠️')
+            else:
+                st.success('Proceed to finetuning your model!', icon='👉')
+                st.session_state.hf_token = hf_token
         
         # Dataset selection
         dataset_option = st.radio("Choose dataset source:", ["Upload JSON", "Hugging Face Dataset"])
