@@ -303,8 +303,7 @@ void load_attention_weights_to_dense_v2(DT *ptr,
                        tensor_parallelism_degree;
   if (!load_o_proj) {
     for (auto filename : weight_filenames) {
-      // std::cout << "Loading weight file " << filename << " to dense"
-      //           << std::endl;
+      std::cout << "Loading weight file " << filename << std::endl;
       std::string weight_filepath = join_path({weights_folder, filename});
 
       int data_index = 0;
@@ -358,7 +357,7 @@ void load_attention_weights_to_dense_v2(DT *ptr,
     assert(base_index == (q_size + k_replicate_size + v_replicate_size) /
                              tensor_parallelism_degree);
   } else {
-    // std::cout << "Loading weight file " << o_file << std::endl;
+    std::cout << "Loading weight file " << o_file << std::endl;
     std::string weight_filepath = join_path({weights_folder, o_file});
 
     std::ifstream in(weight_filepath, std::ios::in | std::ios::binary);
