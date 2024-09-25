@@ -278,6 +278,10 @@ __host__ void
       host_ptr, ptr, sizeof(float) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
+  if (!tensor_file) {
+    fprintf(stderr, "Error %i creating file %s\n", errno, file_name);
+    assert(false);
+  }
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
     if (i < num_elements - 1) {
@@ -299,6 +303,10 @@ __host__ void
       host_ptr, ptr, sizeof(half) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
+  if (!tensor_file) {
+    fprintf(stderr, "Error %i creating file %s\n", errno, file_name);
+    assert(false);
+  }
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
     if (i < num_elements - 1) {
@@ -321,6 +329,10 @@ __host__ void save_tensor(int32_t const *ptr,
       host_ptr, ptr, sizeof(int32_t) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
+  if (!tensor_file) {
+    fprintf(stderr, "Error %i creating file %s\n", errno, file_name);
+    assert(false);
+  }
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
     if (i < num_elements - 1) {
@@ -343,6 +355,10 @@ __host__ void save_tensor(int64_t const *ptr,
       host_ptr, ptr, sizeof(int64_t) * num_elements, cudaMemcpyDeviceToHost));
   FILE *tensor_file;
   tensor_file = fopen(file_name, "w");
+  if (!tensor_file) {
+    fprintf(stderr, "Error %i creating file %s\n", errno, file_name);
+    assert(false);
+  }
   assert(tensor_file != NULL);
   for (unsigned i = 0; i < num_elements; i++) {
     if (i < num_elements - 1) {
