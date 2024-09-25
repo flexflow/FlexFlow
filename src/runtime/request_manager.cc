@@ -899,34 +899,19 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   std::cerr << "llm_cache_size: " << prefill_request->llm_cache_size << std::endl;
 
   PageManager *page_manager = nullptr;
-  // page attention: add logical blocks here
-  // TODO: currently only support specinfer, might need to support incremental
   if (decoding_mode == SPECULATIVE_DECODING) {
-    std::cerr << "number of tokens in prefilling request: " << prefill_request->tokens.size() << std::endl;
     int start = prefill_request->llm_cache_size;
     int end = prefill_request->llm_cache_size + prefill_request->num_tokens_in_batch;
     _append_tokens_to_blocks(*prefill_request, prefill_request->tokens, true, start, end);
-    // printf("append block\n");
-    // printf("prefilling request num_tokens: %d\n", prefill_request->tokens.size());
     page_manager = PageManager::get_page_manager();
-    // printf("page manager address prepare: %p\n", page_manager);
-    assert(page_manager != nullptr);
     // we first need to update the physical block numbers
     int num_allocated_blocks = page_manager->get_num_allocated_blocks(guid);
-    std::cerr << "called prefiling num_allocated_blocks: " << num_allocated_blocks << std::endl;
-    std::cerr << "num_allocated_blocks: " << num_allocated_blocks << std::endl;
-    std::cerr << "request.blocks.size(): " << request.blocks.size() << std::endl;
     int diff_block = request.blocks.size() - num_allocated_blocks;
-    std::cerr << "diff_block: " << diff_block << std::endl;
-    assert(diff_block >= 0);
     for (int i = 0; i < diff_block; i++) {
-      assert(false);
       page_manager->allocate(guid);
     }
     bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
-    assert(bc.requestsInfo[request_index].kv_last_page_len <= 64);
     bc.requestsIndices[request_index] = page_manager->get_block_table_indices(guid);
-    // update the num kv pages
     bc.requestsInfo[request_index].num_kv_pages = bc.requestsIndices[request_index].size();
     bc.requestsInfo[request_index].request_guid = guid;
   }
@@ -949,19 +934,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   if (verbose) {
     std::cout << "prepare_llm_prefilling_batch NEW batchconfig:" << std::endl;
     bc.print();
-    // also print the page indices
-    if (decoding_mode == SPECULATIVE_DECODING) {
-      std::cout << "page indices are: " << std::endl;
-      std::vector<int> page_indices = page_manager -> get_block_table_indices(1000000);
-      for (int i = 0; i < page_indices.size(); i++) {
-        std::cout << page_indices[i] << " ";
-      }
-      std::cout << "last page len: " << request.blocks.back().get_num_alloc_slots() << std::endl;
-      std::cout << "last page commit token: " << request.blocks.back().num_commit_tokens << std::endl;
-      std::cout << "last page spec token: " << request.blocks.back().num_spec_tokens << std::endl;
-    }
   }
-  // printf("end of prepare_llm_prefilling_batch\n");
   return bc;
 }
 
@@ -1263,7 +1236,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     std::cout
         << "\n############### prepare_verify_batch_config ###############\n";
   }
-  // printf("prepare_verify_batch_config_lalala\n");
   // This method does the following:
   // 1. Commit the verified tokens in the last iteration through the
   // BatchConfig. We can do this request by request.
@@ -1306,19 +1278,16 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
 
     //page attention:  delete the spec tokens in the logical block
     assert(request.blocks.size() == page_manager->get_num_allocated_blocks(guid));
-    // get a copy of guid's physical blocks table
     std::vector<int> block_table = page_manager->get_block_table_indices(guid);
     std::vector<int> block_table_copy = block_table;
     if (request.page_id_commit + 1 < request.blocks.size()) {
       request.blocks.erase(request.blocks.begin() + request.page_id_commit + 1, request.blocks.end());
-      // std::cerr << "page_id_commit: " << request.page_id_commit << std::endl;
       page_manager->erase_last_pages(guid, request.page_id_commit);
     }
     request.blocks.back().reset_num_spec_tokens();
     block_table = page_manager->get_block_table_indices(guid);
 
     // we still need to assure that number of logical blocks is the same as the number of physical blocks
-    // std::cerr << "number of logical blocks after: " << request.blocks.size() << std::endl;
     assert(request.blocks.size() == page_manager->get_num_allocated_blocks(guid));
 
 
@@ -1344,19 +1313,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       // page attention: add to request's logical block
       _append_tokens_to_blocks(request, {committed_token.token_id}, true);
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth = page_manager->get_block_table_indices(guid).back() * kPagesize + request.blocks.back().get_num_alloc_slots() - 1;
-      printf("token depth: %d\n", new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth);
-      printf("back index: %d\n", page_manager->get_block_table_indices(guid).back());
-      printf("last commit page: %d\n", request.page_id_commit);
-      // printf("index_to_kv_cache: %d\n", new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_to_kv_cache);
     }
-
-    // printf("num tokens currently in the last page: %d\n", request.blocks.back().get_num_alloc_slots());
-
-
-    // Load the tokens on the token tree that are not yet pruned to
-    // BatchConfig.tokensInfo.
-    // page attention: we should also add these tokens to the logical blocks
-    // std:cerr << "here1\n" << std::endl;
     TokenTree &token_tree = request.speculative_token_trees[0];
     int token_tree_index = 0;
     int layer_index = 0;
@@ -1376,36 +1333,20 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       }
       layer_index++;
     }
-    // std::cerr << "here2\n" << std::endl;
     assert(token_tree_index == token_tree.tree_size);
-    // page attention: add metadata here
-    // I think we are now already have updated logical block data in update_results, and 
-    // we need to update the block table here
-
-    // get page manager
-    // we first need to update the physical block numbers
     int diff_block = request.blocks.size() - page_manager->get_num_allocated_blocks(guid);
     assert(diff_block >= 0);
     for (int i = 0; i < diff_block; i++) {
-      std::cerr << "allocate new block\n";
-      assert(false);
       page_manager->allocate(guid);
     }
 
-    std::cerr << "number of physical blocks after: " << page_manager->get_num_allocated_blocks(guid) << std::endl;
-    for (int i = 0; i < page_manager->get_block_table_indices(guid).size(); i++) {
-      std::cerr << page_manager->get_block_table_indices(guid)[i] << " ";
-    }
-    std::cerr << std::endl;
     // update last kv len
     new_bc.requestsInfo[request_index].kv_last_page_len = request.blocks.back().get_num_alloc_slots();
     // update the block table
     new_bc.requestsIndices[request_index] = page_manager->get_block_table_indices(guid);
     // update the num kv pages
     new_bc.requestsInfo[request_index].num_kv_pages = new_bc.requestsIndices[request_index].size();
-
     new_bc.requestsInfo[request_index].request_guid = guid;
-    
     new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;
 
     request.first_token_offset_in_batch = new_bc.num_tokens - token_tree_index;
@@ -1419,14 +1360,6 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
   if (verbose) {
     std::cout << "prepare_verify_batch_config NEW batchconfig:" << std::endl;
     new_bc.print();
-    std::cout << "page indices are: " << std::endl;
-    std::vector<int> page_indices = page_manager -> get_block_table_indices(1000000);
-    for (int i = 0; i < page_indices.size(); i++) {
-      std::cout << page_indices[i] << " ";
-    }
-    std::cout << "last page len: " << all_requests[1000000].blocks.back().get_num_alloc_slots() << std::endl;
-    std::cout << "last page commit token: " << all_requests[1000000].blocks.back().num_commit_tokens << std::endl;
-    std::cout << "last page spec token: " << all_requests[1000000].blocks.back().num_spec_tokens << std::endl;
   }
   profiling.llm_step_start = Realm::Clock::current_time_in_microseconds();
   return new_bc;
@@ -1594,13 +1527,10 @@ void RequestManager::_append_logical_block_to_request(
   // update page_id_commit
   if (is_commit) {
     request.page_id_commit++;
-    // printf("page_id_commit: %d\n", request.page_id_commit);
-    // printf("blocks size: %d\n", request.blocks.size());
     assert(request.page_id_commit < request.blocks.size());
   }
 }
 
-// [start, end) is the number of tokens that we want to extract
 void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens, bool is_commit, int start, int end) {
   assert(start >= 0 && start < tokens.size());
   int cursor = start;

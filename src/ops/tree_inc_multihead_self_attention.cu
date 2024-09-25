@@ -103,7 +103,6 @@ using flashinfer::QKVLayout;
 __device__ __forceinline__ size_t get_k_entry_offset(int const token_idx,
                                                      int const page_idx,
                                                      int const hidden_size) {
-  // page attention: changed
   size_t index = ((page_idx) * kPagesize * 2 + (token_idx % kPagesize)) * hidden_size;
   return index;
 }
@@ -138,7 +137,6 @@ __global__ void commit_tokens_kernel(
     }
   }
   // get the starting index of kv page
-  // page attention: WARNING: this implicitly assume that the kv page is stored in the same order as the available requests
   int start = kv_indptr[requext_idx_in_batch];
   int end = kv_indptr[requext_idx_in_batch + 1] - 1;
   for (int i = 0; i < num_committed_tokens; i++) {
@@ -154,8 +152,6 @@ __global__ void commit_tokens_kernel(
       int const page_from_idx = kv_page_indices[start + (tok_id / kPagesize)];
 
       // page attention: since we cannot store temporary tokens in the cache, we need to figure out another way
-      // WARNING: we assume that index_in_kv_cache is flattened index in gpu memory
-      // index_in_kv_cache is actually the flattened index 
       size_t from_k_idx = get_k_entry_offset(index_in_kv_cache, page_from_idx, hidden_size),
              from_v_idx = get_v_entry_offset(index_in_kv_cache, page_from_idx, hidden_size);
 
@@ -309,7 +305,6 @@ __global__ void
   size_t from_idx = token_idx * QKV_WEIGHT_NUM * hidden_size;
   size_t to_k_idx = get_k_entry_offset(token_abs_idx, page_idx, hidden_size),
          to_v_idx = get_v_entry_offset(token_abs_idx, page_idx, hidden_size);
-  // printf("to_k_idx: %lu, to_v_idx: %lu\n", to_k_idx, to_v_idx);
 
   // key and value cache should be stored interleaved
   kCache_ptr[to_k_idx + offset] =
@@ -471,15 +466,6 @@ void tree_verify_attention(TreeIncMultiHeadSelfAttentionMeta const *m,
               m->handle.tree_verify_attention_metadata->kv_last_page_len,
               sizeof(int32_t) * BatchConfig::MAX_NUM_REQUESTS,
               cudaMemcpyDeviceToHost);
-  //print the request information
-  // for (int i = 0; i < bc->num_active_requests(); i++) {
-  //   printf("request %d: ", i);
-  //   for (int j = kv_indptr_tmp[i]; j < kv_indptr_tmp[i + 1]; j++) {
-  //     printf("%d ", kv_indices_tmp[j]);
-  //   }
-  //   printf("\n");
-  // }
-  // printf("last page length: %d\n", kv_last_page_len_tmp[0]);
   paged_kv_t<PageStorage::kIndices, QKVLayout::kNHD, half, int32_t> paged_kv(
       num_kv_heads,
       kPagesize,

@@ -67,7 +67,7 @@ void RequestManager::load_tokens_task(
   }
 }
 
-// TODO: add detailed documentation
+// pass the kv page related information to the handle located at GPU
 void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
                                        PageManager *pm,
                                        FFHandler handle,
@@ -80,8 +80,6 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
                                        int32_t *qk_indptr_h) {
   int batch_size = batch_config->num_active_requests();
   // we just search for the page number for each request
-  // kv_last_page_len can be handled
-  // kv_indices can be handled
   q_indptr_h[0] = 0;
   kv_indptr_h[0] = 0;
   qk_indptr_h[0] = 0;
@@ -542,20 +540,6 @@ void RequestManager::load_batch_config_task(
           handler = static_cast<BatchPrefillHandler *>(
             handle.tree_verify_attention_metadata->prompt_handler_collections[batch_size]);
         }
-
-        // static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
-        // q_indptr_h[0] = 0;
-        // kv_indptr_h[0] = 0;
-        // for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
-        //   if (batch_config->request_available[req_idx]) {
-        //     int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
-        //     int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
-        //                 batch_config->requestsInfo[req_idx].first_token_index_in_request;
-        //     q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
-        //     kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx] + (kv_len + kPagesize - 1) / kPagesize;
-        //     indptr_idx++;
-        //   }
-        // }
 
         handler->SetCUDAStream(stream);
         handler->BeginForward<half, int32_t>(static_cast<void*>(

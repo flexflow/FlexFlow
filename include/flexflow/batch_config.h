@@ -71,9 +71,8 @@ public:
     int num_tokens_in_batch = 0;
 
     // page attention: we need some additional attention information here to allocate physical blocks in load_batch_config
-    // TODO: might need to add more fields here
     int32_t num_kv_pages; //number of kv pages used
-    int32_t kv_last_page_len;
+    int32_t kv_last_page_len; //last page length of kv
     RequestGuid request_guid;
   };
 
@@ -88,7 +87,7 @@ public:
     int request_index = -1;
   };
 
-  std::vector<int32_t> page_indices; //the indices for each page
+  std::vector<int32_t> page_indices; //the physical block indices for each page
 
   struct CommittedTokensInfo {
     int index_in_kv_cache = -1; // the index in the temporary key-value cache
