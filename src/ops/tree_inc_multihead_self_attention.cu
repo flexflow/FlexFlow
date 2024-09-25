@@ -656,8 +656,6 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   if (!bc->prompt_phase) {
     commit_tokens(m, bc, stream);
-  }else{
-    // printf("prompt phase in attention\n");
   }
 
   //   cudaEventRecord(t_end, stream);
