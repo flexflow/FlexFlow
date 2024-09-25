@@ -2057,7 +2057,7 @@ class Request:
         self,
         req_type: RequestType,
         prompt: str = None,
-        max_sequence_length: int = 128,
+        max_sequence_length: int = 2048,
         peft_model_id: PEFTModelID = None,
         dataset_filepath: str = None,
         max_training_steps: int = 1,
@@ -4665,7 +4665,7 @@ class FFModel(object):
         assert ret_val == True
         return np_array
 
-    def generate_inf_only(self, prompt_list: List[str], max_sequence_length: int = 128):
+    def generate_inf_only(self, prompt_list: List[str], max_sequence_length: int = 2048):
         assert isinstance(prompt_list, list)
         c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
         max_num_chars = 5 * (max_sequence_length + 100)

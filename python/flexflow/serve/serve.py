@@ -498,7 +498,7 @@ class LLM:
     def generate(
         self,
         requests_or_prompts: Union[str, List[str], Request, List[Request]],
-        max_length: int = 128,
+        max_length: int = 2048,
     ):
         """Generate tokens based on the input prompt(s)
 
@@ -568,7 +568,7 @@ class SSM(LLM):
         generation_config: GenerationConfig = GenerationConfig(),
         max_requests_per_batch: int = 16,
         max_seq_length: int = 256,
-        max_tokens_per_batch: int = 128,
+        max_tokens_per_batch: int = 2048,
         enable_peft_finetuning: bool = False,
         model_specific_data_parallelism_degree: int = 1,
         model_specific_tensor_parallelism_degree: int = 1,
@@ -582,7 +582,7 @@ class SSM(LLM):
         :type max_requests_per_batch: int, optional
         :param max_seq_length: The maximum sequence length to allow per batch, defaults to 256
         :type max_seq_length: int, optional
-        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 128
+        :param max_tokens_per_batch: The maximum number of tokens (across requests) to allow per batch, defaults to 2048
         :type max_tokens_per_batch: int, optional
         :param enable_peft_finetuning: Whether to enable support for PEFT fine-tuning, defaults to False
         :type enable_peft_finetuning: bool, optional
