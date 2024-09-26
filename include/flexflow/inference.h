@@ -15,8 +15,11 @@
 
 #pragma once
 #include "flexflow/batch_config.h"
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
+
+using json = nlohmann::json;
 
 namespace FlexFlow {
 
@@ -89,8 +92,32 @@ public:
 
   // Simulate next request arrival time
   virtual double get_next_interval_ms() = 0;
-  double sample_slo_ratio();
+  virtual double sample_slo_ratio();
   double get_elapsed_time_ms();
+};
+
+class EmissionTrace {
+public:
+  std::string prompt;
+  int input_length, output_length;
+  double slo_ratio;
+  double emission_time_ms;
+
+  EmissionTrace(std::string prompt_,
+                int input_length_,
+                int output_length_,
+                double slo_ratio_,
+                double emission_time_ms_)
+      : prompt(prompt_), input_length(input_length_),
+        output_length(output_length_), slo_ratio(slo_ratio_),
+        emission_time_ms(emission_time_ms_) {}
+  EmissionTrace(GenerationResult const &result)
+      : prompt(result.input_text), input_length(result.input_tokens.size()),
+        output_length(result.output_tokens.size()), slo_ratio(result.slo_ratio),
+        emission_time_ms(result.emission_time_ms) {}
+  EmissionTrace(json const &json_obj);
+
+  json to_json() const;
 };
 
 class ConstantEmissionMachine : public EmissionMachine {
@@ -115,6 +142,20 @@ public:
         lambda(req_per_s_) {}
 
   double get_next_interval_ms() override;
+};
+
+class TraceEmissionMachine : public EmissionMachine {
+public:
+  std::vector<double> timestamps, ratios;
+  size_t idx;
+
+  TraceEmissionMachine(std::vector<double> const &timestamps_,
+                       std::vector<double> const &ratios_)
+      : EmissionMachine(EmissionMode::Trace, 0, {}), timestamps(timestamps_),
+        ratios(ratios_), idx(0) {}
+
+  double get_next_interval_ms() override;
+  double sample_slo_ratio() override;
 };
 
 #include <string>

@@ -22,6 +22,7 @@
 #include "flexflow/ops/noop.h"
 #include "flexflow/parallel_ops/parallel_op.h"
 #include "flexflow/request_manager.h"
+#include <cassert>
 #include <random>
 
 namespace FlexFlow {
@@ -700,6 +701,24 @@ double EmissionMachine::get_elapsed_time_ms() {
   return elapsed_time_ms;
 }
 
+EmissionTrace::EmissionTrace(json const &json_obj) {
+  prompt = json_obj["prompt"].get<std::string>();
+  input_length = json_obj["input_length"].get<int>();
+  output_length = json_obj["output_length"].get<int>();
+  slo_ratio = json_obj["slo_ratio"].get<double>();
+  emission_time_ms = json_obj["emission_time_ms"].get<double>();
+}
+
+json EmissionTrace::to_json() const {
+  json json_obj;
+  json_obj["prompt"] = prompt;
+  json_obj["input_length"] = input_length;
+  json_obj["output_length"] = output_length;
+  json_obj["slo_ratio"] = slo_ratio;
+  json_obj["emission_time_ms"] = emission_time_ms;
+  return json_obj;
+}
+
 double ConstantEmissionMachine::get_next_interval_ms() {
   return interval_ms;
 }
@@ -713,7 +732,17 @@ double PoissonEmissionMachine::get_next_interval_ms() {
   return distribution(generator) * 1e3;
 }
 
+double TraceEmissionMachine::get_next_interval_ms() {
+  if (timestamps.empty()) {
+    return 0;
+  }
+  double next_interval = timestamps[idx] - elapsed_time_ms;
+  idx++;
+  return next_interval;
+}
+
 double EmissionMachine::sample_slo_ratio() {
+  assert(!slo_ratios.empty());
   static std::default_random_engine generator(
       std::chrono::system_clock::now().time_since_epoch().count());
   static std::uniform_real_distribution<double> distribution(0.0, 1.0);
@@ -725,5 +754,14 @@ double EmissionMachine::sample_slo_ratio() {
     }
   }
   return slo_ratios.back().first;
+}
+
+double TraceEmissionMachine::sample_slo_ratio() {
+  // NOTE: Should be called before wait_until_next_request.
+  if (ratios.empty()) {
+    return 1.0;
+  }
+  double next_slo_ratio = ratios[idx];
+  return next_slo_ratio;
 }
 }; // namespace FlexFlow

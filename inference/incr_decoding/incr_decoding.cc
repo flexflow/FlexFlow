@@ -23,8 +23,6 @@
 #include <cassert>
 #include <wordexp.h>
 
-#include <nlohmann/json.hpp>
-
 using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
@@ -34,6 +32,7 @@ LegionRuntime::Logger::Category log_app("llama");
 struct FilePaths {
   std::string cache_folder_path;
   std::string prompt_file_path;
+  std::string trace_file_path;
   std::string output_file_path;
 };
 
@@ -76,6 +75,11 @@ void parse_input_args(char **argv,
     // prompts
     if (!strcmp(argv[i], "-prompt")) {
       paths.prompt_file_path = std::string(argv[++i]);
+      continue;
+    }
+    // traces
+    if (!strcmp(argv[i], "-trace")) {
+      paths.trace_file_path = std::string(argv[++i]);
       continue;
     }
     // output file
@@ -348,55 +352,69 @@ void FlexFlow::top_level_task(Task const *task,
   rm->start_background_server(&model);
 
   {
-    using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
-
-    // Parse slo_ratios
-    std::vector<std::pair<double, double>> slo_ratios;
-    if (prompt_json[0].contains("slo_ratios")) {
-      for (auto &[key, value] : prompt_json[0]["slo_ratios"].items()) {
-        slo_ratios.emplace_back(std::stod(key), value.get<double>());
-      }
-    }
-    double total =
-        std::accumulate(slo_ratios.begin(),
-                        slo_ratios.end(),
-                        0.0,
-                        [](double sum, std::pair<double, double> const &pair) {
-                          return sum + pair.second;
-                        });
-    if (std::abs(total - 1.0) > 1e-6) {
-      std::cerr << "Error: slo_ratios values do not sum to 1. Total sum: "
-                << total << std::endl;
-      assert(false);
-    }
-
     std::vector<GenerationRequest> requests;
-    for (size_t i = 1; i < prompt_json.size(); ++i) {
-      requests.push_back(GenerationRequest(
-          prompt_json[i]["prompt"].get<std::string>(), -1.0, 0));
+    std::vector<GenerationResult> results;
+
+    if (!file_paths.prompt_file_path.empty()) {
+      std::ifstream file_handle(file_paths.prompt_file_path);
+      assert(file_handle.good() && "Prompt file does not exist.");
+      json prompt_json = json::parse(file_handle,
+                                     /*parser_callback_t */ nullptr,
+                                     /*allow_exceptions */ true,
+                                     /*ignore_comments */ true);
+
+      // Parse slo_ratios
+      std::vector<std::pair<double, double>> slo_ratios;
+      if (prompt_json[0].contains("slo_ratios")) {
+        for (auto &[key, value] : prompt_json[0]["slo_ratios"].items()) {
+          slo_ratios.emplace_back(std::stod(key), value.get<double>());
+        }
+      }
+      double total = std::accumulate(
+          slo_ratios.begin(),
+          slo_ratios.end(),
+          0.0,
+          [](double sum, std::pair<double, double> const &pair) {
+            return sum + pair.second;
+          });
+      if (std::abs(total - 1.0) > 1e-6) {
+        std::cerr << "Error: slo_ratios values do not sum to 1. Total sum: "
+                  << total << std::endl;
+        assert(false);
+      }
+      for (size_t i = 1; i < prompt_json.size(); ++i) {
+        requests.push_back(GenerationRequest(
+            prompt_json[i]["prompt"].get<std::string>(), -1.0, 0));
+      }
+      PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
+      // ConstantEmissionMachine emission_machine(-1, slo_ratios);
+      results = model.generate(requests, emission_machine);
+    } else if (!file_paths.trace_file_path.empty()) {
+      std::ifstream file_handle(file_paths.trace_file_path);
+      assert(file_handle.good() && "Trace file does not exist.");
+      json trace_json = json::parse(file_handle,
+                                    /*parser_callback_t */ nullptr,
+                                    /*allow_exceptions */ true,
+                                    /*ignore_comments */ true);
+      std::vector<double> timestamps, ratios;
+      for (auto const &json_obj : trace_json) {
+        EmissionTrace trace(json_obj);
+        requests.push_back(GenerationRequest(trace.prompt, -1.0, 0));
+        timestamps.push_back(trace.emission_time_ms);
+        ratios.push_back(trace.slo_ratio);
+      }
+      TraceEmissionMachine emission_machine(timestamps, ratios);
+      results = model.generate(requests, emission_machine);
+    } else {
+      assert(false && "No prompt or trace file provided.");
     }
-    PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
-    // ConstantEmissionMachine emission_machine(-1, slo_ratios);
-    std::vector<GenerationResult> result =
-        model.generate(requests, emission_machine);
 
     // output generation results as json
     if (!emission_file_path.empty()) {
       json output_json;
-      for (size_t i = 0; i < result.size(); ++i) {
-        json result_json;
-        result_json["prompt"] = requests[i].prompt;
-        result_json["input_length"] = result[i].input_tokens.size();
-        result_json["output_length"] = result[i].output_tokens.size();
-        result_json["slo_ratio"] = result[i].slo_ratio;
-        result_json["emission_time_ms"] = result[i].emission_time_ms;
-        output_json.push_back(result_json);
+      for (size_t i = 0; i < results.size(); ++i) {
+        EmissionTrace trace(results[i]);
+        output_json.push_back(trace.to_json());
       }
       std::ofstream emission_file_handle(emission_file_path);
       emission_file_handle << output_json.dump(2) << std::endl;
