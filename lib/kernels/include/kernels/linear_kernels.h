@@ -4,7 +4,7 @@
 #include "device.h"
 #include "ff_handle.h"
 #include "op-attrs/datatype.h"
-#include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/linear_attrs.dtg.h"
 
 namespace FlexFlow {
 

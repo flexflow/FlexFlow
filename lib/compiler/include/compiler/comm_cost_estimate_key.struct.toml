@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "CommCostEstimateKey"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/parallel_tensor_shape.dtg.h",
+  "pcg/machine_view.dtg.h",
+]
+
+[[fields]]
+name = "parallel_tensor_shape"
+type = "::FlexFlow::ParallelTensorShape"
+
+[[fields]]
+name = "src_machine_view"
+type = "::FlexFlow::MachineView"
+
+[[fields]]
+name = "dst_machine_view"
+type = "::FlexFlow::MachineView"

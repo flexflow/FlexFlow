@@ -1,20 +1,17 @@
 namespace = "FlexFlow"
 name = "MachineMappingContext"
-features = [
-]
+features = []
 
 includes = [
-  "compiler/machine_mapping/machine_mapping.dtg.h",
-  "pcg/parallel_computation_graph/parallel_computation_graph.h",
   "compiler/cost_estimator.h",
-  "pcg/machine_view.h",
+  "pcg/machine_view.dtg.h",
   "pcg/machine_specification.dtg.h",
-  "compiler/machine_mapping/machine_mapping_cache.h"
+  "compiler/machine_mapping/transitive_reduced_pcg.dtg.h",
 ]
 
 [[fields]]
-name = "pcg"
-type = "::FlexFlow::ParallelComputationGraph"
+name = "transitive_reduced_pcg"
+type = "::FlexFlow::TransitiveReducedPCG"
 
 [[fields]]
 name = "cost_estimator"
@@ -23,7 +20,3 @@ type = "::FlexFlow::CostEstimator"
 [[fields]]
 name = "allowed_machine_views"
 type = "std::function<std::unordered_set<::FlexFlow::MachineView>(::FlexFlow::ParallelLayerAttrs const &, ::FlexFlow::MachineSpecification const &)>"
-
-[[fields]]
-name = "cached_subgraph_results"
-type = "::FlexFlow::MachineMappingCache"

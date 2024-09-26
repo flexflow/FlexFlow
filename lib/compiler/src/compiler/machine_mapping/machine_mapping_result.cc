@@ -4,9 +4,10 @@
 namespace FlexFlow {
 
 MachineMappingResult sequential_combine(MachineMappingResult const &s1,
+                                        float comm_cost,
                                         MachineMappingResult const &s2) {
   return MachineMappingResult{
-      s1.runtime + s2.runtime,
+      s1.runtime + comm_cost + s2.runtime,
       combine_disjoint_mappings(s1.machine_mapping, s2.machine_mapping)};
 }
 

@@ -11,9 +11,6 @@
 
 namespace FlexFlow {
 
-template <typename Container, typename Element = typename Container::value_type>
-Element sum(Container const &container);
-
 template <typename Container,
           typename ConditionF,
           typename Element = typename Container::value_type>

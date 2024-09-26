@@ -3,7 +3,7 @@
 
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/sim_environment.h"
-#include "op-attrs/ops/pool_2d.h"
+#include "op-attrs/ops/pool_2d_attrs.dtg.h"
 
 namespace FlexFlow {
 

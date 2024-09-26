@@ -4,6 +4,7 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/dataflow_graph/algorithms/get_dataflow_edges_from_node_to_node.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
@@ -41,6 +42,16 @@ ParallelLayerAddedResult
           [](DataflowOutput const &o) { return parallel_tensor_guid_t{o}; }),
   };
 }
+
+std::unordered_set<ParallelComputationGraphEdge> get_pcg_edges_from_layer_to_layer(ParallelComputationGraph const &pcg,
+                                                                                   parallel_layer_guid_t const &src,
+                                                                                   parallel_layer_guid_t const &dst) {
+  std::unordered_set<DataflowEdge> raw_edges =  get_dataflow_edges_from_node_to_node(pcg.raw_graph,
+                                                                                     src.raw_graph_node,
+                                                                                     dst.raw_graph_node);
+  return transform(raw_edges, [](DataflowEdge const &e) { return ParallelComputationGraphEdge{e}; });
+}
+
 
 std::vector<parallel_tensor_guid_t>
     get_incoming_tensors(ParallelComputationGraph const &pcg,
@@ -114,6 +125,12 @@ ParallelTensorAttrs
     get_parallel_tensor_attrs(ParallelComputationGraph const &pcg,
                               parallel_tensor_guid_t const &t) {
   return pcg.raw_graph.at(t.raw_graph_output);
+}
+
+ParallelTensorShape
+    get_parallel_tensor_shape(ParallelComputationGraph const &pcg,
+                              parallel_tensor_guid_t const &t) {
+  return get_parallel_tensor_attrs(pcg, t).shape;
 }
 
 std::vector<parallel_layer_guid_t>

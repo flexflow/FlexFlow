@@ -1,7 +1,6 @@
 #include "doctest/doctest.h"
 #include "legion/legion_utilities.h"
 #include "op-attrs/ffconst.h"
-#include "op-attrs/operator_attrs.h"
 #include "serialization.h"
 #include <rapidcheck.h>
 

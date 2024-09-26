@@ -2,6 +2,7 @@ namespace = "FlexFlow"
 name = "MachineMappingResult"
 features = [
   "eq",
+  "hash",
   "fmt",
 ]
 

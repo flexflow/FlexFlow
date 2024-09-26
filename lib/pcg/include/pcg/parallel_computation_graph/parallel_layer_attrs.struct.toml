@@ -10,7 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/operator_attrs.h",
+  "op-attrs/pcg_operator_attrs.dtg.h",
   "utils/stack_string.h",
   "<optional>",
 ]

@@ -1,95 +1,34 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
 #include "compiler/cost_estimator.h"
 #include "compiler/machine_mapping/get_allowed_machine_views_list.h"
+#include "compiler/machine_mapping/get_machine_resource_splits.h"
 #include "compiler/machine_mapping/machine_mapping_result.h"
-#include "compiler/machine_mapping/split_sp_decomposition.h"
+#include "compiler/machine_mapping/partial_machine_mapping.dtg.h"
+#include "compiler/machine_mapping/partial_machine_mapping.h"
+#include "compiler/machine_mapping/transitive_reduced_pcg.h"
+#include "compiler/series_parallel/pcg_binary_sp_decomposition.dtg.h"
+#include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.dtg.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
-#include "substitutions/sub_parallel_computation_graph.h"
-#include "utils/containers.h"
-#include "utils/containers/as_vector.h"
 #include "utils/containers/contains.h"
-#include "utils/containers/contains_key.h"
-#include "utils/containers/filter.h"
 #include "utils/containers/generate_map.h"
-#include "utils/containers/get_only.h"
+#include "utils/containers/get_all_assignments.h"
 #include "utils/containers/keys.h"
-#include "utils/containers/merge_maps.h"
-#include "utils/containers/restrict_keys.h"
-#include "utils/containers/set_minus.h"
 #include "utils/containers/unordered_set_of.h"
-#include "utils/containers/values.h"
 #include "utils/exception.h"
-#include "utils/graph/dataflow_graph/algorithms.h"
-#include "utils/graph/graph_split.dtg.h"
-#include "utils/graph/node/algorithms.h"
-#include "utils/graph/serial_parallel/get_serial_parallel_decomposition.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.h"
-#include "utils/graph/serial_parallel/serial_parallel_splits.h"
 #include "utils/overload.h"
+#include "compiler/series_parallel/pcg_binary_parallel_split.dtg.h"
+#include "compiler/series_parallel/pcg_binary_parallel_split.h"
+#include "compiler/series_parallel/pcg_binary_series_split.h"
+#include "compiler/machine_mapping/machine_mapping_context.h"
+#include "utils/containers/flatmap.h"
+#include "compiler/machine_mapping/estimate_layer_cost.h"
+
 
 namespace FlexFlow {
-
-std::vector<std::pair<MachineSpecification, MachineSpecification>>
-    get_resource_split(MachineSpecification const &resource) {
-  std::vector<std::pair<MachineSpecification, MachineSpecification>> result;
-  for (int i = 1; i < resource.num_nodes; ++i) {
-    MachineSpecification sub_resource1 = resource, sub_resource2 = resource;
-    sub_resource1.num_nodes = i;
-    sub_resource2.num_nodes = resource.num_nodes - i;
-    result.push_back(std::make_pair(sub_resource1, sub_resource2));
-  }
-  return result;
-}
-
-GraphSplit
-    get_graph_split(SerialParallelDecomposition const &pre_decomposition,
-                    SerialParallelDecomposition const &post_decomposition) {
-  return GraphSplit{get_nodes(pre_decomposition),
-                    get_nodes(post_decomposition)};
-}
-
-float singleton_subgraph_cost(
-    ParallelComputationGraph const &pcg,
-    CostEstimator const &estimator,
-    parallel_layer_guid_t const &layer,
-    std::unordered_map<parallel_tensor_guid_t, MachineView> const
-        &machine_views) {
-  // TODO: Replace it with the actual implementation.
-  auto get_input_shapes = [&](parallel_layer_guid_t) {
-    return std::vector<ParallelTensorShape>{};
-  };
-  auto get_weight_attrs = [&](parallel_layer_guid_t) {
-    return std::vector<ParallelTensorAttrs>{};
-  };
-  auto get_output_attrss = [&](parallel_layer_guid_t) {
-    return std::vector<ParallelTensorAttrs>{};
-  };
-
-  assert(contains_key(machine_views, get_layer_outputs(pcg, layer)[0]));
-  MachineView layer_machine_view =
-      machine_views.at(get_layer_outputs(pcg, layer)[0]);
-  float computation_cost =
-      estimator.estimate_cost(get_parallel_layer_attrs(pcg, layer).op_attrs,
-                              get_input_shapes(layer),
-                              get_weight_attrs(layer),
-                              get_output_attrss(layer),
-                              layer_machine_view);
-  float communication_cost = 0;
-  for (parallel_tensor_guid_t const &input : get_layer_inputs(pcg, layer)) {
-    assert(contains_key(machine_views, input));
-    communication_cost = std::max(
-        communication_cost,
-        estimator.estimate_cost(get_parallel_tensor_attrs(pcg, input).shape,
-                                machine_views.at(input),
-                                layer_machine_view));
-  }
-  return computation_cost + communication_cost;
-}
 
 MachineMappingResult get_optimal_machine_mapping(
     ParallelComputationGraph const &pcg,
@@ -98,118 +37,196 @@ MachineMappingResult get_optimal_machine_mapping(
         &allowed_machine_views,
     CostEstimator const &cost_estimator,
     MachineSpecification const &resources,
-    MachineMappingCache &cached_subgraph_results) {
+    MachineMappingCache &result_cache) {
 
-  MachineMappingContext context(
-      pcg, cost_estimator, allowed_machine_views, cached_subgraph_results);
+  MachineMappingContext context = make_machine_mapping_context(
+      pcg, 
+      cost_estimator, 
+      allowed_machine_views);
+
   MachineMappingResult result =
-      get_optimal_machine_mapping_internal(context, resources);
-  cached_subgraph_results = context.cached_subgraph_results;
+      get_optimal_machine_mapping_internal(result_cache, context, resources);
+
   return result;
 }
 
 MachineMappingResult get_optimal_machine_mapping_internal(
-    MachineMappingContext &context, MachineSpecification const &resources) {
-  std::optional<SerialParallelDecomposition> decompn_optional =
-      get_serial_parallel_decomposition(context.pcg.raw_graph);
+    MachineMappingCache &result_cache,                                                          
+    MachineMappingContext &context, 
+    MachineSpecification const &resources) {
 
-  if (!decompn_optional) {
-    throw mk_runtime_error("Failed to get serial parallel decomposition");
-  }
+  PCGBinarySPDecomposition sp_decomposition_tree = ({
+    std::optional<PCGBinarySPDecomposition> returned = get_pcg_balanced_binary_sp_decomposition(context.transitive_reduced_pcg.full_pcg);
+    if (!returned.has_value()) {
+      throw mk_runtime_error("Failed to get serial parallel decomposition");
+    }
+    returned.value();
+  });
 
-  SerialParallelDecomposition decompn = decompn_optional.value();
-
-  return get_optimal_machine_mapping_internal(context, decompn, resources, {});
+  return get_optimal_machine_mapping_internal(result_cache, 
+                                              context, 
+                                              sp_decomposition_tree, 
+                                              resources,
+                                              get_unconstrained_solution());
 }
 
 MachineMappingResult get_optimal_machine_mapping_internal(
+    MachineMappingCache &result_cache,
     MachineMappingContext &context,
-    SerialParallelDecomposition const &decompn,
-    MachineSpecification const &resource,
-    std::unordered_map<parallel_tensor_guid_t, MachineView> const
-        &fixed_machine_views) {
+    PCGBinarySPDecomposition const &sp_decomposition_tree,
+    MachineSpecification const &resources,
+    PartialMachineMapping const &partial_solution) {
 
-  MachineMappingState state(decompn, resource, fixed_machine_views);
-  std::optional<MachineMappingResult> cached_result =
-      context.cached_subgraph_results.load(state);
-  if (cached_result) {
-    return cached_result.value();
+  MachineMappingState state = MachineMappingState{
+    sp_decomposition_tree, resources, partial_solution,
+  };
+
+  {
+    std::optional<MachineMappingResult> cached_result =
+        result_cache.load(state);
+    if (cached_result) {
+      return cached_result.value();
+    }
   }
 
-  MachineMappingResult result = decompn.visit<MachineMappingResult>(
-      overload{[&](SerialSplit const &serial) {
-                 return get_optimal_machine_mapping_internal(
-                     context, serial, resource, fixed_machine_views);
-               },
-               [&](ParallelSplit const &parallel) {
-                 return get_optimal_machine_mapping_internal(
-                     context, parallel, resource, fixed_machine_views);
-               },
-               [&](Node const &node) {
-                 return get_optimal_machine_mapping_internal(
-                     context, node, resource, fixed_machine_views);
-               }});
+  MachineMappingResult result = visit<MachineMappingResult>(
+    sp_decomposition_tree,
+    [&](auto const &decomp_tree_node) {
+      return get_optimal_machine_mapping_internal(context, decomp_tree_node, resources, partial_solution);
+    });
 
-  context.cached_subgraph_results.save(state, result);
+  result_cache.save(state, result);
   return result;
 }
 
 MachineMappingResult get_optimal_machine_mapping_internal(
-    MachineMappingContext &context,
-    SerialSplit const &serial,
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &context,
+    PCGBinarySeriesSplit const &series,
     MachineSpecification const &resource,
-    std::unordered_map<parallel_tensor_guid_t, MachineView> const
-        &fixed_machine_views) {
+    PartialMachineMapping const &partial_solution) {
+
   MachineMappingResult optimal_result = get_infinity_machine_mapping_result();
-
-  auto [decompn1, decompn2] = split_sp_decomposition(serial);
-
-  GraphSplit graph_split = get_graph_split(decompn1, decompn2);
 
   auto is_subgraph_input = [&](std::unordered_set<Node> const &subgraph_nodes,
                                parallel_tensor_guid_t const &input_tensor) {
     return !contains(subgraph_nodes, input_tensor.raw_graph_output.node);
   };
 
-  std::unordered_set<parallel_tensor_guid_t> all_edges1 =
-      set_union(transform(graph_split.first, [&](Node const &node) {
-        return unordered_set_of(
-            get_layer_outputs(context.pcg, parallel_layer_guid_t(node)));
-      }));
-  std::unordered_set<parallel_tensor_guid_t> all_edges2 =
-      set_union(transform(graph_split.second, [&](Node const &node) {
-        return unordered_set_of(
-            get_layer_inputs(context.pcg, parallel_layer_guid_t(node)));
-      }));
-  std::unordered_set<parallel_tensor_guid_t> split_edges =
-      filter(all_edges2, [&](parallel_tensor_guid_t const &input_tensor) {
-        return is_subgraph_input(graph_split.second, input_tensor);
-      });
+  PCGBinarySPDecomposition pre_sub_tree = get_left_child(series);
+  PCGBinarySPDecomposition post_sub_tree = get_right_child(series);
 
-  std::unordered_map<parallel_tensor_guid_t, MachineView> fixed_machine_views1 =
-      restrict_keys(fixed_machine_views, all_edges1);
-  std::unordered_map<parallel_tensor_guid_t, MachineView> fixed_machine_views2 =
-      restrict_keys(fixed_machine_views, all_edges2);
-  std::vector<std::unordered_map<parallel_tensor_guid_t, MachineView>>
-      machine_views_list_for_split_edges =
-          get_allowed_src_machine_views_list(context, split_edges, resource);
+  std::pair<
+    std::unordered_set<parallel_layer_guid_t>,
+    std::unordered_set<parallel_layer_guid_t>
+  > boundary_layers = 
+    get_split_transitive_reduced_boundary_layers(context.transitive_reduced_pcg, 
+                                                 series);
 
-  for (std::unordered_map<parallel_tensor_guid_t, MachineView> const
-           &machine_views_for_split_edge : machine_views_list_for_split_edges) {
+  auto get_boundary_machine_view_assignments = [&](std::unordered_set<parallel_layer_guid_t> const &layers) 
+    -> std::unordered_set<std::unordered_map<parallel_layer_guid_t, MachineView>>
+  {
+    std::unordered_map<parallel_layer_guid_t, std::unordered_set<MachineView>>
+      allowed = generate_map(layers,
+                             [&](parallel_layer_guid_t const &l) { 
+                               return get_allowed_machine_views_for_layer(context, l);
+                             });
+    return get_all_assignments(allowed);
+  };
+
+  for (std::unordered_map<parallel_layer_guid_t, MachineView> const &assigned_pre_machine_views
+        : get_boundary_machine_view_assignments(boundary_layers.first)) {
+
+    PartialMachineMapping pre_candidate = 
+      with_additional_layer_machine_views(
+        context,
+        get_sub_solution(context, partial_solution, pre_sub_tree),
+        assigned_pre_machine_views);
+
+    MachineMappingResult pre_result =
+      get_optimal_machine_mapping_internal(result_cache, 
+                                           context, 
+                                           pre_sub_tree,
+                                           resource, 
+                                           pre_candidate);
+
+
+    for (std::unordered_map<parallel_layer_guid_t, MachineView> const &assigned_post_machine_views
+          : get_boundary_machine_view_assignments(boundary_layers.second)) {
+
+      PartialMachineMapping post_candidate = 
+        with_additional_layer_machine_views(
+          context,
+          get_sub_solution(context, partial_solution, post_sub_tree),
+          assigned_post_machine_views);
+
+      MachineMappingResult post_result =
+        get_optimal_machine_mapping_internal(result_cache, 
+                                             context, 
+                                             post_sub_tree,
+                                             resource, 
+                                             post_candidate);
+
+      float cost_across_split = estimate_cost_across_split(context,
+                                                           assigned_pre_machine_views,
+                                                           assigned_post_machine_views);
+
+      minimize_runtime(
+        optimal_result,
+        sequential_combine(pre_result, cost_across_split, post_result));
+    }
+  }
+
+  return optimal_result;
+}
+
+
+
+MachineMappingResult get_optimal_machine_mapping_internal(
+    MachineMappingCache &result_cache,                                                          
+    MachineMappingContext const &context,
+    PCGBinaryParallelSplit const &parallel,
+    MachineSpecification const &resources,
+    PartialMachineMapping const &partial_solution) {
+
+  PCGBinarySPDecomposition left_subtree = get_left_child(parallel);
+  PartialMachineMapping left_sub_solution = get_sub_solution(context,
+                                                             partial_solution,
+                                                             left_subtree);
+
+  PCGBinarySPDecomposition right_subtree = get_right_child(parallel);
+  PartialMachineMapping right_sub_solution = get_sub_solution(context,
+                                                              partial_solution, 
+                                                              right_subtree);
+
+  MachineMappingResult optimal_result = [&] {
+    PCGBinarySeriesSplit series = make_pcg_series_split(
+      get_left_child(parallel),
+      get_right_child(parallel));
+    return get_optimal_machine_mapping_internal(result_cache,
+                                                context,
+                                                series,
+                                                resources,
+                                                partial_solution);
+  }();
+
+  for (auto const &resource_split : get_machine_resource_splits(resources)) {
+    MachineMappingResult left_result = 
+      get_optimal_machine_mapping_internal(result_cache,
+                                           context,
+                                           left_subtree,
+                                           resource_split.first,
+                                           left_sub_solution);
+    MachineMappingResult right_result = 
+      get_optimal_machine_mapping_internal(result_cache,
+                                           context,
+                                           right_subtree,
+                                           resource_split.second,
+                                           right_sub_solution);
+
     minimize_runtime(
         optimal_result,
-        sequential_combine(
-            get_optimal_machine_mapping_internal(
-                context,
-                decompn1,
-                resource,
-                merge_maps(fixed_machine_views1, machine_views_for_split_edge)),
-            get_optimal_machine_mapping_internal(
-                context,
-                decompn2,
-                resource,
-                merge_maps(fixed_machine_views2,
-                           machine_views_for_split_edge))));
+        parallel_combine(left_result, right_result));
   }
 
   return optimal_result;
@@ -217,85 +234,21 @@ MachineMappingResult get_optimal_machine_mapping_internal(
 
 MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingContext &context,
-    ParallelSplit const &parallel,
+    parallel_layer_guid_t const &layer,
     MachineSpecification const &resource,
-    std::unordered_map<parallel_tensor_guid_t, MachineView> const
-        &fixed_machine_views) {
-  auto [decompn1, decompn2] = split_sp_decomposition(parallel);
+    PartialMachineMapping const &partial_solution) {
 
-  GraphSplit graph_split = get_graph_split(decompn1, decompn2);
+  assert (keys(partial_solution.machine_views) == std::unordered_set{layer});
 
-  std::unordered_set<parallel_tensor_guid_t> all_edges1 =
-      set_union(transform(graph_split.first, [&](Node const &node) {
-        return unordered_set_of(
-            get_layer_outputs(context.pcg, parallel_layer_guid_t(node)));
-      }));
-  std::unordered_set<parallel_tensor_guid_t> all_edges2 =
-      set_union(transform(graph_split.second, [&](Node const &node) {
-        return unordered_set_of(
-            get_layer_inputs(context.pcg, parallel_layer_guid_t(node)));
-      }));
-  std::unordered_map<parallel_tensor_guid_t, MachineView> fixed_machine_views1 =
-      restrict_keys(fixed_machine_views, all_edges1);
-  std::unordered_map<parallel_tensor_guid_t, MachineView> fixed_machine_views2 =
-      restrict_keys(fixed_machine_views, all_edges2);
+  float cost = estimate_layer_cost(context.transitive_reduced_pcg.full_pcg, 
+                                   context.cost_estimator,
+                                   layer, 
+                                   partial_solution.machine_views.at(layer));
 
-  MachineMappingResult optimal_result = sequential_combine(
-      get_optimal_machine_mapping_internal(
-          context, decompn1, resource, fixed_machine_views1),
-      get_optimal_machine_mapping_internal(
-          context, decompn2, resource, fixed_machine_views2));
-
-  for (auto const &resource_split : get_resource_split(resource)) {
-    minimize_runtime(
-        optimal_result,
-        parallel_combine(
-            get_optimal_machine_mapping_internal(
-                context, decompn1, resource_split.first, fixed_machine_views1),
-            get_optimal_machine_mapping_internal(context,
-                                                 decompn2,
-                                                 resource_split.second,
-                                                 fixed_machine_views2)));
-  }
-
-  return optimal_result;
-}
-
-MachineMappingResult get_optimal_machine_mapping_internal(
-    MachineMappingContext &context,
-    Node const &node,
-    MachineSpecification const &resource,
-    std::unordered_map<parallel_tensor_guid_t, MachineView> const
-        &fixed_machine_views) {
-
-  parallel_layer_guid_t layer = parallel_layer_guid_t(node);
-  std::unordered_set<parallel_tensor_guid_t> machine_views_not_fixed =
-      set_minus(unordered_set_of(get_layer_outputs(context.pcg, layer)),
-                keys(fixed_machine_views));
-
-  std::vector<std::unordered_map<parallel_tensor_guid_t, MachineView>>
-      machine_views_list_for_not_fixed = get_allowed_src_machine_views_list(
-          context, machine_views_not_fixed, resource);
-
-  MachineMappingResult optimal_result = get_infinity_machine_mapping_result();
-
-  for (std::unordered_map<parallel_tensor_guid_t, MachineView> const
-           &machine_views_for_not_fixed : machine_views_list_for_not_fixed) {
-    std::unordered_map<parallel_tensor_guid_t, MachineView> full_machine_views =
-        merge_maps(fixed_machine_views, machine_views_for_not_fixed);
-    float runtime = singleton_subgraph_cost(
-        context.pcg, context.cost_estimator, layer, full_machine_views);
-    MachineMapping machine_mapping =
-        MachineMapping{std::unordered_map<parallel_layer_guid_t, MachineView>{
-            {layer,
-             full_machine_views.at(get_layer_outputs(context.pcg, layer)[0])},
-        }};
-    MachineMappingResult curr_result =
-        MachineMappingResult(runtime, machine_mapping);
-    minimize_runtime(optimal_result, curr_result);
-  }
-
-  return optimal_result;
+  return MachineMappingResult{
+    /*runtime=*/cost,
+    /*machine_mapping=*/MachineMapping{partial_solution.machine_views},
+  };
 }
 
 } // namespace FlexFlow
