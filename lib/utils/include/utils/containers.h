@@ -5,7 +5,6 @@
 #include "required_core.h"
 #include "type_traits_core.h"
 #include "utils/bidict/bidict.h"
-#include "utils/containers/are_disjoint.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/extend.h"
 #include "utils/containers/extend_vector.h"
@@ -31,15 +30,6 @@
 #include <vector>
 
 namespace FlexFlow {
-
-template <typename Container, typename Element>
-Element sum(Container const &container) {
-  Element result = 0;
-  for (Element const &element : container) {
-    result += element;
-  }
-  return result;
-}
 
 template <typename Container, typename ConditionF, typename Element>
 Element sum_where(Container const &container, ConditionF const &condition) {
@@ -136,15 +126,7 @@ std::optional<bool> optional_all_of(Container const &container,
   return true;
 }
 
-template <typename C>
-bool are_all_same(C const &c) {
-  auto const &first = *c.cbegin();
-  for (auto const &v : c) {
-    if (v != first) {
-      return false;
-    }
   }
-  return true;
 }
 
 template <typename T, typename F>

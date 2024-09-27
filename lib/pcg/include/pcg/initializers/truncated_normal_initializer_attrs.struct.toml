@@ -1,0 +1,30 @@
+namespace = "FlexFlow"
+name = "TruncatedNormalInitializerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[fields]]
+name = "seed"
+type = "int"
+
+[[fields]]
+name = "mean"
+type = "float"
+
+[[fields]]
+name = "stddev"
+type = "float"
+
+[[fields]]
+name = "min_cutoff"
+type = "float"
+
+[[fields]]
+name = "max_cutoff"
+type = "float"

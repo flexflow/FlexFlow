@@ -65,9 +65,6 @@ std::optional<typename C::value_type> maybe_get_only(C const &c);
 template <typename Container, typename Function>
 std::optional<bool> optional_all_of(Container const &, Function const &);
 
-template <typename C>
-bool are_all_same(C const &c);
-
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);
 

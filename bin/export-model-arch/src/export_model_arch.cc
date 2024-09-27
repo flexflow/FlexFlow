@@ -1,6 +1,8 @@
 #include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
 #include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
 #include "export_model_arch/json_sp_model_export.dtg.h"
+#include "models/bert/bert.h"
+#include "models/candle_uno/candle_uno.h"
 #include "models/inception_v3/inception_v3.h"
 #include "models/split_test/split_test.h"
 #include "models/transformer/transformer.h"
@@ -63,6 +65,10 @@ tl::expected<ComputationGraph, std::string>
   } else if (model_name == "inception_v3") {
     return get_inception_v3_computation_graph(
         get_default_inception_v3_training_config());
+  } else if (model_name == "candle_uno") {
+    return get_candle_uno_computation_graph(get_default_candle_uno_config());
+  } else if (model_name == "bert") {
+    return get_bert_computation_graph(get_default_bert_config());
   } else if (model_name == "split_test") {
     int batch_size = 8;
     return get_split_test_computation_graph(batch_size);
@@ -135,8 +141,12 @@ int main(int argc, char **argv) {
                   "output a dot representation of model's computation graph "
                   "for preprocessed to help check series-parallel structure"});
 
-  std::vector<std::string> model_options = {
-      "transformer", "inception_v3", "split_test", "single_operator"};
+  std::vector<std::string> model_options = {"transformer",
+                                            "inception_v3",
+                                            "candle_uno",
+                                            "bert",
+                                            "split_test",
+                                            "single_operator"};
   CLIArgumentKey key_model_name = cli_add_positional_argument(
       cli,
       CLIPositionalArgumentSpec{
