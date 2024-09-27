@@ -22,7 +22,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                             DataType::FLOAT};
 
     parallel_tensor_guid_t input0 =
-        builder.create_input_tensor(input_shape, true, "input0");
+        builder.create_input_tensor(input_shape, CreateGrad::YES, "input0");
     parallel_tensor_guid_t dense0 = builder.dense(input0,
                                                   8,
                                                   Activation::RELU,
@@ -58,7 +58,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ParallelComputationGraphBuilder builder_;
 
     parallel_tensor_guid_t input0_ =
-        builder.create_input_tensor(input_shape, true, "input0");
+        builder.create_input_tensor(input_shape, CreateGrad::YES, "input0");
     parallel_tensor_guid_t dense0_ = builder.dense(input0,
                                                    8,
                                                    Activation::RELU,

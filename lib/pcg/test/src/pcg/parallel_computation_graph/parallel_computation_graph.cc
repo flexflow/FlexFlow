@@ -265,4 +265,47 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
   }
+
+  TEST_CASE("pcg_add_input_layer") {
+    ParallelTensorShape tensor_shape = ParallelTensorShape{
+      ParallelTensorDims{
+        FFOrdered<ShardParallelDim>{
+          ShardParallelDim{12, 2},
+          ShardParallelDim{10, 1},
+        },
+        ReplicaParallelDimSet{
+          SumDegree{2},
+          DiscardCopyDegree{2},
+        },
+      },
+      DataType::FLOAT,
+    };
+
+    ParallelComputationGraph result = [&] {
+      ParallelComputationGraph pcg = empty_parallel_computation_graph();
+      pcg_add_input_layer(pcg, tensor_shape);
+      return pcg;
+    }();
+      
+    ParallelComputationGraph correct = [&] {
+      ParallelComputationGraph pcg = empty_parallel_computation_graph();
+
+      ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
+        /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
+        /*name=*/std::nullopt,
+      };
+
+      ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
+        /*shape=*/tensor_shape,
+        /*sync_type=*/std::nullopt,
+        /*initializer=*/std::nullopt,
+        /*create_gradients=*/CreateGrad::NO,
+      };
+
+      return pcg;
+    }();
+
+    FAIL("TODO");
+    // CHECK(pcgs_are_isomorphic(result, correct));
+  }
 }

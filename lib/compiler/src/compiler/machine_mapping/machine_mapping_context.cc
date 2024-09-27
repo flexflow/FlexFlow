@@ -11,6 +11,11 @@ std::unordered_set<MachineView> get_allowed_machine_views_for_tensor(MachineMapp
   NOT_IMPLEMENTED();
 }
 
+std::unordered_set<MachineView> get_allowed_machine_views_for_layer(MachineMappingContext const &,
+                                                                    parallel_layer_guid_t const &) {
+  NOT_IMPLEMENTED();
+}
+
 MachineMappingContext make_machine_mapping_context(ParallelComputationGraph const &pcg,
                                                    CostEstimator const &cost_estimator,
                                                    std::function<std::unordered_set<MachineView>(

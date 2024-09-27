@@ -1,6 +1,8 @@
 #include "compiler/machine_mapping/get_machine_resource_splits.h"
 #include <doctest/doctest.h>
 #include "utils/hash/pair.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/pair.h"
 
 using namespace ::FlexFlow;
 

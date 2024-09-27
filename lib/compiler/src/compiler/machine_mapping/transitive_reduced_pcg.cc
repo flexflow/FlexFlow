@@ -13,11 +13,11 @@ namespace FlexFlow {
 
 TransitiveReducedPCG get_pcg_transitive_reduction(ParallelComputationGraph const &pcg) {
   DiGraphView raw_digraph = pcg.raw_graph;
-  DiGraphView transitively_reduced = transitive_reduction(raw_digraph);
+  DiGraphView transitive_reduced = transitive_reduction(raw_digraph);
 
   return TransitiveReducedPCG{
     /*pcg=*/pcg,
-    /*transitive_reduction=*/transitively_reduced,
+    /*transitive_reduction=*/transitive_reduced,
   };
 }
 
@@ -34,7 +34,7 @@ std::unordered_set<parallel_layer_guid_t> get_transitive_reduced_successors(Tran
 }
 
 std::unordered_set<ParallelComputationGraphEdge> 
-  get_transitively_reduced_edges_across_split(TransitiveReducedPCG const &tr_pcg,
+  get_transitive_reduced_edges_across_split(TransitiveReducedPCG const &tr_pcg,
                                               PCGBinarySeriesSplit const &split) {
   std::unordered_set<parallel_layer_guid_t> src_subgraph = unordered_set_of(get_parallel_layers(get_left_child(split)));
   std::unordered_set<parallel_layer_guid_t> dst_subgraph = unordered_set_of(get_parallel_layers(get_right_child(split)));
@@ -55,16 +55,16 @@ std::unordered_set<ParallelComputationGraphEdge>
 }
 
 std::unordered_set<parallel_tensor_guid_t> 
-  get_transitively_reduced_tensors_across_split(TransitiveReducedPCG const &tr_pcg,
-                                                PCGBinarySeriesSplit const &split) {
-  return transform(get_transitively_reduced_edges_across_split(tr_pcg, split),
+  get_transitive_reduced_tensors_across_split(TransitiveReducedPCG const &tr_pcg,
+                                              PCGBinarySeriesSplit const &split) {
+  return transform(get_transitive_reduced_edges_across_split(tr_pcg, split),
                    [](ParallelComputationGraphEdge const &e) { return get_parallel_tensor(e); });
 }
 
 std::pair<
   std::unordered_set<parallel_layer_guid_t>,
   std::unordered_set<parallel_layer_guid_t>
-> get_split_transitively_reduced_boundary_layers(TransitiveReducedPCG const &tr_pcg,
+> get_split_transitive_reduced_boundary_layers(TransitiveReducedPCG const &tr_pcg,
                                                  PCGBinarySeriesSplit const &split) {
   std::unordered_set<ParallelComputationGraphEdge> edges = get_transitive_reduced_edges_across_split(tr_pcg, split);
 

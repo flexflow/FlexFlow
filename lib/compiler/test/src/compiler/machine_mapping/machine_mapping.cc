@@ -1,6 +1,7 @@
 #include "compiler/machine_mapping/machine_mapping.h"
 #include "cost_estimator_for_test.h"
 #include "doctest/doctest.h"
+#include "pcg/machine_view.h"
 
 using namespace FlexFlow;
 

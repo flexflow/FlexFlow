@@ -1,5 +1,5 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
-#include "compiler/cost_estimator.h"
+#include "compiler/machine_mapping/get_tensor_set_movement_across_split.h"
 #include "compiler/machine_mapping/get_allowed_machine_views_list.h"
 #include "compiler/machine_mapping/get_machine_resource_splits.h"
 #include "compiler/machine_mapping/machine_mapping_result.h"
@@ -16,7 +16,6 @@
 #include "utils/containers/contains.h"
 #include "utils/containers/generate_map.h"
 #include "utils/containers/get_all_assignments.h"
-#include "utils/containers/keys.h"
 #include "utils/containers/unordered_set_of.h"
 #include "utils/exception.h"
 #include "utils/overload.h"
@@ -52,7 +51,7 @@ MachineMappingResult get_optimal_machine_mapping(
 
 MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,                                                          
-    MachineMappingContext &context, 
+    MachineMappingContext const &context, 
     MachineSpecification const &resources) {
 
   PCGBinarySPDecomposition sp_decomposition_tree = ({
@@ -63,16 +62,18 @@ MachineMappingResult get_optimal_machine_mapping_internal(
     returned.value();
   });
 
+  std::unordered_set<parallel_layer_guid_t> all_layers = get_parallel_layers(context.transitive_reduced_pcg.full_pcg);
+
   return get_optimal_machine_mapping_internal(result_cache, 
                                               context, 
                                               sp_decomposition_tree, 
                                               resources,
-                                              get_unconstrained_solution());
+                                              get_unconstrained_solution_for_layers(all_layers));
 }
 
 MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,
-    MachineMappingContext &context,
+    MachineMappingContext const &context,
     PCGBinarySPDecomposition const &sp_decomposition_tree,
     MachineSpecification const &resources,
     PartialMachineMapping const &partial_solution) {
@@ -92,7 +93,7 @@ MachineMappingResult get_optimal_machine_mapping_internal(
   MachineMappingResult result = visit<MachineMappingResult>(
     sp_decomposition_tree,
     [&](auto const &decomp_tree_node) {
-      return get_optimal_machine_mapping_internal(context, decomp_tree_node, resources, partial_solution);
+      return get_optimal_machine_mapping_internal(result_cache, context, decomp_tree_node, resources, partial_solution);
     });
 
   result_cache.save(state, result);
@@ -102,7 +103,7 @@ MachineMappingResult get_optimal_machine_mapping_internal(
 MachineMappingResult get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
-    PCGBinarySeriesSplit const &series,
+    PCGBinarySeriesSplit const &series_split,
     MachineSpecification const &resource,
     PartialMachineMapping const &partial_solution) {
 
@@ -113,15 +114,15 @@ MachineMappingResult get_optimal_machine_mapping_internal(
     return !contains(subgraph_nodes, input_tensor.raw_graph_output.node);
   };
 
-  PCGBinarySPDecomposition pre_sub_tree = get_left_child(series);
-  PCGBinarySPDecomposition post_sub_tree = get_right_child(series);
+  PCGBinarySPDecomposition pre_sub_tree = get_left_child(series_split);
+  PCGBinarySPDecomposition post_sub_tree = get_right_child(series_split);
 
   std::pair<
     std::unordered_set<parallel_layer_guid_t>,
     std::unordered_set<parallel_layer_guid_t>
   > boundary_layers = 
     get_split_transitive_reduced_boundary_layers(context.transitive_reduced_pcg, 
-                                                 series);
+                                                 series_split);
 
   auto get_boundary_machine_view_assignments = [&](std::unordered_set<parallel_layer_guid_t> const &layers) 
     -> std::unordered_set<std::unordered_map<parallel_layer_guid_t, MachineView>>
@@ -139,8 +140,7 @@ MachineMappingResult get_optimal_machine_mapping_internal(
 
     PartialMachineMapping pre_candidate = 
       with_additional_layer_machine_views(
-        context,
-        get_sub_solution(context, partial_solution, pre_sub_tree),
+        get_sub_solution(partial_solution, pre_sub_tree),
         assigned_pre_machine_views);
 
     MachineMappingResult pre_result =
@@ -156,8 +156,7 @@ MachineMappingResult get_optimal_machine_mapping_internal(
 
       PartialMachineMapping post_candidate = 
         with_additional_layer_machine_views(
-          context,
-          get_sub_solution(context, partial_solution, post_sub_tree),
+          get_sub_solution(partial_solution, post_sub_tree),
           assigned_post_machine_views);
 
       MachineMappingResult post_result =
@@ -167,9 +166,13 @@ MachineMappingResult get_optimal_machine_mapping_internal(
                                              resource, 
                                              post_candidate);
 
-      float cost_across_split = estimate_cost_across_split(context,
-                                                           assigned_pre_machine_views,
-                                                           assigned_post_machine_views);
+      TensorSetMovement comm_across_split = get_tensor_set_movement_across_split(
+        /*transitive_reduced_pcg=*/context.transitive_reduced_pcg,
+        /*split=*/series_split,
+        /*pre_mapping=*/pre_candidate,
+        /*post_mapping=*/post_candidate);
+
+      float cost_across_split = context.cost_estimator.estimate_cost(comm_across_split);
 
       minimize_runtime(
         optimal_result,
@@ -190,19 +193,17 @@ MachineMappingResult get_optimal_machine_mapping_internal(
     PartialMachineMapping const &partial_solution) {
 
   PCGBinarySPDecomposition left_subtree = get_left_child(parallel);
-  PartialMachineMapping left_sub_solution = get_sub_solution(context,
-                                                             partial_solution,
+  PartialMachineMapping left_sub_solution = get_sub_solution(partial_solution,
                                                              left_subtree);
 
   PCGBinarySPDecomposition right_subtree = get_right_child(parallel);
-  PartialMachineMapping right_sub_solution = get_sub_solution(context,
-                                                              partial_solution, 
+  PartialMachineMapping right_sub_solution = get_sub_solution(partial_solution, 
                                                               right_subtree);
 
   MachineMappingResult optimal_result = [&] {
-    PCGBinarySeriesSplit series = make_pcg_series_split(
+    PCGBinarySeriesSplit series = require_series(make_pcg_series_split(
       get_left_child(parallel),
-      get_right_child(parallel));
+      get_right_child(parallel)));
     return get_optimal_machine_mapping_internal(result_cache,
                                                 context,
                                                 series,
@@ -233,21 +234,22 @@ MachineMappingResult get_optimal_machine_mapping_internal(
 }
 
 MachineMappingResult get_optimal_machine_mapping_internal(
-    MachineMappingContext &context,
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &context,
     parallel_layer_guid_t const &layer,
     MachineSpecification const &resource,
     PartialMachineMapping const &partial_solution) {
 
-  assert (keys(partial_solution.machine_views) == std::unordered_set{layer});
+  assert (get_all_layers(partial_solution, IncludeUnconstrained{true}) == std::unordered_set{layer});
 
   float cost = estimate_layer_cost(context.transitive_reduced_pcg.full_pcg, 
                                    context.cost_estimator,
                                    layer, 
-                                   partial_solution.machine_views.at(layer));
+                                   get_machine_view_for_layer(partial_solution, layer).value());
 
   return MachineMappingResult{
     /*runtime=*/cost,
-    /*machine_mapping=*/MachineMapping{partial_solution.machine_views},
+    /*machine_mapping=*/require_complete_mapping(partial_solution),
   };
 }
 

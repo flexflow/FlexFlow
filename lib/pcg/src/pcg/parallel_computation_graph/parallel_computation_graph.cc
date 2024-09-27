@@ -43,6 +43,26 @@ ParallelLayerAddedResult
   };
 }
 
+ParallelLayerAddedResult pcg_add_input_layer(ParallelComputationGraph &pcg,
+                                             ParallelTensorShape const &tensor_shape) {
+  ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
+    /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
+    /*name=*/std::nullopt,
+  };
+
+  ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
+    /*shape=*/tensor_shape,
+    /*sync_type=*/std::nullopt,
+    /*initializer=*/std::nullopt,
+    /*create_gradients=*/CreateGrad::NO,
+  };
+
+  return add_parallel_layer(/*pcg=*/pcg,
+                            /*layer_attrs=*/layer_attrs,
+                            /*inputs=*/{},
+                            /*output_labels=*/{tensor_attrs});
+}
+
 std::unordered_set<ParallelComputationGraphEdge> get_pcg_edges_from_layer_to_layer(ParallelComputationGraph const &pcg,
                                                                                    parallel_layer_guid_t const &src,
                                                                                    parallel_layer_guid_t const &dst) {

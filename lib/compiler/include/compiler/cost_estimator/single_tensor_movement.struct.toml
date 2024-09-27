@@ -1,8 +1,7 @@
 namespace = "FlexFlow"
-name = "CommCostEstimateKey"
+name = "SingleTensorMovement"
 features = [
   "eq",
-  "ord",
   "hash",
   "fmt",
 ]
@@ -10,6 +9,12 @@ features = [
 includes = [
   "op-attrs/parallel_tensor_shape.dtg.h",
   "pcg/machine_view.dtg.h",
+  "<unordered_set>",
+]
+
+src_includes = [
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_set.h",
 ]
 
 [[fields]]
@@ -17,9 +22,9 @@ name = "parallel_tensor_shape"
 type = "::FlexFlow::ParallelTensorShape"
 
 [[fields]]
-name = "src_machine_view"
-type = "::FlexFlow::MachineView"
+name = "src_machine_views"
+type = "std::unordered_set<::FlexFlow::MachineView>"
 
 [[fields]]
 name = "dst_machine_view"
-type = "::FlexFlow::MachineView"
+type = "std::unordered_set<::FlexFlow::MachineView>"

@@ -95,7 +95,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     MachineView machine_view = make_1d_machine_view(gpu_id_t{0}, gpu_id_t{1});
                                                                         
 
-    CostEstimator cost_estimator = make_cost_estimator(
+    CostEstimator cost_estimator = make_fake_cost_estimator(
       {
         {
           OpCostEstimateKey{

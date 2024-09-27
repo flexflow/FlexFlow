@@ -17,9 +17,9 @@ std::unordered_multiset<parallel_layer_guid_t>
 
 SPDecompositionTreeNodeType get_node_type(PCGBinarySPDecomposition const &);
 
-PCGBinarySeriesSplit make_pcg_series_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &);
-PCGBinarySeriesSplit make_pcg_parallel_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &);
-PCGBinarySeriesSplit make_pcg_leaf_node(parallel_layer_guid_t const &);
+PCGBinarySPDecomposition make_pcg_series_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &);
+PCGBinarySPDecomposition make_pcg_parallel_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &);
+PCGBinarySPDecomposition make_pcg_leaf_node(parallel_layer_guid_t const &);
 
 PCGBinarySeriesSplit require_series(PCGBinarySPDecomposition const &);
 PCGBinaryParallelSplit require_parallel(PCGBinarySPDecomposition const &);

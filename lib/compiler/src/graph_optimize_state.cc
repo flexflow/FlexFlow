@@ -22,9 +22,9 @@ bool GraphOptimizeState::operator==(GraphOptimizeState const &other) const {
         get_parallel_layer_attrs(other.graph_optimize_result.pcg, layers2[i])) {
       return false;
     }
-    auto inputs1 = get_layer_inputs(graph_optimize_result.pcg, layers1[i]);
+    auto inputs1 = get_incoming_tensors(graph_optimize_result.pcg, layers1[i]);
     auto inputs2 =
-        get_layer_inputs(other.graph_optimize_result.pcg, layers2[i]);
+        get_incoming_tensors(other.graph_optimize_result.pcg, layers2[i]);
     if (inputs1.size() != inputs2.size()) {
       return false;
     }
@@ -68,7 +68,7 @@ size_t hash<::FlexFlow::GraphOptimizeState>::operator()(
   for (auto layer : layers) {
     ::FlexFlow::hash_combine(
         seed, get_parallel_layer_attrs(state.graph_optimize_result.pcg, layer));
-    auto inputs = get_layer_inputs(state.graph_optimize_result.pcg, layer);
+    auto inputs = get_incoming_tensors(state.graph_optimize_result.pcg, layer);
     ::FlexFlow::hash_combine(seed, inputs.size());
     for (auto input : inputs) {
       for (size_t i = 0; i < layers.size(); ++i) {

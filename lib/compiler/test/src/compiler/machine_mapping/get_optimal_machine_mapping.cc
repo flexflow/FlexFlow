@@ -1,5 +1,5 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
-#include "cost_estimator_for_test.h"
+#include "./cost_estimator_for_test.h"
 #include <doctest/doctest.h>
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "utils/containers/get_only.h"
@@ -14,7 +14,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       return std::unordered_set<MachineView>{
           make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
     };
-    CostEstimator estimator1 = CostEstimator::create<CostEstimatorForTest>();
     MachineSpecification machine_spec = MachineSpecification{
       /*num_nodes=*/2, 
       /*num_cpus_per_node=*/1, 
@@ -23,6 +22,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       /*intra_node_bandwidth=*/1,
     };
 
+    CostEstimator cost_estimator = make_fake_cost_estimator(
+      std::unordered_map<OpCostEstimateKey, float>{}, 
+      std::unordered_map<TensorSetMovement, float>{});
 
     SUBCASE("single layer") {
       ParallelComputationGraph pcg = empty_parallel_computation_graph();
@@ -34,20 +36,6 @@ TEST_SUITE(FF_TEST_SUITE) {
         return std::unordered_set<MachineView>{mv1};
       };
 
-      CostEstimator cost_estimator = make_cost_estimator(
-        [&](PCGOperatorAttrs const &,
-            std::vector<ParallelTensorShape> const &,
-            std::vector<ParallelTensorShape> const &,
-            std::vector<ParallelTensorShape> const &,
-            MachineView const &) {
-          return 1.0;
-        },
-        [&](ParallelTensorShape const &,
-            MachineView const &,
-            MachineView const &) {
-          return 0.5;
-        });
- 
       ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
         PCGOperatorAttrs{
           InputAttrs{},

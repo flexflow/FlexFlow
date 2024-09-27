@@ -22,6 +22,10 @@ ParallelLayerAddedResult
                        std::vector<parallel_tensor_guid_t> const &inputs,
                        std::vector<ParallelTensorAttrs> const &output_labels);
 
+ParallelLayerAddedResult
+    pcg_add_input_layer(ParallelComputationGraph &pcg,
+                    ParallelTensorShape const &tensor_shape);
+
 std::unordered_set<ParallelComputationGraphEdge> get_pcg_edges_from_layer_to_layer(ParallelComputationGraph const &,
                                                                                    parallel_layer_guid_t const &,
                                                                                    parallel_layer_guid_t const &);

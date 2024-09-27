@@ -9,13 +9,15 @@ features = [
 includes = [
   "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
   "pcg/machine_view.dtg.h",
+  "<optional>",
 ]  
  
 src_includes = [   
   "utils/hash/unordered_map.h",
   "utils/fmt/unordered_map.h",
+  "utils/fmt/optional.h",
 ]
 
 [[fields]]
 name = "machine_views"
-type = "std::unordered_map<::FlexFlow::parallel_layer_guid_t, ::FlexFlow::MachineView>"
+type = "std::unordered_map<::FlexFlow::parallel_layer_guid_t, std::optional<::FlexFlow::MachineView>>"

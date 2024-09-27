@@ -1,6 +1,7 @@
 #include "compiler/machine_mapping/machine_mapping_result.h"
 #include "cost_estimator_for_test.h"
 #include "doctest/doctest.h"
+#include "pcg/machine_view.h"
 
 using namespace FlexFlow;
 
@@ -20,15 +21,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     MachineMappingResult s1(1, machine_mapping_0);
     MachineMappingResult s2(2, machine_mapping_1);
 
-    MachineMappingResult result0 = sequential_combine(s0, s1);
+    float comm_cost = 2.0;
+
+    MachineMappingResult result0 = sequential_combine(s0, comm_cost, s1);
     CHECK(result0.runtime == 1);
     CHECK(result0.machine_mapping == machine_mapping_0);
 
-    MachineMappingResult result1 = sequential_combine(s0, s2);
+    MachineMappingResult result1 = sequential_combine(s0, comm_cost, s2);
     CHECK(result1.runtime == 2);
     CHECK(result1.machine_mapping == machine_mapping_1);
 
-    MachineMappingResult result2 = sequential_combine(s1, s2);
+    MachineMappingResult result2 = sequential_combine(s1, comm_cost, s2);
     CHECK(result2.runtime == 3);
     CHECK(result2.machine_mapping == combined);
   }

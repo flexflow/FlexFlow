@@ -17,11 +17,15 @@ float estimate_layer_cost(ParallelComputationGraph const &pcg,
   std::vector<parallel_tensor_guid_t> weight_tensors = get_incoming_weights(pcg, layer);
   std::vector<parallel_tensor_guid_t> output_tensors = get_layer_outputs(pcg, layer);
 
-  return cost_estimator.estimate_cost(op_attrs,
-                                      transform(input_tensors, get_tensor_shape),
-                                      transform(weight_tensors, get_tensor_shape),
-                                      transform(output_tensors, get_tensor_shape),
-                                      machine_view);
+  OpCostEstimateKey key = OpCostEstimateKey{
+    /*op_attrs=*/op_attrs,
+    /*input_shapes=*/transform(input_tensors, get_tensor_shape),
+    /*weight_shapes=*/transform(weight_tensors, get_tensor_shape),
+    /*output_shapes=*/transform(output_tensors, get_tensor_shape),
+    /*machine_view=*/machine_view,
+  };
+
+  return cost_estimator.estimate_cost(key);
 }
 
 } // namespace FlexFlow

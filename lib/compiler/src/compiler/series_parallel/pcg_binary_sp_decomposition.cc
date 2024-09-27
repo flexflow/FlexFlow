@@ -12,4 +12,32 @@ std::unordered_multiset<parallel_layer_guid_t>
   NOT_IMPLEMENTED();
 }
 
+SPDecompositionTreeNodeType get_node_type(PCGBinarySPDecomposition const &) {
+  NOT_IMPLEMENTED();
+}
+
+PCGBinarySPDecomposition make_pcg_series_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &) {
+  NOT_IMPLEMENTED();
+}
+
+PCGBinarySPDecomposition make_pcg_parallel_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &) {
+  NOT_IMPLEMENTED();
+}
+
+PCGBinarySPDecomposition make_pcg_leaf_node(parallel_layer_guid_t const &) {
+  NOT_IMPLEMENTED();
+}
+
+PCGBinarySeriesSplit require_series(PCGBinarySPDecomposition const &) {
+  NOT_IMPLEMENTED();
+}
+
+PCGBinaryParallelSplit require_parallel(PCGBinarySPDecomposition const &) {
+  NOT_IMPLEMENTED();
+}
+
+parallel_layer_guid_t require_leaf(PCGBinarySPDecomposition const &) {
+  NOT_IMPLEMENTED();
+}
+
 } // namespace FlexFlow
