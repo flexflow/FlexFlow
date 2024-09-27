@@ -7443,12 +7443,13 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<AdamOptimizer::ps_update_task>(
-          registrar, "Adam Parameter Server Update Task");
+          registrar, "Adam Parameter Server Update Task", 111 /*variant ID*/);
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<AdamOptimizer::ps_update_task>(registrar);
+      runtime->register_task_variant<AdamOptimizer::ps_update_task>(
+          registrar, 111 /*variant ID*/);
     }
   }
 #ifdef FF_USE_NCCL
@@ -7459,12 +7460,13 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
-          registrar, "SGD NCCL Update Task");
+          registrar, "SGD NCCL Update Task", 111 /*variant ID*/);
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<SGDOptimizer::nccl_update_task>(registrar);
+      runtime->register_task_variant<SGDOptimizer::nccl_update_task>(
+          registrar, 111 /*variant ID*/);
     }
   }
   {
@@ -7473,13 +7475,13 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
-          registrar, "Adam NCCL Update Task");
+          registrar, "Adam NCCL Update Task", 111 /*variant ID*/);
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
       runtime->register_task_variant<AdamOptimizer::nccl_update_task>(
-          registrar);
+          registrar, 111 /*variant ID*/);
     }
   }
 #endif
@@ -7610,13 +7612,13 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
-          registrar, "NCCL Init Communicators Task");
+          registrar, "NCCL Init Communicators Task", 111 /*variant ID*/);
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
       runtime->register_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
-          registrar);
+          registrar, 111 /*variant ID*/);
     }
   }
   {
@@ -7626,12 +7628,13 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.set_leaf();
     if (pre_register) {
       Runtime::preregister_task_variant<Op::finish_nccl_comms_task>(
-          registrar, "NCCL Finish Communicators Task");
+          registrar, "NCCL Finish Communicators Task", 111 /*variant ID*/);
     } else {
       if (enable_control_replication) {
         registrar.global_registration = false;
       }
-      runtime->register_task_variant<Op::finish_nccl_comms_task>(registrar);
+      runtime->register_task_variant<Op::finish_nccl_comms_task>(
+          registrar, 111 /*variant ID*/);
     }
   }
 #endif

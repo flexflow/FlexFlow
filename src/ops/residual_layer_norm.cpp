@@ -176,6 +176,8 @@ void ResidualLayerNorm::inference_kernel(ResidualLayerNormMeta const *m,
                      beta_ptr,
                      output_ptr);
 }
+
+#ifdef DEADCODE
 template <typename T>
 void save_inference_tensors(ResidualLayerNormMeta const *m) {
   if (m->inference_debugging) {
@@ -206,6 +208,7 @@ void save_inference_tensors(ResidualLayerNormMeta const *m) {
                 filename3.c_str());
   }
 }
+#endif
 
 /*static*/
 void ResidualLayerNorm::inference_kernel_wrapper(
@@ -314,15 +317,15 @@ void ResidualLayerNorm::inference_kernel_wrapper(
     }
   }
 
-  if (m->inference_debugging) {
-    if (m->input_type[0] == DT_FLOAT) {
-      save_inference_tensors<float>(m);
-    } else if (m->input_type[0] == DT_HALF) {
-      save_inference_tensors<half>(m);
-    } else {
-      assert(false && "unsupport datatype in layernorm");
-    }
-  }
+  // if (m->inference_debugging) {
+  //   if (m->input_type[0] == DT_FLOAT) {
+  //     save_inference_tensors<float>(m);
+  //   } else if (m->input_type[0] == DT_HALF) {
+  //     save_inference_tensors<half>(m);
+  //   } else {
+  //     assert(false && "unsupport datatype in layernorm");
+  //   }
+  // }
 
   if (m->profiling) {
     checkCUDA(hipEventRecord(t_end, stream));
