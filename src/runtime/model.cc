@@ -3424,8 +3424,7 @@ bool FFModel::need_to_add_allreduce(int layer_idx) const {
       (
           //  l->op_type == OP_INC_MULTIHEAD_SELF_ATTENTION ||
           //  l->op_type == OP_TREE_INC_MULTIHEAD_SELF_ATTENTION ||
-          (std::string(l->name).find("attn.o_proj") !=
-           std::string::npos) ||
+          (std::string(l->name).find("attn.o_proj") != std::string::npos) ||
           // mlp layer
           is_mlp_block(layer_idx) ||
           // llama mlp layer

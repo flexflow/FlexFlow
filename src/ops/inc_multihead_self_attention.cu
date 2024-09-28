@@ -542,26 +542,24 @@ template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
-                        // DT const *weight_ptr,
                         DT *output_ptr,
-                        // DT const *bias_ptr,
                         cudaStream_t stream) {
 
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
   assert(m->qSize == m->vSize && m->qSize == m->kSize);
-  cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-#if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  cudaDataType_t compute_type = cublas_data_type;
-#else
-  // For best performance, set the default cublas compute type to
-  // CUBLAS_COMPUTE_16F for half precision and to
-  // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  if (m->output_type[0] == DT_FLOAT) {
-    compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  }
-#endif
+  // cudaDataType_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
+  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
+  //   cudaDataType_t compute_type = cublas_data_type;
+  // #else
+  //   // For best performance, set the default cublas compute type to
+  //   // CUBLAS_COMPUTE_16F for half precision and to
+  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
+  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
+  //   if (m->output_type[0] == DT_FLOAT) {
+  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
+  //   }
+  // #endif
 
   int num_tokens = bc->num_active_tokens();
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
@@ -820,11 +818,8 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                   stream);
 
   // phase 1: Implement kernel to apply rotary embedding and scaling
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     stream);
+  compute_qkv_kernel(
+      m, bc, shard_id, static_cast<DT *>(m->devQKVProjArray), stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
   if (bc->num_generation_tokens > 0) {
@@ -835,8 +830,12 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
 
   if (bc->num_tokens > bc->num_generation_tokens) {
     // phase 4: Compute attention score for prompt tokens;
-    compute_attention_kernel_prompt(
-        m, bc, shard_id, static_cast<DT*>(nullptr), static_cast<DT*>(nullptr), stream);
+    compute_attention_kernel_prompt(m,
+                                    bc,
+                                    shard_id,
+                                    static_cast<DT *>(nullptr),
+                                    static_cast<DT *>(nullptr),
+                                    stream);
   }
 
   // compute output production and bias together for all tokens
@@ -1345,12 +1344,12 @@ void peft_bwd_kernel(
       // matrix C's layout: [m->qSize, num_tokens]
       DT *C = input_grad_ptr +
               bc->requestsInfo[i].first_token_offset_in_batch * m->qSize;
-      int m_ = m->qSize;
+      // int m_ = m->qSize;
       int n_ = num_tokens;
       int k_ = m->num_q_heads * (m->qProjSize + m->kProjSize + m->vProjSize);
 
       // The original version uses existing result and attention's projection to
-      // do further calculation in a way different than the usual dense layer, 
+      // do further calculation in a way different than the usual dense layer,
       // they are off by a transpose. So an explicit transpose is needed here.
       // The add here is just for gradient accumulation.
       transposeAdd(C, B, n_, k_, alpha, beta, stream);
@@ -1704,8 +1703,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     BatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
-    GenericTensorAccessorW const &output
-) {
+    GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
@@ -1720,20 +1718,10 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   if (input.data_type == DT_HALF) {
     Kernels::IncMultiHeadAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_half_ptr(),
-        output.get_half_ptr(),
-        stream);
+        m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
     Kernels::IncMultiHeadAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_float_ptr(),
-        output.get_float_ptr(),
-        stream);
+        m, bc, shard_id, input.get_float_ptr(), output.get_float_ptr(), stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -1758,7 +1746,7 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     GenericTensorAccessorR const &output_grad) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
+  // bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -2132,4 +2120,19 @@ template void
         BatchConfig const *bc,
         half *output_ptr,
         cudaStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<float>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    int shard_id,
+    float *output_ptr,
+    ffStream_t stream);
+
+template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<half>(
+    IncMultiHeadSelfAttentionMeta const *m,
+    BatchConfig const *bc,
+    int shard_id,
+    half *output_ptr,
+    ffStream_t stream);
+
 }; // namespace FlexFlow

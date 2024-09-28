@@ -599,7 +599,6 @@ OpMeta *IncMultiHeadSelfAttention::init_task(
       attn->num_kv_heads / attn->tensor_parallelism_degree +
       (attn->num_kv_heads % attn->tensor_parallelism_degree != 0);
 
-
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   if (attn->offload) {
@@ -809,11 +808,7 @@ void IncMultiHeadSelfAttention::peft_bwd_task(
   assert(task->index_point.get_dim() == 1);
 
   IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
-      m,
-      bc,
-      task->index_point.point_data[0],
-      input_grad,
-      output_grad);
+      m, bc, task->index_point.point_data[0], input_grad, output_grad);
 
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);

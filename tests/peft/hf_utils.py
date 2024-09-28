@@ -40,7 +40,7 @@ def get_dst_folder(subdir, step_idx=0):
 
 
 def simplify_name(name):
-    return name.replace("base_model.model.model.", "").replace("base_model.model.", "")
+    return name.replace("base_model.model.model.", "").replace("base_model.model.", "").replace("model.layers.", "layers.").replace("model.", "")
 
 
 def get_optim_type(args):
@@ -114,7 +114,7 @@ def peft_backward_hook(module, grad_input, grad_output):
     module.bwd_step += 1
 
 
-def peft_forward_hook(module, input, output):
+def fwd_hook(module, input, output):
     if len(input) == 0 or len(output) == 0:
         return
     assert module.name is not None and module.fwd_step is not None
@@ -312,11 +312,18 @@ def register_peft_hooks(model):
         layer.bwd_step = 0
         if verbose:
             print(f"Adding hooks to layer {layer.name}")
-        layer.register_forward_hook(peft_forward_hook)
+        layer.register_forward_hook(fwd_hook)
         layer.register_full_backward_hook(peft_backward_hook)
 
+def register_inference_hooks(model):
+    for name, layer in dict(model.named_modules()).items():
+        layer.name = name
+        layer.fwd_step = 0
+        if verbose:
+            print(f"Adding hooks to layer {layer.name}")
+        layer.register_forward_hook(fwd_hook)
 
-def save_peft_weights(model, target_modules=[]):
+def save_model_weights(model, target_modules=[]):
     # Save any weights of interest
     for name, params in model.named_parameters():
         simplified_name = simplify_name(name)

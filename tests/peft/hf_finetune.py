@@ -77,7 +77,7 @@ def main():
     if args.save_peft_tensors:
         make_debug_dirs()
         register_peft_hooks(model)
-        save_peft_weights(model, target_modules=["lora", "lm_head", "down_proj"])
+        save_model_weights(model, target_modules=["lora", "lm_head", "down_proj"])
 
     # Load fine-tuning dataset
     data = load_dataset("Abirate/english_quotes")

@@ -714,11 +714,8 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // phase 1: Implement kernel to compute KQV for input tokens
   // TODO WARNING: this is commented out only because we are fixing the inc_attn
   // first
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     stream);
+  compute_qkv_kernel(
+      m, bc, shard_id, static_cast<DT *>(m->devQKVProjArray), stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
   if (bc->num_generation_tokens > 0) {
@@ -728,8 +725,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   if (bc->num_tokens > bc->num_generation_tokens) {
-    compute_attention_kernel_prompt(
-        m, bc, shard_id, output_ptr, stream);
+    compute_attention_kernel_prompt(m, bc, shard_id, output_ptr, stream);
   }
   // compute output production and bias together for all tokens
   int num_tokens = bc->num_active_tokens();
@@ -767,20 +763,10 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
   if (input.data_type == DT_HALF) {
     half const *bias_ptr = static_cast<half const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_half_ptr(),
-        output.get_half_ptr(),
-        stream);
+        m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_float_ptr(),
-        output.get_float_ptr(),
-        stream);
+        m, bc, shard_id, input.get_float_ptr(), output.get_float_ptr(), stream);
   } else {
     assert(false && "Unspported data type");
   }

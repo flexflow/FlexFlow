@@ -287,7 +287,9 @@ void load_attention_weights_to_dense_v2(DT *ptr,
   size_t one_weight_file_size =
       num_heads * single_proj_size; // size of each of Q/K/V/O for all heads
 
-  std::cout<<"hidden_dim: "<<hidden_dim<<", qkv_inner_dim: "<<qkv_inner_dim<<", num_heads: "<<num_heads<<std::endl;
+  std::cout << "hidden_dim: " << hidden_dim
+            << ", qkv_inner_dim: " << qkv_inner_dim
+            << ", num_heads: " << num_heads << std::endl;
 
   size_t q_size = one_weight_file_size, o_size = one_weight_file_size;
   size_t k_size = single_proj_size * num_kv_heads,
@@ -374,12 +376,12 @@ void load_attention_weights_to_dense_v2(DT *ptr,
 
     DT temp;
 
-    for(int i = 0; i < one_weight_file_size; i++) {
+    for (int i = 0; i < one_weight_file_size; i++) {
       temp = host_array.at(i);
     }
 
-    // std::cout<<"o_proj loaded into host array, total size: "<<one_weight_file_size<<std::endl;
-
+    // std::cout<<"o_proj loaded into host array, total size:
+    // "<<one_weight_file_size<<std::endl;
 
     if (in_get_size != loaded_data_size) {
       std::cout << "load data error" << std::endl;
@@ -390,7 +392,7 @@ void load_attention_weights_to_dense_v2(DT *ptr,
 
     // std::cout<<"read data size checked"<<std::endl;
 
-    for(int i = 0; i < one_weight_file_size; i++) {
+    for (int i = 0; i < one_weight_file_size; i++) {
       ptr[i] = temp;
     }
 
@@ -928,7 +930,8 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   // self_attn.qkv_proj or self_attn.o_proj
   // so looking for self_attn. in the name can determine if it is an attention
   // projection
-  if (weight_filename.find("attn.") != std::string::npos || weight_filename.find("self_attention.") != std::string::npos) {
+  if (weight_filename.find("attn.") != std::string::npos ||
+      weight_filename.find("self_attention.") != std::string::npos) {
     size_t pos = weight_filename.find(".o_proj");
     if (pos != std::string::npos) {
       weight_filename.replace(pos, std::string(".o_proj").length(), "");

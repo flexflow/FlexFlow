@@ -106,8 +106,7 @@ void MPT::create_mpt_model(FFModel &ff,
         nullptr,       // ?
         REG_MODE_NONE, // no regularization
         0.0f,          // no dropout
-        std::string("layers." + std::to_string(i) + ".attn.qkv_proj")
-            .c_str());
+        std::string("layers." + std::to_string(i) + ".attn.qkv_proj").c_str());
 
     Tensor o_proj;
     switch (mode) {
@@ -199,8 +198,7 @@ void MPT::create_mpt_model(FFModel &ff,
         nullptr,
         REG_MODE_NONE,
         0.0f,
-        std::string("layers." + std::to_string(i) + ".attn.o_proj")
-            .c_str());
+        std::string("layers." + std::to_string(i) + ".attn.o_proj").c_str());
 
     ff.residual_layer_norm(
         attn_outputs,

@@ -10,30 +10,9 @@ from transformers import (
     LlamaTokenizer,
     GenerationConfig,
 )
-######################### debugging helper functions #########################
-def pre_forward_hook(module, input):
-    assert module.name is not None and module.decoding_step is not None
-    name = module.name.replace("model.", "")
-    print(
-        f"Pre-forward hook activated on module: {name}, decoding step: {module.decoding_step}"
-    )
-    print("Pre-Input: ", input[0].shape)
-    torch.save(
-        input, f"./hf_tensors/decoding_step_{module.decoding_step}_{name}.input"
-    )
-def post_forward_hook(module, input, output):
-    assert module.name is not None and module.decoding_step is not None
-    name = module.name.replace("model.", "")
-    print(
-        f"Post-forward Hook activated for module: {name}, decoding step: {module.decoding_step}"
-    )
-    print("Post-Input/Output: ", input[0].shape, output[0].shape)
-    torch.save(
-        output, f"./hf_tensors/decoding_step_{module.decoding_step}_{name}.output"
-    )
-    print("===")
-    module.decoding_step += 1
-##############################################################################
+import sys
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "peft"))
+from hf_utils import *
 
 def main():
     # Change working dir to folder storing this script
@@ -91,26 +70,20 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(args.model_name, trust_remote_code=True)
     generation_config = GenerationConfig.from_pretrained(args.model_name)
     generation_config.do_sample = args.do_sample
+    if not args.do_sample:
+        generation_config.num_beams=1
+        generation_config.temperature = None
+        generation_config.top_p = None
     ################# debugging #################
     if args.inference_debugging:
         # Print model and configs
         print(hf_config)
         print(model)
-        # Save weights to file
-        shutil.rmtree("./hf_tensors")
-        # Check that the output folder exists
-        os.makedirs("./hf_tensors", exist_ok=True)
+        make_debug_dirs()
+        register_inference_hooks(model)
         # Save weights
-        for name, params in model.named_parameters():
-            torch.save(params, f"./hf_tensors/{name}")
-            # params.detach().cpu().numpy().tofile(f"./hf_tensors/{name}")
-        # Register hooks to save per-op hidden states
-        for name, layer in dict(model.named_modules()).items():
-            layer.name = name
-            layer.decoding_step = 0
-            print(f"Adding hooks to layer {layer.name}")
-            layer.register_forward_pre_hook(pre_forward_hook)
-            layer.register_forward_hook(post_forward_hook)
+        # save_model_weights(model, target_modules=["lora", "lm_head", "down_proj"])
+
     ###############################################
     # Generate output
     with open(args.output_file, "w") as f:

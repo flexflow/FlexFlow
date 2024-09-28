@@ -951,8 +951,7 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
 
   if (bc->num_tokens > bc->num_generation_tokens) {
     // phase 4: Compute attention score for prompt tokens;
-    compute_attention_kernel_prompt(
-        m, bc, shard_id, stream);
+    compute_attention_kernel_prompt(m, bc, shard_id, stream);
   }
 
   // compute output production and bias together for all tokens
@@ -1795,12 +1794,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     half const *bias_ptr =
         use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_half_ptr(),
-        output.get_half_ptr(),
-        stream);
+        m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
       pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
@@ -1808,12 +1802,7 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
     float const *bias_ptr =
         use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_float_ptr(),
-        output.get_float_ptr(),
-        stream);
+        m, bc, shard_id, input.get_float_ptr(), output.get_float_ptr(), stream);
   } else {
     assert(false && "Unspported data type");
   }

@@ -271,7 +271,7 @@ void FlexFlow::top_level_task(Task const *task,
       printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       Request inference_req;
       inference_req.prompt = text;
-      inference_req.max_sequence_length = 128;
+      inference_req.max_sequence_length = 10;
       requests.push_back(inference_req);
       total_num_requests++;
     }
