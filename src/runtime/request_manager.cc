@@ -296,6 +296,14 @@ void RequestManager::set_slo_violation_early_termination(
   slo_violation_early_termination = slo_violation_early_termination_;
 }
 
+void RequestManager::set_spec_infer_old_version(bool spec_infer_old_version_) {
+  spec_infer_old_version = spec_infer_old_version_;
+}
+
+bool RequestManager::get_spec_infer_old_version() {
+  return spec_infer_old_version;
+}
+
 double RequestManager::get_request_expected_latency(Request &request) {
   return request.get_slo_ratio() * baseline_latency_ms *
          (request.tokens.size() - request.llm_prefill_len);
@@ -1310,7 +1318,11 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
     }
     profiling.ssm_step_start = Realm::Clock::current_time_in_microseconds();
   }
-  update_token_tree_depth();
+
+  if (!spec_infer_old_version) {
+    // Only dynamically update the tree depth in the new version
+    update_token_tree_depth();
+  }
   if (verbose) {
     std::cout << "prepare_first_spec_batch_config NEW batchconfig:"
               << std::endl;
@@ -1630,7 +1642,11 @@ bool RequestManager::update_ssm_inference_results(
   // Here we assume that the order of the tokens in the last
   // BatchConfig and hence the last InferenceResult is equal to
   // the order of the request in the last BatchConfig
-  add_tokens_to_spec_token_tree(ssm_inference_result);
+  if (!spec_infer_old_version) {
+    add_tokens_to_spec_token_tree(ssm_inference_result);
+  } else {
+    add_tokens_to_spec_token_tree_old_version(ssm_inference_result);
+  }
 
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
@@ -1660,10 +1676,11 @@ bool RequestManager::update_ssm_inference_results(
   }
 
   // Stop conditions
-  //   if (current_ssm_step == get_max_tree_depth()) {
   if (current_ssm_step == ssm_tree_depth) {
     // Prune the token tree at the last step
-    prune_token_tree();
+    if (!spec_infer_old_version) {
+      prune_token_tree();
+    }
     // Update profiling statistics before returning
     profiling.ssm_step_times.push_back(
         (Realm::Clock::current_time_in_microseconds() -
@@ -1811,6 +1828,7 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   // verification.
   return llm_bitmask;
 }
+
 /* --------- Bitmask Related Functions --------- */
 void RequestManager::gumbel_conditioned_on_max(
     double target_max, std::vector<std::pair<double, int>> &logits) {
@@ -2607,6 +2625,7 @@ void RequestManager::add_tokens_to_spec_token_tree(
     InferenceResult const &ssm_inference_result) {
   // TODO: parameterize MAX_SPECULATIVE_TREE_BRANCHES
   // TODO: support gumbel sampling
+
   int tree_width =
       min(get_max_tokens_per_ssm_batch() / get_num_active_requests(),
           get_max_tree_width());
@@ -2681,6 +2700,83 @@ void RequestManager::add_tokens_to_spec_token_tree(
       spec_token_tree.tree_layers.back().push_back(node_ptr);
       request.token_tree_nodes_acc_prob_pair_pq.push(
           std::make_pair(node_ptr, accumulated_log_prob));
+    }
+  }
+}
+
+void RequestManager::add_tokens_to_spec_token_tree_old_version(
+    InferenceResult const &ssm_inference_result) {
+
+  std::vector<int> tree_width_vector = {1, 1, 3, 1, 1, 1, 1, 1};
+
+  int expand_width = tree_width_vector[current_ssm_step - 1];
+
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      // Request in this slot is unavailable
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+
+    int parent_num = request.num_tokens_in_batch;
+    if (parent_num == 0) {
+      continue;
+    }
+
+    int result_offset = request.first_token_offset_in_batch *
+                        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+    TokenTree &spec_token_tree = request.speculative_token_trees[0];
+    std::vector<std::shared_ptr<TokenTreeNode>> &last_layer =
+        spec_token_tree.tree_layers.back();
+    spec_token_tree.add_layer();
+
+    int parent_pos = 0;
+    for (auto const &parent_ptr : last_layer) {
+      double parent_log_prob = parent_ptr->log_accumulated_prob;
+      int child_start_idx =
+          result_offset +
+          parent_pos * BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+      std::vector<std::pair<double, int>> child_probs_v;
+      child_probs_v.reserve(BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES);
+      for (int result_idx = child_start_idx;
+           result_idx <
+           child_start_idx + BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+           result_idx++) {
+        double log_prob = log((double)ssm_inference_result.probs[result_idx]);
+        if (log_prob == -std::numeric_limits<double>::infinity()) {
+          continue;
+        }
+        if (log_prob == 0.0) {
+          // Slightly perturb the log prob to make it strictly less than 0
+          log_prob -= 1e-10;
+        }
+
+        double accumulated_log_prob = log_prob + parent_log_prob;
+
+        child_probs_v.emplace_back(accumulated_log_prob, result_idx);
+      }
+      int actual_width = min(expand_width, (int)child_probs_v.size());
+      if (actual_width == 0) {
+        continue;
+      }
+      std::partial_sort(child_probs_v.begin(),
+                        child_probs_v.begin() + actual_width,
+                        child_probs_v.end(),
+                        std::greater<std::pair<double, int>>());
+      for (int i = 0; i < actual_width; i++) {
+        auto [accumulated_log_prob, result_idx] = child_probs_v[i];
+        std::shared_ptr<TokenTreeNode> node_ptr =
+            std::make_shared<TokenTreeNode>(
+                ssm_inference_result.token_ids[result_idx],
+                accumulated_log_prob,
+                parent_pos);
+        node_ptr->included = true;
+        spec_token_tree.tree_layers.back().push_back(node_ptr);
+      }
+      parent_pos++;
     }
   }
 }

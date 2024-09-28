@@ -292,6 +292,8 @@ public:
   void set_memory_occupancy(bool memory_occupancy);
   void
       set_slo_violation_early_termination(bool slo_violation_early_termination);
+  void set_spec_infer_old_version(bool spec_infer_old_version);
+  bool get_spec_infer_old_version();
   double get_request_expected_latency(Request &request);
   Request &get_request_with_guid(RequestGuid guid);
   int register_ssm_model(FFModel *model);
@@ -395,6 +397,7 @@ private:
   bool streaming_cache = false;
   bool memory_occupancy = false;
   bool slo_violation_early_termination = false;
+  bool spec_infer_old_version = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -506,6 +509,8 @@ private:
   void add_root_to_spec_token_tree(RequestGuid guid,
                                    BatchConfig::TokenId token_id);
   void add_tokens_to_spec_token_tree(
+      InferenceResult const &ssm_inference_result);
+  void add_tokens_to_spec_token_tree_old_version(
       InferenceResult const &ssm_inference_result);
   void prune_token_tree();
   void add_tokens_toward_slo(RequestGuid guid, int &budget);
