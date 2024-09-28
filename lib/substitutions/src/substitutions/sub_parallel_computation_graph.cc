@@ -4,7 +4,7 @@
 #include "utils/containers/values.h"
 #include "utils/graph/dataflow_graph/algorithms/get_subgraph_outgoing_edges.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
-#include "utils/graph/labelled_dataflow_graph/algorithms/create_lazy_copy_of_labelled_open_dataflow_graph_view.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/create_lazy_copy_of_labelled_dataflow_graph_view.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/as_dot.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/find_isomorphism.h"
@@ -54,12 +54,6 @@ ParallelComputationGraph pcg_from_sub_pcg_by_dropping_inputs(
               UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs,
                                                     ParallelTensorAttrs>>(
               sub_pcg.raw_graph)};
-  // return ParallelComputationGraph{
-  //   make_lazy_copy_of<
-  //     UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs,
-  //     ParallelTensorAttrs>
-  //     >(sub_pcg.raw_graph)
-  // };
 }
 
 parallel_layer_guid_t

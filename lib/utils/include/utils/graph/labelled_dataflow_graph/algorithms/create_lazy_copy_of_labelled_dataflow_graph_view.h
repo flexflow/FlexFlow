@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_DATAFLOW_GRAPH_ALGORITHMS_CREATE_LAZY_COPY_OF_LABELLED_OPEN_DATAFLOW_GRAPH_VIEW_H
-#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_DATAFLOW_GRAPH_ALGORITHMS_CREATE_LAZY_COPY_OF_LABELLED_OPEN_DATAFLOW_GRAPH_VIEW_H
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_DATAFLOW_GRAPH_ALGORITHMS_CREATE_LAZY_COPY_OF_LABELLED_DATAFLOW_GRAPH_VIEW_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_DATAFLOW_GRAPH_ALGORITHMS_CREATE_LAZY_COPY_OF_LABELLED_DATAFLOW_GRAPH_VIEW_H
 
 #include "utils/graph/labelled_dataflow_graph/i_labelled_dataflow_graph.h"
 #include "utils/graph/labelled_dataflow_graph/labelled_dataflow_graph.h"
@@ -7,6 +7,10 @@
 #include <functional>
 
 namespace FlexFlow {
+
+ // NOTE(@lockshaw) This code is not tested and I don't necessarily trust it.
+ // Figuring out what to do with it is tracked in 
+ // https://github.com/flexflow/FlexFlow/issues/1513
 
 template <typename NodeLabel, typename ValueLabel>
 struct LazyLabelledDataflowGraph final
@@ -42,11 +46,11 @@ public:
     return this->get_view().query_outputs(q);
   }
 
-  NodeLabel const &at(Node const &n) const override {
+  NodeLabel at(Node const &n) const override {
     return this->get_view().at(n);
   }
 
-  ValueLabel const &at(DataflowOutput const &v) const override {
+  ValueLabel at(DataflowOutput const &v) const override {
     return this->get_view().at(v);
   }
 
@@ -95,7 +99,7 @@ template <typename T, typename NodeLabel, typename ValueLabel>
 static typename std::enable_if<
     std::is_base_of<ILabelledDataflowGraph<NodeLabel, ValueLabel>, T>::value,
     LabelledDataflowGraph<NodeLabel, ValueLabel>>::type
-    make_lazy_copy_of(
+    create_lazy_copy_of_labelled_dataflow_graph_view(
         LabelledDataflowGraphView<NodeLabel, ValueLabel> const &view) {
   std::function<LabelledDataflowGraph<NodeLabel, ValueLabel>(
       LabelledDataflowGraphView<NodeLabel, ValueLabel> const &)>

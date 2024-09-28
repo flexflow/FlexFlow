@@ -11,7 +11,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("estimate_cost_across_split") {
+  TEST_CASE("get_tensor_set_movement_across_split") {
     ParallelComputationGraph pcg = empty_parallel_computation_graph();
 
     ParallelTensorShape input_shape = 
@@ -79,7 +79,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         {relu_2.parallel_layer, post_mv1},
       }};
 
-      TensorSetMovement result = get_tensor_set_movement_across_split(get_pcg_transitive_reduction(pcg),
+      TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
                                                                       split,
                                                                       pre_mapping,
                                                                       post_mapping);
@@ -125,7 +125,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           {relu_3.parallel_layer, post_mv1},
         }};
 
-        TensorSetMovement result = get_tensor_set_movement_across_split(get_pcg_transitive_reduction(pcg),
+        TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
                                                   split,
                                                   pre_mapping,
                                                   post_mapping);
@@ -153,7 +153,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           {relu_3.parallel_layer, post_mv2},
         }};
 
-        TensorSetMovement result = get_tensor_set_movement_across_split(get_pcg_transitive_reduction(pcg),
+        TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
                                                   split,
                                                   pre_mapping,
                                                   post_mapping);
@@ -206,7 +206,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_pcg_leaf_node(relu_2.parallel_layer),
           make_pcg_leaf_node(relu_4.parallel_layer))));
 
-      TensorSetMovement result = get_tensor_set_movement_across_split(get_pcg_transitive_reduction(pcg),
+      TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
                                                                       split,
                                                                       pre_mapping,
                                                                       post_mapping);
@@ -217,12 +217,12 @@ TEST_SUITE(FF_TEST_SUITE) {
             SingleTensorMovement{
               /*parallel_tensor_shape=*/input_shape,
               /*src_machine_views=*/{pre_mv1},
-              /*dst_machine_views=*/{post_mv1},
+              /*dst_machine_views=*/{post_mv1, post_mv2},
             },
             SingleTensorMovement{
               /*parallel_tensor_shape=*/input_shape,
-              /*src_machine_views=*/{pre_mv1},
-              /*dst_machine_views=*/{post_mv1, post_mv2},
+              /*src_machine_views=*/{pre_mv2},
+              /*dst_machine_views=*/{post_mv2},
             },
           },
         };

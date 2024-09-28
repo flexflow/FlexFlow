@@ -117,12 +117,9 @@ MachineMappingResult get_optimal_machine_mapping_internal(
   PCGBinarySPDecomposition pre_sub_tree = get_left_child(series_split);
   PCGBinarySPDecomposition post_sub_tree = get_right_child(series_split);
 
-  std::pair<
-    std::unordered_set<parallel_layer_guid_t>,
-    std::unordered_set<parallel_layer_guid_t>
-  > boundary_layers = 
-    get_split_transitive_reduced_boundary_layers(context.transitive_reduced_pcg, 
-                                                 series_split);
+  PCGSplitBoundaryLayers boundary_layers = 
+    pcg_get_transitive_reduced_boundary_layers_for_split(context.transitive_reduced_pcg, 
+                                                         series_split);
 
   auto get_boundary_machine_view_assignments = [&](std::unordered_set<parallel_layer_guid_t> const &layers) 
     -> std::unordered_set<std::unordered_map<parallel_layer_guid_t, MachineView>>
@@ -136,7 +133,7 @@ MachineMappingResult get_optimal_machine_mapping_internal(
   };
 
   for (std::unordered_map<parallel_layer_guid_t, MachineView> const &assigned_pre_machine_views
-        : get_boundary_machine_view_assignments(boundary_layers.first)) {
+        : get_boundary_machine_view_assignments(boundary_layers.pre_split_boundary)) {
 
     PartialMachineMapping pre_candidate = 
       with_additional_layer_machine_views(
@@ -152,7 +149,7 @@ MachineMappingResult get_optimal_machine_mapping_internal(
 
 
     for (std::unordered_map<parallel_layer_guid_t, MachineView> const &assigned_post_machine_views
-          : get_boundary_machine_view_assignments(boundary_layers.second)) {
+          : get_boundary_machine_view_assignments(boundary_layers.post_split_boundary)) {
 
       PartialMachineMapping post_candidate = 
         with_additional_layer_machine_views(

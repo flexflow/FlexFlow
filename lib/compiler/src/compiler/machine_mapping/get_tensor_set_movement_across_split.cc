@@ -16,7 +16,7 @@ TensorSetMovement get_tensor_set_movement_across_split(TransitiveReducedPCG cons
                                                        PartialMachineMapping const &pre_mapping,
                                                        PartialMachineMapping const &post_mapping) {
   std::unordered_set<ParallelComputationGraphEdge> 
-    edges_across_split = get_transitive_reduced_edges_across_split(tr_pcg, split);
+    edges_across_split = pcg_get_transitive_reduced_edges_across_split(tr_pcg, split);
   
   auto get_movement_for_tensor = [&](parallel_tensor_guid_t const &t) {
     std::unordered_set<ParallelComputationGraphEdge> tensor_edges = filter(edges_across_split,
@@ -42,7 +42,7 @@ TensorSetMovement get_tensor_set_movement_across_split(TransitiveReducedPCG cons
   };
 
   std::unordered_map<parallel_tensor_guid_t, SingleTensorMovement> single_tensor_movements =
-    generate_map(get_transitive_reduced_tensors_across_split(tr_pcg, split),
+    generate_map(pcg_get_transitive_reduced_tensors_across_split(tr_pcg, split),
                  get_movement_for_tensor);
 
   return TensorSetMovement{

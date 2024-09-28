@@ -58,6 +58,11 @@ parallel_layer_guid_t
     get_parallel_layer_by_name(ParallelComputationGraph const &pcg,
                                std::string const &name);
 
+ParallelComputationGraph without_layer_names(ParallelComputationGraph const &);
+
+bool pcgs_are_isomorphic(ParallelComputationGraph const &,
+                         ParallelComputationGraph const &);
+
 } // namespace FlexFlow
 
 #endif

@@ -3,6 +3,7 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/make.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
 
 namespace FlexFlow {
 
@@ -38,6 +39,22 @@ bool is_binary_sp_tree_right_associative(BinarySPDecompositionTree const &tt) {
 
 std::unordered_multiset<Node> get_leaves(BinarySPDecompositionTree const &tt) {
   return get_leaves(tt.raw_tree);
+}
+
+BinarySeriesSplit require_series(BinarySPDecompositionTree const &tt) {
+  return BinarySeriesSplit{
+    require_series(tt.raw_tree),
+  };
+}
+
+BinaryParallelSplit require_parallel(BinarySPDecompositionTree const &tt) {
+  return BinaryParallelSplit{
+    require_parallel(tt.raw_tree),
+  };
+}
+
+Node require_leaf(BinarySPDecompositionTree const &tt) {
+  return require_leaf(tt.raw_tree);
 }
 
 } // namespace FlexFlow

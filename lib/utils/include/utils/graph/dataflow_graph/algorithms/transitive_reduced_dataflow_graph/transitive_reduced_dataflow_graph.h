@@ -1,0 +1,12 @@
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_ALGORITHMS_TRANSITIVE_REDUCED_DATAFLOW_GRAPH_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_DATAFLOW_GRAPH_ALGORITHMS_TRANSITIVE_REDUCED_DATAFLOW_GRAPH_H
+
+#include "utils/graph/dataflow_graph/algorithms/transitive_reduced_dataflow_graph/transitive_reduced_dataflow_graph.dtg.h"
+
+namespace FlexFlow {
+
+TransitiveReducedDataflowGraphView get_dataflow_graph_transitive_reduction(DataflowGraphView const &);
+
+} // namespace FlexFlow
+
+#endif

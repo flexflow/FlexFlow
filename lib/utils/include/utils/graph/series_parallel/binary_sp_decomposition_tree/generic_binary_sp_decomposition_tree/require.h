@@ -19,7 +19,7 @@ GenericBinaryParallelSplit<T> const &
 }
 
 template <typename T>
-T const &require_node(GenericBinarySPDecompositionTree<T> const &t) {
+T const &require_leaf(GenericBinarySPDecompositionTree<T> const &t) {
   return get<T>(t);
 }
 

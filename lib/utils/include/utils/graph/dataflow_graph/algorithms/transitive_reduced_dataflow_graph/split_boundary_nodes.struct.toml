@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "SplitBoundaryNodes"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h",
+  "<unordered_set>",
+]
+
+src_includes = [
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_set.h",
+]
+
+[[fields]]
+name = "pre_split_boundary"
+type = "std::unordered_set<::FlexFlow::Node>"
+
+[[fields]]
+name = "post_split_boundary"
+type = "std::unordered_set<::FlexFlow::Node>"

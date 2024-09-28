@@ -9,6 +9,24 @@
 namespace FlexFlow {
 
 template <typename T, typename F, typename TT = std::invoke_result_t<F, T>>
+GenericBinarySeriesSplit<TT>
+    transform(GenericBinarySeriesSplit<T> const &s, F f) {
+  return GenericBinarySeriesSplit<TT>{
+          transform(get_left_child(s), f),
+          transform(get_right_child(s), f),
+      };
+};
+
+template <typename T, typename F, typename TT = std::invoke_result_t<F, T>>
+GenericBinaryParallelSplit<TT>
+    transform(GenericBinaryParallelSplit<T> const &s, F f) {
+  return GenericBinaryParallelSplit<TT>{
+          transform(get_left_child(s), f),
+          transform(get_right_child(s), f),
+      };
+};
+
+template <typename T, typename F, typename TT = std::invoke_result_t<F, T>>
 GenericBinarySPDecompositionTree<TT>
     transform(GenericBinarySPDecompositionTree<T> const &tt, F f) {
   return visit<GenericBinarySPDecompositionTree<TT>>(
@@ -16,18 +34,12 @@ GenericBinarySPDecompositionTree<TT>
       overload{
           [&](GenericBinarySeriesSplit<T> const &s) {
             return GenericBinarySPDecompositionTree<TT>{
-                GenericBinarySeriesSplit<TT>{
-                    transform(get_left_child(s), f),
-                    transform(get_right_child(s), f),
-                },
+              transform(s, f),
             };
           },
           [&](GenericBinaryParallelSplit<T> const &s) {
             return GenericBinarySPDecompositionTree<TT>{
-                GenericBinaryParallelSplit<TT>{
-                    transform(get_left_child(s), f),
-                    transform(get_right_child(s), f),
-                },
+              transform(s, f),
             };
           },
           [&](T const &t) {

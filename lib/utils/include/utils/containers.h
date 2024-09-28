@@ -126,9 +126,6 @@ std::optional<bool> optional_all_of(Container const &container,
   return true;
 }
 
-  }
-}
-
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };

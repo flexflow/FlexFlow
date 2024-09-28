@@ -27,7 +27,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     LinearAttrs linear_attrs = LinearAttrs{
       /*out_channels=*/12,
-      /*use_bias=*/false,
+      /*use_bias=*/true,
       /*data_type=*/DataType::FLOAT,
       /*activation=*/std::nullopt,
       /*regularizer=*/std::nullopt,

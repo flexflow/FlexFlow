@@ -302,10 +302,14 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*create_gradients=*/CreateGrad::NO,
       };
 
+      add_parallel_layer(/*pcg=*/pcg, 
+                         /*layer_attrs=*/layer_attrs,
+                         /*inputs=*/{},
+                         /*output_labels=*/{tensor_attrs});
+
       return pcg;
     }();
 
-    FAIL("TODO");
-    // CHECK(pcgs_are_isomorphic(result, correct));
+    CHECK(pcgs_are_isomorphic(result, correct));
   }
 }

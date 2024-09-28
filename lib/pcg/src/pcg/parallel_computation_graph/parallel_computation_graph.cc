@@ -7,7 +7,9 @@
 #include "utils/graph/dataflow_graph/algorithms/get_dataflow_edges_from_node_to_node.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/find_isomorphism.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/rewrite_node_labels.h"
 
 namespace FlexFlow {
 
@@ -167,6 +169,29 @@ parallel_layer_guid_t
         return get_parallel_layer_attrs(pcg, l).name == name;
       });
   return get_only(found);
+}
+
+ParallelComputationGraph without_layer_names(ParallelComputationGraph const &pcg) {
+  return ParallelComputationGraph{
+    LabelledDataflowGraph<ParallelLayerAttrs, ParallelTensorAttrs>::
+        create_copy_of<
+            UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs,
+                                                  ParallelTensorAttrs>>(
+      rewrite_node_labels(
+          pcg.raw_graph,
+          [](Node const &n, ParallelLayerAttrs const &old_attrs) {
+            ParallelLayerAttrs new_attrs = old_attrs;
+            new_attrs.name = std::nullopt;
+            return new_attrs;
+          })),
+  };
+}
+
+bool pcgs_are_isomorphic(ParallelComputationGraph const &lhs,
+                         ParallelComputationGraph const &rhs) {
+  return find_isomorphism(without_layer_names(lhs).raw_graph,
+                          without_layer_names(rhs).raw_graph)
+      .has_value();
 }
 
 } // namespace FlexFlow
