@@ -749,7 +749,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
+  // bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -761,7 +761,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
   assert(input.data_type == output.data_type);
 
   if (input.data_type == DT_HALF) {
-    half const *bias_ptr = static_cast<half const *>(nullptr);
+    // half const *bias_ptr = static_cast<half const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
         m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
@@ -803,7 +803,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->kProjSize,
                                     attn->vProjSize,
                                     attn->oProjSize,
-                                    attn->apply_rotary_embedding,
+                                    attn->rotary_embedding_meta,
                                     attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,

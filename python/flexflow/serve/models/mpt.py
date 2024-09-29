@@ -19,8 +19,6 @@ import random, torch, shutil
 
 class MPTConfig:
     def __init__(self, hf_config):
-        # self.max_seq_len = 256
-        # self.max_num_tokens = 64
         self.max_beam_width = 1
         self.max_beam_depth = 8
         self.max_spec_tree_token_num = 20
@@ -28,6 +26,7 @@ class MPTConfig:
         self.n_heads = hf_config.n_heads
         self.n_layers = hf_config.n_layers
         self.vocab_size = hf_config.vocab_size
+        self.rotary_embedding_meta = RotaryEmbeddingMeta(apply_rotary_embedding=False)
         # Standardized FlexFlow num heads fields below
         self.num_attention_heads = hf_config.n_heads
         self.num_key_value_heads = hf_config.n_heads
@@ -50,11 +49,8 @@ class FlexFlowMPT(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.mpt_config = MPTConfig(hf_config)
-        # self.mpt_config.max_seq_length = max_seq_length
-        # self.mpt_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -150,7 +146,7 @@ class FlexFlowMPT(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    False,  # apply_rotary_embedding
+                    self.mpt_config.rotary_embedding_meta,
                     True,  # scaling_query
                     (self.mpt_config.hidden_size / self.mpt_config.n_heads)
                     ** (-0.5),  # scaling_factor
@@ -171,7 +167,7 @@ class FlexFlowMPT(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    False,  # apply_rotary_embedding
+                    self.mpt_config.rotary_embedding_meta,
                     True,  # scaling_query
                     (self.mpt_config.hidden_size / self.mpt_config.n_heads)
                     ** (-0.5),  # scaling_factor
@@ -192,7 +188,7 @@ class FlexFlowMPT(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    False,  # apply_rotary_embedding
+                    self.mpt_config.rotary_embedding_meta,
                     True,  # scaling_query
                     (self.mpt_config.hidden_size / self.mpt_config.n_heads)
                     ** (-0.5),  # scaling_factor

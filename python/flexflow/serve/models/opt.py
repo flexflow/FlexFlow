@@ -34,6 +34,7 @@ class OPTConfig:
         self.num_hidden_layers = hf_config.num_hidden_layers
         self.vocab_size = hf_config.vocab_size
         self.word_embed_proj_dim = hf_config.word_embed_proj_dim
+        self.rotary_embedding_meta = RotaryEmbeddingMeta(apply_rotary_embedding=False)
         # Standardized FlexFlow num heads fields below
         self.num_attention_heads = hf_config.num_attention_heads
         self.num_key_value_heads = hf_config.num_attention_heads
@@ -47,8 +48,6 @@ class FlexFlowOPT(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        # max_batch_size=1,
-        # max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -56,11 +55,8 @@ class FlexFlowOPT(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.opt_config = OPTConfig(hf_config)
-        # self.opt_config.max_seq_length = max_seq_length
-        # self.opt_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -166,7 +162,7 @@ class FlexFlowOPT(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    False,  # apply_rotary_embedding
+                    self.opt_config.rotary_embedding_meta,
                     True,  # scaling_query
                     (self.opt_config.hidden_size / self.opt_config.num_attention_heads)
                     ** (-0.5),  # scaling_factor
@@ -186,7 +182,7 @@ class FlexFlowOPT(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    False,  # apply_rotary_embedding
+                    self.opt_config.rotary_embedding_meta,
                     True,  # scaling_query
                     (self.opt_config.hidden_size / self.opt_config.num_attention_heads)
                     ** (-0.5),  # scaling_factor
@@ -206,7 +202,7 @@ class FlexFlowOPT(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    False,  # apply_rotary_embedding
+                    self.opt_config.rotary_embedding_meta,
                     True,  # scaling_query
                     (self.opt_config.hidden_size / self.opt_config.num_attention_heads)
                     ** (-0.5),  # scaling_factor

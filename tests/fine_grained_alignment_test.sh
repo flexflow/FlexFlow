@@ -6,6 +6,7 @@ MODEL_NAME=${MODEL_NAME:-"JackFram/llama-160m"}
 MEMORY_PER_GPU=${MEMORY_PER_GPU:-14000}
 ZCOPY_MEMORY=${ZCOPY_MEMORY:-40000}
 CACHE_PATH=${FF_CACHE_PATH:-"~/.cache/flexflow"}
+NUM_STEPS=${NUM_STEPS:-2}
 
 cleanup() {
     rm -rf ${CACHE_PATH}/debug ./fine_grained_alignment_config.json ./inference/output/fine_grained_alignment_test_ff.txt ./inference/output/fine_grained_alignment_test_hf.txt
@@ -26,8 +27,30 @@ mkdir -p ./inference/output
 
 # Enable backtrace in case we run into a segfault or assertion failure
 export LEGION_BACKTRACE=1
+export FF_DEBG_NO_WEIGHTS=1
 
-python ./tests/inference/huggingface_inference.py --model-name $MODEL_NAME --max-length 10 --prompt-file ../../inference/prompt/test.json --output-file ../../inference/output/fine_grained_alignment_test_hf.txt --use-full-precision --inference-debugging
+PROMPT_LENGTH=$(python -c "
+from transformers import AutoTokenizer
+import os
+tokenizer = AutoTokenizer.from_pretrained(\"$MODEL_NAME\")
+tokens = tokenizer.tokenize('Three tips for staying healthy are: ')
+print(len(tokens))
+")
+# Check if the Python code executed successfully
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to execute Python code"
+    exit 1
+fi
+
+MAX_LENGTH=$((PROMPT_LENGTH + NUM_STEPS + 1))
+
+python ./tests/inference/huggingface_inference.py \
+    --model-name $MODEL_NAME \
+    --max-length $MAX_LENGTH \
+    --prompt-file ../../inference/prompt/test.json \
+    --output-file ../../inference/output/fine_grained_alignment_test_hf.txt \
+    --use-full-precision \
+    --inference-debugging
 
 json_config=$(cat <<-END
     {
@@ -46,7 +69,7 @@ json_config=$(cat <<-END
         "cache_path": "${CACHE_PATH}",
         "full_precision": true,
         "prompt": "./inference/prompt/test.json",
-        "max_length": 10,
+        "max_length": $MAX_LENGTH,
         "output_file": "./inference/output/fine_grained_alignment_test_ff.txt"
     }
 END
@@ -67,11 +90,11 @@ python ./inference/python/incr_decoding.py -config-file ./fine_grained_alignment
 #     --inference-debugging
 
 # Check alignment
-python ./tests/inference/inference_alignment_test.py -m $MODEL_NAME -tp 2 -n 2
+python ./tests/inference/inference_alignment_test.py -m $MODEL_NAME -tp 2 -n $NUM_STEPS
 
 # Print succeess message
 echo ""
-echo "Inference alignment tests passed!"
+echo "Inference alignment tests passed (model ${MODEL_NAME})!"
 echo ""
 
 # Cleanup after the test

@@ -193,3 +193,5 @@ lora_training_logs
 Untitled-1.ipynb
 Untitled-2.ipynb
 tests/inference/python_test_configs/*.json
+
+core.*

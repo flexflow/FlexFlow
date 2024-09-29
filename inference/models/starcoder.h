@@ -41,6 +41,7 @@ public:
           intermediate_size = model_config["n_inner"];
           dropout_p = model_config["attn_pdrop"];
           max_position_embeddings = model_config["n_positions"];
+          rotary_embedding_meta.apply_rotary_embedding = false;
         } catch (json::exception const &e) {
           std::cerr << "Error parsing STARCODER config from JSON file: "
                     << e.what() << std::endl;
@@ -51,8 +52,6 @@ public:
                   << std::endl;
         assert(false);
       }
-      // max_seq_len = BatchConfig::MAX_SEQ_LENGTH;
-      // max_num_tokens = BatchConfig::MAX_NUM_TOKENS;
       max_beam_width = BeamSearchBatchConfig::MAX_BEAM_WIDTH;
       max_beam_depth = BeamSearchBatchConfig::MAX_BEAM_DEPTH;
     }
@@ -64,6 +63,7 @@ public:
     int num_hidden_layers, vocab_size, num_attention_heads, hidden_size,
         intermediate_size, max_position_embeddings;
     float layer_norm_epsilon, dropout_p;
+    RotaryEmbeddingMeta rotary_embedding_meta;
   };
 
   static void create_starcoder_model(FFModel &ff,

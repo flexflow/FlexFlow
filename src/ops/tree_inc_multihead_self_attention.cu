@@ -958,7 +958,7 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
+  // bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -1020,7 +1020,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->kProjSize,
                                     attn->vProjSize,
                                     attn->oProjSize,
-                                    attn->apply_rotary_embedding,
+                                    attn->rotary_embedding_meta,
                                     attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,

@@ -1062,7 +1062,7 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->kProjSize,
                                     attn->vProjSize,
                                     attn->oProjSize,
-                                    attn->apply_rotary_embedding,
+                                    attn->rotary_embedding_meta,
                                     attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,

@@ -2334,7 +2334,16 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qkv_bias);
         sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
-        sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->rotary_embedding_meta.apply_rotary_embedding);
+        sez.serialize(attn->rotary_embedding_meta.rope_theta);
+        sez.serialize(attn->rotary_embedding_meta.rope_type.size());
+        sez.serialize(attn->rotary_embedding_meta.rope_type.c_str(),
+                      attn->rotary_embedding_meta.rope_type.size());
+        sez.serialize(attn->rotary_embedding_meta.factor);
+        sez.serialize(attn->rotary_embedding_meta.low_freq_factor);
+        sez.serialize(attn->rotary_embedding_meta.high_freq_factor);
+        sez.serialize(
+            attn->rotary_embedding_meta.original_max_position_embeddings);
         sez.serialize(attn->scaling_query);
         sez.serialize(attn->scaling_factor);
         sez.serialize(attn->qk_prod_scaling);
@@ -2361,7 +2370,16 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qkv_bias);
         sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
-        sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->rotary_embedding_meta.apply_rotary_embedding);
+        sez.serialize(attn->rotary_embedding_meta.rope_theta);
+        sez.serialize(attn->rotary_embedding_meta.rope_type.size());
+        sez.serialize(attn->rotary_embedding_meta.rope_type.c_str(),
+                      attn->rotary_embedding_meta.rope_type.size());
+        sez.serialize(attn->rotary_embedding_meta.factor);
+        sez.serialize(attn->rotary_embedding_meta.low_freq_factor);
+        sez.serialize(attn->rotary_embedding_meta.high_freq_factor);
+        sez.serialize(
+            attn->rotary_embedding_meta.original_max_position_embeddings);
         sez.serialize(attn->scaling_query);
         sez.serialize(attn->scaling_factor);
         sez.serialize(attn->qk_prod_scaling);
@@ -2385,7 +2403,16 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qkv_bias);
         sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
-        sez.serialize(attn->apply_rotary_embedding);
+        sez.serialize(attn->rotary_embedding_meta.apply_rotary_embedding);
+        sez.serialize(attn->rotary_embedding_meta.rope_theta);
+        sez.serialize(attn->rotary_embedding_meta.rope_type.size());
+        sez.serialize(attn->rotary_embedding_meta.rope_type.c_str(),
+                      attn->rotary_embedding_meta.rope_type.size());
+        sez.serialize(attn->rotary_embedding_meta.factor);
+        sez.serialize(attn->rotary_embedding_meta.low_freq_factor);
+        sez.serialize(attn->rotary_embedding_meta.high_freq_factor);
+        sez.serialize(
+            attn->rotary_embedding_meta.original_max_position_embeddings);
         sez.serialize(attn->scaling_query);
         sez.serialize(attn->scaling_factor);
         sez.serialize(attn->qk_prod_scaling);
@@ -2817,8 +2844,9 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
-            scaling_query, qk_prod_scaling, offload, position_bias;
+        bool qkv_bias, final_bias, add_zero_attn, scaling_query,
+            qk_prod_scaling, offload, position_bias;
+        RotaryEmbeddingMeta rotary_embedding_meta;
         DataType quantization_type;
         size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
@@ -2833,7 +2861,17 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(qkv_bias);
         dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
-        dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(rotary_embedding_meta.apply_rotary_embedding);
+        dez.deserialize(rotary_embedding_meta.rope_theta);
+        size_t rope_type_len;
+        char rope_type[1024] = {0};
+        dez.deserialize(rope_type_len);
+        dez.deserialize(rope_type, rope_type_len);
+        rotary_embedding_meta.rope_type = std::string(rope_type);
+        dez.deserialize(rotary_embedding_meta.factor);
+        dez.deserialize(rotary_embedding_meta.low_freq_factor);
+        dez.deserialize(rotary_embedding_meta.high_freq_factor);
+        dez.deserialize(rotary_embedding_meta.original_max_position_embeddings);
         dez.deserialize(scaling_query);
         dez.deserialize(scaling_factor);
         dez.deserialize(qk_prod_scaling);
@@ -2857,7 +2895,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
-        params.apply_rotary_embedding = apply_rotary_embedding;
+        params.rotary_embedding_meta = rotary_embedding_meta;
         params.scaling_query = scaling_query;
         params.scaling_factor = scaling_factor;
         params.qk_prod_scaling = qk_prod_scaling;
@@ -2874,8 +2912,9 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads;
         float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
-            scaling_query, qk_prod_scaling, position_bias;
+        bool qkv_bias, final_bias, add_zero_attn, scaling_query,
+            qk_prod_scaling, position_bias;
+        RotaryEmbeddingMeta rotary_embedding_meta;
         size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
         dez.deserialize(transformer_layer_id);
@@ -2889,7 +2928,17 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(qkv_bias);
         dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
-        dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(rotary_embedding_meta.apply_rotary_embedding);
+        dez.deserialize(rotary_embedding_meta.rope_theta);
+        size_t rope_type_len;
+        char rope_type[1024] = {0};
+        dez.deserialize(rope_type_len);
+        dez.deserialize(rope_type, rope_type_len);
+        rotary_embedding_meta.rope_type = std::string(rope_type);
+        dez.deserialize(rotary_embedding_meta.factor);
+        dez.deserialize(rotary_embedding_meta.low_freq_factor);
+        dez.deserialize(rotary_embedding_meta.high_freq_factor);
+        dez.deserialize(rotary_embedding_meta.original_max_position_embeddings);
         dez.deserialize(scaling_query);
         dez.deserialize(scaling_factor);
         dez.deserialize(qk_prod_scaling);
@@ -2910,7 +2959,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
-        params.apply_rotary_embedding = apply_rotary_embedding;
+        params.rotary_embedding_meta = rotary_embedding_meta;
         params.scaling_query = scaling_query;
         params.scaling_factor = scaling_factor;
         params.qk_prod_scaling = qk_prod_scaling;
@@ -2926,8 +2975,9 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
-            scaling_query, qk_prod_scaling, offload, position_bias;
+        bool qkv_bias, final_bias, add_zero_attn, scaling_query,
+            qk_prod_scaling, offload, position_bias;
+        RotaryEmbeddingMeta rotary_embedding_meta;
         DataType quantization_type;
         size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
@@ -2942,7 +2992,17 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(qkv_bias);
         dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
-        dez.deserialize(apply_rotary_embedding);
+        dez.deserialize(rotary_embedding_meta.apply_rotary_embedding);
+        dez.deserialize(rotary_embedding_meta.rope_theta);
+        size_t rope_type_len;
+        char rope_type[1024] = {0};
+        dez.deserialize(rope_type_len);
+        dez.deserialize(rope_type, rope_type_len);
+        rotary_embedding_meta.rope_type = std::string(rope_type);
+        dez.deserialize(rotary_embedding_meta.factor);
+        dez.deserialize(rotary_embedding_meta.low_freq_factor);
+        dez.deserialize(rotary_embedding_meta.high_freq_factor);
+        dez.deserialize(rotary_embedding_meta.original_max_position_embeddings);
         dez.deserialize(scaling_query);
         dez.deserialize(scaling_factor);
         dez.deserialize(qk_prod_scaling);
@@ -2966,7 +3026,7 @@ void FFModel::deserialize_graph_optimal_view(
         params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
-        params.apply_rotary_embedding = apply_rotary_embedding;
+        params.rotary_embedding_meta = rotary_embedding_meta;
         params.scaling_query = scaling_query;
         params.scaling_factor = scaling_factor;
         params.qk_prod_scaling = qk_prod_scaling;

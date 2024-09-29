@@ -54,23 +54,24 @@ bool IncMultiHeadSelfAttentionParams::is_valid(
   return is_valid;
 }
 
-Tensor FFModel::inc_multihead_self_attention(const Tensor input,
-                                             int embed_dim,
-                                             int num_heads,
-                                             int kdim,
-                                             int vdim,
-                                             float dropout,
-                                             bool qkv_bias,
-                                             bool final_bias,
-                                             bool add_zero_attn,
-                                             DataType data_type,
-                                             Initializer *kernel_initializer,
-                                             bool apply_rotary_embedding,
-                                             bool scaling_query,
-                                             float scaling_factor,
-                                             bool qk_prod_scaling,
-                                             bool position_bias,
-                                             char const *name) {
+Tensor FFModel::inc_multihead_self_attention(
+    const Tensor input,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool qkv_bias,
+    bool final_bias,
+    bool add_zero_attn,
+    DataType data_type,
+    Initializer *kernel_initializer,
+    RotaryEmbeddingMeta rotary_embedding_meta,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
+    bool position_bias,
+    char const *name) {
   return inc_multiquery_self_attention(input,
                                        embed_dim,
                                        num_heads,
@@ -83,7 +84,7 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                        add_zero_attn,
                                        data_type,
                                        kernel_initializer,
-                                       apply_rotary_embedding,
+                                       rotary_embedding_meta,
                                        scaling_query,
                                        scaling_factor,
                                        qk_prod_scaling,
@@ -91,24 +92,25 @@ Tensor FFModel::inc_multihead_self_attention(const Tensor input,
                                        name);
 }
 
-Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
-                                              int embed_dim,
-                                              int num_q_heads,
-                                              int num_kv_heads,
-                                              int kdim,
-                                              int vdim,
-                                              float dropout,
-                                              bool qkv_bias,
-                                              bool final_bias,
-                                              bool add_zero_attn,
-                                              DataType data_type,
-                                              Initializer *kernel_initializer,
-                                              bool apply_rotary_embedding,
-                                              bool scaling_query,
-                                              float scaling_factor,
-                                              bool qk_prod_scaling,
-                                              bool position_bias,
-                                              char const *name) {
+Tensor FFModel::inc_multiquery_self_attention(
+    const Tensor input,
+    int embed_dim,
+    int num_q_heads,
+    int num_kv_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool qkv_bias,
+    bool final_bias,
+    bool add_zero_attn,
+    DataType data_type,
+    Initializer *kernel_initializer,
+    RotaryEmbeddingMeta rotary_embedding_meta,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
+    bool position_bias,
+    char const *name) {
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }
@@ -170,7 +172,17 @@ Tensor FFModel::inc_multiquery_self_attention(const Tensor input,
   li->add_int_property("final_bias", final_bias);
   li->add_int_property("add_zero_attn", add_zero_attn);
   li->add_float_property("dropout", dropout);
-  li->add_int_property("apply_rotary_embedding", apply_rotary_embedding);
+  li->add_int_property("apply_rotary_embedding",
+                       rotary_embedding_meta.apply_rotary_embedding);
+  li->add_float_property("rope_theta", rotary_embedding_meta.rope_theta);
+  li->add_string_property("rope_type", rotary_embedding_meta.rope_type);
+  li->add_float_property("factor", rotary_embedding_meta.factor);
+  li->add_float_property("low_freq_factor",
+                         rotary_embedding_meta.low_freq_factor);
+  li->add_float_property("high_freq_factor",
+                         rotary_embedding_meta.high_freq_factor);
+  li->add_int_property("original_max_position_embeddings",
+                       rotary_embedding_meta.original_max_position_embeddings);
   li->add_int_property("scaling_query", scaling_query);
   li->add_float_property("scaling_factor", scaling_factor);
   li->add_int_property("qk_prod_scaling", qk_prod_scaling);
@@ -207,8 +219,18 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
   bool final_bias = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
+  RotaryEmbeddingMeta rotary_embedding_meta;
   layer->get_int_property("apply_rotary_embedding", value);
-  bool apply_rotary_embedding = (bool)value;
+  rotary_embedding_meta.apply_rotary_embedding = (bool)value;
+  layer->get_float_property("rope_theta", rotary_embedding_meta.rope_theta);
+  layer->get_string_property("rope_type", rotary_embedding_meta.rope_type);
+  layer->get_float_property("factor", rotary_embedding_meta.factor);
+  layer->get_float_property("low_freq_factor",
+                            rotary_embedding_meta.low_freq_factor);
+  layer->get_float_property("high_freq_factor",
+                            rotary_embedding_meta.high_freq_factor);
+  layer->get_int_property("original_max_position_embeddings", value);
+  rotary_embedding_meta.original_max_position_embeddings = (int)value;
   layer->get_int_property("scaling_query", value);
   bool scaling_query = (bool)value;
   float scaling_factor;
@@ -237,7 +259,7 @@ Op *IncMultiHeadSelfAttention::create_operator_from_layer(
                                        qkv_bias,
                                        final_bias,
                                        add_zero_attn,
-                                       apply_rotary_embedding,
+                                       rotary_embedding_meta,
                                        scaling_query,
                                        scaling_factor,
                                        qk_prod_scaling,
@@ -262,7 +284,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _qkv_bias,
     bool _final_bias,
     bool _add_zero_attn,
-    bool _apply_rotary_embedding,
+    RotaryEmbeddingMeta _rotary_embedding_meta,
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
@@ -284,7 +306,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
-      apply_rotary_embedding(_apply_rotary_embedding),
+      rotary_embedding_meta(_rotary_embedding_meta),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
@@ -353,7 +375,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
     bool _qkv_bias,
     bool _final_bias,
     bool _add_zero_attn,
-    bool _apply_rotary_embedding,
+    RotaryEmbeddingMeta _rotary_embedding_meta,
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
@@ -376,7 +398,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
       qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
-      apply_rotary_embedding(_apply_rotary_embedding),
+      rotary_embedding_meta(_rotary_embedding_meta),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
       vSize(_input->dims[0].size), qProjSize(_kdim), kProjSize(_kdim),
       vProjSize(_vdim), oProjSize(_embed_dim),
@@ -451,7 +473,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 other.qkv_bias,
                                 other.final_bias,
                                 other.add_zero_attn,
-                                other.apply_rotary_embedding,
+                                other.rotary_embedding_meta,
                                 other.scaling_query,
                                 other.scaling_factor,
                                 other.qk_prod_scaling,
@@ -480,7 +502,7 @@ IncMultiHeadSelfAttention::IncMultiHeadSelfAttention(
                                 params.qkv_bias,
                                 params.final_bias,
                                 params.add_zero_attn,
-                                params.apply_rotary_embedding,
+                                params.rotary_embedding_meta,
                                 params.scaling_query,
                                 params.scaling_factor,
                                 params.qk_prod_scaling,
@@ -846,7 +868,19 @@ bool operator==(IncMultiHeadSelfAttentionParams const &lhs,
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
          lhs.qkv_bias == rhs.qkv_bias && lhs.final_bias == rhs.final_bias &&
          lhs.add_zero_attn == rhs.add_zero_attn &&
-         lhs.apply_rotary_embedding == rhs.apply_rotary_embedding &&
+         lhs.rotary_embedding_meta.apply_rotary_embedding ==
+             rhs.rotary_embedding_meta.apply_rotary_embedding &&
+         lhs.rotary_embedding_meta.rope_theta ==
+             rhs.rotary_embedding_meta.rope_theta &&
+         lhs.rotary_embedding_meta.rope_type ==
+             rhs.rotary_embedding_meta.rope_type &&
+         lhs.rotary_embedding_meta.factor == rhs.rotary_embedding_meta.factor &&
+         lhs.rotary_embedding_meta.low_freq_factor ==
+             rhs.rotary_embedding_meta.low_freq_factor &&
+         lhs.rotary_embedding_meta.high_freq_factor ==
+             rhs.rotary_embedding_meta.high_freq_factor &&
+         lhs.rotary_embedding_meta.original_max_position_embeddings ==
+             rhs.rotary_embedding_meta.original_max_position_embeddings &&
          lhs.scaling_query == rhs.scaling_query &&
          lhs.scaling_factor == rhs.scaling_factor &&
          lhs.qk_prod_scaling == rhs.qk_prod_scaling &&
@@ -864,7 +898,7 @@ IncMultiHeadSelfAttentionParams IncMultiHeadSelfAttention::get_params() const {
   params.qkv_bias = this->qkv_bias;
   params.final_bias = this->final_bias;
   params.add_zero_attn = this->add_zero_attn;
-  params.apply_rotary_embedding = this->apply_rotary_embedding;
+  params.rotary_embedding_meta = this->rotary_embedding_meta;
   params.scaling_query = this->scaling_query;
   params.scaling_factor = this->scaling_factor;
   params.qk_prod_scaling = this->qk_prod_scaling;
@@ -896,7 +930,14 @@ size_t hash<FlexFlow::IncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.qkv_bias);
   hash_combine(key, params.final_bias);
   hash_combine(key, params.add_zero_attn);
-  hash_combine(key, params.apply_rotary_embedding);
+  hash_combine(key, params.rotary_embedding_meta.apply_rotary_embedding);
+  hash_combine(key, params.rotary_embedding_meta.rope_theta);
+  hash_combine(key, params.rotary_embedding_meta.rope_type);
+  hash_combine(key, params.rotary_embedding_meta.factor);
+  hash_combine(key, params.rotary_embedding_meta.low_freq_factor);
+  hash_combine(key, params.rotary_embedding_meta.high_freq_factor);
+  hash_combine(key,
+               params.rotary_embedding_meta.original_max_position_embeddings);
   hash_combine(key, params.scaling_query);
   hash_combine(key, params.scaling_factor);
   hash_combine(key, params.qk_prod_scaling);
