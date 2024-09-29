@@ -2,21 +2,15 @@ namespace = "FlexFlow"
 name = "BinarySPDecompositionTree"
 features = [
   "eq",
-  "ord",
   "hash",
   "fmt",
 ]
 
 includes = [
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.h",
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree.dtg.h",
   "utils/graph/node/node.dtg.h",
-]
-
-src_includes = [
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/hash.h",
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/fmt.h",
 ]
 
 [[fields]]
 name = "raw_tree"
-type = "::FlexFlow::GenericBinarySPDecompositionTree<::FlexFlow::Node>"
+type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<::FlexFlow::Node>"

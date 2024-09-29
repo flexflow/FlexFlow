@@ -3,10 +3,12 @@
 
 #include "compiler/machine_mapping/machine_mapping.h"
 #include "compiler/machine_mapping/machine_mapping_cache.h"
+#include "compiler/machine_mapping/machine_mapping_constraints.dtg.h"
 #include "compiler/machine_mapping/machine_mapping_context.dtg.h"
-#include "compiler/machine_mapping/partial_machine_mapping.dtg.h"
-#include "compiler/series_parallel/pcg_binary_parallel_split.dtg.h"
-#include "compiler/series_parallel/pcg_binary_series_split.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_result_tree/machine_mapping_result_tree.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_parallel_split.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_series_split.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
@@ -14,7 +16,7 @@
 
 namespace FlexFlow {
 
-MachineMappingResult get_optimal_machine_mapping(
+MachineMappingResultTree get_optimal_machine_mapping(
     ParallelComputationGraph const &pcg,
     std::function<std::unordered_set<MachineView>(
         ParallelLayerAttrs const &, MachineSpecification const &)> const
@@ -23,38 +25,38 @@ MachineMappingResult get_optimal_machine_mapping(
     MachineSpecification const &resources,
     MachineMappingCache &cached_subgraph_results);
 
-MachineMappingResult
+MachineMappingResultTree
     get_optimal_machine_mapping_internal(MachineMappingCache &result_cache,
                                          MachineMappingContext const &context,
                                          MachineSpecification const &resources);
 
-MachineMappingResult get_optimal_machine_mapping_internal(
+std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
-    PCGBinarySPDecomposition const &sp_decomposition,
+    MachineMappingProblemTree const &,
     MachineSpecification const &resources,
-    PartialMachineMapping const &);
+    MachineMappingConstraints const &);
 
-MachineMappingResult get_optimal_machine_mapping_internal(
+std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
-    PCGBinarySeriesSplit const &series,
+    MMProblemTreeSeriesSplit const &,
     MachineSpecification const &resources,
-    PartialMachineMapping const &);
+    MachineMappingConstraints const &);
 
-MachineMappingResult get_optimal_machine_mapping_internal(
+std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
-    PCGBinaryParallelSplit const &parallel,
+    MMProblemTreeParallelSplit const &,
     MachineSpecification const &resources,
-    PartialMachineMapping const &);
+    MachineMappingConstraints const &);
 
-MachineMappingResult get_optimal_machine_mapping_internal(
+std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,
     MachineMappingContext const &,
     parallel_layer_guid_t const &,
     MachineSpecification const &,
-    PartialMachineMapping const &);
+    MachineMappingConstraints const &);
 
 } // namespace FlexFlow
 

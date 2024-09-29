@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "PartialMachineMapping"
+name = "MachineMappingConstraints"
 features = [
   "eq",
   "hash",

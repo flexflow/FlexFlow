@@ -1,0 +1,11 @@
+namespace = "FlexFlow"
+name = "MMProblemTreeParallelSplitLabel"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = []
+
+fields = []

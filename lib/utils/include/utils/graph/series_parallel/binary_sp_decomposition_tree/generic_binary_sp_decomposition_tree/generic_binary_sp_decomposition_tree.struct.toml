@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "GenericBinarySPDecompositionTree"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+template_params = [
+  "SeriesSplitLabel",
+  "ParallelSplitLabel",
+  "LeafLabel",
+]
+
+includes = [
+  "utils/full_binary_tree/full_binary_tree.h",
+]
+
+[[fields]]
+name = "raw_tree"
+type = "::FlexFlow::FullBinaryTree<std::variant<SeriesSplitLabel, ParallelSplitLabel>, LeafLabel>"

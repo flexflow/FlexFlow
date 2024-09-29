@@ -2,21 +2,15 @@ namespace = "FlexFlow"
 name = "PCGBinaryParallelSplit"
 features = [
   "eq",
-  "ord",
   "hash",
   "fmt",
 ]
 
 includes = [
   "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.h",
-]
-
-src_includes = [
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/hash.h",
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/fmt.h",
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_parallel_split.dtg.h",
 ]
 
 [[fields]]
 name = "raw_split"
-type = "::FlexFlow::GenericBinaryParallelSplit<::FlexFlow::parallel_layer_guid_t>"
+type = "::FlexFlow::LeafOnlyBinaryParallelSplit<::FlexFlow::parallel_layer_guid_t>"

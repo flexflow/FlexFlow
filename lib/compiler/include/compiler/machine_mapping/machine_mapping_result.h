@@ -5,11 +5,6 @@
 
 namespace FlexFlow {
 
-MachineMappingResult sequential_combine(MachineMappingResult const &s1,
-                                        float comm_cost,
-                                        MachineMappingResult const &s2);
-MachineMappingResult parallel_combine(MachineMappingResult const &s1,
-                                      MachineMappingResult const &s2);
 MachineMappingResult get_infinity_machine_mapping_result();
 
 void minimize_runtime(MachineMappingResult &m1, MachineMappingResult const &m2);

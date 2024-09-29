@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "MMResultTreeParallelSplitLabel"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = []
+
+[[fields]]
+name = "cost"
+type = "float"

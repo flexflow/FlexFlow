@@ -8,18 +8,18 @@ features = [
 
 includes = [
   "pcg/machine_specification.dtg.h",
-  "compiler/series_parallel/pcg_binary_sp_decomposition.dtg.h",
-  "compiler/machine_mapping/partial_machine_mapping.dtg.h",
+  "compiler/machine_mapping/machine_mapping_constraints.dtg.h",
+  "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.dtg.h",
 ]
 
 [[fields]]
-name = "subgraph"
-type = "::FlexFlow::PCGBinarySPDecomposition"
+name = "problem_tree"
+type = "::FlexFlow::MachineMappingProblemTree"
 
 [[fields]]
 name = "resource"
 type = "::FlexFlow::MachineSpecification"
 
 [[fields]]
-name = "partial_solution"
-type = "::FlexFlow::PartialMachineMapping"
+name = "constraints"
+type = "::FlexFlow::MachineMappingConstraints"

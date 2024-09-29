@@ -1,0 +1,12 @@
+namespace = "FlexFlow"
+name = "LeafOnlyBinaryParallelSplitLabel"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+  "json",
+  "rapidcheck",
+]
+
+fields = []

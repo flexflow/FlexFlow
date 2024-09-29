@@ -8,12 +8,13 @@ using namespace FlexFlow;
 
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("get_optimal_machine_mapping") {
+  TEST_CASE("get_optimal_machine_mapping_internal") {
     auto allowed_machine_views1 = [&](ParallelLayerAttrs const &,
                                       MachineSpecification const &) {
       return std::unordered_set<MachineView>{
           make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
     };
+
     MachineSpecification machine_spec = MachineSpecification{
       /*num_nodes=*/2, 
       /*num_cpus_per_node=*/1, 
@@ -32,7 +33,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       MachineView mv1 = make_1d_machine_view(gpu_id_t{1}, gpu_id_t{2});
 
       auto allowed_machine_views = [&](ParallelLayerAttrs const &,
-                                        MachineSpecification const &) {
+                                       MachineSpecification const &) {
         return std::unordered_set<MachineView>{mv1};
       };
 
@@ -90,6 +91,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("pair of layers in parallel") {
+      FAIL("TODO");
+    }
+
+    SUBCASE("multiple edges across split") {
       FAIL("TODO");
     }
 

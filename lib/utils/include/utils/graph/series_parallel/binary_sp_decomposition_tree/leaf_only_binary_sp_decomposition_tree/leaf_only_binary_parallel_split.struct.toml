@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "LeafOnlyBinaryParallelSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+template_params = [
+  "LeafLabel",
+]
+
+includes = [
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_parallel_split.dtg.h",
+]
+
+[[fields]]
+name = "lhs"
+type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<LeafLabel>"
+
+[[fields]]
+name = "rhs"
+type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<LeafLabel>"

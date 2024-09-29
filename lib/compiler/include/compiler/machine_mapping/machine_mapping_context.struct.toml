@@ -6,12 +6,7 @@ includes = [
   "compiler/cost_estimator/cost_estimator.h",
   "pcg/machine_view.dtg.h",
   "pcg/machine_specification.dtg.h",
-  "compiler/machine_mapping/transitive_reduced_pcg.dtg.h",
 ]
-
-[[fields]]
-name = "transitive_reduced_pcg"
-type = "::FlexFlow::TransitiveReducedPCG"
 
 [[fields]]
 name = "cost_estimator"

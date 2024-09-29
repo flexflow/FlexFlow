@@ -143,6 +143,11 @@ ParallelLayerAttrs get_parallel_layer_attrs(ParallelComputationGraph const &pcg,
   return pcg.raw_graph.at(l.raw_graph_node);
 }
 
+PCGOperatorAttrs pcg_get_op_attrs(ParallelComputationGraph const &pcg,
+                                  parallel_layer_guid_t const &l) {
+  return get_parallel_layer_attrs(pcg, l).op_attrs;
+}
+
 ParallelTensorAttrs
     get_parallel_tensor_attrs(ParallelComputationGraph const &pcg,
                               parallel_tensor_guid_t const &t) {

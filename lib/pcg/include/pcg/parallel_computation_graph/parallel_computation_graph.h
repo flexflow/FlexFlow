@@ -46,6 +46,8 @@ std::vector<parallel_tensor_guid_t>
 
 ParallelLayerAttrs get_parallel_layer_attrs(ParallelComputationGraph const &,
                                             parallel_layer_guid_t const &);
+PCGOperatorAttrs pcg_get_op_attrs(ParallelComputationGraph const &,
+                                  parallel_layer_guid_t const &);
 ParallelTensorAttrs get_parallel_tensor_attrs(ParallelComputationGraph const &,
                                               parallel_tensor_guid_t const &);
 ParallelTensorShape get_parallel_tensor_shape(ParallelComputationGraph const &,

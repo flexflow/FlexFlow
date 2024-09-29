@@ -26,5 +26,5 @@ name = "src_machine_views"
 type = "std::unordered_set<::FlexFlow::MachineView>"
 
 [[fields]]
-name = "dst_machine_view"
+name = "dst_machine_views"
 type = "std::unordered_set<::FlexFlow::MachineView>"

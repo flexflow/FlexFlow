@@ -10,8 +10,8 @@
 
 namespace FlexFlow {
 
-PartialMachineMapping get_unconstrained_solution_for_layers(std::unordered_set<parallel_layer_guid_t> const &layers) {
-  return PartialMachineMapping{
+MachineMappingConstraints get_unconstrained_solution_for_layers(std::unordered_set<parallel_layer_guid_t> const &layers) {
+  return MachineMappingConstraints{
     generate_map(layers, 
                  [](parallel_layer_guid_t const &) -> std::optional<MachineView> { 
                    return std::nullopt; 
@@ -19,7 +19,7 @@ PartialMachineMapping get_unconstrained_solution_for_layers(std::unordered_set<p
   };
 }
 
-std::unordered_set<parallel_layer_guid_t> get_all_layers(PartialMachineMapping const &partial_solution, 
+std::unordered_set<parallel_layer_guid_t> get_all_layers(MachineMappingConstraints const &partial_solution, 
                                                          IncludeUnconstrained const &include_unconstrained) {
   std::unordered_set<parallel_layer_guid_t> with_unconstrained = keys(partial_solution.machine_views);
 
@@ -31,24 +31,22 @@ std::unordered_set<parallel_layer_guid_t> get_all_layers(PartialMachineMapping c
   }
 }
 
-std::optional<MachineView> get_machine_view_for_layer(PartialMachineMapping const &partial_solution,
+std::optional<MachineView> get_machine_view_for_layer(MachineMappingConstraints const &partial_solution,
                                                       parallel_layer_guid_t const &layer) {
   return partial_solution.machine_views.at(layer);
 }
 
-PartialMachineMapping get_sub_solution(PartialMachineMapping const &partial_solution, 
-                                       PCGBinarySPDecomposition const &sub_problem) {
+MachineMappingConstraints get_sub_solution(MachineMappingConstraints const &partial_solution, 
+                                       std::unordered_set<parallel_layer_guid_t> const &sub_problem) {
 
-  std::unordered_set<parallel_layer_guid_t> sub_problem_layers = unordered_set_of(get_parallel_layers(sub_problem));
-
-  return PartialMachineMapping{
-    restrict_keys(partial_solution.machine_views, sub_problem_layers),
+  return MachineMappingConstraints{
+    restrict_keys(partial_solution.machine_views, sub_problem),
   };
 }
 
-PartialMachineMapping with_additional_layer_machine_views(PartialMachineMapping const &partial_solution,
+MachineMappingConstraints with_additional_layer_machine_views(MachineMappingConstraints const &partial_solution,
                                                           std::unordered_map<parallel_layer_guid_t, MachineView> const &additional) {
-  PartialMachineMapping result = partial_solution;
+  MachineMappingConstraints result = partial_solution;
 
   for (auto const &[layer, machine_view] : additional) {
     std::optional<MachineView> current_machine_view = result.machine_views.at(layer);
@@ -68,7 +66,7 @@ PartialMachineMapping with_additional_layer_machine_views(PartialMachineMapping 
 }
 
 
-MachineMapping require_complete_mapping(PartialMachineMapping const &partial_mapping) {
+MachineMapping require_complete_mapping(MachineMappingConstraints const &partial_mapping) {
   return MachineMapping{
     map_values(partial_mapping.machine_views, 
                [](std::optional<MachineView> const &mv) { return mv.value(); }),

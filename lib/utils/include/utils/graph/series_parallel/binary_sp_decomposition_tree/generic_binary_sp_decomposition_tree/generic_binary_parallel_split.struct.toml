@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "GenericBinaryParallelSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+template_params = [
+  "SeriesSplitLabel",
+  "ParallelSplitLabel",
+  "LeafLabel",
+]
+
+includes = [
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.dtg.h",
+]
+
+[[fields]]
+name = "label"
+type = "ParallelSplitLabel"
+
+[[fields]]
+name = "lhs"
+type = "GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
+
+[[fields]]
+name = "rhs"
+type = "GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
