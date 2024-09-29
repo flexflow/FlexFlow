@@ -314,7 +314,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
+  // bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -386,7 +386,7 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->qk_dim,
                                     attn->v_dim,
                                     attn->o_dim,
-                                    attn->apply_rotary_embedding,
+                                    attn->rotary_embedding_meta,
                                     attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,

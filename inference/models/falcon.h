@@ -50,6 +50,26 @@ public:
                         : model_config["num_hidden_layers"];
           parallel_attn = model_config["parallel_attn"];
           vocab_size = model_config["vocab_size"];
+          rotary_embedding_meta.apply_rotary_embedding = true;
+          if (model_config.find("rope_theta") != model_config.end()) {
+            rotary_embedding_meta.rope_theta = model_config["rope_theta"];
+          } else {
+            rotary_embedding_meta.rope_theta = 10000.0f;
+          }
+          if (model_config.find("scaling_factor") != model_config.end() &&
+              !model_config["scaling_factor"].is_null()) {
+            rotary_embedding_meta.rope_type =
+                model_config["scaling_factor"]["rope_type"];
+            rotary_embedding_meta.factor =
+                model_config["scaling_factor"]["factor"];
+            rotary_embedding_meta.low_freq_factor =
+                model_config["scaling_factor"]["low_freq_factor"];
+            rotary_embedding_meta.high_freq_factor =
+                model_config["scaling_factor"]["high_freq_factor"];
+            rotary_embedding_meta.original_max_position_embeddings =
+                model_config["scaling_factor"]
+                            ["original_max_position_embeddings"];
+          }
         } catch (json::exception const &e) {
           std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
           assert(false);
@@ -75,7 +95,8 @@ public:
       std::cout << "\tn_layer: " << n_layer << std::endl;
       std::cout << "\tparallel_attn: " << parallel_attn << std::endl;
       std::cout << "\tvocab_size: " << vocab_size << std::endl;
-
+      std::cout << "\trotary_embedding_meta: " << rotary_embedding_meta
+                << std::endl;
       // std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
       // std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
       std::cout << "\tk_of_arg_topk: " << k_of_arg_topk << std::endl;
@@ -84,6 +105,7 @@ public:
     bool bias, multi_query, parallel_attn;
     int hidden_size, n_head, n_head_kv, n_layer, vocab_size;
     float layer_norm_epsilon;
+    RotaryEmbeddingMeta rotary_embedding_meta;
     // int max_seq_len, max_num_tokens;
     int k_of_arg_topk;
   };

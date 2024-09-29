@@ -120,7 +120,7 @@ void STARCODER::create_starcoder_model(
             false,                       /*add_zero_attn*/
             DT_NONE,                     /*data_type*/
             nullptr,                     /*kernel_initializer*/
-            false,                       /*apply_rotary_embedding*/
+            startcoder_config.rotary_embedding_meta, /*apply_rotary_embedding*/
             false,                       /*scaling query*/
             1.0f,                        /*scaling factor*/
             true,                        /*qk_prod_scaling*/

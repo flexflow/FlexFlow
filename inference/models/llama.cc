@@ -109,7 +109,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
-            true,    /*apply_rotary_embedding*/
+            llama_config.rotary_embedding_meta,
             false,   /*scaling query*/
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
@@ -134,7 +134,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
-            true,    /*apply_rotary_embedding*/
+            llama_config.rotary_embedding_meta,
             false,   /*scaling query*/
             1.0f,    /*scaling factor*/
             true,    /*qk_prod_scaling*/
@@ -158,7 +158,7 @@ void LLAMA::create_llama_model(FFModel &ff,
             false,           /*add_zero_attn*/
             DT_NONE,         /*data_type*/
             nullptr,         /*kernel_initializer*/
-            true,            /*apply_rotary_embedding*/
+            llama_config.rotary_embedding_meta,
             false,           /*scaling query*/
             1.0f,            /*scaling factor*/
             true,            /*qk_prod_scaling*/

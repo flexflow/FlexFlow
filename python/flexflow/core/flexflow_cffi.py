@@ -1241,6 +1241,46 @@ class Parameter(Tensor):
         assert ret_val == True
         return np_array
 
+# -----------------------------------------------------------------------
+# Request
+# -----------------------------------------------------------------------
+
+
+class Request:
+    """A class to record the metadata of an inference or finetuning request."""
+
+    def __init__(
+        self,
+        req_type: RequestType,
+        prompt: str = None,
+        max_sequence_length: int = 128,
+        peft_model_id: PEFTModelID = None,
+        dataset_filepath: str = None,
+        max_training_steps: int = 1,
+    ):
+        self.req_type = req_type
+        self.prompt = prompt
+        self.max_sequence_length = max_sequence_length
+        self.peft_model_id = peft_model_id
+        self.dataset_filepath = dataset_filepath
+        self.max_training_steps = max_training_steps
+
+
+# -----------------------------------------------------------------------
+# RotaryEmbeddingMeta
+# -----------------------------------------------------------------------
+
+
+@dataclass
+class RotaryEmbeddingMeta:
+    apply_rotary_embedding: bool = False
+    rope_theta: float = 10000.0
+    rope_type: str = "default"
+    factor: float = 8.0
+    low_freq_factor: float = 1.0
+    high_freq_factor: float = 4.0
+    original_max_position_embeddings: int = 8192
+
 
 # -----------------------------------------------------------------------
 # FFModel
@@ -2676,7 +2716,7 @@ class FFModel(object):
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -2720,8 +2760,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -2756,7 +2796,13 @@ class FFModel(object):
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -2779,7 +2825,7 @@ class FFModel(object):
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -2824,8 +2870,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -2860,7 +2906,13 @@ class FFModel(object):
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -2884,7 +2936,7 @@ class FFModel(object):
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -2928,8 +2980,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -2964,7 +3016,13 @@ class FFModel(object):
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -2988,7 +3046,7 @@ class FFModel(object):
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3036,8 +3094,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -3073,7 +3131,13 @@ class FFModel(object):
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -3098,7 +3162,7 @@ class FFModel(object):
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3145,8 +3209,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -3182,7 +3246,13 @@ class FFModel(object):
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -3206,7 +3276,7 @@ class FFModel(object):
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3253,8 +3323,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -3290,7 +3360,13 @@ class FFModel(object):
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,

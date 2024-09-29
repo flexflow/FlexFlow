@@ -37,6 +37,7 @@ public:
           n_heads = model_config["n_heads"];
           n_layers = model_config["n_layers"];
           vocab_size = model_config["vocab_size"];
+          rotary_embedding_meta.apply_rotary_embedding = false;
         } catch (json::exception const &e) {
           std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
           assert(false);
@@ -62,6 +63,7 @@ public:
     // int max_seq_len, max_num_tokens;
     int k_of_arg_topk;
     int hidden_size, n_heads, n_layers, vocab_size;
+    RotaryEmbeddingMeta rotary_embedding_meta;
   };
 
   static void create_mpt_model(FFModel &ff,
