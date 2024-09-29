@@ -281,3 +281,7 @@ class FlexFlowLLAMA(FlexFlowModel):
         for name, params in model.named_parameters():
             name = FlexFlowLLAMA.convert_hf_weight_name(name)
             params.detach().cpu().numpy().tofile(f"{dst_folder}/{name}")
+        # LM head weight
+        model.lm_head.weight.detach().cpu().numpy().tofile(
+            os.path.join(dst_folder, "lm_head.weight")
+        )
