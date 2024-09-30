@@ -32,6 +32,16 @@ std::string format_as(FullBinaryTree<ParentLabel, LeafLabel> const &t) {
       });
 }
 
+template <typename ParentLabel, typename LeafLabel>
+std::ostream &operator<<(std::ostream &s, FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) {
+  return (s << fmt::to_string(t));
+}
+
+template <typename ParentLabel, typename LeafLabel>
+std::ostream &operator<<(std::ostream &s, FullBinaryTree<ParentLabel, LeafLabel> const &t) {
+  return (s << fmt::to_string(t));
+}
+
 } // namespace FlexFlow
 
 #endif

@@ -7,7 +7,9 @@
 #include "compiler/machine_mapping/machine_mapping_constraints.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.h"
+#include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_parallel_split.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_series_split.h"
+#include "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.h"
 #include "compiler/machine_mapping/machine_mapping_result.h"
 #include "compiler/machine_mapping/machine_mapping_result_tree/machine_mapping_result_tree.h"
 #include "compiler/machine_mapping/mm_problem_tree_series_split.h"
@@ -38,41 +40,6 @@
 namespace FlexFlow {
 
 MachineMappingResult get_optimal_machine_mapping(
-    ParallelComputationGraph const &pcg,
-    std::function<std::unordered_set<MachineView>(
-        ParallelLayerAttrs const &, MachineSpecification const &)> const
-        &allowed_machine_views,
-    CostEstimator const &cost_estimator,
-    MachineSpecification const &resources,
-    MachineMappingCache &result_cache) {
-
-  MachineMappingContext context = make_machine_mapping_context(
-      pcg, 
-      cost_estimator, 
-      allowed_machine_views);
-
-  MachineMappingResult result =
-      get_optimal_machine_mapping_internal(result_cache, context, resources);
-
-  return result;
-}
-
-MachineMappingResultTree get_optimal_machine_mapping_internal(
-    MachineMappingCache &result_cache,                                                          
-    MachineMappingContext const &context, 
-    MachineSpecification const &resources) {
-
-  std::unordered_set<parallel_layer_guid_t> all_layers = get_parallel_layers(context.transitive_reduced_pcg.full_pcg);
-
-  NOT_IMPLEMENTED();
-  // return get_optimal_machine_mapping_internal(result_cache, 
-  //                                             context, 
-  //                                             sp_decomposition_tree, 
-  //                                             resources,
-  //                                             get_unconstrained_solution_for_layers(all_layers));
-}
-
-MachineMappingResultTree get_optimal_machine_mapping_internal(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
     MachineMappingProblemTree const &problem_tree,
@@ -84,7 +51,7 @@ MachineMappingResultTree get_optimal_machine_mapping_internal(
   };
 
   {
-    std::optional<MachineMappingResultTree> cached_result =
+    std::optional<MachineMappingResult> cached_result =
         result_cache.load(state);
     if (cached_result) {
       return cached_result.value();
@@ -92,37 +59,38 @@ MachineMappingResultTree get_optimal_machine_mapping_internal(
   }
 
   MachineMappingResult result = visit<MachineMappingResult>(
-    sp_decomposition_tree,
+    problem_tree,
     [&](auto const &decomp_tree_node) {
-      return get_optimal_machine_mapping_internal(result_cache, context, decomp_tree_node, resources, partial_solution);
+      return get_optimal_machine_mapping
+        (result_cache, 
+         context, 
+         decomp_tree_node, 
+         resources, 
+         constraints);
     });
 
   result_cache.save(state, result);
   return result;
 }
 
-std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
+MachineMappingResult get_optimal_machine_mapping(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
     MMProblemTreeSeriesSplit const &series_split,
     MachineSpecification const &resource,
-    MachineMappingConstraints const &partial_solution) {
+    MachineMappingConstraints const &partial_solution,
+    std::optional<ParallelSplitTransformation> const &parallel_split_transformation) {
 
-  std::optional<MachineMappingResultTree> result = std::nullopt;
-
-  auto is_subgraph_input = [&](std::unordered_set<Node> const &subgraph_nodes,
-                               parallel_tensor_guid_t const &input_tensor) {
-    return !contains(subgraph_nodes, input_tensor.raw_graph_output.node);
-  };
+  MachineMappingResult result = infeasible_machine_mapping_result();
 
   AbstractedTensorSetMovement tensor_movement = get_abstracted_tensor_movement(series_split);
 
-  auto get_boundary_machine_view_assignments = [&](std::unordered_set<parallel_layer_guid_t> const &layers) 
-    -> std::unordered_set<MachineMapping>
+  auto get_boundary_machine_view_assignments = [&](std::unordered_set<BinaryTreePath> const &layers) 
+    -> std::unordered_set<MachineMappingConstraints>
   {
-    std::unordered_map<parallel_layer_guid_t, std::unordered_set<MachineView>>
+    std::unordered_map<BinaryTreePath, std::unordered_set<MachineView>>
       allowed = generate_map(layers,
-                             [&](parallel_layer_guid_t const &l) { 
+                             [&](BinaryTreePath const &l) { 
                                return get_allowed_machine_views_for_layer(context, l);
                              });
     return transform(get_all_assignments(allowed),
@@ -136,12 +104,12 @@ std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
 
     MachineMappingConstraints pre_candidate = 
       with_additional_constraints(
-        restrict_domain(partial_solution, get_leaves(get_pre_child(series_split))),
+        restrict_domain(partial_solution, BinaryTreePathEntry::LEFT_CHILD),
         assigned_pre_machine_views);
 
-    MachineMappingResultTree pre_result = ({
-      std::optional<MachineMappingResultTree> returned
-        = get_optimal_machine_mapping_internal(result_cache, 
+    MachineMappingResult pre_result = ({
+      std::optional<MachineMappingResult> returned
+        = get_optimal_machine_mapping(result_cache, 
                                                context, 
                                                get_pre_child(series_split),
                                                resource, 
@@ -157,12 +125,12 @@ std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
 
       MachineMappingConstraints post_candidate = 
         with_additional_constraints(
-          restrict_domain(partial_solution, get_leaves(get_post_child(series_split))),
+          restrict_domain(partial_solution, BinaryTreePathEntry::RIGHT_CHILD),
           assigned_post_machine_views);
 
-      MachineMappingResultTree post_result = ({
-        std::optional<MachineMappingResultTree> returned 
-          = get_optimal_machine_mapping_internal(result_cache, 
+      MachineMappingResult post_result = ({
+        std::optional<MachineMappingResult> returned 
+          = get_optimal_machine_mapping(result_cache, 
                                                  context, 
                                                  get_post_child(series_split),
                                                  resource, 
@@ -178,7 +146,8 @@ std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
                                                                                       /*post_mapping=*/assigned_post_machine_views);
       float cost_across_split = context.cost_estimator.estimate_cost(comm_across_split);
 
-      result = minimize_cost(result, make_series_split(cost_across_split, pre_result, post_result));
+      result = minimize_runtime(result, 
+                                series_combine(cost_across_split, pre_result, post_result, parallel_split_transformation));
     }
   }
 
@@ -187,47 +156,49 @@ std::optional<MachineMappingResultTree> get_optimal_machine_mapping_internal(
 
 
 
-MachineMappingResultTree get_optimal_machine_mapping_internal(
+MachineMappingResult get_optimal_machine_mapping(
     MachineMappingCache &result_cache,                                                          
     MachineMappingContext const &context,
-    MMProblemTreeParallelSplit const &parallel,
+    MMProblemTreeParallelSplit const &parallel_split,
     MachineSpecification const &resources,
-    MachineMappingConstraints const &partial_solution) {
+    MachineMappingConstraints const &constraints) {
+
+  MachineMappingProblemTree lhs = get_lhs_child(parallel_split);
+  MachineMappingProblemTree rhs = get_rhs_child(parallel_split);
 
   MachineMappingResult optimal_result = [&] {
-    MMProblemTreeSeriesSplit series = MMProblemTreeSeriesSplit{
-      MMProblemTreeSeriesSplitLabel{empty_abstracted_tensor_set_movement()},
-      parallel.left,
-      parallel.right,
-    };
+    MMProblemTreeSeriesSplit series_split = require_series_split(\
+      mm_problem_tree_make_series_split(
+        /*tensor_set_movement=*/empty_abstracted_tensor_set_movement(),
+        /*pre=*/lhs,
+        /*post=*/rhs));
         
-    return get_optimal_machine_mapping_internal(result_cache,
+    return get_optimal_machine_mapping(result_cache,
                                                 context,
-                                                series,
+                                                series_split,
                                                 resources,
-                                                partial_solution);
+                                                constraints,
+                                                ParallelSplitTransformation::LthenR);
   }();
 
-  MachineMappingConstraints left_sub_solution = restrict_domain(partial_solution,
-                                                            get_leaves(parallel.left));
-  MachineMappingConstraints right_sub_solution = restrict_domain(partial_solution,
-                                                             get_leaves(parallel.right));
+  MachineMappingConstraints left_constraints = restrict_domain(constraints, get_leaves(lhs));
+  MachineMappingConstraints right_constraints = restrict_domain(constraints, get_leaves(rhs));
 
   for (auto const &resource_split : get_machine_resource_splits(resources)) {
     MachineMappingResult left_result = 
-      get_optimal_machine_mapping_internal(result_cache,
+      get_optimal_machine_mapping(result_cache,
                                            context,
-                                           parallel.left,
+                                           lhs,
                                            resource_split.first,
-                                           left_sub_solution);
+                                           left_constraints);
     MachineMappingResult right_result = 
-      get_optimal_machine_mapping_internal(result_cache,
+      get_optimal_machine_mapping(result_cache,
                                            context,
-                                           parallel.right,
+                                           rhs,
                                            resource_split.second,
-                                           right_sub_solution);
+                                           right_constraints);
 
-    minimize_runtime(
+    optimal_result = minimize_runtime(
         optimal_result,
         parallel_combine(left_result, right_result));
   }
@@ -235,26 +206,20 @@ MachineMappingResultTree get_optimal_machine_mapping_internal(
   return optimal_result;
 }
 
-MachineMappingResultTree get_optimal_machine_mapping_internal(
+MachineMappingResult get_optimal_machine_mapping(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
-    PCGOperatorAttrs const &layer,
+    UnmappedOpCostEstimateKey const &leaf,
     MachineSpecification const &resource,
     MachineMappingConstraints const &constraints) {
 
-  assert (get_all_layers(constraints, IncludeUnconstrained{true}) == std::unordered_set{layer});
+  MachineView machine_view = require_only_root(constraints).value();
+  OpCostEstimateKey mapped = map_unmapped_op_cost_estimate_key(leaf, machine_view);
+  float cost = context.cost_estimator.estimate_cost(mapped);
 
-  MachineMapping concrete_mapping = require_fully_constrained(constraints);
-
-  float cost = estimate_layer_cost(context.transitive_reduced_pcg.full_pcg, 
-                                   context.cost_estimator,
-                                   layer, 
-                                   concrete_mapping.machine_views.at(layer));
-
-  return make_leaf_node(
-    /*runtime=*/cost,
-    /*machine_mapping=*/concrete_mapping,
-  };
+  return make_singleton_machine_mapping_result
+    (/*runtime=*/cost,
+     /*machine_view=*/machine_view);
 }
 
 } // namespace FlexFlow

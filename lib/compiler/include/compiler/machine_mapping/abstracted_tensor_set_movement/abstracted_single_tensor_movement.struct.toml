@@ -8,7 +8,7 @@ features = [
 
 includes = [
   "op-attrs/parallel_tensor_shape.dtg.h",
-  "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
+  "utils/full_binary_tree/binary_tree_path.dtg.h",
   "<unordered_set>",
 ]
 
@@ -23,8 +23,8 @@ type = "::FlexFlow::ParallelTensorShape"
 
 [[fields]]
 name = "src_machine_views"
-type = "std::unordered_set<::FlexFlow::parallel_layer_guid_t>"
+type = "std::unordered_set<::FlexFlow::BinaryTreePath>"
 
 [[fields]]
 name = "dst_machine_views"
-type = "std::unordered_set<::FlexFlow::parallel_layer_guid_t>"
+type = "std::unordered_set<::FlexFlow::BinaryTreePath>"

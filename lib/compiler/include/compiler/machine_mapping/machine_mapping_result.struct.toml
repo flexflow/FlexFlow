@@ -7,13 +7,14 @@ features = [
 ]
 
 includes = [
-  "compiler/machine_mapping/machine_mapping.dtg.h",
+  "compiler/machine_mapping/feasible_machine_mapping_result.dtg.h",
+  "<optional>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
 ]
 
 [[fields]]
-name = "runtime"
-type = "float"
-
-[[fields]]
-name = "machine_mapping"
-type = "::FlexFlow::MachineMapping"
+name = "raw_result"
+type = "std::optional<FeasibleMachineMappingResult>"

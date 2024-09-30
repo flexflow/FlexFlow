@@ -1,18 +1,25 @@
-#include "compiler/machine_mapping/get_abstracted_tensor_set_movement_across_split.h"
+#include "compiler/machine_mapping/abstracted_tensor_set_movement/get_abstracted_tensor_set_movement_across_split.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.h"
+#include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.h"
 #include "utils/containers/generate_map.h"
+#include "utils/containers/get_only.h"
 #include "utils/containers/values.h"
 
 namespace FlexFlow {
 
 AbstractedTensorSetMovement get_tensor_set_movement_across_split(TransitiveReducedPCG const &tr_pcg,
                                                                  PCGBinarySeriesSplit const &split) {
+
+  auto get_path_to_layer = [&](parallel_layer_guid_t const &l) {
+    return get_only(find_paths_to_leaf(wrap_series_split(split), l));
+  };
+  
   std::unordered_set<ParallelComputationGraphEdge> 
     edges_across_split = pcg_get_transitive_reduced_edges_across_split(tr_pcg, split);
-  
+
   auto get_movement_for_tensor = [&](parallel_tensor_guid_t const &t) {
     std::unordered_set<ParallelComputationGraphEdge> tensor_edges = filter(edges_across_split,
                   [&](ParallelComputationGraphEdge const &e) { return get_parallel_tensor(e) == t; });
@@ -31,8 +38,8 @@ AbstractedTensorSetMovement get_tensor_set_movement_across_split(TransitiveReduc
 
     return AbstractedSingleTensorMovement{
       /*parallel_tensor_shape=*/get_parallel_tensor_shape(tr_pcg.full_pcg, t),
-      /*src_machine_views=*/src_layers,
-      /*dst_machine_views=*/dst_layers,
+      /*src_machine_views=*/transform(src_layers, get_path_to_layer),
+      /*dst_machine_views=*/transform(dst_layers, get_path_to_layer),
     };
   };
 

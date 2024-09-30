@@ -14,4 +14,4 @@ type = "::FlexFlow::CostEstimator"
 
 [[fields]]
 name = "allowed_machine_views"
-type = "std::function<std::unordered_set<::FlexFlow::MachineView>(::FlexFlow::ParallelLayerAttrs const &, ::FlexFlow::MachineSpecification const &)>"
+type = "std::function<std::unordered_set<::FlexFlow::MachineView>(::FlexFlow::UnmappedOpCostEstimateKey const &, ::FlexFlow::MachineSpecification const &)>"

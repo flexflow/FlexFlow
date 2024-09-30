@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FULL_BINARY_TREE_VISIT_H
 
 #include "utils/full_binary_tree/full_binary_tree.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

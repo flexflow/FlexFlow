@@ -6,6 +6,7 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_parallel_split.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_series_split.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_parallel_split.dtg.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
 
 namespace FlexFlow {
 
@@ -19,7 +20,6 @@ LeafOnlyBinarySeriesSplit<LeafLabel>
       require_series(t.raw_tree);
 
   return LeafOnlyBinarySeriesSplit<LeafLabel>{
-    LeafOnlyBinarySeriesSplitLabel{},
     LeafOnlyBinarySPDecompositionTree<LeafLabel>{raw.pre},
     LeafOnlyBinarySPDecompositionTree<LeafLabel>{raw.post},
   };
@@ -28,16 +28,15 @@ LeafOnlyBinarySeriesSplit<LeafLabel>
 template <typename LeafLabel>
 LeafOnlyBinaryParallelSplit<LeafLabel>
   require_parallel(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &t) {
-  GenericBinarySeriesSplit<
+  GenericBinaryParallelSplit<
     LeafOnlyBinarySeriesSplitLabel, 
     LeafOnlyBinaryParallelSplitLabel,
     LeafLabel> raw = 
-      require_series(t.raw_tree);
+      require_parallel(t.raw_tree);
 
-  return LeafOnlyBinarySeriesSplit<LeafLabel>{
-    LeafOnlyBinaryParallelSplitLabel{},
-    LeafOnlyBinarySPDecompositionTree<LeafLabel>{raw.pre},
-    LeafOnlyBinarySPDecompositionTree<LeafLabel>{raw.post},
+  return LeafOnlyBinaryParallelSplit<LeafLabel>{
+    LeafOnlyBinarySPDecompositionTree<LeafLabel>{raw.lhs},
+    LeafOnlyBinarySPDecompositionTree<LeafLabel>{raw.rhs},
   };
 }
 

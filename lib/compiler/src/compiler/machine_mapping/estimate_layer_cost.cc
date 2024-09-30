@@ -4,7 +4,7 @@
 namespace FlexFlow {
 
 float estimate_layer_cost(CostEstimator const &cost_estimator,
-                          PCGOperatorAttrs const &layer,
+                          UnmappedOpCostEstimateKey const &key,
                           MachineView const &machine_view) {
   PCGOperatorAttrs op_attrs = get_parallel_layer_attrs(pcg, layer).op_attrs;
 

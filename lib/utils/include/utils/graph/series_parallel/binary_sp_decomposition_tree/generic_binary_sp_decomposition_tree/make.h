@@ -11,9 +11,9 @@ GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> make_gen
     GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &lhs,
     GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &rhs) {
   return GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
-    FullBinaryTree<std::variant<SeriesLabel, ParallelLabel>, LeafLabel>{
-      FullBinaryTreeParentNode<std::variant<SeriesLabel, ParallelLabel>, LeafLabel>{
-        label, 
+    FullBinaryTree<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel>{
+      FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel>{
+        GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{label}, 
         lhs.raw_tree,
         rhs.raw_tree,
       }
@@ -23,13 +23,13 @@ GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> make_gen
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
 GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> make_generic_binary_parallel_split(
-    SeriesLabel const &label,
+    ParallelLabel const &label,
     GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &lhs,
     GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &rhs) {
   return GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
-    FullBinaryTree<std::variant<SeriesLabel, ParallelLabel>, LeafLabel>{
-      FullBinaryTreeParentNode<std::variant<SeriesLabel, ParallelLabel>, LeafLabel>{
-        label, 
+    FullBinaryTree<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel>{
+      FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel>{
+        GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{label}, 
         lhs.raw_tree,
         rhs.raw_tree,
       }
@@ -40,7 +40,7 @@ GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> make_gen
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
 GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> make_generic_binary_sp_leaf(LeafLabel const &leaf) {
   return GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
-    FullBinaryTree<std::variant<SeriesLabel, ParallelLabel>, LeafLabel>{
+    FullBinaryTree<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel>{
       leaf,
     },
   };

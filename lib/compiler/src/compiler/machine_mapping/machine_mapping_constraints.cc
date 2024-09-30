@@ -1,46 +1,55 @@
-#include "compiler/machine_mapping/partial_machine_mapping.h"
-#include "compiler/machine_mapping/machine_mapping_context.h"
-#include "compiler/machine_mapping/transitive_reduced_pcg.h"
-#include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
+#include "compiler/machine_mapping/machine_mapping_constraints.h"
+#include "utils/containers/filtermap_keys.h"
 #include "utils/containers/flatmap.h"
+#include "utils/containers/filter.h"
 #include "utils/containers/generate_map.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/restrict_keys.h"
 #include "utils/containers/map_values.h"
+#include "utils/full_binary_tree/binary_tree_path.h"
 
 namespace FlexFlow {
 
-MachineMappingConstraints get_unconstrained_solution_for_layers(std::unordered_set<parallel_layer_guid_t> const &layers) {
+MachineMappingConstraints get_unconstrained_solution_for_layers(std::unordered_set<BinaryTreePath> const &layers) {
   return MachineMappingConstraints{
     generate_map(layers, 
-                 [](parallel_layer_guid_t const &) -> std::optional<MachineView> { 
+                 [](BinaryTreePath const &) -> std::optional<MachineView> { 
                    return std::nullopt; 
                  }),
   };
 }
 
-std::unordered_set<parallel_layer_guid_t> get_all_layers(MachineMappingConstraints const &partial_solution, 
+std::unordered_set<BinaryTreePath> get_all_layers(MachineMappingConstraints const &partial_solution, 
                                                          IncludeUnconstrained const &include_unconstrained) {
-  std::unordered_set<parallel_layer_guid_t> with_unconstrained = keys(partial_solution.machine_views);
+  std::unordered_set<BinaryTreePath> with_unconstrained = keys(partial_solution.machine_views);
 
   if (include_unconstrained.raw_bool) {
     return with_unconstrained;
   } else {
     return filter(with_unconstrained,
-                  [&](parallel_layer_guid_t const &l) { return partial_solution.machine_views.at(l).has_value(); });
+                  [&](BinaryTreePath const &l) { return partial_solution.machine_views.at(l).has_value(); });
   }
 }
 
 std::optional<MachineView> get_machine_view_for_layer(MachineMappingConstraints const &partial_solution,
-                                                      parallel_layer_guid_t const &layer) {
+                                                      BinaryTreePath const &layer) {
   return partial_solution.machine_views.at(layer);
 }
 
-MachineMappingConstraints get_sub_solution(MachineMappingConstraints const &partial_solution, 
-                                       std::unordered_set<parallel_layer_guid_t> const &sub_problem) {
-
+MachineMappingConstraints restrict_domain(MachineMappingConstraints const &constraints, 
+                                          BinaryTreePathEntry const &prefix) {
   return MachineMappingConstraints{
-    restrict_keys(partial_solution.machine_views, sub_problem),
+    filtermap_keys(constraints.machine_views,
+                   [&](BinaryTreePath const &path) -> std::optional<BinaryTreePath> {
+                     BinaryTreePathEntry head = binary_tree_path_get_top_level(path);
+
+                     if (head == prefix) {
+                       BinaryTreePath rest = binary_tree_path_get_non_top_level(path);
+                       return rest;
+                     } else {
+                       return std::nullopt;
+                     }
+                   })
   };
 }
 

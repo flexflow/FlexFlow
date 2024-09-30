@@ -4,6 +4,7 @@ features = [
   "eq",
   "hash",
   "fmt",
+  "json",
 ]
 
 template_params = [
@@ -22,8 +23,8 @@ type = "ParallelSplitLabel"
 
 [[fields]]
 name = "lhs"
-type = "GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
 
 [[fields]]
 name = "rhs"
-type = "GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"

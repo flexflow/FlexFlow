@@ -1,9 +1,10 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_leaves.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/make.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/get_leaves.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/make.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/require.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/get_node_type.h"
 
 namespace FlexFlow {
 
@@ -11,7 +12,7 @@ BinarySPDecompositionTree
     make_series_split(BinarySPDecompositionTree const &lhs,
                       BinarySPDecompositionTree const &rhs) {
   return BinarySPDecompositionTree{
-      make_generic_binary_series_split(lhs.raw_tree, rhs.raw_tree),
+      make_series_split(lhs.raw_tree, rhs.raw_tree),
   };
 }
 
@@ -19,13 +20,13 @@ BinarySPDecompositionTree
     make_parallel_split(BinarySPDecompositionTree const &lhs,
                         BinarySPDecompositionTree const &rhs) {
   return BinarySPDecompositionTree{
-      make_generic_binary_parallel_split(lhs.raw_tree, rhs.raw_tree),
+      make_parallel_split(lhs.raw_tree, rhs.raw_tree),
   };
 }
 
 BinarySPDecompositionTree make_leaf_node(Node const &n) {
   return BinarySPDecompositionTree{
-      make_generic_binary_sp_leaf(n),
+      make_leaf_node(n),
   };
 }
 
@@ -56,5 +57,10 @@ BinaryParallelSplit require_parallel(BinarySPDecompositionTree const &tt) {
 Node require_leaf(BinarySPDecompositionTree const &tt) {
   return require_leaf(tt.raw_tree);
 }
+
+SPDecompositionTreeNodeType get_node_type(BinarySPDecompositionTree const &tt) {
+  return get_node_type(tt.raw_tree);
+}
+
 
 } // namespace FlexFlow

@@ -1,8 +1,8 @@
 #include "utils/graph/series_parallel/intermediate_sp_decomposition_tree.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include "utils/containers/extend.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_left_child.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_right_child.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/visit.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_parallel_split.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_series_split.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {
@@ -50,12 +50,12 @@ std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(
 }
 
 std::variant<IntermediateSpDecompositionTree, Node>
-    from_binary_sp_tree(GenericBinarySPDecompositionTree<Node> const &binary) {
+    from_binary_sp_tree(BinarySPDecompositionTree const &binary) {
   return visit<std::variant<IntermediateSpDecompositionTree, Node>>(
       binary,
       overload{
           [](Node const &n) { return n; },
-          [](GenericBinarySeriesSplit<Node> const &s) {
+          [](BinarySeriesSplit const &s) {
             return IntermediateSpDecompositionTree{
                 SplitType::SERIES,
                 {
@@ -64,7 +64,7 @@ std::variant<IntermediateSpDecompositionTree, Node>
                 },
             };
           },
-          [](GenericBinaryParallelSplit<Node> const &p) {
+          [](BinaryParallelSplit const &p) {
             return IntermediateSpDecompositionTree{
                 SplitType::PARALLEL,
                 {
@@ -74,11 +74,6 @@ std::variant<IntermediateSpDecompositionTree, Node>
             };
           },
       });
-}
-
-std::variant<IntermediateSpDecompositionTree, Node>
-    from_binary_sp_tree(BinarySPDecompositionTree const &binary) {
-  return from_binary_sp_tree(binary.raw_tree);
 }
 
 } // namespace FlexFlow

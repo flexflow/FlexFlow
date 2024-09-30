@@ -3,7 +3,7 @@
 
 #include "compiler/machine_mapping/transitive_reduced_pcg.dtg.h"
 #include "compiler/series_parallel/pcg_binary_series_split.dtg.h"
-#include "compiler/machine_mapping/abstracted_tensor_set_movement.dtg.h"
+#include "compiler/machine_mapping/abstracted_tensor_set_movement/abstracted_tensor_set_movement.dtg.h"
 
 namespace FlexFlow {
 

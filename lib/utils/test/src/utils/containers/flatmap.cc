@@ -1,6 +1,7 @@
 #include "utils/containers/flatmap.h"
 #include <doctest/doctest.h>
 #include <string>
+#include "test/utils/doctest/fmt/unordered_set.h"
 
 using namespace ::FlexFlow;
 

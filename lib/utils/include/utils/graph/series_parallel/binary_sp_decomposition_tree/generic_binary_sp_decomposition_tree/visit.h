@@ -3,6 +3,8 @@
 
 #include "utils/exception.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.dtg.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_node_type.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
 
 namespace FlexFlow {
 
@@ -11,15 +13,15 @@ Result visit(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLa
   SPDecompositionTreeNodeType node_type = get_node_type(tt);
   switch (node_type) {
     case SPDecompositionTreeNodeType::SERIES: {
-      Result result = f(require_series_split(t));
+      Result result = f(require_series(tt));
       return result;
     }
     case SPDecompositionTreeNodeType::PARALLEL: {
-      Result result = f(require_parallel_split(t));
+      Result result = f(require_parallel(tt));
       return result;
     }
     case SPDecompositionTreeNodeType::NODE: {
-      Result result = f(require_leaf(t));
+      Result result = f(require_leaf(tt));
       return result;
     }
     default:

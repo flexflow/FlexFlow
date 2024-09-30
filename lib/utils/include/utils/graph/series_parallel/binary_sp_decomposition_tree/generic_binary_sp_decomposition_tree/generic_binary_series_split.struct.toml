@@ -4,6 +4,7 @@ features = [
   "eq",
   "hash",
   "fmt",
+  "json",
 ]
 
 template_params = [
@@ -23,8 +24,8 @@ type = "SeriesSplitLabel"
 
 [[fields]]
 name = "pre"
-type = "GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
 
 [[fields]]
 name = "post"
-type = "GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"

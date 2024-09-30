@@ -6,9 +6,8 @@
 #include "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h"
 namespace FlexFlow {
 
-float estimate_layer_cost(ParallelComputationGraph const &pcg,
-                          CostEstimator const &cost_estimator,
-                          parallel_layer_guid_t const &layer,
+float estimate_layer_cost(CostEstimator const &cost_estimator,
+                          UnmappedOpCostEstimateKey const &key,
                           MachineView const &machine_view);
 
 } // namespace FlexFlow

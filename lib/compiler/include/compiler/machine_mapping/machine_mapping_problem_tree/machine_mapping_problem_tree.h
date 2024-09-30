@@ -4,6 +4,7 @@
 #include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.dtg.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_series_split.dtg.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_parallel_split.dtg.h"
+#include "utils/full_binary_tree/binary_tree_path.dtg.h"
 #include "utils/graph/series_parallel/sp_decomposition_tree_node_type.dtg.h"
 
 namespace FlexFlow {
@@ -15,15 +16,18 @@ MachineMappingProblemTree
 MachineMappingProblemTree
   mm_problem_tree_make_parallel_split(MachineMappingProblemTree const &lhs,
                                       MachineMappingProblemTree const &rhs);
-MachineMappingProblemTree mm_problem_tree_make_leaf(PCGOperatorAttrs const &);
+MachineMappingProblemTree mm_problem_tree_make_leaf(UnmappedOpCostEstimateKey const &);
 
 SPDecompositionTreeNodeType get_node_type(MachineMappingProblemTree const &);
 
 MMProblemTreeSeriesSplit require_series_split(MachineMappingProblemTree const &);
 MMProblemTreeParallelSplit require_parallel_split(MachineMappingProblemTree const &);
-PCGOperatorAttrs require_leaf(MachineMappingProblemTree const &);
+UnmappedOpCostEstimateKey require_leaf(MachineMappingProblemTree const &);
 
-std::unordered_multiset<PCGOperatorAttrs> get_leaves(MachineMappingProblemTree const &);
+std::unordered_multiset<UnmappedOpCostEstimateKey> get_leaves(MachineMappingProblemTree const &);
+
+std::optional<MachineMappingProblemTree> mm_problem_tree_get_subtree_at_path(MachineMappingProblemTree const &,
+                                                                             BinaryTreePath const &);
 
 template <typename Result, typename F>
 Result visit(MachineMappingProblemTree const &t, F &&f) {

@@ -5,6 +5,7 @@
 #include "compiler/series_parallel/pcg_binary_series_split.dtg.h"
 #include "compiler/series_parallel/pcg_binary_sp_decomposition.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h"
+#include "utils/full_binary_tree/binary_tree_path.dtg.h"
 #include "utils/graph/series_parallel/sp_decomposition_tree_node_type.dtg.h"
 #include <optional>
 
@@ -21,9 +22,15 @@ PCGBinarySPDecomposition make_pcg_series_split(PCGBinarySPDecomposition const &,
 PCGBinarySPDecomposition make_pcg_parallel_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &);
 PCGBinarySPDecomposition make_pcg_leaf_node(parallel_layer_guid_t const &);
 
+PCGBinarySPDecomposition wrap_series_split(PCGBinarySeriesSplit const &);
+PCGBinarySPDecomposition wrap_parallel_split(PCGBinaryParallelSplit const &);
+
 PCGBinarySeriesSplit require_series(PCGBinarySPDecomposition const &);
 PCGBinaryParallelSplit require_parallel(PCGBinarySPDecomposition const &);
 parallel_layer_guid_t require_leaf(PCGBinarySPDecomposition const &);
+
+std::unordered_set<BinaryTreePath> find_paths_to_leaf(PCGBinarySPDecomposition const &,
+                                                      parallel_layer_guid_t const &);
 
 template <typename ReturnType, typename F>
 ReturnType visit(PCGBinarySPDecomposition const &d, F &&f) {

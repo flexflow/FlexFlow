@@ -11,9 +11,9 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> make_series_split(LeafOnlyBinarySPD
                                                                LeafOnlyBinarySPDecompositionTree<LeafLabel> const &post) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     make_generic_binary_series_split(
-      LeafOnlyBinaryParallelSplitLabel{},
-      pre,
-      post),
+      LeafOnlyBinarySeriesSplitLabel{},
+      pre.raw_tree,
+      post.raw_tree),
   };
 }
 
@@ -21,10 +21,10 @@ template <typename LeafLabel>
 LeafOnlyBinarySPDecompositionTree<LeafLabel> make_parallel_split(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &lhs,
                                                                LeafOnlyBinarySPDecompositionTree<LeafLabel> const &rhs) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
-    make_generic_binary_series_split(
+    make_generic_binary_parallel_split(
       LeafOnlyBinaryParallelSplitLabel{},
-      lhs,
-      rhs),
+      lhs.raw_tree,
+      rhs.raw_tree),
   };
 }
 
