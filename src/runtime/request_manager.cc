@@ -380,6 +380,10 @@ void RequestManager::register_tokenizer(ModelType type,
   }
 }
 
+std::vector<int32_t> RequestManager::tokenize(std::string const &text) {
+  return tokenizer_->Encode(text);
+}
+
 void RequestManager::register_output_filepath(
     std::string const &_output_filepath) {
   this->output_filepath = _output_filepath;

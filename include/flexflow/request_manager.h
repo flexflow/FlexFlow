@@ -299,6 +299,7 @@ public:
                           int bos_token_id,
                           int eos_token_id,
                           std::string const &path);
+  std::vector<int32_t> tokenize(std::string const &text);
   void register_output_filepath(std::string const &);
 
   FFModel *get_ssm_model(int model_id);
