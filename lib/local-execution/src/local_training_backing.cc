@@ -1,10 +1,10 @@
 #include "local-execution/local_training_backing.h"
 #include "local-execution/loss_functions.h"
-#include "local-execution/model_training_instance.h"
 #include "local-execution/optimizer.h"
 #include "local-execution/task_invocation.h"
 #include "local-execution/task_signature_impl.h"
 #include "pcg/computation_graph.h"
+#include "pcg/optimizer_attrs.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/get_only.h"
@@ -18,11 +18,12 @@ LocalTrainingBacking::LocalTrainingBacking(
     ComputationGraph const &computation_graph,
     TensorBackingMap const &tensor_backing_mapping,
     RuntimeArgConfig const &runtime_arg_config,
-    std::optional<ModelTrainingInstance> &training_instance)
+    std::optional<ModelTrainingInstance> const &training_instance,
+    std::optional<OptimizerAttrs> const &optimizer_attrs)
     : allocator(allocator), computation_graph(computation_graph),
       local_slots_backing(tensor_backing_mapping, runtime_arg_config),
       task_registry(empty_task_registry()),
-      training_instance(training_instance) {
+      training_instance(training_instance), optimizer_attrs(optimizer_attrs) {
 
   for (layer_guid_t const &node :
        topological_ordering(this->computation_graph)) {
@@ -38,8 +39,8 @@ LocalTrainingBacking::LocalTrainingBacking(
 
     // allocate optimizer buffers
     if (attrs.has<WeightAttrs>() && this->training_instance.has_value()) {
-      OptimizerAttrs attrs = this->training_instance.value().optimizer_attrs;
-      TaskSignature sig = get_update_signature(attrs);
+      assert(this->optimizer_attrs.has_value());
+      TaskSignature sig = get_update_signature(this->optimizer_attrs.value());
       tensor_guid_t weight_tensor =
           get_only(get_outgoing_tensors(this->computation_graph, node));
       this->local_slots_backing.allocate_optimizer_tensors(
@@ -153,7 +154,7 @@ PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
 
 void LocalTrainingBacking::execute_update() {
   assert(this->training_instance.has_value());
-  OptimizerAttrs attrs = this->training_instance.value().optimizer_attrs;
+  assert(this->optimizer_attrs.has_value());
 
   for (layer_guid_t const &node :
        topological_ordering(this->computation_graph)) {
@@ -166,18 +167,19 @@ void LocalTrainingBacking::execute_update() {
           this->local_slots_backing.weight_optimizer_tensor_guids.at(node);
 
       // get invocation
-      TaskInvocation invocation =
-          get_update_invocation(attrs, weight_tensor, grad_buffer_tensors);
+      TaskInvocation invocation = get_update_invocation(
+          this->optimizer_attrs.value(), weight_tensor, grad_buffer_tensors);
       // assert(is_invocation_valid(get_update_signature(attrs), invocation));
 
       // execute update
       TaskArgumentAccessor accessor = this->get_task_arg_accessor(invocation);
-      TaskImplFunction update_impl_fn = get_update_task_impl(attrs);
+      TaskImplFunction update_impl_fn =
+          get_update_task_impl(this->optimizer_attrs.value());
       update_impl_fn.get<GenericTaskImplFunction>().function_ptr(accessor);
     }
   }
 
-  this->training_instance = next(this->training_instance.value());
+  this->optimizer_attrs = next(this->optimizer_attrs.value());
 }
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(

@@ -59,13 +59,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
               LossAttrs{SparseCategoricalCrossEntropyLossAttrs{
                   /*replace_labels=*/false}},
               label_tensor,
-              logit_tensor,
-              optimizer_attrs};
+              logit_tensor};
       LocalTrainingBacking local_backing(allocator,
                                          cg_builder.computation_graph,
                                          tensor_backing_map,
                                          runtime_arg_config,
-                                         model_training_instance);
+                                         model_training_instance,
+                                         optimizer_attrs);
       local_backing.execute_init();
       local_backing.execute_forward();
       local_backing.execute_backward();
@@ -83,13 +83,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
             ModelTrainingInstance{LossAttrs{NonconfigurableLossAttrs{
                                       LossFunction::CATEGORICAL_CROSSENTROPY}},
                                   label_tensor,
-                                  logit_tensor,
-                                  optimizer_attrs};
+                                  logit_tensor};
         LocalTrainingBacking local_backing(allocator,
                                            cg_builder.computation_graph,
                                            tensor_backing_map,
                                            runtime_arg_config,
-                                           model_training_instance);
+                                           model_training_instance,
+                                           optimizer_attrs);
         local_backing.execute_init();
         local_backing.execute_forward();
         local_backing.execute_backward();
@@ -101,13 +101,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                 LossAttrs{NonconfigurableLossAttrs{
                     LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
                 label_tensor,
-                logit_tensor,
-                optimizer_attrs};
+                logit_tensor};
         LocalTrainingBacking local_backing(allocator,
                                            cg_builder.computation_graph,
                                            tensor_backing_map,
                                            runtime_arg_config,
-                                           model_training_instance);
+                                           model_training_instance,
+                                           optimizer_attrs);
         local_backing.execute_init();
         local_backing.execute_forward();
         local_backing.execute_backward();
@@ -118,13 +118,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
             ModelTrainingInstance{
                 LossAttrs{NonconfigurableLossAttrs{LossFunction::IDENTITY}},
                 label_tensor,
-                logit_tensor,
-                optimizer_attrs};
+                logit_tensor};
         LocalTrainingBacking local_backing(allocator,
                                            cg_builder.computation_graph,
                                            tensor_backing_map,
                                            runtime_arg_config,
-                                           model_training_instance);
+                                           model_training_instance,
+                                           optimizer_attrs);
         local_backing.execute_init();
         local_backing.execute_forward();
         local_backing.execute_backward();

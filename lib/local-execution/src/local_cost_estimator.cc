@@ -76,11 +76,13 @@ CostDetails LocalCostEstimator::estimate_cost(
                            get_vector_piece_attrs(outputs));
 
   std::optional<ModelTrainingInstance> model_training_instance = std::nullopt;
+  std::optional<OptimizerAttrs> optimizer_attrs = std::nullopt;
   LocalTrainingBacking local_backing(allocator,
                                      cg_builder.computation_graph,
                                      tensor_backing_map,
                                      this->runtime_arg_config,
-                                     model_training_instance);
+                                     model_training_instance,
+                                     optimizer_attrs);
 
   local_backing.execute_init();
   PerLayerElapsedTime fwd = local_backing.execute_forward();

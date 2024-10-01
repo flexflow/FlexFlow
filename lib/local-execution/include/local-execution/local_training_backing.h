@@ -5,6 +5,7 @@
 #include "local-execution/model_training_instance.dtg.h"
 #include "local-execution/task_registry.h"
 #include "pcg/computation_graph.dtg.h"
+#include "pcg/optimizer_attrs.dtg.h"
 
 namespace FlexFlow {
 
@@ -16,7 +17,8 @@ struct LocalTrainingBacking {
                        ComputationGraph const &,
                        TensorBackingMap const &,
                        RuntimeArgConfig const &,
-                       std::optional<ModelTrainingInstance> &);
+                       std::optional<ModelTrainingInstance> const &,
+                       std::optional<OptimizerAttrs> const &);
 
   void execute_init();
   PerLayerElapsedTime execute_forward();
@@ -38,6 +40,7 @@ private:
   TaskRegistry task_registry;
   LocalSlotsBacking local_slots_backing;
   std::optional<ModelTrainingInstance> training_instance;
+  std::optional<OptimizerAttrs> optimizer_attrs;
 };
 
 } // namespace FlexFlow

@@ -8,10 +8,6 @@ features = [
   "json",
 ]
 
-includes = [
-  "<cstddef>",
-]
-
 [[fields]]
 name = "raw_uid"
-type = "size_t"
+type = "int"
