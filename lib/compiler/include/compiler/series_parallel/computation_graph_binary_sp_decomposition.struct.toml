@@ -8,9 +8,9 @@ features = [
 
 includes = [
   "pcg/layer_guid_t.dtg.h",
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition/leaf_only_binary_sp_decomposition.dtg.h",
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree.dtg.h",
 ]
 
 [[fields]]
 name = "raw_tree"
-type = "::FlexFlow::LeafOnlyBinarySPDecomposition<::FlexFlow::layer_guid_t>"
+type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<::FlexFlow::layer_guid_t>"

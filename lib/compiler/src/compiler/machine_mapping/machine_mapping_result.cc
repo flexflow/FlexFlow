@@ -3,6 +3,7 @@
 #include "utils/containers/map_keys.h"
 #include "utils/containers/merge_maps.h"
 #include "utils/full_binary_tree/binary_tree_path.h"
+#include "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.h"
 
 namespace FlexFlow {
 
@@ -24,25 +25,21 @@ MachineMappingResult sequential_combine(float comm_cost,
     require_feasible(maybe_post_result);
   });
 
-  std::function<BinaryTreePath(BinaryTreePath const &)> transform_problem_tree_paths_pre 
-    = nest_inside_left_child;
-  std::function<BinaryTreePath(BinaryTreePath const &)> transform_problem_tree_paths_post
-    = nest_inside_right_child;
-
-  if (parallel_split_transformation.has_value() 
-      && parallel_split_transformation.value() == ParallelSplitTransformation::RthenL) {
-    transform_problem_tree_paths_pre = nest_inside_right_child;
-    transform_problem_tree_paths_post = nest_inside_left_child;
-  }
+  ParallelLayerGuidObliviousMachineMapping mapping = [&] {
+    if (parallel_split_transformation.has_value()
+        && parallel_split_transformation.value() == ParallelSplitTransformation::RthenL) {
+      return binary_combine_mappings(/*lhs=*/post_result.machine_mapping, 
+                                     /*rhs=*/pre_result.machine_mapping);
+    } else {
+      return binary_combine_mappings(/*lhs=*/pre_result.machine_mapping, 
+                                     /*rhs=*/post_result.machine_mapping);
+    }
+  }();
 
   return MachineMappingResult{
     FeasibleMachineMappingResult{
       /*runtime=*/pre_result.runtime + comm_cost + post_result.runtime,
-      /*parallel_layer_guid_oblivious_machine_mapping=*/merge_maps(
-        map_keys(pre_result.parallel_layer_guid_oblivious_machine_mapping,
-                 transform_problem_tree_paths_pre),
-        map_keys(post_result.parallel_layer_guid_oblivious_machine_mapping,
-                 transform_problem_tree_paths_post)),
+      /*machine_mapping=*/mapping,
     },
   };
 }
@@ -66,11 +63,9 @@ MachineMappingResult parallel_combine(MachineMappingResult const &maybe_lhs_resu
   return MachineMappingResult{
     FeasibleMachineMappingResult{
       /*runtime=*/std::max(lhs_result.runtime, rhs_result.runtime),
-      /*parallel_layer_guid_oblivious_machine_mapping=*/merge_maps(
-        map_keys(lhs_result.parallel_layer_guid_oblivious_machine_mapping,
-                 nest_inside_left_child),
-        map_keys(rhs_result.parallel_layer_guid_oblivious_machine_mapping,
-                 nest_inside_right_child)),
+      /*machine_mapping=*/binary_combine_mappings
+        (/*lhs=*/lhs_result.machine_mapping,
+         /*rhs=*/rhs_result.machine_mapping),
     },
   };
 }
@@ -107,9 +102,9 @@ MachineMappingResult make_singleton_machine_mapping_result(float runtime,
   return MachineMappingResult{
     FeasibleMachineMappingResult{
       /*runtime=*/runtime,
-      /*parallel_layer_guid_oblivious_machine_mapping=*/{
+      /*machine_mapping=*/ParallelLayerGuidObliviousMachineMapping{{
         {binary_tree_root_path(), machine_view},
-      },
+      }},
     },
   };
 }

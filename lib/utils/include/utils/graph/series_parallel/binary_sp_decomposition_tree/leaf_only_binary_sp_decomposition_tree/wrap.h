@@ -18,8 +18,8 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> wrap_series_split(LeafOnlyBinarySer
         LeafOnlyBinaryParallelSplitLabel,
         LeafLabel>{
         LeafOnlyBinarySeriesSplitLabel{},
-        split.pre,
-        split.post,
+        split.pre.raw_tree,
+        split.post.raw_tree,
       }
     ),
   };
@@ -34,8 +34,8 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> wrap_parallel_split(LeafOnlyBinaryP
         LeafOnlyBinaryParallelSplitLabel,
         LeafLabel>{
         LeafOnlyBinaryParallelSplitLabel{},
-        split.lhs,
-        split.rhs,
+        split.lhs.raw_tree,
+        split.rhs.raw_tree,
       }
     ),
   };

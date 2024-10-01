@@ -2,7 +2,6 @@ namespace = "FlexFlow"
 name = "PCGBinarySeriesSplit"
 features = [
   "eq",
-  "ord",
   "hash",
   "fmt",
 ]

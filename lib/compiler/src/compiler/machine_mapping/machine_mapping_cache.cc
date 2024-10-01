@@ -1,15 +1,11 @@
 #include "compiler/machine_mapping/machine_mapping_cache.h"
-#include "utils/containers/contains_key.h"
+#include "utils/containers/try_at.h"
 
 namespace FlexFlow {
 
 std::optional<MachineMappingResult>
     MachineMappingCache::load(MachineMappingState const &state) const {
-  if (contains_key(cache, state)) {
-    MachineMappingResult result = cache.at(state);
-    return result;
-  }
-  return std::nullopt;
+  return try_at(this->cache, state);
 }
 
 void MachineMappingCache::save(MachineMappingState const &state,

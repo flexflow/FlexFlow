@@ -4,6 +4,7 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_node_type.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/require.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_leaves.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_all_leaf_paths.h"
 
 namespace FlexFlow {
 
@@ -60,6 +61,10 @@ UnmappedOpCostEstimateKey require_leaf(MachineMappingProblemTree const &t) {
 
 std::unordered_multiset<UnmappedOpCostEstimateKey> get_leaves(MachineMappingProblemTree const &t) {
   return get_leaves(t.raw_tree);
+}
+
+std::unordered_set<BinaryTreePath> get_all_leaf_paths(MachineMappingProblemTree const &t) {
+  return get_all_leaf_paths(t.raw_tree);
 }
 
 std::optional<MachineMappingProblemTree> mm_problem_tree_get_subtree_at_path(MachineMappingProblemTree const &tree,

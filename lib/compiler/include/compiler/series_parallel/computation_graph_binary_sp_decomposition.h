@@ -9,10 +9,6 @@ namespace FlexFlow {
 
 SPDecompositionTreeNodeType
     get_node_type(ComputationGraphBinarySPDecomposition const &);
-ComputationGraphBinarySPDecomposition
-    get_left_child(ComputationGraphBinarySPDecomposition const &);
-ComputationGraphBinarySPDecomposition
-    get_right_child(ComputationGraphBinarySPDecomposition const &);
 layer_guid_t require_node(ComputationGraphBinarySPDecomposition const &);
 std::optional<ComputationGraphBinarySPDecomposition>
     get_computation_graph_left_assoc_binary_sp_decomposition(

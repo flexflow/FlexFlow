@@ -1,4 +1,5 @@
 #include "compiler/machine_mapping/abstracted_tensor_set_movement/abstracted_tensor_set_movement.h"
+#include "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.h"
 #include "utils/containers/flatmap.h"
 #include "utils/containers/unordered_set_of.h"
 #include "utils/containers/transform.h"
@@ -24,18 +25,22 @@ std::unordered_set<BinaryTreePath> get_dst_layers(AbstractedTensorSetMovement co
 }
 
 TensorSetMovement concretize_abstracted_tensor_set_movement(AbstractedTensorSetMovement const &abstracted,
-                                                            PartialMachineMapping const &pre_mapping,
-                                                            PartialMachineMapping const &post_mapping) {
+                                                            ParallelLayerGuidObliviousMachineMapping const &pre_mapping,
+                                                            ParallelLayerGuidObliviousMachineMapping const &post_mapping) {
+  ParallelLayerGuidObliviousMachineMapping mapping = 
+    binary_combine_mappings(/*lhs=*/pre_mapping, 
+                            /*rhs=*/post_mapping);
+
   auto concretize_tensor_movement = [&](AbstractedSingleTensorMovement const &a) {
     return SingleTensorMovement{
       /*parallel_tensor_shape=*/a.parallel_tensor_shape,
       /*src_machine_views=*/transform(a.src_machine_views,
-                                      [&](parallel_layer_guid_t const &layer) {
-                                        return get_machine_view_for_layer(pre_mapping, layer).value();
+                                      [&](BinaryTreePath const &path) {
+                                        return get_machine_view_for_path(pre_mapping, path).value();
                                       }),
       /*dst_machine_views=*/transform(a.dst_machine_views,
-                                      [&](parallel_layer_guid_t const &layer) {
-                                        return get_machine_view_for_layer(post_mapping, layer).value();
+                                      [&](BinaryTreePath const &path) {
+                                        return get_machine_view_for_path(post_mapping, path).value();
                                       }),
     };
   };

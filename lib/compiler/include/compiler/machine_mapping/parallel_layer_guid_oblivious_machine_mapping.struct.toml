@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "ParallelLayerGuidObliviousMachineMapping"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/machine_view.dtg.h",
+  "utils/full_binary_tree/binary_tree_path.dtg.h",
+]
+
+src_includes = [
+  "utils/fmt/unordered_map.h",
+  "utils/hash/unordered_map.h",
+]
+
+[[fields]]
+name = "raw_mapping"
+type = "std::unordered_map<::FlexFlow::BinaryTreePath, ::FlexFlow::MachineView>"

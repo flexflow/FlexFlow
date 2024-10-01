@@ -1,0 +1,28 @@
+namespace = "FlexFlow"
+name = "GenericBinarySPDecompositionTreeVisitor"
+features = []
+
+template_params = [
+  "SeriesSplitLabel",
+  "ParallelSplitLabel",
+  "LeafLabel",
+  "SeriesSplitLabel2",
+  "ParallelSplitLabel2",
+  "LeafLabel2",
+]
+
+includes = [
+  "<functional>",
+]
+
+[[fields]]
+name = "series_split_func"
+type = "std::function<SeriesSplitLabel2(SeriesSplitLabel const &)>"
+
+[[fields]]
+name = "parallel_split_func"
+type = "std::function<ParallelSplitLabel2(ParallelSplitLabel const &)>"
+
+[[fields]]
+name = "leaf_func"
+type = "std::function<LeafLabel2(LeafLabel const &)>"

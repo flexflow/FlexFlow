@@ -4,6 +4,7 @@
 #include "compiler/machine_mapping/machine_mapping.dtg.h"
 #include "compiler/machine_mapping/machine_mapping_constraints.dtg.h"
 #include "compiler/machine_mapping/include_unconstrained.dtg.h"
+#include "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.dtg.h"
 #include "compiler/series_parallel/pcg_binary_sp_decomposition.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h"
 
@@ -17,11 +18,13 @@ std::unordered_set<BinaryTreePath> get_all_layers(MachineMappingConstraints cons
 std::optional<MachineView> get_machine_view_for_layer(MachineMappingConstraints const &,
                                                       BinaryTreePath const &);
 
-MachineMappingConstraints restrict_domain(MachineMappingConstraints const &, 
-                                          BinaryTreePathEntry const &);
+MachineMappingConstraints restrict_to_child(MachineMappingConstraints const &, BinaryTreePathEntry const &);
+MachineMappingConstraints restrict_to_left_child(MachineMappingConstraints const &);
+MachineMappingConstraints restrict_to_right_child(MachineMappingConstraints const &);
+                                                 
 
 MachineMappingConstraints with_additional_constraints(MachineMappingConstraints const &,
-                                                      MachineMapping const &);
+                                                      ParallelLayerGuidObliviousMachineMapping const &);
 
 MachineMapping require_fully_constrained(MachineMappingConstraints const &);
 

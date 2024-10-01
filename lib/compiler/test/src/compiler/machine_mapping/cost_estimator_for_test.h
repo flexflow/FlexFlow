@@ -4,6 +4,7 @@
 #include "compiler/cost_estimator/cost_estimator.h"
 #include "compiler/cost_estimator/op_cost_estimate_key.dtg.h"
 #include "compiler/cost_estimator/tensor_set_movement.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.dtg.h"
 
 namespace FlexFlow {
 
@@ -25,7 +26,7 @@ CostEstimator make_fake_cost_estimator(
   std::function<float(TensorSetMovement const &)> const &get_communication_cost);
 
 CostEstimator make_fake_cost_estimator(
-  std::unordered_map<OpCostEstimateKey, float> const &op_cost_map,
+  std::unordered_map<UnmappedOpCostEstimateKey, std::unordered_map<MachineView, float>> const &op_cost_map,
   std::unordered_map<TensorSetMovement, float> const &comm_cost_map);
 
 } // namespace FlexFlow

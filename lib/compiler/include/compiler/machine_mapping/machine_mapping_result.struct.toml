@@ -17,4 +17,4 @@ src_includes = [
 
 [[fields]]
 name = "raw_result"
-type = "std::optional<FeasibleMachineMappingResult>"
+type = "std::optional<::FlexFlow::FeasibleMachineMappingResult>"

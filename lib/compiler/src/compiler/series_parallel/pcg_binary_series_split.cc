@@ -5,9 +5,12 @@
 namespace FlexFlow {
 
 BinarySeriesSplit get_raw_graph_series_split(PCGBinarySeriesSplit const &s) {
+  auto visitor = LeafOnlyBinarySPDecompositionTreeVisitor<parallel_layer_guid_t, Node>{
+    [](parallel_layer_guid_t const &l) { return l.raw_graph_node; }
+  };
+
   return BinarySeriesSplit{
-    transform(s.raw_split,
-              [](parallel_layer_guid_t const &l) { return l.raw_graph_node; }),
+    transform(s.raw_split, visitor),
   };
 }
 

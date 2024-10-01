@@ -1,18 +1,23 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
 #include "./cost_estimator_for_test.h"
 #include <doctest/doctest.h>
+#include "compiler/machine_mapping/machine_mapping_constraints.h"
+#include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.h"
+#include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "utils/containers/get_only.h"
+#include "utils/full_binary_tree/binary_tree_path.h"
 
 using namespace FlexFlow;
 
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_optimal_machine_mapping_internal") {
-    auto allowed_machine_views1 = [&](ParallelLayerAttrs const &,
+    MachineView mv1 = make_1d_machine_view(gpu_id_t(1), gpu_id_t(2));
+
+    auto allowed_machine_views1 = [&](UnmappedOpCostEstimateKey const &,
                                       MachineSpecification const &) {
-      return std::unordered_set<MachineView>{
-          make_1d_machine_view(gpu_id_t(1), gpu_id_t(2))};
+      return std::unordered_set<MachineView>{mv1};
     };
 
     MachineSpecification machine_spec = MachineSpecification{
@@ -23,64 +28,49 @@ TEST_SUITE(FF_TEST_SUITE) {
       /*intra_node_bandwidth=*/1,
     };
 
+    UnmappedOpCostEstimateKey k1 = UnmappedOpCostEstimateKey{
+      /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
+      /*input_shapes=*/{},
+      /*weight_shapes=*/{},
+      /*output_shapes=*/{},
+    };
+
     CostEstimator cost_estimator = make_fake_cost_estimator(
-      std::unordered_map<OpCostEstimateKey, float>{}, 
+      std::unordered_map<UnmappedOpCostEstimateKey, std::unordered_map<MachineView, float>>{
+        {
+          k1, 
+          {
+            {mv1, 1.0},
+          }
+        },
+      }, 
       std::unordered_map<TensorSetMovement, float>{});
 
+    MachineMappingContext context = MachineMappingContext{
+      cost_estimator,
+      allowed_machine_views1, 
+    };
+
     SUBCASE("single layer") {
-      ParallelComputationGraph pcg = empty_parallel_computation_graph();
-
-      MachineView mv1 = make_1d_machine_view(gpu_id_t{1}, gpu_id_t{2});
-
-      auto allowed_machine_views = [&](ParallelLayerAttrs const &,
-                                       MachineSpecification const &) {
-        return std::unordered_set<MachineView>{mv1};
-      };
-
-      ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
-        PCGOperatorAttrs{
-          InputAttrs{},
-        },
-        std::nullopt,
-      };
-
-      ParallelTensorAttrs output_tensor_attrs = ParallelTensorAttrs{
-        ParallelTensorShape{
-          ParallelTensorDims{
-            FFOrdered<ShardParallelDim>{
-              ShardParallelDim{10, 1},
-            },
-            ReplicaParallelDimSet{
-              SumDegree{1},
-              DiscardCopyDegree{1},
-            },
-          },
-          DataType::FLOAT,
-        },
-        /*sync_type=*/std::nullopt,
-        /*initializer=*/std::nullopt,
-        /*create_gradients=*/CreateGrad::YES,
-      };
-
-      ParallelLayerAddedResult added = add_parallel_layer(pcg, 
-                                                          layer_attrs,
-                                                          {},
-                                                          {output_tensor_attrs});
-      parallel_layer_guid_t layer = added.parallel_layer;
-      parallel_tensor_guid_t output_tensor = get_only(added.outputs);
+      MachineMappingProblemTree problem_tree = 
+        mm_problem_tree_make_leaf(k1);
 
       MachineMappingCache cache;
 
-      MachineMappingResult result = get_optimal_machine_mapping(pcg, 
-                                                                allowed_machine_views, 
-                                                                cost_estimator, 
+      MachineMappingConstraints constraints = get_unconstrained_solution_for_layers(get_all_leaf_paths(problem_tree));
+
+      MachineMappingResult result = get_optimal_machine_mapping(cache,
+                                                                context, 
+                                                                problem_tree,
                                                                 machine_spec, 
-                                                                cache);
+                                                                constraints);
       MachineMappingResult correct = MachineMappingResult{
-        /*runtime=*/2.0,
-        /*machine_mapping=*/MachineMapping{{
-          {layer, mv1},
-        }},
+        FeasibleMachineMappingResult{
+          /*runtime=*/1.0,
+          /*machine_mapping=*/ParallelLayerGuidObliviousMachineMapping{{
+            {binary_tree_root_path(), mv1},
+          }},
+        },
       };
 
       CHECK(result == correct);

@@ -12,7 +12,7 @@ template <typename SeriesSplitLabel, typename ParallelSplitLabel, typename LeafL
 std::optional<GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>> 
   get_subtree_at_path(GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel> const &tree,
                       BinaryTreePath const &path) {
-  std::optional<FullBinaryTree<std::variant<SeriesSplitLabel, ParallelSplitLabel>, LeafLabel>> raw_subtree = get_subtree_at_path(tree.raw_tree, path);
+  std::optional<FullBinaryTree<GenericBinarySPSplitLabel<SeriesSplitLabel, ParallelSplitLabel>, LeafLabel>> raw_subtree = get_subtree_at_path(tree.raw_tree, path);
 
   if (!raw_subtree.has_value()) {
     return std::nullopt;

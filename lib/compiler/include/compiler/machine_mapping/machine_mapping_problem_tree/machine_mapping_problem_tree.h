@@ -24,7 +24,11 @@ MMProblemTreeSeriesSplit require_series_split(MachineMappingProblemTree const &)
 MMProblemTreeParallelSplit require_parallel_split(MachineMappingProblemTree const &);
 UnmappedOpCostEstimateKey require_leaf(MachineMappingProblemTree const &);
 
+MachineMappingProblemTree wrap_series_split(MMProblemTreeSeriesSplit const &);
+MachineMappingProblemTree wrap_parallel_split(MMProblemTreeParallelSplit const &);
+
 std::unordered_multiset<UnmappedOpCostEstimateKey> get_leaves(MachineMappingProblemTree const &);
+std::unordered_set<BinaryTreePath> get_all_leaf_paths(MachineMappingProblemTree const &);
 
 std::optional<MachineMappingProblemTree> mm_problem_tree_get_subtree_at_path(MachineMappingProblemTree const &,
                                                                              BinaryTreePath const &);

@@ -12,7 +12,7 @@ public:
   MachineMappingCache() = default;
 
   std::optional<MachineMappingResult> load(MachineMappingState const &) const;
-  void save(MachineMappingState const &, std::optional<MachineMappingResult> const &);
+  void save(MachineMappingState const &, MachineMappingResult const &);
 
 private:
   std::unordered_map<MachineMappingState, MachineMappingResult> cache;

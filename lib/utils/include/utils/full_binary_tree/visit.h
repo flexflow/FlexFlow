@@ -9,9 +9,11 @@ namespace FlexFlow {
 template <typename Result, typename F, typename ParentLabel, typename LeafLabel>
 Result visit(FullBinaryTree<ParentLabel, LeafLabel> const &tt, F f) {
   if (std::holds_alternative<FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(tt.root)) {
-    return f(std::get<FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(tt.root));
+    Result result = f(std::get<FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(tt.root));
+    return result;
   } else if (std::holds_alternative<LeafLabel>(tt.root)) {
-    return f(std::get<LeafLabel>(tt.root));
+    Result result = f(std::get<LeafLabel>(tt.root));
+    return result;
   } else {
     throw mk_runtime_error(
         "Unexpected case in visit(FullBinaryTree)");

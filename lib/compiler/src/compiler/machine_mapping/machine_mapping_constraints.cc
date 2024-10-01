@@ -36,8 +36,8 @@ std::optional<MachineView> get_machine_view_for_layer(MachineMappingConstraints 
   return partial_solution.machine_views.at(layer);
 }
 
-MachineMappingConstraints restrict_domain(MachineMappingConstraints const &constraints, 
-                                          BinaryTreePathEntry const &prefix) {
+MachineMappingConstraints restrict_to_left_child(MachineMappingConstraints const &constraints, 
+                                                 BinaryTreePathEntry const &prefix) {
   return MachineMappingConstraints{
     filtermap_keys(constraints.machine_views,
                    [&](BinaryTreePath const &path) -> std::optional<BinaryTreePath> {
@@ -53,11 +53,19 @@ MachineMappingConstraints restrict_domain(MachineMappingConstraints const &const
   };
 }
 
-MachineMappingConstraints with_additional_layer_machine_views(MachineMappingConstraints const &partial_solution,
-                                                          std::unordered_map<parallel_layer_guid_t, MachineView> const &additional) {
-  MachineMappingConstraints result = partial_solution;
+MachineMappingConstraints restrict_to_left_child(MachineMappingConstraints const &c) {
+  return restrict_to_child(c, BinaryTreePathEntry::LEFT_CHILD);
+}
 
-  for (auto const &[layer, machine_view] : additional) {
+MachineMappingConstraints restrict_to_right_child(MachineMappingConstraints const &c) {
+  return restrict_to_child(c, BinaryTreePathEntry::RIGHT_CHILD);
+}
+
+MachineMappingConstraints with_additional_constraints(MachineMappingConstraints const &constraints,
+                                                      ParallelLayerGuidObliviousMachineMapping const &additional) {
+  MachineMappingConstraints result = constraints;
+
+  for (auto const &[layer, machine_view] : additional.raw_mapping) {
     std::optional<MachineView> current_machine_view = result.machine_views.at(layer);
 
     if (!current_machine_view.has_value()) {
@@ -74,12 +82,5 @@ MachineMappingConstraints with_additional_layer_machine_views(MachineMappingCons
   return result;
 }
 
-
-MachineMapping require_complete_mapping(MachineMappingConstraints const &partial_mapping) {
-  return MachineMapping{
-    map_values(partial_mapping.machine_views, 
-               [](std::optional<MachineView> const &mv) { return mv.value(); }),
-  };
-}
 
 } // namespace FlexFlow

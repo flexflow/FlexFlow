@@ -3,57 +3,54 @@
 
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_series_split.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_parallel_split.dtg.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree_visitor.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
 
 namespace FlexFlow {
 
-template <typename T, typename F, typename TT = std::invoke_result_t<F, T>>
-LeafOnlyBinarySeriesSplit<TT> transform(LeafOnlyBinarySeriesSplit<T> const &t, F &&f) {
-  auto ff = overload {
-    [&](T const &t) {
-      return f(t);  
-    },
-    [&](auto const &x) { 
-      return x;
-    },
-  };
-
-  return LeafOnlyBinarySeriesSplit<TT>{
-    transform(t.pre, f),
-    transform(t.post, f),
+template <typename LeafLabel, typename LeafLabel2>
+LeafOnlyBinarySeriesSplit<LeafLabel2> transform(LeafOnlyBinarySeriesSplit<LeafLabel> const &t, 
+                                        LeafOnlyBinarySPDecompositionTreeVisitor<LeafLabel, LeafLabel2> const &visitor) {
+  return LeafOnlyBinarySeriesSplit<LeafLabel2>{
+    transform(t.pre, visitor),
+    transform(t.post, visitor),
   };
 }
 
-template <typename T, typename F, typename TT = std::invoke_result_t<F, T>>
-LeafOnlyBinaryParallelSplit<TT> transform(LeafOnlyBinaryParallelSplit<T> const &t, F &&f) {
-  auto ff = overload {
-    [&](T const &t) {
-      return f(t);  
-    },
-    [&](auto const &x) { 
-      return x;
-    },
-  };
-
-  return LeafOnlyBinaryParallelSplit<TT>{
-    transform(t.lhs, f),
-    transform(t.rhs, f),
+template <typename LeafLabel, typename LeafLabel2>
+LeafOnlyBinaryParallelSplit<LeafLabel2> transform(LeafOnlyBinaryParallelSplit<LeafLabel> const &t, 
+                                          LeafOnlyBinarySPDecompositionTreeVisitor<LeafLabel, LeafLabel2> const &visitor) {
+  return LeafOnlyBinaryParallelSplit<LeafLabel2>{
+    transform(t.lhs, visitor),
+    transform(t.rhs, visitor),
   };
 }
 
-template <typename T, typename F, typename TT = std::invoke_result_t<F, T>>
-LeafOnlyBinarySPDecompositionTree<TT> transform(LeafOnlyBinarySPDecompositionTree<T> const &t, F &&f) {
-  auto ff = overload {
-    [&](T const &t) {
-      return f(t);  
-    },
-    [&](auto const &x) { 
+template <typename LeafLabel, typename LeafLabel2>
+LeafOnlyBinarySPDecompositionTree<LeafLabel2> transform(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &t, 
+                                                LeafOnlyBinarySPDecompositionTreeVisitor<LeafLabel, LeafLabel2> const &visitor) {
+  using GenericVisitor = GenericBinarySPDecompositionTreeVisitor
+    <LeafOnlyBinarySeriesSplitLabel,
+     LeafOnlyBinaryParallelSplitLabel,
+     LeafLabel,
+     LeafOnlyBinarySeriesSplitLabel,
+     LeafOnlyBinaryParallelSplitLabel,
+     LeafLabel2>;
+
+  GenericVisitor generic_visitor = GenericVisitor{
+    [&](LeafOnlyBinarySeriesSplitLabel const &x) { 
       return x;
+    },
+    [&](LeafOnlyBinaryParallelSplitLabel const &x) { 
+      return x;
+    },
+    [&](LeafLabel const &t) {
+      return visitor.leaf_func(t);  
     },
   };
 
-  return LeafOnlyBinarySPDecompositionTree<TT>{
-    transform(t.raw_tree, ff),
+  return LeafOnlyBinarySPDecompositionTree<LeafLabel2>{
+    transform(t.raw_tree, generic_visitor),
   };
 }
 

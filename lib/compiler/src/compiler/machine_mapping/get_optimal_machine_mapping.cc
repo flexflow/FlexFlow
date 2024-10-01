@@ -1,20 +1,12 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
-#include "compiler/machine_mapping/abstracted_tensor_set_movement.h"
 #include "compiler/machine_mapping/abstracted_tensor_set_movement/abstracted_tensor_set_movement.h"
-#include "compiler/machine_mapping/get_tensor_set_movement_across_split.h"
-#include "compiler/machine_mapping/get_allowed_machine_views_list.h"
 #include "compiler/machine_mapping/get_machine_resource_splits.h"
 #include "compiler/machine_mapping/machine_mapping_constraints.h"
-#include "compiler/machine_mapping/machine_mapping_problem_tree.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_parallel_split.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_series_split.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.h"
 #include "compiler/machine_mapping/machine_mapping_result.h"
-#include "compiler/machine_mapping/machine_mapping_result_tree/machine_mapping_result_tree.h"
-#include "compiler/machine_mapping/mm_problem_tree_series_split.h"
-#include "compiler/machine_mapping/partial_machine_mapping.dtg.h"
-#include "compiler/machine_mapping/partial_machine_mapping.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.h"
 #include "compiler/series_parallel/pcg_binary_sp_decomposition.dtg.h"
 #include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
@@ -29,12 +21,7 @@
 #include "utils/containers/unordered_set_of.h"
 #include "utils/exception.h"
 #include "utils/overload.h"
-#include "compiler/series_parallel/pcg_binary_parallel_split.dtg.h"
-#include "compiler/series_parallel/pcg_binary_parallel_split.h"
-#include "compiler/series_parallel/pcg_binary_series_split.h"
-#include "compiler/machine_mapping/machine_mapping_context.h"
 #include "utils/containers/flatmap.h"
-#include "compiler/machine_mapping/estimate_layer_cost.h"
 
 
 namespace FlexFlow {
@@ -77,34 +64,37 @@ MachineMappingResult get_optimal_machine_mapping(
     MachineMappingCache &result_cache,
     MachineMappingContext const &context,
     MMProblemTreeSeriesSplit const &series_split,
-    MachineSpecification const &resource,
-    MachineMappingConstraints const &partial_solution,
+    MachineSpecification const &resources,
+    MachineMappingConstraints const &constraints,
     std::optional<ParallelSplitTransformation> const &parallel_split_transformation) {
 
   MachineMappingResult result = infeasible_machine_mapping_result();
 
   AbstractedTensorSetMovement tensor_movement = get_abstracted_tensor_movement(series_split);
 
-  auto get_boundary_machine_view_assignments = [&](std::unordered_set<BinaryTreePath> const &layers) 
-    -> std::unordered_set<MachineMappingConstraints>
+  auto get_boundary_machine_view_assignments = [&](std::unordered_set<BinaryTreePath> const &boundary_layers) 
+    -> std::unordered_set<ParallelLayerGuidObliviousMachineMapping>
   {
     std::unordered_map<BinaryTreePath, std::unordered_set<MachineView>>
-      allowed = generate_map(layers,
-                             [&](BinaryTreePath const &l) { 
-                               return get_allowed_machine_views_for_layer(context, l);
+      allowed = generate_map(boundary_layers,
+                             [&](BinaryTreePath const &l) -> std::unordered_set<MachineView> { 
+                               UnmappedOpCostEstimateKey leaf = require_leaf
+                                 (mm_problem_tree_get_subtree_at_path
+                                   (wrap_series_split(series_split), l).value());
+                               return context.allowed_machine_views(leaf, resources);
                              });
     return transform(get_all_assignments(allowed),
-                     [](std::unordered_map<parallel_layer_guid_t, MachineView> const &m) {
-                       return MachineMapping{m};
+                     [](std::unordered_map<BinaryTreePath, MachineView> const &m) {
+                       return ParallelLayerGuidObliviousMachineMapping{m};
                      });
   };
 
-  for (MachineMapping const &assigned_pre_machine_views
+  for (ParallelLayerGuidObliviousMachineMapping const &assigned_pre_machine_views
         : get_boundary_machine_view_assignments(get_src_layers(tensor_movement))) {
 
     MachineMappingConstraints pre_candidate = 
       with_additional_constraints(
-        restrict_domain(partial_solution, BinaryTreePathEntry::LEFT_CHILD),
+        restrict_to_left_child(constraints),
         assigned_pre_machine_views);
 
     MachineMappingResult pre_result = ({
@@ -112,7 +102,7 @@ MachineMappingResult get_optimal_machine_mapping(
         = get_optimal_machine_mapping(result_cache, 
                                                context, 
                                                get_pre_child(series_split),
-                                               resource, 
+                                               resources, 
                                                pre_candidate);
       if (!returned.has_value()) {
         continue;
@@ -120,12 +110,12 @@ MachineMappingResult get_optimal_machine_mapping(
       returned.value();
     });
 
-    for (MachineMapping const &assigned_post_machine_views
+    for (ParallelLayerGuidObliviousMachineMapping const &assigned_post_machine_views
           : get_boundary_machine_view_assignments(get_dst_layers(tensor_movement))) {
 
       MachineMappingConstraints post_candidate = 
         with_additional_constraints(
-          restrict_domain(partial_solution, BinaryTreePathEntry::RIGHT_CHILD),
+          restrict_to_right_child(constraints),
           assigned_post_machine_views);
 
       MachineMappingResult post_result = ({
@@ -133,7 +123,7 @@ MachineMappingResult get_optimal_machine_mapping(
           = get_optimal_machine_mapping(result_cache, 
                                                  context, 
                                                  get_post_child(series_split),
-                                                 resource, 
+                                                 resources, 
                                                  post_candidate);
         if (!returned.has_value()) {
           continue;
@@ -181,8 +171,8 @@ MachineMappingResult get_optimal_machine_mapping(
                                                 ParallelSplitTransformation::LthenR);
   }();
 
-  MachineMappingConstraints left_constraints = restrict_domain(constraints, get_leaves(lhs));
-  MachineMappingConstraints right_constraints = restrict_domain(constraints, get_leaves(rhs));
+  MachineMappingConstraints left_constraints = restrict_to_left_child(constraints);
+  MachineMappingConstraints right_constraints = restrict_to_right_child(constraints);
 
   for (auto const &resource_split : get_machine_resource_splits(resources)) {
     MachineMappingResult left_result = 

@@ -6,6 +6,7 @@ includes = [
   "compiler/cost_estimator/cost_estimator.h",
   "pcg/machine_view.dtg.h",
   "pcg/machine_specification.dtg.h",
+  "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.dtg.h",
 ]
 
 [[fields]]
