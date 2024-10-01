@@ -333,7 +333,7 @@ void FlexFlow::top_level_task(Task const *task,
       // sequence_length);
       Request inference_req;
       inference_req.benchmarking_tokens = prompt.first;
-      inference_req.max_sequence_length = prompt.second + prompt.first;
+      inference_req.max_length = prompt.second + prompt.first;
       inference_req.peft_model_id =
           (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
       requests.push_back(inference_req);

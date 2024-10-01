@@ -1492,7 +1492,7 @@ void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
     int num_new_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     int total_tokens = bc->requestsInfo[i].first_token_depth_in_request +
                        bc->requestsInfo[i].num_tokens_in_batch;
-    int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
+    int max_peft_tokens = bc->requestsInfo[i].max_length;
     // Copy query to m->query_activation_buffer if we need to compute
     // PEFT backward
     if (bc->requestsInfo[i].peft_bwd) {

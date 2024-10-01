@@ -249,7 +249,7 @@ void inference_kernel(LoraLinearMeta *m,
       continue;
     }
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-    int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
+    int max_peft_tokens = bc->requestsInfo[i].max_length;
     int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
     assert(m->model_state.find(bc->requestsInfo[i].peft_model_id) !=
            m->model_state.end());

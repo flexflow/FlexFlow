@@ -60,32 +60,28 @@ def get_configs():
         # Define sample configs
         ff_init_configs = {
             # required parameters
-            "num_gpus": 4,
-            "memory_per_gpu": 20000,
+            "num_gpus": 2,
+            "memory_per_gpu": 14000,
             "zero_copy_memory_per_node": 40000,
             # optional parameters
             "num_cpus": 4,
             "legion_utility_processors": 4,
             "data_parallelism_degree": 1,
-            "tensor_parallelism_degree": 4,
-            "pipeline_parallelism_degree": 1,
+            "tensor_parallelism_degree": 1,
+            "pipeline_parallelism_degree": 2,
             "offload": False,
-            "offload_reserve_space_size": 8 * 1024, # 8GB
+            "offload_reserve_space_size": 1024**2,
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
-            "enable_peft": False,
-            "peft_activation_reserve_space_size": 1024, # 1GB
-            "peft_weight_reserve_space_size": 1024, # 1GB
             "profiling": False,
-            "benchmarking": False,
             "inference_debugging": False,
             "fusion": True,
         }
         llm_configs = {
             # required parameters
-            "llm_model": "meta-llama/Meta-Llama-3.1-8B",
+            "llm_model": "tiiuae/falcon-7b",
             # optional parameters
-            "cache_path": os.environ.get("FF_CACHE_PATH", ""),
+            "cache_path": "",
             "refresh_cache": False,
             "full_precision": False,
             "prompt": "",
@@ -106,9 +102,7 @@ async def startup_event():
     configs = SimpleNamespace(**configs_dict)
     ff.init(configs_dict)
 
-    ff_data_type = (
-        ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
-    )
+    ff_data_type = ff.DataType.DT_FLOAT if configs.full_precision else ff.DataType.DT_HALF
     llm = ff.LLM(
         configs.llm_model,
         data_type=ff_data_type,
@@ -123,7 +117,7 @@ async def startup_event():
     llm.compile(
         generation_config,
         max_requests_per_batch=1,
-        max_seq_length=2048,
+        max_seq_length=256,
         max_tokens_per_batch=64,
     )
     llm.start_server()

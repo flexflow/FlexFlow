@@ -138,7 +138,7 @@ async def startup_event():
     )
     llm.compile(
         generation_config,
-        max_requests_per_batch=1,
+        max_requests_per_batch=16,
         max_seq_length=2048,
         max_tokens_per_batch=64,
     )

@@ -1622,7 +1622,8 @@ void flexflow_model_generate(flexflow_model_t handle_,
                              enum RequestType *request_types,
                              char const **input_texts,
                              char **output_texts,
-                             int *max_seq_lengths,
+                             int *max_lengths,
+                             int *max_new_tokens_,
                              flexflow_peft_model_id_t *peft_model_ids,
                              char const **dataset_filepaths,
                              int *training_steps,
@@ -1637,21 +1638,24 @@ void flexflow_model_generate(flexflow_model_t handle_,
       std::string const text_str(input_texts[i]);
       Request inference_req;
       inference_req.prompt = text_str;
-      inference_req.max_sequence_length = max_seq_lengths[i];
+      inference_req.max_length = max_lengths[i];
+      inference_req.max_new_tokens = max_new_tokens_[i];
       PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
       if (peft_model_id != nullptr) {
         inference_req.peft_model_id = *peft_model_id;
       }
       requests.push_back(inference_req);
-      DEBUG_PRINT("[Model] generate[%d] %p %s %i",
+      DEBUG_PRINT("[Model] generate[%d] %p %s %i %i",
                   i,
                   handle,
                   text_str.c_str(),
-                  max_seq_lengths[i]);
+                  max_lengths[i],
+                  max_new_tokens_[i]);
     } else if (request_types[i] == RequestType::REQ_FINETUNING) {
       Request fine_tuning_req;
       fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
-      fine_tuning_req.max_sequence_length = max_seq_lengths[i];
+      fine_tuning_req.max_length = max_lengths[i];
+      fine_tuning_req.max_new_tokens = max_new_tokens_[i];
       PEFTModelID *peft_model_id = FFCObjectWrapper::unwrap(peft_model_ids[i]);
       if (peft_model_id != nullptr) {
         fine_tuning_req.peft_model_id = *peft_model_id;
@@ -1660,11 +1664,12 @@ void flexflow_model_generate(flexflow_model_t handle_,
       fine_tuning_req.dataset_filepath = dataset_fp;
       fine_tuning_req.max_training_steps = training_steps[i];
       requests.push_back(fine_tuning_req);
-      DEBUG_PRINT("[Model] finetune[%d] %p %s %i %i",
+      DEBUG_PRINT("[Model] finetune[%d] %p %s %i %i %i",
                   i,
                   handle,
                   dataset_fp.c_str(),
-                  max_seq_lengths[i],
+                  max_lengths[i],
+                  max_new_tokens[i],
                   training_steps[i]);
     } else {
       assert(false && "Unknown request type");
@@ -1678,8 +1683,17 @@ void flexflow_model_generate(flexflow_model_t handle_,
       // If the prompt exceeds max seq len, check that we return the prompt with
       // no additional token. Otherwise, check that the output does not exceed
       // the max sequence length.
-      assert(results[i].output_tokens.size() <= max_seq_lengths[i] ||
-             results[i].output_tokens.size() == results[i].input_tokens.size());
+      int total_tokens = results[i].output_tokens.size();
+      int num_output_tokens = total_tokens - results[i].input_tokens.size();
+      if (max_new_tokens_[i] >= 0) {
+        assert(num_output_tokens <= max_new_tokens_[i]);
+      }
+      if (max_lengths[i] >= 0) {
+        assert(total_tokens <= max_lengths[i] || num_output_tokens == 0);
+      }
+      // assert(results[i].output_tokens.size() <= max_seq_lengths[i] ||
+      //        results[i].output_tokens.size() ==
+      //        results[i].input_tokens.size());
       output_length_and_tokens[i][0] = results[i].output_tokens.size();
       std::copy(results[i].output_tokens.begin(),
                 results[i].output_tokens.end(),

@@ -87,7 +87,7 @@ public:
       first_token_depth_in_request = 0;
       first_token_offset_in_batch = 0;
       num_tokens_in_batch = 0;
-      max_sequence_length = 0;
+      max_length = 0;
       request_guid = 0;
       prompt_phase = false;
       batch_config_request_id = -1;
@@ -98,7 +98,7 @@ public:
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
-    int max_sequence_length;
+    int max_length;
 
     // request id in batch config:
     int batch_config_request_id = -1;
