@@ -1,4 +1,4 @@
-#include "op-attrs/ops/loss_functions/loss_functions.h"
+#include "op-attrs/ops/loss_functions.h"
 #include "utils/containers/transform.h"
 #include "utils/exception.h"
 #include "utils/overload.h"

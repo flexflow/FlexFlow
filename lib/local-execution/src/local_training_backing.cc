@@ -4,10 +4,10 @@
 #include "local-execution/optimizer.h"
 #include "local-execution/task_invocation.h"
 #include "local-execution/task_signature_impl.h"
+#include "pcg/computation_graph.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/get_only.h"
-#include "pcg/computation_graph.h"
 #include "utils/containers/reversed.h"
 #include "utils/exception.h"
 

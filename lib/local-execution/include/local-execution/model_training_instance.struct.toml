@@ -8,7 +8,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/ops/loss_attrs.dtg.h",
+  "op-attrs/ops/loss_functions/loss_attrs.dtg.h",
   "pcg/tensor_guid_t.dtg.h",
   "pcg/optimizer_attrs.dtg.h",
 ]

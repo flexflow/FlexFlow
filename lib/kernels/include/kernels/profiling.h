@@ -40,7 +40,6 @@ std::optional<float> profiling_wrapper(F const &f,
   }
 
   float elapsed = 0;
-  std::cout << "hello";
   checkCUDA(ffEventRecord(t_end, stream));
   checkCUDA(ffEventSynchronize(t_end));
   checkCUDA(ffEventElapsedTime(&elapsed, t_start, t_end));

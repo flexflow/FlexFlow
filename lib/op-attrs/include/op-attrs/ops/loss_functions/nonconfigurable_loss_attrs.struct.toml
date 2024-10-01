@@ -10,7 +10,7 @@ features = [
 ]
 
 includes = [
-  "op-attrs/ops/loss_function.dtg.h"
+  "op-attrs/ops/loss_functions/loss_function.dtg.h"
 ]
 
 [[fields]]

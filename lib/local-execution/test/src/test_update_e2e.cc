@@ -27,7 +27,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     TensorShape input_shape = TensorShape{
         TensorDims{FFOrdered<size_t>{batch_size, data_dim}}, DataType::FLOAT};
     tensor_guid_t input_tensor =
-        cg_builder.create_tensor(input_shape, CreateGrad::YES);
+        cg_builder.create_input(input_shape, CreateGrad::YES);
 
     float scalar = 4.0;
     tensor_guid_t logit_tensor =
@@ -41,7 +41,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     tensor_backing_map.insert({input_tensor, input_backing});
 
     tensor_guid_t label_tensor =
-        cg_builder.create_tensor(input_shape, CreateGrad::NO);
+        cg_builder.create_input(input_shape, CreateGrad::NO);
     GenericTensorAccessorW label_backing =
         allocator.allocate_tensor(input_shape);
     tensor_backing_map.insert({label_tensor, label_backing});
