@@ -21,6 +21,7 @@
 
 namespace FlexFlow {
 
+#ifdef DEACODE
 class PEFTWeightAllocator {
 public:
   PEFTWeightAllocator(void *_base_ptr, size_t _total_size)
@@ -86,6 +87,20 @@ public:
   std::unordered_map<PEFTModelID, std::pair<off_t, size_t>> sync_weights;
   std::mutex peft_weight_allocator_mutex;
 };
+#endif
+
+class PEFTMemoryManager {
+public:
+  PEFTMemoryManager(int max_rank_, int max_concurrent_adapters_, int lora_in_dim, int lora_out_dim) : max_rank(max_rank_), max_concurrent_adapters(max_concurrent_adapters_), lora_in_dim(lora_in_dim), lora_out_dim(lora_out_dim) {}
+
+  void allocate_memory();
+  void register_peft_model(PEFTModelID const &model_id);
+  
+
+
+  int max_rank, max_concurrent_adapters;
+  int lora_in_dim, lora_out_dim;
+}
 
 }; // namespace FlexFlow
 
