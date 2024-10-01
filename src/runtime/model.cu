@@ -168,7 +168,7 @@ FFHandler
   } else {
     handle.batch_config_metadata = nullptr;
   }
-
+#ifdef DEADCODE
   if (info->peft_activation_reserve_space_size > 0) {
     // allocate memory for peft activation reserve space
     Memory gpu_mem = Machine::MemoryQuery(Machine::get_machine())
@@ -208,6 +208,7 @@ FFHandler
   } else {
     handle.peft_weight_allocator = nullptr;
   }
+#endif
   // checkCUDA(cudaMalloc(&handle.workSpace, handle.workSpaceSize));
 #ifdef FF_USE_NCCL
   handle.ncclComm = NULL;
