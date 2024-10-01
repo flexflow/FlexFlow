@@ -71,7 +71,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       local_backing.execute_backward();
     }
 
-    SUBCASE("OtherAttrs") {
+    SUBCASE("NonconfigurableLossAttrs") {
       tensor_guid_t label_tensor =
           cg_builder.create_input(input_shape, CreateGrad::NO);
       GenericTensorAccessorW label_backing =
