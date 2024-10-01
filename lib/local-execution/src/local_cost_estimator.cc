@@ -51,7 +51,7 @@ CostDetails LocalCostEstimator::estimate_cost(
   for (ParallelTensorShape const &input : inputs) {
     TensorShape tensor_shape = get_piece_shape(input);
     tensor_guid_t tensor_id =
-        cg_builder.create_tensor(tensor_shape, CreateGrad::YES);
+        cg_builder.create_input(tensor_shape, CreateGrad::YES);
     GenericTensorAccessorW tensor_backing =
         allocator.allocate_tensor(tensor_shape);
     tensor_backing_map.insert({tensor_id, tensor_backing});
@@ -69,7 +69,10 @@ CostDetails LocalCostEstimator::estimate_cost(
   std::vector<tensor_guid_t> output_tensor_ids =
       cg_builder.add_layer(layer_attrs,
                            input_tensor_ids,
-                           get_vector_piece_attrs(weights),
+                           transform(get_vector_piece_attrs(weights),
+                                     [&](TensorAttrs const &a) {
+                                       return cg_builder.create_weight(a);
+                                     }),
                            get_vector_piece_attrs(outputs));
 
   std::optional<ModelTrainingInstance> model_training_instance = std::nullopt;

@@ -3,7 +3,6 @@
 
 #include "op-attrs/get_output_shapes.h"
 #include "op-attrs/ops/pool_2d.h"
-#include "utils/exception.decl.h"
 #include "utils/exception.h"
 #include "utils/hash-utils.h"
 

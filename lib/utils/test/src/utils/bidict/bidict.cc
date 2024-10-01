@@ -1,5 +1,8 @@
 #include "utils/bidict/bidict.h"
-#include "test/utils/doctest.h"
+#include "test/utils/doctest/check_without_stringify.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 
@@ -59,7 +62,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("bidict::end") {
       auto it = dict.end();
-      CHECK(it == dict.end());
+
+      CHECK_WITHOUT_STRINGIFY(it == dict.end());
     }
 
     SUBCASE("map_keys(bidict<K, V>, F)") {

@@ -1,7 +1,9 @@
 #include "op-attrs/tensor_shape.h"
 #include "op-attrs/datatype.h"
 #include "op-attrs/tensor_dims.h"
+#include "utils/containers/get_only.h"
 #include "utils/containers/product.h"
+#include "utils/containers/transform.h"
 
 namespace FlexFlow {
 

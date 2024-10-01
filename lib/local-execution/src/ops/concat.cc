@@ -50,7 +50,7 @@ static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
   auto inputs = acc.get_variadic_tensor<Permissions::RO>(INPUTS);
 
-  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
+  assert(inputs.size() <= MAX_NUM_INPUTS);
 
   return profile(forward_kernel,
                  profiling,
@@ -68,7 +68,7 @@ static std::optional<float>
   auto input_grads = acc.get_variadic_tensor_grad<Permissions::RW>(INPUTS);
   auto output_grad = acc.get_tensor_grad<Permissions::RO>(OUTPUT);
 
-  assert(attrs.num_inputs <= MAX_NUM_INPUTS);
+  assert(input_grads.size() <= MAX_NUM_INPUTS);
 
   return profile(backward_kernel,
                  profiling,

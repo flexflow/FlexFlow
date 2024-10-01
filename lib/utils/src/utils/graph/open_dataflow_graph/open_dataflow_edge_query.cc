@@ -32,4 +32,38 @@ bool open_dataflow_edge_query_includes(OpenDataflowEdgeQuery const &q,
   });
 }
 
+OpenDataflowEdgeQuery
+    open_dataflow_edge_query_all_outgoing_from(OpenDataflowValue const &src) {
+  return src.visit<OpenDataflowEdgeQuery>(overload{
+      [](DataflowOutput const &o) {
+        return OpenDataflowEdgeQuery{
+            dataflow_input_edge_query_none(),
+            dataflow_edge_query_all_outgoing_from(o),
+        };
+      },
+      [](DataflowGraphInput const &i) {
+        return OpenDataflowEdgeQuery{
+            dataflow_input_edge_query_all_outgoing_from(i),
+            dataflow_edge_query_none(),
+        };
+      },
+  });
+}
+
+OpenDataflowEdgeQuery
+    open_dataflow_edge_query_all_incoming_to(DataflowInput const &dst) {
+  return OpenDataflowEdgeQuery{
+      dataflow_input_edge_query_all_incoming_to(dst),
+      dataflow_edge_query_all_incoming_to(dst),
+  };
+}
+
+std::unordered_set<OpenDataflowEdge> apply_open_dataflow_edge_query(
+    OpenDataflowEdgeQuery const &q,
+    std::unordered_set<OpenDataflowEdge> const &es) {
+  return filter(es, [&](OpenDataflowEdge const &e) {
+    return open_dataflow_edge_query_includes(q, e);
+  });
+}
+
 } // namespace FlexFlow

@@ -11,16 +11,16 @@ features = [
 
 [[fields]]
 name = "srcNode"
-type = "size_t"
+type = "int"
 
 [[fields]]
 name = "srcIdx"
-type = "size_t"
+type = "int"
 
 [[fields]]
 name = "dstNode"
-type = "size_t"
+type = "int"
 
 [[fields]]
 name = "dstIdx"
-type = "size_t"
+type = "int"

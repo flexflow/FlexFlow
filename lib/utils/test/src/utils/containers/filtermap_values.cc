@@ -1,5 +1,7 @@
 #include "utils/containers/filtermap_values.h"
-#include "test/utils/doctest.h"
+#include "test/utils/doctest/fmt/map.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

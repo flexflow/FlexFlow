@@ -1,4 +1,5 @@
 #include "utils/containers/repeat.h"
+#include "test/utils/doctest/fmt/vector.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

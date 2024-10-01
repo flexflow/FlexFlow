@@ -1,5 +1,10 @@
 #include "utils/containers/filter.h"
-#include "test/utils/all.h"
+#include "test/utils/doctest/fmt/map.h"
+#include "test/utils/doctest/fmt/set.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include "test/utils/rapidcheck.h"
 
 using namespace ::FlexFlow;
 

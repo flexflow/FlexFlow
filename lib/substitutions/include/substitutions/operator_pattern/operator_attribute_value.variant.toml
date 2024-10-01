@@ -25,6 +25,7 @@ includes = [
 
 src_includes = [
   "utils/fmt/optional.h",
+  "utils/json/optional.h",
   "utils/fmt/vector.h",
   "utils/hash/vector.h",
 ]
@@ -36,6 +37,9 @@ type = "int"
 type = "bool"
 
 [[values]]
+type = "float"
+
+[[values]]
 type = "std::vector<int>"
 
 [[values]]
@@ -45,7 +49,7 @@ type = "std::vector<::FlexFlow::ff_dim_t>"
 type = "::FlexFlow::OperatorType"
 
 [[values]]
-type = "::FlexFlow::Activation"
+type = "std::optional<::FlexFlow::Activation>"
 
 [[values]]
 type = "::FlexFlow::ff_dim_t"
@@ -64,6 +68,9 @@ type = "::FlexFlow::PoolOp"
 
 [[values]]
 type = "::FlexFlow::TensorShape"
+
+[[values]]
+type = "::FlexFlow::TensorDims"
 
 [[values]]
 type = "::FlexFlow::DataType"

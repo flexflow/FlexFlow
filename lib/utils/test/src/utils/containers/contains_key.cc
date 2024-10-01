@@ -1,7 +1,10 @@
 #include "utils/containers/contains_key.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include <map>
+#include <string>
 #include <unordered_map>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("contains_key(std::unordered_map<K, V>, K)") {

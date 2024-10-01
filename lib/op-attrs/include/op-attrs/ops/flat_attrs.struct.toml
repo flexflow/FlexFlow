@@ -8,4 +8,23 @@ features = [
   "rapidcheck",
   "fmt",
 ]
-fields = []
+
+includes = [
+  "<optional>",
+  "op-attrs/ff_dim.dtg.h",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/json/optional.h",
+  "utils/rapidcheck/optional.h",
+  "op-attrs/ff_dim.h",
+]
+
+[[fields]]
+name = "start_dim"
+type = "::FlexFlow::ff_dim_t"
+
+[[fields]]
+name = "end_dim"
+type = "::FlexFlow::ff_dim_t"

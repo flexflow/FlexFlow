@@ -3,7 +3,7 @@
 
 #include "kernels/device.h"
 #include "kernels/nccl.h"
-#include "op-attrs/dim_ordered.h"
+#include "op-attrs/dim_ordered/dim_ordered.h"
 #include "utils/required.h"
 #include "utils/strong_typedef.h"
 #include "utils/type_traits.h"

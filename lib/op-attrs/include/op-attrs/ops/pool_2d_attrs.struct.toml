@@ -12,6 +12,13 @@ features = [
 includes = [
   "op-attrs/pool_op.dtg.h",
   "op-attrs/activation.dtg.h",
+  "<optional>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+  "utils/json/optional.h",
+  "utils/rapidcheck/optional.h",
 ]
 
 [[fields]]
@@ -44,4 +51,4 @@ type = "::FlexFlow::PoolOp"
 
 [[fields]]
 name = "activation"
-type = "::FlexFlow::Activation"
+type = "std::optional<::FlexFlow::Activation>"

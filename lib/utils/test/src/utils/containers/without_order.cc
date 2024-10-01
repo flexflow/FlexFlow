@@ -1,4 +1,5 @@
 #include "utils/containers/without_order.h"
+#include "test/utils/doctest/fmt/unordered_multiset.h"
 #include <doctest/doctest.h>
 #include <vector>
 

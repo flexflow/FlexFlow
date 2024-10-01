@@ -1,6 +1,6 @@
-#include "test/utils/doctest.h"
 #include "test/utils/rapidcheck.h"
 #include "utils/variant.h"
+#include <doctest/doctest.h>
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("widen and narrow functions") {

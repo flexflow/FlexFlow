@@ -31,15 +31,6 @@
 
 namespace FlexFlow {
 
-template <typename Container, typename Element>
-Element sum(Container const &container) {
-  Element result = 0;
-  for (Element const &element : container) {
-    result += element;
-  }
-  return result;
-}
-
 template <typename Container, typename ConditionF, typename Element>
 Element sum_where(Container const &container, ConditionF const &condition) {
   Element result = 0;
@@ -89,37 +80,6 @@ std::optional<std::size_t> index_of(Container const &c, Element const &e) {
 }
 
 template <typename K, typename V>
-std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
-                                    std::unordered_map<K, V> const &rhs) {
-  assert(are_disjoint(keys(lhs), keys(rhs)));
-
-  std::unordered_map<K, V> result;
-  for (auto const &kv : lhs) {
-    result.insert(kv);
-  }
-  for (auto const &kv : rhs) {
-    result.insert(kv);
-  }
-
-  return result;
-}
-
-template <typename K, typename V>
-bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
-  assert(are_disjoint(keys(lhs), keys(rhs)));
-
-  bidict<K, V> result;
-  for (auto const &kv : lhs) {
-    result.equate(kv.first, kv.second);
-  }
-  for (auto const &kv : rhs) {
-    result.equate(kv.first, kv.second);
-  }
-
-  return result;
-}
-
-template <typename K, typename V>
 std::function<V(K const &)> lookup_in(std::unordered_map<K, V> const &m) {
   return [&m](K const &k) -> V { return m.at(k); };
 }
@@ -166,17 +126,6 @@ std::optional<bool> optional_all_of(Container const &container,
   return true;
 }
 
-template <typename C>
-bool are_all_same(C const &c) {
-  auto const &first = *c.cbegin();
-  for (auto const &v : c) {
-    if (v != first) {
-      return false;
-    }
-  }
-  return true;
-}
-
 template <typename In, typename F, typename Out>
 std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
@@ -208,11 +157,6 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
-}
-
-template <typename C>
-typename C::value_type maximum(C const &v) {
-  return *std::max_element(v.begin(), v.end());
 }
 
 template <typename T>

@@ -1,4 +1,5 @@
 #include "utils/containers/unordered_set_of.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
 #include <doctest/doctest.h>
 #include <vector>
 

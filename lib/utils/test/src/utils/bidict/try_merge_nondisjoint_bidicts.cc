@@ -1,5 +1,6 @@
 #include "utils/bidict/try_merge_nondisjoint_bidicts.h"
-#include "test/utils/doctest.h"
+#include "test/utils/doctest/fmt/optional.h"
+#include <doctest/doctest.h>
 
 using namespace ::FlexFlow;
 

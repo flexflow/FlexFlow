@@ -2,10 +2,12 @@
 #include "kernels/local_cuda_allocator.h"
 #include "kernels/managed_per_device_ff_handle.h"
 #include "local-execution/local_cost_estimator.h"
+#include "op-attrs/ops/attention.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/computation_graph_builder.h"
 #include "test_utils.h"
 
-namespace FlexFlow {
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_CUDA_TEST_SUITE) {
   TEST_CASE("Local Cost Estimator") {
@@ -73,5 +75,3 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     }
   }
 }
-
-} // namespace FlexFlow

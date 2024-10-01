@@ -3,6 +3,7 @@
 #include "op-attrs/ops/attention/multihead_attention_parallel_inputs.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_shape.h"
+#include "utils/containers/extend.h"
 #include "utils/integer_conversions.h"
 
 namespace FlexFlow {
@@ -89,6 +90,24 @@ int get_num_samples(MultiHeadAttentionParallelInputs const &inputs) {
 
 int get_num_samples(MultiHeadAttentionInputs const &inputs) {
   return inputs.batch_size;
+}
+
+std::vector<IncomingTensorRole>
+    get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs const &attrs) {
+
+  std::vector<IncomingTensorRole> roles = std::vector{
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::WEIGHT,
+  };
+
+  if (attrs.bias) {
+    extend(roles,
+           std::vector{IncomingTensorRole::WEIGHT, IncomingTensorRole::WEIGHT});
+  }
+
+  return roles;
 }
 
 tl::expected<TensorShape, std::string>

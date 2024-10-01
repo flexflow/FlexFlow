@@ -4,6 +4,7 @@
 #include "local-execution/local_slots_backing.h"
 #include "local-execution/model_training_instance.dtg.h"
 #include "local-execution/task_registry.h"
+#include "pcg/computation_graph.dtg.h"
 
 namespace FlexFlow {
 

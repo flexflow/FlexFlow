@@ -7,6 +7,7 @@
 #include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/get_only.h"
+#include "pcg/computation_graph.h"
 #include "utils/containers/reversed.h"
 #include "utils/exception.h"
 

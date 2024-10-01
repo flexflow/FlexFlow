@@ -12,6 +12,9 @@ build_targets = [
   "compiler",
   "substitution-generator",
   "local-execution",
+  "models",
+  "export-model-arch",
+  "substitution-to-dot",
 ]
 
 test_targets = [
@@ -22,7 +25,8 @@ test_targets = [
   "substitutions-tests",
   "compiler-tests",
   "substitution-generator-tests",
-  "local-execution-tests"
+  "local-execution-tests",
+  "models-tests",
 ]
 
 [cmake_flags_extra]

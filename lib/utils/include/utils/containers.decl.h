@@ -11,9 +11,6 @@
 
 namespace FlexFlow {
 
-template <typename Container, typename Element = typename Container::value_type>
-Element sum(Container const &container);
-
 template <typename Container,
           typename ConditionF,
           typename Element = typename Container::value_type>
@@ -40,13 +37,6 @@ std::optional<std::size_t> index_of(Container const &c, Element const &e);
 template <typename K, typename V>
 std::unordered_map<K, V> restrict_keys(std::unordered_map<K, V> const &m,
                                        std::unordered_set<K> const &mask);
-
-template <typename K, typename V>
-std::unordered_map<K, V> merge_maps(std::unordered_map<K, V> const &lhs,
-                                    std::unordered_map<K, V> const &rhs);
-
-template <typename K, typename V>
-bidict<K, V> merge_maps(bidict<K, V> const &lhs, bidict<K, V> const &rhs);
 
 template <typename E>
 std::optional<E> at_idx(std::vector<E> const &v, size_t idx);
@@ -75,14 +65,8 @@ std::optional<typename C::value_type> maybe_get_only(C const &c);
 template <typename Container, typename Function>
 std::optional<bool> optional_all_of(Container const &, Function const &);
 
-template <typename C>
-bool are_all_same(C const &c);
-
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f);
-
-template <typename C>
-typename C::value_type maximum(C const &v);
 
 template <typename T>
 T reversed(T const &t);

@@ -1,6 +1,8 @@
 #include "pcg/initializers/uniform_initializer_attrs.h"
-#include "test/utils/doctest.h"
 #include "test/utils/rapidcheck.h"
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Arbitrary<UniformInitializerAttrs>") {

@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "BroadcastAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/tensor_dims.dtg.h",
+]
+
+[[fields]]
+name = "target_dims"
+type = "::FlexFlow::TensorDims"

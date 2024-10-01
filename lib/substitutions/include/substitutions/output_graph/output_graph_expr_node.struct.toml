@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "OutputGraphExprNode"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "utils/graph/node/node.dtg.h"
+]
+
+[[fields]]
+name = "raw_graph_node"
+type = "::FlexFlow::Node"

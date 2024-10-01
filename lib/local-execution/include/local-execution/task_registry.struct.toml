@@ -15,6 +15,7 @@ includes = [
 src_includes = [
   "utils/hash/unordered_map.h",
   "utils/fmt/unordered_map.h",
+  "utils/fmt/optional.h",
 ]
 
 [[fields]]
