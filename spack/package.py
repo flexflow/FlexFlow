@@ -91,9 +91,9 @@ class Flexflow(CMakePackage):
       options.append('-DFF_USE_NCCL=OFF')
       
     if '+examples' in spec:
-      options.append('-DFF_BUILD_ALL_EXAMPLES=ON')
+      options.append('-DFF_BUILD_TRAINING_EXAMPLES=ON')
     else:
-      options.append('-DFF_BUILD_ALL_EXAMPLES=OFF')
+      options.append('-DFF_BUILD_TRAINING_EXAMPLES=OFF')
       
     if '+avx2' in spec:
       options.append('-DFF_USE_AVX2=ON')
