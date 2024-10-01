@@ -60,18 +60,19 @@ void LocalSlotsBacking::allocate_optimizer_tensors(
     Allocator &allocator,
     TaskSignature const &sig) {
   GenericTensorAccessorW weight_backing =
-      get_tensor_backing(weight, IsGrad::NO);
+      get_tensor_backing(UnifiedTensorGuid{weight}, IsGrad::NO);
   int num_grad_buffer_tensors =
       sig.tensor_guid_slots.size() - 2; // ignore 2 (weight and weight_grad)
-  std::vector<tensor_guid_t> grad_buffer_tensors =
-      get_new_tensor_guids_for_layer_without_graph_insertion(
-          cg, weight_layer, num_grad_buffer_tensors);
-  for (tensor_guid_t const &tensor_guid : grad_buffer_tensors) {
+  std::vector<non_graph_tensor_guid_t> grad_buffer_tensors;
+  for (int i = 0; i < num_grad_buffer_tensors; ++i) {
+    non_graph_tensor_guid_t buffer_tensor_guid = non_graph_tensor_guid_t{i};
     GenericTensorAccessorW buffer_backing = allocator.allocate_tensor(
         get_tensor_shape(weight_backing.shape, weight_backing.data_type));
-    this->gradient_tensor_mapping.insert({tensor_guid, buffer_backing});
+    this->optimizer_tensor_mapping.insert({buffer_tensor_guid, buffer_backing});
+    grad_buffer_tensors.push_back(buffer_tensor_guid);
   }
-  this->weight_optimizer_tensor_guids.insert({weight, grad_buffer_tensors});
+  this->weight_optimizer_tensor_guids.insert(
+      {weight_layer, grad_buffer_tensors});
 }
 
 bool LocalSlotsBacking::is_tensor_allocated(
@@ -85,18 +86,26 @@ bool LocalSlotsBacking::is_gradient_tensor_allocated(
 }
 
 GenericTensorAccessorW const &
-    LocalSlotsBacking::get_tensor_backing(tensor_guid_t const &tensor_id,
+    LocalSlotsBacking::get_tensor_backing(UnifiedTensorGuid const &tensor_id,
                                           IsGrad is_grad) const {
-  switch (is_grad) {
-    case IsGrad::NO:
-      assert(contains_key(this->tensor_mapping, tensor_id));
-      return this->tensor_mapping.at(tensor_id);
-    case IsGrad::YES:
-      assert(contains_key(this->gradient_tensor_mapping, tensor_id));
-      return this->gradient_tensor_mapping.at(tensor_id);
-    default:
-      throw mk_runtime_error(fmt::format(
-          "IsGrad should only have YES or NO, received {}", is_grad));
+  if (tensor_id.has<tensor_guid_t>()) {
+    tensor_guid_t graph_tensor_guid = tensor_id.get<tensor_guid_t>();
+    switch (is_grad) {
+      case IsGrad::NO:
+        assert(contains_key(this->tensor_mapping, graph_tensor_guid));
+        return this->tensor_mapping.at(graph_tensor_guid);
+      case IsGrad::YES:
+        assert(contains_key(this->gradient_tensor_mapping, graph_tensor_guid));
+        return this->gradient_tensor_mapping.at(graph_tensor_guid);
+      default:
+        throw mk_runtime_error(fmt::format(
+            "IsGrad should only have YES or NO, received {}", is_grad));
+    }
+  } else {
+    non_graph_tensor_guid_t non_graph_tensor_guid =
+        tensor_id.get<non_graph_tensor_guid_t>();
+    assert(contains_key(this->optimizer_tensor_mapping, non_graph_tensor_guid));
+    return this->optimizer_tensor_mapping.at(non_graph_tensor_guid);
   }
 }
 
@@ -128,8 +137,8 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     }
 
     IsGrad is_grad = slot_grad_id.is_grad;
-    GenericTensorAccessorW tensor_backing =
-        this->get_tensor_backing(tensor_guids.at(tensor_spec.idx), is_grad);
+    GenericTensorAccessorW tensor_backing = this->get_tensor_backing(
+        UnifiedTensorGuid{tensor_guids.at(tensor_spec.idx)}, is_grad);
 
     mapping.insert({slot_grad_id, tensor_backing});
   }
@@ -144,8 +153,8 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     SlotGradId slot_grad_id = tensor_binding.first;
     TensorGuidSpec tensor_spec = tensor_binding.second;
 
-    GenericTensorAccessorW accessor =
-        this->get_tensor_backing(tensor_spec.tensor_guid, slot_grad_id.is_grad);
+    GenericTensorAccessorW accessor = this->get_tensor_backing(
+        UnifiedTensorGuid{tensor_spec.tensor_guid}, slot_grad_id.is_grad);
     mapping.insert({slot_grad_id, accessor});
   }
 
@@ -199,7 +208,8 @@ ConcreteArgSpec LocalSlotsBacking::resolve_op_arg_ref_spec(
 
     assert(input_tensor_guids.size() > index_op_arg_ref.idx);
     GenericTensorAccessorW tensor_backing = this->get_tensor_backing(
-        input_tensor_guids.at(index_op_arg_ref.idx), IsGrad::NO);
+        UnifiedTensorGuid{input_tensor_guids.at(index_op_arg_ref.idx)},
+        IsGrad::NO);
     ParallelTensorShape shape = lift_to_parallel(
         get_tensor_shape(tensor_backing.shape, tensor_backing.data_type));
     return ConcreteArgSpec::create(shape);

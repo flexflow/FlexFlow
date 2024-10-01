@@ -8,14 +8,9 @@ features = [
 ]
 
 includes = [
-  "local-execution/slot_id_t.dtg.h",
   "local-execution/slot_type.dtg.h",
   "local-execution/is_grad.dtg.h",
 ]
-
-[[fields]]
-name = "name"
-type = "::FlexFlow::slot_id_t"
 
 [[fields]]
 name = "slot_type"

@@ -22,12 +22,12 @@ TaskSignature get_sgd_update_signature() {
 
 TaskInvocation sgd_update(SGDOptimizerAttrs const &attrs,
                           tensor_guid_t const &weight,
-                          tensor_guid_t const &sgd_v) {
+                          non_graph_tensor_guid_t const &sgd_v) {
   TaskBinding b;
-  b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::YES});
-  b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::NO});
+  b.bind(WEIGHT, TensorGuidSpec{UnifiedTensorGuid{weight}, IsGrad::YES});
+  b.bind(WEIGHT, TensorGuidSpec{UnifiedTensorGuid{weight}, IsGrad::NO});
   if (attrs.momentum > 0.0f) {
-    b.bind(SGD_V, TensorGuidSpec{sgd_v, IsGrad::YES});
+    b.bind(SGD_V, TensorGuidSpec{UnifiedTensorGuid{sgd_v}, IsGrad::YES});
   }
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(PROFILING, profiling_settings());
@@ -111,13 +111,13 @@ TaskSignature get_adam_update_signature() {
 
 TaskInvocation adam_update(AdamOptimizerAttrs const &attrs,
                            tensor_guid_t const &weight,
-                           tensor_guid_t const &adam_v,
-                           tensor_guid_t const &adam_m) {
+                           non_graph_tensor_guid_t const &adam_v,
+                           non_graph_tensor_guid_t const &adam_m) {
   TaskBinding b;
-  b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::YES});
-  b.bind(WEIGHT, TensorGuidSpec{weight, IsGrad::NO});
-  b.bind(ADAM_M, TensorGuidSpec{adam_m, IsGrad::YES});
-  b.bind(ADAM_V, TensorGuidSpec{adam_v, IsGrad::YES});
+  b.bind(WEIGHT, TensorGuidSpec{UnifiedTensorGuid{weight}, IsGrad::YES});
+  b.bind(WEIGHT, TensorGuidSpec{UnifiedTensorGuid{weight}, IsGrad::NO});
+  b.bind(ADAM_M, TensorGuidSpec{UnifiedTensorGuid{adam_m}, IsGrad::YES});
+  b.bind(ADAM_V, TensorGuidSpec{UnifiedTensorGuid{adam_v}, IsGrad::YES});
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(PROFILING, profiling_settings());
 
@@ -192,7 +192,7 @@ TaskSignature get_update_signature(OptimizerAttrs const &attrs) {
 TaskInvocation get_update_invocation(
     OptimizerAttrs const &attrs,
     tensor_guid_t const &weight,
-    std::vector<tensor_guid_t> const &grad_buffer_tensors) {
+    std::vector<non_graph_tensor_guid_t> const &grad_buffer_tensors) {
   return attrs.visit<TaskInvocation>(overload{
       [&](SGDOptimizerAttrs const &s) {
         return sgd_update(s, weight, grad_buffer_tensors.at(0));

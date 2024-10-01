@@ -10,11 +10,12 @@ features = [
 includes = [
   "pcg/tensor_guid_t.dtg.h",
   "local-execution/is_grad.dtg.h",
+  "local-execution/unified_tensor_guid.dtg.h"
 ]
 
 [[fields]]
 name = "tensor_guid"
-type = "::FlexFlow::tensor_guid_t"
+type = "::FlexFlow::UnifiedTensorGuid"
 
 [[fields]]
 name = "is_grad"

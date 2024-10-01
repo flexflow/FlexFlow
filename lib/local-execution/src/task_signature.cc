@@ -18,8 +18,8 @@ void add_slot(TaskSignature &task_signature,
               IsGrad is_grad,
               SlotType slot_type) {
   TensorGuidSlotSpec tensor_guid_slot_spec =
-      TensorGuidSlotSpec{name, slot_type, is_grad};
-  task_signature.tensor_guid_slots.insert(tensor_guid_slot_spec);
+      TensorGuidSlotSpec{slot_type, is_grad};
+  task_signature.tensor_guid_slots.insert({name, tensor_guid_slot_spec});
 }
 
 } // namespace FlexFlow

@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "UnifiedTensorGuid"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/tensor_guid_t.dtg.h",
+  "local-execution/non_graph_tensor_guid_t.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::tensor_guid_t"
+key = "tensor_guid"
+
+[[values]]
+type = "::FlexFlow::non_graph_tensor_guid_t"
+key = "non_graph_tensor_guid"

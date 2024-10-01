@@ -175,19 +175,6 @@ layer_guid_t get_layer_by_name(ComputationGraph const &cg,
   return get_only(found);
 }
 
-std::vector<tensor_guid_t>
-    get_new_tensor_guids_for_layer_without_graph_insertion(
-        ComputationGraph const &cg, layer_guid_t const &n, int num_tensors) {
-  std::vector<tensor_guid_t> new_tensor_guids;
-  int num_outgoing_tensors = get_outgoing_tensors(cg, n).size();
-
-  for (int i = 0; i < num_tensors; ++i) {
-    new_tensor_guids.push_back(
-        tensor_guid_t{DataflowOutput{n.raw_node, num_outgoing_tensors + i}});
-  }
-  return new_tensor_guids;
-}
-
 std::string as_dot(ComputationGraph const &cg) {
   std::function<std::string(LayerAttrs const &)> get_node_label =
       [](LayerAttrs const &a) -> std::string {

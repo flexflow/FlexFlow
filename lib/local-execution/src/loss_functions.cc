@@ -35,9 +35,9 @@ TaskSignature get_loss_bwd_signature() {
 TaskInvocation
     backward(LossAttrs const &attrs, tensor_guid_t logit, tensor_guid_t label) {
   TaskBinding b;
-  b.bind(LOGIT, TensorGuidSpec{logit, IsGrad::NO});
-  b.bind(LABEL, TensorGuidSpec{label, IsGrad::NO});
-  b.bind(LOGIT, TensorGuidSpec{logit, IsGrad::YES});
+  b.bind(LOGIT, TensorGuidSpec{UnifiedTensorGuid{logit}, IsGrad::NO});
+  b.bind(LABEL, TensorGuidSpec{UnifiedTensorGuid{label}, IsGrad::NO});
+  b.bind(LOGIT, TensorGuidSpec{UnifiedTensorGuid{logit}, IsGrad::YES});
   b.bind_arg(ATTRS, attrs);
   b.bind_arg(PROFILING, profiling_settings());
 

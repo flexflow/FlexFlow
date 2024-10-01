@@ -8,15 +8,14 @@ features = [
 
 includes = [
   "local-execution/tensor_guid_slot_spec.dtg.h",
+  "local-execution/slot_id_t.dtg.h",
   "<typeindex>",
   "<optional>"
 ]
 
 src_includes = [
   "utils/fmt/unordered_map.h",
-  "utils/fmt/unordered_set.h",
   "utils/hash/unordered_map.h",
-  "utils/hash/unordered_set.h",
   "utils/fmt/optional.h",
   "utils/type_index.h"
 ]
@@ -31,4 +30,4 @@ type = "std::unordered_map<::FlexFlow::slot_id_t, std::type_index>"
 
 [[fields]]
 name = "tensor_guid_slots"
-type = "std::unordered_set<::FlexFlow::TensorGuidSlotSpec>"
+type = "std::unordered_map<::FlexFlow::slot_id_t, ::FlexFlow::TensorGuidSlotSpec>"

@@ -162,9 +162,8 @@ void LocalTrainingBacking::execute_update() {
       // get tensors
       tensor_guid_t weight_tensor =
           get_only(get_outgoing_tensors(this->computation_graph, node));
-      std::vector<tensor_guid_t> grad_buffer_tensors =
-          this->local_slots_backing.weight_optimizer_tensor_guids.at(
-              weight_tensor);
+      std::vector<non_graph_tensor_guid_t> grad_buffer_tensors =
+          this->local_slots_backing.weight_optimizer_tensor_guids.at(node);
 
       // get invocation
       TaskInvocation invocation =

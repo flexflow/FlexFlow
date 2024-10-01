@@ -52,9 +52,6 @@ LayerAttrs get_layer_attrs(ComputationGraph const &cg, layer_guid_t const &n);
 layer_guid_t get_layer_by_name(ComputationGraph const &cg,
                                std::string const &name);
 
-std::vector<tensor_guid_t>
-    get_new_tensor_guids_for_layer_without_graph_insertion(
-        ComputationGraph const &, layer_guid_t const &n, int num_tensors);
 std::string as_dot(ComputationGraph const &);
 void debug_print_dot(ComputationGraph const &);
 
