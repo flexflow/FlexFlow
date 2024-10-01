@@ -19,6 +19,7 @@
 #include "models/mpt.h"
 #include "models/opt.h"
 #include <cassert>
+#include <chrono>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -264,9 +265,25 @@ void FlexFlow::top_level_task(Task const *task,
   ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
+  int max_requests_per_batch = 8;
+  int max_tokens_per_batch = 128;
+  int max_tokens_per_ssm_batch = -1;
+  int max_tokens_per_prefilling_batch = -1;
   int max_sequence_length = 256;
-
-  printf("start top level task\n");
+  int expansion_degree = 3;
+  int max_tree_depth = 8;
+  int max_tree_width = 16;
+  RequestManager::DecodingMode decoding_mode =
+      RequestManager::SPECULATIVE_DECODING;
+  bool spec_sampling = false;
+  bool do_sample = false;
+  int sampling_seed = 0;
+  bool streaming_cache = false;
+  bool slo_attainment_early_termination = false;
+  int baseline_latency_ms = 50;
+  int ssm_spec_latency_ms = 20;
+  int llm_verify_latency_ms = 50;
+  double request_per_second = 1.0;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -278,18 +295,44 @@ void FlexFlow::top_level_task(Task const *task,
                    use_full_precision,
                    verbose,
                    max_sequence_length);
+  if (max_tokens_per_ssm_batch == -1) {
+    max_tokens_per_ssm_batch = max_tokens_per_batch;
+  }
+  if (max_tokens_per_prefilling_batch == -1) {
+    max_tokens_per_prefilling_batch = max_tokens_per_batch;
+  }
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
 
+  assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
+             ffconfig.pipeline_parallelism_degree ==
+         ffconfig.numNodes * ffconfig.workersPerNode);
+
   // Create SentencePiece tokenizer or OPT tokenizer
-  GenerationConfig generationConfig(false, 0.8, 0.6, false, 16);
+  srand(sampling_seed);
+  GenerationConfig generationConfig(do_sample, 0.8, 0.6, spec_sampling, 16);
   InferenceManager *im = InferenceManager::get_inference_manager();
   RequestManager *rm = RequestManager::get_request_manager();
+  // Must init the request manager although we don't use it, as some
+  // initialization tasks execute before the top-level task
+  rm->set_max_requests_per_batch(max_requests_per_batch);
+  rm->set_max_tokens_per_batch(max_tokens_per_batch);
+  rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
+  rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
+  rm->set_max_sequence_length(max_sequence_length);
+  rm->set_max_tree_depth(max_tree_depth);
+  rm->set_max_tree_width(max_tree_width);
   rm->set_verbose(verbose);
+  rm->set_streaming_cache(streaming_cache);
   rm->register_tokenizer(model_metadata.llm_model_type,
                          model_metadata.bos_token_id,
                          model_metadata.eos_token_id,
                          model_metadata.llm_tokenizer_path);
+  rm->set_decoding_mode(decoding_mode);
+  rm->set_slo_violation_early_termination(slo_attainment_early_termination);
+  rm->set_baseline_latency(baseline_latency_ms);
+  rm->set_ssm_spec_latency(ssm_spec_latency_ms);
+  rm->set_llm_verify_latency(llm_verify_latency_ms);
 
   {
     /* Prompt file format:
@@ -330,7 +373,6 @@ void FlexFlow::top_level_task(Task const *task,
 
     std::ifstream file_handle(file_paths.prompt_file_path);
     assert(file_handle.good() && "Prompt file does not exist.");
-    printf("prompt file path: %s\n", file_paths.prompt_file_path.c_str());
     json prompt_json = json::parse(file_handle,
                                    /*parser_callback_t */ nullptr,
                                    /*allow_exceptions */ true,
@@ -358,7 +400,6 @@ void FlexFlow::top_level_task(Task const *task,
 
     file_handle = std::ifstream(file_paths.log_file_path);
     assert(file_handle.good() && "Log file does not exist.");
-    printf("log file path: %s\n", file_paths.log_file_path.c_str());
     json log_json = json::parse(file_handle,
                                 /*parser_callback_t */ nullptr,
                                 /*allow_exceptions */ true,
@@ -366,19 +407,43 @@ void FlexFlow::top_level_task(Task const *task,
 
     auto time_diff_ms = [](std::string const &start, std::string const &end) {
       std::tm tm = {};
+
       std::istringstream ss(start);
       ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
       auto start_time =
           std::chrono::system_clock::from_time_t(std::mktime(&tm));
+      ss.seekg(0);
+      size_t dot_pos = start.find('.');
+      std::string fraction =
+          dot_pos != std::string::npos ? start.substr(dot_pos + 1) : "0";
+      while (fraction.size() < 6) {
+        fraction += "0";
+      }
+      if (!fraction.empty()) {
+        long long microseconds = std::stoll(fraction.substr(0, 6));
+        start_time += std::chrono::microseconds(microseconds);
+      }
+
       ss = std::istringstream(end);
       ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
       auto end_time = std::chrono::system_clock::from_time_t(std::mktime(&tm));
-      return std::chrono::duration_cast<std::chrono::milliseconds>(end_time -
+      ss.seekg(0);
+      dot_pos = end.find('.');
+      fraction = dot_pos != std::string::npos ? end.substr(dot_pos + 1) : "0";
+      while (fraction.size() < 6) {
+        fraction += "0";
+      }
+      if (!fraction.empty()) {
+        long long microseconds = std::stoll(fraction.substr(0, 6));
+        end_time += std::chrono::microseconds(microseconds);
+      }
+
+      return std::chrono::duration_cast<std::chrono::microseconds>(end_time -
                                                                    start_time)
-          .count();
+                 .count() /
+             1000.0;
     };
 
-    printf("start trace generation\n");
     int num_requests = min(prompt_json.size() - 1, log_json.size());
     std::string start_time = log_json[0]["TIMESTAMP"].get<std::string>();
     for (int i = 0; i < num_requests; ++i) {
