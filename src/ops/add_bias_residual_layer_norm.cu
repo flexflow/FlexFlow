@@ -222,7 +222,7 @@ void AddBiasResidualLayerNorm::inference_kernel_wrapper(
         continue;
       }
       int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-      int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
+      int max_peft_tokens = bc->requestsInfo[i].max_length;
       int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
       int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
       if (bc->requestsInfo[i].peft_bwd) {

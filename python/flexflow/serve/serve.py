@@ -498,12 +498,17 @@ class LLM:
     def generate(
         self,
         requests_or_prompts: Union[str, List[str], Request, List[Request]],
-        max_length: int = 128,
+        max_length: int = -1,
+        max_new_tokens: int = 128,
     ):
         """Generate tokens based on the input prompt(s)
 
         :param requests_or_prompts: The generation prompt(s) in the form of a string, a list of strings, a Request, or list of Requests
         :type requests_or_prompts: Union[str, List[str], Request, List[Request]]
+        :param max_length: The maximum length in tokens of the prompt + generated sequence, defaults to -1 (no maximum length)
+        :type max_length: int, optional
+        :param max_new_tokens: The maximum number of new tokens (excluding the prompt) to generate, defaults to 128
+        :type max_new_tokens: int, optional
         :return: the generation results
         :rtype: GenerationResult
         """
@@ -511,7 +516,7 @@ class LLM:
             if len(requests_or_prompts) == 0:
                 return None
             return self.model.ffmodel.generate_inf_only(
-                [requests_or_prompts], max_length
+                [requests_or_prompts], max_length, max_new_tokens
             )
         elif type(requests_or_prompts) == Request:
             return self.model.ffmodel.generate(requests_or_prompts)
@@ -520,7 +525,7 @@ class LLM:
                 return []
             if type(requests_or_prompts[0]) == str:
                 return self.model.ffmodel.generate_inf_only(
-                    requests_or_prompts, max_length
+                    requests_or_prompts, max_length, max_new_tokens
                 )
             else:
                 print(requests_or_prompts)
