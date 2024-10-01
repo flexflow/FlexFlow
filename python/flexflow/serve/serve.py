@@ -611,3 +611,45 @@ class SSM(LLM):
             model_specific_pipeline_parallelism_degree,
             ssms,
         )
+
+from safetensors import safe_open
+from huggingface_hub import hf_hub_download
+def download_and_convert_peft_model(peft_model_id: str, data_type: DataType = DataType.DT_HALF, cache_path: str = "", refresh_cache: bool = False):
+    if data_type != DataType.DT_FLOAT and data_type != DataType.DT_HALF:
+        raise ValueError("data_type must be either DataType.DT_FLOAT or DataType.DT_HALF")
+    adapter_path = hf_hub_download(repo_id=peft_model_id, filename="adapter_model.safetensors")
+    peft_config = PeftConfig.from_pretrained(peft_model_id)
+    base_model_name_or_path = peft_config.base_model_name_or_path
+    llm = LLM(base_model_name_or_path, data_type, cache_path, refresh_cache)
+    
+    # Save peft config to file
+    peft_config_dir = os.path.join(
+        os.path.expanduser(llm.cache_path), "configs", peft_model_id.lower()
+    )
+    os.makedirs(peft_config_dir, exist_ok=True)
+    peft_config_path = os.path.join(peft_config_dir, "config.json")
+    print(f"Saving {peft_model_id} configs to file {peft_config_path}...")
+    with open(peft_config_path, "w") as json_file:
+
+        class SetEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, set):
+                    return list(obj)
+                return super().default(obj)
+
+        json.dump(peft_config.to_dict(), json_file, indent=2, cls=SetEncoder)
+
+    # Save peft weights to file
+    with safe_open(adapter_path, framework="pt", device="cpu") as f:
+        for tensor_name in f.keys():
+            tensor = f.get_tensor(tensor_name)
+            if data_type == DataType.DT_HALF:
+                tensor = tensor.half()
+            else:
+                tensor = tensor.float()
+            tensor_name = tensor_name.replace("base_model.model.model.", "").replace(".default", "")
+            print(tensor_name)
+            
+            tensor_name = llm.model_class.convert_hf_weight_name(tensor_name)
+            tensor.detach().cpu().numpy().tofile(f"{llm.weights_path}/{tensor_name}")
+

@@ -23,7 +23,9 @@ public:
       OperatorType type,
       ParallelTensor const input,
       ParallelTensor const output,
-      std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
+      int max_rank,
+      int max_concurrent_adapters,
+      // std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
       char const *name = nullptr);
   LoraLinear(FFModel &model,
              LoraLinear const &other,
@@ -91,7 +93,9 @@ public:
   // size_t get_params_hash() const override;
   LoraLinearParams get_params() const;
 
-  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
+  // std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
+  int max_rank;
+  int max_concurrent_adapters;
 };
 
 }; // namespace FlexFlow

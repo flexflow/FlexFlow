@@ -845,7 +845,8 @@ public:
   // ========================================
   // PEFT Layers
   // ========================================
-  PEFTModelID *add_lora_layer(LoraLinearConfig const peft_config);
+//   PEFTModelID *add_lora_layer(LoraLinearConfig const peft_config);
+    void add_lora_layers(std::vector<std::string> target_modules, int max_rank, int max_concurrent_adapters);
   // ========================================
   // Inference APIs
   // ========================================
@@ -1180,8 +1181,8 @@ public:
   std::vector<ParallelTensor> parameters;
   // PEFT related
   std::unordered_map<Layer *, Layer *> base_layer_to_peft_layer;
-  std::unordered_map<Layer *, std::vector<PEFTModelID>> peft_layer_to_peft_id;
-  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
+//   std::unordered_map<Layer *, std::vector<PEFTModelID>> peft_layer_to_peft_id;
+//   std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
   //   std::vector<Op *> peft_operators;
 
   FFHandler handlers[MAX_NUM_WORKERS];
