@@ -55,6 +55,8 @@ public:
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       input_tensor_slots;
   std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
+      weight_tensor_slots;
+  std::unordered_map<layer_guid_t, std::vector<tensor_guid_t>>
       output_tensor_slots;
   std::unordered_map<tensor_guid_t, std::vector<tensor_guid_t>>
       weight_optimizer_tensor_guids;

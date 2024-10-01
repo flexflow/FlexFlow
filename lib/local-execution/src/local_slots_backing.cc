@@ -22,8 +22,10 @@ void LocalSlotsBacking::allocate_outgoing_tensors(
     layer_guid_t const &layer_guid,
     ComputationGraph const &computation_graph,
     Allocator &allocator) {
-  std::vector<tensor_guid_t> incoming_tensors =
-      get_incoming_tensors(computation_graph, layer_guid);
+  std::vector<tensor_guid_t> incoming_input_tensors =
+      get_incoming_inputs(computation_graph, layer_guid);
+  std::vector<tensor_guid_t> incoming_weight_tensors =
+      get_incoming_weights(computation_graph, layer_guid);
   std::vector<tensor_guid_t> outgoing_tensors =
       get_outgoing_tensors(computation_graph, layer_guid);
   for (tensor_guid_t const &output_tensor : outgoing_tensors) {
@@ -46,7 +48,8 @@ void LocalSlotsBacking::allocate_outgoing_tensors(
     }
   }
 
-  this->input_tensor_slots.insert({layer_guid, incoming_tensors});
+  this->input_tensor_slots.insert({layer_guid, incoming_input_tensors});
+  this->weight_tensor_slots.insert({layer_guid, incoming_weight_tensors});
   this->output_tensor_slots.insert({layer_guid, outgoing_tensors});
 }
 
@@ -100,13 +103,6 @@ GenericTensorAccessorW const &
 TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     OpTaskBinding const &binding, layer_guid_t const &op_guid) const {
   TensorSlotsBacking mapping;
-  int num_inputs = 0;
-  for (auto const &tensor_binding : binding.get_tensor_bindings()) {
-    if (tensor_binding.first.is_grad == IsGrad::NO &&
-        tensor_binding.second.role == TensorRole::INPUT) {
-      num_inputs += 1;
-    }
-  }
 
   for (auto const &tensor_binding : binding.get_tensor_bindings()) {
     SlotGradId slot_grad_id = tensor_binding.first;
@@ -115,7 +111,9 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     int weight_adjusted_idx = 0;
     switch (tensor_spec.role) {
       case TensorRole::WEIGHT:
-        weight_adjusted_idx = num_inputs;
+        assert(contains_key(this->weight_tensor_slots, op_guid));
+        tensor_guids = this->weight_tensor_slots.at(op_guid);
+        break;
       case TensorRole::INPUT:
         assert(contains_key(this->input_tensor_slots, op_guid));
         tensor_guids = this->input_tensor_slots.at(op_guid);
@@ -130,8 +128,8 @@ TensorSlotsBacking LocalSlotsBacking::construct_tensor_slots_backing(
     }
 
     IsGrad is_grad = slot_grad_id.is_grad;
-    GenericTensorAccessorW tensor_backing = this->get_tensor_backing(
-        tensor_guids.at(weight_adjusted_idx + tensor_spec.idx), is_grad);
+    GenericTensorAccessorW tensor_backing =
+        this->get_tensor_backing(tensor_guids.at(tensor_spec.idx), is_grad);
 
     mapping.insert({slot_grad_id, tensor_backing});
   }
