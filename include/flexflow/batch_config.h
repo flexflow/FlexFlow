@@ -44,6 +44,11 @@ struct OptimizerTasks {
   bool save_updated_weights = false;
 };
 
+struct NewPeftModelPath {
+  PEFTModelID peft_model_id;
+  std::string filepath;
+};
+
 void set_optimizer_tasks(OptimizerTasks &tasks,
                          int max_training_steps,
                          int completed_training_steps,
@@ -135,6 +140,7 @@ public:
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
   PerTokenInfo labelsInfo[MAX_NUM_TOKENS];
+  NewPeftModelPath new_peft_model_paths[MAX_NUM_REQUESTS];
 
   bool request_completed[MAX_NUM_REQUESTS];
   bool request_running[MAX_NUM_REQUESTS];
