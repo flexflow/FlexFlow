@@ -95,7 +95,7 @@ public:
   : max_concurrent_adapters(max_concurrent_adapters_), max_lora_size(max_lora_size_), base_ptr(nullptr) {}
 
   // allocate memory for all the PEFT adapters for a given layer on a given shard
-  void allocate_memory(Memory gpu_mem) {
+  void allocate_inference_memory(Memory gpu_mem) {
     // allocate chunk of memory for all the PEFT adapters
     Realm::Rect<1, coord_t> bounds(
         Realm::Point<1, coord_t>(0),
@@ -110,6 +110,9 @@ public:
                                            Realm::ProfilingRequestSet())
         .wait();
     base_ptr = peftLegionInst.pointer_untyped(0, sizeof(char));
+  }
+  void allocate_finetuning_memory(Memory gpu_mem) {
+
   }
   
   // Returns the slot in memory where the peft model weights are/will be stored. 
@@ -160,7 +163,7 @@ public:
   int max_concurrent_adapters;
   size_t max_lora_size;
   Realm::RegionInstance peftLegionInst;
-  void *base_ptr;
+  void *base_ptr; void *finetuning_ptr;
   std::unordered_map<PEFTModelID, int> lru_hashtable;
   std::vector<PEFTModelID> lru_list; // head = least recently used, tail=most recently used
   std::unordered_map<PEFTModelID, int> peft2mem_slot;

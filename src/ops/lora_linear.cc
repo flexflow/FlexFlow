@@ -519,12 +519,17 @@ OpMeta *LoraLinear::init_task(Task const *task,
   std::string lora_layername_substr =
       lora_layername.substr(0, found + searchString.length());
   
+  // allocate space for lora weights
   size_t max_lora_size = data_type_size(dt) * (lora->max_rank * in_dim + lora->max_rank * out_dim);
   m->peft_memory_manager = new PEFTMemoryManager(max_lora_size, lora->max_concurrent_adapters);
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
-  m->peft_memory_manager->allocate_memory(gpu_mem);
+  m->peft_memory_manager->allocate_inference_memory(gpu_mem);
 
-  for (auto const &kv : lora->peft_configs) {
+  return m;
+}
+
+void load_peft_adapters(BatchConfig const *bc){
+  for (auto const &kv : bc->peft_configs) {
     PEFTModelID const &model_id = kv.first;
     LoraLinearConfig const &lora_config = kv.second;
 
@@ -680,7 +685,6 @@ OpMeta *LoraLinear::init_task(Task const *task,
     m->model_state[model_id].cache_folder = lora_config.cache_folder;
     m->model_state[model_id].peft_model_id = lora_config.peft_model_id;
   }
-  return m;
 }
 
 void LoraLinear::forward(FFModel const &ff) {
