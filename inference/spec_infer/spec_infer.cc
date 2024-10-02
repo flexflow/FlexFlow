@@ -577,6 +577,8 @@ void FlexFlow::top_level_task(Task const *task,
         timestamps.push_back(trace.emission_time_ms);
         ratios.push_back(trace.slo_ratio);
       }
+      timestamps.erase(timestamps.begin());
+      timestamps.push_back(timestamps.back() + 1000.0);
       TraceEmissionMachine emission_machine(timestamps, ratios);
       results = tree_model.generate(requests, emission_machine);
     } else {
