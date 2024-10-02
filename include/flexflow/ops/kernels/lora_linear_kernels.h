@@ -35,8 +35,9 @@ public:
   // PEFT related fields
   void *low_rank_activation;
   void *input_activation;
-  std::unordered_map<PEFTModelID, LoraLinearModelState> model_state;
-  size_t allocated_peft_buffer_size1 = 0, allocated_peft_buffer_size2 = 0;
+  // std::unordered_map<PEFTModelID, LoraLinearModelState> model_state;
+  // size_t allocated_peft_buffer_size1 = 0, allocated_peft_buffer_size2 = 0;
+  PEFTMemoryManager *peft_memory_manager;
 };
 
 namespace Kernels {

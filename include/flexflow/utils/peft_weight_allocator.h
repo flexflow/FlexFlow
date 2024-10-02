@@ -91,15 +91,79 @@ public:
 
 class PEFTMemoryManager {
 public:
-  PEFTMemoryManager(int max_rank_, int max_concurrent_adapters_, int lora_in_dim, int lora_out_dim) : max_rank(max_rank_), max_concurrent_adapters(max_concurrent_adapters_), lora_in_dim(lora_in_dim), lora_out_dim(lora_out_dim) {}
+  PEFTMemoryManager(size_t max_lora_size_, int max_concurrent_adapters_) 
+  : max_concurrent_adapters(max_concurrent_adapters_), max_lora_size(max_lora_size_), base_ptr(nullptr) {}
 
-  void allocate_memory();
-  void register_peft_model(PEFTModelID const &model_id);
+  // allocate memory for all the PEFT adapters for a given layer on a given shard
+  void allocate_memory(Memory gpu_mem) {
+    // allocate chunk of memory for all the PEFT adapters
+    Realm::Rect<1, coord_t> bounds(
+        Realm::Point<1, coord_t>(0),
+        Realm::Point<1, coord_t>(max_lora_size - 1));
+    std::vector<size_t> field_sizes;
+    field_sizes.push_back(sizeof(char));
+    Realm::RegionInstance::create_instance(peftLegionInst,
+                                           gpu_mem,
+                                           bounds,
+                                           field_sizes,
+                                           0,
+                                           Realm::ProfilingRequestSet())
+        .wait();
+    base_ptr = peftLegionInst.pointer_untyped(0, sizeof(char));
+  }
   
+  // Returns the slot in memory where the peft model weights are/will be stored. 
+  // If the model is not in memory (cache miss), set the cache_miss flag to true.
+  void *get_peft_model_handle(PEFTModelID const &model_id, bool *cache_miss) {
+    assert(base_ptr != nullptr && "PEFT Memory Manager not initialized");
+    assert(lru_hashtable.size() == lru_list.size() &&
+           lru_list.size() == peft2mem_slot.size() &&
+           "PEFT Memory Manager LRU hashtable/list and/or peft2mem_slot are out of sync");
+    // check for cache hit
+    if (lru_hashtable.find(model_id) != lru_hashtable.end()) {
+      int lru_list_index = lru_hashtable[model_id];
+      assert(lru_list[lru_list_index] == model_id &&
+             "PEFT Memory Manager LRU hashtable/list are out of sync");
+      // move the model to the end of the LRU list
+      lru_list.erase(lru_list.begin() + lru_list_index);
+      lru_list.push_back(model_id);
+      // update the LRU hashtable
+      lru_hashtable[model_id] = lru_list.size() - 1;
+      // get memory slot
+      assert(peft2mem_slot.find(model_id) != peft2mem_slot.end() && "PEFT Memory Manager peft2mem_slot is out of sync");
+      *cache_miss = false;
+    } else {
+      // cache miss
+      // check if you need to evict
+      bool need_to_evict = lru_list.size() == max_concurrent_adapters;
+      int mem_slot = -1;
+      if (need_to_evict) {
+        // evict the least recently used model
+        PEFTModelID lru_model_id = lru_list[0];
+        lru_list.erase(lru_list.begin());
+        lru_hashtable.erase(lru_model_id);
+        mem_slot = peft2mem_slot[lru_model_id];
+        peft2mem_slot.erase(lru_model_id);
+      } else {
+        mem_slot = lru_list.size();
+      }
+      // update the LRU list and hashtable
+      lru_list.push_back(model_id);
+      lru_hashtable[model_id] = lru_list.size() - 1;
+      // update the memory slot
+      peft2mem_slot[model_id] = mem_slot;
+      *cache_miss = true;
+    }
+    return static_cast<char *>(base_ptr) + peft2mem_slot[model_id]*max_lora_size;
+  }
 
-
-  int max_rank, max_concurrent_adapters;
-  int lora_in_dim, lora_out_dim;
+  int max_concurrent_adapters;
+  size_t max_lora_size;
+  Realm::RegionInstance peftLegionInst;
+  void *base_ptr;
+  std::unordered_map<PEFTModelID, int> lru_hashtable;
+  std::vector<PEFTModelID> lru_list; // head = least recently used, tail=most recently used
+  std::unordered_map<PEFTModelID, int> peft2mem_slot;
 }
 
 }; // namespace FlexFlow
