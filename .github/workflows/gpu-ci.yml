@@ -175,7 +175,7 @@ jobs:
           export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
           export FF_USE_PREBUILT_LEGION=OFF #remove this after fixing python path issue in Legion
-          export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          export FF_BUILD_INFERENCE=ON
           mkdir build
           cd build
           ../config/config.linux
@@ -262,8 +262,8 @@ jobs:
         run: |
           export PATH=$CONDA_PREFIX/bin:$PATH
           export FF_HOME=$(pwd)
-          export FF_BUILD_ALL_EXAMPLES=ON
-          export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          export FF_BUILD_TRAINING_EXAMPLES=ON
+          export FF_BUILD_INFERENCE=ON
           export FF_USE_PREBUILT_LEGION=OFF #remove this after fixing python path issue in Legion
           pip install . --verbose
 

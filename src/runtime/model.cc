@@ -71,7 +71,9 @@
 #include "flexflow/parallel_ops/partition.h"
 #include "flexflow/parallel_ops/reduction.h"
 #include "flexflow/parallel_ops/replicate.h"
+#ifdef FF_BUILD_INFERENCE
 #include "flexflow/request_manager.h"
+#endif
 #include "flexflow/substitution.h"
 #include "flexflow/utils/random_utils.h"
 #include "flexflow/utils/test_utils.h"
@@ -4684,6 +4686,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+#ifdef FF_BUILD_INFERENCE
   // RequestManager load_tokens
   {
     TaskVariantRegistrar registrar(RM_LOAD_TOKENS_TASK_ID,
@@ -4837,6 +4840,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           registrar);
     }
   }
+#endif
   // ElementUnary task
   {
     TaskVariantRegistrar registrar(ELEMENTUNARY_INIT_TASK_ID,
