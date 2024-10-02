@@ -26,8 +26,6 @@ MachineMappingConstraints restrict_to_right_child(MachineMappingConstraints cons
 MachineMappingConstraints with_additional_constraints(MachineMappingConstraints const &,
                                                       ParallelLayerGuidObliviousMachineMapping const &);
 
-MachineMapping require_fully_constrained(MachineMappingConstraints const &);
-
 std::optional<MachineView> require_only_root(MachineMappingConstraints const &);
 
 } // namespace FlexFlow

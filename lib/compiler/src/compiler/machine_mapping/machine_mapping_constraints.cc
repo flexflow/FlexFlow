@@ -36,8 +36,8 @@ std::optional<MachineView> get_machine_view_for_layer(MachineMappingConstraints 
   return partial_solution.machine_views.at(layer);
 }
 
-MachineMappingConstraints restrict_to_left_child(MachineMappingConstraints const &constraints, 
-                                                 BinaryTreePathEntry const &prefix) {
+MachineMappingConstraints restrict_to_child(MachineMappingConstraints const &constraints, 
+                                            BinaryTreePathEntry const &prefix) {
   return MachineMappingConstraints{
     filtermap_keys(constraints.machine_views,
                    [&](BinaryTreePath const &path) -> std::optional<BinaryTreePath> {
@@ -80,6 +80,14 @@ MachineMappingConstraints with_additional_constraints(MachineMappingConstraints 
   }
 
   return result;
+}
+
+std::optional<MachineView> require_only_root(MachineMappingConstraints const &constraints) {
+  if (keys(constraints.machine_views) != std::unordered_set{binary_tree_root_path()}) {
+    throw mk_runtime_error(fmt::format("require_only_root expected constraints to have only a single key (the root path), but received {}", constraints));
+  }
+
+  return constraints.machine_views.at(binary_tree_root_path());
 }
 
 

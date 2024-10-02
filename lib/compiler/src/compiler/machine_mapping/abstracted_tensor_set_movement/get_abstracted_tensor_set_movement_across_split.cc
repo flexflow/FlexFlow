@@ -10,7 +10,7 @@
 
 namespace FlexFlow {
 
-AbstractedTensorSetMovement get_tensor_set_movement_across_split(TransitiveReducedPCG const &tr_pcg,
+AbstractedTensorSetMovement get_abstracted_tensor_set_movement_across_split(TransitiveReducedPCG const &tr_pcg,
                                                                  PCGBinarySeriesSplit const &split) {
 
   auto get_path_to_layer = [&](parallel_layer_guid_t const &l) {

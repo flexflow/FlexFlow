@@ -7,7 +7,19 @@
 
 namespace FlexFlow {
 
-MachineMappingResult sequential_combine(float comm_cost,
+MachineMappingResult infeasible_machine_mapping_result() {
+  return MachineMappingResult{std::nullopt};
+}
+
+bool is_infeasible(MachineMappingResult const &result) {
+  return !result.raw_result.has_value();
+}
+
+FeasibleMachineMappingResult require_feasible(MachineMappingResult const &result) {
+  return result.raw_result.value();
+}
+
+MachineMappingResult series_combine(float comm_cost,
                                         MachineMappingResult const &maybe_pre_result,
                                         MachineMappingResult const &maybe_post_result,
                                         std::optional<ParallelSplitTransformation> const &parallel_split_transformation) {
@@ -68,10 +80,6 @@ MachineMappingResult parallel_combine(MachineMappingResult const &maybe_lhs_resu
          /*rhs=*/rhs_result.machine_mapping),
     },
   };
-}
-
-MachineMappingResult infeasible_machine_mapping_result() {
-  return MachineMappingResult{std::nullopt};
 }
 
 MachineMappingResult minimize_runtime(MachineMappingResult const &maybe_m1,

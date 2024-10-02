@@ -47,13 +47,24 @@ MachineMappingResult get_optimal_machine_mapping(
 
   MachineMappingResult result = visit<MachineMappingResult>(
     problem_tree,
-    [&](auto const &decomp_tree_node) {
-      return get_optimal_machine_mapping
-        (result_cache, 
-         context, 
-         decomp_tree_node, 
-         resources, 
-         constraints);
+    overload {
+      [&](MMProblemTreeSeriesSplit const &series_split) {
+        return get_optimal_machine_mapping
+          (result_cache, 
+           context, 
+           series_split, 
+           resources, 
+           constraints,
+           /*parallel_split_transformation=*/std::nullopt);
+      },
+      [&](auto const &decomp_tree_node) {
+        return get_optimal_machine_mapping
+          (result_cache, 
+           context, 
+           decomp_tree_node, 
+           resources, 
+           constraints);
+      },
     });
 
   result_cache.save(state, result);
