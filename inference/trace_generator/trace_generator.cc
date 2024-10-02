@@ -62,7 +62,8 @@ void parse_input_args(char **argv,
                       ModelNames &model_names,
                       bool &use_full_precision,
                       bool &verbose,
-                      int &max_sequence_length) {
+                      int &max_sequence_length,
+                      double &scaling_factor) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -111,6 +112,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--max-sequence-length")) {
       max_sequence_length = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--scaling-factor")) {
+      scaling_factor = std::stod(argv[++i]);
       continue;
     }
   }
@@ -265,11 +270,13 @@ void FlexFlow::top_level_task(Task const *task,
   ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
+  int max_sequence_length = 256;
+  double scaling_factor = 1.0;
+
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 128;
   int max_tokens_per_ssm_batch = -1;
   int max_tokens_per_prefilling_batch = -1;
-  int max_sequence_length = 256;
   int expansion_degree = 3;
   int max_tree_depth = 8;
   int max_tree_width = 16;
@@ -294,7 +301,8 @@ void FlexFlow::top_level_task(Task const *task,
                    model_metadata.model_names,
                    use_full_precision,
                    verbose,
-                   max_sequence_length);
+                   max_sequence_length,
+                   scaling_factor);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
   }
@@ -454,7 +462,7 @@ void FlexFlow::top_level_task(Task const *task,
                           input_tokens.size(),
                           max_sequence_length,
                           emission_machine.sample_slo_ratio(),
-                          time_diff_ms(start_time, timestamp));
+                          time_diff_ms(start_time, timestamp) * scaling_factor);
       traces.push_back(trace);
     }
 
