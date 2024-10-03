@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FULL_BINARY_TREE_RAW_FULL_BINARY_TREE_ANY_VALUE_TYPE_H
-#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FULL_BINARY_TREE_RAW_FULL_BINARY_TREE_ANY_VALUE_TYPE_H
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_ANY_VALUE_TYPE_ANY_VALUE_TYPE_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_ANY_VALUE_TYPE_ANY_VALUE_TYPE_H
 
 #include <any>
 #include <functional>
@@ -64,6 +64,6 @@ struct hash<::FlexFlow::any_value_type> {
   size_t operator()(::FlexFlow::any_value_type const &) const;
 };
 
-}
+} // namespace FlexFlow
 
 #endif

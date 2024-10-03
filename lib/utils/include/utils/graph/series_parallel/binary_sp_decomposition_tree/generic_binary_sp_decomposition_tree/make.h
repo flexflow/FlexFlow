@@ -3,6 +3,7 @@
 
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.dtg.h"
 #include "utils/full_binary_tree/make.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_split_label.h"
 
 namespace FlexFlow {
 
@@ -13,7 +14,7 @@ GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> make_gen
     GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &rhs) {
   return GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
     make_full_binary_tree_parent(
-        GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{label}, 
+        make_generic_binary_series_split_label<SeriesLabel, ParallelLabel>(label),
         lhs.raw_tree,
         rhs.raw_tree),
   };
@@ -26,7 +27,7 @@ GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> make_gen
     GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &rhs) {
   return GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
     make_full_binary_tree_parent(
-      GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{label}, 
+        make_generic_binary_parallel_split_label<SeriesLabel, ParallelLabel>(label),
       lhs.raw_tree,
       rhs.raw_tree),
   };

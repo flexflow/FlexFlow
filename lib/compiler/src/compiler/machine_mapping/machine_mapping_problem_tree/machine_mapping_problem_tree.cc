@@ -46,18 +46,18 @@ SPDecompositionTreeNodeType get_node_type(MachineMappingProblemTree const &tree)
 
 MMProblemTreeSeriesSplit require_series_split(MachineMappingProblemTree const &t) {
   return MMProblemTreeSeriesSplit{
-    require_series(t.raw_tree),
+    require_generic_binary_series_split(t.raw_tree),
   };
 }
 
 MMProblemTreeParallelSplit require_parallel_split(MachineMappingProblemTree const &t) {
   return MMProblemTreeParallelSplit{
-    require_parallel(t.raw_tree),
+    require_generic_binary_parallel_split(t.raw_tree),
   };
 }
 
 UnmappedOpCostEstimateKey require_leaf(MachineMappingProblemTree const &t) {
-  return require_leaf(t.raw_tree);
+  return require_generic_binary_leaf(t.raw_tree);
 }
 
 MachineMappingProblemTree wrap_series_split(MMProblemTreeSeriesSplit const &series) {

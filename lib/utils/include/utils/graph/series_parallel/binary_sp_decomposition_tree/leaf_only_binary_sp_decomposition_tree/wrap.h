@@ -14,10 +14,10 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> wrap_series_split(LeafOnlyBinarySer
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     wrap_series_split(
       GenericBinarySeriesSplit<
-        LeafOnlyBinarySeriesSplitLabel,
-        LeafOnlyBinaryParallelSplitLabel,
+        std::monostate,
+        std::monostate,
         LeafLabel>{
-        LeafOnlyBinarySeriesSplitLabel{},
+        std::monostate{},
         split.pre.raw_tree,
         split.post.raw_tree,
       }
@@ -30,10 +30,10 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> wrap_parallel_split(LeafOnlyBinaryP
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     wrap_parallel_split(
       GenericBinaryParallelSplit<
-        LeafOnlyBinarySeriesSplitLabel,
-        LeafOnlyBinaryParallelSplitLabel,
+        std::monostate,
+        std::monostate,
         LeafLabel>{
-        LeafOnlyBinaryParallelSplitLabel{},
+        std::monostate{},
         split.lhs.raw_tree,
         split.rhs.raw_tree,
       }

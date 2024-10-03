@@ -14,12 +14,14 @@ template_params = [
 ]
 
 includes = [
-  "utils/full_binary_tree/full_binary_tree.dtg.h",
+  "utils/full_binary_tree/full_binary_tree.h",
   "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_split_label.dtg.h",
 ]
 
 src_includes = [
   "utils/full_binary_tree/json.h",
+  "utils/full_binary_tree/hash.h",
+  "utils/full_binary_tree/fmt.h",
 ]
 
 [[fields]]

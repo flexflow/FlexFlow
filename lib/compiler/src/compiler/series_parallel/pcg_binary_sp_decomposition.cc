@@ -54,18 +54,18 @@ PCGBinarySPDecomposition wrap_parallel_split(PCGBinaryParallelSplit const &p) {
 
 PCGBinarySeriesSplit require_series(PCGBinarySPDecomposition const &d) {
   return PCGBinarySeriesSplit{
-    require_series(d.raw_tree),
+    require_leaf_only_binary_series_split(d.raw_tree),
   };
 }
 
 PCGBinaryParallelSplit require_parallel(PCGBinarySPDecomposition const &d) {
   return PCGBinaryParallelSplit{
-    require_parallel(d.raw_tree),
+    require_leaf_only_binary_parallel_split(d.raw_tree),
   };
 }
 
 parallel_layer_guid_t require_leaf(PCGBinarySPDecomposition const &d) {
-  return require_leaf(d.raw_tree);
+  return require_leaf_only_binary_leaf(d.raw_tree);
 }
 
 std::unordered_set<BinaryTreePath> find_paths_to_leaf(PCGBinarySPDecomposition const &spd,

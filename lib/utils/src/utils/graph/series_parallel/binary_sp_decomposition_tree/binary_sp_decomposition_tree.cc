@@ -44,18 +44,18 @@ std::unordered_multiset<Node> get_leaves(BinarySPDecompositionTree const &tt) {
 
 BinarySeriesSplit require_series(BinarySPDecompositionTree const &tt) {
   return BinarySeriesSplit{
-    require_series(tt.raw_tree),
+    require_leaf_only_binary_series_split(tt.raw_tree),
   };
 }
 
 BinaryParallelSplit require_parallel(BinarySPDecompositionTree const &tt) {
   return BinaryParallelSplit{
-    require_parallel(tt.raw_tree),
+    require_leaf_only_binary_parallel_split(tt.raw_tree),
   };
 }
 
 Node require_leaf(BinarySPDecompositionTree const &tt) {
-  return require_leaf(tt.raw_tree);
+  return require_leaf_only_binary_leaf(tt.raw_tree);
 }
 
 SPDecompositionTreeNodeType get_node_type(BinarySPDecompositionTree const &tt) {

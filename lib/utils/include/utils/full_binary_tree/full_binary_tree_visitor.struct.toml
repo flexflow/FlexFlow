@@ -10,7 +10,7 @@ template_params = [
 
 includes = [
   "<functional>",
-  "utils/full_binary_tree/full_binary_tree_parent_node.dtg.h",
+  "utils/full_binary_tree/full_binary_tree.h",
 ]
 
 [[fields]]

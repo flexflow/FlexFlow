@@ -17,7 +17,7 @@ SPDecompositionTreeNodeType
 }
 
 layer_guid_t require_node(ComputationGraphBinarySPDecomposition const &d) {
-  return require_leaf(d.raw_tree);
+  return require_leaf_only_binary_leaf(d.raw_tree);
 }
 
 std::optional<ComputationGraphBinarySPDecomposition>

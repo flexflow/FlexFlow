@@ -11,7 +11,7 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_series_split(LeafOnl
                                                                LeafOnlyBinarySPDecompositionTree<LeafLabel> const &post) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     make_generic_binary_series_split(
-      LeafOnlyBinarySeriesSplitLabel{},
+      std::monostate{},
       pre.raw_tree,
       post.raw_tree),
   };
@@ -22,7 +22,7 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_parallel_split(LeafO
                                                                LeafOnlyBinarySPDecompositionTree<LeafLabel> const &rhs) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     make_generic_binary_parallel_split(
-      LeafOnlyBinaryParallelSplitLabel{},
+      std::monostate{},
       lhs.raw_tree,
       rhs.raw_tree),
   };
@@ -32,8 +32,8 @@ template <typename LeafLabel>
 LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_leaf_node(LeafLabel const &label) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     make_generic_binary_sp_leaf<
-      LeafOnlyBinarySeriesSplitLabel,
-      LeafOnlyBinaryParallelSplitLabel,
+      std::monostate,
+      std::monostate,
       LeafLabel>(label),
   };
 }

@@ -12,10 +12,13 @@ template_params = [
 
 includes = [
   "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.dtg.h",
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_series_split_label.dtg.h",
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_parallel_split_label.dtg.h",
+  "<variant>",
+]
+
+src_includes = [
+  "utils/fmt/monostate.h",
 ]
 
 [[fields]]
 name = "raw_tree"
-type = "::FlexFlow::GenericBinarySPDecompositionTree<::FlexFlow::LeafOnlyBinarySeriesSplitLabel, ::FlexFlow::LeafOnlyBinaryParallelSplitLabel, LeafLabel>"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<std::monostate, std::monostate, LeafLabel>"

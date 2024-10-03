@@ -30,18 +30,18 @@ template <typename LeafLabel, typename LeafLabel2>
 LeafOnlyBinarySPDecompositionTree<LeafLabel2> transform(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &t, 
                                                 LeafOnlyBinarySPDecompositionTreeVisitor<LeafLabel, LeafLabel2> const &visitor) {
   using GenericVisitor = GenericBinarySPDecompositionTreeVisitor
-    <LeafOnlyBinarySeriesSplitLabel,
-     LeafOnlyBinaryParallelSplitLabel,
+    <std::monostate,
+     std::monostate,
      LeafLabel,
-     LeafOnlyBinarySeriesSplitLabel,
-     LeafOnlyBinaryParallelSplitLabel,
+     std::monostate,
+     std::monostate,
      LeafLabel2>;
 
   GenericVisitor generic_visitor = GenericVisitor{
-    [&](LeafOnlyBinarySeriesSplitLabel const &x) { 
+    [&](std::monostate const &x) { 
       return x;
     },
-    [&](LeafOnlyBinaryParallelSplitLabel const &x) { 
+    [&](std::monostate const &x) { 
       return x;
     },
     [&](LeafLabel const &t) {

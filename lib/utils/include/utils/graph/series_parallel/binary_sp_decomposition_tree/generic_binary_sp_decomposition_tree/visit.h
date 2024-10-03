@@ -13,15 +13,15 @@ Result visit(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLa
   SPDecompositionTreeNodeType node_type = get_node_type(tt);
   switch (node_type) {
     case SPDecompositionTreeNodeType::SERIES: {
-      Result result = f(require_series(tt));
+      Result result = f(require_generic_binary_series_split(tt));
       return result;
     }
     case SPDecompositionTreeNodeType::PARALLEL: {
-      Result result = f(require_parallel(tt));
+      Result result = f(require_generic_binary_parallel_split(tt));
       return result;
     }
     case SPDecompositionTreeNodeType::NODE: {
-      Result result = f(require_leaf(tt));
+      Result result = f(require_generic_binary_leaf(tt));
       return result;
     }
     default:
