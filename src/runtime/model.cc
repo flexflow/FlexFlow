@@ -7258,6 +7258,9 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    // AllReduce forward and backward must run concurrentluy since they
+    // use ncclAllReduce internally
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::forward_task>(
           registrar, "AllReduce Forward Task");
@@ -7272,6 +7275,9 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    // AllReduce forward and backward must run concurrentluy since they
+    // use ncclAllReduce internally
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::backward_task>(
           registrar, "AllReduce Backward Task");
