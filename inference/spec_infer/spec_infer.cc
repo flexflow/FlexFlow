@@ -79,6 +79,7 @@ void parse_input_args(char **argv,
                       int &ssm_spec_latency_ms,
                       int &llm_verify_latency_ms,
                       double &request_per_second,
+                      bool &spec_infer_old_version,
                       std::string &emission_file_path) {
   for (int i = 1; i < argc; i++) {
     // llm model name
@@ -194,6 +195,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--request-per-second")) {
       request_per_second = std::stod(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--spec-infer-old-version")) {
+      spec_infer_old_version = true;
       continue;
     }
     if (!strcmp(argv[i], "--emission-file-path")) {
@@ -371,6 +376,7 @@ void FlexFlow::top_level_task(Task const *task,
   int ssm_spec_latency_ms = 20;
   int llm_verify_latency_ms = 50;
   double request_per_second = 1.0;
+  bool spec_infer_old_version = false;
   std::string emission_file_path;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -399,6 +405,7 @@ void FlexFlow::top_level_task(Task const *task,
                    ssm_spec_latency_ms,
                    llm_verify_latency_ms,
                    request_per_second,
+                   spec_infer_old_version,
                    emission_file_path);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
@@ -437,6 +444,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_ssm_spec_latency(ssm_spec_latency_ms);
   rm->set_llm_verify_latency(llm_verify_latency_ms);
   rm->register_output_filepath(file_paths.output_file_path);
+  rm->set_spec_infer_old_version(spec_infer_old_version);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
