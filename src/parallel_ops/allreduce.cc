@@ -245,6 +245,7 @@ void AllReduce::forward(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  launcher.concurrent = true;
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -274,6 +275,7 @@ void AllReduce::backward(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          inputs[0]->machine_view.hash());
+  launcher.concurrent = true;
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
