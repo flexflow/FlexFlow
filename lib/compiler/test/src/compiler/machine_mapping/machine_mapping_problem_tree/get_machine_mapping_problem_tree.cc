@@ -136,7 +136,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       UnmappedOpCostEstimateKey input2_key = make_input_key(input_shape);
 
       PCGBinarySPDecomposition sp_decomposition = \
-        make_pcg_series_split(
+        make_pcg_parallel_split(
           make_pcg_leaf_node(input1_layer),
           make_pcg_leaf_node(input2_layer));
 

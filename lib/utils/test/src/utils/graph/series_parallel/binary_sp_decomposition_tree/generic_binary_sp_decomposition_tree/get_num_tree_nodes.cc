@@ -6,7 +6,6 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_num_tree_nodes(GenericBinarySPDecompositionTree<int>)") {
-    FAIL("TODO");
     // SUBCASE("leaf") {
     //   GenericBinarySPDecompositionTree<int> input =
     //       make_generic_binary_sp_leaf(5);

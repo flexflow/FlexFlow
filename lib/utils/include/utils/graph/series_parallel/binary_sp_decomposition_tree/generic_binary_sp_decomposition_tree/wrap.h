@@ -11,13 +11,10 @@ template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
 GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>
   wrap_series_split(GenericBinarySeriesSplit<SeriesLabel, ParallelLabel, LeafLabel> const &series_split) {
   return GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
-    FullBinaryTree<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> {
-      FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> {
-        /*label=*/GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{series_split.label},
-        /*lhs=*/series_split.pre.raw_tree,
-        /*rhs=*/series_split.post.raw_tree,
-      },
-    },
+    make_full_binary_tree_parent(
+      /*label=*/GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{series_split.label},
+      /*lhs=*/series_split.pre.raw_tree,
+      /*rhs=*/series_split.post.raw_tree),
   };
 }
 
@@ -25,13 +22,10 @@ template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
 GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>
   wrap_parallel_split(GenericBinaryParallelSplit<SeriesLabel, ParallelLabel, LeafLabel> const &parallel_split) {
   return GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
-    FullBinaryTree<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> {
-      FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> {
-        /*label=*/GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{parallel_split.label},
-        /*lhs=*/parallel_split.lhs.raw_tree,
-        /*rhs=*/parallel_split.rhs.raw_tree,
-      },
-    },
+    make_full_binary_tree_parent(
+      /*label=*/GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{parallel_split.label},
+      /*lhs=*/parallel_split.lhs.raw_tree,
+      /*rhs=*/parallel_split.rhs.raw_tree),
   };
 }
 

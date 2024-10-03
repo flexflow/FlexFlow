@@ -4,6 +4,7 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_series_split.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_parallel_split.dtg.h"
 #include "utils/full_binary_tree/require.h"
+#include "utils/full_binary_tree/get_label.h"
 
 namespace FlexFlow {
 
@@ -13,7 +14,7 @@ GenericBinarySeriesSplit<SeriesLabel, ParallelLabel, LeafLabel>
   FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> parent = require_parent_node(t.raw_tree);
 
   return GenericBinarySeriesSplit<SeriesLabel, ParallelLabel, LeafLabel>{
-    /*label=*/parent.label.template get<SeriesLabel>(),
+    /*label=*/get_full_binary_tree_parent_label(parent).template get<SeriesLabel>(),
     /*pre=*/GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
       get_left_child(parent),
     },
@@ -29,7 +30,7 @@ GenericBinaryParallelSplit<SeriesLabel, ParallelLabel, LeafLabel>
   FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> parent = require_parent_node(t.raw_tree);
 
   return GenericBinaryParallelSplit<SeriesLabel, ParallelLabel, LeafLabel>{
-    /*label=*/parent.label.template get<ParallelLabel>(),
+    /*label=*/get_full_binary_tree_parent_label(parent).template get<ParallelLabel>(),
     /*lhs=*/GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>{
       get_left_child(parent),
     },

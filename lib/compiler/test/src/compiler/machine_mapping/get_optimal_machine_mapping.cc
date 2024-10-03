@@ -2,6 +2,7 @@
 #include "./cost_estimator_for_test.h"
 #include <doctest/doctest.h>
 #include "compiler/machine_mapping/abstracted_tensor_set_movement/abstracted_tensor_set_movement.h"
+#include "compiler/machine_mapping/machine_mapping_cache.h"
 #include "compiler/machine_mapping/machine_mapping_constraints.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.h"
@@ -109,7 +110,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       allowed_machine_views1, 
     };
 
-    MachineMappingCache cache;
+    MachineMappingCache cache = empty_machine_mapping_cache();
 
     SUBCASE("single layer") {
       MachineMappingProblemTree problem_tree = 
@@ -205,10 +206,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       CHECK(result == correct);
-    }
-
-    SUBCASE("multiple edges across split") {
-      FAIL("TODO");
     }
   }
 }

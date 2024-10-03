@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "GenericBinaryParallelSplitLabel"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+  "json",
+]
+
+template_params = [
+  "ParallelSplitLabel"
+]
+
+[[fields]]
+name = "raw_label"
+type = "ParallelSplitLabel"

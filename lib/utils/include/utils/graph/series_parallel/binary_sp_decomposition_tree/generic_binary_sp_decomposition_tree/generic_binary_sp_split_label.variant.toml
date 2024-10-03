@@ -12,6 +12,11 @@ template_params = [
   "ParallelSplitLabel",
 ]
 
+# includes = [
+#   "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_series_split_label.dtg.h",
+#   "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_parallel_split_label.dtg.h",
+# ]
+
 [[values]]
 type = "SeriesSplitLabel"
 key = "series"

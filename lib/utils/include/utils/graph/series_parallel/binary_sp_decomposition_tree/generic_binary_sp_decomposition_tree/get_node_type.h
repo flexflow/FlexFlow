@@ -12,16 +12,16 @@ namespace FlexFlow {
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
 SPDecompositionTreeNodeType
     get_node_type(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &tt) {
-  return visit<SPDecompositionTreeNodeType>(
-    tt.raw_tree,
-    overload {
-      [](LeafLabel const &) {
-        return SPDecompositionTreeNodeType::NODE;
-      },
-      [](FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> const &parent) {
-        return get_node_type(parent.label);
-      },
-    });
+  auto visitor = FullBinaryTreeVisitor<SPDecompositionTreeNodeType, GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel>{
+    [](FullBinaryTreeParentNode<GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>, LeafLabel> const &parent) {
+      return get_node_type(get_full_binary_tree_parent_label(parent));
+    },
+    [](LeafLabel const &) {
+      return SPDecompositionTreeNodeType::NODE;
+    },
+  };
+
+  return visit(tt.raw_tree, visitor);
 }
 
 } // namespace FlexFlow

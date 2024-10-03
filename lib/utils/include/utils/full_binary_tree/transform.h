@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FULL_BINARY_TREE_TRANSFORM_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FULL_BINARY_TREE_TRANSFORM_H
 
-#include "utils/full_binary_tree/full_binary_tree.h"
+#include "utils/full_binary_tree/full_binary_tree.dtg.h"
 #include "utils/full_binary_tree/get_left_child.h"
 #include "utils/full_binary_tree/get_right_child.h"
 #include "utils/overload.h"

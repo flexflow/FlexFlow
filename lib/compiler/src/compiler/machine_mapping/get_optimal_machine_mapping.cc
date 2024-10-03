@@ -1,6 +1,7 @@
 #include "compiler/machine_mapping/get_optimal_machine_mapping.h"
 #include "compiler/machine_mapping/abstracted_tensor_set_movement/abstracted_tensor_set_movement.h"
 #include "compiler/machine_mapping/get_machine_resource_splits.h"
+#include "compiler/machine_mapping/machine_mapping_cache.h"
 #include "compiler/machine_mapping/machine_mapping_constraints.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_parallel_split.h"
@@ -39,7 +40,7 @@ MachineMappingResult get_optimal_machine_mapping(
 
   {
     std::optional<MachineMappingResult> cached_result =
-        result_cache.load(state);
+      machine_mapping_cache_load(result_cache, state);
     if (cached_result) {
       return cached_result.value();
     }
@@ -67,7 +68,7 @@ MachineMappingResult get_optimal_machine_mapping(
       },
     });
 
-  result_cache.save(state, result);
+  machine_mapping_cache_save(result_cache, state, result);
   return result;
 }
 

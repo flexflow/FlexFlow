@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "FullBinaryTree"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+template_params = [
+  "ParentLabel",
+  "LeafLabel",
+]
+
+includes = [
+  "utils/full_binary_tree/raw_full_binary_tree/raw_binary_tree.h",
+]
+
+[[fields]]
+name = "raw_tree"
+type = "::FlexFlow::RawBinaryTree"

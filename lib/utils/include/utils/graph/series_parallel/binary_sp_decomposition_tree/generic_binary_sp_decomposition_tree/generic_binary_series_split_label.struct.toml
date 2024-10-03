@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "GenericBinarySeriesSplitLabel"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+  "json",
+]
+
+template_params = [
+  "SeriesSplitLabel"
+]
+
+[[fields]]
+name = "raw_label"
+type = "SeriesSplitLabel"

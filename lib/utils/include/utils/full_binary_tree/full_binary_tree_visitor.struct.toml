@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "FullBinaryTreeVisitor"
+features = []
+
+template_params = [
+  "Result",
+  "ParentLabel",
+  "LeafLabel",
+]
+
+includes = [
+  "<functional>",
+  "utils/full_binary_tree/full_binary_tree_parent_node.dtg.h",
+]
+
+[[fields]]
+name = "parent_func"
+type = "std::function<Result(::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &)>"
+
+[[fields]]
+name = "leaf_func"
+type = "std::function<Result(LeafLabel const &)>"
