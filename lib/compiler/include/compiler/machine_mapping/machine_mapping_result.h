@@ -10,6 +10,8 @@ namespace FlexFlow {
 [[nodiscard]] bool is_infeasible(MachineMappingResult const &);
 FeasibleMachineMappingResult require_feasible(MachineMappingResult const &);
 
+[[nodiscard]] MachineMappingResult get_mapping_with_minimal_runtime(std::unordered_set<MachineMappingResult> const &);
+
 [[nodiscard]] MachineMappingResult series_combine(float comm_cost,
                                                   MachineMappingResult const &pre_result,
                                                   MachineMappingResult const &post_result,

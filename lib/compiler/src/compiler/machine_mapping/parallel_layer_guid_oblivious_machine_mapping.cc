@@ -8,7 +8,7 @@ namespace FlexFlow {
 
 ParallelLayerGuidObliviousMachineMapping
   binary_combine_mappings(ParallelLayerGuidObliviousMachineMapping const &lhs,
-                     ParallelLayerGuidObliviousMachineMapping const &rhs) {
+                          ParallelLayerGuidObliviousMachineMapping const &rhs) {
   return ParallelLayerGuidObliviousMachineMapping{
     merge_maps(
       map_keys(lhs.raw_mapping, nest_inside_left_child),

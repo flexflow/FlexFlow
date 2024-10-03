@@ -12,7 +12,7 @@ BinarySPDecompositionTree
     make_series_split(BinarySPDecompositionTree const &lhs,
                       BinarySPDecompositionTree const &rhs) {
   return BinarySPDecompositionTree{
-      make_series_split(lhs.raw_tree, rhs.raw_tree),
+      leaf_only_make_series_split(lhs.raw_tree, rhs.raw_tree),
   };
 }
 
@@ -20,13 +20,13 @@ BinarySPDecompositionTree
     make_parallel_split(BinarySPDecompositionTree const &lhs,
                         BinarySPDecompositionTree const &rhs) {
   return BinarySPDecompositionTree{
-      make_parallel_split(lhs.raw_tree, rhs.raw_tree),
+      leaf_only_make_parallel_split(lhs.raw_tree, rhs.raw_tree),
   };
 }
 
 BinarySPDecompositionTree make_leaf_node(Node const &n) {
   return BinarySPDecompositionTree{
-      make_leaf_node(n),
+      leaf_only_make_leaf_node(n),
   };
 }
 

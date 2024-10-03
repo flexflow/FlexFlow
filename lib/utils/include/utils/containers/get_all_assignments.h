@@ -15,14 +15,12 @@
 namespace FlexFlow {
 
 /**
- * @note If \p options_per_key is empty, an empty set is returned from the
- * function (not a set containing an empty set, as the "empty" assignment is
- * not considered a valid assignment)
+ * @note If \p options_per_key is empty, an set containing a single empty assignment is returned 
  */
 template <typename K, typename V>
 std::unordered_set<std::unordered_map<K, V>> get_all_assignments(std::unordered_map<K, std::unordered_set<V>> const &options_per_key) {
   if (options_per_key.empty()) {
-    return {};
+    return {{}};
   }
 
   std::vector<K> ordered_keys = vector_of(keys(options_per_key));

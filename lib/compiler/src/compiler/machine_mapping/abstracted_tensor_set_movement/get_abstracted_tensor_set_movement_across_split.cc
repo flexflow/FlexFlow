@@ -1,6 +1,7 @@
 #include "compiler/machine_mapping/abstracted_tensor_set_movement/get_abstracted_tensor_set_movement_across_split.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.h"
 #include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
+#include "compiler/series_parallel/pcg_binary_series_split.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.h"
@@ -11,12 +12,8 @@
 namespace FlexFlow {
 
 AbstractedTensorSetMovement get_abstracted_tensor_set_movement_across_split(TransitiveReducedPCG const &tr_pcg,
-                                                                 PCGBinarySeriesSplit const &split) {
+                                                                            PCGBinarySeriesSplit const &split) {
 
-  auto get_path_to_layer = [&](parallel_layer_guid_t const &l) {
-    return get_only(find_paths_to_leaf(wrap_series_split(split), l));
-  };
-  
   std::unordered_set<ParallelComputationGraphEdge> 
     edges_across_split = pcg_get_transitive_reduced_edges_across_split(tr_pcg, split);
 
@@ -38,8 +35,14 @@ AbstractedTensorSetMovement get_abstracted_tensor_set_movement_across_split(Tran
 
     return AbstractedSingleTensorMovement{
       /*parallel_tensor_shape=*/get_parallel_tensor_shape(tr_pcg.full_pcg, t),
-      /*src_machine_views=*/transform(src_layers, get_path_to_layer),
-      /*dst_machine_views=*/transform(dst_layers, get_path_to_layer),
+      /*src_machine_views=*/transform(src_layers, 
+                                      [&](parallel_layer_guid_t const &l) { 
+                                        return get_only(find_paths_to_leaf(get_left_child(split), l)); 
+                                      }),
+      /*dst_machine_views=*/transform(dst_layers, 
+                                      [&](parallel_layer_guid_t const &l) {
+                                        return get_only(find_paths_to_leaf(get_right_child(split), l));
+                                      }),
     };
   };
 

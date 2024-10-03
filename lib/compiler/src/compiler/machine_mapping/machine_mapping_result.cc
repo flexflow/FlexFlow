@@ -19,6 +19,16 @@ FeasibleMachineMappingResult require_feasible(MachineMappingResult const &result
   return result.raw_result.value();
 }
 
+[[nodiscard]] MachineMappingResult get_mapping_with_minimal_runtime(std::unordered_set<MachineMappingResult> const &candidates) {
+  MachineMappingResult result = infeasible_machine_mapping_result();
+
+  for (MachineMappingResult const &candidate : candidates) {
+    result = minimize_runtime(result, candidate);
+  }
+
+  return result;
+}
+
 MachineMappingResult series_combine(float comm_cost,
                                         MachineMappingResult const &maybe_pre_result,
                                         MachineMappingResult const &maybe_post_result,

@@ -24,19 +24,19 @@ SPDecompositionTreeNodeType get_node_type(PCGBinarySPDecomposition const &d) {
 
 PCGBinarySPDecomposition make_pcg_series_split(PCGBinarySPDecomposition const &lhs, PCGBinarySPDecomposition const &rhs) {
   return PCGBinarySPDecomposition{
-    make_series_split(lhs.raw_tree, rhs.raw_tree),
+    leaf_only_make_series_split(lhs.raw_tree, rhs.raw_tree),
   };
 }
 
 PCGBinarySPDecomposition make_pcg_parallel_split(PCGBinarySPDecomposition const &lhs, PCGBinarySPDecomposition const &rhs) {
   return PCGBinarySPDecomposition{
-      make_parallel_split(lhs.raw_tree, rhs.raw_tree),
+    leaf_only_make_parallel_split(lhs.raw_tree, rhs.raw_tree),
   };
 }
 
 PCGBinarySPDecomposition make_pcg_leaf_node(parallel_layer_guid_t const &l) {
   return PCGBinarySPDecomposition{
-      make_leaf_node(l),
+    leaf_only_make_leaf_node(l),
   };
 }
 

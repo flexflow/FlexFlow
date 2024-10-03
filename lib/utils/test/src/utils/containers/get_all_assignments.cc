@@ -11,7 +11,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::unordered_map<std::string, std::unordered_set<int>> input = {};
 
       std::unordered_set<std::unordered_map<std::string, int>> result = get_all_assignments(input);
-      std::unordered_set<std::unordered_map<std::string, int>> correct = {};
+      std::unordered_set<std::unordered_map<std::string, int>> correct = {{}};
 
       CHECK(result == correct); 
     }

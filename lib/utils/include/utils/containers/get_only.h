@@ -10,8 +10,8 @@ namespace FlexFlow {
 template <typename C>
 typename C::value_type get_only(C const &c) {
   return unwrap(maybe_get_only(c), [&] {
-    throw mk_runtime_error("Encountered container with size {} in get_only",
-                           c.size());
+    throw mk_runtime_error(fmt::format("Encountered container with size {} in get_only",
+                           c.size()));
   });
 }
 
