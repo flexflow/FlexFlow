@@ -1833,6 +1833,48 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
   return llm_bitmask;
 }
 
+/* --------- Page Attention Related Functions --------- */
+void RequestManager::_append_logical_block_to_request(
+    Request &request, bool is_commit) {
+  // Append the logical block to the request
+  // page attention: in this function we need to remember the last logical block number that still contains committed tokens
+  LogicalTokenBlock block(request.blocks.size(),
+                                  kPagesize);
+  request.blocks.push_back(block);
+  PageManager *page_manager = PageManager::get_page_manager();
+  page_manager->allocate(request.guid);
+  // update page_id_commit
+  if (is_commit) {
+    request.page_id_commit++;
+    assert(request.page_id_commit < request.blocks.size());
+  }
+}
+
+void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<TokenId> const &tokens, bool is_commit, int start, int end) {
+  assert(start >= 0 && start < tokens.size());
+  int cursor = start;
+  int marker = 0;
+  if (end == -1) {
+    marker = tokens.size();
+  } else {
+    marker = end;
+  }
+  while (cursor < marker) {
+    if (request.blocks.empty() ||
+      request.blocks.back().is_full()) {
+      // Append a new logical block
+      _append_logical_block_to_request(request, is_commit);
+    }
+    int num_empty_slots = request.blocks.back().get_num_empty_slots();
+    int num_tokens_to_append = std::min(num_empty_slots, marker - cursor);
+    // vector to be appeneded will be [cursor, cursor + num_tokens_to_append)]
+    std::vector<TokenId> tokens_to_append(tokens.begin() + cursor, tokens.begin() + cursor + num_tokens_to_append);
+    request.blocks.back().append_tokens(tokens_to_append, is_commit);
+    cursor += num_tokens_to_append;
+  }
+  assert(request.blocks.back().num_tokens <= kPagesize);
+}
+
 /* --------- Bitmask Related Functions --------- */
 void RequestManager::gumbel_conditioned_on_max(
     double target_max, std::vector<std::pair<double, int>> &logits) {
