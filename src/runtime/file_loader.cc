@@ -188,44 +188,34 @@ void load_attention_bias_v2(DT *ptr,
                             size_t qkv_inner_dim,
                             bool final_bias,
                             std::string layer_name,
-                            std::string weights_folder) {
+                            std::string weights_folder,
+                            int tp_degree) {
   std::string q_file = layer_name + ".q_proj.bias";
   std::string k_file = layer_name + ".k_proj.bias";
   std::string v_file = layer_name + ".v_proj.bias";
   std::vector<std::string> bias_files = {q_file, k_file, v_file};
-  if (final_bias) {
-    std::string o_file = layer_name + ".o_proj.bias";
-    bias_files.push_back(o_file);
-  }
+
+  // linear layer weights: [output_size, input_size]
+  // bias layer weights: [output_size]
+  // Q,K,V projection weights: [head_dim*num_heads, hidden_size] = [768, 768]
+  // QKV bias weights: [head_dim*num_heads] = [768], organized as: [head_dim_0, head_dim_1, ...]
+
+  // need to rearrange: [q_head_dim_0, k_head_dim_0, v_head_dim_0, q_head_dim_1, k_head_dim_1, v_head_dim_1, ...]
 
   int file_index = 0;
-
-  // now only opt use this.
-  // assert(num_heads == num_kv_heads);
-  int idx = 0;
-
   for (auto filename : bias_files) {
     std::cout << "Loading weight file " << filename << std::endl;
     std::string weight_filepath = join_path({weights_folder, filename});
 
-    int n_heads = file_index == 0 ? num_heads : num_kv_heads;
-
-    int replicate_num = num_heads / num_kv_heads;
-
-    size_t qkv_partial_size = qkv_inner_dim * n_heads;
-    size_t qkv_replicate_size = qkv_inner_dim * num_heads;
-    size_t out_partial_size = hidden_dim;
-    size_t partial_size =
-        (file_index < 3) ? qkv_partial_size : out_partial_size;
+    // load into memory first
+    size_t bias_size = qkv_inner_dim * num_heads;
     std::ifstream in(weight_filepath, std::ios::in | std::ios::binary);
     assert(in.good() && "incorrect bias file path");
-    std::vector<DT> host_array(partial_size);
-    size_t loaded_data_size = sizeof(DT) * partial_size;
-    in.seekg(0, in.end);
+    std::vector<DT> host_array(bias_size);
+    size_t loaded_data_size = sizeof(DT) * bias_size;
     in.seekg(0, in.beg);
     in.read((char *)host_array.data(), loaded_data_size);
     size_t in_get_size = in.gcount();
-
     if (in_get_size != loaded_data_size) {
       printf(
           "load bias data error: in_get_size (%lu) != loaded_data_size (%lu)\n",
@@ -233,29 +223,19 @@ void load_attention_bias_v2(DT *ptr,
           loaded_data_size);
       assert(false);
     }
-    assert(partial_size == host_array.size());
+    assert(bias_size == host_array.size());
 
-    size_t data_index = 0;
-
-    // q, o
-    if (file_index == 0 || file_index == 3) {
-      for (int i = 0; i < partial_size; i++) {
-        ptr[idx + i] = host_array.at(data_index);
-        data_index++;
-      }
-    } else {
-      // k, v
-      for (int i = 0; i < partial_size; i++) {
-        for (int j = 0; j < replicate_num; j++) {
-          ptr[idx + j * partial_size + i] = host_array.at(data_index);
-        }
-        data_index++;
+    // now copy chunks into ptr
+    assert(num_heads % tp_degree == 0);
+    int n_heads = file_index == 0 ? num_heads : num_kv_heads;
+    for (int i=0; i<n_heads; i++) {
+      for (int j=0; j<qkv_inner_dim; j++) {
+        int src_idx = i*qkv_inner_dim + j;
+        int dst_idx = (3*i + file_index) * qkv_inner_dim +j;
+        ptr[dst_idx] = host_array.at(src_idx);
       }
     }
-
     file_index++;
-    idx += qkv_replicate_size;
-
     in.close();
   }
 }
@@ -998,7 +978,8 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
                                  qkv_inner_dim,
                                  false, // do not load o_proj bias
                                  weight_filename,
-                                 weights_folder);
+                                 weights_folder,
+                                 tensor_parallelism_degree);
         }
       }
     } else if (l->op_type == OP_ADD_BIAS_RESIDUAL_LAYERNORM) {

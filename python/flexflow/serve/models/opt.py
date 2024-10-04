@@ -145,7 +145,7 @@ class FlexFlowOPT(FlexFlowModel):
                hidden_states,
                 3 * self.opt_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
-                False,
+                True,
                 name=f"layers.{i}.self_attn.qkv_proj",
             )
 

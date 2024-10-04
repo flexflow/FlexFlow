@@ -107,7 +107,7 @@ void OPT::create_opt_model(FFModel &ff,
             3, // q, k, v. need to change if want to remove replication.
                // (q_heads + 2 * kv_heads) * proj_size
         AC_MODE_NONE,
-        false,         // seems like it does not use bias
+        true,         // seems like it does not use bias
         DT_NONE,       // what is this
         nullptr,       // ?
         nullptr,       // ?
