@@ -1,8 +1,8 @@
 #include "pcg/machine_view.h"
 #include "pcg/task_space_operator.h"
-#include "utils/containers/sum.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/scanl.h"
+#include "utils/containers/sum.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/zip.h"
 

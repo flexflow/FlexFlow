@@ -1,8 +1,8 @@
 #include "pcg/machine_view.h"
-#include <doctest/doctest.h>
 #include "utils/containers/transform.h"
 #include "utils/fmt/unordered_set.h"
 #include "utils/fmt/vector.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

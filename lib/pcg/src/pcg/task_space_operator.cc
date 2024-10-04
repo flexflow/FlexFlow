@@ -1,6 +1,6 @@
 #include "pcg/task_space_operator.h"
-#include "utils/containers/maximum.h"
 #include "utils/containers/cartesian_product.h"
+#include "utils/containers/maximum.h"
 #include "utils/containers/product.h"
 #include "utils/containers/range.h"
 #include "utils/containers/transform.h"
