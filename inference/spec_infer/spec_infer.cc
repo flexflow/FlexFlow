@@ -79,6 +79,7 @@ void parse_input_args(char **argv,
                       int &ssm_spec_latency_ms,
                       int &llm_verify_latency_ms,
                       double &request_per_second,
+                      bool &spec_infer_old_version,
                       std::string &emission_file_path) {
   for (int i = 1; i < argc; i++) {
     // llm model name
@@ -198,6 +199,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--emission-file-path")) {
       emission_file_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--spec-infer-old-version")) {
+      spec_infer_old_version = true;
       continue;
     }
   }
@@ -372,6 +377,7 @@ void FlexFlow::top_level_task(Task const *task,
   int llm_verify_latency_ms = 50;
   double request_per_second = 1.0;
   std::string emission_file_path;
+  bool spec_infer_old_version = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -399,6 +405,7 @@ void FlexFlow::top_level_task(Task const *task,
                    ssm_spec_latency_ms,
                    llm_verify_latency_ms,
                    request_per_second,
+                   spec_infer_old_version,
                    emission_file_path);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
@@ -412,6 +419,14 @@ void FlexFlow::top_level_task(Task const *task,
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
+
+  // Sanity check for SpecInfer old version
+  if (spec_infer_old_version) {
+    assert(max_tree_depth = 8);
+    assert(max_tree_width >= 3);
+    // Total verified tokens
+    assert(max_tokens_per_batch >= max_requests_per_batch * 21);
+  }
 
   // Create SentencePiece tokenizer or OPT tokenizer
   srand(sampling_seed);
@@ -436,6 +451,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_baseline_latency(baseline_latency_ms);
   rm->set_ssm_spec_latency(ssm_spec_latency_ms);
   rm->set_llm_verify_latency(llm_verify_latency_ms);
+  rm->set_spec_infer_old_version(spec_infer_old_version);
   rm->register_output_filepath(file_paths.output_file_path);
 
   // Create LLM model
@@ -561,7 +577,7 @@ void FlexFlow::top_level_task(Task const *task,
             prompt_json[i]["prompt"].get<std::string>(), -1.0, 0));
       }
       PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
-      // ConstantEmissionMachine emission_machine(-1, slo_ratios);
+      //   ConstantEmissionMachine emission_machine(-1, slo_ratios);
       results = tree_model.generate(requests, emission_machine);
     } else if (!file_paths.trace_file_path.empty()) {
       std::ifstream file_handle(file_paths.trace_file_path);
