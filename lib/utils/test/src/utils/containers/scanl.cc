@@ -3,6 +3,7 @@
 #include <doctest/doctest.h>
 #include <string>
 #include <vector>
+#include "test/utils/doctest/fmt/vector.h"
 
 using namespace FlexFlow;
 

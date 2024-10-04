@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "V1ComputationGraph"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+  "json",
+]
+
+includes = [
+  "pcg/layer_attrs.dtg.h",
+  "pcg/tensor_attrs.dtg.h",
+  "pcg/file_format/v1/graphs/v1_labelled_dataflow_graph.dtg.h",
+]
+
+[[fields]]
+name = "raw_graph"
+type = "::FlexFlow::V1LabelledDataflowGraph<::FlexFlow::LayerAttrs, ::FlexFlow::TensorAttrs>"

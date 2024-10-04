@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_ENUMERATE_H
 #define _FLEXFLOW_LIB_OP_ATTRS_INCLUDE_OP_ATTRS_DIM_ORDERED_ENUMERATE_H
 
-#include "op-attrs/dim_ordered.h"
+#include "op-attrs/dim_ordered/dim_ordered.h"
 #include "utils/bidict/bidict.h"
 #include "utils/containers/count.h"
 

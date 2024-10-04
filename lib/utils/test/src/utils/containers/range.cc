@@ -4,6 +4,7 @@
 #include <doctest/doctest.h>
 #include <unordered_set>
 #include <vector>
+#include "test/utils/doctest/fmt/vector.h"
 
 using namespace FlexFlow;
 

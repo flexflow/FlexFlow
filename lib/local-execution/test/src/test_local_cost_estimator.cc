@@ -1,14 +1,16 @@
-// #include "doctest/doctest.h"
-// #include "kernels/local_cuda_allocator.h"
-// #include "kernels/managed_per_device_ff_handle.h"
-// #include "local-execution/local_cost_estimator.h"
-// #include "pcg/computation_graph_builder.h"
-// #include "test_utils.h"
+#include "doctest/doctest.h"
+#include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_per_device_ff_handle.h"
+#include "local-execution/local_cost_estimator.h"
+#include "op-attrs/ops/attention.h"
+#include "op-attrs/parallel_tensor_shape.h"
+#include "pcg/computation_graph_builder.h"
+#include "test_utils.h"
 
-// namespace FlexFlow {
+using namespace ::FlexFlow;
 
-// TEST_SUITE(FF_CUDA_TEST_SUITE) {
-//   TEST_CASE("Local Cost Estimator") {
+TEST_SUITE(FF_CUDA_TEST_SUITE) {
+  TEST_CASE("Local Cost Estimator") {
 //     // local backing initialization
 //     ManagedPerDeviceFFHandle managed_handle{};
 
@@ -70,10 +72,8 @@
 //           std::vector<ParallelTensorAttrs>{output_attrs},
 //           make_1d_machine_view(DeviceType::GPU, 0, 1));
 
-//       CHECK(result.total_elapsed_time > 0);
-//       CHECK(result.total_mem_usage > 0);
-//     }
-//   }
-// }
-
-// } // namespace FlexFlow
+      // CHECK(result.total_elapsed_time > 0);
+      // CHECK(result.total_mem_usage > 0);
+    // }
+  }
+}

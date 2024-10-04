@@ -1,6 +1,5 @@
 #include "pcg/task_space_operator.h"
-#include "utils/containers.h"
-#include "utils/containers/as_vector.h"
+#include "utils/containers/maximum.h"
 #include "utils/containers/cartesian_product.h"
 #include "utils/containers/product.h"
 #include "utils/containers/range.h"
@@ -28,7 +27,7 @@ std::unordered_set<TaskSpaceCoordinate>
 
 TaskSpaceCoordinate
     get_maximum_fragment_coordinate(TaskSpaceOperator const &task) {
-  return maximum(get_fragment_coordinates(task));
+  return maximum(get_fragment_coordinates(task)).value();
 }
 
 size_t num_dims(TaskSpaceOperator const &task) {

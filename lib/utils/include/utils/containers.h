@@ -31,15 +31,6 @@
 
 namespace FlexFlow {
 
-template <typename Container, typename Element>
-Element sum(Container const &container) {
-  Element result = 0;
-  for (Element const &element : container) {
-    result += element;
-  }
-  return result;
-}
-
 template <typename Container, typename ConditionF, typename Element>
 Element sum_where(Container const &container, ConditionF const &condition) {
   Element result = 0;
@@ -135,17 +126,6 @@ std::optional<bool> optional_all_of(Container const &container,
   return true;
 }
 
-template <typename C>
-bool are_all_same(C const &c) {
-  auto const &first = *c.cbegin();
-  for (auto const &v : c) {
-    if (v != first) {
-      return false;
-    }
-  }
-  return true;
-}
-
 template <typename In, typename F, typename Out>
 std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
   std::vector<Out> result;
@@ -177,11 +157,6 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };
-}
-
-template <typename C>
-typename C::value_type maximum(C const &v) {
-  return *std::max_element(v.begin(), v.end());
 }
 
 template <typename T>

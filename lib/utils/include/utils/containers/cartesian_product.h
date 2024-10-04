@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_CARTESIAN_PRODUCT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_CARTESIAN_PRODUCT_H
 
-#include "utils/containers/as_vector.h"
 #include "utils/hash/vector.h"
 #include <functional>
 #include <unordered_set>

@@ -1,4 +1,5 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
+#include "op-attrs/get_incoming_tensor_roles.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "op-attrs/parallel_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
@@ -35,13 +36,13 @@ ParallelComputationGraphBuilder::ParallelComputationGraphBuilder()
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::create_input_tensor(
     ParallelTensorShape const &shape,
-    bool create_grad,
+    CreateGrad create_grad,
     std::optional<std::string> const &name) {
   ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
       /*shape=*/shape,
       /*sync_type=*/std::nullopt,
       /*initializer=*/std::nullopt,
-      /*create_gradients=*/(create_grad ? CreateGrad::YES : CreateGrad::NO),
+      /*create_gradients=*/create_grad,
   };
   ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
       PCGOperatorAttrs{InputAttrs{}},
@@ -205,7 +206,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::dense(
 
   {
     ParallelTensorShape kernel_shape =
-        throw_if_unexpected(get_kernel_shape(attrs, input_shape));
+        throw_if_unexpected(get_projection_shape(attrs, input_shape));
     weights.push_back(make_weight_attrs(kernel_shape, kernel_initializer));
   }
 
@@ -330,18 +331,56 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
     parallel_tensor_guid_t const &input,
-    bool relu,
+    bool affine,
+    std::optional<Activation> const &activation,
+    float eps,
+    std::optional<float> const &momentum,
     std::optional<std::string> const &maybe_name) {
 
-  BatchNormAttrs attrs = BatchNormAttrs{relu};
+  if (activation.has_value() && activation.value() != Activation::RELU) {
+    throw mk_runtime_error(fmt::format(
+        "batch_norm currently only supports (1) no activation function, or (2) "
+        "relu activation function, but received {}. "
+        "If you need support for additional activation functions, please "
+        "create an issue.",
+        activation));
+  }
+
+  BatchNormAttrs attrs = BatchNormAttrs{
+      /*relu=*/activation.has_value(),
+      /*affine=*/affine,
+      /*eps=*/eps,
+      /*momentum=*/momentum,
+  };
 
   std::string name =
       maybe_name.value_or(get_default_name(PCGOperatorAttrs{attrs}));
 
   ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
 
+  ParallelTensorShape input_shape = this->get_shape(input);
+
   ParallelTensorShape output_shape =
-      get_output_shape(attrs, this->get_shape(input));
+      throw_if_unexpected(get_output_shape(attrs, input_shape));
+
+  std::vector<ParallelTensorAttrs> weights;
+
+  if (attrs.affine) {
+    // initializers chosen to match those of
+    // https://pytorch.org/docs/stable/generated/torch.nn.BatchNorm2d.html
+
+    ParallelTensorShape gamma_shape =
+        throw_if_unexpected(get_gamma_weights_shape(attrs, input_shape));
+    InitializerAttrs gamma_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{1}}}};
+    weights.push_back(make_weight_attrs(gamma_shape, gamma_initializer));
+
+    ParallelTensorShape beta_shape =
+        throw_if_unexpected(get_beta_weights_shape(attrs, input_shape));
+    InitializerAttrs beta_initializer =
+        InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{0}}}};
+    weights.push_back(make_weight_attrs(beta_shape, beta_initializer));
+  }
 
   return this->add_layer(layer, {input}, {}, {output_shape});
 }
@@ -580,11 +619,32 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::add_weight(
   return parallel_tensor_guid_t{current_raw_weight_tensor};
 }
 
+static void check_incoming_tensor_roles(ParallelLayerAttrs const &layer,
+                                        int num_inputs,
+                                        int num_weights) {
+  std::vector<IncomingTensorRole> correct =
+      get_incoming_tensor_roles(layer.op_attrs, num_inputs + num_weights);
+  std::vector<IncomingTensorRole> current = concat_vectors(
+      std::vector<IncomingTensorRole>(num_inputs, IncomingTensorRole::INPUT),
+      std::vector<IncomingTensorRole>(num_weights, IncomingTensorRole::WEIGHT));
+
+  if (correct != current) {
+    throw mk_runtime_error(
+        fmt::format("check_incoming_tensor_roles found deviation in incoming "
+                    "tensors: expected {}, received {}",
+                    correct,
+                    current));
+  }
+}
+
 std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
     ParallelLayerAttrs const &layer,
     std::vector<parallel_tensor_guid_t> const &inputs,
     std::vector<ParallelTensorAttrs> const &weights,
     std::vector<ParallelTensorAttrs> const &outputs) {
+
+  check_incoming_tensor_roles(layer, inputs.size(), weights.size());
+
   std::vector<DataflowOutput> raw_weight_tensors;
   for (auto const &kv : enumerate_vector(weights)) {
     int weight_idx = kv.first;
@@ -603,6 +663,7 @@ std::vector<parallel_tensor_guid_t> ParallelComputationGraphBuilder::add_layer(
       transform(inputs, [](parallel_tensor_guid_t const &t) {
         return t.raw_graph_output;
       });
+
   std::vector<DataflowOutput> raw_outputs =
       this->pcg.raw_graph
           .add_node(

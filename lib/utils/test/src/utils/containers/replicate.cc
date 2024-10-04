@@ -4,6 +4,7 @@
 #include "utils/hash/unordered_set.h"
 #include <doctest/doctest.h>
 #include <unordered_set>
+#include "test/utils/doctest/fmt/vector.h"
 
 using namespace FlexFlow;
 

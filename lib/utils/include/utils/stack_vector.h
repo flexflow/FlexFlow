@@ -3,12 +3,12 @@
 
 #include "utils/hash-utils.h"
 #include "utils/join_strings.h"
-#include "utils/json.h"
 #include "utils/test_types.h"
 #include "utils/type_traits.h"
 #include <array>
 #include <cassert>
 #include <fmt/format.h>
+#include <nlohmann/json.hpp>
 #include <optional>
 #include <rapidcheck.h>
 #include <type_traits>
@@ -326,13 +326,13 @@ std::ostream &operator<<(std::ostream &s, stack_vector<T, MAXSIZE> const &v) {
 }
 
 template <typename T, std::size_t MAXSIZE>
-void to_json(json &j, stack_vector<T, MAXSIZE> const &v) {
+void to_json(nlohmann::json &j, stack_vector<T, MAXSIZE> const &v) {
   std::vector<T> as_vec(v.begin(), v.end());
   j = as_vec;
 }
 
 template <typename T, std::size_t MAXSIZE>
-void from_json(json const &j, stack_vector<T, MAXSIZE> &v) {
+void from_json(nlohmann::json const &j, stack_vector<T, MAXSIZE> &v) {
   std::vector<T> as_vec;
   j.get_to(as_vec);
   v = stack_vector<T, MAXSIZE>{as_vec.begin(), as_vec.end()};

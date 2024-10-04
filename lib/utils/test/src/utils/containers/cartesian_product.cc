@@ -1,6 +1,7 @@
 #include "utils/containers/cartesian_product.h"
 #include "utils/fmt/unordered_multiset.h"
 #include "utils/fmt/vector.h"
+#include "test/utils/doctest/fmt/unordered_multiset.h"
 #include <doctest/doctest.h>
 #include <unordered_set>
 #include <vector>

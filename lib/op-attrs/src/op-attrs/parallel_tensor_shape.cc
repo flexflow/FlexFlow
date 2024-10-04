@@ -59,19 +59,32 @@ std::optional<ShardParallelDim>
   }
 }
 
+ParallelTensorDimDegrees get_parallel_degrees(ParallelTensorShape const &s) {
+  return get_parallel_degrees(s.dims);
+}
+
 ParallelTensorShape lift_to_parallel(TensorShape const &s) {
   return ParallelTensorShape{lift_to_parallel(s.dims), s.data_type};
 }
 
 ParallelTensorShape
-    lift_to_parallel_with_degrees(TensorShape const &s,
-                                  SumDegree sum_degree,
-                                  DiscardCopyDegree discard_copy_degree,
+    lift_to_parallel_with_degrees(TensorShape const &unpar,
+                                  SumDegree const &sum_degree,
+                                  DiscardCopyDegree const &discard_copy_degree,
                                   FFOrdered<int> const &shard_degrees) {
   return ParallelTensorShape{
       lift_to_parallel_with_degrees(
-          s.dims, sum_degree, discard_copy_degree, shard_degrees),
-      s.data_type,
+          unpar.dims, sum_degree, discard_copy_degree, shard_degrees),
+      unpar.data_type,
+  };
+}
+
+ParallelTensorShape
+    lift_to_parallel_with_degrees(TensorShape const &unpar,
+                                  ParallelTensorDimDegrees const &degrees) {
+  return ParallelTensorShape{
+      lift_to_parallel_with_degrees(unpar.dims, degrees),
+      unpar.data_type,
   };
 }
 

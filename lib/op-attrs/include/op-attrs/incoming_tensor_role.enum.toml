@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "IncomingTensorRole"
+features = [
+  "hash",
+  "fmt",
+  "rapidcheck",
+  "json",
+]
+
+[[values]]
+name = "INPUT"
+
+[[values]]
+name = "WEIGHT"

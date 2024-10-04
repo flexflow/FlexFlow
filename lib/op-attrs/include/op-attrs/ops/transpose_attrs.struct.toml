@@ -12,7 +12,7 @@ features = [
 includes = [
   "op-attrs/ff_dim.h",
   "op-attrs/ff_dim.dtg.h",
-  "op-attrs/dim_ordered.h",
+  "op-attrs/dim_ordered/dim_ordered.h",
 ]
 
 [[fields]]

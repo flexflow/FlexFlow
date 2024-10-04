@@ -3,13 +3,14 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "substitutions/sub_parallel_computation_graph.dtg.h"
-#include "utils/graph/serial_parallel/serial_parallel_decomposition.dtg.h"
+#include "utils/containers/unordered_multiset_of.h"
+#include "utils/graph/series_parallel/series_parallel_decomposition.dtg.h"
 namespace FlexFlow {
 
-SerialParallelDecomposition
-    get_serial_parallel_decomposition(ParallelComputationGraph const &pcg) {
+SeriesParallelDecomposition
+    get_series_parallel_decomposition(ParallelComputationGraph const &pcg) {
   NOT_IMPLEMENTED();
-  // return get_serial_parallel_decomposition(pcg.raw_graph);
+  // return get_series_parallel_decomposition(pcg.raw_graph);
 }
 
 ParallelComputationGraph cg_to_pcg(ComputationGraph const &g) {
@@ -125,11 +126,11 @@ SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &pcg) {
 //   }
 // };
 
-// std::unordered_set<Node> get_nodes(SerialParallelDecomposition const &sp) {
+// std::unordered_set<Node> get_nodes(SeriesParallelDecomposition const &sp) {
 //   return std::visit(GetNodes{}, sp.raw_variant);
 // }
 
-// std::unordered_set<Node> get_nodes(SerialSplit const &serial) {
+// std::unordered_set<Node> get_nodes(SeriesSplit const &serial) {
 //   return set_union(
 //       transform(serial.children, [](std::variant<ParallelSplit, Node> const
 //       child) {
@@ -139,7 +140,7 @@ SubParallelComputationGraph pcg_to_subpcg(ParallelComputationGraph const &pcg) {
 
 // std::unordered_set<Node> get_nodes(ParallelSplit const &parallel) {
 //   return set_union(
-//       transform(parallel.children, [](std::variant<SerialSplit, Node> const
+//       transform(parallel.children, [](std::variant<SeriesSplit, Node> const
 //       child) {
 //         return std::visit(GetNodes{}, child);
 //       }));

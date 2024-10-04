@@ -74,6 +74,7 @@ option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
 option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
 option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" ON)
 option(FF_BUILD_ARG_PARSER "build command line argument parser" OFF)
+option(FF_BUILD_BIN_EXPORT_MODEL_ARCH "build export-model-arch utility" ON)
 
 set(FF_CUDA_ARCH "autodetect" CACHE STRING "Target CUDA Arch")
 if (FF_CUDA_ARCH STREQUAL "")

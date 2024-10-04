@@ -1,6 +1,6 @@
 #include "substitutions/operator_pattern/get_attribute.h"
 #include "op-attrs/get_op_type.h"
-#include "utils/containers/as_vector.h"
+#include "utils/containers/vector_of.h"
 
 namespace FlexFlow {
 
@@ -19,8 +19,24 @@ std::optional<OperatorAttributeValue> get_attribute(BatchNormAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
-    case OperatorAttributeKey::RELU:
-      return p.relu;
+    case OperatorAttributeKey::EPSILON:
+      return p.eps;
+    case OperatorAttributeKey::AFFINE:
+      return p.affine;
+    case OperatorAttributeKey::MOMENTUM:
+      return p.momentum;
+    default:
+      return std::nullopt;
+  }
+}
+
+std::optional<OperatorAttributeValue> get_attribute(BroadcastAttrs const &p,
+                                                    OperatorAttributeKey key) {
+  switch (key) {
+    case OperatorAttributeKey::OP_TYPE:
+      return get_op_type(p);
+    case OperatorAttributeKey::TARGET_DIMS:
+      return p.target_dims;
     default:
       return std::nullopt;
   }
@@ -177,6 +193,10 @@ std::optional<OperatorAttributeValue> get_attribute(LayerNormAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
+    case OperatorAttributeKey::AFFINE:
+      return p.elementwise_affine;
+    case OperatorAttributeKey::AXES:
+      return vector_of(p.axes);
     default:
       return std::nullopt;
   }
@@ -364,7 +384,7 @@ std::optional<OperatorAttributeValue> get_attribute(TransposeAttrs const &p,
     case OperatorAttributeKey::OP_TYPE:
       return get_op_type(p);
     case OperatorAttributeKey::PERMUTATION:
-      return as_vector(p.perm);
+      return vector_of(p.perm);
     default:
       return std::nullopt;
   }

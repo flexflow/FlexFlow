@@ -64,7 +64,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ParallelTensorShape n1_output_shape =
         throw_if_unexpected(get_output_shape(n1_op_attrs, i0_shape));
     ParallelTensorShape n1_weight_shape =
-        throw_if_unexpected(get_kernel_shape(n1_op_attrs, i0_shape));
+        throw_if_unexpected(get_projection_shape(n1_op_attrs, i0_shape));
     ParallelTensorShape n2_output_shape =
         throw_if_unexpected(get_output_shape(n2_op_attrs, n1_output_shape));
 

@@ -41,12 +41,12 @@ struct BackwardKernel {
                   RepartitionPerDeviceState const &m,
                   GenericTensorAccessorW const &input_grad,
                   GenericTensorAccessorR const &output_grad) {
-    add_kernel<real_type<T>><<<GET_BLOCKS(input_grad.shape.num_elements()),
-                               CUDA_NUM_THREADS,
-                               0,
-                               stream>>>(input_grad.get<T>(),
-                                         output_grad.get<T>(),
-                                         input_grad.shape.num_elements());
+    add_kernel<real_type_t<T>><<<GET_BLOCKS(input_grad.shape.num_elements()),
+                                 CUDA_NUM_THREADS,
+                                 0,
+                                 stream>>>(input_grad.get<T>(),
+                                           output_grad.get<T>(),
+                                           input_grad.shape.num_elements());
   }
 };
 

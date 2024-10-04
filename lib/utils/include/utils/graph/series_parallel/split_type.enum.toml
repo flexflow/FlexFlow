@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "SplitType"
+features = [
+  "hash",
+  "json",
+  "fmt",
+  "rapidcheck",
+]
+
+[[values]]
+name = "SERIES"
+
+[[values]]
+name = "PARALLEL"

@@ -4,9 +4,8 @@
 
 #include "local-execution/cost_details.dtg.h"
 #include "local-execution/local_training_backing.h"
-#include "op-attrs/operator_attrs.h"
-#include "op-attrs/parallel_tensor_shape.h"
-#include "pcg/machine_view.dtg.h"
+#include "op-attrs/parallel_tensor_shape.dtg.h"
+#include "op-attrs/pcg_operator_attrs.dtg.h"
 #include "pcg/machine_view.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_attrs.dtg.h"
 namespace FlexFlow {

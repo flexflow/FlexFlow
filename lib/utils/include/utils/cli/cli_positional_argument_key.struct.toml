@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "CLIPositionalArgumentKey"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = []
+
+[[fields]]
+name = "raw_idx"
+type = "int"
