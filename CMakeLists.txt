@@ -296,6 +296,16 @@ if(NOT BUILD_LEGION_ONLY)
   endif()
 
   set(FLEXFLOW_CPP_DRV_SRC ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
+  # SuffixDecoding
+  include(FetchContent)
+  FetchContent_Declare(
+    suffix_decoding
+    GIT_REPOSITORY git@github.com:Snowflake-Labs/suffix-tree-decoding.git
+    GIT_TAG main  # or a specific tag/commit hash
+  )
+  FetchContent_MakeAvailable(suffix_decoding)
+  list(APPEND FLEXFLOW_INCLUDE_DIRS ${suffix_decoding_SOURCE_DIR}/src)
+  list(APPEND FLEXFLOW_SRC ${suffix_decoding_SOURCE_DIR}/src/suffix_decoding.cc)
 
   add_library(substitution_loader SHARED
     ${FLEXFLOW_ROOT}/src/runtime/substitution_loader.cc)
