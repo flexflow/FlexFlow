@@ -27,7 +27,7 @@ using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
 
-LegionRuntime::Logger::Category log_app("llama");
+Legion::Logger log_app("llama");
 
 struct FilePaths {
   std::string cache_folder_path;
@@ -195,6 +195,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--request-per-second")) {
       request_per_second = std::stod(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--spec-infer-old-version")) {
+      spec_infer_old_version = true;
       continue;
     }
     if (!strcmp(argv[i], "--emission-file-path")) {
@@ -376,6 +380,7 @@ void FlexFlow::top_level_task(Task const *task,
   int ssm_spec_latency_ms = 20;
   int llm_verify_latency_ms = 50;
   double request_per_second = 1.0;
+  bool spec_infer_old_version = false;
   std::string emission_file_path;
   bool spec_infer_old_version = false;
 
@@ -453,6 +458,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_llm_verify_latency(llm_verify_latency_ms);
   rm->set_spec_infer_old_version(spec_infer_old_version);
   rm->register_output_filepath(file_paths.output_file_path);
+  rm->set_spec_infer_old_version(spec_infer_old_version);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
@@ -593,6 +599,8 @@ void FlexFlow::top_level_task(Task const *task,
         timestamps.push_back(trace.emission_time_ms);
         ratios.push_back(trace.slo_ratio);
       }
+      timestamps.erase(timestamps.begin());
+      timestamps.push_back(timestamps.back() + 1000.0);
       TraceEmissionMachine emission_machine(timestamps, ratios);
       results = tree_model.generate(requests, emission_machine);
     } else {

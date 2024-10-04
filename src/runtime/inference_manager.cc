@@ -29,8 +29,8 @@ namespace FlexFlow {
 
 using namespace Legion;
 
-LegionRuntime::Logger::Category log_inf_mgr("InferenceManager");
-LegionRuntime::Logger::Category log_offload("Offloading");
+Legion::Logger log_inf_mgr("InferenceManager");
+Legion::Logger log_offload("Offloading");
 
 InferenceManager::InferenceManager() {}
 

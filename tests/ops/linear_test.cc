@@ -5,7 +5,7 @@
 #include <iostream>
 #include <sstream>
 using namespace Legion;
-LegionRuntime::Logger::Category log_app("linear_test");
+Legion::Logger log_app("linear_test");
 
 struct LinearTestMeta {
   int batch_size, i_dim, num_channels, dense_projection_o_dim,

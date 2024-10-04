@@ -35,7 +35,7 @@ namespace FlexFlow {
 using namespace Legion;
 using tokenizers::Tokenizer;
 
-LegionRuntime::Logger::Category log_req_mgr("RequestManager");
+Legion::Logger log_req_mgr("RequestManager");
 
 bool operator<(std::shared_ptr<TokenTreeNode> const &lhs,
                std::shared_ptr<TokenTreeNode> const &rhs) {
@@ -386,6 +386,10 @@ void RequestManager::register_tokenizer(ModelType type,
     this->tokenizer_ =
         Tokenizer::FromBlobJSON(LoadBytesFromFile(falcon_tokenizer_path));
   }
+}
+
+std::vector<int32_t> RequestManager::tokenize(std::string const &text) {
+  return tokenizer_->Encode(text);
 }
 
 void RequestManager::register_output_filepath(
@@ -2254,6 +2258,9 @@ void RequestManager::background_serving_task(
     // Registered SSMs: perform speculative inference
     rm->serve_spec_infer(llm);
   }
+#ifdef FF_USE_NCCL
+  llm->finish_nccl_comms();
+#endif
 }
 
 /*static*/

@@ -448,7 +448,7 @@ if(NOT BUILD_LEGION_ONLY)
       # generate the Legion Python bindings library. When building from pip, we need to do this post-install to prevent Legion from overwriting the path to the Legion shared library
       add_custom_command(TARGET flexflow
         POST_BUILD	
-        COMMAND ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --cmake-build-dir ${Legion_BINARY_DIR}/runtime --prefix ${Legion_BINARY_DIR} --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
+        COMMAND CMAKE_BUILD_DIR=${Legion_BINARY_DIR}/runtime CMAKE_INSTALL_PREFIX=${Legion_BINARY_DIR} ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python/setup.py build --build-lib=${Legion_BINARY_DIR}/bindings/python ${Legion_PYTHON_EXTRA_INSTALL_ARGS}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/deps/legion/bindings/python
       )
       # create flexflow_python interpreter. When building from pip, we install the FF_HOME/python/flexflow_python script instead.
@@ -581,6 +581,7 @@ if(NOT BUILD_LEGION_ONLY)
   if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(inference/spec_infer)
     add_subdirectory(inference/incr_decoding)
+    add_subdirectory(inference/trace_generator)
   endif()
 
 
