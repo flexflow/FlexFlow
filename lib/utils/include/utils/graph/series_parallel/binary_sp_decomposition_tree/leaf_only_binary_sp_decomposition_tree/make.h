@@ -7,7 +7,7 @@
 namespace FlexFlow {
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_series_split(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &pre,
+LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_binary_sp_tree_make_series_split(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &pre,
                                                                LeafOnlyBinarySPDecompositionTree<LeafLabel> const &post) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     make_generic_binary_series_split(
@@ -18,7 +18,7 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_series_split(LeafOnl
 }
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_parallel_split(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &lhs,
+LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_binary_sp_tree_make_parallel_split(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &lhs,
                                                                LeafOnlyBinarySPDecompositionTree<LeafLabel> const &rhs) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     make_generic_binary_parallel_split(
@@ -29,12 +29,11 @@ LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_parallel_split(LeafO
 }
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_make_leaf_node(LeafLabel const &label) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_binary_sp_tree_make_leaf(LeafLabel const &label) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
     make_generic_binary_sp_leaf<
       std::monostate,
-      std::monostate,
-      LeafLabel>(label),
+      std::monostate, LeafLabel>(label),
   };
 }
 
