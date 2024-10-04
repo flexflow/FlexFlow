@@ -132,7 +132,7 @@ public:
                          LoraLinearConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraLinearConfig const &llc);
-  void serialize_to_json_file(const std::string& filename) const {
+  std::string serialize_to_json_string(int indent=-1) const {
     json j = {
         {"cache_folder", cache_folder},
         {"peft_model_id", peft_model_id},
@@ -147,30 +147,40 @@ public:
         {"optimizer_config", optimizer_config ? optimizer_config->toJson() : nullptr}
     };
 
+    return j.dump(indent);  // No indentation
+  }
+  void serialize_to_json_file(const std::string& filename) const {
+    std::string j = serialize_to_json_string(4);
     std::ofstream file(filename);
-    file << j.dump(4);  // Use 4 spaces for indentation
+    file << j;
+  }
+  // Deserialization method
+  static LoraLinearConfig deserialize_from_json_string(const std::string& json_string) {
+    json j = json::parse(json_string);
+    LoraLinearConfig config(
+        j["cache_folder"].get<std::string>(),
+        j["peft_model_id"].get<std::string>(),
+        j["trainable"].get<bool>(),
+        nullptr,  // optimizer_config will be set later if present
+        j["init_lora_weights"].get<bool>(),
+        j["base_model_name_or_path"].get<std::string>(),
+        j["precision"].get<std::string>(),
+        j["rank"].get<int>(),
+        j["lora_alpha"].get<float>(),
+        j["lora_dropout"].get<float>(),
+        j["target_modules"].get<std::vector<std::string>>()
+    );
+    if (!j["optimizer_config"].is_null()) {
+      config.setOptimizer(LoraOptimizerConfig::fromJson(j["optimizer_config"]));
+    }
+    return config;
   }
   // Deserialization method
   static LoraLinearConfig deserialize_from_json_file(const std::string& filename) {
     std::ifstream file(filename);
-    json j;
+    std::string j;
     file >> j;
-    LoraLinearConfig metadata(
-      j["cache_folder"].get<std::string>(),
-      j["peft_model_id"].get<std::vector<int>>(),
-      j["rank"].get<std::string>(),
-      j["lora_alpha"].get<std::string>(),
-      j["lora_dropout"].get<std::string>(),
-      j["target_modules"].get<std::vector<std::string>>(),
-      j["trainable"].get<bool>(),
-      j["init_lora_weights"].get<bool>(),
-      j["base_model_name_or_path"].get<std::string>(),
-      j["precision"].get<std::string>()
-    );
-    if (!j["optimizer_config"].is_null()) {
-      metadata.optimizer_config = LoraOptimizerConfig::fromJson(j["optimizer_config"]);
-    }
-    return metadata;
+    return deserialize_from_json_string(j);
   }
 
   std::string cache_folder;

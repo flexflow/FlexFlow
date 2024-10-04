@@ -96,7 +96,6 @@ public:
       request_guid = 0;
       prompt_phase = false;
       batch_config_request_id = -1;
-      peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
       optimizer_tasks = {true, false, false, false};
     }
@@ -110,7 +109,7 @@ public:
     bool prompt_phase = false;
     RequestGuid request_guid;
     // PEFT fields
-    PEFTModelID peft_model_id;
+    std::unordered_map<PEFTModelID, std::string> peft_adapters;
     bool peft_bwd;
     OptimizerTasks optimizer_tasks;
   };
