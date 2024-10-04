@@ -205,10 +205,6 @@ void parse_input_args(char **argv,
       emission_file_path = std::string(argv[++i]);
       continue;
     }
-    if (!strcmp(argv[i], "--spec-infer-old-version")) {
-      spec_infer_old_version = true;
-      continue;
-    }
   }
   if (paths.cache_folder_path.empty()) {
     char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
@@ -382,7 +378,6 @@ void FlexFlow::top_level_task(Task const *task,
   double request_per_second = 1.0;
   bool spec_infer_old_version = false;
   std::string emission_file_path;
-  bool spec_infer_old_version = false;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -458,7 +453,6 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_llm_verify_latency(llm_verify_latency_ms);
   rm->set_spec_infer_old_version(spec_infer_old_version);
   rm->register_output_filepath(file_paths.output_file_path);
-  rm->set_spec_infer_old_version(spec_infer_old_version);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
