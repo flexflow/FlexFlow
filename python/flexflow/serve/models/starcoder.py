@@ -220,6 +220,10 @@ class FlexFlowSTARCODER(FlexFlowModel):
             softmax = ffmodel.softmax(lm_head, -1)
             output = ffmodel.argmax(softmax, False)
 
+        if self.ffconfig.enable_peft:
+            # TODO: add attention projections
+            ffmodel.add_lora_layers(["c_fc", "c_proj"])
+        
         self.ffmodel = ffmodel
 
     def convert_hf_model(model, dst_folder):

@@ -250,6 +250,14 @@ void MPT::create_mpt_model(FFModel &ff,
   } else {
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
+  
+  // If PEFT is enabled, add LoRA layers
+  if (ff.config.enable_peft) {
+    // todo: add attention projections
+    std::vector<std::string> target_modules = {"up_proj", "down_proj"};
+    ff.add_lora_layers();
+  }
+
   FileDataLoader *fileloader =
       new FileDataLoader("",
                          weight_file_path,

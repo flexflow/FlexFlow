@@ -252,6 +252,10 @@ class FlexFlowMPT(FlexFlowModel):
             softmax = ffmodel.softmax(lm_head, -1)
             output = ffmodel.argmax(softmax, False)
 
+        if self.ffconfig.enable_peft:
+            # TODO: add attention projections
+            ffmodel.add_lora_layers(["up_proj", "down_proj"])
+        
         self.ffmodel = ffmodel
 
     # TODO: finish this

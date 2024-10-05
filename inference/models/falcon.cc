@@ -242,6 +242,13 @@ void FALCON::create_falcon_model(FFModel &ff,
     output = ff.argmax(lm_head, /*beam_Search*/ false);
   }
 
+  // If PEFT is enabled, add LoRA layers
+  if (ff.config.enable_peft) {
+    // todo: add attention projections
+    std::vector<std::string> target_modules = {"dense_h_to_4h", "dense_4h_to_h"};
+    ff.add_lora_layers();
+  }
+
   FileDataLoader *fileloader =
       new FileDataLoader("",
                          weight_file_path,

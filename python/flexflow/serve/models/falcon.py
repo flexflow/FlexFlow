@@ -241,6 +241,10 @@ class FlexFlowFalcon(FlexFlowModel):
                 # output = ffmodel.arg_top_k(lm_head, 1, False)
                 softmax = ffmodel.softmax(lm_head, -1)
                 output = ffmodel.argmax(softmax, False)
+        
+        if self.ffconfig.enable_peft:
+            # TODO: add attention projections
+            ffmodel.add_lora_layers(["dense_h_to_4h", "dense_4h_to_h"])
 
         self.ffmodel = ffmodel
 

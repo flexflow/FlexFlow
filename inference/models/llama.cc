@@ -226,9 +226,6 @@ void LLAMA::create_llama_model(FFModel &ff,
         REG_MODE_NONE,
         0.0f,
         std::string("layers." + std::to_string(i) + ".mlp.down_proj").c_str());
-    // Low-Rank Adapter (LoRA) for the second linear layer
-    // ff.lora_linear(std::string("down_proj"), std::string("layers." +
-    // std::to_string(i) + ".mlp.down_proj.lora").c_str());
   }
   // final normalization and linear
   Tensor final_rms_norm_output[2] = {nullptr, nullptr};
@@ -271,6 +268,13 @@ void LLAMA::create_llama_model(FFModel &ff,
       Tensor softmax = ff.softmax(dense, -1);
       output = ff.argmax(softmax, /*beam_Search*/ false);
     }
+  }
+
+  // If PEFT is enabled, add LoRA layers
+  if (ff.config.enable_peft) {
+    // todo: add attention projections
+    std::vector<std::string> target_modules = {"gate_proj", "up_proj", "down_proj"};
+    ff.add_lora_layers();
   }
 
   FileDataLoader *fileloader = new FileDataLoader(

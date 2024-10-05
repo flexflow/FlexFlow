@@ -248,6 +248,10 @@ class FlexFlowLLAMA(FlexFlowModel):
                 # output = ffmodel.arg_top_k(dense, 1, False)
                 softmax = ffmodel.softmax(dense, -1)
                 output = ffmodel.argmax(softmax, False)
+        
+        if self.ffconfig.enable_peft:
+            # TODO: add attention projections
+            ffmodel.add_lora_layers(["gate_proj", "up_proj", "down_proj"])
 
         self.ffmodel = ffmodel
 

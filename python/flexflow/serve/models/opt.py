@@ -282,6 +282,10 @@ class FlexFlowOPT(FlexFlowModel):
                 softmax = ffmodel.softmax(lm_head, -1)
                 output = ffmodel.argmax(softmax, False)
 
+        if self.ffconfig.enable_peft:
+            # TODO: add attention projections
+            ffmodel.add_lora_layers(["fc1", "fc2"])
+        
         self.ffmodel = ffmodel
 
     def convert_hf_weight_name(name):

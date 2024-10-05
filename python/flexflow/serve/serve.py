@@ -443,12 +443,6 @@ class LLM:
         # Download the weights from huggingface (if needed)
         self.download_hf_weights_if_needed()
 
-        # Add PEFT layer if registered
-        for ff_peft_config, peft_dict in self.pefts.items():
-            ff_peft_config.ff_compile()
-            ff_peft_model_id = self.model.ffmodel.add_lora_layer(ff_peft_config)
-            peft_dict["ff_peft_model_id"] = ff_peft_model_id
-
         # Create file data loader, load weights into tensors
         model_configs = self.config_class(self.hf_config)
 
@@ -486,6 +480,13 @@ class LLM:
 
         for ssm in self.ssms:
             self.rm.register_ssm_model(ssm.model.ffmodel)
+
+        # Add PEFT layer if registered
+        for ff_peft_config, peft_dict in self.pefts.items():
+            ff_peft_config.ff_compile()
+            ff_peft_model_id = self.model.ffmodel.register_peft_adapter(ff_peft_config)
+            peft_dict["ff_peft_model_id"] = ff_peft_model_id
+
 
         # start background server
         if (mode == InferenceMode.TREE_VERIFY_MODE) or (

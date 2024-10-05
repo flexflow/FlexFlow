@@ -262,6 +262,13 @@ void OPT::create_opt_model(FFModel &ff,
     output = ff.argmax(softmax, /*beam_Search*/ false);
   }
 
+  // If PEFT is enabled, add LoRA layers
+  if (ff.config.enable_peft) {
+    // todo: add attention projections
+    std::vector<std::string> target_modules = {"fc1", "fc2"};
+    ff.add_lora_layers();
+  }
+
   FileDataLoader *fileloader = new FileDataLoader(
       "",
       weight_file_path,
