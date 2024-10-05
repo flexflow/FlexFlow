@@ -10,9 +10,8 @@ features = [
 ]
 
 includes = [
-  "pcg/stride_t.dtg.h",
-  "pcg/machine_specification_dimension.dtg.h",
-  "pcg/machine_space_coordinate.dtg.h",
+  "pcg/machine_view_dimension.dtg.h",
+  "pcg/machine_space_coordinate.dtg.h"
 ]
 
 src_includes = [
@@ -26,9 +25,5 @@ name = "start"
 type = "::FlexFlow::MachineSpaceCoordinate"
 
 [[fields]]
-name = "strides"
-type = "std::vector<::FlexFlow::stride_t>"
-
-[[fields]]
-name = "projection"
-type = "std::vector<::FlexFlow::MachineSpecificationDimension>"
+name = "dimensions"
+type = "std::vector<::FlexFlow::MachineViewDimension>"

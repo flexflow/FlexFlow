@@ -26,33 +26,29 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::unordered_set<MachineView> correct = {
           MachineView{
-              MachineSpaceCoordinate{/*node_idx=*/0,
-                                     /*device_idx=*/0,
-                                     DeviceType::GPU},
-              {{stride_t{1}}},
-              {{MachineSpecificationDimension::INTRA_NODE}},
+              MachineSpaceCoordinate{
+                  /*node_idx=*/0, /*device_idx=*/0, DeviceType::GPU},
+              {MachineViewDimension{stride_t{1},
+                                    MachineSpecificationDimension::INTRA_NODE}},
           },
 
           MachineView{
-              MachineSpaceCoordinate{/*node_idx=*/0,
-                                     /*device_idx=*/1,
-                                     DeviceType::GPU},
-              {{stride_t{1}}},
-              {{MachineSpecificationDimension::INTRA_NODE}},
+              MachineSpaceCoordinate{
+                  /*node_idx=*/0, /*device_idx=*/1, DeviceType::GPU},
+              {MachineViewDimension{stride_t{1},
+                                    MachineSpecificationDimension::INTRA_NODE}},
           },
           MachineView{
-              MachineSpaceCoordinate{/*node_idx=*/0,
-                                     /*device_idx=*/2,
-                                     DeviceType::GPU},
-              {{stride_t{1}}},
-              {{MachineSpecificationDimension::INTRA_NODE}},
+              MachineSpaceCoordinate{
+                  /*node_idx=*/0, /*device_idx=*/2, DeviceType::GPU},
+              {MachineViewDimension{stride_t{1},
+                                    MachineSpecificationDimension::INTRA_NODE}},
           },
           MachineView{
-              MachineSpaceCoordinate{/*node_idx=*/0,
-                                     /*device_idx=*/0,
-                                     DeviceType::GPU},
-              {{stride_t{2}}},
-              {{MachineSpecificationDimension::INTRA_NODE}},
+              MachineSpaceCoordinate{
+                  /*node_idx=*/0, /*device_idx=*/0, DeviceType::GPU},
+              {MachineViewDimension{stride_t{2},
+                                    MachineSpecificationDimension::INTRA_NODE}},
           },
       };
 
@@ -75,8 +71,8 @@ TEST_SUITE(FF_TEST_SUITE) {
                               MachineSpecificationDimension m2) {
         return MachineView{
             MachineSpaceCoordinate{start_x, start_y, DeviceType::GPU},
-            {stride_t{stride1}, stride_t{stride2}},
-            {m1, m2},
+            {MachineViewDimension{stride_t{stride1}, m1},
+             MachineViewDimension{stride_t{stride2}, m2}},
         };
       };
 

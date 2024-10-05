@@ -97,7 +97,11 @@ static std::unordered_set<MachineView>
          candidate_starts(machine_spec, device_type)) {
       for (std::vector<MachineSpecificationDimension> const &proj :
            candidate_projections(task)) {
-        machine_views.insert(MachineView{start, strides.raw_strides, proj});
+        std::vector<MachineViewDimension> dimensions =
+            transform(zip(strides.raw_strides, proj), [&](auto const &p) {
+              return MachineViewDimension{p.first, p.second};
+            });
+        machine_views.insert(MachineView{start, dimensions});
       }
     }
   }

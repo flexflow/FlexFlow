@@ -9,13 +9,34 @@
 
 namespace FlexFlow {
 
+size_t num_dims(MachineView const &mv) {
+  return get_strides(mv).size();
+}
+
+DeviceType get_device_type(MachineView const &mv) {
+  return mv.start.device_type;
+}
+
+std::vector<stride_t> get_strides(MachineView const &mv) {
+  return transform(mv.dimensions,
+                   [](MachineViewDimension const &dim) { return dim.stride; });
+}
+
+std::vector<MachineSpecificationDimension>
+    get_projections(MachineView const &mv) {
+  return transform(mv.dimensions, [](MachineViewDimension const &dim) {
+    return dim.projection;
+  });
+}
+
 static std::vector<int>
     get_projection_indices(MachineView const &mv,
                            MachineSpecificationDimension dimension) {
 
   std::vector<int> projection_indices;
-  for (size_t i = 0; i < mv.projection.size(); ++i) {
-    if (mv.projection[i] == dimension) {
+  std::vector<MachineSpecificationDimension> projections = get_projections(mv);
+  for (size_t i = 0; i < projections.size(); ++i) {
+    if (projections[i] == dimension) {
       projection_indices.push_back(i);
     }
   }
@@ -32,11 +53,13 @@ static int compute_index(int start_idx,
   std::vector<int> coord_points;
   std::vector<int> strides;
 
+  std::vector<MachineSpecificationDimension> projections = get_projections(mv);
+  std::vector<stride_t> mv_strides = get_strides(mv);
   for (int i : projection_indices) {
-    int dim_size = task.degrees[i] * mv.strides[i].unwrapped;
+    int dim_size = task.degrees[i] * mv_strides[i].unwrapped;
     sizes.push_back(dim_size);
     coord_points.push_back(coord.raw_coord[i]);
-    strides.push_back(mv.strides[i].unwrapped);
+    strides.push_back(mv_strides[i].unwrapped);
   }
 
   std::vector<int> coeffs = scanl(sizes, 1, std::multiplies<int>());
@@ -81,11 +104,4 @@ std::unordered_set<MachineSpaceCoordinate>
       });
 }
 
-size_t num_dims(MachineView const &mv) {
-  return mv.strides.size();
-}
-
-DeviceType get_device_type(MachineView const &mv) {
-  return mv.start.device_type;
-}
 } // namespace FlexFlow

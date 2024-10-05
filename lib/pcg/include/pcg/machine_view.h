@@ -12,6 +12,15 @@
 
 namespace FlexFlow {
 
+size_t num_dims(MachineView const &mv);
+
+DeviceType get_device_type(MachineView const &mv);
+
+std::vector<stride_t> get_strides(MachineView const &mv);
+
+std::vector<MachineSpecificationDimension>
+    get_projections(MachineView const &mv);
+
 std::optional<MachineSpaceCoordinate>
     get_machine_space_coordinate(OperatorTaskSpace const &task,
                                  MachineView const &mv,
@@ -22,10 +31,6 @@ std::unordered_set<MachineSpaceCoordinate>
     get_machine_space_coordinates(OperatorTaskSpace const &task,
                                   MachineView const &mv,
                                   MachineSpecification const &ms);
-
-size_t num_dims(MachineView const &mv);
-
-DeviceType get_device_type(MachineView const &mv);
 
 } // namespace FlexFlow
 
