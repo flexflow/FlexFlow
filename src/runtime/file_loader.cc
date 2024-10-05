@@ -124,6 +124,7 @@ void load_attention_weights_multi_query(DT *ptr,
       ptr[data_index++] = host_array.at(i);
     }
     file_index++;
+    in.close();
   }
 }
 
@@ -302,6 +303,7 @@ void load_attention_weights_v2(DT *ptr,
     }
 
     file_index++;
+    in.close();
   }
 }
 
@@ -357,6 +359,7 @@ void FileDataLoader::load_positions(FFModel *ff,
 
   // ff->get_parallel_tensor_from_tensor(pt, position_pt);
   position_pt->set_tensor<int>(ff, dims_vec, data);
+  free(data);
 }
 
 //--------------------- quantization functions ----------------------
@@ -669,7 +672,7 @@ void FileDataLoader::load_quantization_weight(FFModel *ff,
   ff->get_parallel_tensor_from_tensor(weight, weight_pt);
   weight_pt->set_tensor<char>(ff, dims_vec, data);
 
-  delete data;
+  free(data);
 }
 
 template <typename DT>
@@ -761,7 +764,7 @@ void FileDataLoader::load_single_weight_tensor(FFModel *ff,
   weight_pt->set_tensor<DT>(ff, dims_vec, data);
 
   // Free buffer memory
-  delete data;
+  free(data);
 }
 
 void FileDataLoader::load_weights(FFModel *ff) {
