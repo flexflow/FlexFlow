@@ -423,14 +423,6 @@ RequestManager::RequestGuid
     request.tokens.push_back(bos_token_id);
   }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(req.prompt);
-  if (tokens.size() >= get_max_sequence_length()) {
-    std::cout << "Warning: too many tokens in prompt, only load up to "
-              << get_max_sequence_length() << " tokens, but got "
-              << tokens.size() << ".\n";
-
-    printf("tokens size: %zu\n", tokens.size());
-    return INVALID_GUID;
-  }
   for (int i = 0; i < tokens.size(); i++) {
     std::cout << "[" << i << "]" << tokens.at(i) << "\n";
   }
