@@ -1,7 +1,6 @@
 #include "utils/containers/get_all_permutations_with_repetition.h"
 #include "test/utils/doctest/fmt/unordered_multiset.h"
 #include "test/utils/doctest/fmt/vector.h"
-#include "utils/containers/unordered_multiset_of.h"
 #include "utils/hash/vector.h"
 #include <doctest/doctest.h>
 
@@ -14,7 +13,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<int> input = {1, 2, 3};
 
       std::unordered_multiset<std::vector<int>> result =
-          unordered_multiset_of(get_all_permutations_with_repetition(input, 1));
+          get_all_permutations_with_repetition(input, 1);
       std::unordered_multiset<std::vector<int>> correct = {
           {1},
           {2},
@@ -28,7 +27,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<int> input = {1};
 
       std::unordered_multiset<std::vector<int>> result =
-          unordered_multiset_of(get_all_permutations_with_repetition(input, 2));
+          get_all_permutations_with_repetition(input, 2);
       std::unordered_multiset<std::vector<int>> correct = {
           {1, 1},
       };
@@ -40,7 +39,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<int> input = {1, 2};
 
       std::unordered_multiset<std::vector<int>> result =
-          unordered_multiset_of(get_all_permutations_with_repetition(input, 3));
+          get_all_permutations_with_repetition(input, 3);
       std::unordered_multiset<std::vector<int>> correct = {
           {1, 1, 1},
           {1, 1, 2},
@@ -59,7 +58,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::vector<int> input = {1, 2, 2};
 
       std::unordered_multiset<std::vector<int>> result =
-          unordered_multiset_of(get_all_permutations_with_repetition(input, 2));
+          get_all_permutations_with_repetition(input, 2);
       std::unordered_multiset<std::vector<int>> correct = {{1, 1},
                                                            {1, 2},
                                                            {1, 2},

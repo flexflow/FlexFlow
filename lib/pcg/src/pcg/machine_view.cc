@@ -1,4 +1,5 @@
 #include "pcg/machine_view.h"
+#include "pcg/machine_specification.h"
 #include "pcg/operator_task_space.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/scanl.h"
@@ -47,7 +48,7 @@ static int compute_index(int start_idx,
   return index;
 }
 
-MachineSpaceCoordinate
+std::optional<MachineSpaceCoordinate>
     get_machine_space_coordinate(OperatorTaskSpace const &task,
                                  MachineView const &mv,
                                  TaskSpaceCoordinate const &coord,
@@ -62,18 +63,22 @@ MachineSpaceCoordinate
       mv.start.node_idx, inter_projection_indices, task, mv, coord);
   int device_idx = compute_index(
       mv.start.device_idx, intra_projection_indices, task, mv, coord);
-
-  return MachineSpaceCoordinate{node_idx, device_idx, get_device_type(mv)};
+  MachineSpaceCoordinate ms_coord =
+      MachineSpaceCoordinate{node_idx, device_idx, get_device_type(mv)};
+  if (!is_valid_machine_space_coordinate(ms, ms_coord)) {
+    return std::nullopt;
+  }
+  return ms_coord;
 }
 std::unordered_set<MachineSpaceCoordinate>
     get_machine_space_coordinates(OperatorTaskSpace const &task,
                                   MachineView const &mv,
                                   MachineSpecification const &ms) {
 
-  return transform(get_task_space_coordinates(task),
-                   [&](TaskSpaceCoordinate const &c) {
-                     return get_machine_space_coordinate(task, mv, c, ms);
-                   });
+  return transform(
+      get_task_space_coordinates(task), [&](TaskSpaceCoordinate const &c) {
+        return get_machine_space_coordinate(task, mv, c, ms).value();
+      });
 }
 
 size_t num_dims(MachineView const &mv) {

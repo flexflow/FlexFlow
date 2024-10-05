@@ -20,6 +20,11 @@ src_includes = [
   "utils/hash/vector.h"
 ]
 
+
+[[fields]]
+name = "start"
+type = "::FlexFlow::MachineSpaceCoordinate"
+
 [[fields]]
 name = "strides"
 type = "std::vector<::FlexFlow::stride_t>"
@@ -27,8 +32,3 @@ type = "std::vector<::FlexFlow::stride_t>"
 [[fields]]
 name = "projection"
 type = "std::vector<::FlexFlow::MachineSpecificationDimension>"
-
-[[fields]]
-name = "start"
-type = "::FlexFlow::MachineSpaceCoordinate"
-

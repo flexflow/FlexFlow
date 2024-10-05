@@ -1,12 +1,10 @@
 #include "utils/containers/scanl.h"
 #include "test/utils/doctest/fmt/vector.h"
-#include "utils/fmt/vector.h"
 #include <doctest/doctest.h>
 #include <string>
 #include <vector>
 
 using namespace FlexFlow;
-
 TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("scanl") {
@@ -26,13 +24,21 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
-    SUBCASE("heterogenous types") {
+    SUBCASE("heterogeneous types") {
       std::vector<int> input = {1, 2, 3, 4};
       auto op = [](std::string const &a, int b) {
         return a + std::to_string(b);
       };
       std::vector<std::string> result = scanl(input, std::string(""), op);
       std::vector<std::string> correct = {"", "1", "12", "123", "1234"};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("empty input") {
+      std::vector<int> input = {};
+      std::vector<int> result =
+          scanl(input, 0, [](int a, int b) { return a + b; });
+      std::vector<int> correct = {0};
       CHECK(result == correct);
     }
   }
@@ -51,6 +57,14 @@ TEST_SUITE(FF_TEST_SUITE) {
       auto op = [](int a, int b) { return a * b + 1; };
       std::vector<int> result = scanl1(input, op);
       std::vector<int> correct = {1, 3, 16, 33};
+      CHECK(result == correct);
+    }
+
+    SUBCASE("empty input") {
+      std::vector<int> input = {};
+      std::vector<int> result =
+          scanl1(input, [](int a, int b) { return a + b; });
+      std::vector<int> correct = {};
       CHECK(result == correct);
     }
   }

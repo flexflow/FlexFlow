@@ -24,9 +24,10 @@ namespace FlexFlow {
 bool is_valid_machine_view(MachineView const &mv,
                            OperatorTaskSpace const &task,
                            MachineSpecification const &ms) {
-  MachineSpaceCoordinate maximum_device_coords = get_machine_space_coordinate(
-      task, mv, get_task_space_maximum_coordinate(task), ms);
-  return is_valid_machine_space_coordinate(ms, maximum_device_coords);
+  std::optional<MachineSpaceCoordinate> maximum_device_coords =
+      get_machine_space_coordinate(
+          task, mv, get_task_space_maximum_coordinate(task), ms);
+  return maximum_device_coords.has_value();
 }
 
 /* Generates a set of candidate `MachineView`s
@@ -96,7 +97,7 @@ static std::unordered_set<MachineView>
          candidate_starts(machine_spec, device_type)) {
       for (std::vector<MachineSpecificationDimension> const &proj :
            candidate_projections(task)) {
-        machine_views.insert(MachineView{strides.raw_strides, proj, start});
+        machine_views.insert(MachineView{start, strides.raw_strides, proj});
       }
     }
   }

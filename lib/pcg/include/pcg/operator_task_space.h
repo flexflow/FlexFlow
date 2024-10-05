@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_PCG_INCLUDE_operator_task_space_H
-#define _FLEXFLOW_PCG_INCLUDE_operator_task_space_H
+#ifndef _FLEXFLOW_PCG_INCLUDE_OPERATOR_TASK_SPACE_H
+#define _FLEXFLOW_PCG_INCLUDE_OPERATOR_TASK_SPACE_H
 
 #include "pcg/operator_task_space.dtg.h"
 #include "pcg/task_space_coordinate.dtg.h"

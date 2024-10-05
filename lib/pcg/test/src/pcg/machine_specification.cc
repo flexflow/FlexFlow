@@ -8,7 +8,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("MachineSpecification") {
 
-    MachineSpecification ms = MachineSpecification{4, 16, 8, 100.0f, 200.0f};
+    MachineSpecification ms = MachineSpecification{
+        /*num_nodes=*/4,
+        /*num_cpus_per_node=*/16,
+        /*num_gpus_per_node=*/8,
+        /*inter_node_bandwidth=*/0,
+        /*intra_node_bandwidth=*/0,
+    };
 
     SUBCASE("get_num_gpus") {
       CHECK(get_num_gpus(ms) == 4 * 8);
@@ -25,16 +31,22 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("get_device_id") {
       SUBCASE("valid MachineSpaceCoordinate") {
-        MachineSpaceCoordinate coord =
-            MachineSpaceCoordinate{2, 12, DeviceType::CPU};
+        MachineSpaceCoordinate coord = MachineSpaceCoordinate{
+            /*node_idx=*/2,
+            /*device_idx=*/12,
+            DeviceType::CPU,
+        };
         device_id_t correct =
             device_id_from_index(2 * 16 + 12, DeviceType::CPU);
         device_id_t result = get_device_id(ms, coord);
         CHECK(correct == result);
       }
-      SUBCASE("invalid MachineSpaceCoordinate") {
-        MachineSpaceCoordinate coord =
-            MachineSpaceCoordinate{2, 18, DeviceType::CPU};
+      SUBCASE("MachineSpaceCoordinate for given machine spec") {
+        MachineSpaceCoordinate coord = MachineSpaceCoordinate{
+            /*node_idx=*/2,
+            /*device_idx=*/18,
+            DeviceType::CPU,
+        };
         CHECK_THROWS(get_device_id(ms, coord));
       }
     }

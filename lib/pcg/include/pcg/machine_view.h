@@ -7,11 +7,12 @@
 #include "pcg/operator_task_space.dtg.h"
 #include "task_space_coordinate.dtg.h"
 #include <cstddef>
+#include <optional>
 #include <unordered_set>
 
 namespace FlexFlow {
 
-MachineSpaceCoordinate
+std::optional<MachineSpaceCoordinate>
     get_machine_space_coordinate(OperatorTaskSpace const &task,
                                  MachineView const &mv,
                                  TaskSpaceCoordinate const &coordinates,
