@@ -846,7 +846,7 @@ public:
   // PEFT Layers
   // ========================================
 //   PEFTModelID *add_lora_layer(LoraLinearConfig const peft_config);
-    void add_lora_layers(std::vector<std::string> target_modules, int max_rank, int max_concurrent_adapters);
+    void add_lora_layers(std::vector<std::string> target_modules);
   // ========================================
   // Inference APIs
   // ========================================

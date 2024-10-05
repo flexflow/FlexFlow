@@ -270,6 +270,20 @@ LoraLinearConfig const &RequestManager::get_peft_config(
   return peft_configs[peft_model_id];
 }
 
+void RequestManager::set_max_lora_rank(int max_lora_rank_) {
+  max_lora_rank = max_lora_rank_;
+}
+
+void RequestManager::set_max_concurrent_adapters(int max_concurrent_adapters_) {
+  max_concurrent_adapters = max_concurrent_adapters_;
+}
+
+int RequestManager::get_max_lora_rank() { return max_lora_rank; }
+
+int RequestManager::get_max_concurrent_adapters() {
+  return max_concurrent_adapters;
+}
+
 PEFTModelID *FFModel::register_peft_adapter(LoraLinearConfig const peft_config) {
   assert(config.enable_peft &&
          "Cannot add a LoRA layer if PEFT mode is not enabled");
@@ -679,6 +693,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   int inference_batch_size =
       BatchConfig::max_requests_per_batch() - (int)enable_peft_finetuning;
 
+  int num_concurrent_adapters = 0;
+
   // Step 2: prepare the next batch for existing inference requests
   BatchConfig new_bc;
   for (int i = 0; i < inference_batch_size; i++) {
@@ -774,6 +790,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         //     old_bc.requestsInfo[i].peft_model_id;
         new_bc.requestsInfo[i].peft_adapters =
             old_bc.requestsInfo[i].peft_adapters;
+        num_concurrent_adapters += new_bc.requestsInfo[i].peft_adapters.size();
         new_bc.requestsInfo[i].peft_bwd = old_bc.requestsInfo[i].peft_bwd;
         new_bc.requestsInfo[i].max_length = old_bc.requestsInfo[i].max_length;
         num_active_req++;
@@ -825,6 +842,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
   new_bc.num_generation_tokens = num_generation_tokens;
 
+  assert(num_concurrent_adapters <= get_max_concurrent_adapters() &&
+         "Number of concurrent adapters exceeded the limit");
+
   // Step 3: add new inference requests to the next batch if there is space
   for (int i = 0; i < inference_batch_size; i++) {
     if (new_bc.request_completed[i]) {
@@ -832,6 +852,12 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           new_bc.num_tokens < get_max_tokens_per_batch()) {
         Request new_request = pending_infr_request_queue.front();
         assert(new_request.req_type == RequestType::REQ_INFERENCE);
+        
+        // if the request has peft adapters and we are at capacity, don't add it yet
+        if (new_request.peft_model_id != PEFTModelID::NO_ID && num_concurrent_adapters == get_max_concurrent_adapters()) {
+          break;
+        }
+        
         pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
 
@@ -1000,7 +1026,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     int num_peft_label_tokens = request.dataset[dataset_entry].second.size();
     assert(num_peft_label_tokens == 0);
 
-    if (num_peft_tokens > 0) {
+    if (num_peft_tokens > 0 && num_concurrent_adapters < get_max_concurrent_adapters()) {
       assert(new_bc.request_completed[inference_batch_size]);
       // request info
       new_bc.request_completed[inference_batch_size] = false;
@@ -1033,8 +1059,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.num_tokens++;
         new_bc.num_peft_tokens++;
       }
+      num_concurrent_adapters +=1;
     }
   }
+  assert(num_concurrent_adapters <= get_max_concurrent_adapters() &&
+         "Number of concurrent adapters exceeded the limit");
   return new_bc;
 }
 

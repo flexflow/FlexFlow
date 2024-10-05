@@ -51,10 +51,13 @@ bool check_lora_layer_match(Layer *potential_target,
   return false;
 }
 
-void FFmodel::add_lora_layers(std::vector<std::string> target_modules, int max_rank, int max_concurrent_adapters) {
+void FFmodel::add_lora_layers(std::vector<std::string> target_modules) {
   assert(config.enable_peft && "Cannot add a LoRA layer if PEFT mode is not enabled");
   assert(target_modules.size() > 0 && "LoRA target module name is empty");
-  assrt(max_rank > 1 && max_rank <= 32 && "Invalid max LoRA rank");
+  RequestManager *rm = RequestManager::get_request_manager();
+  int max_lora_rank = rm->get_max_lora_rank();
+  int max_concurrent_adapters = rm->get_max_concurrent_adapters();
+  assert(max_rank > 1 && max_rank <= 32 && "Invalid max LoRA rank");
   assert(max_concurrent_adapters > 0 && "Invalid number of LoRA concurrent adapters");
 
   for (std::string target_module_name : target_modules) {
@@ -1197,14 +1200,17 @@ bool LoraLinear::measure_operator_cost(Simulator *sim,
 }
 
 bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs) {
-  if (lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type &&
-      lhs.peft_configs.size() == rhs.peft_configs.size()) {
+  if (lhs.layer_guid == rhs.layer_guid && lhs.max_rank == rhs.max_rank &&
+      lhs.max_concurrent_adapters == rhs.max_concurrent_adapters &&
+      strcmp(lhs.name, rhs.name) == 0) {
+#ifdef DEADCODE
     for (auto const &kv : lhs.peft_configs) {
       auto it = rhs.peft_configs.find(kv.first);
       if (it == rhs.peft_configs.end() || !(it->second == kv.second)) {
         return false;
       }
     }
+#endif
     return true;
   }
   return false;
@@ -1243,6 +1249,9 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
+  sez.serialize(this->max_rank);
+  sez.serialize(this->max_concurrent_adapters);
+#ifdef DEADCODE  
   sez.serialize(this->op_type);
   sez.serialize(this->peft_configs.size());
   for (auto const &kv : this->peft_configs) {
@@ -1285,6 +1294,7 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
       }
     }
   }
+#endif
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
 }
@@ -1297,8 +1307,9 @@ Node LoraLinear::deserialize(FFModel &ff,
                              int num_inputs) {
   assert(num_inputs == 2);
   size_t id, transformer_layer_id, deserialized_model_id;
-  OperatorType op_type;
-  size_t num_pefts;
+  int max_rank, max_concurrent_adapters;
+  // OperatorType op_type;
+  // size_t num_pefts;
   size_t name_len;
   char name[MAX_OPNAME] = {0};
 
@@ -1307,6 +1318,9 @@ Node LoraLinear::deserialize(FFModel &ff,
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
+  dez.deserialize(max_rank);
+  dez.deserialize(max_concurrent_adapters);
+#ifdef DEADCODE
   dez.deserialize(op_type);
   dez.deserialize(num_pefts);
   for (int i = 0; i < num_pefts; i++) {
@@ -1357,12 +1371,15 @@ Node LoraLinear::deserialize(FFModel &ff,
     params.peft_configs.emplace(
         std::make_pair(peft_model_id, *lora_linear_config));
   }
+#endif  
   dez.deserialize(name_len);
   dez.deserialize(name, name_len);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   params.layer_guid = layer_guid;
-  params.type = op_type;
+  // params.type = op_type;
+  params.max_rank = max_rank;
+  params.max_concurrent_adapters = max_concurrent_adapters;
   strcpy(params.name, name);
   return ff.get_or_create_node<LoraLinear>({inputs[0], inputs[1]}, params);
 }
@@ -1377,11 +1394,13 @@ Op *LoraLinear::materialize(FFModel &ff,
 LoraLinearParams LoraLinear::get_params() const {
   LoraLinearParams params;
   params.layer_guid = this->layer_guid;
-  params.type = this->op_type;
+  params.max_rank = this->max_rank;
+  params.max_concurrent_adapters = this->max_concurrent_adapters;
+  // params.type = this->op_type;
   if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
-  params.peft_configs = this->peft_configs;
+  // params.peft_configs = this->peft_configs;
   return params;
 }
 
@@ -1400,6 +1419,9 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
   hash_combine(key, params.layer_guid.model_id);
+  hash_combine(key, params.max_rank);
+  hash_combine(key, params.max_concurrent_adapters);
+#ifdef DEADCODE  
   for (auto const &kv : params.peft_configs) {
     hash_combine(key, kv.first.id);
     hash_combine(key, kv.second.rank);
@@ -1411,6 +1433,7 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
     hash_combine(key, kv.second.target_modules);
     hash_combine(key, kv.second.init_lora_weights);
   }
+#endif
   return key;
 }
 }; // namespace std

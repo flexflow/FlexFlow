@@ -208,7 +208,7 @@ public:
 class LoraLinearParams {
 public:
   LayerID layer_guid;
-  OperatorType type;
+  // OperatorType type;
   // std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
   int max_rank;
   int max_concurrent_adapters;
