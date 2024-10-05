@@ -407,56 +407,6 @@ void LoraLinear::init_inference(
   set_opmeta_from_futuremap_inference(ff, fm, output_tensor);
 }
 
-template <typename DT>
-void load_peft_from_file(DT *ptr,
-                         size_t num_rows,
-                         size_t num_columns,
-                         int num_shards,
-                         int shard_id,
-                         std::string filepath) {
-  std::ifstream in(filepath, std::ios::in | std::ios::binary);
-  if (!in.good()) {
-    printf("Could not open file: %s\n", filepath.c_str());
-  }
-  assert(in.good() && "incorrect weight file path");
-
-  // HuggingFace dims (serialized in row-major order)
-  //    lora_A: [rank, intermediate_dim]
-  //    lora_B: [hidden_dim, rank]
-  // FlexFlow dims (serialized in column-major order)
-  //    lora_A: [intermediate_dim, rank]
-  //    lora_B: [rank, out_dim]
-  // Tensor parallelism: shard lora_A along intermediate_dim, replicate lora_B
-  assert(num_rows % num_shards == 0);
-  size_t chunk_size = num_rows / num_shards;
-  size_t offset = (num_shards > 1) ? shard_id * chunk_size : 0;
-
-  // Allocate memory for the weight shard
-  std::vector<DT> host_array(chunk_size * num_columns);
-  // Read the chunk
-  size_t total_size_read = 0;
-  for (int i = 0; i < num_columns; ++i) {
-    in.seekg((i * num_rows + offset) * sizeof(DT));
-    in.read(reinterpret_cast<char *>(host_array.data() + i * chunk_size),
-            chunk_size * sizeof(DT));
-    total_size_read += in.gcount();
-  }
-  // Check weight shard size
-  size_t expected_data_size = chunk_size * num_columns * sizeof(DT);
-  if (total_size_read != expected_data_size) {
-    printf("load weight data error: expected %lu bytes, got: %lu bytes, data "
-           "size: %lu\n",
-           expected_data_size,
-           total_size_read,
-           sizeof(DT));
-    assert(false);
-  }
-  assert(host_array.size() == chunk_size * num_columns);
-  // Copy weight to device memory
-  copy_tensor_host_to_dev(ptr, host_array.data(), chunk_size * num_columns);
-  in.close();
-}
-
 /*
   regions[0](O): output
   regions[1](I): kernel
@@ -524,13 +474,13 @@ OpMeta *LoraLinear::init_task(Task const *task,
   
   // allocate space for lora weights
   size_t max_lora_size = data_type_size(dt) * (lora->max_rank * in_dim + lora->max_rank * out_dim);
-  m->peft_memory_manager = new PEFTMemoryManager(max_lora_size, lora->max_concurrent_adapters);
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
-  m->peft_memory_manager->allocate_inference_memory(gpu_mem);
-
+  m->peft_memory_manager = new PEFTMemoryManager(gpu_mem, max_lora_size, lora->max_concurrent_adapters, in_dim, out_dim, num_shards, shard_id, lora_layername_substr, dt);
+  m->peft_memory_manager->allocate_inference_memory();
   return m;
 }
 
+#ifdef DEADCODE
 void load_peft_adapters(BatchConfig const *bc){
   for (auto const &kv : bc->peft_configs) {
     PEFTModelID const &model_id = kv.first;
@@ -689,6 +639,7 @@ void load_peft_adapters(BatchConfig const *bc){
     m->model_state[model_id].peft_model_id = lora_config.peft_model_id;
   }
 }
+#endif
 
 void LoraLinear::forward(FFModel const &ff) {
   assert(false && "LoraLinear does not support normal init");

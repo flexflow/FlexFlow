@@ -147,56 +147,8 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
 
 namespace Internal {
 
-template <typename DT>
-void init_kernel(LoraLinearMeta *m, int seed, cudaStream_t stream) {
-  // Initialize generator
-  std::mt19937 gen(seed);
 
-  // Get handle to weights by iterating over m->model_state to get each
-  // LoraLinearWeight object
-  for (auto &model_state : m->model_state) {
-    LoraLinearWeight weight = model_state.second.weights;
-    int w0_num_elements = weight.rank * weight.in_dim;
-    int w1_num_elements = weight.rank * weight.out_dim;
-
-    // LoRA_A weight: [in_dim, rank]
-    float stdv_lora_a = 1.0f / sqrt(weight.in_dim);
-    std::uniform_real_distribution<float> dis_lora_a(-stdv_lora_a, stdv_lora_a);
-    std::vector<DT> lora_a_random_init(w0_num_elements);
-    for (auto &num : lora_a_random_init) {
-      float num_float = dis_lora_a(gen);
-      if (std::is_same<DT, half>::value) {
-        num = __float2half(num_float);
-      } else {
-        num = num_float;
-      }
-    }
-    checkCUDA(cudaMemcpyAsync(static_cast<DT *>(weight.w0_ptr),
-                              lora_a_random_init.data(),
-                              w0_num_elements * sizeof(DT),
-                              cudaMemcpyHostToDevice,
-                              stream));
-
-    // LoRA_B weight: [rank, out_dim]
-    float stdv_lora_b = 1.0f / sqrt(weight.rank);
-    std::uniform_real_distribution<float> dis_lora_b(-stdv_lora_b, stdv_lora_b);
-    std::vector<float> lora_b_random_init(w1_num_elements);
-    for (auto &num : lora_b_random_init) {
-      float num_float = dis_lora_b(gen);
-      if (std::is_same<DT, half>::value) {
-        num = __float2half(num_float);
-      } else {
-        num = num_float;
-      }
-    }
-    checkCUDA(cudaMemcpyAsync(static_cast<DT *>(weight.w1_ptr),
-                              lora_b_random_init.data(),
-                              w1_num_elements * sizeof(DT),
-                              cudaMemcpyHostToDevice,
-                              stream));
-  }
-}
-
+#ifdef DEADCODE
 template <typename DT>
 void inference_kernel(LoraLinearMeta *m,
                       BatchConfig const *bc,
@@ -333,6 +285,57 @@ void inference_kernel(LoraLinearMeta *m,
                            out_dim,
                            compute_type,
                            CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+  }
+}
+#endif
+
+bool lora_applies_to_this_layer(LoraLinearMeta *m, LoraLinearConfig const &config) {
+  for (std::string s : config.target_modules) {
+    std::string n(m->op_name);
+    if (n.find(s) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
+}
+
+
+template <typename DT>
+void inference_kernel(LoraLinearMeta *m,
+                      BatchConfig const *bc,
+                      DT const *input_ptr,
+                      DT *output_ptr,
+                      int in_dim,
+                      int out_dim,
+                      int num_shards,
+                      ffStream_t stream) {
+  checkCUDA(cublasSetStream(m->handle.blas, stream));
+  checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+
+  int num_peft_requests = 0;
+  for (int i=0; i< bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i] || bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      continue;
+    }
+    if (bc->requestsInfo[i].peft_bwd) {
+      num_peft_requests++;
+    }
+    LoraLinearConfig deserialized_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_adapters[bc->requestsInfo[i].peft_model_id]);
+    if (!lora_applies_to_this_layer(m, deserialized_config)) {
+      continue;
+    }
+    assert(lora_config.trainable == bc->requestsInfo[i].peft_bwd && "Trainable flag mismatch");
+    bool cache_miss;
+    void *peft_slot;
+    if (!lora_config.trainable) {
+      peft_slot = m->peft_memory_manager->get_peft_model_handle(bc->requestsInfo[i].peft_model_id, &cache_miss);
+    } else {
+      peft_slot = m->peft_memory_manager->get_finetuning_handle(bc->requestsInfo[i].peft_model_id, &cache_miss);
+    }
+    if (cache_miss) {
+      // load model into memory
+      load_peft_model(m, peft_slot, deserialized_config, in_dim, out_dim, num_shards);
+    }
   }
 }
 
