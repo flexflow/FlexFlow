@@ -2,12 +2,12 @@
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.h"
 #include "pcg/multi_dimensional_stride.dtg.h"
-#include "pcg/task_space_operator.h"
+#include "pcg/operator_task_space.h"
 #include "utils/containers/all_of.h"
 #include "utils/containers/cartesian_product.h"
 #include "utils/containers/extend.h"
 #include "utils/containers/filter.h"
-#include "utils/containers/get_all_permutations.h"
+#include "utils/containers/get_all_permutations_with_repetition.h"
 #include "utils/containers/map_from_keys_and_values.h"
 #include "utils/containers/product.h"
 #include "utils/containers/range.h"
@@ -22,11 +22,11 @@
 namespace FlexFlow {
 
 bool is_valid_machine_view(MachineView const &mv,
-                           TaskSpaceOperator const &task,
+                           OperatorTaskSpace const &task,
                            MachineSpecification const &ms) {
   MachineSpaceCoordinate maximum_device_coords = get_machine_space_coordinate(
-      task, mv, get_maximum_fragment_coordinate(task), ms);
-  return is_valid_machine_space_coordinates(ms, maximum_device_coords);
+      task, mv, get_task_space_maximum_coordinate(task), ms);
+  return is_valid_machine_space_coordinate(ms, maximum_device_coords);
 }
 
 /* Generates a set of candidate `MachineView`s
@@ -39,18 +39,21 @@ bool is_valid_machine_view(MachineView const &mv,
  */
 static std::unordered_set<MachineView>
     get_candidate_machine_views(MachineSpecification const &machine_spec,
-                                TaskSpaceOperator const &task,
+                                OperatorTaskSpace const &task,
                                 DeviceType const &device_type) {
 
-  auto candidate_strides =
-      [](std::vector<num_points_t> const &tensor_dims,
-         int total_devices) -> std::unordered_multiset<MultiDimensionalStride> {
-    int min_num_devices_with_full_stride_volume =
-        product(transform(tensor_dims, [](num_points_t const &num_devices) {
-          return num_devices.unwrapped - 1;
-        }));
+  auto get_max_stride_upper_bound = [](std::vector<int> const &tensor_dims,
+                                       int total_devices) -> int {
+    int min_num_devices_with_full_stride_volume = product(transform(
+        tensor_dims, [](int const &num_devices) { return num_devices - 1; }));
+    return std::ceil(total_devices / min_num_devices_with_full_stride_volume);
+  };
+
+  auto candidate_strides = [&](std::vector<int> const &tensor_dims,
+                               int total_devices)
+      -> std::unordered_multiset<MultiDimensionalStride> {
     int max_stride_upper_bound =
-        std::ceil(total_devices / min_num_devices_with_full_stride_volume);
+        get_max_stride_upper_bound(tensor_dims, total_devices);
 
     std::vector<stride_t> single_stride_range =
         transform(range(1, max_stride_upper_bound + 1),
@@ -75,14 +78,14 @@ static std::unordered_set<MachineView>
     return result;
   };
 
-  auto candidate_projections = [](TaskSpaceOperator const &task) {
+  auto candidate_projections = [](OperatorTaskSpace const &task) {
     std::unordered_set<MachineSpecificationDimension> options = {
         MachineSpecificationDimension::INTER_NODE,
         MachineSpecificationDimension::INTRA_NODE};
     return get_all_permutations_with_repetition(options, num_dims(task));
   };
 
-  std::vector<num_points_t> tensor_dims = task.degrees;
+  std::vector<int> tensor_dims = task.degrees;
   int total_devices = get_num_devices(machine_spec, device_type);
 
   std::unordered_set<MachineView> machine_views;
@@ -102,7 +105,7 @@ static std::unordered_set<MachineView>
 
 std::unordered_set<MachineView>
     get_allowed_machine_views(MachineSpecification const &machine_spec,
-                              TaskSpaceOperator const &task,
+                              OperatorTaskSpace const &task,
                               DeviceType device_type) {
 
   std::unordered_set<MachineView> views =

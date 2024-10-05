@@ -4,7 +4,7 @@
 #include "machine_specification.dtg.h"
 #include "machine_view.dtg.h"
 #include "pcg/device_id_t.dtg.h"
-#include "pcg/task_space_operator.dtg.h"
+#include "pcg/operator_task_space.dtg.h"
 #include "task_space_coordinate.dtg.h"
 #include <cstddef>
 #include <unordered_set>
@@ -12,13 +12,13 @@
 namespace FlexFlow {
 
 MachineSpaceCoordinate
-    get_machine_space_coordinate(TaskSpaceOperator const &task,
+    get_machine_space_coordinate(OperatorTaskSpace const &task,
                                  MachineView const &mv,
                                  TaskSpaceCoordinate const &coordinates,
                                  MachineSpecification const &ms);
 
 std::unordered_set<MachineSpaceCoordinate>
-    get_machine_space_coordinates(TaskSpaceOperator const &task,
+    get_machine_space_coordinates(OperatorTaskSpace const &task,
                                   MachineView const &mv,
                                   MachineSpecification const &ms);
 

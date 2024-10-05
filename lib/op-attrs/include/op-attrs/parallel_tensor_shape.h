@@ -1,7 +1,9 @@
 #ifndef _OP_META_PARALLEL_TENSOR_SHAPE_H
 #define _OP_META_PARALLEL_TENSOR_SHAPE_H
 
+#include "op-attrs/parallel_dim.h"
 #include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
+#include "op-attrs/parallel_tensor_dim_idx_t.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/replica_parallel_dim.dtg.h"
 #include "op-attrs/tensor_shape.h"
@@ -49,6 +51,12 @@ std::vector<TensorShape>
     get_tensor_shapes_unsafe(std::vector<ParallelTensorShape> const &);
 
 TensorShape get_reduced_shape(ParallelTensorShape const &);
+
+ParallelDim get_parallel_dim_at_idx(ParallelTensorShape const &shape,
+                                    parallel_tensor_dim_idx_t idx);
+
+std::unordered_set<parallel_tensor_dim_idx_t>
+    get_parallel_tensor_dim_indices(ParallelTensorShape const &shape);
 
 } // namespace FlexFlow
 

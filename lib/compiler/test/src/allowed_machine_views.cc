@@ -16,7 +16,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("1 degree of parallelism") {
 
       MachineSpecification ms = MachineSpecification{1, 5, 5, 0, 0};
-      TaskSpaceOperator task = TaskSpaceOperator{{num_points_t{3}}};
+      OperatorTaskSpace task = OperatorTaskSpace{{3}};
 
       std::unordered_set<MachineView> correct = {
           MachineView{{{stride_t{1}}},
@@ -43,8 +43,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("2 degrees of parallelism") {
 
       MachineSpecification ms = MachineSpecification{3, 3, 3, 0, 0};
-      TaskSpaceOperator task =
-          TaskSpaceOperator{{num_points_t{2}, num_points_t{3}}};
+      OperatorTaskSpace task = OperatorTaskSpace{{2, 3}};
 
       auto make_2d_views = [&](int start_x,
                                int start_y,

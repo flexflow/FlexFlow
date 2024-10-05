@@ -3,20 +3,17 @@
 
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_view.dtg.h"
-#include "pcg/task_space_operator.dtg.h"
+#include "pcg/operator_task_space.dtg.h"
 
 namespace FlexFlow {
 
 bool is_valid_machine_view(MachineView const &mv,
-                           TaskSpaceOperator const &task,
+                           OperatorTaskSpace const &task,
                            MachineSpecification const &ms);
-
-bool is_valid_machine_view(MachineView const &mv,
-                           TaskSpaceOperator const &task);
 
 std::unordered_set<MachineView>
     get_allowed_machine_views(MachineSpecification const &machine_spec,
-                              TaskSpaceOperator const &task,
+                              OperatorTaskSpace const &task,
                               DeviceType device_type);
 
 } // namespace FlexFlow

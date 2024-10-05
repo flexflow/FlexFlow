@@ -25,14 +25,17 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_machine_space_coordinate") {
     SUBCASE("1D case") {
 
-      TaskSpaceOperator task = TaskSpaceOperator{{num_points_t{3}}};
+      OperatorTaskSpace task = OperatorTaskSpace{{3}};
       MachineView mv =
           MachineView{{{stride_t{2}}},
                       {{MachineSpecificationDimension::INTRA_NODE}},
                       MachineSpaceCoordinate{0, 1, DeviceType::GPU}};
 
-      MachineSpecification ms = MachineSpecification{
-          1, 6, 6, 0, 0}; // Single node with 6 GPUs (0,1,2,3,4,5)
+      MachineSpecification ms = MachineSpecification{/*num_nodes*/ 1,
+                                                     /*num_cpus_per_node*/ 6,
+                                                     /*num_gpus_per_node*/ 6,
+                                                     0,
+                                                     0};
 
       SUBCASE("Fragment 0") {
         TaskSpaceCoordinate coord = TaskSpaceCoordinate{{0}};
@@ -63,16 +66,18 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
     SUBCASE("2D case") {
 
-      TaskSpaceOperator task =
-          TaskSpaceOperator{{num_points_t{2}, num_points_t{2}}};
+      OperatorTaskSpace task = OperatorTaskSpace{{2, 2}};
       MachineView mv =
           MachineView{{{stride_t{1}, stride_t{2}}},
                       {{MachineSpecificationDimension::INTER_NODE,
                         MachineSpecificationDimension::INTRA_NODE}},
                       MachineSpaceCoordinate{1, 2, DeviceType::GPU}};
 
-      MachineSpecification ms =
-          MachineSpecification{3, 5, 5, 0, 0}; // 3 Nodes, 5 GPUs each
+      MachineSpecification ms = MachineSpecification{/*num_nodes*/ 3,
+                                                     /*num_cpus_per_node*/ 5,
+                                                     /*num_gpus_per_node*/ 5,
+                                                     0,
+                                                     0};
 
       SUBCASE("Fragment (0,0)") {
         TaskSpaceCoordinate coord = TaskSpaceCoordinate{{0, 0}};
@@ -111,8 +116,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("3D case") {
-      TaskSpaceOperator task = TaskSpaceOperator{
-          {num_points_t{2}, num_points_t{2}, num_points_t{2}}};
+      OperatorTaskSpace task = OperatorTaskSpace{{2, 2, 2}};
       MachineView mv =
           MachineView{{{stride_t{1}, stride_t{2}, stride_t{1}}},
                       {{MachineSpecificationDimension::INTER_NODE,
@@ -120,8 +124,11 @@ TEST_SUITE(FF_TEST_SUITE) {
                         MachineSpecificationDimension::INTRA_NODE}},
                       MachineSpaceCoordinate{0, 1, DeviceType::GPU}};
 
-      MachineSpecification ms =
-          MachineSpecification{2, 8, 8, 0, 0}; // 2 Nodes, 8 GPUs each
+      MachineSpecification ms = MachineSpecification{/*num_nodes*/ 2,
+                                                     /*num_cpus_per_node*/ 8,
+                                                     /*num_gpus_per_node*/ 8,
+                                                     0,
+                                                     0};
 
       SUBCASE("Fragment (0,0,1)") {
         TaskSpaceCoordinate coord = TaskSpaceCoordinate{{0, 1, 0}};

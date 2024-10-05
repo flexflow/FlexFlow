@@ -14,11 +14,11 @@ includes = [
 ]
 
 [[fields]]
-name = "inter"
+name = "node_idx"
 type = "int"
 
 [[fields]]
-name = "intra"
+name = "device_idx"
 type = "int"
 
 [[fields]]

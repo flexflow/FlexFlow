@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "TaskSpaceOperator"
+name = "OperatorTaskSpace"
 features = [
   "eq",
   "ord",
@@ -11,7 +11,6 @@ features = [
 
 includes = [ 
   "<vector>",
-  "pcg/num_points_t.dtg.h"
 ]
 
 src_includes = [
@@ -21,4 +20,4 @@ src_includes = [
 
 [[fields]]
 name = "degrees"
-type = "std::vector<::FlexFlow::num_points_t>"
+type = "std::vector<int>"
