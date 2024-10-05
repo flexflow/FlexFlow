@@ -21,6 +21,7 @@ void PEFTMemoryManager::allocate_inference_memory() {
 
 void PEFTMemoryManager::allocate_finetuning_memory() {
     size_t ft_size = max_lora_size*3; // weights, gradients, momentum values
+    ft_size += max_peft_tokens*(in_dim+rank); // input, low-rank activations
     // allocate chunk of memory for PEFT adapter
     Realm::Rect<1, coord_t> bounds(
         Realm::Point<1, coord_t>(0),
@@ -254,10 +255,20 @@ LoraLinearWeight PEFTMemoryManager::get_finetuning_peft(PEFTModelID const &model
     result.w1_grad_ptr = result.w0_grad_ptr + w0_num_elements*data_size;
     result.w0_v_values_ptr = result.w1_grad_ptr + w1_num_elements*data_size;
     result.w1_v_values_ptr = result.w0_v_values_ptr + w0_num_elements*data_size;
+    result.input_activation = result.w1_v_values_ptr + w1_num_elements*data_size; // max_peft_tokens*in_dim
+    result.low_rank_activation = result.input_activation + max_peft_tokens*in_dim*data_size; // max_peft_tokens*rank
     if (cache_miss) {
       load_peft_model(result, lora_config);
     }
     return result;
+}
+
+LoraLinearWeight PEFTMemoryManager::get_peft(PEFTModelID const &model_id, LoraLinearConfig const &lora_config) {
+    if (lora_config.trainable) {
+      return get_finetuning_peft(model_id, lora_config);
+    } else {
+      return get_inference_peft(model_id, lora_config);
+    }
 }
 
 }; // namespace FlexFlow

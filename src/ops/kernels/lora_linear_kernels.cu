@@ -311,6 +311,12 @@ void inference_kernel(LoraLinearMeta *m,
                       ffStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
+  cudaDataType_t input_type = ff_to_cuda_datatype(m->input_type[0]);
+  cudaDataType_t output_type = ff_to_cuda_datatype(m->input_type[1]);
+  cudaDataType_t lr_actv_type = output_type;
+  assert(input_type == output_type);
+  cudaDataType_t weight_type = output_type;
+  cudaDataType_t compute_type = output_type;
 
   int num_peft_requests = 0;
   for (int i=0; i< bc->max_requests_per_batch(); i++) {
@@ -320,22 +326,74 @@ void inference_kernel(LoraLinearMeta *m,
     if (bc->requestsInfo[i].peft_bwd) {
       num_peft_requests++;
     }
-    LoraLinearConfig deserialized_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_adapters[bc->requestsInfo[i].peft_model_id]);
-    if (!lora_applies_to_this_layer(m, deserialized_config)) {
+    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_adapters[bc->requestsInfo[i].peft_model_id]);
+    if (!lora_applies_to_this_layer(m, lora_config)) {
       continue;
     }
     assert(lora_config.trainable == bc->requestsInfo[i].peft_bwd && "Trainable flag mismatch");
-    bool cache_miss;
-    void *peft_slot;
-    if (!lora_config.trainable) {
-      peft_slot = m->peft_memory_manager->get_peft_model_handle(bc->requestsInfo[i].peft_model_id, &cache_miss);
+    int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
+    // int max_peft_tokens = bc->requestsInfo[i].max_length;
+    int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
+    LoraLinearWeight weight = m->peft_memory_manager->get_peft(bc->requestsInfo[i].peft_model_id, lora_config);
+    void *intermediate_result_ptr = (bc->requestsInfo[i].peft_bwd) ? weight.low_rank_activation : m->handle.workSpace;
+    if (bc->requestsInfo[i].peft_bwd) {
+      checkCUDA(cudaMemcpyAsync(weight.input_activation,
+                                input_ptr + first_token_offset * in_dim,
+                                data_type_size(m->input_type[0]) *
+                                    num_peft_tokens * in_dim,
+                                cudaMemcpyDeviceToDevice,
+                                stream));
     } else {
-      peft_slot = m->peft_memory_manager->get_finetuning_handle(bc->requestsInfo[i].peft_model_id, &cache_miss);
+      // use workspace to save intermediate result
+      assert(m->handle.workSpaceSize >=
+             data_type_size(m->input_type[1]) * num_peft_tokens * lora_config.rank);
     }
-    if (cache_miss) {
-      // load model into memory
-      load_peft_model(m, peft_slot, deserialized_config, in_dim, out_dim, num_shards);
-    }
+    DT alpha = 1.0f, beta = 0.0f;
+    // buffer = weight_first * input
+    // [rank, num_peft_tokens] = [in_dim, rank].T * [in_dim, num_peft_tokens]
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_T,
+                           CUBLAS_OP_N,
+                           lora_config.rank,
+                           num_peft_tokens,
+                           in_dim,
+                           &alpha,
+                           weight.w0_ptr,
+                           weight_type,
+                           in_dim,
+                           input_ptr + first_token_offset * in_dim,
+                           input_type,
+                           in_dim,
+                           &beta,
+                           intermediate_result_ptr,
+                           lr_actv_type,
+                           lora_config.rank,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+    // output = weight_second * buffer
+    // [out_dim, num_peft_tokens] = [rank, out_dim].T * [rank, num_peft_tokens]
+    // Note that we use alpha in both places since we do
+    // an in-place update for LoraLinear
+    DT scaling_constant = (DT)(lora_config.lora_alpha / lora_config.rank);
+    checkCUDA(cublasGemmEx(m->handle.blas,
+                           CUBLAS_OP_T,
+                           CUBLAS_OP_N,
+                           out_dim,
+                           num_peft_tokens,
+                           lora_config.rank,
+                           &scaling_constant,
+                           weight.w1_ptr,
+                           weight_type,
+                           lora_config.rank,
+                           intermediate_result_ptr,
+                           lr_actv_type,
+                           lora_config.rank,
+                           &alpha,
+                           output_ptr + first_token_offset * out_dim,
+                           output_type,
+                           out_dim,
+                           compute_type,
+                           CUBLAS_GEMM_DEFAULT_TENSOR_OP));
   }
 }
 
