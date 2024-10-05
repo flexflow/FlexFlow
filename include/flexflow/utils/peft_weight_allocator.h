@@ -133,6 +133,7 @@ public:
   void allocate_finetuning_memory();
 
   LoraLinearWeight get_peft(PEFTModelID const &model_id, LoraLinearConfig const &lora_config);
+  void check_ft_model_id(PEFTModelID const &model_id);
 
 private:
   // Check if the PEFT adapter for the given model is in memory. If not, sets the cache_miss flag to true. If this is the first finetuning request, allocate memory for the finetuning adapter.

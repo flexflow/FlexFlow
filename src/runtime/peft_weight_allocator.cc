@@ -271,4 +271,8 @@ LoraLinearWeight PEFTMemoryManager::get_peft(PEFTModelID const &model_id, LoraLi
     }
 }
 
+void PEFTMemoryManager::check_ft_model_id(PEFTModelID const &model_id) {
+    assert(finetuning_model_id == model_id && "PEFT bwd model is not in memory!");
+}
+
 }; // namespace FlexFlow
