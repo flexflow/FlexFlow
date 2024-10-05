@@ -2795,6 +2795,9 @@ void RequestManager::prune_token_tree() {
     RequestGuid guid = guid_of_requests[request_index];
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
+    if (request.get_slo_ratio() < 0) {
+      continue;
+    }
     double spare_latency =
         get_request_expected_latency(request) - request.decode_latency_ms;
     spare_latency_2_request_index.push_back(
