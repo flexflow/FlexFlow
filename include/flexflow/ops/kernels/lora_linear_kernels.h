@@ -9,16 +9,7 @@
 
 namespace FlexFlow {
 
-struct LoraLinearWeight {
-  // weights
-  void *w0_ptr, *w1_ptr;
-  // gradients
-  void *w0_grad_ptr, *w1_grad_ptr;
-  // v values for SGD optimizer (when using momentum)
-  void *w0_v_values_ptr, *w1_v_values_ptr;
-  int in_dim, out_dim, rank, num_shards;
-};
-
+#ifdef DEADCODE
 struct LoraLinearModelState {
   LoraLinearWeight weights;
   LoraOptimizerConfig const *optimizer_config;
@@ -27,16 +18,19 @@ struct LoraLinearModelState {
   // Huggingface model ID (for download and/or upload)
   std::string peft_model_id;
 };
+#endif
 
 class LoraLinearMeta : public OpMeta {
 public:
   LoraLinearMeta(FFHandler handle, LoraLinear const *li);
   ~LoraLinearMeta(void);
   // PEFT related fields
-  void *low_rank_activation;
-  void *input_activation;
-  std::unordered_map<PEFTModelID, LoraLinearModelState> model_state;
-  size_t allocated_peft_buffer_size1 = 0, allocated_peft_buffer_size2 = 0;
+  // void *low_rank_activation;
+  // void *input_activation;
+  // std::unordeded_map<PEFTModelID, LoraLinearWeight> model_state;
+  // std::unordered_map<PEFTModelID, LoraLinearModelState> model_state;
+  // size_t allocated_peft_buffer_size1 = 0, allocated_peft_buffer_size2 = 0;
+  PEFTMemoryManager *peft_memory_manager;
 };
 
 namespace Kernels {

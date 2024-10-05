@@ -51,6 +51,85 @@ bool check_lora_layer_match(Layer *potential_target,
   return false;
 }
 
+void FFmodel::add_lora_layers(std::vector<std::string> target_modules) {
+  assert(config.enable_peft && "Cannot add a LoRA layer if PEFT mode is not enabled");
+  assert(target_modules.size() > 0 && "LoRA target module name is empty");
+  RequestManager *rm = RequestManager::get_request_manager();
+  int max_lora_rank = rm->get_max_lora_rank();
+  int max_concurrent_adapters = rm->get_max_concurrent_adapters();
+  assert(max_rank > 1 && max_rank <= 32 && "Invalid max LoRA rank");
+  assert(max_concurrent_adapters > 0 && "Invalid number of LoRA concurrent adapters");
+
+  for (std::string target_module_name : target_modules) {
+    assert(target_module_name.length() > 0 && "LoRA target module name is empty");
+    // find target layer
+    for (auto it = layers.begin(); it != layers.end(); ++it) {
+      Layer *target_module = *it;
+      bool match = check_lora_layer_match(target_module, target_module_name);
+      if (!match) {
+        continue;
+      }
+      assert(base_layer_to_peft_layer.find(target_module) == base_layer_to_peft_layer.end() && "LoRA layer already added, attempting to add again");
+      // Get input and output tensors from target module
+      Tensor const input = target_module->inputs[0];
+      Tensor const output = target_module->outputs[0];
+      assert(input->data_type == output->data_type);
+      // Compute OP_LORA layer name, based on target module name
+      std::string name_ = target_module->name
+                              ? std::string(target_module->name)
+                              : std::string("");
+      size_t last_underscore = name_.length() - 1;
+      for (int i = name_.length() - 1; i > 0; i--) {
+        if (!(std::isdigit(target_module->name[i]) ||
+              target_module->name[i] == '_')) {
+          break;
+        } else if (target_module->name[i] == '_') {
+          last_underscore = i;
+        }
+      }
+      name_.erase(last_underscore);
+      name_ += ".lora";
+      std::cout << "Adding layer " << name_ << std::endl;
+      // Create OP_LORA layer given input, output and name
+      Layer *peft_layer = new Layer(this,
+                                    OP_LORA,
+                                    output->data_type,
+                                    name_.c_str(),
+                                    2 /*inputs*/,
+                                    0 /*weights*/,
+                                    1 /*outputs*/,
+                                    input,
+                                    output);
+      // fix LoRA layer's transformer layer ID and model ID (to be the same as target module)
+      peft_layer->layer_guid.transformer_layer_id =
+          target_module->layer_guid.transformer_layer_id;
+      peft_layer->layer_guid.model_id = target_module->layer_guid.model_id;
+      // set up output tensor for OP_LORA layer
+      {
+        int numdims = output->num_dims;
+        int dims[MAX_TENSOR_DIM];
+        for (int i = 0; i < numdims; i++) {
+          dims[i] = output->dims[i];
+        }
+        peft_layer->outputs[0] =
+            create_tensor_legion_ordering(numdims,
+                                          dims,
+                                          output->data_type,
+                                          peft_layer,
+                                          0,
+                                          true /*create_grad*/);
+      }
+      // pass max_rank and max_concurrent_adapters to OP_LORA layer
+      peft_layer->add_int_property("max_rank", max_rank);
+      peft_layer->add_int_property("max_concurrent_adapters", max_concurrent_adapters);
+      it = layers.insert(it + 1, peft_layer);
+      ++it;
+      base_layer_to_peft_layer[target_module] = peft_layer;
+    }
+  }
+}
+
+#ifdef DEADCODE
 PEFTModelID *FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
   assert(config.enable_peft &&
          "Cannot add a LoRA layer if PEFT mode is not enabled");
@@ -175,11 +254,18 @@ PEFTModelID *FFModel::add_lora_layer(LoraLinearConfig const peft_config) {
 
   return peft_model_id;
 }
+#endif
 
 Op *LoraLinear::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
+  long long value;
+  layer->get_int_property("max_rank", value);
+  int max_rank = value;
+  layer->get_int_property("max_concurrent_adapters", max_concurrent_adapters);
+  int max_concurrent_adapters = value;
+#ifdef DEADCODE
   std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs;
   std::vector<PEFTModelID> const &peft_ids =
       model.peft_layer_to_peft_id[(Layer *)layer];
@@ -187,12 +273,14 @@ Op *LoraLinear::create_operator_from_layer(
     _peft_configs.emplace(
         std::make_pair(peft_ids[i], model.peft_configs[peft_ids[i]]));
   }
+#endif
   return new LoraLinear(model,
                         layer->layer_guid,
                         layer->op_type,
                         inputs[0],
                         inputs[1],
-                        _peft_configs,
+                        max_rank,
+                        max_concurrent_adapters,
                         layer->name);
 }
 
@@ -205,7 +293,8 @@ LoraLinear::LoraLinear(FFModel &model,
                  other.op_type,
                  input,
                  output,
-                 other.peft_configs,
+                 other.max_rank,
+                other.max_concurrent_adapters,
                  other.name) {}
 
 LoraLinear::LoraLinear(FFModel &model,
@@ -217,7 +306,8 @@ LoraLinear::LoraLinear(FFModel &model,
                  params.type,
                  inputs.first,
                  inputs.second,
-                 params.peft_configs,
+                 params.max_rank,
+                 params.max_concurrent_adapters,
                  params.name) {}
 
 LoraLinear::LoraLinear(
@@ -226,7 +316,9 @@ LoraLinear::LoraLinear(
     OperatorType _op_type,
     ParallelTensor const _input,
     ParallelTensor const _output,
-    std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
+    int _max_rank,
+    int _max_concurrent_adapters,
+    // std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
     char const *name)
     : Op(model,
          _op_type,
@@ -256,9 +348,11 @@ LoraLinear::LoraLinear(
     outputs[0] = model.create_parallel_tensor_legion_ordering(
         numdim, dims, inputs[1]->data_type, this);
   }
-  for (auto const &kv : _peft_configs) {
-    peft_configs.insert(kv);
-  }
+  // for (auto const &kv : _peft_configs) {
+  //   peft_configs.insert(kv);
+  // }
+  max_rank = _max_rank;
+  max_concurrent_adapters = _max_concurrent_adapters;
   // assert(check_output_input_weight_parallel_dims(allocate_weights));
 }
 
@@ -312,56 +406,6 @@ void LoraLinear::init_inference(
   FutureMap fm = runtime->execute_index_space(ctx, launcher);
   fm.wait_all_results();
   set_opmeta_from_futuremap_inference(ff, fm, output_tensor);
-}
-
-template <typename DT>
-void load_peft_from_file(DT *ptr,
-                         size_t num_rows,
-                         size_t num_columns,
-                         int num_shards,
-                         int shard_id,
-                         std::string filepath) {
-  std::ifstream in(filepath, std::ios::in | std::ios::binary);
-  if (!in.good()) {
-    printf("Could not open file: %s\n", filepath.c_str());
-  }
-  assert(in.good() && "incorrect weight file path");
-
-  // HuggingFace dims (serialized in row-major order)
-  //    lora_A: [rank, intermediate_dim]
-  //    lora_B: [hidden_dim, rank]
-  // FlexFlow dims (serialized in column-major order)
-  //    lora_A: [intermediate_dim, rank]
-  //    lora_B: [rank, out_dim]
-  // Tensor parallelism: shard lora_A along intermediate_dim, replicate lora_B
-  assert(num_rows % num_shards == 0);
-  size_t chunk_size = num_rows / num_shards;
-  size_t offset = (num_shards > 1) ? shard_id * chunk_size : 0;
-
-  // Allocate memory for the weight shard
-  std::vector<DT> host_array(chunk_size * num_columns);
-  // Read the chunk
-  size_t total_size_read = 0;
-  for (int i = 0; i < num_columns; ++i) {
-    in.seekg((i * num_rows + offset) * sizeof(DT));
-    in.read(reinterpret_cast<char *>(host_array.data() + i * chunk_size),
-            chunk_size * sizeof(DT));
-    total_size_read += in.gcount();
-  }
-  // Check weight shard size
-  size_t expected_data_size = chunk_size * num_columns * sizeof(DT);
-  if (total_size_read != expected_data_size) {
-    printf("load weight data error: expected %lu bytes, got: %lu bytes, data "
-           "size: %lu\n",
-           expected_data_size,
-           total_size_read,
-           sizeof(DT));
-    assert(false);
-  }
-  assert(host_array.size() == chunk_size * num_columns);
-  // Copy weight to device memory
-  copy_tensor_host_to_dev(ptr, host_array.data(), chunk_size * num_columns);
-  in.close();
 }
 
 /*
@@ -428,8 +472,18 @@ OpMeta *LoraLinear::init_task(Task const *task,
   }
   std::string lora_layername_substr =
       lora_layername.substr(0, found + searchString.length());
+  
+  // allocate space for lora weights
+  size_t max_lora_size = data_type_size(dt) * (lora->max_rank * in_dim + lora->max_rank * out_dim);
+  Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
+  m->peft_memory_manager = new PEFTMemoryManager(gpu_mem, max_lora_size, lora->max_concurrent_adapters, in_dim, out_dim, num_shards, shard_id, lora_layername_substr, dt);
+  m->peft_memory_manager->allocate_inference_memory();
+  return m;
+}
 
-  for (auto const &kv : lora->peft_configs) {
+#ifdef DEADCODE
+void load_peft_adapters(BatchConfig const *bc){
+  for (auto const &kv : bc->peft_configs) {
     PEFTModelID const &model_id = kv.first;
     LoraLinearConfig const &lora_config = kv.second;
 
@@ -585,8 +639,8 @@ OpMeta *LoraLinear::init_task(Task const *task,
     m->model_state[model_id].cache_folder = lora_config.cache_folder;
     m->model_state[model_id].peft_model_id = lora_config.peft_model_id;
   }
-  return m;
 }
+#endif
 
 void LoraLinear::forward(FFModel const &ff) {
   assert(false && "LoraLinear does not support normal init");
@@ -1099,14 +1153,17 @@ bool LoraLinear::measure_operator_cost(Simulator *sim,
 }
 
 bool operator==(LoraLinearParams const &lhs, LoraLinearParams const &rhs) {
-  if (lhs.layer_guid == rhs.layer_guid && lhs.type == rhs.type &&
-      lhs.peft_configs.size() == rhs.peft_configs.size()) {
+  if (lhs.layer_guid == rhs.layer_guid && lhs.max_rank == rhs.max_rank &&
+      lhs.max_concurrent_adapters == rhs.max_concurrent_adapters &&
+      strcmp(lhs.name, rhs.name) == 0) {
+#ifdef DEADCODE
     for (auto const &kv : lhs.peft_configs) {
       auto it = rhs.peft_configs.find(kv.first);
       if (it == rhs.peft_configs.end() || !(it->second == kv.second)) {
         return false;
       }
     }
+#endif
     return true;
   }
   return false;
@@ -1145,6 +1202,9 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
+  sez.serialize(this->max_rank);
+  sez.serialize(this->max_concurrent_adapters);
+#ifdef DEADCODE  
   sez.serialize(this->op_type);
   sez.serialize(this->peft_configs.size());
   for (auto const &kv : this->peft_configs) {
@@ -1187,6 +1247,7 @@ void LoraLinear::serialize(Legion::Serializer &sez) const {
       }
     }
   }
+#endif
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
 }
@@ -1199,8 +1260,9 @@ Node LoraLinear::deserialize(FFModel &ff,
                              int num_inputs) {
   assert(num_inputs == 2);
   size_t id, transformer_layer_id, deserialized_model_id;
-  OperatorType op_type;
-  size_t num_pefts;
+  int max_rank, max_concurrent_adapters;
+  // OperatorType op_type;
+  // size_t num_pefts;
   size_t name_len;
   char name[MAX_OPNAME] = {0};
 
@@ -1209,6 +1271,9 @@ Node LoraLinear::deserialize(FFModel &ff,
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
+  dez.deserialize(max_rank);
+  dez.deserialize(max_concurrent_adapters);
+#ifdef DEADCODE
   dez.deserialize(op_type);
   dez.deserialize(num_pefts);
   for (int i = 0; i < num_pefts; i++) {
@@ -1259,12 +1324,15 @@ Node LoraLinear::deserialize(FFModel &ff,
     params.peft_configs.emplace(
         std::make_pair(peft_model_id, *lora_linear_config));
   }
+#endif  
   dez.deserialize(name_len);
   dez.deserialize(name, name_len);
   LayerID layer_guid(id, transformer_layer_id, deserialized_model_id);
 
   params.layer_guid = layer_guid;
-  params.type = op_type;
+  // params.type = op_type;
+  params.max_rank = max_rank;
+  params.max_concurrent_adapters = max_concurrent_adapters;
   strcpy(params.name, name);
   return ff.get_or_create_node<LoraLinear>({inputs[0], inputs[1]}, params);
 }
@@ -1279,11 +1347,13 @@ Op *LoraLinear::materialize(FFModel &ff,
 LoraLinearParams LoraLinear::get_params() const {
   LoraLinearParams params;
   params.layer_guid = this->layer_guid;
-  params.type = this->op_type;
+  params.max_rank = this->max_rank;
+  params.max_concurrent_adapters = this->max_concurrent_adapters;
+  // params.type = this->op_type;
   if (strlen(this->name) < MAX_OPNAME) {
     strcpy(params.name, this->name);
   }
-  params.peft_configs = this->peft_configs;
+  // params.peft_configs = this->peft_configs;
   return params;
 }
 
@@ -1302,6 +1372,9 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
   hash_combine(key, params.layer_guid.model_id);
+  hash_combine(key, params.max_rank);
+  hash_combine(key, params.max_concurrent_adapters);
+#ifdef DEADCODE  
   for (auto const &kv : params.peft_configs) {
     hash_combine(key, kv.first.id);
     hash_combine(key, kv.second.rank);
@@ -1313,6 +1386,7 @@ size_t hash<FlexFlow::LoraLinearParams>::operator()(
     hash_combine(key, kv.second.target_modules);
     hash_combine(key, kv.second.init_lora_weights);
   }
+#endif
   return key;
 }
 }; // namespace std

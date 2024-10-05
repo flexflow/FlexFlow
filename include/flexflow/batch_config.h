@@ -44,6 +44,11 @@ struct OptimizerTasks {
   bool save_updated_weights = false;
 };
 
+struct NewPeftModelPath {
+  PEFTModelID peft_model_id;
+  std::string filepath;
+};
+
 void set_optimizer_tasks(OptimizerTasks &tasks,
                          int max_training_steps,
                          int completed_training_steps,
@@ -87,25 +92,24 @@ public:
       first_token_depth_in_request = 0;
       first_token_offset_in_batch = 0;
       num_tokens_in_batch = 0;
-      max_sequence_length = 0;
+      max_length = 0;
       request_guid = 0;
       prompt_phase = false;
       batch_config_request_id = -1;
-      peft_model_id = PEFTModelID::NO_ID;
       peft_bwd = false;
       optimizer_tasks = {true, false, false, false};
     }
     int first_token_depth_in_request;
     int first_token_offset_in_batch;
     int num_tokens_in_batch;
-    int max_sequence_length;
+    int max_length;
 
     // request id in batch config:
     int batch_config_request_id = -1;
     bool prompt_phase = false;
     RequestGuid request_guid;
     // PEFT fields
-    PEFTModelID peft_model_id;
+    std::unordered_map<PEFTModelID, std::string> peft_adapters;
     bool peft_bwd;
     OptimizerTasks optimizer_tasks;
   };
@@ -135,6 +139,7 @@ public:
   PerRequestInfo requestsInfo[MAX_NUM_REQUESTS];
   PerTokenInfo tokensInfo[MAX_NUM_TOKENS];
   PerTokenInfo labelsInfo[MAX_NUM_TOKENS];
+  NewPeftModelPath new_peft_model_paths[MAX_NUM_REQUESTS];
 
   bool request_completed[MAX_NUM_REQUESTS];
   bool request_running[MAX_NUM_REQUESTS];

@@ -38,9 +38,10 @@ from flexflow.type import (
 )
 from flexflow.config import *
 from .flexflowlib import ffi, flexflow_library
-from typing import Union, List
+from typing import Union, List, Optional
+from dataclasses import dataclass
 from peft import LoraConfig
-import json
+import json, math
 
 
 def ffc():
@@ -2049,25 +2050,16 @@ class PEFTModelID(object):
 # Request
 # -----------------------------------------------------------------------
 
-
+@dataclass
 class Request:
     """A class to record the metadata of an inference or finetuning request."""
-
-    def __init__(
-        self,
-        req_type: RequestType,
-        prompt: str = None,
-        max_sequence_length: int = 128,
-        peft_model_id: PEFTModelID = None,
-        dataset_filepath: str = None,
-        max_training_steps: int = 1,
-    ):
-        self.req_type = req_type
-        self.prompt = prompt
-        self.max_sequence_length = max_sequence_length
-        self.peft_model_id = peft_model_id
-        self.dataset_filepath = dataset_filepath
-        self.max_training_steps = max_training_steps
+    req_type: RequestType
+    prompt: Optional[str] = None
+    max_length: int = -1
+    max_new_tokens: int = 128
+    peft_model_id: Optional[PEFTModelID] = None
+    dataset_filepath: Optional[str] = None
+    max_training_steps: int = 1
 
 
 # -----------------------------------------------------------------------
@@ -4665,19 +4657,23 @@ class FFModel(object):
         assert ret_val == True
         return np_array
 
-    def generate_inf_only(self, prompt_list: List[str], max_sequence_length: int = 128):
+    def generate_inf_only(self, prompt_list: List[str], max_length: int = -1, max_new_tokens: int = 128):
+        if max_length != -1 and max_new_tokens != -1:
+            warnings.warn(f"Both `max_new_tokens` (={self.max_new_tokens}) and `max_length`(={self.max_length}) seem to have been set. `max_new_tokens` will take precedence.")
         assert isinstance(prompt_list, list)
         c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
-        max_num_chars = 5 * (max_sequence_length + 100)
+        estimated_max_tokens = math.ceil(max_new_tokens + max([len(prompt.split()) for prompt in prompt_list])*1.5) if max_new_tokens != -1 else max_length
+        max_num_chars = 5 * (estimated_max_tokens + 100)
         c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
         c_output_length_and_tokens = [
-            ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list
+            ffi.new("int[]", estimated_max_tokens + 100) for prompt in prompt_list
         ]
         c_request_types = [
             enum_to_int(RequestType, RequestType.REQ_INFERENCE)
             for prompt in prompt_list
         ]
-        max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
+        max_lengths = [max_length for prompt in prompt_list]
+        max_new_tokens_ = [max_new_tokens for prompt in prompt_list]
         peft_model_ids = [PEFTModelID.no_id_handle() for prompt in prompt_list]
         dataset_filepaths = [ffi.NULL for prompt in prompt_list]
         training_steps = [0 for prompt in prompt_list]
@@ -4689,7 +4685,8 @@ class FFModel(object):
             c_request_types,
             c_input_texts,
             c_output_texts,
-            max_sequence_lengths,
+            max_lengths,
+            max_new_tokens_,
             peft_model_ids,
             dataset_filepaths,
             training_steps,
@@ -4726,9 +4723,16 @@ class FFModel(object):
         c_request_types = [
             enum_to_int(RequestType, request.req_type) for request in requests_list
         ]
-        max_sequence_lengths = [
-            request.max_sequence_length for request in requests_list
+        max_lengths = [
+            request.max_length for request in requests_list
         ]
+        max_new_tokens_ = [
+            request.max_new_tokens for request in requests_list
+        ]
+        for i in range(len(requests_list)):
+            if max_lengths[i] != -1 and max_new_tokens_[i] != -1:
+                warnings.warn(f"Both `max_new_tokens` (={max_new_tokens_[i]}) and `max_length`(={max_lengths[i]}) seem to have been set. `max_new_tokens` will take precedence.")
+        
         peft_model_ids = [
             (
                 request.peft_model_id
@@ -4752,7 +4756,8 @@ class FFModel(object):
             c_request_types,
             c_input_texts,
             c_output_texts,
-            max_sequence_lengths,
+            max_lengths,
+            max_new_tokens_,
             peft_model_ids,
             dataset_filepaths,
             training_steps,

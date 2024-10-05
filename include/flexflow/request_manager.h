@@ -67,7 +67,8 @@ struct Request {
   };
   BatchConfig::RequestGuid guid;
   PEFTModelID peft_model_id = PEFTModelID::NO_ID;
-  int max_sequence_length = 128;
+  int max_length = -1;
+  int max_new_tokens = 128;
   int initial_len;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
@@ -148,6 +149,12 @@ public:
                           int eos_token_id,
                           std::string const &path);
   void register_output_filepath(std::string const &);
+  void register_peft_model(FFModel *model, PEFTModelID peft_model_id);
+  LoraLinearConfig get_peft_config(PEFTModelID peft_model_id);
+  void set_max_lora_rank(int max_lora_rank);
+  void set_max_concurrent_adapters(int max_concurrent_adapters);
+  int get_max_lora_rank();
+  int get_max_concurrent_adapters();
   void initBitMask(BatchConfig::BitMask &bitmask, int initLength);
   void appendPendingRequest(BatchConfig::BitMask &bitmask, int initLength);
   void appendBitMask(BatchConfig::BitMask &bitmask,
@@ -287,7 +294,11 @@ private:
   int max_spec_tree_token_num;
   int max_sequence_length;
   Status request_manager_status;
-
+  
+  // peft
+  std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
+  int max_lora_rank;
+  int max_concurrent_adapters;
   // peft benchmarking
   bool enable_peft_finetuning = false;
   static bool inference_finished;

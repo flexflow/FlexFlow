@@ -369,7 +369,7 @@ void FlexFlow::top_level_task(Task const *task,
     for (int i = 0; i < 100; i++) {
       Request inference_req;
       inference_req.benchmarking_tokens = 128;
-      inference_req.max_sequence_length = 256;
+      inference_req.max_length = 256;
       inference_req.warmup = true;
       inference_req.peft_model_id =
           (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
@@ -379,7 +379,7 @@ void FlexFlow::top_level_task(Task const *task,
     Request fine_tuning_req;
     fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
     fine_tuning_req.benchmarking_tokens = 1024;
-    fine_tuning_req.max_sequence_length = 1024;
+    fine_tuning_req.max_length = 1024;
     fine_tuning_req.warmup = true;
     fine_tuning_req.peft_model_id =
         (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
@@ -443,7 +443,7 @@ void FlexFlow::top_level_task(Task const *task,
     Request fine_tuning_req;
     fine_tuning_req.req_type = RequestType::REQ_FINETUNING;
     fine_tuning_req.benchmarking_tokens = 1024;
-    fine_tuning_req.max_sequence_length = 1024;
+    fine_tuning_req.max_length = 1024;
     fine_tuning_req.peft_model_id =
         (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
     fine_tuning_req.max_training_steps = 1000000000;
@@ -473,7 +473,7 @@ void FlexFlow::top_level_task(Task const *task,
         // sequence_length);
         Request inference_req;
         inference_req.benchmarking_tokens = prompt.first;
-        inference_req.max_sequence_length = prompt.second + prompt.first;
+        inference_req.max_length = prompt.second + prompt.first;
         inference_req.peft_model_id =
             (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
         requests.push_back(inference_req);

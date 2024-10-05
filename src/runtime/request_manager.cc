@@ -54,7 +54,8 @@ std::ostream &operator<<(std::ostream &os, Request const &req) {
   os << "Request {\n";
   os << "  guid: " << req.guid << "\n";
   os << "  peft_model_id: " << req.peft_model_id << "\n";
-  os << "  max_sequence_length: " << req.max_sequence_length << "\n";
+  os << "  max_length: " << req.max_length << "\n";
+  os << "  max_new_tokens: " << req.max_new_tokens << "\n";
   os << "  initial_len: " << req.initial_len << "\n";
   os << "  ssm_cache_size: " << req.ssm_cache_size << "\n";
   os << "  llm_cache_size: " << req.llm_cache_size << "\n";
@@ -254,6 +255,60 @@ size_t RequestManager::get_num_ssms() {
   return ssm_models.size();
 }
 
+void RequestManager::register_peft_config(PEFTModelID const &peft_model_id,
+                                         LoraLinearConfig const &peft_config) {
+  // check that peft_model_id is not already in use
+  assert(peft_configs.find(peft_model_id) == peft_configs.end() &&
+         "PEFT model ID already in use");
+  peft_configs[peft_model_id] = peft_config;
+}
+
+LoraLinearConfig const &RequestManager::get_peft_config(
+    PEFTModelID const &peft_model_id) {
+  assert(peft_configs.find(peft_model_id) != peft_configs.end() &&
+         "PEFT model ID not found");
+  return peft_configs[peft_model_id];
+}
+
+void RequestManager::set_max_lora_rank(int max_lora_rank_) {
+  max_lora_rank = max_lora_rank_;
+}
+
+void RequestManager::set_max_concurrent_adapters(int max_concurrent_adapters_) {
+  max_concurrent_adapters = max_concurrent_adapters_;
+}
+
+int RequestManager::get_max_lora_rank() { return max_lora_rank; }
+
+int RequestManager::get_max_concurrent_adapters() {
+  return max_concurrent_adapters;
+}
+
+PEFTModelID *FFModel::register_peft_adapter(LoraLinearConfig const peft_config) {
+  assert(config.enable_peft &&
+         "Cannot add a LoRA layer if PEFT mode is not enabled");
+  if (peft_config.target_modules.size() == 0) {
+    printf("PEFT config does not contain any target module\n");
+    std::cout << peft_config << std::endl;
+    assert(false);
+  }
+  // go over base_layer_to_peft_layer and check that you can find at least one match
+  for (int i=0; i<peft_config.target_modules.size(); i++) {
+    bool found = false;
+    for (auto const &base_layer : peft_config.base_layer_to_peft_layer) {
+      if (base_layer.name != nullptr && strlen(base_layer.name) > 0 && std::string(base_layer.name).find(peft_config.target_modules[0]) != std::string::npos) {
+        found = true;
+        break;
+      }
+    }
+    assert(found && "Attempting to add LoRA to a LLM target module that does not exist or does not support LoRA");
+  }
+  PEFTModelID *peft_model_id = new PEFTModelID(peft_model_global_guid++);
+  RequestManager *rm = RequestManager::get_request_manager();
+  rm->register_peft_config(*peft_model_id, peft_config);
+  return peft_model_id;
+}
+
 RequestManager::RequestGuid
     RequestManager::register_new_request(Request const &request_) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
@@ -261,24 +316,45 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  request.max_sequence_length = request_.max_sequence_length;
+  request.max_length = request_.max_length;
+  request.max_new_tokens = request_.max_new_tokens;
+  if (request.max_length != -1 && request.max_new_tokens != -1) {
+    std::cout
+        << "Both `max_new_tokens` (=" << request.max_new_tokens
+        << ") and `max_length`(=" << request.max_length
+        << ") seem to have been set. `max_new_tokens` will take precedence.";
+  }
   request.peft_model_id = request_.peft_model_id;
   request.warmup = request_.warmup;
   if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
   if (request_.benchmarking_tokens >= 0) {
-    assert(request_.benchmarking_tokens < get_max_sequence_length());
+    assert(request_.benchmarking_tokens < get_max_sequence_length() &&
+           "Benchmarking tokens exceed max sequence length");
     request.benchmarking_tokens = request_.benchmarking_tokens;
     request.tokens.insert(request.tokens.end(),
                           request_.benchmarking_tokens,
                           15); // insert random number
   } else {
     std::vector<int32_t> tokens = this->tokenizer_->Encode(request_.prompt);
+    // from here on, we will only use the max_length parameter
+    if (request.max_new_tokens != -1) {
+      request.max_length = tokens.size() + request.max_new_tokens;
+    }
+    // check that max sequence length is not exceeded
+    // 1. prompt itself should be less than max sequence length
     if (tokens.size() >= get_max_sequence_length()) {
-      std::cout << "Warning: too many tokens in prompt, only load up to "
-                << get_max_sequence_length() << " tokens, but got "
-                << tokens.size() << ".\n";
+      std::cout << "Error: prompt (" << tokens.size()
+                << " tokens) exceeds max sequence length of "
+                << get_max_sequence_length() << ".\n";
+      return INVALID_GUID;
+    }
+    // 2. max_length should not exceed the max_sequence_length
+    if (request.max_length >= get_max_sequence_length()) {
+      std::cout << "Error: max_length (" << request.max_length
+                << ") exceeds max sequence length of "
+                << get_max_sequence_length() << ".\n";
       return INVALID_GUID;
     }
     for (int i = 0; i < tokens.size(); i++) {
@@ -341,7 +417,18 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.initial_len = 0;
-  request.max_sequence_length = request_.max_sequence_length;
+  request.max_length = request_.max_length;
+  request.max_new_tokens = request_.max_new_tokens;
+  if (request.max_length != -1) {
+    std::cout << "Warning: max_length is set for PEFT finetuning, but it will "
+                 "be ignored."
+              << std::endl;
+  }
+  if (request.max_new_tokens != -1) {
+    std::cout << "Warning: max_new_tokens is set for PEFT finetuning, but "
+                 "it will be ignored."
+              << std::endl;
+  }
   request.peft_model_id = request_.peft_model_id;
   request.req_type = RequestType::REQ_FINETUNING;
   request.completed_training_steps = 0;
@@ -352,7 +439,8 @@ RequestManager::RequestGuid
 
   // Load dataset
   if (request_.benchmarking_tokens >= 0) {
-    assert(request_.benchmarking_tokens <= get_max_sequence_length());
+    assert(request_.benchmarking_tokens <= get_max_sequence_length() &&
+           "Benchmarking tokens exceed max sequence length");
     request.benchmarking_tokens = request_.benchmarking_tokens;
     std::vector<int32_t> input_tokens;
     std::vector<int32_t> output_tokens;
@@ -385,9 +473,10 @@ RequestManager::RequestGuid
           this->tokenizer_->Encode(output_text);
       if (input_tokens.size() + output_tokens.size() >
           get_max_sequence_length()) {
-        std::cout << "Warning: too many tokens in sample, only load up to "
-                  << get_max_sequence_length() << " tokens, but got "
-                  << input_tokens.size() + output_tokens.size() << ".\n";
+        std::cout << "Error: sample in training dataset is "
+                  << input_tokens.size() + output_tokens.size()
+                  << " tokens long, exceeding the maximum sequence length of "
+                  << get_max_sequence_length() << " tokens.\n";
         return INVALID_GUID;
       } else {
         request.dataset.push_back(std::make_pair(input_tokens, output_tokens));
@@ -515,7 +604,7 @@ bool RequestManager::check_inf_req_completion(BatchConfig const &old_bc,
   Request &request = all_requests[old_bc.requestsInfo[i].request_guid];
   bool request_completed = false;
   // printf("model_type = %d\n", this->model_type);
-  if (request.tokens.size() >= old_bc.requestsInfo[i].max_sequence_length) {
+  if (request.tokens.size() >= old_bc.requestsInfo[i].max_length) {
     request_completed = true;
   } else if (request.tokens.back() == eos_token_id) {
     // Encounter EOS token id
@@ -603,6 +692,8 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   // inference
   int inference_batch_size =
       BatchConfig::max_requests_per_batch() - (int)enable_peft_finetuning;
+
+  int num_concurrent_adapters = 0;
 
   // Step 2: prepare the next batch for existing inference requests
   BatchConfig new_bc;
@@ -695,11 +786,13 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
             old_bc.requestsInfo[i].request_guid;
-        new_bc.requestsInfo[i].peft_model_id =
-            old_bc.requestsInfo[i].peft_model_id;
+        // new_bc.requestsInfo[i].peft_model_id =
+        //     old_bc.requestsInfo[i].peft_model_id;
+        new_bc.requestsInfo[i].peft_adapters =
+            old_bc.requestsInfo[i].peft_adapters;
+        num_concurrent_adapters += new_bc.requestsInfo[i].peft_adapters.size();
         new_bc.requestsInfo[i].peft_bwd = old_bc.requestsInfo[i].peft_bwd;
-        new_bc.requestsInfo[i].max_sequence_length =
-            old_bc.requestsInfo[i].max_sequence_length;
+        new_bc.requestsInfo[i].max_length = old_bc.requestsInfo[i].max_length;
         num_active_req++;
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
         if (new_bc.requestsInfo[i].first_token_depth_in_request + 1 ==
@@ -749,6 +842,9 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
   }
   new_bc.num_generation_tokens = num_generation_tokens;
 
+  assert(num_concurrent_adapters <= get_max_concurrent_adapters() &&
+         "Number of concurrent adapters exceeded the limit");
+
   // Step 3: add new inference requests to the next batch if there is space
   for (int i = 0; i < inference_batch_size; i++) {
     if (new_bc.request_completed[i]) {
@@ -756,6 +852,12 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           new_bc.num_tokens < get_max_tokens_per_batch()) {
         Request new_request = pending_infr_request_queue.front();
         assert(new_request.req_type == RequestType::REQ_INFERENCE);
+        
+        // if the request has peft adapters and we are at capacity, don't add it yet
+        if (new_request.peft_model_id != PEFTModelID::NO_ID && num_concurrent_adapters == get_max_concurrent_adapters()) {
+          break;
+        }
+        
         pending_infr_request_queue.pop();
         // all_requests[new_request.guid] = new_request;
 
@@ -765,9 +867,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.requestsInfo[i].num_tokens_in_batch =
             std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
                      (int)new_request.tokens.size());
-        new_bc.requestsInfo[i].max_sequence_length =
-            new_request.max_sequence_length;
-        new_bc.requestsInfo[i].peft_model_id = new_request.peft_model_id;
+        new_bc.requestsInfo[i].max_length = new_request.max_length;
+        // new_bc.requestsInfo[i].peft_model_id = new_request.peft_model_id;
+        if (new_request.peft_model_id != PEFTModelID::NO_ID) {
+          new_bc.requestsInfo[i].peft_adapters[new_request.peft_model_id] = get_peft_config(new_request.peft_model_id).serialize_to_json_string();
+        }
         new_bc.requestsInfo[i].peft_bwd = false;
         new_bc.request_completed[i] = false;
         new_bc.requestsInfo[i].prompt_phase = true;
@@ -922,7 +1026,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
     int num_peft_label_tokens = request.dataset[dataset_entry].second.size();
     assert(num_peft_label_tokens == 0);
 
-    if (num_peft_tokens > 0) {
+    if (num_peft_tokens > 0 && num_concurrent_adapters < get_max_concurrent_adapters()) {
       assert(new_bc.request_completed[inference_batch_size]);
       // request info
       new_bc.request_completed[inference_batch_size] = false;
@@ -932,11 +1036,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           new_bc.num_active_infr_tokens();
       new_bc.requestsInfo[inference_batch_size].num_tokens_in_batch =
           num_peft_tokens;
-      new_bc.requestsInfo[inference_batch_size].max_sequence_length =
-          request.max_sequence_length;
+      new_bc.requestsInfo[inference_batch_size].max_length = request.max_length;
       new_bc.requestsInfo[inference_batch_size].request_guid = request.guid;
-      new_bc.requestsInfo[inference_batch_size].peft_model_id =
-          request.peft_model_id;
+      // new_bc.requestsInfo[inference_batch_size].peft_model_id =
+      //     request.peft_model_id;
+      new_bc.requestsInfo[inference_batch_size].peft_adapters[request.peft_model_id] = get_peft_config(request.peft_model_id).serialize_to_json_string();
       new_bc.requestsInfo[inference_batch_size].peft_bwd = true;
       set_optimizer_tasks(
           new_bc.requestsInfo[inference_batch_size].optimizer_tasks,
@@ -955,8 +1059,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         new_bc.num_tokens++;
         new_bc.num_peft_tokens++;
       }
+      num_concurrent_adapters +=1;
     }
   }
+  assert(num_concurrent_adapters <= get_max_concurrent_adapters() &&
+         "Number of concurrent adapters exceeded the limit");
   return new_bc;
 }
 
@@ -1076,10 +1183,10 @@ BeamSearchBatchConfig
                         verified_tokens.size());
       // check if the request is finished
       if (verified_tokens.size() + request.tokens.size() >=
-          request.max_sequence_length) {
+          request.max_length) {
         // Append all verified tokens to the request
         for (auto const &token_pair : verified_tokens) {
-          if (token_pair.second < request.max_sequence_length) {
+          if (token_pair.second < request.max_length) {
             request.tokens.push_back(token_pair.first);
           }
         }
@@ -1171,14 +1278,13 @@ BeamSearchBatchConfig
         new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
         new_bc.requestsInfo[i].request_guid =
             old_bc.requestsInfo[i].request_guid;
-        new_bc.requestsInfo[i].max_sequence_length =
-            old_bc.requestsInfo[i].max_sequence_length;
+        new_bc.requestsInfo[i].max_length = old_bc.requestsInfo[i].max_length;
         new_bc.requestsInfo[i].num_tokens_in_batch = verified_tokens.size();
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
         // TODO: Beam Request Info, missing from VerifyTreeBatchConfig
         int new_max_depth =
-            new_bc.requestsInfo[i].max_sequence_length -
+            new_bc.requestsInfo[i].max_length -
             new_bc.requestsInfo[i].first_token_depth_in_request -
             verified_tokens.size();
         new_bc.beamRequestsInfo[i].current_depth = 1;
@@ -1254,8 +1360,7 @@ BeamSearchBatchConfig
           request.ssm_cache_size;
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length =
-          old_bc.requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].max_length = old_bc.requestsInfo[i].max_length;
       new_bc.requestsInfo[i].num_tokens_in_batch = 0;
       new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
@@ -1307,8 +1412,7 @@ BeamSearchBatchConfig
         new_bc.requestsInfo[i].num_tokens_in_batch =
             std::min(get_max_tokens_per_batch() - new_bc.num_tokens,
                      (int)new_request.tokens.size());
-        new_bc.requestsInfo[i].max_sequence_length =
-            new_request.max_sequence_length;
+        new_bc.requestsInfo[i].max_length = new_request.max_length;
         new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
         // add profile_info for the new request
@@ -1484,8 +1588,7 @@ BeamSearchBatchConfig
       new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length =
-          old_bc.requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].max_length = old_bc.requestsInfo[i].max_length;
       profiling_requests[request.guid].ssm_decoding_steps += 1;
       new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
       // update the beam search metadata
@@ -1613,8 +1716,7 @@ BeamSearchBatchConfig
       new_bc.requestsInfo[i].first_token_depth_in_request = processed_tokens;
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid = old_bc.requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length =
-          old_bc.requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].max_length = old_bc.requestsInfo[i].max_length;
       new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
       // update the beam search metadata
@@ -1816,8 +1918,8 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid =
           old_batches.at(0).requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length =
-          old_batches.at(0).requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].max_length =
+          old_batches.at(0).requestsInfo[i].max_length;
       new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
       // copy bitmask to verify batchconfig
@@ -1958,8 +2060,8 @@ TreeVerifyBatchConfig RequestManager::prepare_next_batch_verify(
       new_bc.requestsInfo[i].first_token_offset_in_batch = new_bc.num_tokens;
       new_bc.requestsInfo[i].request_guid =
           old_batches.at(0).requestsInfo[i].request_guid;
-      new_bc.requestsInfo[i].max_sequence_length =
-          old_batches.at(0).requestsInfo[i].max_sequence_length;
+      new_bc.requestsInfo[i].max_length =
+          old_batches.at(0).requestsInfo[i].max_length;
       new_bc.requestsInfo[num_active_req].batch_config_request_id = i;
 
       new_bc.request_completed[i] = false;

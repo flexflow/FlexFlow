@@ -112,6 +112,7 @@ RUN conda install -c conda-forge onnx transformers>=4.31.0 sentencepiece einops
 RUN pip3 install tensorflow notebook
 # PEFT-related
 RUN pip3 install scipy bitsandbytes datasets accelerate loralib triton peft
+RUN pip3 install streamlit
 
 # Install Rust
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y

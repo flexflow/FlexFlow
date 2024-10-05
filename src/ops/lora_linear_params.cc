@@ -50,38 +50,6 @@ std::ostream &operator<<(std::ostream &os, LoraAdamOptimizerConfig const &llc) {
   return os;
 }
 
-// Serialization helpers
-template <typename T>
-void serialize_to_json_file(T const &obj, fs::path const &filepath) {
-  json j = obj;
-  std::ofstream file(filepath);
-  file << j.dump(4);
-}
-
-template <typename T>
-std::unique_ptr<T> deserialize_from_json_file(fs::path const &filepath) {
-  std::ifstream file(filepath);
-  json j;
-  file >> j;
-  return std::make_unique<T>(j.get<T>());
-}
-
-template void
-    serialize_to_json_file<LoraLinearConfig>(LoraLinearConfig const &obj,
-                                             fs::path const &filepath);
-template void serialize_to_json_file<LoraSGDOptimizerConfig>(
-    LoraSGDOptimizerConfig const &obj, fs::path const &filepath);
-template void serialize_to_json_file<LoraAdamOptimizerConfig>(
-    LoraAdamOptimizerConfig const &obj, fs::path const &filepath);
-template std::unique_ptr<LoraLinearConfig>
-    deserialize_from_json_file<LoraLinearConfig>(fs::path const &filepath);
-template std::unique_ptr<LoraSGDOptimizerConfig>
-    deserialize_from_json_file<LoraSGDOptimizerConfig>(
-        fs::path const &filepath);
-template std::unique_ptr<LoraAdamOptimizerConfig>
-    deserialize_from_json_file<LoraAdamOptimizerConfig>(
-        fs::path const &filepath);
-
 // ------------------ LoRA configs -------------------
 // ---------------------------------------------------
 const LoraLinearConfig LoraLinearConfig::EmptyConfig = LoraLinearConfig("", "");

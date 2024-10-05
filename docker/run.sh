@@ -17,6 +17,11 @@ hip_version=${hip_version:-"empty"}
 ATTACH_GPUS=${ATTACH_GPUS:-true}
 gpu_arg=""
 if $ATTACH_GPUS ; then gpu_arg="--gpus all" ; fi
+FORWARD_STREAMLIT_PORT=${FORWARD_STREAMLIT_PORT:-true}
+port_forward_arg=""
+if $FORWARD_STREAMLIT_PORT ; then
+  port_forward_arg+="-p 8501:8501"
+fi
 
 
 # Amount of shared memory to give the Docker container access to
@@ -120,4 +125,4 @@ if [ -f "$hf_token_path" ]; then
   hf_token_volume+="-v $hf_token_path:/root/.cache/huggingface/token"
 fi
 
-eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${hf_token_volume}" "${image}-${FF_GPU_BACKEND}${gpu_backend_version}:latest"
+eval docker run -it "$gpu_arg" "--shm-size=${SHM_SIZE}" "${hf_token_volume}" "${port_forward_arg}" "${image}-${FF_GPU_BACKEND}${gpu_backend_version}:latest"

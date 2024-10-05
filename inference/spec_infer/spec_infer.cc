@@ -421,7 +421,7 @@ void FlexFlow::top_level_task(Task const *task,
       // Add inference request
       Request inference_req;
       inference_req.prompt = text;
-      inference_req.max_sequence_length = 128;
+      inference_req.max_length = 128;
       requests.push_back(inference_req);
       total_num_requests++;
     }
