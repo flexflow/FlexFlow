@@ -79,13 +79,13 @@ jobs:
           export FF_CUDA_ARCH=70
           export FF_HIP_ARCH=gfx1100,gfx1036
           export hip_version=5.6
-          export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          export FF_BUILD_INFERENCE=ON
 
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export FF_BUILD_ALL_EXAMPLES=ON
+            export FF_BUILD_TRAINING_EXAMPLES=ON
             export FF_BUILD_UNIT_TESTS=ON
           else 
-            export FF_BUILD_ALL_EXAMPLES=OFF
+            export FF_BUILD_TRAINING_EXAMPLES=OFF
             export FF_BUILD_UNIT_TESTS=OFF
           fi
 
@@ -106,13 +106,13 @@ jobs:
           export FF_CUDA_ARCH=70
           export FF_HIP_ARCH=gfx1100,gfx1036
           export hip_version=5.6
-          export FF_BUILD_ALL_INFERENCE_EXAMPLES=ON
+          export FF_BUILD_INFERENCE=ON
           
           if [[ "${FF_GPU_BACKEND}" == "cuda" ]]; then
-            export FF_BUILD_ALL_EXAMPLES=ON
+            export FF_BUILD_TRAINING_EXAMPLES=ON
             export FF_BUILD_UNIT_TESTS=ON
           else 
-            export FF_BUILD_ALL_EXAMPLES=OFF
+            export FF_BUILD_TRAINING_EXAMPLES=OFF
             export FF_BUILD_UNIT_TESTS=OFF
           fi
 

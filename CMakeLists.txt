@@ -181,6 +181,14 @@ include(legion)
 
 # Not build FlexFlow if BUILD_LEGION_ONLY is ON
 if(NOT BUILD_LEGION_ONLY)
+
+  # build binary options
+  option(FF_BUILD_INFERENCE "build all inference code and examples." ON)
+  option(FF_BUILD_TRAINING_EXAMPLES "build all training examples." OFF)
+  option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
+  option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
+  option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
+
   # NCCL
   if(FF_USE_NCCL)
     if(FF_GPU_BACKEND STREQUAL "hip_cuda" OR FF_GPU_BACKEND STREQUAL "cuda")
@@ -271,18 +279,23 @@ if(NOT BUILD_LEGION_ONLY)
   file(GLOB_RECURSE FLEXFLOW_HDR
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/include/*.h)
-  
-  #list(APPEND FLEXFLOW_HDR ${FLEXFLOW_ROOT}/inference/file_loader.h)
 
   file(GLOB_RECURSE FLEXFLOW_SRC
     LIST_DIRECTORIES False
     ${FLEXFLOW_ROOT}/src/*.cc)
-  
   list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc")
-  #list(APPEND FLEXFLOW_SRC ${FLEXFLOW_ROOT}/inference/file_loader.cc)
 
-  set(FLEXFLOW_CPP_DRV_SRC
-    ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
+  # exclude inference files if FF_BUILD_INFERENCE is off
+  if(NOT FF_BUILD_INFERENCE)
+    list(REMOVE_ITEM FLEXFLOW_HDR "${FLEXFLOW_ROOT}/include/request_manager.h")
+    list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/request_manager.cc")
+    list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/inference_manager.cc")
+    list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/batch_config.cc")
+    list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/beam_search_batch_config.cc")
+    list(REMOVE_ITEM FLEXFLOW_SRC "${FLEXFLOW_ROOT}/src/runtime/tree_verify_batch_config.cc")
+  endif()
+
+  set(FLEXFLOW_CPP_DRV_SRC ${FLEXFLOW_ROOT}/src/runtime/cpp_driver.cc)
 
   add_library(substitution_loader SHARED
     ${FLEXFLOW_ROOT}/src/runtime/substitution_loader.cc)
@@ -297,6 +310,10 @@ if(NOT BUILD_LEGION_ONLY)
     file(GLOB_RECURSE FLEXFLOW_GPU_SRC
       LIST_DIRECTORIES False
       ${FLEXFLOW_ROOT}/src/*.cu)
+    
+    if(NOT FF_BUILD_INFERENCE)
+      list(REMOVE_ITEM FLEXFLOW_GPU_SRC "${FLEXFLOW_ROOT}/src/runtime/request_manager.cu")
+    endif()
 
     add_compile_definitions(FF_USE_CUDA)
 
@@ -452,27 +469,6 @@ if(NOT BUILD_LEGION_ONLY)
     set_property(TARGET flexflow PROPERTY CXX_STANDARD 14)
   endif()
 
-  # build binary
-  option(FF_BUILD_TOKENIZER "build tokenizer=cpp for LLM serving" OFF)
-  option(FF_BUILD_RESNET "build resnet example" OFF)
-  option(FF_BUILD_RESNEXT "build resnext example" OFF)
-  option(FF_BUILD_ALEXNET "build alexnet example" OFF)
-  option(FF_BUILD_DLRM "build DLRM example" OFF)
-  option(FF_BUILD_XDL "build XDL example" OFF)
-  option(FF_BUILD_INCEPTION "build inception example" OFF)
-  option(FF_BUILD_CANDLE_UNO "build candle uno example" OFF)
-  option(FF_BUILD_TRANSFORMER "build transformer example" OFF)
-  option(FF_BUILD_MOE "build mixture of experts example" OFF)
-  option(FF_BUILD_MLP_UNIFY "build mlp unify example" OFF)
-  option(FF_BUILD_SPLIT_TEST "build split test example" OFF)
-  option(FF_BUILD_SPLIT_TEST_2 "build split test 2 example" OFF)
-  option(FF_BUILD_MLP_UNIFY_INFERENCE "build mlp unify inference example" OFF)
-  option(FF_BUILD_ALL_INFERENCE_EXAMPLES "build all inference examples. Overrides others" OFF)
-  option(FF_BUILD_ALL_EXAMPLES "build all examples. Overrides others" OFF)
-  option(FF_BUILD_UNIT_TESTS "build non-operator unit tests" OFF)
-  option(FF_BUILD_SUBSTITUTION_TOOL "build substitution conversion tool" OFF)
-  option(FF_BUILD_VISUALIZATION_TOOL "build substitution visualization tool" OFF)
-
   if(FF_BUILD_UNIT_TESTS)
     set(BUILD_GMOCK OFF)
     add_subdirectory(deps/googletest)
@@ -488,88 +484,59 @@ if(NOT BUILD_LEGION_ONLY)
       add_subdirectory(tools/substitutions_to_dot)
     endif()
 
-  if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_TOKENIZER)
+  if(FF_BUILD_INFERENCE)
+    add_compile_definitions(FF_BUILD_INFERENCE)
     # Ensure Rust is installed
     execute_process(COMMAND rustc --version
                   RESULT_VARIABLE RUST_COMMAND_RESULT
                   OUTPUT_VARIABLE RUSTC_OUTPUT
                   ERROR_QUIET)
     if(NOT RUST_COMMAND_RESULT EQUAL 0)
-      message(FATAL_ERROR "Rust is not installed on the system. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
+      message(FATAL_ERROR 
+      "Rust is not installed on the system. Please install it by running: \n"
+      "'curl https://sh.rustup.rs -sSf | sh -s -- -y' \n"
+      "and follow the instructions on the screen.")
     endif()
     # Ensure Cargo is installed
     execute_process(COMMAND cargo --version
                     RESULT_VARIABLE CARGO_RESULT
                     OUTPUT_QUIET ERROR_QUIET)
     if(NOT CARGO_RESULT EQUAL 0)
-      message(FATAL_ERROR "Rust is installed, but cargo is not. Please install it by running: 'curl https://sh.rustup.rs -sSf | sh -s -- -y' and following the instructions on the screen.")
+      message(FATAL_ERROR 
+      "Rust is installed, but cargo is not. Please install it by running: \n"
+      "'curl https://sh.rustup.rs -sSf | sh -s -- -y' \n"
+      "and follow the instructions on the screen.")
     endif()
     set(MLC_ENABLE_SENTENCEPIECE_TOKENIZER ON)
     add_subdirectory(deps/tokenizers-cpp tokenizers EXCLUDE_FROM_ALL)
     target_include_directories(flexflow PUBLIC deps/tokenizers-cpp/include)
     target_link_libraries(flexflow tokenizers_cpp)
   endif()
-  if(FF_BUILD_RESNET OR FF_BUILD_ALL_EXAMPLES)
+  
+  if (FF_BUILD_TRAINING_EXAMPLES)
     add_subdirectory(examples/cpp/ResNet)
-  endif()
-
-  if(FF_BUILD_RESNEXT OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/resnext50)
-  endif()
-
-  if(FF_BUILD_ALEXNET OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/AlexNet)
-  endif()
-
-  if(FF_BUILD_MLP_UNIFY OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/MLP_Unify)
-  endif()
-
-  if(FF_BUILD_SPLIT_TEST OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/split_test)
-  endif()
-
-  if(FF_BUILD_SPLIT_TEST_2 OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/split_test_2)
-  endif()
-
-  if(FF_BUILD_INCEPTION OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/InceptionV3)
-  endif()
-
-  #TODO: Once functional add to BUILD_ALL_EXAMPLES
-  if(FF_BUILD_CANDLE_UNO OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/candle_uno)
-  endif()
-
-  if(FF_BUILD_DLRM OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/DLRM)
-
     #add_executable(generate_dlrm_hetero_strategy src/runtime/dlrm_strategy_hetero.cc)
     #target_include_directories(generate_dlrm_hetero_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-
     #add_executable(generate_dlrm_strategy src/runtime/dlrm_strategy.cc)
     #target_include_directories(generate_dlrm_strategy PUBLIC ${FLEXFLOW_INCLUDE_DIRS})
-  endif()
-
-  if(FF_BUILD_XDL OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/XDL)
-  endif()
-
-  if(FF_BUILD_TRANSFORMER OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/Transformer)
-  endif()
-
-  if(FF_BUILD_MOE OR FF_BUILD_ALL_EXAMPLES)
     add_subdirectory(examples/cpp/mixture_of_experts)
   endif()
 
-  if(FF_BUILD_ALL_INFERENCE_EXAMPLES OR FF_BUILD_ALL_EXAMPLES)
+  if(FF_BUILD_INFERENCE)
     add_subdirectory(inference/spec_infer)
     add_subdirectory(inference/incr_decoding)
     add_subdirectory(inference/peft)
   endif()
-
 
   # installation
   set(INCLUDE_DEST "include")
