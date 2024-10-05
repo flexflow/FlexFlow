@@ -2,11 +2,11 @@
 
 namespace FlexFlow {
 
-template
-  int get_num_tree_nodes(GenericBinarySPDecompositionTree<int, int, int> const &);
-template
-  int get_num_tree_nodes(GenericBinarySeriesSplit<int, int, int> const &);
-template
-  int get_num_tree_nodes(GenericBinaryParallelSplit<int, int, int> const &);
+template int
+    get_num_tree_nodes(GenericBinarySPDecompositionTree<int, int, int> const &);
+template int
+    get_num_tree_nodes(GenericBinarySeriesSplit<int, int, int> const &);
+template int
+    get_num_tree_nodes(GenericBinaryParallelSplit<int, int, int> const &);
 
 } // namespace FlexFlow

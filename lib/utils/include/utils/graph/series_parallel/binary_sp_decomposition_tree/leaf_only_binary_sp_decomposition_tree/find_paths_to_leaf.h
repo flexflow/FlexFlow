@@ -7,11 +7,11 @@
 namespace FlexFlow {
 
 template <typename LeafLabel>
-std::unordered_set<BinaryTreePath> find_paths_to_leaf(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &tree,
-                                                      LeafLabel const &leaf) {
+std::unordered_set<BinaryTreePath>
+    find_paths_to_leaf(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &tree,
+                       LeafLabel const &leaf) {
   return find_paths_to_leaf(tree.raw_tree, leaf);
 }
-
 
 } // namespace FlexFlow
 

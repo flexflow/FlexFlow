@@ -2,8 +2,8 @@
 #define _FLEXFLOW_LIB_COMPILER_INCLUDE_COMPILER_MACHINE_MAPPING_GET_MACHINE_RESOURCE_SPLITS_H
 
 #include "pcg/machine_specification.dtg.h"
-#include <utility>
 #include <unordered_set>
+#include <utility>
 
 namespace FlexFlow {
 

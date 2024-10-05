@@ -8,7 +8,8 @@ namespace FlexFlow {
 
 MachineMappingProblemTree get_pre_child(MMProblemTreeSeriesSplit const &);
 MachineMappingProblemTree get_post_child(MMProblemTreeSeriesSplit const &);
-AbstractedTensorSetMovement const &get_abstracted_tensor_movement(MMProblemTreeSeriesSplit const &);
+AbstractedTensorSetMovement const &
+    get_abstracted_tensor_movement(MMProblemTreeSeriesSplit const &);
 
 } // namespace FlexFlow
 

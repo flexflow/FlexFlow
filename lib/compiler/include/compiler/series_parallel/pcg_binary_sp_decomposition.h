@@ -12,14 +12,18 @@
 namespace FlexFlow {
 
 std::optional<PCGBinarySPDecomposition>
-  get_pcg_balanced_binary_sp_decomposition(ParallelComputationGraph const &);
+    get_pcg_balanced_binary_sp_decomposition(ParallelComputationGraph const &);
 std::unordered_multiset<parallel_layer_guid_t>
-  get_parallel_layers(PCGBinarySPDecomposition const &);
+    get_parallel_layers(PCGBinarySPDecomposition const &);
 
 SPDecompositionTreeNodeType get_node_type(PCGBinarySPDecomposition const &);
 
-PCGBinarySPDecomposition make_pcg_series_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &);
-PCGBinarySPDecomposition make_pcg_parallel_split(PCGBinarySPDecomposition const &, PCGBinarySPDecomposition const &);
+PCGBinarySPDecomposition
+    make_pcg_series_split(PCGBinarySPDecomposition const &,
+                          PCGBinarySPDecomposition const &);
+PCGBinarySPDecomposition
+    make_pcg_parallel_split(PCGBinarySPDecomposition const &,
+                            PCGBinarySPDecomposition const &);
 PCGBinarySPDecomposition make_pcg_leaf_node(parallel_layer_guid_t const &);
 
 PCGBinarySPDecomposition wrap_series_split(PCGBinarySeriesSplit const &);
@@ -29,8 +33,9 @@ PCGBinarySeriesSplit require_series(PCGBinarySPDecomposition const &);
 PCGBinaryParallelSplit require_parallel(PCGBinarySPDecomposition const &);
 parallel_layer_guid_t require_leaf(PCGBinarySPDecomposition const &);
 
-std::unordered_set<BinaryTreePath> find_paths_to_leaf(PCGBinarySPDecomposition const &,
-                                                      parallel_layer_guid_t const &);
+std::unordered_set<BinaryTreePath>
+    find_paths_to_leaf(PCGBinarySPDecomposition const &,
+                       parallel_layer_guid_t const &);
 
 template <typename ReturnType, typename F>
 ReturnType visit(PCGBinarySPDecomposition const &d, F &&f) {

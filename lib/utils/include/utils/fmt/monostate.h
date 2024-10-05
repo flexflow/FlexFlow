@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_MONOSTATE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FMT_MONOSTATE_H
 
-#include <variant>
 #include <fmt/format.h>
+#include <variant>
 
 namespace fmt {
 

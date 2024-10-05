@@ -1,8 +1,8 @@
 #include "utils/graph/dataflow_graph/algorithms/transitive_reduced_dataflow_graph/get_transitive_reduced_edges_across_split.h"
-#include "utils/graph/dataflow_graph/algorithms/transitive_reduced_dataflow_graph/transitive_reduced_dataflow_graph.h"
 #include "utils/containers/get_only.h"
-#include "utils/graph/instances/unordered_set_dataflow_graph.h"
+#include "utils/graph/dataflow_graph/algorithms/transitive_reduced_dataflow_graph/transitive_reduced_dataflow_graph.h"
 #include "utils/graph/dataflow_graph/dataflow_graph.h"
+#include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include <doctest/doctest.h>
 
@@ -20,7 +20,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       NodeAddedResult n2_added = g.add_node({}, 1);
       Node n2 = n2_added.node;
       DataflowOutput o2 = get_only(n2_added.outputs);
-      
+
       NodeAddedResult n3_added = g.add_node({o2, o1}, 1);
       Node n3 = n3_added.node;
       DataflowOutput o3 = get_only(n3_added.outputs);
@@ -28,32 +28,29 @@ TEST_SUITE(FF_TEST_SUITE) {
       NodeAddedResult n4_added = g.add_node({o1}, 1);
       Node n4 = n4_added.node;
       DataflowOutput o4 = get_only(n4_added.outputs);
-      
-      TransitiveReducedDataflowGraphView tr_g = get_dataflow_graph_transitive_reduction(g);
 
-      BinarySeriesSplit split = require_series(\
-        make_series_split(
-          make_parallel_split(
-            make_leaf_node(n1),
-            make_leaf_node(n2)),
-          make_parallel_split(
-            make_leaf_node(n3),
-            make_leaf_node(n4))));
+      TransitiveReducedDataflowGraphView tr_g =
+          get_dataflow_graph_transitive_reduction(g);
 
-      std::unordered_set<DataflowEdge> result = get_transitive_reduced_edges_across_split(tr_g, split);
+      BinarySeriesSplit split = require_series(make_series_split(
+          make_parallel_split(make_leaf_node(n1), make_leaf_node(n2)),
+          make_parallel_split(make_leaf_node(n3), make_leaf_node(n4))));
+
+      std::unordered_set<DataflowEdge> result =
+          get_transitive_reduced_edges_across_split(tr_g, split);
       std::unordered_set<DataflowEdge> correct = {
-        DataflowEdge{
-          o1, 
-          DataflowInput{n3, 1},
-        },
-        DataflowEdge{
-          o2, 
-          DataflowInput{n3, 0},
-        },
-        DataflowEdge{
-          o1, 
-          DataflowInput{n4, 0},
-        },
+          DataflowEdge{
+              o1,
+              DataflowInput{n3, 1},
+          },
+          DataflowEdge{
+              o2,
+              DataflowInput{n3, 0},
+          },
+          DataflowEdge{
+              o1,
+              DataflowInput{n4, 0},
+          },
       };
 
       CHECK(result == correct);
@@ -67,28 +64,28 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       NodeAddedResult n2_added = g.add_node({n1_o1, n1_o2, n1_o1}, 1);
       Node n2 = n2_added.node;
-      
-      TransitiveReducedDataflowGraphView tr_g = get_dataflow_graph_transitive_reduction(g);
 
-      BinarySeriesSplit split = require_series(\
-        make_series_split(
-          make_leaf_node(n1),
-          make_leaf_node(n2)));
+      TransitiveReducedDataflowGraphView tr_g =
+          get_dataflow_graph_transitive_reduction(g);
 
-      std::unordered_set<DataflowEdge> result = get_transitive_reduced_edges_across_split(tr_g, split);
+      BinarySeriesSplit split = require_series(
+          make_series_split(make_leaf_node(n1), make_leaf_node(n2)));
+
+      std::unordered_set<DataflowEdge> result =
+          get_transitive_reduced_edges_across_split(tr_g, split);
       std::unordered_set<DataflowEdge> correct = {
-        DataflowEdge{
-          n1_o1, 
-          DataflowInput{n2, 0},
-        },
-        DataflowEdge{
-          n1_o2, 
-          DataflowInput{n2, 1},
-        },
-        DataflowEdge{
-          n1_o1, 
-          DataflowInput{n2, 2},
-        },
+          DataflowEdge{
+              n1_o1,
+              DataflowInput{n2, 0},
+          },
+          DataflowEdge{
+              n1_o2,
+              DataflowInput{n2, 1},
+          },
+          DataflowEdge{
+              n1_o1,
+              DataflowInput{n2, 2},
+          },
       };
 
       CHECK(result == correct);
@@ -102,7 +99,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       NodeAddedResult n2_added = g.add_node({o1}, 1);
       Node n2 = n2_added.node;
       DataflowOutput o2 = get_only(n2_added.outputs);
-      
+
       NodeAddedResult n3_added = g.add_node({o1, o2}, 1);
       Node n3 = n3_added.node;
       DataflowOutput o3 = get_only(n3_added.outputs);
@@ -111,23 +108,20 @@ TEST_SUITE(FF_TEST_SUITE) {
       Node n4 = n4_added.node;
       DataflowOutput o4 = get_only(n4_added.outputs);
 
-      TransitiveReducedDataflowGraphView tr_g = get_dataflow_graph_transitive_reduction(g);
+      TransitiveReducedDataflowGraphView tr_g =
+          get_dataflow_graph_transitive_reduction(g);
 
-      BinarySeriesSplit split = require_series(\
-        make_series_split(
-          make_series_split(
-            make_leaf_node(n1),
-            make_leaf_node(n2)),
-          make_series_split(
-            make_leaf_node(n3),
-            make_leaf_node(n4))));
+      BinarySeriesSplit split = require_series(make_series_split(
+          make_series_split(make_leaf_node(n1), make_leaf_node(n2)),
+          make_series_split(make_leaf_node(n3), make_leaf_node(n4))));
 
-      std::unordered_set<DataflowEdge> result = get_transitive_reduced_edges_across_split(tr_g, split);
+      std::unordered_set<DataflowEdge> result =
+          get_transitive_reduced_edges_across_split(tr_g, split);
       std::unordered_set<DataflowEdge> correct = {
-        DataflowEdge{
-          o2, 
-          DataflowInput{n3, 1},
-        },
+          DataflowEdge{
+              o2,
+              DataflowInput{n3, 1},
+          },
       };
 
       CHECK(result == correct);

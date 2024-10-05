@@ -7,24 +7,22 @@
 
 namespace FlexFlow {
 
-std::unordered_set<DataflowEdge> 
-  get_transitive_reduced_edges_across_split(TransitiveReducedDataflowGraphView const &tr_g,
-                                            BinarySeriesSplit const &split) {
-  std::unordered_set<Node> src_subgraph = unordered_set_of(get_leaves(get_left_child(split)));
-  std::unordered_set<Node> dst_subgraph = unordered_set_of(get_leaves(get_right_child(split)));
+std::unordered_set<DataflowEdge> get_transitive_reduced_edges_across_split(
+    TransitiveReducedDataflowGraphView const &tr_g,
+    BinarySeriesSplit const &split) {
+  std::unordered_set<Node> src_subgraph =
+      unordered_set_of(get_leaves(get_left_child(split)));
+  std::unordered_set<Node> dst_subgraph =
+      unordered_set_of(get_leaves(get_right_child(split)));
 
-  std::unordered_set<DirectedEdge> raw_edges = get_edges_from_subgraph_to_subgraph(tr_g.transitive_reduction, 
-                                                                                   src_subgraph,
-                                                                                   dst_subgraph);
+  std::unordered_set<DirectedEdge> raw_edges =
+      get_edges_from_subgraph_to_subgraph(
+          tr_g.transitive_reduction, src_subgraph, dst_subgraph);
 
-  return flatmap(raw_edges, 
-                 [&](DirectedEdge const &e) {
-                   return get_dataflow_edges_from_node_to_node(tr_g.full_dataflow_graph, 
-                                                               e.src, 
-                                                               e.dst);
-                 });
-
+  return flatmap(raw_edges, [&](DirectedEdge const &e) {
+    return get_dataflow_edges_from_node_to_node(
+        tr_g.full_dataflow_graph, e.src, e.dst);
+  });
 }
-
 
 } // namespace FlexFlow

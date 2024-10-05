@@ -7,8 +7,7 @@
 namespace FlexFlow {
 
 std::optional<SeriesParallelDecomposition>
-    get_pcg_series_parallel_decomposition(
-        ParallelComputationGraph const &);
+    get_pcg_series_parallel_decomposition(ParallelComputationGraph const &);
 
 } // namespace FlexFlow
 

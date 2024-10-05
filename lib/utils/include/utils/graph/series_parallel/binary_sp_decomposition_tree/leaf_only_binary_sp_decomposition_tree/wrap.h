@@ -10,34 +10,28 @@
 namespace FlexFlow {
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> wrap_series_split(LeafOnlyBinarySeriesSplit<LeafLabel> const &split) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel>
+    wrap_series_split(LeafOnlyBinarySeriesSplit<LeafLabel> const &split) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
-    wrap_series_split(
-      GenericBinarySeriesSplit<
-        std::monostate,
-        std::monostate,
-        LeafLabel>{
-        std::monostate{},
-        split.pre.raw_tree,
-        split.post.raw_tree,
-      }
-    ),
+      wrap_series_split(
+          GenericBinarySeriesSplit<std::monostate, std::monostate, LeafLabel>{
+              std::monostate{},
+              split.pre.raw_tree,
+              split.post.raw_tree,
+          }),
   };
 }
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> wrap_parallel_split(LeafOnlyBinaryParallelSplit<LeafLabel> const &split) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel>
+    wrap_parallel_split(LeafOnlyBinaryParallelSplit<LeafLabel> const &split) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
-    wrap_parallel_split(
-      GenericBinaryParallelSplit<
-        std::monostate,
-        std::monostate,
-        LeafLabel>{
-        std::monostate{},
-        split.lhs.raw_tree,
-        split.rhs.raw_tree,
-      }
-    ),
+      wrap_parallel_split(
+          GenericBinaryParallelSplit<std::monostate, std::monostate, LeafLabel>{
+              std::monostate{},
+              split.lhs.raw_tree,
+              split.rhs.raw_tree,
+          }),
   };
 }
 

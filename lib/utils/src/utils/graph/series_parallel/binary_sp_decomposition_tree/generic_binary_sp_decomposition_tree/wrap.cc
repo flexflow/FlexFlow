@@ -2,11 +2,9 @@
 
 namespace FlexFlow {
 
-template 
-  GenericBinarySPDecompositionTree<int, int, int>
+template GenericBinarySPDecompositionTree<int, int, int>
     wrap_series_split(GenericBinarySeriesSplit<int, int, int> const &);
-template
-  GenericBinarySPDecompositionTree<int, int, int>
+template GenericBinarySPDecompositionTree<int, int, int>
     wrap_parallel_split(GenericBinaryParallelSplit<int, int, int> const &);
 
 } // namespace FlexFlow

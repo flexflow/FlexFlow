@@ -489,11 +489,12 @@ tensor_guid_t ComputationGraphBuilder::gather(
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
   if (this->get_shape(index).data_type != DataType::INT32 &&
       this->get_shape(index).data_type != DataType::INT64) {
-    throw mk_runtime_error(fmt::format("Invalid data type for input tensor 2 for Gather: "
-                           "{} (should be {} or {})",
-                           this->get_shape(input).data_type,
-                           DataType::INT32,
-                           DataType::INT64));
+    throw mk_runtime_error(
+        fmt::format("Invalid data type for input tensor 2 for Gather: "
+                    "{} (should be {} or {})",
+                    this->get_shape(input).data_type,
+                    DataType::INT32,
+                    DataType::INT64));
   }
   TensorShape output_shape =
       get_output_shape(attrs, this->get_shape(input), this->get_shape(index));

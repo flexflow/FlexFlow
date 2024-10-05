@@ -3,9 +3,9 @@
 
 #include "utils/containers/extend.h"
 #include "utils/containers/get_element_type.h"
+#include "utils/containers/merge_maps.h"
 #include <type_traits>
 #include <unordered_map>
-#include "utils/containers/merge_maps.h"
 
 namespace FlexFlow {
 
@@ -41,12 +41,14 @@ std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
   return result;
 }
 
-template <typename InK, 
-          typename InV, 
-          typename F,
-          typename OutK = typename std::invoke_result_t<F, InK, InV>::key_type,
-          typename OutV = typename std::invoke_result_t<F, InK, InV>::mapped_type>
-std::unordered_map<OutK, OutV> flatmap(std::unordered_map<InK, InV> const &m, F &&f) {
+template <
+    typename InK,
+    typename InV,
+    typename F,
+    typename OutK = typename std::invoke_result_t<F, InK, InV>::key_type,
+    typename OutV = typename std::invoke_result_t<F, InK, InV>::mapped_type>
+std::unordered_map<OutK, OutV> flatmap(std::unordered_map<InK, InV> const &m,
+                                       F &&f) {
   std::unordered_map<OutK, OutV> result;
 
   for (auto const &[k, v] : m) {

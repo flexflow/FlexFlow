@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 #define _FLEXFLOW_COMPILER_UNITY_ALGORITHM_H
 
-#include "compiler/graph_optimize_result.dtg.h"
 #include "compiler/cost_estimator/cost_estimator.h"
+#include "compiler/graph_optimize_result.dtg.h"
 #include "optimizer_config.dtg.h"
 #include "pcg/computation_graph.h"
 #include "pcg/machine_specification.dtg.h"

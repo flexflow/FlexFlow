@@ -6,12 +6,15 @@
 namespace FlexFlow {
 
 template <typename ParentLabel, typename LeafLabel>
-FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &require_full_binary_tree_parent_node(FullBinaryTree<ParentLabel, LeafLabel> const &t) {
+FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &
+    require_full_binary_tree_parent_node(
+        FullBinaryTree<ParentLabel, LeafLabel> const &t) {
   return std::get<FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(t.root);
 }
 
 template <typename ParentLabel, typename LeafLabel>
-LeafLabel const &require_full_binary_tree_leaf(FullBinaryTree<ParentLabel, LeafLabel> const &t) {
+LeafLabel const &require_full_binary_tree_leaf(
+    FullBinaryTree<ParentLabel, LeafLabel> const &t) {
   return std::get<LeafLabel>(t.root);
 }
 

@@ -8,11 +8,12 @@
 
 namespace FlexFlow {
 
-UnmappedOpCostEstimateKey get_unmapped_op_cost_estimate_key_for_layer(ParallelComputationGraph const &,
-                                                                      parallel_layer_guid_t const &);
+UnmappedOpCostEstimateKey get_unmapped_op_cost_estimate_key_for_layer(
+    ParallelComputationGraph const &, parallel_layer_guid_t const &);
 
-OpCostEstimateKey map_unmapped_op_cost_estimate_key(UnmappedOpCostEstimateKey const &unmapped,
-                                                    MachineView const &machine_view);
+OpCostEstimateKey
+    map_unmapped_op_cost_estimate_key(UnmappedOpCostEstimateKey const &unmapped,
+                                      MachineView const &machine_view);
 
 } // namespace FlexFlow
 

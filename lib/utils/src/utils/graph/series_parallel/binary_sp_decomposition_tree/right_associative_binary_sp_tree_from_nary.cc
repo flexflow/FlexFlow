@@ -16,9 +16,7 @@ BinarySPDecompositionTree right_associative_binary_sp_tree_from_nary(
       std::variant<SeriesSplit, Node> const &)>
       from_parallel_child;
 
-  auto from_node = [](Node const &n) {
-    return make_leaf_node(n);
-  };
+  auto from_node = [](Node const &n) { return make_leaf_node(n); };
 
   auto from_series = [&](SeriesSplit const &s) {
     std::vector<BinarySPDecompositionTree> children =

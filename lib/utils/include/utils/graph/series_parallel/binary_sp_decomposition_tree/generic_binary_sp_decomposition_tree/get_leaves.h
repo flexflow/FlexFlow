@@ -13,24 +13,37 @@ namespace FlexFlow {
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
 std::unordered_multiset<LeafLabel>
-    get_leaves(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &tt) {
+    get_leaves(GenericBinarySPDecompositionTree<SeriesLabel,
+                                                ParallelLabel,
+                                                LeafLabel> const &tt) {
   return visit<std::unordered_multiset<LeafLabel>>(
       tt,
       overload{
           [](LeafLabel const &t) { return std::unordered_multiset{t}; },
-          [](GenericBinarySeriesSplit<SeriesLabel, ParallelLabel, LeafLabel> const &s) { return get_leaves(s); },
-          [](GenericBinaryParallelSplit<SeriesLabel, ParallelLabel, LeafLabel> const &p) { return get_leaves(p); },
+          [](GenericBinarySeriesSplit<SeriesLabel,
+                                      ParallelLabel,
+                                      LeafLabel> const &s) {
+            return get_leaves(s);
+          },
+          [](GenericBinaryParallelSplit<SeriesLabel,
+                                        ParallelLabel,
+                                        LeafLabel> const &p) {
+            return get_leaves(p);
+          },
       });
 }
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
-std::unordered_multiset<LeafLabel> get_leaves(GenericBinarySeriesSplit<SeriesLabel, ParallelLabel, LeafLabel> const &s) {
+std::unordered_multiset<LeafLabel> get_leaves(
+    GenericBinarySeriesSplit<SeriesLabel, ParallelLabel, LeafLabel> const &s) {
   return multiset_union(get_leaves(get_left_child(s)),
                         get_leaves(get_right_child(s)));
 }
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
-std::unordered_multiset<LeafLabel> get_leaves(GenericBinaryParallelSplit<SeriesLabel, ParallelLabel, LeafLabel> const &p) {
+std::unordered_multiset<LeafLabel> get_leaves(
+    GenericBinaryParallelSplit<SeriesLabel, ParallelLabel, LeafLabel> const
+        &p) {
   return multiset_union(get_leaves(get_left_child(p)),
                         get_leaves(get_right_child(p)));
 }

@@ -6,17 +6,23 @@
 namespace FlexFlow {
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
-bool is_series_split(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &t) {
+bool is_series_split(GenericBinarySPDecompositionTree<SeriesLabel,
+                                                      ParallelLabel,
+                                                      LeafLabel> const &t) {
   return get_node_type(t) == SPDecompositionTreeNodeType::SERIES;
 }
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
-bool is_parallel_split(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &t) {
+bool is_parallel_split(GenericBinarySPDecompositionTree<SeriesLabel,
+                                                        ParallelLabel,
+                                                        LeafLabel> const &t) {
   return get_node_type(t) == SPDecompositionTreeNodeType::PARALLEL;
 }
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
-bool is_leaf(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &t) {
+bool is_leaf(GenericBinarySPDecompositionTree<SeriesLabel,
+                                              ParallelLabel,
+                                              LeafLabel> const &t) {
   return get_node_type(t) == SPDecompositionTreeNodeType::NODE;
 }
 

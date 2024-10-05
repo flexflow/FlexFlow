@@ -7,12 +7,14 @@
 namespace FlexFlow {
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> get_left_child(LeafOnlyBinarySeriesSplit<LeafLabel> const &s) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel>
+    get_left_child(LeafOnlyBinarySeriesSplit<LeafLabel> const &s) {
   return s.pre;
 }
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> get_right_child(LeafOnlyBinarySeriesSplit<LeafLabel> const &s) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel>
+    get_right_child(LeafOnlyBinarySeriesSplit<LeafLabel> const &s) {
   return s.post;
 }
 

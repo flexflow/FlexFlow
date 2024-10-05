@@ -8,8 +8,15 @@
 
 namespace FlexFlow {
 
-template <typename Result, typename F, typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
-Result visit(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &tt, F f) {
+template <typename Result,
+          typename F,
+          typename SeriesLabel,
+          typename ParallelLabel,
+          typename LeafLabel>
+Result visit(GenericBinarySPDecompositionTree<SeriesLabel,
+                                              ParallelLabel,
+                                              LeafLabel> const &tt,
+             F f) {
   SPDecompositionTreeNodeType node_type = get_node_type(tt);
   switch (node_type) {
     case SPDecompositionTreeNodeType::SERIES: {
@@ -25,7 +32,8 @@ Result visit(GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLa
       return result;
     }
     default:
-      throw mk_runtime_error(fmt::format("Unknown SPDecompositionTreeNodeType: {}", node_type));
+      throw mk_runtime_error(
+          fmt::format("Unknown SPDecompositionTreeNodeType: {}", node_type));
   }
 }
 

@@ -21,8 +21,7 @@ BinarySPDecompositionTree left_associative_binary_sp_tree_from_nary(
     return make_leaf_node(n);
   };
 
-  auto from_series =
-      [&](SeriesSplit const &s) -> BinarySPDecompositionTree {
+  auto from_series = [&](SeriesSplit const &s) -> BinarySPDecompositionTree {
     std::vector<BinarySPDecompositionTree> children =
         transform(s.children, from_series_child);
     return foldl1(children,
@@ -63,10 +62,10 @@ BinarySPDecompositionTree left_associative_binary_sp_tree_from_nary(
   };
 
   return nary.visit<BinarySPDecompositionTree>(overload{
-          [&](Node const &n) { return from_node(n); },
-          [&](SeriesSplit const &s) { return from_series(s); },
-          [&](ParallelSplit const &p) { return from_parallel(p); },
-      });
+      [&](Node const &n) { return from_node(n); },
+      [&](SeriesSplit const &s) { return from_series(s); },
+      [&](ParallelSplit const &p) { return from_parallel(p); },
+  });
 }
 
 } // namespace FlexFlow

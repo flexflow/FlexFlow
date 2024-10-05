@@ -11,17 +11,23 @@ namespace FlexFlow {
 
 template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel>
 bool is_binary_sp_tree_right_associative(
-    GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel> const &tt) {
+    GenericBinarySPDecompositionTree<SeriesLabel,
+                                     ParallelLabel,
+                                     LeafLabel> const &tt) {
   return visit<bool>(
       tt,
       overload{
           [](LeafLabel const &t) { return true; },
-          [](GenericBinarySeriesSplit<SeriesLabel, ParallelLabel, LeafLabel> const &s) {
+          [](GenericBinarySeriesSplit<SeriesLabel,
+                                      ParallelLabel,
+                                      LeafLabel> const &s) {
             return !is_series_split(get_left_child(s)) &&
                    is_binary_sp_tree_right_associative(get_left_child(s)) &&
                    is_binary_sp_tree_right_associative(get_right_child(s));
           },
-          [](GenericBinaryParallelSplit<SeriesLabel, ParallelLabel, LeafLabel> const &p) {
+          [](GenericBinaryParallelSplit<SeriesLabel,
+                                        ParallelLabel,
+                                        LeafLabel> const &p) {
             return !is_parallel_split(get_left_child(p)) &&
                    is_binary_sp_tree_right_associative(get_left_child(p)) &&
                    is_binary_sp_tree_right_associative(get_right_child(p));

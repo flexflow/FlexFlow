@@ -36,10 +36,10 @@ std::optional<ComputationGraphBinarySPDecomposition>
       left_associative_binary_sp_tree_from_nary(sp_decomposition);
 
   auto visitor = LeafOnlyBinarySPDecompositionTreeVisitor<Node, layer_guid_t>{
-    [](Node const &n) { return layer_guid_t{n}; },
+      [](Node const &n) { return layer_guid_t{n}; },
   };
-  return ComputationGraphBinarySPDecomposition{transform(
-      raw_binary_tree.raw_tree, visitor)};
+  return ComputationGraphBinarySPDecomposition{
+      transform(raw_binary_tree.raw_tree, visitor)};
 }
 
 std::optional<ComputationGraphBinarySPDecomposition>
@@ -58,10 +58,10 @@ std::optional<ComputationGraphBinarySPDecomposition>
       right_associative_binary_sp_tree_from_nary(sp_decomposition);
 
   auto visitor = LeafOnlyBinarySPDecompositionTreeVisitor<Node, layer_guid_t>{
-    [](Node const &n) { return layer_guid_t{n}; },
+      [](Node const &n) { return layer_guid_t{n}; },
   };
-  return ComputationGraphBinarySPDecomposition{transform(
-      raw_binary_tree.raw_tree, visitor)};
+  return ComputationGraphBinarySPDecomposition{
+      transform(raw_binary_tree.raw_tree, visitor)};
 }
 
 bool is_left_associative(ComputationGraphBinarySPDecomposition const &d) {

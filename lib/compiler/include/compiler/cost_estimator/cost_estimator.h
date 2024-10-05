@@ -1,12 +1,12 @@
 #ifndef _FLEXFLOW_LIB_COMPILER_INCLUDE_COMPILER_COST_ESTIMATOR_COST_ESTIMATOR_H
 #define _FLEXFLOW_LIB_COMPILER_INCLUDE_COMPILER_COST_ESTIMATOR_COST_ESTIMATOR_H
 
-#include <vector>
 #include "compiler/cost_estimator/op_cost_estimate_key.dtg.h"
 #include "compiler/cost_estimator/tensor_set_movement.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/pcg_operator_attrs.dtg.h"
 #include "pcg/machine_view.dtg.h"
+#include <vector>
 
 namespace FlexFlow {
 

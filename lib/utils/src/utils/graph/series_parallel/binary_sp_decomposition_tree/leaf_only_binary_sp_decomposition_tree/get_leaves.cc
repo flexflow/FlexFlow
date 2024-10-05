@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-template 
-  std::unordered_multiset<int> get_leaves(LeafOnlyBinarySPDecompositionTree<int> const &);
+template std::unordered_multiset<int>
+    get_leaves(LeafOnlyBinarySPDecompositionTree<int> const &);
 
 } // namespace FlexFlow

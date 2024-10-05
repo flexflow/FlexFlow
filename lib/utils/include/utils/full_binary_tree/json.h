@@ -12,18 +12,23 @@
 namespace nlohmann {
 
 template <typename ParentLabel, typename LeafLabel>
-struct adl_serializer<::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>> {
-  static ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> from_json(json const &j) {
+struct adl_serializer<
+    ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>> {
+  static ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>
+      from_json(json const &j) {
     return ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>{
         j.at("left_child")
-            .template get<::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(),
+            .template get<
+                ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(),
         j.at("right_child")
-            .template get<::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(),
+            .template get<
+                ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(),
     };
   }
 
-  static void to_json(json &j,
-                      ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &v) {
+  static void to_json(
+      json &j,
+      ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &v) {
     j["__type"] = "FullBinaryTreeParentNode";
     j["left_child"] = get_left_child(v);
     j["right_child"] = get_right_child(v);
@@ -32,12 +37,15 @@ struct adl_serializer<::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabe
 
 template <typename ParentLabel, typename LeafLabel>
 struct adl_serializer<::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel>> {
-  static ::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel> from_json(json const &j) {
+  static ::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel>
+      from_json(json const &j) {
     std::string key = j.at("type").get<std::string>();
 
     if (key == "parent") {
       return ::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel>{
-          j.at("value").get<::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(),
+          j.at("value")
+              .get<::FlexFlow::FullBinaryTreeParentNode<ParentLabel,
+                                                        LeafLabel>>(),
       };
     } else if (key == "leaf") {
       return ::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel>{
@@ -56,7 +64,8 @@ struct adl_serializer<::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel>> {
     ::FlexFlow::visit<std::monostate>(
         v,
         ::FlexFlow::overload{
-            [&](::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &s) {
+            [&](::FlexFlow::FullBinaryTreeParentNode<ParentLabel,
+                                                     LeafLabel> const &s) {
               j["type"] = "parent";
               j["value"] = s;
               return std::monostate{};

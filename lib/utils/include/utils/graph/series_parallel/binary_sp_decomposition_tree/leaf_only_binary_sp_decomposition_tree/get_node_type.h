@@ -7,7 +7,8 @@
 namespace FlexFlow {
 
 template <typename LeafLabel>
-SPDecompositionTreeNodeType get_node_type(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &tree) {
+SPDecompositionTreeNodeType
+    get_node_type(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &tree) {
   return get_node_type(tree.raw_tree);
 }
 

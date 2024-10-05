@@ -1,8 +1,8 @@
 #include "utils/graph/series_parallel/intermediate_sp_decomposition_tree.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include "utils/containers/extend.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_parallel_split.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_series_split.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {

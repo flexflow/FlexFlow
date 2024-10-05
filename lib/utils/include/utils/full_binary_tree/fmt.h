@@ -11,34 +11,34 @@
 namespace FlexFlow {
 
 template <typename ParentLabel, typename LeafLabel>
-std::string format_as(FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) {
-  return fmt::format("<{} ({} {})>",
-                     t.label,
-                     get_left_child(t),
-                     get_right_child(t));
+std::string
+    format_as(FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) {
+  return fmt::format(
+      "<{} ({} {})>", t.label, get_left_child(t), get_right_child(t));
 }
 
 template <typename ParentLabel, typename LeafLabel>
 std::string format_as(FullBinaryTree<ParentLabel, LeafLabel> const &t) {
   auto visitor = FullBinaryTreeVisitor<std::string, ParentLabel, LeafLabel>{
-    [](FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &parent) {
-      return fmt::to_string(parent);
-    },
-    [](LeafLabel const &leaf) {
-      return fmt::format("{}", leaf);
-    },
+      [](FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &parent) {
+        return fmt::to_string(parent);
+      },
+      [](LeafLabel const &leaf) { return fmt::format("{}", leaf); },
   };
 
   return visit(t, visitor);
 }
 
 template <typename ParentLabel, typename LeafLabel>
-std::ostream &operator<<(std::ostream &s, FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) {
+std::ostream &
+    operator<<(std::ostream &s,
+               FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) {
   return (s << fmt::to_string(t));
 }
 
 template <typename ParentLabel, typename LeafLabel>
-std::ostream &operator<<(std::ostream &s, FullBinaryTree<ParentLabel, LeafLabel> const &t) {
+std::ostream &operator<<(std::ostream &s,
+                         FullBinaryTree<ParentLabel, LeafLabel> const &t) {
   return (s << fmt::to_string(t));
 }
 

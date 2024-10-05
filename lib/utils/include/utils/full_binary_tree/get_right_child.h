@@ -6,7 +6,8 @@
 namespace FlexFlow {
 
 template <typename ParentLabel, typename LeafLabel>
-FullBinaryTree<ParentLabel, LeafLabel> const &get_right_child(FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) {
+FullBinaryTree<ParentLabel, LeafLabel> const &
+    get_right_child(FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) {
   return *t.right_child_ptr;
 }
 

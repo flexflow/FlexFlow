@@ -5,13 +5,13 @@ namespace FlexFlow {
 
 BinarySPDecompositionTree get_left_child(BinaryParallelSplit const &s) {
   return BinarySPDecompositionTree{
-    get_left_child(s.raw_split),
+      get_left_child(s.raw_split),
   };
 }
 
 BinarySPDecompositionTree get_right_child(BinaryParallelSplit const &s) {
   return BinarySPDecompositionTree{
-    get_right_child(s.raw_split),
+      get_right_child(s.raw_split),
   };
 }
 

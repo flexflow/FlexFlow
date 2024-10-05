@@ -2,11 +2,10 @@
 
 namespace FlexFlow {
 
-template
-  bool is_series_split(GenericBinarySPDecompositionTree<int, int, int> const &);
-template
-  bool is_parallel_split(GenericBinarySPDecompositionTree<int, int, int> const &);
-template
-  bool is_leaf(GenericBinarySPDecompositionTree<int, int, int> const &);
+template bool
+    is_series_split(GenericBinarySPDecompositionTree<int, int, int> const &);
+template bool
+    is_parallel_split(GenericBinarySPDecompositionTree<int, int, int> const &);
+template bool is_leaf(GenericBinarySPDecompositionTree<int, int, int> const &);
 
 } // namespace FlexFlow

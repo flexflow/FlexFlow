@@ -2,12 +2,11 @@
 
 namespace FlexFlow {
 
-template 
-  std::unordered_multiset<int>
-      get_leaves(GenericBinarySPDecompositionTree<int, int, int> const &);
-template
-  std::unordered_multiset<int> get_leaves(GenericBinarySeriesSplit<int, int, int> const &);
-template
-  std::unordered_multiset<int> get_leaves(GenericBinaryParallelSplit<int, int, int> const &);
+template std::unordered_multiset<int>
+    get_leaves(GenericBinarySPDecompositionTree<int, int, int> const &);
+template std::unordered_multiset<int>
+    get_leaves(GenericBinarySeriesSplit<int, int, int> const &);
+template std::unordered_multiset<int>
+    get_leaves(GenericBinaryParallelSplit<int, int, int> const &);
 
 } // namespace FlexFlow

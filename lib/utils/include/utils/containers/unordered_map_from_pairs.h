@@ -5,9 +5,10 @@
 
 namespace FlexFlow {
 
-template <typename C, typename K = typename C::value_type::first_type, typename V = typename C::value_type::second_type>
-std::unordered_map<K, V>
-  unordered_map_from_pairs(C const &c) {
+template <typename C,
+          typename K = typename C::value_type::first_type,
+          typename V = typename C::value_type::second_type>
+std::unordered_map<K, V> unordered_map_from_pairs(C const &c) {
   return std::unordered_map<K, V>(c.cbegin(), c.cend());
 }
 

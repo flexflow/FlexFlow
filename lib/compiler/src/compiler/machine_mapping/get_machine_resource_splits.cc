@@ -5,7 +5,8 @@ namespace FlexFlow {
 
 std::unordered_set<std::pair<MachineSpecification, MachineSpecification>>
     get_machine_resource_splits(MachineSpecification const &resource) {
-  std::unordered_set<std::pair<MachineSpecification, MachineSpecification>> result;
+  std::unordered_set<std::pair<MachineSpecification, MachineSpecification>>
+      result;
 
   for (int i = 1; i < resource.num_nodes; i *= 2) {
     MachineSpecification sub_resource1 = resource;

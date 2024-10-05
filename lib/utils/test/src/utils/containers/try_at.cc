@@ -1,12 +1,15 @@
 #include "utils/containers/try_at.h"
+#include "test/utils/doctest/fmt/optional.h"
 #include <doctest/doctest.h>
 #include <string>
-#include "test/utils/doctest/fmt/optional.h"
 
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE_TEMPLATE("try_at(T, K)", T, std::unordered_map<int, std::string>, std::map<int, std::string>) {
+  TEST_CASE_TEMPLATE("try_at(T, K)",
+                     T,
+                     std::unordered_map<int, std::string>,
+                     std::map<int, std::string>) {
     T m = {{1, "one"}, {2, "two"}};
 
     SUBCASE("map contains key") {

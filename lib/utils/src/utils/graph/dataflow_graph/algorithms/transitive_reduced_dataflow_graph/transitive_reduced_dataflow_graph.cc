@@ -3,13 +3,14 @@
 
 namespace FlexFlow {
 
-TransitiveReducedDataflowGraphView get_dataflow_graph_transitive_reduction(DataflowGraphView const &g) {
+TransitiveReducedDataflowGraphView
+    get_dataflow_graph_transitive_reduction(DataflowGraphView const &g) {
   DiGraphView as_digraph = g;
   DiGraphView transitive_reduced = transitive_reduction(as_digraph);
 
   return TransitiveReducedDataflowGraphView{
-    /*full_dataflow_graph=*/g,
-    /*transitive_reduction=*/transitive_reduced,
+      /*full_dataflow_graph=*/g,
+      /*transitive_reduction=*/transitive_reduced,
   };
 }
 

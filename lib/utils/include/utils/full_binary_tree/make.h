@@ -6,22 +6,24 @@
 namespace FlexFlow {
 
 template <typename ParentLabel, typename LeafLabel>
-FullBinaryTree<ParentLabel, LeafLabel> make_full_binary_tree_parent(ParentLabel const &label, 
-                                                               FullBinaryTree<ParentLabel, LeafLabel> const &lhs,
-                                                               FullBinaryTree<ParentLabel, LeafLabel> const &rhs) {
+FullBinaryTree<ParentLabel, LeafLabel> make_full_binary_tree_parent(
+    ParentLabel const &label,
+    FullBinaryTree<ParentLabel, LeafLabel> const &lhs,
+    FullBinaryTree<ParentLabel, LeafLabel> const &rhs) {
   return FullBinaryTree<ParentLabel, LeafLabel>{
-    FullBinaryTreeParentNode<ParentLabel, LeafLabel>{
-      label,
-      lhs,
-      rhs,
-    },
+      FullBinaryTreeParentNode<ParentLabel, LeafLabel>{
+          label,
+          lhs,
+          rhs,
+      },
   };
 }
 
 template <typename ParentLabel, typename LeafLabel>
-FullBinaryTree<ParentLabel, LeafLabel> make_full_binary_tree_leaf(LeafLabel const &label) {
+FullBinaryTree<ParentLabel, LeafLabel>
+    make_full_binary_tree_leaf(LeafLabel const &label) {
   return FullBinaryTree<ParentLabel, LeafLabel>{
-    label,
+      label,
   };
 }
 

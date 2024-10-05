@@ -7,36 +7,35 @@
 namespace FlexFlow {
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_binary_sp_tree_make_series_split(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &pre,
-                                                               LeafOnlyBinarySPDecompositionTree<LeafLabel> const &post) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel>
+    leaf_only_binary_sp_tree_make_series_split(
+        LeafOnlyBinarySPDecompositionTree<LeafLabel> const &pre,
+        LeafOnlyBinarySPDecompositionTree<LeafLabel> const &post) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
-    make_generic_binary_series_split(
-      std::monostate{},
-      pre.raw_tree,
-      post.raw_tree),
+      make_generic_binary_series_split(
+          std::monostate{}, pre.raw_tree, post.raw_tree),
   };
 }
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_binary_sp_tree_make_parallel_split(LeafOnlyBinarySPDecompositionTree<LeafLabel> const &lhs,
-                                                               LeafOnlyBinarySPDecompositionTree<LeafLabel> const &rhs) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel>
+    leaf_only_binary_sp_tree_make_parallel_split(
+        LeafOnlyBinarySPDecompositionTree<LeafLabel> const &lhs,
+        LeafOnlyBinarySPDecompositionTree<LeafLabel> const &rhs) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
-    make_generic_binary_parallel_split(
-      std::monostate{},
-      lhs.raw_tree,
-      rhs.raw_tree),
+      make_generic_binary_parallel_split(
+          std::monostate{}, lhs.raw_tree, rhs.raw_tree),
   };
 }
 
 template <typename LeafLabel>
-LeafOnlyBinarySPDecompositionTree<LeafLabel> leaf_only_binary_sp_tree_make_leaf(LeafLabel const &label) {
+LeafOnlyBinarySPDecompositionTree<LeafLabel>
+    leaf_only_binary_sp_tree_make_leaf(LeafLabel const &label) {
   return LeafOnlyBinarySPDecompositionTree<LeafLabel>{
-    make_generic_binary_sp_leaf<
-      std::monostate,
-      std::monostate, LeafLabel>(label),
+      make_generic_binary_sp_leaf<std::monostate, std::monostate, LeafLabel>(
+          label),
   };
 }
-
 
 } // namespace FlexFlow
 

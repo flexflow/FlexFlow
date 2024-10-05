@@ -3,7 +3,8 @@
 // #include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
 // #include "pcg/machine_view.h"
 // #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
-// #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
+// #include
+// "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 // #include "utils/containers/get_only.h"
 // #include <doctest/doctest.h>
 // #include "./cost_estimator_for_test.h"
@@ -14,7 +15,7 @@
 //   TEST_CASE("get_tensor_set_movement_across_split") {
 //     ParallelComputationGraph pcg = empty_parallel_computation_graph();
 //
-//     ParallelTensorShape input_shape = 
+//     ParallelTensorShape input_shape =
 //       ParallelTensorShape{
 //         ParallelTensorDims{
 //           FFOrdered<ShardParallelDim>{
@@ -30,7 +31,7 @@
 //       };
 //     ParallelLayerAddedResult input = pcg_add_input_layer(pcg, input_shape);
 //
-//     ParallelLayerAttrs relu_attrs 
+//     ParallelLayerAttrs relu_attrs
 //       = ParallelLayerAttrs{
 //           /*op_attrs=*/PCGOperatorAttrs{
 //             ElementUnaryAttrs{
@@ -48,7 +49,7 @@
 //       /*create_gradients=*/CreateGrad::YES,
 //     };
 //
-//     ParallelLayerAddedResult relu_1 
+//     ParallelLayerAddedResult relu_1
 //       = add_parallel_layer(pcg,
 //                            relu_attrs,
 //                            {get_only(input.outputs)},
@@ -79,7 +80,8 @@
 //         {relu_2.parallel_layer, post_mv1},
 //       }};
 //
-//       TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
+//       TensorSetMovement result =
+//       get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
 //                                                                       split,
 //                                                                       pre_mapping,
 //                                                                       post_mapping);
@@ -125,7 +127,8 @@
 //           {relu_3.parallel_layer, post_mv1},
 //         }};
 //
-//         TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
+//         TensorSetMovement result =
+//         get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
 //                                                   split,
 //                                                   pre_mapping,
 //                                                   post_mapping);
@@ -153,7 +156,8 @@
 //           {relu_3.parallel_layer, post_mv2},
 //         }};
 //
-//         TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
+//         TensorSetMovement result =
+//         get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
 //                                                   split,
 //                                                   pre_mapping,
 //                                                   post_mapping);
@@ -182,9 +186,10 @@
 //       ParallelLayerAddedResult relu_4
 //         = add_parallel_layer(pcg,
 //                              relu_attrs,
-//                              // relu's don't have two inputs, but for the purposes of this test it's fine.
-//                              {get_only(relu_1.outputs), get_only(relu_3.outputs)}, 
-//                              {relu_output_attrs});
+//                              // relu's don't have two inputs, but for the
+//                              purposes of this test it's fine.
+//                              {get_only(relu_1.outputs),
+//                              get_only(relu_3.outputs)}, {relu_output_attrs});
 //
 //       PartialMachineMapping pre_mapping = PartialMachineMapping{{
 //         {relu_1.parallel_layer, pre_mv1},
@@ -206,7 +211,8 @@
 //           make_pcg_leaf_node(relu_2.parallel_layer),
 //           make_pcg_leaf_node(relu_4.parallel_layer))));
 //
-//       TensorSetMovement result = get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
+//       TensorSetMovement result =
+//       get_tensor_set_movement_across_split(pcg_get_transitive_reduction(pcg),
 //                                                                       split,
 //                                                                       pre_mapping,
 //                                                                       post_mapping);

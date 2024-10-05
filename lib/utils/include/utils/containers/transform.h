@@ -22,9 +22,7 @@ auto transform(req<C> const &c, F const &f)
   return transform(static_cast<C>(c), f);
 }
 
-template <typename F,
-          typename In,
-          typename Out = std::invoke_result_t<F, In>>
+template <typename F, typename In, typename Out = std::invoke_result_t<F, In>>
 std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
   std::unordered_set<Out> result;
   for (auto const &e : v) {
@@ -33,10 +31,9 @@ std::unordered_set<Out> transform(std::unordered_set<In> const &v, F const &f) {
   return result;
 }
 
-template <typename F,
-          typename In,
-          typename Out = std::invoke_result_t<F, In>>
-std::unordered_multiset<Out> transform(std::unordered_multiset<In> const &v, F const &f) {
+template <typename F, typename In, typename Out = std::invoke_result_t<F, In>>
+std::unordered_multiset<Out> transform(std::unordered_multiset<In> const &v,
+                                       F const &f) {
   std::unordered_multiset<Out> result;
   for (auto const &e : v) {
     result.insert(f(e));
@@ -44,9 +41,7 @@ std::unordered_multiset<Out> transform(std::unordered_multiset<In> const &v, F c
   return result;
 }
 
-template <typename F,
-          typename In,
-          typename Out = std::invoke_result_t<F, In>>
+template <typename F, typename In, typename Out = std::invoke_result_t<F, In>>
 std::set<Out> transform(std::set<In> const &v, F const &f) {
   std::set<Out> result;
   for (auto const &e : v) {
@@ -55,9 +50,7 @@ std::set<Out> transform(std::set<In> const &v, F const &f) {
   return result;
 }
 
-template <typename F,
-          typename In,
-          typename Out = std::invoke_result_t<F, In>>
+template <typename F, typename In, typename Out = std::invoke_result_t<F, In>>
 std::multiset<Out> transform(std::multiset<In> const &v, F const &f) {
   std::multiset<Out> result;
   for (auto const &e : v) {

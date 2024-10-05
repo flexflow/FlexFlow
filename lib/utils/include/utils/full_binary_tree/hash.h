@@ -9,18 +9,21 @@ namespace std {
 
 template <typename ParentLabel, typename LeafLabel>
 struct hash<::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>> {
-  size_t operator()(::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t) const {
+  size_t operator()(
+      ::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t)
+      const {
     return get_std_hash(t.tie());
   }
 };
 
 template <typename ParentLabel, typename LeafLabel>
 struct hash<::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel>> {
-  size_t operator()(::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel> const &t) const {
+  size_t operator()(
+      ::FlexFlow::FullBinaryTree<ParentLabel, LeafLabel> const &t) const {
     return get_std_hash(t.tie());
   }
 };
 
-} // namespace FlexFlow
+} // namespace std
 
 #endif

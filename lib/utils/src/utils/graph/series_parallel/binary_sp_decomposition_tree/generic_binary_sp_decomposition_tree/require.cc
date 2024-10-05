@@ -2,13 +2,13 @@
 
 namespace FlexFlow {
 
-template 
-  GenericBinarySeriesSplit<int, int, int>
-      require_generic_binary_series_split(GenericBinarySPDecompositionTree<int, int, int> const &);
-template 
-  GenericBinaryParallelSplit<int, int, int>
-      require_generic_binary_parallel_split(GenericBinarySPDecompositionTree<int, int, int> const &);
-template 
-  int require_generic_binary_leaf(GenericBinarySPDecompositionTree<int, int, int> const &);
+template GenericBinarySeriesSplit<int, int, int>
+    require_generic_binary_series_split(
+        GenericBinarySPDecompositionTree<int, int, int> const &);
+template GenericBinaryParallelSplit<int, int, int>
+    require_generic_binary_parallel_split(
+        GenericBinarySPDecompositionTree<int, int, int> const &);
+template int require_generic_binary_leaf(
+    GenericBinarySPDecompositionTree<int, int, int> const &);
 
 } // namespace FlexFlow

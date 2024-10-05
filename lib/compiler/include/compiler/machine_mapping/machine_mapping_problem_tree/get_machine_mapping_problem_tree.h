@@ -9,8 +9,9 @@
 
 namespace FlexFlow {
 
-MachineMappingProblemTree get_machine_mapping_problem_tree(ParallelComputationGraph const &pcg,
-                                                           PCGBinarySPDecomposition const &sp);
+MachineMappingProblemTree
+    get_machine_mapping_problem_tree(ParallelComputationGraph const &pcg,
+                                     PCGBinarySPDecomposition const &sp);
 
 } // namespace FlexFlow
 

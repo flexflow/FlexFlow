@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-template
-  int get_full_binary_tree_parent_label(FullBinaryTreeParentNode<int, std::string> const &);
+template int get_full_binary_tree_parent_label(
+    FullBinaryTreeParentNode<int, std::string> const &);
 
 } // namespace FlexFlow

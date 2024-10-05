@@ -2,9 +2,9 @@
 
 namespace FlexFlow {
 
-template
-  LeafOnlyBinarySPDecompositionTree<int> get_left_child(LeafOnlyBinarySeriesSplit<int> const &);
-template 
-  LeafOnlyBinarySPDecompositionTree<int> get_right_child(LeafOnlyBinarySeriesSplit<int> const &);
+template LeafOnlyBinarySPDecompositionTree<int>
+    get_left_child(LeafOnlyBinarySeriesSplit<int> const &);
+template LeafOnlyBinarySPDecompositionTree<int>
+    get_right_child(LeafOnlyBinarySeriesSplit<int> const &);
 
 } // namespace FlexFlow

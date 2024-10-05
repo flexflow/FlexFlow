@@ -8,8 +8,8 @@
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/find_isomorphism.h"
-#include "utils/graph/node/algorithms.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/rewrite_node_labels.h"
+#include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
 
@@ -45,18 +45,19 @@ ParallelLayerAddedResult
   };
 }
 
-ParallelLayerAddedResult pcg_add_input_layer(ParallelComputationGraph &pcg,
-                                             ParallelTensorShape const &tensor_shape) {
+ParallelLayerAddedResult
+    pcg_add_input_layer(ParallelComputationGraph &pcg,
+                        ParallelTensorShape const &tensor_shape) {
   ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
-    /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
-    /*name=*/std::nullopt,
+      /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
+      /*name=*/std::nullopt,
   };
 
   ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
-    /*shape=*/tensor_shape,
-    /*sync_type=*/std::nullopt,
-    /*initializer=*/std::nullopt,
-    /*create_gradients=*/CreateGrad::NO,
+      /*shape=*/tensor_shape,
+      /*sync_type=*/std::nullopt,
+      /*initializer=*/std::nullopt,
+      /*create_gradients=*/CreateGrad::NO,
   };
 
   return add_parallel_layer(/*pcg=*/pcg,
@@ -65,15 +66,17 @@ ParallelLayerAddedResult pcg_add_input_layer(ParallelComputationGraph &pcg,
                             /*output_labels=*/{tensor_attrs});
 }
 
-std::unordered_set<ParallelComputationGraphEdge> get_pcg_edges_from_layer_to_layer(ParallelComputationGraph const &pcg,
-                                                                                   parallel_layer_guid_t const &src,
-                                                                                   parallel_layer_guid_t const &dst) {
-  std::unordered_set<DataflowEdge> raw_edges =  get_dataflow_edges_from_node_to_node(pcg.raw_graph,
-                                                                                     src.raw_graph_node,
-                                                                                     dst.raw_graph_node);
-  return transform(raw_edges, [](DataflowEdge const &e) { return ParallelComputationGraphEdge{e}; });
+std::unordered_set<ParallelComputationGraphEdge>
+    get_pcg_edges_from_layer_to_layer(ParallelComputationGraph const &pcg,
+                                      parallel_layer_guid_t const &src,
+                                      parallel_layer_guid_t const &dst) {
+  std::unordered_set<DataflowEdge> raw_edges =
+      get_dataflow_edges_from_node_to_node(
+          pcg.raw_graph, src.raw_graph_node, dst.raw_graph_node);
+  return transform(raw_edges, [](DataflowEdge const &e) {
+    return ParallelComputationGraphEdge{e};
+  });
 }
-
 
 std::vector<parallel_tensor_guid_t>
     get_incoming_tensors(ParallelComputationGraph const &pcg,
@@ -176,19 +179,20 @@ parallel_layer_guid_t
   return get_only(found);
 }
 
-ParallelComputationGraph without_layer_names(ParallelComputationGraph const &pcg) {
+ParallelComputationGraph
+    without_layer_names(ParallelComputationGraph const &pcg) {
   return ParallelComputationGraph{
-    LabelledDataflowGraph<ParallelLayerAttrs, ParallelTensorAttrs>::
-        create_copy_of<
-            UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs,
-                                                  ParallelTensorAttrs>>(
-      rewrite_node_labels(
-          pcg.raw_graph,
-          [](Node const &n, ParallelLayerAttrs const &old_attrs) {
-            ParallelLayerAttrs new_attrs = old_attrs;
-            new_attrs.name = std::nullopt;
-            return new_attrs;
-          })),
+      LabelledDataflowGraph<ParallelLayerAttrs, ParallelTensorAttrs>::
+          create_copy_of<
+              UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs,
+                                                    ParallelTensorAttrs>>(
+              rewrite_node_labels(
+                  pcg.raw_graph,
+                  [](Node const &n, ParallelLayerAttrs const &old_attrs) {
+                    ParallelLayerAttrs new_attrs = old_attrs;
+                    new_attrs.name = std::nullopt;
+                    return new_attrs;
+                  })),
   };
 }
 

@@ -8,9 +8,9 @@
 
 namespace FlexFlow {
 
- // NOTE(@lockshaw) This code is not tested and I don't necessarily trust it.
- // Figuring out what to do with it is tracked in 
- // https://github.com/flexflow/FlexFlow/issues/1513
+// NOTE(@lockshaw) This code is not tested and I don't necessarily trust it.
+// Figuring out what to do with it is tracked in
+// https://github.com/flexflow/FlexFlow/issues/1513
 
 template <typename NodeLabel, typename ValueLabel>
 struct LazyLabelledDataflowGraph final

@@ -2,8 +2,7 @@
 
 namespace FlexFlow {
 
-template 
-  bool is_binary_sp_tree_left_associative(
-      GenericBinarySPDecompositionTree<int, int, int> const &);
+template bool is_binary_sp_tree_left_associative(
+    GenericBinarySPDecompositionTree<int, int, int> const &);
 
 } // namespace FlexFlow

@@ -1,10 +1,10 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/get_leaves.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/get_node_type.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/is_binary_sp_tree_left_associative.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/is_binary_sp_tree_right_associative.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/make.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/require.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/get_node_type.h"
 
 namespace FlexFlow {
 
@@ -44,13 +44,13 @@ std::unordered_multiset<Node> get_leaves(BinarySPDecompositionTree const &tt) {
 
 BinarySeriesSplit require_series(BinarySPDecompositionTree const &tt) {
   return BinarySeriesSplit{
-    require_leaf_only_binary_series_split(tt.raw_tree),
+      require_leaf_only_binary_series_split(tt.raw_tree),
   };
 }
 
 BinaryParallelSplit require_parallel(BinarySPDecompositionTree const &tt) {
   return BinaryParallelSplit{
-    require_leaf_only_binary_parallel_split(tt.raw_tree),
+      require_leaf_only_binary_parallel_split(tt.raw_tree),
   };
 }
 
@@ -61,6 +61,5 @@ Node require_leaf(BinarySPDecompositionTree const &tt) {
 SPDecompositionTreeNodeType get_node_type(BinarySPDecompositionTree const &tt) {
   return get_node_type(tt.raw_tree);
 }
-
 
 } // namespace FlexFlow

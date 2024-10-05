@@ -16,7 +16,8 @@ struct TestCostEstimator : public ICostEstimator {
 
   TestCostEstimator() = delete;
   TestCostEstimator(decltype(get_operator_cost) const &get_operator_cost,
-                    decltype(get_communication_cost) const &get_communication_cost);
+                    decltype(get_communication_cost)
+                        const &get_communication_cost);
 
   float estimate_cost(OpCostEstimateKey const &) const override;
 
@@ -24,12 +25,13 @@ struct TestCostEstimator : public ICostEstimator {
 };
 
 CostEstimator make_fake_cost_estimator(
-  std::function<float(OpCostEstimateKey const &)> const &get_operator_cost,
-  std::function<float(TensorSetMovement const &)> const &get_communication_cost);
+    std::function<float(OpCostEstimateKey const &)> const &get_operator_cost,
+    std::function<float(TensorSetMovement const &)> const
+        &get_communication_cost);
 
 CostEstimator make_fake_cost_estimator(
-  std::unordered_map<OpCostEstimateKey, float> const &op_cost_map,
-  std::unordered_map<TensorSetMovement, float> const &comm_cost_map);
+    std::unordered_map<OpCostEstimateKey, float> const &op_cost_map,
+    std::unordered_map<TensorSetMovement, float> const &comm_cost_map);
 
 } // namespace FlexFlow
 

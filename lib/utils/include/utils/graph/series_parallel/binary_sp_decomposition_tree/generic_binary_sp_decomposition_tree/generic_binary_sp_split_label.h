@@ -8,39 +8,50 @@
 namespace FlexFlow {
 
 template <typename SeriesLabel, typename ParallelLabel>
-SPDecompositionTreeNodeType get_node_type(GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> const &label) {
-  return label.template visit<SPDecompositionTreeNodeType>(overload {
-    [](GenericBinarySeriesSplitLabel<SeriesLabel> const &) { return SPDecompositionTreeNodeType::SERIES; },
-    [](GenericBinaryParallelSplitLabel<ParallelLabel> const &) { return SPDecompositionTreeNodeType::PARALLEL; },
+SPDecompositionTreeNodeType get_node_type(
+    GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> const &label) {
+  return label.template visit<SPDecompositionTreeNodeType>(overload{
+      [](GenericBinarySeriesSplitLabel<SeriesLabel> const &) {
+        return SPDecompositionTreeNodeType::SERIES;
+      },
+      [](GenericBinaryParallelSplitLabel<ParallelLabel> const &) {
+        return SPDecompositionTreeNodeType::PARALLEL;
+      },
   });
 }
 
 template <typename SeriesLabel, typename ParallelLabel>
-GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> make_generic_binary_series_split_label(SeriesLabel const &label) {
+GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>
+    make_generic_binary_series_split_label(SeriesLabel const &label) {
   return GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{
-    GenericBinarySeriesSplitLabel<SeriesLabel>{
-      label, 
-    },
+      GenericBinarySeriesSplitLabel<SeriesLabel>{
+          label,
+      },
   };
 }
 
 template <typename SeriesLabel, typename ParallelLabel>
-GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> make_generic_binary_parallel_split_label(ParallelLabel const &label) {
+GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>
+    make_generic_binary_parallel_split_label(ParallelLabel const &label) {
   return GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel>{
-    GenericBinaryParallelSplitLabel<ParallelLabel>{
-      label, 
-    },
+      GenericBinaryParallelSplitLabel<ParallelLabel>{
+          label,
+      },
   };
 }
 
 template <typename SeriesLabel, typename ParallelLabel>
-SeriesLabel require_generic_binary_series_split_label(GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> const &label) {
-  return label.template get<GenericBinarySeriesSplitLabel<SeriesLabel>>().raw_label;
+SeriesLabel require_generic_binary_series_split_label(
+    GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> const &label) {
+  return label.template get<GenericBinarySeriesSplitLabel<SeriesLabel>>()
+      .raw_label;
 }
 
 template <typename SeriesLabel, typename ParallelLabel>
-ParallelLabel require_generic_binary_parallel_split_label(GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> const &label) {
-  return label.template get<GenericBinaryParallelSplitLabel<ParallelLabel>>().raw_label;
+ParallelLabel require_generic_binary_parallel_split_label(
+    GenericBinarySPSplitLabel<SeriesLabel, ParallelLabel> const &label) {
+  return label.template get<GenericBinaryParallelSplitLabel<ParallelLabel>>()
+      .raw_label;
 }
 
 } // namespace FlexFlow

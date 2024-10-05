@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIES_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_BINARY_SP_DECOMPOSITION_TREE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIES_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_BINARY_SP_DECOMPOSITION_TREE_H
 
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.dtg.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_series_split.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_parallel_split.dtg.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_series_split.dtg.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.dtg.h"
 #include "utils/graph/series_parallel/sp_decomposition_tree_node_type.dtg.h"
 #include <unordered_set>
 
@@ -44,7 +44,8 @@ Return visit(BinarySPDecompositionTree const &tree, F &&f) {
       return result;
     }
     default:
-      throw mk_runtime_error(fmt::format("Unhandled SPDecompositionTreeNodeType value: {}", node_type));
+      throw mk_runtime_error(fmt::format(
+          "Unhandled SPDecompositionTreeNodeType value: {}", node_type));
   }
 }
 

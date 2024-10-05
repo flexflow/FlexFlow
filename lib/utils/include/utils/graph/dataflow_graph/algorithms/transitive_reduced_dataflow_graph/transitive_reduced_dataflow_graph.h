@@ -5,7 +5,8 @@
 
 namespace FlexFlow {
 
-TransitiveReducedDataflowGraphView get_dataflow_graph_transitive_reduction(DataflowGraphView const &);
+TransitiveReducedDataflowGraphView
+    get_dataflow_graph_transitive_reduction(DataflowGraphView const &);
 
 } // namespace FlexFlow
 

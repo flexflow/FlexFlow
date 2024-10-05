@@ -54,14 +54,16 @@ GraphOptimizeResult graph_optimize(
   // GraphOptimizeState best_state = initial_state;
   // candidates.push(initial_state);
   //
-  // for (int iteration = 0; !candidates.empty() && iteration < opt_config.budget;
+  // for (int iteration = 0; !candidates.empty() && iteration <
+  // opt_config.budget;
   //      ++iteration) {
   //   GraphOptimizeState current_state = candidates.top();
   //   candidates.pop();
   //
   //   if (current_state.runtime < best_state.runtime) {
   //     best_state = current_state;
-  //   } else if (current_state.runtime > best_state.runtime * opt_config.alpha) {
+  //   } else if (current_state.runtime > best_state.runtime * opt_config.alpha)
+  //   {
   //     continue;
   //   }
   //

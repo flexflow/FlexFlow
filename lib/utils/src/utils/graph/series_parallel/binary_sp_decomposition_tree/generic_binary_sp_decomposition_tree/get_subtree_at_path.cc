@@ -2,8 +2,7 @@
 
 namespace FlexFlow {
 
-template
-  std::optional<GenericBinarySPDecompositionTree<int, int, int>> 
+template std::optional<GenericBinarySPDecompositionTree<int, int, int>>
     get_subtree_at_path(GenericBinarySPDecompositionTree<int, int, int> const &,
                         BinaryTreePath const &);
 

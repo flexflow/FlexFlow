@@ -4,8 +4,7 @@
 namespace FlexFlow {
 
 std::optional<PCGBinarySPDecomposition>
-    get_pcg_balanced_binary_sp_decomposition(
-        ParallelComputationGraph const &);
+    get_pcg_balanced_binary_sp_decomposition(ParallelComputationGraph const &);
 
 } // namespace FlexFlow
 

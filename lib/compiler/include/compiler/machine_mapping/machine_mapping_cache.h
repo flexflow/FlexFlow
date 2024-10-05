@@ -6,8 +6,12 @@
 namespace FlexFlow {
 
 MachineMappingCache empty_machine_mapping_cache();
-std::optional<MachineMappingResult> machine_mapping_cache_load(MachineMappingCache const &, MachineMappingState const &);
-void machine_mapping_cache_save(MachineMappingCache &, MachineMappingState const &, MachineMappingResult const &);
+std::optional<MachineMappingResult>
+    machine_mapping_cache_load(MachineMappingCache const &,
+                               MachineMappingState const &);
+void machine_mapping_cache_save(MachineMappingCache &,
+                                MachineMappingState const &,
+                                MachineMappingResult const &);
 
 } // namespace FlexFlow
 

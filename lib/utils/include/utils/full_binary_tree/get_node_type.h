@@ -7,12 +7,14 @@
 namespace FlexFlow {
 
 template <typename ParentLabel, typename LeafLabel>
-FullBinaryTreeNodeType get_node_type(FullBinaryTree<ParentLabel, LeafLabel> const &t) {
+FullBinaryTreeNodeType
+    get_node_type(FullBinaryTree<ParentLabel, LeafLabel> const &t) {
   if (std::holds_alternative<LeafLabel>(t.root)) {
     return FullBinaryTreeNodeType::LEAF;
   } else {
-    bool is_parent = std::holds_alternative<FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(t.root);
-    assert (is_parent);
+    bool is_parent = std::holds_alternative<
+        FullBinaryTreeParentNode<ParentLabel, LeafLabel>>(t.root);
+    assert(is_parent);
 
     return FullBinaryTreeNodeType::PARENT;
   }

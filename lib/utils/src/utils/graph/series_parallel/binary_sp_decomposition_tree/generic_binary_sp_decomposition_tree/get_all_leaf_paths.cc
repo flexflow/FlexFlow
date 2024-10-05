@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-template
-  std::unordered_set<BinaryTreePath> get_all_leaf_paths(GenericBinarySPDecompositionTree<int, int, int> const &);
+template std::unordered_set<BinaryTreePath>
+    get_all_leaf_paths(GenericBinarySPDecompositionTree<int, int, int> const &);
 
 } // namespace FlexFlow

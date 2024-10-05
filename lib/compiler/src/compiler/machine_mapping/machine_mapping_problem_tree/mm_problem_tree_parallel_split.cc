@@ -6,15 +6,14 @@ namespace FlexFlow {
 
 MachineMappingProblemTree get_lhs_child(MMProblemTreeParallelSplit const &p) {
   return MachineMappingProblemTree{
-    get_left_child(p.raw_split),
+      get_left_child(p.raw_split),
   };
 }
 
 MachineMappingProblemTree get_rhs_child(MMProblemTreeParallelSplit const &p) {
   return MachineMappingProblemTree{
-    get_right_child(p.raw_split),
+      get_right_child(p.raw_split),
   };
 }
-
 
 } // namespace FlexFlow

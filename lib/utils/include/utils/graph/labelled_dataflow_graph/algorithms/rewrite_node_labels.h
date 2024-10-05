@@ -13,9 +13,8 @@ template <typename NodeLabel,
 LabelledDataflowGraphView<NewNodeLabel, ValueLabel> rewrite_node_labels(
     LabelledDataflowGraphView<NodeLabel, ValueLabel> const &g, F f) {
   return rewrite_node_labels<NodeLabel, ValueLabel, F, NewNodeLabel>(
-    view_as_labelled_open_dataflow_graph(g), f);
+      view_as_labelled_open_dataflow_graph(g), f);
 }
-
 
 } // namespace FlexFlow
 

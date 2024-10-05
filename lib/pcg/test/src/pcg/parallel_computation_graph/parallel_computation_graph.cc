@@ -268,17 +268,17 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("pcg_add_input_layer") {
     ParallelTensorShape tensor_shape = ParallelTensorShape{
-      ParallelTensorDims{
-        FFOrdered<ShardParallelDim>{
-          ShardParallelDim{12, 2},
-          ShardParallelDim{10, 1},
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                ShardParallelDim{12, 2},
+                ShardParallelDim{10, 1},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{2},
+                DiscardCopyDegree{2},
+            },
         },
-        ReplicaParallelDimSet{
-          SumDegree{2},
-          DiscardCopyDegree{2},
-        },
-      },
-      DataType::FLOAT,
+        DataType::FLOAT,
     };
 
     ParallelComputationGraph result = [&] {
@@ -286,23 +286,23 @@ TEST_SUITE(FF_TEST_SUITE) {
       pcg_add_input_layer(pcg, tensor_shape);
       return pcg;
     }();
-      
+
     ParallelComputationGraph correct = [&] {
       ParallelComputationGraph pcg = empty_parallel_computation_graph();
 
       ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
-        /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
-        /*name=*/std::nullopt,
+          /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
+          /*name=*/std::nullopt,
       };
 
       ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
-        /*shape=*/tensor_shape,
-        /*sync_type=*/std::nullopt,
-        /*initializer=*/std::nullopt,
-        /*create_gradients=*/CreateGrad::NO,
+          /*shape=*/tensor_shape,
+          /*sync_type=*/std::nullopt,
+          /*initializer=*/std::nullopt,
+          /*create_gradients=*/CreateGrad::NO,
       };
 
-      add_parallel_layer(/*pcg=*/pcg, 
+      add_parallel_layer(/*pcg=*/pcg,
                          /*layer_attrs=*/layer_attrs,
                          /*inputs=*/{},
                          /*output_labels=*/{tensor_attrs});
