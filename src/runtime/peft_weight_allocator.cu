@@ -8,7 +8,7 @@
 namespace FlexFlow {
 
 template <typename DT>
-void init_kernel(LoraLinearWeight const &weight, int in_dim, int out_dim, int rank, int seed, cudaStream_t stream) {
+void lora_init_kernel(LoraLinearWeight const &weight, int in_dim, int out_dim, int rank, int seed, cudaStream_t stream) {
     // Initialize generator
     std::mt19937 gen(seed);
 
@@ -47,7 +47,7 @@ void init_kernel(LoraLinearWeight const &weight, int in_dim, int out_dim, int ra
             num = num_float;
         }
     }
-    checkCUDA(cudaMemcpyAsync(static_cast<DT *>(w1_ptr),
+    checkCUDA(cudaMemcpyAsync(static_cast<DT *>(weight.w1_ptr),
                                 lora_b_random_init.data(),
                                 w1_num_elements * sizeof(DT),
                                 cudaMemcpyHostToDevice,
@@ -59,9 +59,9 @@ void init_peft_weight_wrapper(LoraLinearWeight const &weight, int in_dim, int ou
   checkCUDA(get_legion_stream(&stream));
 
   if (dt == DT_FLOAT) {
-    Internal::init_kernel<float>(weight, in_di, out_dim, rank, seed, stream);
+    lora_init_kernel<float>(weight, in_dim, out_dim, rank, seed, stream);
   } else if (dt == DT_HALF) {
-    Internal::init_kernel<half>(weight, in_di, out_dim, rank, seed, stream);
+    lora_init_kernel<half>(weight, in_dim, out_dim, rank, seed, stream);
   } else {
     assert(false && "Unsupported data type");
   }

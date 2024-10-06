@@ -124,16 +124,28 @@ public:
                    std::vector<std::string> const &target_modules_ = {});
   // constructor used to support std::unordered_map
   LoraLinearConfig();
+
+  // Method to set optimizer
   template<typename T>
-    void setOptimizer(T&& opt) {
-        optimizer_config = std::make_unique<T>(std::forward<T>(opt));
+  void setOptimizer(T&& opt) {
+    if constexpr (std::is_base_of_v<LoraOptimizerConfig, std::remove_reference_t<T>>) {
+      optimizer_config = std::make_unique<std::remove_reference_t<T>>(std::forward<T>(opt));
+    } else if constexpr (std::is_same_v<std::unique_ptr<LoraOptimizerConfig>, std::remove_reference_t<T>>) {
+      optimizer_config = std::move(opt);
+    } else {
+      static_assert(always_false<T>, "Unsupported optimizer type");
     }
+  }
+  // Helper template for static_assert
+  template <typename>
+  static inline constexpr bool always_false = false;
+  
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraLinearConfig const &llc);
   std::string serialize_to_json_string(int indent=-1) const {
-    json j = {
+    nlohmann::json j = {
         {"cache_folder", cache_folder},
         {"peft_model_id", peft_model_id},
         {"rank", rank},
@@ -144,7 +156,8 @@ public:
         {"init_lora_weights", init_lora_weights},
         {"base_model_name_or_path", base_model_name_or_path},
         {"precision", precision},
-        {"optimizer_config", optimizer_config ? optimizer_config->toJson() : nullptr}
+        // {"optimizer_config", optimizer_config ? optimizer_config->toJson() : nullptr}
+        {"optimizer_config", optimizer_config ? nlohmann::json(optimizer_config->toJson()) : nlohmann::json()}
     };
 
     return j.dump(indent);  // No indentation
@@ -156,7 +169,7 @@ public:
   }
   // Deserialization method
   static LoraLinearConfig deserialize_from_json_string(const std::string& json_string) {
-    json j = json::parse(json_string);
+    nlohmann::json j = nlohmann::json::parse(json_string);
     LoraLinearConfig config(
         j["cache_folder"].get<std::string>(),
         j["peft_model_id"].get<std::string>(),
@@ -208,8 +221,6 @@ public:
 class LoraLinearParams {
 public:
   LayerID layer_guid;
-  // OperatorType type;
-  // std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
   int max_rank;
   int max_concurrent_adapters;
   char name[MAX_OPNAME];

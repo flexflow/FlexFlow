@@ -24,8 +24,10 @@ namespace FlexFlow {
 
 LoraLinearMeta::LoraLinearMeta(FFHandler handler, LoraLinear const *li)
     : OpMeta(handler, li) {
+#ifdef DEADCODE
   allocated_peft_buffer_size1 = 0;
   allocated_peft_buffer_size2 = 0;
+#endif
 }
 
 LoraLinearMeta::~LoraLinearMeta(void) {}
@@ -143,6 +145,16 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
     // print_tensor<float>((float*)output_ptr, out_dim * batch_size,
     // "[LoraLinear:forward:output]");
   }
+}
+
+bool lora_applies_to_this_layer(LoraLinearMeta *m, LoraLinearConfig const &config) {
+  for (std::string s : config.target_modules) {
+    std::string n(m->op_name);
+    if (n.find(s) != std::string::npos) {
+      return true;
+    }
+  }
+  return false;
 }
 
 namespace Internal {
@@ -289,17 +301,6 @@ void inference_kernel(LoraLinearMeta *m,
 }
 #endif
 
-bool lora_applies_to_this_layer(LoraLinearMeta *m, LoraLinearConfig const &config) {
-  for (std::string s : config.target_modules) {
-    std::string n(m->op_name);
-    if (n.find(s) != std::string::npos) {
-      return true;
-    }
-  }
-  return false;
-}
-
-
 template <typename DT>
 void inference_kernel(LoraLinearMeta *m,
                       BatchConfig const *bc,
@@ -326,7 +327,7 @@ void inference_kernel(LoraLinearMeta *m,
     if (bc->requestsInfo[i].peft_bwd) {
       num_peft_requests++;
     }
-    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_adapters[bc->requestsInfo[i].peft_model_id]);
+    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_model_config);
     if (!lora_applies_to_this_layer(m, lora_config)) {
       continue;
     }
@@ -444,8 +445,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
     if (bc->request_completed[i] || bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID || !bc->requestsInfo[i].peft_bwd) {
       continue;
     }
-    int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_adapters[bc->requestsInfo[i].peft_model_id]);
+    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_model_config);
     if (!lora_applies_to_this_layer(m, lora_config)) {
       continue;
     }
@@ -453,7 +453,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
     m->peft_memory_manager->check_ft_model_id(bc->requestsInfo[i].peft_model_id);
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     // int max_peft_tokens = bc->requestsInfo[i].max_length;
-    int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
+    // int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
     LoraLinearWeight weight = m->peft_memory_manager->get_peft(bc->requestsInfo[i].peft_model_id, lora_config);
     DT scaling_constant = (DT)(lora_config.lora_alpha / lora_config.rank);
 
@@ -562,15 +562,14 @@ void peft_bwd_kernel(LoraLinearMeta *m,
     }
 
     if (bc->requestsInfo[i].optimizer_tasks.update_weights) {
-      LoraOptimizerConfig const *optimizer_config = lora_config.optimizer_config;
-      assert(optimizer_config != nullptr);
+      assert(lora_config.optimizer_config != nullptr);
       int w0_num_elements = lora_config.rank * in_dim;
       int w1_num_elements = lora_config.rank * out_dim;
 
       // Get optimizer config
-      if (optimizer_config->getType() == "SGD") {
-        LoraSGDOptimizerConfig const *sgd_config =
-            (LoraSGDOptimizerConfig const *)optimizer_config;
+
+      if (lora_config.optimizer_config->getType() == "SGD") {
+        LoraSGDOptimizerConfig const *sgd_config = static_cast<LoraSGDOptimizerConfig const *>(lora_config.optimizer_config.get());
         // LoRA_A weight is split in tensor parallelism, so no need to apply
         // all-reduce
         sgd_update<<<GET_BLOCKS(w0_num_elements),
@@ -609,7 +608,7 @@ void peft_bwd_kernel(LoraLinearMeta *m,
                                static_cast<DT const *>(weight.w1_grad_ptr),
                                static_cast<DT *>(weight.w1_v_values_ptr),
                                static_cast<DT *>(weight.w1_ptr));
-      } else if (optimizer_config->getType() == "Adam") {
+      } else if (lora_config.optimizer_config->getType() == "Adam") {
         assert(false && "Adam optimizer type not implemented yet");
       } else {
         assert(false && "Unsupported optimizer type");

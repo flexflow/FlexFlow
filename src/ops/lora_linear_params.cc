@@ -170,11 +170,10 @@ std::ostream &operator<<(std::ostream &os, LoraLinearConfig const &llc) {
   os << "trainable: " << llc.trainable << ", ";
   if (llc.optimizer_config != nullptr) {
     os << "optimizer_config: ";
-    if (typeid(*llc.optimizer_config) == typeid(LoraSGDOptimizerConfig)) {
-      os << *static_cast<LoraSGDOptimizerConfig *>(llc.optimizer_config);
-    } else if (typeid(*llc.optimizer_config) ==
-               typeid(LoraAdamOptimizerConfig)) {
-      os << *static_cast<LoraAdamOptimizerConfig *>(llc.optimizer_config);
+    if (llc.optimizer_config.get()->getType() == "SGD") {
+      os << *static_cast<LoraSGDOptimizerConfig const *>(llc.optimizer_config.get());
+    } else if (llc.optimizer_config.get()->getType() == "Adam") {
+      os << *static_cast<LoraAdamOptimizerConfig const *>(llc.optimizer_config.get());
     } else {
       os << "Unknown optimizer config type";
     }

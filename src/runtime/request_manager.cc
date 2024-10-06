@@ -260,7 +260,8 @@ void RequestManager::register_peft_config(PEFTModelID const &peft_model_id,
   // check that peft_model_id is not already in use
   assert(peft_configs.find(peft_model_id) == peft_configs.end() &&
          "PEFT model ID already in use");
-  peft_configs[peft_model_id] = peft_config;
+  // peft_configs[peft_model_id] = std::move(peft_config);
+  peft_configs.emplace(peft_model_id, std::move(peft_config));
 }
 
 LoraLinearConfig const &RequestManager::get_peft_config(
@@ -284,7 +285,7 @@ int RequestManager::get_max_concurrent_adapters() {
   return max_concurrent_adapters;
 }
 
-PEFTModelID *FFModel::register_peft_adapter(LoraLinearConfig const peft_config) {
+PEFTModelID *FFModel::register_peft_adapter(LoraLinearConfig const &peft_config) {
   assert(config.enable_peft &&
          "Cannot add a LoRA layer if PEFT mode is not enabled");
   if (peft_config.target_modules.size() == 0) {

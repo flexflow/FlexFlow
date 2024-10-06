@@ -17,12 +17,13 @@
 #define _FLEXFLOW_UTILS_PEFT_WEIGHT_ALLOCATOR_H_
 
 #include "flexflow/config.h"
-#include "lora_linear_params.h"
+#include "flexflow/ffconst_utils.h"
+#include "flexflow/ops/lora_linear_params.h"
 // #include <mutex>
 
 namespace FlexFlow {
 
-#ifdef DEACODE
+#ifdef DEADCODE
 class PEFTWeightAllocator {
 public:
   PEFTWeightAllocator(void *_base_ptr, size_t _total_size)
@@ -108,19 +109,21 @@ struct LoraLinearWeight {
       low_rank_activation(low_rank_activation_), input_activation(input_activation_) {}
 };
 
+void init_peft_weight_wrapper(LoraLinearWeight const &weight, int in_dim, int out_dim, int rank, DataType dt, int seed);
+
 class PEFTMemoryManager {
 public:
-  PEFTMemoryManager(Memory gpu_mem_, size_t max_lora_size_, int max_concurrent_adapters_, int max_peft_tokens_, int in_dim_, int out_dim_, int num_shards_, int shard_id_, std::string const &lora_layername_substr_, DataType dt_) 
+  PEFTMemoryManager(Legion::Memory gpu_mem_, int max_rank_, int max_concurrent_adapters_, int max_peft_tokens_, int in_dim_, int out_dim_, int num_shards_, int shard_id_, std::string const &lora_layername_substr_, DataType dt_) 
   : gpu_mem(gpu_mem_), 
     max_concurrent_adapters(max_concurrent_adapters_), 
-    max_lora_size(max_lora_size_),
+    max_rank(max_rank_),
     in_dim(in_dim_), out_dim(out_dim_), num_shards(num_shards_), shard_id(shard_id_),
     max_peft_tokens(max_peft_tokens_),
     lora_layername_substr(lora_layername_substr_), dt(dt_),
     base_ptr(nullptr), 
     finetuning_ptr(nullptr), 
     finetuning_model_id(PEFTModelID::NO_ID) {
-    
+    max_lora_size = data_type_size(dt) * (max_rank * in_dim + max_rank * out_dim);
     assert(max_concurrent_adapters > 0 && "PEFT Memory Manager max_concurrent_adapters must be > 0");
     assert(max_lora_size > 0 && "PEFT Memory Manager max_lora_size must be > 0");
     allocate_inference_memory();
@@ -146,12 +149,13 @@ private:
   LoraLinearWeight get_finetuning_peft(PEFTModelID const &model_id, LoraLinearConfig const &lora_config);
 
   // Legion memory management apparatus
-  Memory gpu_mem;
+  Legion::Memory gpu_mem;
   Realm::RegionInstance peftLegionInst;
   void *base_ptr, *finetuning_ptr;
   // Size and shapes
   int max_concurrent_adapters;
-  size_t max_lora_size;
+  int max_rank;
+  int max_lora_size;
   int in_dim, out_dim, num_shards, shard_id;
   int max_peft_tokens;
   // LRU cache apparatus
@@ -162,8 +166,8 @@ private:
   std::string lora_layername_substr;
   DataType dt;
   PEFTModelID finetuning_model_id;
-}
+};
 
-}; // namespace FlexFlow
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_UTILS_PEFT_WEIGHT_ALLOCATOR_H_

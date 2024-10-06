@@ -6,6 +6,7 @@
 #include "flexflow/utils/hash_utils.h"
 #include "flexflow/utils/peft_weight_allocator.h"
 #include "legion/legion_utilities.h"
+#include "flexflow/request_manager.h"
 #include <sys/stat.h>
 #include <sys/types.h>
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
@@ -51,13 +52,13 @@ bool check_lora_layer_match(Layer *potential_target,
   return false;
 }
 
-void FFmodel::add_lora_layers(std::vector<std::string> target_modules) {
+void FFModel::add_lora_layers(std::vector<std::string> target_modules) {
   assert(config.enable_peft && "Cannot add a LoRA layer if PEFT mode is not enabled");
   assert(target_modules.size() > 0 && "LoRA target module name is empty");
   RequestManager *rm = RequestManager::get_request_manager();
   int max_lora_rank = rm->get_max_lora_rank();
   int max_concurrent_adapters = rm->get_max_concurrent_adapters();
-  assert(max_rank > 1 && max_rank <= 32 && "Invalid max LoRA rank");
+  assert(max_lora_rank > 1 && max_lora_rank <= 32 && "Invalid max LoRA rank");
   assert(max_concurrent_adapters > 0 && "Invalid number of LoRA concurrent adapters");
 
   for (std::string target_module_name : target_modules) {
@@ -120,7 +121,7 @@ void FFmodel::add_lora_layers(std::vector<std::string> target_modules) {
                                           true /*create_grad*/);
       }
       // pass max_rank and max_concurrent_adapters to OP_LORA layer
-      peft_layer->add_int_property("max_rank", max_rank);
+      peft_layer->add_int_property("max_rank", max_lora_rank);
       peft_layer->add_int_property("max_concurrent_adapters", max_concurrent_adapters);
       it = layers.insert(it + 1, peft_layer);
       ++it;
@@ -263,7 +264,7 @@ Op *LoraLinear::create_operator_from_layer(
   long long value;
   layer->get_int_property("max_rank", value);
   int max_rank = value;
-  layer->get_int_property("max_concurrent_adapters", max_concurrent_adapters);
+  layer->get_int_property("max_concurrent_adapters", value);
   int max_concurrent_adapters = value;
 #ifdef DEADCODE
   std::unordered_map<PEFTModelID, LoraLinearConfig> _peft_configs;
@@ -276,7 +277,6 @@ Op *LoraLinear::create_operator_from_layer(
 #endif
   return new LoraLinear(model,
                         layer->layer_guid,
-                        layer->op_type,
                         inputs[0],
                         inputs[1],
                         max_rank,
@@ -290,7 +290,6 @@ LoraLinear::LoraLinear(FFModel &model,
                        ParallelTensor const output)
     : LoraLinear(model,
                  other.layer_guid,
-                 other.op_type,
                  input,
                  output,
                  other.max_rank,
@@ -303,7 +302,6 @@ LoraLinear::LoraLinear(FFModel &model,
                        char const *name)
     : LoraLinear(model,
                  params.layer_guid,
-                 params.type,
                  inputs.first,
                  inputs.second,
                  params.max_rank,
@@ -313,7 +311,6 @@ LoraLinear::LoraLinear(FFModel &model,
 LoraLinear::LoraLinear(
     FFModel &model,
     LayerID const &_layer_guid,
-    OperatorType _op_type,
     ParallelTensor const _input,
     ParallelTensor const _output,
     int _max_rank,
@@ -321,7 +318,7 @@ LoraLinear::LoraLinear(
     // std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
     char const *name)
     : Op(model,
-         _op_type,
+         OP_LORA,
          _output->data_type,
          name,
          2 /*inputs*/,
@@ -473,9 +470,8 @@ OpMeta *LoraLinear::init_task(Task const *task,
       lora_layername.substr(0, found + searchString.length());
   
   // allocate space for lora weights
-  size_t max_lora_size = data_type_size(dt) * (lora->max_rank * in_dim + lora->max_rank * out_dim);
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
-  m->peft_memory_manager = new PEFTMemoryManager(gpu_mem, max_lora_size, lora->max_concurrent_adapters, in_dim, out_dim, num_shards, shard_id, lora_layername_substr, dt);
+  m->peft_memory_manager = new PEFTMemoryManager(gpu_mem, lora->max_rank, lora->max_concurrent_adapters, BatchConfig::max_sequence_length(), in_dim, out_dim, num_shards, shard_id, lora_layername_substr, dt);
   m->peft_memory_manager->allocate_inference_memory();
   return m;
 }
@@ -709,8 +705,8 @@ void LoraLinear::inference_task(Task const *task,
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorRW(
       m->input_type[1], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  // int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
-  // int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
+  int in_dim = input.domain.hi()[0] - input.domain.lo()[0] + 1;
+  int out_dim = output.domain.hi()[0] - output.domain.lo()[0] + 1;
 
   // int num_infr_tokens = bc->num_active_infr_tokens();
   // int num_peft_tokens = bc->num_active_peft_tokens();
@@ -761,12 +757,15 @@ void LoraLinear::inference_task(Task const *task,
       assert(false);
     }
 
-    int rank, num_tokens;
-    for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
-      PEFTModelID peft_model_id = it->first;
-      LoraLinearWeight weight = m->model_state[peft_model_id].weights;
-      rank = weight.rank;
-      num_tokens = input.domain.get_volume() / weight.in_dim;
+    for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+      if (bc->request_completed[i] || bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+        continue;
+      }
+      LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_model_config);
+      if (!lora_applies_to_this_layer(m, lora_config)) {
+        continue;
+      }
+      LoraLinearWeight weight = m->peft_memory_manager->get_peft(bc->requestsInfo[i].peft_model_id, lora_config);
       fs::path dst_filepath_weights =
           get_dst_folder("weights", m->decoding_step, shard_id) / layername;
       std::string filenameA =
@@ -775,20 +774,37 @@ void LoraLinear::inference_task(Task const *task,
           dst_filepath_weights.string() + ".weight_B.original";
       if (m->input_type[0] == DT_FLOAT) {
         save_tensor((float *)weight.w0_ptr,
-                    weight.rank * weight.in_dim,
+                    lora_config.rank * in_dim,
                     filenameA.c_str());
         save_tensor((float *)weight.w1_ptr,
-                    weight.rank * weight.out_dim,
+                    lora_config.rank * out_dim,
                     filenameB.c_str());
       } else if (m->input_type[0] == DT_HALF) {
         save_tensor((half *)weight.w0_ptr,
-                    weight.rank * weight.in_dim,
+                    lora_config.rank * in_dim,
                     filenameA.c_str());
         save_tensor((half *)weight.w1_ptr,
-                    weight.rank * weight.out_dim,
+                    lora_config.rank * out_dim,
                     filenameB.c_str());
       } else {
         assert(false && "Data type not supported");
+      }
+
+      if (bc->requestsInfo[i].peft_bwd) {
+        int num_tokens = input.domain.get_volume() / in_dim;
+        // input activation (intermediate)
+        filename = dst_filepath.string() + ".low_rank_activation";
+        if (output.data_type == DT_FLOAT) {
+          save_tensor((float *)weight.low_rank_activation,
+                      lora_config.rank * num_tokens,
+                      filename.c_str());
+        } else if (output.data_type == DT_HALF) {
+          save_tensor((half *)weight.low_rank_activation,
+                      lora_config.rank * num_tokens,
+                      filename.c_str());
+        } else {
+          assert(false);
+        }
       }
     }
 
@@ -803,21 +819,7 @@ void LoraLinear::inference_task(Task const *task,
       assert(false);
     }
 
-    if (bc->num_active_peft_tokens() > 0) {
-      // input activation (intermediate)
-      filename = dst_filepath.string() + ".low_rank_activation";
-      if (output.data_type == DT_FLOAT) {
-        save_tensor((float *)m->low_rank_activation,
-                    rank * num_tokens,
-                    filename.c_str());
-      } else if (output.data_type == DT_HALF) {
-        save_tensor((half *)m->low_rank_activation,
-                    rank * num_tokens,
-                    filename.c_str());
-      } else {
-        assert(false);
-      }
-    }
+    
     m->decoding_step++;
   }
 }
@@ -905,6 +907,16 @@ void lora_inference_debugging(LoraLinearMeta *m,
   // weights, weights gradients
   fs::path dst_filepath_weights =
       get_dst_folder("weights", m->bwd_step, shard_id) / layername;
+  
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i] || bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+      continue;
+    }
+    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_model_config);
+    if (!lora_applies_to_this_layer(m, lora_config)) {
+      continue;
+    }
+  
   assert(m->model_state.size() >= 1 && "Model state empty!");
   for (auto it = m->model_state.begin(); it != m->model_state.end(); ++it) {
     PEFTModelID peft_model_id = it->first;

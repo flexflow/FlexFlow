@@ -847,6 +847,7 @@ public:
   // ========================================
 //   PEFTModelID *add_lora_layer(LoraLinearConfig const peft_config);
     void add_lora_layers(std::vector<std::string> target_modules);
+    PEFTModelID *register_peft_adapter(LoraLinearConfig const &peft_config);
   // ========================================
   // Inference APIs
   // ========================================

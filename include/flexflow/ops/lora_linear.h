@@ -20,12 +20,10 @@ public:
   LoraLinear(
       FFModel &model,
       LayerID const &layer_guid,
-      OperatorType type,
       ParallelTensor const input,
       ParallelTensor const output,
       int max_rank,
       int max_concurrent_adapters,
-      // std::unordered_map<PEFTModelID, LoraLinearConfig> const &_peft_configs,
       char const *name = nullptr);
   LoraLinear(FFModel &model,
              LoraLinear const &other,

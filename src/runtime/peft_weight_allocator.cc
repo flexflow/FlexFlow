@@ -1,6 +1,24 @@
-#include "peft_weight_allocator.h"
+#include "flexflow/utils/peft_weight_allocator.h"
 
 namespace FlexFlow {
+// declare legion names
+using Legion::ArgumentMap;
+using Legion::Context;
+using Legion::coord_t;
+using Legion::Domain;
+using Legion::FutureMap;
+using Legion::IndexLauncher;
+using Legion::InlineLauncher;
+using Legion::Machine;
+using Legion::Memory;
+using Legion::PhysicalRegion;
+using Legion::Predicate;
+using Legion::Rect;
+using Legion::RegionRequirement;
+using Legion::Runtime;
+using Legion::Task;
+using Legion::TaskArgument;
+using Legion::TaskLauncher;
 
 void PEFTMemoryManager::allocate_inference_memory() {
     // allocate chunk of memory for all the PEFT adapters
@@ -21,7 +39,7 @@ void PEFTMemoryManager::allocate_inference_memory() {
 
 void PEFTMemoryManager::allocate_finetuning_memory() {
     size_t ft_size = max_lora_size*3; // weights, gradients, momentum values
-    ft_size += max_peft_tokens*(in_dim+rank); // input, low-rank activations
+    ft_size += max_peft_tokens * (in_dim + max_rank); // input, low-rank activations
     // allocate chunk of memory for PEFT adapter
     Realm::Rect<1, coord_t> bounds(
         Realm::Point<1, coord_t>(0),
@@ -144,7 +162,7 @@ void load_peft_from_file(DT *ptr,
 
 void PEFTMemoryManager::load_peft_model(LoraLinearWeight &weight, LoraLinearConfig const &lora_config) {
     // Load weights
-    assert(weight.w0_ptr != nullptr && weight.w1_ptr != nullptr "PEFT Memory Manager weight ptr null");
+    assert(weight.w0_ptr != nullptr && weight.w1_ptr != nullptr && "PEFT Memory Manager weight ptr null");
     int w0_num_elements = lora_config.rank * in_dim;
     int w1_num_elements = lora_config.rank * out_dim;
     // values below represent total weight sizes before sharding. Lora B is not
@@ -235,7 +253,7 @@ LoraLinearWeight PEFTMemoryManager::get_inference_peft(PEFTModelID const &model_
     int data_size = data_type_size(dt);
     LoraLinearWeight result;
     result.w0_ptr = static_cast<char *>(base_ptr) + mem_slot * max_lora_size;
-    result.w1_ptr = result.w0_ptr + w0_num_elements * data_size;
+    result.w1_ptr = static_cast<char *>(result.w0_ptr) + w0_num_elements * data_size;
     if (cache_miss) {
       load_peft_model(result, lora_config);
     }
@@ -244,19 +262,20 @@ LoraLinearWeight PEFTMemoryManager::get_inference_peft(PEFTModelID const &model_
 
 LoraLinearWeight PEFTMemoryManager::get_finetuning_peft(PEFTModelID const &model_id, LoraLinearConfig const &lora_config) {
     assert(model_id != PEFTModelID::NO_ID && "PEFT Model ID is not set");
-    bool cache_miss = get_finetuning_slot(model_id);
+    bool cache_miss;
+    get_finetuning_slot(model_id, &cache_miss);
     int w0_num_elements = lora_config.rank * in_dim;
     int w1_num_elements = lora_config.rank * out_dim;
     int data_size = data_type_size(dt);
     LoraLinearWeight result;
     result.w0_ptr = finetuning_ptr;
-    result.w1_ptr = result.w0_ptr + w0_num_elements*data_size;
-    result.w0_grad_ptr = result.w1_ptr + w1_num_elements*data_size;
-    result.w1_grad_ptr = result.w0_grad_ptr + w0_num_elements*data_size;
-    result.w0_v_values_ptr = result.w1_grad_ptr + w1_num_elements*data_size;
-    result.w1_v_values_ptr = result.w0_v_values_ptr + w0_num_elements*data_size;
-    result.input_activation = result.w1_v_values_ptr + w1_num_elements*data_size; // max_peft_tokens*in_dim
-    result.low_rank_activation = result.input_activation + max_peft_tokens*in_dim*data_size; // max_peft_tokens*rank
+    result.w1_ptr = static_cast<char *>(result.w0_ptr)+ w0_num_elements*data_size;
+    result.w0_grad_ptr = static_cast<char *>(result.w1_ptr) + w1_num_elements*data_size;
+    result.w1_grad_ptr = static_cast<char *>(result.w0_grad_ptr) + w0_num_elements*data_size;
+    result.w0_v_values_ptr = static_cast<char *>(result.w1_grad_ptr) + w1_num_elements*data_size;
+    result.w1_v_values_ptr = static_cast<char *>(result.w0_v_values_ptr) + w0_num_elements*data_size;
+    result.input_activation = static_cast<char *>(result.w1_v_values_ptr) + w1_num_elements*data_size; // max_peft_tokens*in_dim
+    result.low_rank_activation = static_cast<char *>(result.input_activation) + max_peft_tokens*in_dim*data_size; // max_peft_tokens*rank
     if (cache_miss) {
       load_peft_model(result, lora_config);
     }

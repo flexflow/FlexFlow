@@ -6,6 +6,7 @@
 #include "flexflow/fftype.h"
 #include "flexflow/op_meta.h"
 #include "flexflow/ops/lora_linear.h"
+#include "flexflow/utils/peft_weight_allocator.h"
 
 namespace FlexFlow {
 
@@ -35,6 +36,9 @@ public:
 
 namespace Kernels {
 namespace LoraLinear {
+
+bool lora_applies_to_this_layer(LoraLinearMeta *m, LoraLinearConfig const &config);
+
 void init_kernel_wrapper(LoraLinearMeta *m, int seed);
 void inference_kernel_wrapper(LoraLinearMeta *m,
                               BatchConfig const *bc,
