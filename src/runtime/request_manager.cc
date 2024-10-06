@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
+#include "flexflow/request_manager.h"
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
-#include "flexflow/request_manager.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
 #include <cmath>
@@ -719,7 +719,7 @@ void RequestManager::request_offload_from_batch(int batch_index) {
   num_available_requests--;
 }
 
-void RequestManager:: request_load_onto_batch(int batch_index) {
+void RequestManager::request_load_onto_batch(int batch_index) {
   RequestGuid guid = guid_of_requests[batch_index];
   Request &request = all_requests[guid];
   request_available[batch_index] = true;
