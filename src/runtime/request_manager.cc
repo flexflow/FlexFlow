@@ -2496,12 +2496,21 @@ void RequestManager::terminate_background_server() {
 
     long long total_time = Realm::Clock::current_time_in_microseconds() -
                            profiling.server_start_time;
-    int total_requests = profiling_requests.size();
+    int total_requests = 0;
+    for (auto const &profiling_info : profiling_requests) {
+      int request_id = profiling_info.first;
+      Request &request = all_requests[request_id];
+      if (request.status == Request::COMPLETED) {
+        total_requests++;
+      }
+    }
     int total_tokens = 0;
     for (int num_tokens : profiling.generated_tokens_per_step) {
       total_tokens += num_tokens;
     }
     str += "\n total_time_ms(" + std::to_string(total_time / 1000.0) + ")";
+    str += "\n total_requests(" + std::to_string(total_requests) + "/" +
+           std::to_string(profiling_requests.size()) + ")";
     str += "\n total_tokens(" + std::to_string(total_tokens) + ")";
     // throughput
     str += "\n throughput_requests_per_sec(" +
