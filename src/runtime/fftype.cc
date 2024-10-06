@@ -46,7 +46,9 @@ bool operator==(PEFTModelID const &lhs, PEFTModelID const &rhs) {
   return lhs.id == rhs.id;
 }
 
-bool operator!=(PEFTModelID const &lhs, PEFTModelID const &rhs) { return !(lhs == rhs); }
+bool operator!=(PEFTModelID const &lhs, PEFTModelID const &rhs) {
+  return !(lhs == rhs);
+}
 
 std::ostream &operator<<(std::ostream &os, PEFTModelID const &peft_model_id) {
   if (peft_model_id == PEFTModelID::NO_ID) {

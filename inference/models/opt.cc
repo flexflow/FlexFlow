@@ -266,7 +266,7 @@ void OPT::create_opt_model(FFModel &ff,
   if (ff.config.enable_peft) {
     // todo: add attention projections
     std::vector<std::string> target_modules = {"fc1", "fc2"};
-    ff.add_lora_layers();
+    ff.add_lora_layers(target_modules);
   }
 
   FileDataLoader *fileloader = new FileDataLoader(

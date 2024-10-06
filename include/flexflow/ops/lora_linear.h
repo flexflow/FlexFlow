@@ -17,14 +17,13 @@ public:
   using Params = LoraLinearParams;
   using Input = std::pair<ParallelTensor, ParallelTensor>;
 
-  LoraLinear(
-      FFModel &model,
-      LayerID const &layer_guid,
-      ParallelTensor const input,
-      ParallelTensor const output,
-      int max_rank,
-      int max_concurrent_adapters,
-      char const *name = nullptr);
+  LoraLinear(FFModel &model,
+             LayerID const &layer_guid,
+             ParallelTensor const input,
+             ParallelTensor const output,
+             int max_rank,
+             int max_concurrent_adapters,
+             char const *name = nullptr);
   LoraLinear(FFModel &model,
              LoraLinear const &other,
              ParallelTensor const input,

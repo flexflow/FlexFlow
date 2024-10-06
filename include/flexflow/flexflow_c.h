@@ -600,10 +600,12 @@ flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
                                             bool beam_search,
                                             char const *name);
 
-void flexflow_model_add_lora_layers(flexflow_model_t handle_, int num_target_modules, char const **target_modules_);
+void flexflow_model_add_lora_layers(flexflow_model_t handle_,
+                                    int num_target_modules,
+                                    char const **target_modules_);
 
-
-flexflow_peft_model_id_t flexflow_model_register_peft_adapter(flexflow_model_t handle_, const flexflow_lora_linear_config_t peft_config_);
+flexflow_peft_model_id_t flexflow_model_register_peft_adapter(
+    flexflow_model_t handle_, const flexflow_lora_linear_config_t peft_config_);
 
 void flexflow_model_set_sgd_optimizer(flexflow_model_t handle,
                                       flexflow_sgd_optimizer_t optimizer);

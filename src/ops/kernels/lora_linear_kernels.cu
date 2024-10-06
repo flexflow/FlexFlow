@@ -147,7 +147,8 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
   }
 }
 
-bool lora_applies_to_this_layer(LoraLinearMeta *m, LoraLinearConfig const &config) {
+bool lora_applies_to_this_layer(LoraLinearMeta *m,
+                                LoraLinearConfig const &config) {
   for (std::string s : config.target_modules) {
     std::string n(m->op_name);
     if (n.find(s) != std::string::npos) {
@@ -158,7 +159,6 @@ bool lora_applies_to_this_layer(LoraLinearMeta *m, LoraLinearConfig const &confi
 }
 
 namespace Internal {
-
 
 #ifdef DEADCODE
 template <typename DT>
@@ -320,23 +320,30 @@ void inference_kernel(LoraLinearMeta *m,
   cudaDataType_t compute_type = output_type;
 
   int num_peft_requests = 0;
-  for (int i=0; i< bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i] || bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
+  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
+    if (bc->request_completed[i] ||
+        bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID) {
       continue;
     }
     if (bc->requestsInfo[i].peft_bwd) {
       num_peft_requests++;
     }
-    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_model_config);
+    LoraLinearConfig lora_config =
+        LoraLinearConfig::deserialize_from_json_string(
+            bc->requestsInfo[i].peft_model_config);
     if (!lora_applies_to_this_layer(m, lora_config)) {
       continue;
     }
-    assert(lora_config.trainable == bc->requestsInfo[i].peft_bwd && "Trainable flag mismatch");
+    assert(lora_config.trainable == bc->requestsInfo[i].peft_bwd &&
+           "Trainable flag mismatch");
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     // int max_peft_tokens = bc->requestsInfo[i].max_length;
     int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
-    LoraLinearWeight weight = m->peft_memory_manager->get_peft(bc->requestsInfo[i].peft_model_id, lora_config);
-    void *intermediate_result_ptr = (bc->requestsInfo[i].peft_bwd) ? weight.low_rank_activation : m->handle.workSpace;
+    LoraLinearWeight weight = m->peft_memory_manager->get_peft(
+        bc->requestsInfo[i].peft_model_id, lora_config);
+    void *intermediate_result_ptr = (bc->requestsInfo[i].peft_bwd)
+                                        ? weight.low_rank_activation
+                                        : m->handle.workSpace;
     if (bc->requestsInfo[i].peft_bwd) {
       checkCUDA(cudaMemcpyAsync(weight.input_activation,
                                 input_ptr + first_token_offset * in_dim,
@@ -346,8 +353,8 @@ void inference_kernel(LoraLinearMeta *m,
                                 stream));
     } else {
       // use workspace to save intermediate result
-      assert(m->handle.workSpaceSize >=
-             data_type_size(m->input_type[1]) * num_peft_tokens * lora_config.rank);
+      assert(m->handle.workSpaceSize >= data_type_size(m->input_type[1]) *
+                                            num_peft_tokens * lora_config.rank);
     }
     DT alpha = 1.0f, beta = 0.0f;
     // buffer = weight_first * input
@@ -439,22 +446,29 @@ void peft_bwd_kernel(LoraLinearMeta *m,
   cudaDataType_t weight_type = output_type;
   cudaDataType_t lr_actv_type = output_type;
   cudaDataType_t compute_type = output_type;
-  
+
   for (int i = 0; i < bc->max_requests_per_batch(); i++) {
     // Skip completed, non-PEFT and PEFT forward-only requests
-    if (bc->request_completed[i] || bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID || !bc->requestsInfo[i].peft_bwd) {
+    if (bc->request_completed[i] ||
+        bc->requestsInfo[i].peft_model_id == PEFTModelID::NO_ID ||
+        !bc->requestsInfo[i].peft_bwd) {
       continue;
     }
-    LoraLinearConfig lora_config = LoraLinearConfig::deserialize_from_json_string(bc->requestsInfo[i].peft_model_config);
+    LoraLinearConfig lora_config =
+        LoraLinearConfig::deserialize_from_json_string(
+            bc->requestsInfo[i].peft_model_config);
     if (!lora_applies_to_this_layer(m, lora_config)) {
       continue;
     }
-    assert(lora_config.trainable == bc->requestsInfo[i].peft_bwd && "Trainable flag mismatch");
-    m->peft_memory_manager->check_ft_model_id(bc->requestsInfo[i].peft_model_id);
+    assert(lora_config.trainable == bc->requestsInfo[i].peft_bwd &&
+           "Trainable flag mismatch");
+    m->peft_memory_manager->check_ft_model_id(
+        bc->requestsInfo[i].peft_model_id);
     int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
     // int max_peft_tokens = bc->requestsInfo[i].max_length;
     // int first_token_offset = bc->requestsInfo[i].first_token_offset_in_batch;
-    LoraLinearWeight weight = m->peft_memory_manager->get_peft(bc->requestsInfo[i].peft_model_id, lora_config);
+    LoraLinearWeight weight = m->peft_memory_manager->get_peft(
+        bc->requestsInfo[i].peft_model_id, lora_config);
     DT scaling_constant = (DT)(lora_config.lora_alpha / lora_config.rank);
 
     // Compute LORA_B weight's gradient
@@ -569,7 +583,9 @@ void peft_bwd_kernel(LoraLinearMeta *m,
       // Get optimizer config
 
       if (lora_config.optimizer_config->getType() == "SGD") {
-        LoraSGDOptimizerConfig const *sgd_config = static_cast<LoraSGDOptimizerConfig const *>(lora_config.optimizer_config.get());
+        LoraSGDOptimizerConfig const *sgd_config =
+            static_cast<LoraSGDOptimizerConfig const *>(
+                lora_config.optimizer_config.get());
         // LoRA_A weight is split in tensor parallelism, so no need to apply
         // all-reduce
         sgd_update<<<GET_BLOCKS(w0_num_elements),

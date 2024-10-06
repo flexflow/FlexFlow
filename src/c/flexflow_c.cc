@@ -1554,7 +1554,9 @@ flexflow_tensor_t flexflow_model_add_argmax(flexflow_model_t handle_,
   return FFCObjectWrapper::wrap(tensor);
 }
 
-void flexflow_model_add_lora_layers(flexflow_model_t handle_, int num_target_modules, char const **target_modules_) {
+void flexflow_model_add_lora_layers(flexflow_model_t handle_,
+                                    int num_target_modules,
+                                    char const **target_modules_) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   std::vector<std::string> target_modules;
   for (int i = 0; i < num_target_modules; i++) {
@@ -1573,11 +1575,12 @@ flexflow_peft_model_id_t flexflow_model_register_peft_adapter(
   LoraLinearConfig const *peft_config = FFCObjectWrapper::unwrap(peft_config_);
   PEFTModelID *peft_model_id = handle->register_peft_adapter(*peft_config);
 
-  DEBUG_PRINT("[Register PEFT Adapter] model handle: %p, peft_config handle %p, "
-              "peft_model_id: %p",
-              handle,
-              peft_config,
-              peft_model_id);
+  DEBUG_PRINT(
+      "[Register PEFT Adapter] model handle: %p, peft_config handle %p, "
+      "peft_model_id: %p",
+      handle,
+      peft_config,
+      peft_model_id);
   return FFCObjectWrapper::wrap(peft_model_id);
 }
 

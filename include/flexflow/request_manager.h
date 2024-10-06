@@ -151,7 +151,7 @@ public:
   void register_output_filepath(std::string const &);
   void register_peft_config(PEFTModelID const &peft_model_id,
                             LoraLinearConfig const &peft_config);
-  LoraLinearConfig get_peft_config(PEFTModelID peft_model_id);
+  LoraLinearConfig const &get_peft_config(PEFTModelID const &peft_model_id);
   void set_max_lora_rank(int max_lora_rank);
   void set_max_concurrent_adapters(int max_concurrent_adapters);
   int get_max_lora_rank();
@@ -295,7 +295,7 @@ private:
   int max_spec_tree_token_num;
   int max_sequence_length;
   Status request_manager_status;
-  
+
   // peft
   std::unordered_map<PEFTModelID, LoraLinearConfig> peft_configs;
   int max_lora_rank;

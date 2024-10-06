@@ -19,7 +19,7 @@ public:
   LoraOptimizerConfig();
   virtual std::string getType() const = 0;
   virtual nlohmann::json toJson() const = 0;
-  static std::unique_ptr<LoraOptimizerConfig> fromJson(const nlohmann::json& j);
+  static std::unique_ptr<LoraOptimizerConfig> fromJson(nlohmann::json const &j);
   virtual ~LoraOptimizerConfig() = default;
 };
 
@@ -32,25 +32,15 @@ public:
                          bool weight_decay_ = 0.0f);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraSGDOptimizerConfig const &llc);
-  
-  std::string getType() const override { return "SGD"; }  
-  
-  nlohmann::json toJson() const override {
-    return {{"type", "SGD"},
-            {"lr", lr},
-            {"momentum", momentum},
-            {"nesterov", nesterov},
-            {"weight_decay", weight_decay}};
+
+  std::string getType() const override {
+    return "SGD";
   }
 
-  static std::unique_ptr<LoraSGDOptimizerConfig> fromJson(const nlohmann::json& j) {
-    auto sgd = std::make_unique<LoraSGDOptimizerConfig>();
-    sgd->lr = j["lr"];
-    sgd->momentum = j["momentum"];
-    sgd->nesterov = j["nesterov"];
-    sgd->weight_decay = j["weight_decay"];
-    return sgd;
-  }
+  nlohmann::json toJson() const override;
+
+  static std::unique_ptr<LoraSGDOptimizerConfig>
+      fromJson(nlohmann::json const &j);
 
 public:
   double lr = 0.001f;
@@ -69,27 +59,15 @@ public:
                           double epsilon_ = 1e-8);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraAdamOptimizerConfig const &llc);
-  
-  std::string getType() const override { return "Adam"; }  
-  
-  nlohmann::json toJson() const override {
-    return {{"type", "Adam"},
-            {"alpha", alpha},
-            {"beta1", beta1},
-            {"beta2", beta2},
-            {"weight_decay", weight_decay},
-            {"epsilon", epsilon}};
+
+  std::string getType() const override {
+    return "Adam";
   }
 
-  static std::unique_ptr<LoraAdamOptimizerConfig> fromJson(const nlohmann::json& j) {
-    auto adam = std::make_unique<LoraAdamOptimizerConfig>();
-    adam->alpha = j["alpha"];
-    adam->beta1 = j["beta1"];
-    adam->beta2 = j["beta2"];
-    adam->weight_decay = j["weight_decay"];
-    adam->epsilon = j["epsilon"];
-    return adam;
-  }
+  nlohmann::json toJson() const override;
+
+  static std::unique_ptr<LoraAdamOptimizerConfig>
+      fromJson(nlohmann::json const &j);
 
 public:
   // Adam
@@ -99,14 +77,6 @@ public:
   double weight_decay = 0.0f;
   double epsilon = 1e-8;
 };
-
-std::unique_ptr<LoraOptimizerConfig> LoraOptimizerConfig::fromJson(const nlohmann::json& j) {
-  std::string type = j["type"];
-  if (type == "SGD") return LoraSGDOptimizerConfig::fromJson(j);
-  if (type == "Adam") return LoraAdamOptimizerConfig::fromJson(j);
-  throw std::runtime_error("Unknown optimizer type");
-}
-
 
 class LoraLinearConfig {
 public:
@@ -126,11 +96,14 @@ public:
   LoraLinearConfig();
 
   // Method to set optimizer
-  template<typename T>
-  void setOptimizer(T&& opt) {
-    if constexpr (std::is_base_of_v<LoraOptimizerConfig, std::remove_reference_t<T>>) {
-      optimizer_config = std::make_unique<std::remove_reference_t<T>>(std::forward<T>(opt));
-    } else if constexpr (std::is_same_v<std::unique_ptr<LoraOptimizerConfig>, std::remove_reference_t<T>>) {
+  template <typename T>
+  void setOptimizer(T &&opt) {
+    if constexpr (std::is_base_of_v<LoraOptimizerConfig,
+                                    std::remove_reference_t<T>>) {
+      optimizer_config =
+          std::make_unique<std::remove_reference_t<T>>(std::forward<T>(opt));
+    } else if constexpr (std::is_same_v<std::unique_ptr<LoraOptimizerConfig>,
+                                        std::remove_reference_t<T>>) {
       optimizer_config = std::move(opt);
     } else {
       static_assert(always_false<T>, "Unsupported optimizer type");
@@ -139,62 +112,19 @@ public:
   // Helper template for static_assert
   template <typename>
   static inline constexpr bool always_false = false;
-  
+
   friend bool operator==(LoraLinearConfig const &lhs,
                          LoraLinearConfig const &rhs);
   friend std::ostream &operator<<(std::ostream &os,
                                   LoraLinearConfig const &llc);
-  std::string serialize_to_json_string(int indent=-1) const {
-    nlohmann::json j = {
-        {"cache_folder", cache_folder},
-        {"peft_model_id", peft_model_id},
-        {"rank", rank},
-        {"lora_alpha", lora_alpha},
-        {"lora_dropout", lora_dropout},
-        {"target_modules", target_modules},
-        {"trainable", trainable},
-        {"init_lora_weights", init_lora_weights},
-        {"base_model_name_or_path", base_model_name_or_path},
-        {"precision", precision},
-        // {"optimizer_config", optimizer_config ? optimizer_config->toJson() : nullptr}
-        {"optimizer_config", optimizer_config ? nlohmann::json(optimizer_config->toJson()) : nlohmann::json()}
-    };
-
-    return j.dump(indent);  // No indentation
-  }
-  void serialize_to_json_file(const std::string& filename) const {
-    std::string j = serialize_to_json_string(4);
-    std::ofstream file(filename);
-    file << j;
-  }
+  std::string serialize_to_json_string(int indent = -1) const;
+  void serialize_to_json_file(std::string const &filename) const;
   // Deserialization method
-  static LoraLinearConfig deserialize_from_json_string(const std::string& json_string) {
-    nlohmann::json j = nlohmann::json::parse(json_string);
-    LoraLinearConfig config(
-        j["cache_folder"].get<std::string>(),
-        j["peft_model_id"].get<std::string>(),
-        j["trainable"].get<bool>(),
-        nullptr,  // optimizer_config will be set later if present
-        j["init_lora_weights"].get<bool>(),
-        j["base_model_name_or_path"].get<std::string>(),
-        j["precision"].get<std::string>(),
-        j["rank"].get<int>(),
-        j["lora_alpha"].get<float>(),
-        j["lora_dropout"].get<float>(),
-        j["target_modules"].get<std::vector<std::string>>()
-    );
-    if (!j["optimizer_config"].is_null()) {
-      config.setOptimizer(LoraOptimizerConfig::fromJson(j["optimizer_config"]));
-    }
-    return config;
-  }
+  static LoraLinearConfig
+      deserialize_from_json_string(std::string const &json_string);
   // Deserialization method
-  static LoraLinearConfig deserialize_from_json_file(const std::string& filename) {
-    std::ifstream file(filename);
-    std::string j;
-    file >> j;
-    return deserialize_from_json_string(j);
-  }
+  static LoraLinearConfig
+      deserialize_from_json_file(std::string const &filename);
 
   std::string cache_folder;
   // Huggingface model ID (for download and/or upload)

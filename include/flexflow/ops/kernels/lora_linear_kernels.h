@@ -37,7 +37,8 @@ public:
 namespace Kernels {
 namespace LoraLinear {
 
-bool lora_applies_to_this_layer(LoraLinearMeta *m, LoraLinearConfig const &config);
+bool lora_applies_to_this_layer(LoraLinearMeta *m,
+                                LoraLinearConfig const &config);
 
 void init_kernel_wrapper(LoraLinearMeta *m, int seed);
 void inference_kernel_wrapper(LoraLinearMeta *m,
