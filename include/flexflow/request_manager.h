@@ -414,7 +414,8 @@ private:
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;
   RequestGuid next_available_guid;
-  std::vector<Request *> prefill_requests;
+  std::queue<Request *> prefilled_requests;
+  std::vector<Request *> prefilling_requests;
 
   // Added to make the request manager stateful. During the processing of the
   // first small model inference results, the step equals to 1. That is, every
@@ -422,7 +423,11 @@ private:
   // by 1.
   int current_ssm_step = 0;
   // Maps the index of the request in the batch config to the request guid.
+  // Note that we may have some prefilled requests not in the batch config,
+  // but should be re-considered in the decoding phase.
   int guid_of_requests[BatchConfig::MAX_NUM_REQUESTS];
+  int num_running_requests = 0;
+  // Available requests in the batch config
   bool request_available[BatchConfig::MAX_NUM_REQUESTS];
   int num_available_requests = 0;
   int ssm_completed = true;
@@ -470,6 +475,8 @@ private:
   bool load_pending_request_to_batch();
   void request_update_attainment(int index, bool attained);
   void request_complete_clean_up(int batch_index);
+  void request_offload_from_batch(int batch_index);
+  void request_load_onto_batch(int batch_index);
   /* ---------- Incremental Decoding Helper Functions ---------- */
   bool update_llm_prefill_results(InferenceResult const &result);
   bool update_llm_decode_results(InferenceResult const &result);

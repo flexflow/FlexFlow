@@ -13,9 +13,9 @@
  * limitations under the License.
  */
 
-#include "flexflow/request_manager.h"
 #include "flexflow/inference.h"
 #include "flexflow/parallel_ops/parallel_op.h"
+#include "flexflow/request_manager.h"
 // #include "flexflow/tokenizers.h"
 #include <bitset>
 #include <cmath>
@@ -564,8 +564,8 @@ BatchConfig
 // Return value: true if load a pending request to the batch
 bool RequestManager::load_pending_request_to_batch() {
   if (pending_request_queue.empty()) {
-    if (num_available_requests > 0) {
-      // No pending request to process, but there are available requests
+    if (num_running_requests > 0) {
+      // No pending request to process, but there are running requests
       // in the batch, do nothing
       return false;
     }
@@ -580,7 +580,7 @@ bool RequestManager::load_pending_request_to_batch() {
   }
   std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
   assert(!pending_request_queue.empty() && "No pending request to process.");
-  while (num_available_requests < get_max_requests_per_batch() &&
+  while (num_running_requests < get_max_requests_per_batch() &&
          !pending_request_queue.empty()) {
     RequestGuid guid = pending_request_queue.front().guid;
     pending_request_queue.pop();
@@ -593,12 +593,13 @@ bool RequestManager::load_pending_request_to_batch() {
     // Load request into batch
     request->batch_index = request_index;
     guid_of_requests[request_index] = guid;
+    num_running_requests++;
     request_available[request_index] = true;
     num_available_requests++;
     // Initialize the bitmask for the new request with its prompt length
     init_bitmask_prompt(guid, request->tokens.size());
 
-    prefill_requests.push_back(request);
+    prefilling_requests.push_back(request);
 
     profiling_requests[guid] = RequestProfileInfo();
     profiling_requests[guid].start_time =
@@ -618,6 +619,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
       Realm::Clock::current_time_in_microseconds();
   Request &request = all_requests[guid];
   guid_of_requests[batch_index] = INVALID_GUID;
+  num_running_requests--;
   request_available[batch_index] = false;
   num_available_requests--;
   request.status = Request::COMPLETED;
@@ -709,6 +711,21 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   // write_to_output_file("", str);
 }
 
+void RequestManager::request_offload_from_batch(int batch_index) {
+  RequestGuid guid = guid_of_requests[batch_index];
+  Request &request = all_requests[guid];
+  // Still keep the request in `guid_of_requests` where can be retrieved later
+  request_available[batch_index] = false;
+  num_available_requests--;
+}
+
+void RequestManager:: request_load_onto_batch(int batch_index) {
+  RequestGuid guid = guid_of_requests[batch_index];
+  Request &request = all_requests[guid];
+  request_available[batch_index] = true;
+  num_available_requests++;
+}
+
 void RequestManager::update_token_tree_depth() {
   ssm_tree_depth = min(get_max_tokens_per_batch() / get_num_active_requests(),
                        get_max_tree_depth());
@@ -716,7 +733,7 @@ void RequestManager::update_token_tree_depth() {
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
   // Update the inference results
-  if (num_available_requests == 0) {
+  if (num_running_requests == 0) {
     // Update nothing
     // Load the pending request to the batch
     load_pending_request_to_batch();
@@ -736,12 +753,17 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
           // finishes
 
           // Check if there are more empty slots
-          if (num_available_requests < get_max_requests_per_batch() &&
+          if (num_running_requests < get_max_requests_per_batch() &&
               load_pending_request_to_batch()) {
             // Load the pending request to the batch
             request_manager_status = PREFILLING;
           } else {
             // No more empty slots, start the decoding
+            while (!prefilled_requests.empty()) {
+              Request *request = prefilled_requests.front();
+              request_load_onto_batch(request->batch_index);
+              prefilled_requests.pop();
+            }
             request_manager_status = DECODING;
           }
         }
@@ -765,13 +787,18 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             // This indicates that the prefilling phase finishes
 
             // Check if there are more empty slots
-            if (num_available_requests < get_max_requests_per_batch() &&
+            if (num_running_requests < get_max_requests_per_batch() &&
                 load_pending_request_to_batch()) {
               // Load the pending request to the batch
               prefill_model = SSM;
               current_ssm_step = 0;
             } else {
               // No more empty slots, start the speculation
+              while (!prefilled_requests.empty()) {
+                Request *request = prefilled_requests.front();
+                request_load_onto_batch(request->batch_index);
+                prefilled_requests.pop();
+              }
               request_manager_status = SSM_SPEC;
               // Reset the prefill_request
               current_ssm_step = 0;
@@ -841,8 +868,8 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
 bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
   int num_tokens = 0;
   std::vector<Request *> incomplete_requests;
-  incomplete_requests.reserve(prefill_requests.size());
-  for (Request *request : prefill_requests) {
+  incomplete_requests.reserve(prefilling_requests.size());
+  for (Request *request : prefilling_requests) {
     if (request->num_tokens_in_batch > 0) {
       if (decoding_mode == INCREMENTAL_DECODING && streaming_cache) {
         request->streaming_cache_info.commit_cache(
@@ -854,12 +881,16 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
       request->llm_prefill_len += request->num_tokens_in_batch;
 
       if (request->llm_prefill_len == request->tokens.size()) {
-        // Indicates that the LLM prefilling phase finishes
+        // Indicates that this request's prefilling phase finishes
         request->tokens.push_back(
             result.token_ids[num_tokens + request->num_tokens_in_batch - 1]);
 
         if (request->tokens.back() == eos_token_id) {
           request_complete_clean_up(request->batch_index);
+        } else {
+          // Temporarily offload request from the batch
+          request_offload_from_batch(request->batch_index);
+          prefilled_requests.push(request);
         }
 
         if (decoding_mode == SPECULATIVE_DECODING) {
@@ -884,8 +915,8 @@ bool RequestManager::update_llm_prefill_results(InferenceResult const &result) {
     }
   }
 
-  prefill_requests.swap(incomplete_requests);
-  return prefill_requests.empty();
+  prefilling_requests.swap(incomplete_requests);
+  return prefilling_requests.empty();
 }
 
 bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
@@ -947,7 +978,7 @@ void RequestManager::update_ssm_prefill_results(
   // This function is called by update_inference_results when the
   // request_manager_status is PREFILLING and the prefill_model is SSM.
   // There's no results to update, but we should update ssm_cache_size.
-  for (Request *request : prefill_requests) {
+  for (Request *request : prefilling_requests) {
     if (request->num_tokens_in_batch > 0) {
       if (streaming_cache) {
         request->streaming_cache_info.commit_cache(
@@ -1017,7 +1048,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     std::cout << "\n############### prepare_llm_prefilling_batch "
                  "##############\n";
   }
-  assert(prefill_requests.size() > 0 &&
+  assert(prefilling_requests.size() > 0 &&
          "No prefilling request to process in the prefilling phase.");
 
   BatchConfig bc;
@@ -1029,7 +1060,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   bc.prompt_phase = true;
   bc.num_available_requests = 0;
   int num_tokens = 0;
-  for (Request *request : prefill_requests) {
+  for (Request *request : prefilling_requests) {
     int request_index = request->batch_index;
     bc.request_available[request_index] = true;
 
@@ -1086,7 +1117,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
     std::cout << "\n############### prepare_ssm_prefilling_batch "
                  "##############\n";
   }
-  assert(prefill_requests.size() > 0 &&
+  assert(prefilling_requests.size() > 0 &&
          "No prefilling request to process in the prefilling phase.");
 
   BatchConfig bc;
@@ -1094,7 +1125,7 @@ BatchConfig RequestManager::prepare_ssm_prefilling_batch() {
   bc.prompt_phase = true;
   bc.num_available_requests = 0;
   int num_tokens = 0;
-  for (Request *request : prefill_requests) {
+  for (Request *request : prefilling_requests) {
     int request_index = request->batch_index;
     // Only set the prefilling request to be available
     bc.request_available[request_index] = true;
