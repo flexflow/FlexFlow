@@ -430,8 +430,8 @@ InferenceResult GumbelTopK::inference_speculative_task(
     Runtime *runtime) {
   assert(regions.size() == 4);
   assert(task->regions.size() == 4);
-  BatchConfig const &bc = Future(task->futures[0]).get_result<BatchConfig>();
-  if (bc.num_active_tokens() == 0) {
+  BatchConfig const *bc = BatchConfig::from_future(task->futures[0]);
+  if (bc->num_active_tokens() == 0) {
     // Directly return for empty batch config
     InferenceResult ir;
     return ir;
@@ -447,9 +447,9 @@ InferenceResult GumbelTopK::inference_speculative_task(
   GenericTensorAccessorW perturbed_log_probs = helperGetGenericTensorAccessorWO(
       DT_FLOAT, regions[3], task->regions[3], FID_DATA, ctx, runtime);
 
-  int batch_size = bc.num_active_tokens();
+  int batch_size = bc->num_active_tokens();
   GumbelTopK::forward_kernel_wrapper(
-      m, input, log_probs, perturbed_log_probs, indices, batch_size, &bc);
+      m, input, log_probs, perturbed_log_probs, indices, batch_size, bc);
 
   InferenceResult ir;
   ir.num_token_ids = batch_size * m->k;
