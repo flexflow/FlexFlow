@@ -4,7 +4,7 @@
 #include "compiler/cost_estimator/tensor_set_movement.dtg.h"
 #include "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.dtg.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.dtg.h"
-#include "compiler/series_parallel/pcg_binary_series_split.dtg.h"
+#include "compiler/series_parallel/pcg/pcg_binary_series_split.dtg.h"
 
 namespace FlexFlow {
 

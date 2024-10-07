@@ -15,6 +15,32 @@ using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_optimal_machine_mapping") {
+    auto make_leaf = [](UnmappedOpCostEstimateKey const &k) {
+      return MachineMappingProblemTree{k}; 
+    };
+
+    auto make_series_split = [](AbstractedTensorSetMovement const &tensor_set_movement,
+                                MachineMappingProblemTree const &lhs,
+                                MachineMappingProblemTree const &rhs) {
+      return MachineMappingProblemTree{
+        MMProblemTreeSeriesSplit{
+          /*tensor_set_movement=*/tensor_set_movement,
+          /*left_child=*/lhs,
+          /*right_child=*/rhs,
+        },
+      };
+    };
+
+    auto make_parallel_split = [](MachineMappingProblemTree const &lhs,
+                                  MachineMappingProblemTree const &rhs) {
+      return MachineMappingProblemTree{
+        MMProblemTreeParallelSplit{
+          /*left_child=*/lhs,
+          /*right_child=*/rhs,
+        },
+      };
+    };
+
     MachineView mv1 = make_1d_machine_view(gpu_id_t(1), gpu_id_t(2));
     MachineView mv2 = make_1d_machine_view(gpu_id_t(1), gpu_id_t(3));
 
@@ -117,7 +143,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     MachineMappingCache cache = empty_machine_mapping_cache();
 
     SUBCASE("single layer") {
-      MachineMappingProblemTree problem_tree = mm_problem_tree_make_leaf(k1);
+      MachineMappingProblemTree problem_tree = make_leaf(k1);
 
       MachineMappingConstraints constraints =
           get_unconstrained_solution_for_layers(
@@ -140,9 +166,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("pair of layers in sequence") {
       MachineMappingProblemTree problem_tree =
-          mm_problem_tree_make_series_split(movement1,
-                                            mm_problem_tree_make_leaf(k1),
-                                            mm_problem_tree_make_leaf(k2));
+          make_series_split(movement1, make_leaf(k1), make_leaf(k2));
 
       MachineMappingConstraints constraints =
           get_unconstrained_solution_for_layers(
@@ -176,8 +200,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("pair of layers in parallel") {
       MachineMappingProblemTree problem_tree =
-          mm_problem_tree_make_parallel_split(mm_problem_tree_make_leaf(k1),
-                                              mm_problem_tree_make_leaf(k2));
+        make_parallel_split(make_leaf(k1), make_leaf(k2));
 
       MachineMappingConstraints constraints =
           get_unconstrained_solution_for_layers(

@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "FullBinaryTree"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+template_params = [
+   "ParentLabel",
+   "LeafLabel",
+]
+
+includes = [
+  "utils/full_binary_tree/full_binary_tree_parent_node.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel>"
+key = "parent"
+
+[[values]]
+type = "LeafLabel"
+key = "leaf"

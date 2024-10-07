@@ -5,7 +5,7 @@
 #include "compiler/machine_mapping/machine_mapping.dtg.h"
 #include "compiler/machine_mapping/machine_mapping_constraints.dtg.h"
 #include "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.dtg.h"
-#include "compiler/series_parallel/pcg_binary_sp_decomposition.dtg.h"
+#include "compiler/series_parallel/pcg/pcg_binary_sp_decomposition.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h"
 
 namespace FlexFlow {

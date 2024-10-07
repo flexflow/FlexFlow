@@ -41,7 +41,7 @@ key = "normal"
 
 [[values]]
 type = "::FlexFlow::TruncatedNormalInitializerAttrs"
-key = "normal"
+key = "truncated_normal"
 
 [[values]]
 type = "::FlexFlow::ConstantInitializerAttrs"

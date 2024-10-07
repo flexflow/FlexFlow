@@ -10,6 +10,14 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_transitive_reduced_outputs_across_split") {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+      return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
+    };
+
+    auto make_leaf = [](Node const &n) {
+      return BinarySPDecompositionTree{n};
+    };
+    
     DataflowGraph g = DataflowGraph::create<UnorderedSetDataflowGraph>();
 
     NodeAddedResult n1_added = g.add_node({}, 1);
@@ -31,9 +39,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     TransitiveReducedDataflowGraphView tr_g =
         get_dataflow_graph_transitive_reduction(g);
 
-    BinarySeriesSplit split = require_series(make_series_split(
-        make_series_split(make_leaf_node(n1), make_leaf_node(n2)),
-        make_series_split(make_leaf_node(n3), make_leaf_node(n4))));
+    BinarySeriesSplit split = BinarySeriesSplit{
+        make_series_split(make_leaf(n1), make_leaf(n2)),
+        make_series_split(make_leaf(n3), make_leaf(n4)),
+    };
 
     std::unordered_set<DataflowOutput> result =
         get_transitive_reduced_outputs_across_split(tr_g, split);

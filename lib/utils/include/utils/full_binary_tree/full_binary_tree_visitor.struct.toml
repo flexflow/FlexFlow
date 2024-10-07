@@ -4,19 +4,19 @@ features = []
 
 template_params = [
   "Result",
-  "ParentLabel",
-  "LeafLabel",
+  "Tree",
+  "Parent",
+  "Leaf",
 ]
 
 includes = [
   "<functional>",
-  "utils/full_binary_tree/full_binary_tree.h",
 ]
 
 [[fields]]
 name = "parent_func"
-type = "std::function<Result(::FlexFlow::FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &)>"
+type = "std::function<Result(Parent const &)>"
 
 [[fields]]
 name = "leaf_func"
-type = "std::function<Result(LeafLabel const &)>"
+type = "std::function<Result(Leaf const &)>"

@@ -6,18 +6,25 @@ features = [
   "fmt",
 ]
 
+fwd_decls = [
+  "template <typename LeafLabel> struct LeafOnlyBinarySPDecompositionTree",
+]
+
+post_includes = [
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree.dtg.h",
+]
+
+
 template_params = [
   "LeafLabel",
 ]
 
-includes = [
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree.dtg.h",
-]
+[[fields]]
+name = "left_child"
+type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<LeafLabel>"
+indirect = true
 
 [[fields]]
-name = "lhs"
+name = "right_child"
 type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<LeafLabel>"
-
-[[fields]]
-name = "rhs"
-type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<LeafLabel>"
+indirect = true

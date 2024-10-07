@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-template bool is_binary_sp_tree_left_associative(
-    LeafOnlyBinarySPDecompositionTree<int> const &);
+// template bool is_binary_sp_tree_left_associative(
+//     LeafOnlyBinarySPDecompositionTree<int> const &);
 
 } // namespace FlexFlow

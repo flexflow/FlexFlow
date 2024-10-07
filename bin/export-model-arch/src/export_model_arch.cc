@@ -1,5 +1,5 @@
-#include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
-#include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
+#include "compiler/series_parallel/computation_graph/computation_graph_binary_sp_decomposition.h"
+#include "compiler/series_parallel/computation_graph/get_computation_graph_series_parallel_decomposition.h"
 #include "export_model_arch/json_sp_model_export.dtg.h"
 #include "models/bert/bert.h"
 #include "models/candle_uno/candle_uno.h"

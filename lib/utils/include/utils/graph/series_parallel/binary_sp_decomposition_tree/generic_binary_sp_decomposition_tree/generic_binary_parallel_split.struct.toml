@@ -4,27 +4,32 @@ features = [
   "eq",
   "hash",
   "fmt",
-  "json",
+]
+
+fwd_decls = [
+  "template <typename SeriesLabel, typename ParallelLabel, typename LeafLabel> struct GenericBinarySPDecompositionTree",
+]
+
+post_includes = [
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.dtg.h"
 ]
 
 template_params = [
-  "SeriesSplitLabel",
-  "ParallelSplitLabel",
+  "SeriesLabel",
+  "ParallelLabel",
   "LeafLabel",
-]
-
-includes = [
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree.dtg.h",
 ]
 
 [[fields]]
 name = "label"
-type = "ParallelSplitLabel"
+type = "ParallelLabel"
 
 [[fields]]
-name = "lhs"
-type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
+name = "left_child"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>"
+indirect = true
 
 [[fields]]
-name = "rhs"
-type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesSplitLabel, ParallelSplitLabel, LeafLabel>"
+name = "right_child"
+type = "::FlexFlow::GenericBinarySPDecompositionTree<SeriesLabel, ParallelLabel, LeafLabel>"
+indirect = true

@@ -1,6 +1,5 @@
 #include "compiler/machine_mapping/abstracted_tensor_set_movement/get_abstracted_tensor_set_movement_across_split.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.h"
-#include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "utils/containers/get_only.h"
 #include "utils/full_binary_tree/binary_tree_path.h"
@@ -10,6 +9,18 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_abstracted_tensor_set_movement_across_split") {
+    auto make_series_split = [](PCGBinarySPDecomposition const &lhs, PCGBinarySPDecomposition const &rhs) {
+      return PCGBinarySPDecomposition{PCGBinarySeriesSplit{lhs, rhs}};
+    };
+
+    auto make_parallel_split = [](PCGBinarySPDecomposition const &lhs, PCGBinarySPDecomposition const &rhs) {
+      return PCGBinarySPDecomposition{PCGBinaryParallelSplit{lhs, rhs}};
+    };
+
+    auto make_leaf = [](parallel_layer_guid_t const &l) {
+      return PCGBinarySPDecomposition{l};
+    };
+
     ParallelComputationGraph pcg = empty_parallel_computation_graph();
 
     ParallelTensorShape input_shape = ParallelTensorShape{
@@ -58,9 +69,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelLayerAddedResult input1 = pcg_add_input_layer(pcg, input_shape);
       ParallelLayerAddedResult input2 = pcg_add_input_layer(pcg, input_shape);
 
-      PCGBinarySeriesSplit split = require_series(
-          make_pcg_series_split(make_pcg_leaf_node(input1.parallel_layer),
-                                make_pcg_leaf_node(input2.parallel_layer)));
+      PCGBinarySeriesSplit split = PCGBinarySeriesSplit{
+        make_leaf(input1.parallel_layer),
+        make_leaf(input2.parallel_layer),
+      };
 
       AbstractedTensorSetMovement result =
           get_abstracted_tensor_set_movement_across_split(
@@ -81,10 +93,11 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelLayerAddedResult layer_2 = add_parallel_layer(
           pcg, relu_attrs, {get_only(layer_1.outputs)}, {relu_output_attrs});
 
-      PCGBinarySeriesSplit split = require_series(make_pcg_series_split(
-          make_pcg_series_split(make_pcg_leaf_node(input.parallel_layer),
-                                make_pcg_leaf_node(layer_1.parallel_layer)),
-          make_pcg_leaf_node(layer_2.parallel_layer)));
+      PCGBinarySeriesSplit split = PCGBinarySeriesSplit{
+        make_series_split(make_leaf(input.parallel_layer),
+                          make_leaf(layer_1.parallel_layer)),
+        make_leaf(layer_2.parallel_layer),
+      };
 
       AbstractedTensorSetMovement result =
           get_abstracted_tensor_set_movement_across_split(
@@ -126,13 +139,14 @@ TEST_SUITE(FF_TEST_SUITE) {
           {get_only(layer_1.outputs), get_only(layer_2.outputs)},
           {relu_output_attrs});
 
-      PCGBinarySeriesSplit split = require_series(make_pcg_series_split(
-          make_pcg_series_split(
-              make_pcg_leaf_node(input.parallel_layer),
-              make_pcg_series_split(
-                  make_pcg_leaf_node(layer_1.parallel_layer),
-                  make_pcg_leaf_node(layer_2.parallel_layer))),
-          make_pcg_leaf_node(layer_3.parallel_layer)));
+      PCGBinarySeriesSplit split = PCGBinarySeriesSplit{
+        make_series_split(
+            make_leaf(input.parallel_layer),
+            make_series_split(
+                make_leaf(layer_1.parallel_layer),
+                make_leaf(layer_2.parallel_layer))),
+        make_leaf(layer_3.parallel_layer),
+      };
 
       AbstractedTensorSetMovement result =
           get_abstracted_tensor_set_movement_across_split(
@@ -172,11 +186,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelLayerAddedResult layer_3 = add_parallel_layer(
           pcg, relu_attrs, {get_only(layer_1.outputs)}, {relu_output_attrs});
 
-      PCGBinarySeriesSplit split = require_series(make_pcg_series_split(
-          make_pcg_series_split(make_pcg_leaf_node(input.parallel_layer),
-                                make_pcg_leaf_node(layer_1.parallel_layer)),
-          make_pcg_parallel_split(make_pcg_leaf_node(layer_2.parallel_layer),
-                                  make_pcg_leaf_node(layer_3.parallel_layer))));
+      PCGBinarySeriesSplit split = PCGBinarySeriesSplit{
+          make_series_split(make_leaf(input.parallel_layer),
+                                make_leaf(layer_1.parallel_layer)),
+          make_parallel_split(make_leaf(layer_2.parallel_layer),
+                                  make_leaf(layer_3.parallel_layer)),
+      };
 
       AbstractedTensorSetMovement result =
           get_abstracted_tensor_set_movement_across_split(
@@ -226,14 +241,15 @@ TEST_SUITE(FF_TEST_SUITE) {
           {get_only(layer_1.outputs), get_only(layer_2.outputs)},
           {relu_output_attrs});
 
-      PCGBinarySeriesSplit split = require_series(make_pcg_series_split(
-          make_pcg_series_split(
-              make_pcg_leaf_node(input.parallel_layer),
-              make_pcg_parallel_split(
-                  make_pcg_leaf_node(layer_1.parallel_layer),
-                  make_pcg_leaf_node(layer_2.parallel_layer))),
-          make_pcg_parallel_split(make_pcg_leaf_node(layer_3.parallel_layer),
-                                  make_pcg_leaf_node(layer_4.parallel_layer))));
+      PCGBinarySeriesSplit split = PCGBinarySeriesSplit{
+          make_series_split(
+              make_leaf(input.parallel_layer),
+              make_parallel_split(
+                  make_leaf(layer_1.parallel_layer),
+                  make_leaf(layer_2.parallel_layer))),
+          make_parallel_split(make_leaf(layer_3.parallel_layer),
+                                  make_leaf(layer_4.parallel_layer))
+      };
 
       AbstractedTensorSetMovement result =
           get_abstracted_tensor_set_movement_across_split(

@@ -4,13 +4,11 @@
 #include "compiler/machine_mapping/machine_mapping_cache.h"
 #include "compiler/machine_mapping/machine_mapping_constraints.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.h"
-#include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_parallel_split.h"
-#include "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_series_split.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.h"
 #include "compiler/machine_mapping/machine_mapping_result.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.h"
-#include "compiler/series_parallel/pcg_binary_sp_decomposition.dtg.h"
-#include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
+#include "compiler/series_parallel/pcg/pcg_binary_sp_decomposition.dtg.h"
+#include "compiler/series_parallel/pcg/pcg_binary_sp_decomposition.h"
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_specification.h"
 #include "pcg/machine_view.dtg.h"
@@ -47,9 +45,7 @@ MachineMappingResult
     }
   }
 
-  MachineMappingResult result = visit<MachineMappingResult>(
-      problem_tree,
-      overload{
+  MachineMappingResult result = problem_tree.visit<MachineMappingResult>(overload{
           [&](MMProblemTreeSeriesSplit const &series_split) {
             return get_optimal_machine_mapping(
                 result_cache,
@@ -89,9 +85,9 @@ MachineMappingResult
             boundary_layers,
             [&](BinaryTreePath const &l) -> std::unordered_set<MachineView> {
               UnmappedOpCostEstimateKey leaf =
-                  require_leaf(mm_problem_tree_get_subtree_at_path(
-                                   wrap_series_split(series_split), l)
-                                   .value());
+                  mm_problem_tree_get_subtree_at_path(
+                                   MachineMappingProblemTree{series_split}, l)
+                                   .value().get<UnmappedOpCostEstimateKey>();
               return context.allowed_machine_views(leaf, resources);
             });
     return transform(
@@ -110,7 +106,7 @@ MachineMappingResult
         MachineMappingResult pre_result =
             get_optimal_machine_mapping(result_cache,
                                         context,
-                                        get_pre_child(series_split),
+                                        series_split.get_left_child(),
                                         resources,
                                         pre_candidate);
 
@@ -126,7 +122,7 @@ MachineMappingResult
         MachineMappingResult post_result =
             get_optimal_machine_mapping(result_cache,
                                         context,
-                                        get_post_child(series_split),
+                                        series_split.get_right_child(),
                                         resources,
                                         post_candidate);
 
@@ -134,8 +130,7 @@ MachineMappingResult
       };
 
   MachineMappingResult result = infeasible_machine_mapping_result();
-  AbstractedTensorSetMovement tensor_movement =
-      get_abstracted_tensor_movement(series_split);
+  AbstractedTensorSetMovement tensor_movement = series_split.tensor_set_movement;
 
   for (ParallelLayerGuidObliviousMachineMapping const
            &assigned_pre_machine_views :
@@ -178,15 +173,15 @@ MachineMappingResult get_optimal_machine_mapping(
     MachineSpecification const &resources,
     MachineMappingConstraints const &constraints) {
 
-  MachineMappingProblemTree lhs = get_lhs_child(parallel_split);
-  MachineMappingProblemTree rhs = get_rhs_child(parallel_split);
+  MachineMappingProblemTree lhs = parallel_split.get_left_child();
+  MachineMappingProblemTree rhs = parallel_split.get_right_child();
 
   MachineMappingResult series_result = [&] {
-    MMProblemTreeSeriesSplit series_split =
-        require_series_split(mm_problem_tree_make_series_split(
-            /*tensor_set_movement=*/empty_abstracted_tensor_set_movement(),
-            /*pre=*/lhs,
-            /*post=*/rhs));
+    MMProblemTreeSeriesSplit series_split = MMProblemTreeSeriesSplit{
+      /*tensor_set_movement=*/empty_abstracted_tensor_set_movement(),
+      /*left_child=*/lhs,
+      /*right_child=*/rhs,
+    };
 
     return get_optimal_machine_mapping(result_cache,
                                        context,

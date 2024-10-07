@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "LeafOnlyBinarySPDecompositionTreeTransformVisitor"
+features = []
+
+template_params = [
+  "LeafLabel",
+  "LeafLabel2",
+]
+
+includes = [
+  "<functional>",
+]
+
+[[fields]]
+name = "leaf_func"
+type = "std::function<LeafLabel2(LeafLabel const &)>"

@@ -12,6 +12,18 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_transitive_reduced_edges_across_split") {
     DataflowGraph g = DataflowGraph::create<UnorderedSetDataflowGraph>();
 
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+      return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
+    };
+
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+      return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
+    };
+
+    auto make_leaf = [](Node const &n) {
+      return BinarySPDecompositionTree{n};
+    };
+
     SUBCASE("multiple nodes with edges across") {
       NodeAddedResult n1_added = g.add_node({}, 1);
       Node n1 = n1_added.node;
@@ -32,9 +44,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       TransitiveReducedDataflowGraphView tr_g =
           get_dataflow_graph_transitive_reduction(g);
 
-      BinarySeriesSplit split = require_series(make_series_split(
-          make_parallel_split(make_leaf_node(n1), make_leaf_node(n2)),
-          make_parallel_split(make_leaf_node(n3), make_leaf_node(n4))));
+      BinarySeriesSplit split = BinarySeriesSplit{
+          make_parallel_split(make_leaf(n1), make_leaf(n2)),
+          make_parallel_split(make_leaf(n3), make_leaf(n4)),
+      };
 
       std::unordered_set<DataflowEdge> result =
           get_transitive_reduced_edges_across_split(tr_g, split);
@@ -68,8 +81,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       TransitiveReducedDataflowGraphView tr_g =
           get_dataflow_graph_transitive_reduction(g);
 
-      BinarySeriesSplit split = require_series(
-          make_series_split(make_leaf_node(n1), make_leaf_node(n2)));
+      BinarySeriesSplit split = BinarySeriesSplit{
+          make_leaf(n1), 
+          make_leaf(n2),
+      };
 
       std::unordered_set<DataflowEdge> result =
           get_transitive_reduced_edges_across_split(tr_g, split);
@@ -111,9 +126,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       TransitiveReducedDataflowGraphView tr_g =
           get_dataflow_graph_transitive_reduction(g);
 
-      BinarySeriesSplit split = require_series(make_series_split(
-          make_series_split(make_leaf_node(n1), make_leaf_node(n2)),
-          make_series_split(make_leaf_node(n3), make_leaf_node(n4))));
+      BinarySeriesSplit split = BinarySeriesSplit{
+          make_series_split(make_leaf(n1), make_leaf(n2)),
+          make_series_split(make_leaf(n3), make_leaf(n4)),
+      };
 
       std::unordered_set<DataflowEdge> result =
           get_transitive_reduced_edges_across_split(tr_g, split);

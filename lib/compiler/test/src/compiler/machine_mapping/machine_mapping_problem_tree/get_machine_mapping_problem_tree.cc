@@ -1,6 +1,5 @@
 #include "compiler/machine_mapping/machine_mapping_problem_tree/get_machine_mapping_problem_tree.h"
 #include "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.h"
-#include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "utils/containers/get_only.h"
 #include <doctest/doctest.h>
@@ -9,6 +8,58 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_machine_mapping_problem_tree") {
+    auto pcg_make_leaf = [](parallel_layer_guid_t const &l) {
+      return PCGBinarySPDecomposition{l};
+    };
+
+    auto pcg_make_series = [](PCGBinarySPDecomposition const &lhs, 
+                              PCGBinarySPDecomposition const &rhs) {
+      return PCGBinarySPDecomposition{
+        PCGBinarySeriesSplit{
+          lhs,
+          rhs,
+        },
+      };
+    };
+
+    auto pcg_make_parallel = [](PCGBinarySPDecomposition const &lhs,
+                                PCGBinarySPDecomposition const &rhs) {
+
+      return PCGBinarySPDecomposition{
+        PCGBinaryParallelSplit{
+          lhs,
+          rhs,
+        },
+      };
+    };
+
+    auto mm_problem_tree_make_leaf = [](UnmappedOpCostEstimateKey const &k) {
+      return MachineMappingProblemTree{k};
+    };
+
+    auto mm_problem_tree_make_series = [](AbstractedTensorSetMovement const &tensor_set_movement,
+                                          MachineMappingProblemTree const &lhs,
+                                          MachineMappingProblemTree const &rhs) {
+      return MachineMappingProblemTree{
+        MMProblemTreeSeriesSplit{
+          tensor_set_movement,
+          lhs,
+          rhs,
+        },
+      };
+    };
+
+    auto mm_problem_tree_make_parallel = [](MachineMappingProblemTree const &lhs,
+                                            MachineMappingProblemTree const &rhs) {
+
+      return MachineMappingProblemTree{
+        MMProblemTreeParallelSplit{
+          lhs,
+          rhs,
+        },
+      };
+    };
+
     ParallelComputationGraph pcg = empty_parallel_computation_graph();
 
     ParallelTensorShape input_shape = ParallelTensorShape{
@@ -62,12 +113,11 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       UnmappedOpCostEstimateKey input_key = make_input_key(input_shape);
 
-      PCGBinarySPDecomposition sp_decomposition =
-          make_pcg_leaf_node(input_layer);
+      PCGBinarySPDecomposition sp_decomposition = PCGBinarySPDecomposition{input_layer};
 
       MachineMappingProblemTree result =
           get_machine_mapping_problem_tree(pcg, sp_decomposition);
-      MachineMappingProblemTree correct = mm_problem_tree_make_leaf(input_key);
+      MachineMappingProblemTree correct = MachineMappingProblemTree{input_key};
 
       CHECK(result == correct);
     }
@@ -105,13 +155,13 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*output_shapes=*/{relu_output_shape},
       };
 
-      PCGBinarySPDecomposition sp_decomposition = make_pcg_series_split(
-          make_pcg_leaf_node(input_layer), make_pcg_leaf_node(relu_layer));
+      PCGBinarySPDecomposition sp_decomposition = pcg_make_series(
+          pcg_make_leaf(input_layer), pcg_make_leaf(relu_layer));
 
       MachineMappingProblemTree result =
           get_machine_mapping_problem_tree(pcg, sp_decomposition);
 
-      MachineMappingProblemTree correct = mm_problem_tree_make_series_split(
+      MachineMappingProblemTree correct = mm_problem_tree_make_series(
           AbstractedTensorSetMovement{{
               AbstractedSingleTensorMovement{
                   /*parallel_tensor_shape=*/input_shape,
@@ -142,13 +192,13 @@ TEST_SUITE(FF_TEST_SUITE) {
       parallel_layer_guid_t input2_layer = input2_added.parallel_layer;
       UnmappedOpCostEstimateKey input2_key = make_input_key(input_shape);
 
-      PCGBinarySPDecomposition sp_decomposition = make_pcg_parallel_split(
-          make_pcg_leaf_node(input1_layer), make_pcg_leaf_node(input2_layer));
+      PCGBinarySPDecomposition sp_decomposition = pcg_make_parallel(
+          pcg_make_leaf(input1_layer), pcg_make_leaf(input2_layer));
 
       MachineMappingProblemTree result =
           get_machine_mapping_problem_tree(pcg, sp_decomposition);
 
-      MachineMappingProblemTree correct = mm_problem_tree_make_parallel_split(
+      MachineMappingProblemTree correct = mm_problem_tree_make_parallel(
           mm_problem_tree_make_leaf(input1_key),
           mm_problem_tree_make_leaf(input2_key));
 
@@ -190,15 +240,15 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*output_shapes=*/{ew_op_output_shape},
       };
 
-      PCGBinarySPDecomposition sp_decomposition = make_pcg_series_split(
-          make_pcg_parallel_split(make_pcg_leaf_node(input1_layer),
-                                  make_pcg_leaf_node(input2_layer)),
-          make_pcg_leaf_node(ew_op_layer));
+      PCGBinarySPDecomposition sp_decomposition = pcg_make_series(
+          pcg_make_parallel(pcg_make_leaf(input1_layer),
+                                  pcg_make_leaf(input2_layer)),
+          pcg_make_leaf(ew_op_layer));
 
       MachineMappingProblemTree result =
           get_machine_mapping_problem_tree(pcg, sp_decomposition);
 
-      MachineMappingProblemTree correct = mm_problem_tree_make_series_split(
+      MachineMappingProblemTree correct = mm_problem_tree_make_series(
           AbstractedTensorSetMovement{{
               AbstractedSingleTensorMovement{
                   /*parallel_tensor_shape=*/input_shape,
@@ -228,7 +278,7 @@ TEST_SUITE(FF_TEST_SUITE) {
               },
           }},
           /*pre=*/
-          mm_problem_tree_make_parallel_split(
+          mm_problem_tree_make_parallel(
               mm_problem_tree_make_leaf(input1_key),
               mm_problem_tree_make_leaf(input2_key)),
           /*post=*/mm_problem_tree_make_leaf(ew_op_key));

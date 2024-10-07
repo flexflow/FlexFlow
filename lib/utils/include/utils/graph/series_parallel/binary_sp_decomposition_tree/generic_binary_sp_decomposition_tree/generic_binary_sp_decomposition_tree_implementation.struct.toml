@@ -1,0 +1,47 @@
+namespace = "FlexFlow"
+name = "GenericBinarySPDecompositionTreeImplementation"
+features = []
+
+template_params = [
+  "Tree",
+  "Series",
+  "Parallel",
+  "Leaf",
+]
+
+includes = [
+  "<functional>",
+  "utils/graph/series_parallel/sp_decomposition_tree_node_type.dtg.h",
+]
+
+[[fields]]
+name = "series_get_left_child"
+type = "std::function<Tree const &(Series const &)>"
+
+[[fields]]
+name = "parallel_get_left_child"
+type = "std::function<Tree const &(Parallel const &)>"
+
+[[fields]]
+name = "series_get_right_child"
+type = "std::function<Tree const &(Series const &)>"
+
+[[fields]]
+name = "parallel_get_right_child"
+type = "std::function<Tree const &(Parallel const &)>"
+
+[[fields]]
+name = "get_node_type"
+type = "std::function<::FlexFlow::SPDecompositionTreeNodeType(Tree const &)>"
+
+[[fields]]
+name = "require_series"
+type = "std::function<Series const &(Tree const &)>"
+
+[[fields]]
+name = "require_parallel"
+type = "std::function<Parallel const &(Tree const &)>"
+
+[[fields]]
+name = "require_leaf"
+type = "std::function<Leaf const &(Tree const &)>"

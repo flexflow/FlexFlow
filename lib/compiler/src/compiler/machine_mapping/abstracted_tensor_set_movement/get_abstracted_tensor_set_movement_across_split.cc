@@ -1,7 +1,6 @@
 #include "compiler/machine_mapping/abstracted_tensor_set_movement/get_abstracted_tensor_set_movement_across_split.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.h"
-#include "compiler/series_parallel/pcg_binary_series_split.h"
-#include "compiler/series_parallel/pcg_binary_sp_decomposition.h"
+#include "compiler/series_parallel/pcg/pcg_binary_sp_decomposition.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.h"
@@ -17,7 +16,9 @@ AbstractedTensorSetMovement get_abstracted_tensor_set_movement_across_split(
   std::unordered_set<ParallelComputationGraphEdge> edges_across_split =
       pcg_get_transitive_reduced_edges_across_split(tr_pcg, split);
 
-  auto get_movement_for_tensor = [&](parallel_tensor_guid_t const &t) {
+  auto get_movement_for_tensor = [&](parallel_tensor_guid_t const &t) 
+    -> AbstractedSingleTensorMovement
+  {
     std::unordered_set<ParallelComputationGraphEdge> tensor_edges =
         filter(edges_across_split, [&](ParallelComputationGraphEdge const &e) {
           return get_parallel_tensor(e) == t;
@@ -39,13 +40,13 @@ AbstractedTensorSetMovement get_abstracted_tensor_set_movement_across_split(
         transform(src_layers,
                   [&](parallel_layer_guid_t const &l) {
                     return get_only(
-                        find_paths_to_leaf(get_left_child(split), l));
+                        find_paths_to_leaf(split.get_left_child(), l));
                   }),
         /*dst_machine_views=*/
         transform(dst_layers,
                   [&](parallel_layer_guid_t const &l) {
                     return get_only(
-                        find_paths_to_leaf(get_right_child(split), l));
+                        find_paths_to_leaf(split.get_right_child(), l));
                   }),
     };
   };

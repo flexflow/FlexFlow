@@ -6,13 +6,22 @@ features = [
   "fmt",
 ]
 
-includes = [
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_parallel_split.dtg.h",
-  "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_series_split_label.dtg.h",
-  "compiler/machine_mapping/machine_mapping_problem_tree/mm_problem_tree_parallel_split_label.dtg.h",
-  "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.dtg.h",
+fwd_decls = [
+  "struct MachineMappingProblemTree",
 ]
 
+post_includes = [
+  "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.dtg.h",
+]
+
+includes = []
+
 [[fields]]
-name = "raw_split"
-type = "::FlexFlow::GenericBinaryParallelSplit<::FlexFlow::MMProblemTreeSeriesSplitLabel, ::FlexFlow::MMProblemTreeParallelSplitLabel, ::FlexFlow::UnmappedOpCostEstimateKey>"
+name = "left_child"
+type = "::FlexFlow::MachineMappingProblemTree"
+indirect = true
+
+[[fields]]
+name = "right_child"
+type = "::FlexFlow::MachineMappingProblemTree"
+indirect = true

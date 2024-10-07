@@ -5,34 +5,36 @@
 #include "utils/containers/transform.h"
 #include "utils/full_binary_tree/binary_tree_path.dtg.h"
 #include "utils/full_binary_tree/binary_tree_path.h"
-#include "utils/full_binary_tree/full_binary_tree.h"
 #include "utils/full_binary_tree/visit.h"
-#include "utils/overload.h"
 #include <unordered_set>
 
 namespace FlexFlow {
 
-template <typename ParentLabel, typename LeafLabel>
+template <typename Tree, typename Parent, typename Leaf>
 std::unordered_set<BinaryTreePath>
-    find_paths_to_leaf(FullBinaryTree<ParentLabel, LeafLabel> const &tree,
-                       LeafLabel const &leaf) {
-  return visit<std::unordered_set<BinaryTreePath>>(
-      tree,
-      overload{
-          [&](LeafLabel const &l) -> std::unordered_set<BinaryTreePath> {
-            if (l == leaf) {
-              return {binary_tree_root_path()};
-            } else {
-              return {};
-            }
-          },
-          [&](FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &parent) {
-            return set_union(
-                transform(find_paths_to_leaf(get_left_child(parent), leaf),
-                          nest_inside_left_child),
-                transform(find_paths_to_leaf(get_right_child(parent), leaf),
-                          nest_inside_right_child));
-          }});
+    find_paths_to_leaf(Tree const &tree, FullBinaryTreeImplementation<Tree, Parent, Leaf> const &impl, Leaf const &needle) {
+  auto visitor = FullBinaryTreeVisitor<std::unordered_set<BinaryTreePath>, Tree, Parent, Leaf>{
+    [&](Parent const &parent) -> std::unordered_set<BinaryTreePath> {
+      return set_union(
+          transform(find_paths_to_leaf(impl.get_left_child(parent), impl, needle),
+                    [](BinaryTreePath const &path) {
+                      return nest_inside_left_child(path);
+                    }),
+          transform(find_paths_to_leaf(impl.get_right_child(parent), impl, needle),
+                    [](BinaryTreePath const &path) {
+                      return nest_inside_right_child(path);
+                    }));
+    },
+    [&](Leaf const &leaf) -> std::unordered_set<BinaryTreePath> {
+      if (leaf == needle) {
+        return {binary_tree_root_path()};
+      } else {
+        return {};
+      }
+    },
+  };
+
+  return visit(tree, impl, visitor);
 }
 
 } // namespace FlexFlow

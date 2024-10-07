@@ -2,13 +2,13 @@
 
 namespace FlexFlow {
 
-template GenericBinarySeriesSplit<std::string, std::string, std::string>
-    transform(GenericBinarySeriesSplit<int, int, int> const &,
-              GenericBinarySPDecompositionTreeVisitor<int,
-                                                      int,
-                                                      int,
-                                                      std::string,
-                                                      std::string,
-                                                      std::string> const &);
+// template GenericBinarySeriesSplit<std::string, std::string, std::string>
+//     transform(GenericBinarySeriesSplit<int, int, int> const &,
+//               GenericBinarySPDecompositionTreeTransformVisitor<int,
+//                                                       int,
+//                                                       int,
+//                                                       std::string,
+//                                                       std::string,
+//                                                       std::string> const &);
 
 } // namespace FlexFlow

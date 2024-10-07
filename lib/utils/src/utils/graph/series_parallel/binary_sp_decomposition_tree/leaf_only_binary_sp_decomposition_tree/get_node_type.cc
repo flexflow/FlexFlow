@@ -2,7 +2,7 @@
 
 namespace FlexFlow {
 
-template SPDecompositionTreeNodeType
-    get_node_type(LeafOnlyBinarySPDecompositionTree<int> const &);
+// template SPDecompositionTreeNodeType
+//     get_node_type(LeafOnlyBinarySPDecompositionTree<int> const &);
 
 } // namespace FlexFlow

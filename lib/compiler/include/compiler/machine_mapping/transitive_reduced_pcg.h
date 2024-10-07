@@ -3,7 +3,7 @@
 
 #include "compiler/machine_mapping/pcg_split_boundary_layers.dtg.h"
 #include "compiler/machine_mapping/transitive_reduced_pcg.dtg.h"
-#include "compiler/series_parallel/pcg_binary_series_split.dtg.h"
+#include "compiler/series_parallel/pcg/pcg_binary_series_split.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_edge.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h"
 #include "pcg/parallel_computation_graph/parallel_tensor_guid_t.dtg.h"

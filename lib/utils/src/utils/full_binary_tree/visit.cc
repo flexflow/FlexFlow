@@ -2,7 +2,9 @@
 
 namespace FlexFlow {
 
-template int visit(FullBinaryTree<int, int> const &,
-                   FullBinaryTreeVisitor<int, int, int> const &);
+template 
+  int visit(std::string const &, 
+            FullBinaryTreeImplementation<std::string, int, int> const &,
+            FullBinaryTreeVisitor<int, std::string, int, int> const &);
 
 } // namespace FlexFlow

@@ -18,7 +18,7 @@ BinarySPDecompositionTree left_associative_binary_sp_tree_from_nary(
       from_parallel_child;
 
   auto from_node = [](Node const &n) -> BinarySPDecompositionTree {
-    return make_leaf_node(n);
+    return BinarySPDecompositionTree{n};
   };
 
   auto from_series = [&](SeriesSplit const &s) -> BinarySPDecompositionTree {
@@ -26,19 +26,23 @@ BinarySPDecompositionTree left_associative_binary_sp_tree_from_nary(
         transform(s.children, from_series_child);
     return foldl1(children,
                   [](BinarySPDecompositionTree const &accum,
-                     BinarySPDecompositionTree const &x) {
-                    return make_series_split(accum, x);
+                     BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
+                    return BinarySPDecompositionTree{
+                      BinarySeriesSplit{accum, x},
+                    };
                   });
   };
 
   auto from_parallel =
       [&](ParallelSplit const &s) -> BinarySPDecompositionTree {
     std::vector<BinarySPDecompositionTree> children =
-        transform(vector_of(s.children), from_parallel_child);
+        transform(vector_of(s.get_children()), from_parallel_child);
     return foldl1(children,
                   [](BinarySPDecompositionTree const &accum,
-                     BinarySPDecompositionTree const &x) {
-                    return make_parallel_split(accum, x);
+                     BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
+                    return BinarySPDecompositionTree{
+                      BinaryParallelSplit{accum, x},
+                    };
                   });
   };
 

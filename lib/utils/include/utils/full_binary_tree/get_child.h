@@ -3,22 +3,20 @@
 
 #include "utils/exception.h"
 #include "utils/full_binary_tree/binary_tree_path_entry.dtg.h"
-#include "utils/full_binary_tree/full_binary_tree.h"
-#include "utils/full_binary_tree/get_left_child.h"
-#include "utils/full_binary_tree/get_right_child.h"
+#include "utils/full_binary_tree/full_binary_tree_implementation.dtg.h"
 #include <fmt/format.h>
 
 namespace FlexFlow {
 
-template <typename ParentLabel, typename LeafLabel>
-FullBinaryTree<ParentLabel, LeafLabel>
-    get_child(FullBinaryTreeParentNode<ParentLabel, LeafLabel> const &t,
-              BinaryTreePathEntry const &e) {
+template <typename Tree, typename Parent, typename Leaf>
+Tree get_child(Parent const &parent, 
+               FullBinaryTreeImplementation<Tree, Parent, Leaf> const &impl,
+               BinaryTreePathEntry const &e) {
   switch (e) {
     case BinaryTreePathEntry::LEFT_CHILD:
-      return get_left_child(t);
+      return impl.get_left_child(parent);
     case BinaryTreePathEntry::RIGHT_CHILD:
-      return get_right_child(t);
+      return impl.get_right_child(parent);
     default:
       throw mk_runtime_error(
           fmt::format("Unhandled BinaryTreePathEntry value: {}", e));
