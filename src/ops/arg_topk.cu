@@ -15,7 +15,6 @@
 
 #include "flexflow/ops/arg_topk.h"
 #include "flexflow/utils/cuda_helper.h"
-#include "raft/core/device_resources.hpp"
 #include "raft/matrix/detail/select_k.cuh"
 
 namespace FlexFlow {
@@ -85,7 +84,7 @@ __global__ void renormalize_kernel(DT *topk_values,
 /*static*/
 template <typename DT>
 void ArgTopK::forward_kernel(
-    ArgTopKMeta const *m,
+    ArgTopKMeta *m,
     DT const *input_ptr,
     DT *output_ptr,
     int *indices_ptr,
@@ -97,8 +96,11 @@ void ArgTopK::forward_kernel(
     /* Reserved: BatchConfig Updated */ BatchConfig const *bc,
     cudaStream_t stream) {
   assert(bc->num_active_requests() >= 0);
-  raft::device_resources handle(stream);
-  raft::matrix::detail::select_k(handle,
+  if (m->device_resources.find(stream) == m->device_resources.end()) {
+    m->device_resources[stream] = new raft::device_resources(stream);
+  }
+  raft::device_resources *handle = m->device_resources[stream];
+  raft::matrix::detail::select_k(*handle,
                                  input_ptr,
                                  (int *)nullptr,
                                  batch_size,
@@ -126,7 +128,7 @@ void ArgTopK::forward_kernel(
 }
 
 /*static*/
-void ArgTopK::forward_kernel_wrapper(ArgTopKMeta const *m,
+void ArgTopK::forward_kernel_wrapper(ArgTopKMeta *m,
                                      GenericTensorAccessorR const &input,
                                      // float *output_ptr,
                                      GenericTensorAccessorW const &probs,
@@ -235,6 +237,9 @@ ArgTopKMeta::ArgTopKMeta(FFHandler handler,
 ArgTopKMeta::~ArgTopKMeta() {
   if (reserveInst != Realm::RegionInstance::NO_INST) {
     reserveInst.destroy();
+  }
+  for (auto &kv : device_resources) {
+    delete kv.second;
   }
 }
 }; // namespace FlexFlow

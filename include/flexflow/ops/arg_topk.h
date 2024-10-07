@@ -6,6 +6,8 @@
 #include "flexflow/node.h"
 #include "flexflow/ops/arg_topk_params.h"
 #include "flexflow/utils/memory_allocator.h"
+#include "raft/core/device_resources.hpp"
+#include <unordered_map>
 
 namespace FlexFlow {
 
@@ -17,6 +19,7 @@ public:
   Realm::RegionInstance reserveInst;
   void *half_precision_output;
   int max_input_size;
+  std::unordered_map<cudaStream_t, raft::device_resources *> device_resources;
   ArgTopKMeta(FFHandler handle,
               Op const *op,
               MemoryAllocator &gpu_mem_allocator);
@@ -88,7 +91,7 @@ public:
                              MachineView const &pc,
                              CostMetrics &cost_metrics) const override;
   template <typename DT>
-  static void forward_kernel(ArgTopKMeta const *m,
+  static void forward_kernel(ArgTopKMeta *m,
                              DT const *input_ptr,
                              DT *output_ptr,
                              int *indices_ptr,
@@ -99,7 +102,7 @@ public:
                              bool renormalize,
                              BatchConfig const *bc,
                              ffStream_t stream);
-  static void forward_kernel_wrapper(ArgTopKMeta const *m,
+  static void forward_kernel_wrapper(ArgTopKMeta *m,
                                      GenericTensorAccessorR const &input,
                                      GenericTensorAccessorW const &prob,
                                      GenericTensorAccessorW const &indices,
