@@ -4822,6 +4822,27 @@ void register_flexflow_internal_tasks(Runtime *runtime,
           RequestManager::prepare_next_batch_verify_task>(registrar);
     }
   }
+  // RequestManager prepare_next_batch_suffix_decode
+  {
+    TaskVariantRegistrar registrar(
+        RM_PREPARE_NEXT_BATCH_SUFFIX_DECODE_TASK_ID,
+        "RequestManager Prepare Next Batch (Suffix Decode)");
+    registrar.add_constraint(ProcessorConstraint(Processor::LOC_PROC));
+    registrar.set_leaf();
+    if (pre_register) {
+      Runtime::preregister_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_suffix_decode_task>(
+          registrar, "RequestManager Prepare Next Batch (Suffix Decode) Task");
+    } else {
+      if (enable_control_replication) {
+        registrar.global_registration = false;
+      }
+      runtime->register_task_variant<
+          TreeVerifyBatchConfig,
+          RequestManager::prepare_next_batch_suffix_decode_task>(registrar);
+    }
+  }
   // RequestManager background serving task
   {
     TaskVariantRegistrar registrar(RM_BACKGROUND_SERVING_TASK_ID,

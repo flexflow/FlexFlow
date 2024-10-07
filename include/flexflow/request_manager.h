@@ -19,6 +19,7 @@
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/file_loader.h"
+#include "suffix_decoding.h"
 #include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
@@ -164,6 +165,7 @@ public:
 
   void serve_incr_decoding(FFModel *model);
   void serve_spec_infer(FFModel *model);
+  void serve_suffix_decoding(FFModel *model);
   GenerationResult get_generation_result(RequestGuid const &guid);
   RequestGuid register_new_request(Request const &request_);
   RequestGuid register_new_peft_request(Request const &request_);
@@ -207,6 +209,15 @@ public:
       std::vector<BeamSearchBatchConfig> const &old_batches);
   TreeVerifyBatchConfigFuture prepare_next_batch_verify(
       std::vector<BeamSearchBatchConfigFuture> const &old_batches,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
+  TreeVerifyBatchConfig
+      prepare_next_batch_suffix_decode(TreeVerifyBatchConfig const &old_bc,
+                                       InferenceResult const &result);
+  TreeVerifyBatchConfigFuture prepare_next_batch_suffix_decode(
+      TreeVerifyBatchConfigFuture const &old_bc,
+      InferenceResultFuture const &result,
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
@@ -280,6 +291,12 @@ public:
       Legion::Context ctx,
       Legion::Runtime *runtime);
 
+  static TreeVerifyBatchConfig prepare_next_batch_suffix_decode_task(
+      Legion::Task const *task,
+      std::vector<Legion::PhysicalRegion> const &regions,
+      Legion::Context ctx,
+      Legion::Runtime *runtime);
+
 private:
   // configuration parameters
   int max_requests_per_batch;
@@ -294,6 +311,8 @@ private:
 
   // tree width in each speculative step, if not specified 1
   std::vector<int> spec_infer_tree_width;
+
+  SuffixTree *suffix_tree;
 
   // private fields
   std::unique_ptr<Tokenizer> tokenizer_;
