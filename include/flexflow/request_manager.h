@@ -19,6 +19,7 @@
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/file_loader.h"
+#include <condition_variable>
 #include <future>
 #include <mutex>
 #include <tokenizers_cpp.h>
@@ -318,7 +319,6 @@ public:
   void terminate_background_server();
   static void terminate_background_server_at_exit();
   // Methods to check and mark request completion
-  bool is_request_completed(RequestGuid const &guid);
   void trigger_request_completion_future(RequestGuid const &guid);
   static void background_serving_task(
       Legion::Task const *task,
@@ -410,6 +410,7 @@ private:
   std::unordered_map<RequestGuid, Request> all_requests;
   std::unordered_map<RequestGuid, GenerationResult> request_generation_results;
   std::mutex request_queue_mutex;
+  std::condition_variable request_queue_cv;
   std::mutex request_result_mutex;
   std::unordered_map<RequestGuid, std::promise<void> *> request_to_promise;
   std::mutex request_to_promise_mutex;

@@ -459,6 +459,7 @@ RequestManager::RequestGuid
     pending_request_queue.push(request);
     all_requests[request.guid] = request;
   }
+  request_queue_cv.notify_all();
   {
     std::lock_guard<std::mutex> const lock(request_to_promise_mutex);
     request_to_promise[request.guid] = new std::promise<void>();
@@ -479,14 +480,6 @@ RequestManager::RequestGuid
   }
 
   return request.guid;
-}
-
-bool RequestManager::is_request_completed(RequestGuid const &guid) {
-  std::lock_guard<std::mutex> const lock(request_queue_mutex);
-  assert(all_requests.find(guid) != all_requests.end());
-  Request const &request = all_requests[guid];
-  // return request.tokens.size() >= request.max_sequence_length;
-  return request.status == Request::COMPLETED;
 }
 
 GenerationResult
@@ -563,22 +556,24 @@ BatchConfig
 
 // Return value: true if load a pending request to the batch
 bool RequestManager::load_pending_request_to_batch() {
+  std::unique_lock<std::mutex> lock(request_queue_mutex);
   if (pending_request_queue.empty()) {
     if (num_running_requests > 0) {
-      // No pending request to process, but there are running requests
-      // in the batch, do nothing
+      // No pending request to process, but there are running requests in the
+      // batch. Do nothing and return
       return false;
     }
-    // Wait until there is a pending request
-    while (pending_request_queue.empty() &&
-           !is_background_server_terminated()) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    }
+    // Wait until there is a pending request or the background server is
+    // terminated
+    request_queue_cv.wait(lock, [&] {
+      return !pending_request_queue.empty() ||
+             is_background_server_terminated();
+    });
+    // If the background server has been terminated, exit
     if (is_background_server_terminated()) {
       return false;
     }
   }
-  std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
   assert(!pending_request_queue.empty() && "No pending request to process.");
   if (profiling.server_start_time == 0) {
     reset_profiling_statistics();
@@ -2618,6 +2613,7 @@ void RequestManager::terminate_background_server() {
 
     write_to_output_file("", str);
     background_server_status = TERMINATED;
+    request_queue_cv.notify_all();
     // Wait for the background server to terminate
     Runtime *runtime = Runtime::get_runtime();
     Context ctx = Runtime::get_context();
