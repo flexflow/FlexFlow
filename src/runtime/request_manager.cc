@@ -3053,7 +3053,7 @@ void RequestManager::serve_suffix_decoding(FFModel *llm) {
     auto const &next_batch = batch_pipeline.back();
     
     BeamSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(next_batch.first, next_batch.second, 0, ctx, runtime);
-    FutureMap fm = im->inference(ssm, 0, beam_bcf);
+    FutureMap fm = im->suffix_decode(llm, 0, beam_bcf);
     assert(fm.get_future_map_domain().get_volume() == 1);
     BeamInferenceResultFuture beam_irf = fm.get_future(0);
     beam_bcf = prepare_next_batch_beam(beam_bcf, beam_irf, ctx, runtime);
@@ -3061,7 +3061,7 @@ void RequestManager::serve_suffix_decoding(FFModel *llm) {
     beam_bcf_vec[0] = beam_bcf;
     // Token Tree Verification
     {
-      TreeVerifyBatchConfigFuture tree_bcf = prepare_next_batch_verify(beam_bcf, ctx, runtime);
+      TreeVerifyBatchConfigFuture tree_bcf = prepare_next_batch_verify(beam_bcf_vec, ctx, runtime);
       FutureMap fm = im->inference(llm, 0, tree_bcf);
       assert(fm.get_future_map_domain().get_volume() == 1);
       InferenceResultFuture tree_irf = fm.get_future(0);
