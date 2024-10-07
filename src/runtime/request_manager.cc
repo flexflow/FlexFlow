@@ -580,6 +580,9 @@ bool RequestManager::load_pending_request_to_batch() {
   }
   std::lock_guard<std::mutex> const request_queue_lock(request_queue_mutex);
   assert(!pending_request_queue.empty() && "No pending request to process.");
+  if (profiling.server_start_time == 0) {
+    reset_profiling_statistics();
+  }
   while (num_running_requests < get_max_requests_per_batch() &&
          !pending_request_queue.empty()) {
     RequestGuid guid = pending_request_queue.front().guid;
@@ -2310,7 +2313,7 @@ void RequestManager::serve_decoding(FFModel *llm) {
   std::queue<InferenceResultFuture> batch_pipeline;
   { batch_pipeline.push(last_irf); }
 
-  reset_profiling_statistics();
+  // reset_profiling_statistics();
   background_server_status = SERVING;
   while (!is_background_server_terminated()) {
 
@@ -2380,7 +2383,7 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   std::queue<InferenceResultFuture> infer_result_future_pipeline;
   infer_result_future_pipeline.push(irf_0);
 
-  reset_profiling_statistics();
+  // reset_profiling_statistics();
   background_server_status = SERVING;
   while (!is_background_server_terminated()) {
     if (infer_result_future_pipeline.size() >= 4) {
