@@ -3002,6 +3002,77 @@ void RequestManager::serve_spec_infer(FFModel *llm) {
   }
 }
 
+/*static*/
+void RequestManager::serve_suffix_decoding(FFModel *llm) {
+  Context ctx = llm->config.lg_ctx;
+  Runtime *runtime = llm->config.lg_hlr;
+  InferenceManager *im = InferenceManager::get_inference_manager();
+  {
+    // Compile the llm
+    im->compile_model_and_allocate_buffer(llm);
+    assert(im->model_weights_loaders.find(llm) !=
+           im->model_weights_loaders.end());
+    // Load model weights
+    im->model_weights_loaders[llm]->load_weights(llm);
+    // init operators
+    im->init_operators_inference(llm);
+  }
+
+  std::queue<std::pair<TreeVerifyBatchConfigFuture, InferenceResultFuture>>
+      batch_pipeline;
+  // Legion futures for inc_decoding and spec_infer
+  TreeVerifyBatchConfigFuture last_tree_bcf;
+  InferenceResultFuture last_tree_irf;
+  {
+    // Initialize futures for spec infer
+    TreeVerifyBatchConfig tree_bc;
+    InferenceResult tree_ir;
+    last_tree_bcf = Future::from_value<TreeVerifyBatchConfig>(tree_bc);
+    last_tree_irf = Future::from_value<InferenceResult>(tree_ir);
+  }
+  batch_pipeline.push(std::make_pair(last_tree_bcf, last_tree_irf));
+
+  while (!is_background_server_terminated()) {
+
+    if (batch_pipeline.size() >= 4) {
+      // Block here to avoid launching too many batches
+      auto const &batch = batch_pipeline.front();
+      batch.second.get_void_result();
+    }
+    // deque finished batches
+    while (batch_pipeline.size() > 1) {
+      auto const &batch = batch_pipeline.front();
+      if (batch.second.is_ready()) {
+        batch_pipeline.pop();
+      } else {
+        break;
+      }
+    }
+    
+    runtime->begin_trace(ctx, 12347 /*trace_id*/);
+    auto const &next_batch = batch_pipeline.back();
+    
+    BeamSearchBatchConfigFuture beam_bcf = prepare_next_batch_init(next_batch.first, next_batch.second, 0, ctx, runtime);
+    FutureMap fm = im->inference(ssm, 0, beam_bcf);
+    assert(fm.get_future_map_domain().get_volume() == 1);
+    BeamInferenceResultFuture beam_irf = fm.get_future(0);
+    beam_bcf = prepare_next_batch_beam(beam_bcf, beam_irf, ctx, runtime);
+    std::vector<BeamSearchBatchConfigFuture> beam_bcf_vec(1);
+    beam_bcf_vec[0] = beam_bcf;
+    // Token Tree Verification
+    {
+      TreeVerifyBatchConfigFuture tree_bcf = prepare_next_batch_verify(beam_bcf, ctx, runtime);
+      FutureMap fm = im->inference(llm, 0, tree_bcf);
+      assert(fm.get_future_map_domain().get_volume() == 1);
+      InferenceResultFuture tree_irf = fm.get_future(0);
+      batch_pipeline.push(std::make_pair(tree_bcf, tree_irf));
+      last_tree_bcf = tree_bcf;
+      last_tree_irf = tree_irf;
+    }
+    runtime->end_trace(ctx, 12347 /*trace_id*/);
+  }
+}
+
 void RequestManager::trigger_request_completion_future(
     RequestGuid const &guid) {
   const std::lock_guard<std::mutex> lock(request_to_promise_mutex);
