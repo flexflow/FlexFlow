@@ -2592,18 +2592,26 @@ void RequestManager::terminate_background_server() {
     mean_generated_tokens_per_step += ")";
     str += mean_generated_tokens_per_step;
 
-    std::string slo_attainment = "\n slo_attainment( ";
-    double attainment = 0;
+    double attainment = 0, goodput = 0;
     for (auto request_pair : all_requests) {
       Request &request = request_pair.second;
       if (request.attained) {
         attainment += 1;
+        goodput += request.tokens.size() - request.llm_prefill_len;
       }
     }
     attainment /= total_requests;
+    goodput /= total_time / 1e6;
+
+    std::string slo_attainment = "\n slo_attainment( ";
     slo_attainment += std::to_string(attainment);
     slo_attainment += ")";
     str += slo_attainment;
+
+    std::string goodput_str = "\n goodput( ";
+    goodput_str += std::to_string(goodput);
+    goodput_str += ")";
+    str += goodput_str;
 
     write_to_output_file("", str);
     background_server_status = TERMINATED;
