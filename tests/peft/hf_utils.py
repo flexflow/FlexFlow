@@ -40,7 +40,7 @@ def get_dst_folder(subdir, step_idx=0):
 
 
 def simplify_name(name):
-    return name.replace("base_model.model.model.", "").replace("base_model.model.", "").replace("model.layers.", "layers.").replace("model.", "")
+    return name.replace("base_model.model.model.", "").replace("base_model.model.", "").replace("model.layers.", "layers.").replace("model.", "").replace("decoder.", "")
 
 
 def get_optim_type(args):

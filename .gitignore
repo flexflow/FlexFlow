@@ -195,3 +195,4 @@ Untitled-2.ipynb
 tests/inference/python_test_configs/*.json
 
 core.*
+fine_grained_alignment_config.json
