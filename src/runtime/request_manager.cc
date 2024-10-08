@@ -1028,6 +1028,9 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
   assert(prefill_requests.size() > 0 &&
          "No prefilling request to process in the prefilling phase.");
 
+  // get page manager
+  PageManager *page_manager = get_page_manager();
+
   BatchConfig bc;
   if (decoding_mode == INCREMENTAL_DECODING) {
     bc.inference_mode = InferenceMode::INC_DECODING_MODE;
@@ -1070,11 +1073,15 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
       assert(request->llm_prefill_len + idx < request->tokens.size());
       bc.tokensInfo[token_idx].token_id =
           request->tokens[request->llm_prefill_len + idx];
+      _append_tokens_to_blocks(request, {bc.tokensInfo[token_idx].token_id}, true);
     }
     num_tokens += num_tokens_in_batch;
     if (num_tokens_in_batch > 0) {
       bc.num_available_requests++;
     }
+    //update related page info in batch config
+    bc.requestsInfo[request_index].num_kv_pages = page_manager->get_num_allocated_blocks(request->guid);
+    bc.requestsInfo[request_index].kv_last_page_len = request->tokens.back().size(); //last block length
   }
   bc.num_tokens = num_tokens;
 
@@ -1464,6 +1471,8 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
+    //page attention: before commit token, reset the pages assigned by cleaning all the tokens
+    std::vector<int> block_table_before_commit = _reset_block_table(request);
     // 1. Maintain requestsInfo
     new_bc.requestsInfo[request_index].first_token_index_in_request =
         request.tokens.size() - 1; // Exclude the last token
@@ -1482,14 +1491,15 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
          committed_token_index++) {
       Request::CommittedToken &committed_token =
           committed_tokens.at(committed_token_index);
+      _append_tokens_to_blocks(request, {committed_token.token_id}, true);
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
           request_index;
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].index_in_kv_cache =
-          committed_token.from_index;
+          block_table_before_commit[committed_token.from_index / kPagesize] * kPagesize + committed_token.from_index % kPagesize;
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].token_depth =
-          committed_token.to_index;
       new_bc.num_tokens_to_commit++;
-    }
+      // also append the token to the block
+      }
 
     // Load the tokens on the token tree that are not yet pruned to
     // BatchConfig.tokensInfo.
@@ -1864,6 +1874,9 @@ void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<Toke
       request.blocks.back().is_full()) {
       // Append a new logical block
       _append_logical_block_to_request(request, is_commit);
+      // also allocate one physical page
+      PageManager *page_manager = PageManager::get_page_manager();
+      page_manager->allocate(request.guid);
     }
     int num_empty_slots = request.blocks.back().get_num_empty_slots();
     int num_tokens_to_append = std::min(num_empty_slots, marker - cursor);
@@ -1874,6 +1887,44 @@ void RequestManager::_append_tokens_to_blocks(Request &request, std::vector<Toke
   }
   assert(request.blocks.back().num_tokens <= kPagesize);
 }
+
+int RequestManager::_append_token_to_block(Request &request, TokenId token, bool is_commit) {
+  if (request.blocks.empty() ||
+      request.blocks.back().is_full()) {
+    // Append a new logical block
+    _append_logical_block_to_request(request, is_commit);
+    // also allocate one physical page
+    PageManager *page_manager = PageManager::get_page_manager();
+    page_manager->allocate(request.guid);
+  }
+  request.blocks.back().append_tokens({token}, is_commit);
+  assert(request.blocks.back().num_tokens <= kPagesize);
+  // return the index of the token in the gpu kv cache
+  std::vector<int> block_table_indices = PageManager::get_page_manager()->get_block_table_indices(request.guid);
+  // WARNING: need to check!!!
+  return (block_table_indices[request.blocks.size() - 1] - 1) * kPagesize + request.blocks.back().num_tokens - 1;
+}
+
+std::vector<int> RequestManager::_reset_block_table(Request &request){
+  // get the indices of original physical block table for request
+  PageManager *page_manager = PageManager::get_page_manager();
+  std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
+  // reset the block table according to the request's page_last_commit
+  page_manager->erase_last_pages(request.guid, request.page_id_commit);
+  // reset this request's logical block table
+  request.blocks.erase(request.blocks.begin() + request.page_id_commit + 1, request.blocks.end());
+  return block_table_indices;
+}
+
+int idx_logical_to_physical(Request &request, int idx_logical) {
+  // get physical indices
+  PageManager *page_manager = PageManager::get_page_manager();
+  std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
+  assert(request.blocks.size() == block_table_indices.size());
+  return block_table_indices[idx_logical / kPagesize] * kPagesize + idx_logical % kPagesize;
+}
+
+int 
 
 /* --------- Bitmask Related Functions --------- */
 void RequestManager::gumbel_conditioned_on_max(

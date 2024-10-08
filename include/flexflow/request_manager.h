@@ -146,6 +146,10 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
+  //page attention
+  int page_last_commited = 0;
+  std::vector<LogicalTokenBlock> blocks;
+
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
