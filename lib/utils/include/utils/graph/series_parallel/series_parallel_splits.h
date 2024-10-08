@@ -1,16 +1,16 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIES_PARALLEL_FLATTENED_DECOMPOSITION_TREE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIES_PARALLEL_FLATTENED_DECOMPOSITION_TREE_H
 
-#include "utils/graph/series_parallel/series_split.dtg.h"
 #include "utils/graph/series_parallel/parallel_split.dtg.h"
+#include "utils/graph/series_parallel/series_split.dtg.h"
 
 namespace FlexFlow {
 
 // struct SeriesSplit {
 // public:
 //   SeriesSplit() = delete;
-//   explicit SeriesSplit(std::vector<std::variant<ParallelSplit, Node>> const &);
-//   explicit SeriesSplit(
+//   explicit SeriesSplit(std::vector<std::variant<ParallelSplit, Node>> const
+//   &); explicit SeriesSplit(
 //       std::initializer_list<std::variant<ParallelSplit, Node>> const &);
 //
 //   bool operator==(SeriesSplit const &) const;
@@ -71,6 +71,6 @@ namespace FlexFlow {
 //   size_t operator()(::FlexFlow::ParallelSplit const &) const;
 // };
 
-} // namespace std
+} // namespace FlexFlow
 
 #endif

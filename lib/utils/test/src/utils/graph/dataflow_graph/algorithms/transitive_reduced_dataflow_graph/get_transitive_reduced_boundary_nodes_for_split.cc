@@ -10,14 +10,13 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_transitive_reduced_boundary_nodes_for_split") {
-    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_leaf = [](Node const &n) {
-      return BinarySPDecompositionTree{n};
-    };
-    
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
+
     DataflowGraph g = DataflowGraph::create<UnorderedSetDataflowGraph>();
 
     NodeAddedResult n1_added = g.add_node({}, 1);

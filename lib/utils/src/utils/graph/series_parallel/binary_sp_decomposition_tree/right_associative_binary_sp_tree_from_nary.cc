@@ -21,25 +21,27 @@ BinarySPDecompositionTree right_associative_binary_sp_tree_from_nary(
   auto from_series = [&](SeriesSplit const &s) {
     std::vector<BinarySPDecompositionTree> children =
         transform(s.children, from_series_child);
-    return foldr1(children,
-                  [](BinarySPDecompositionTree const &accum,
-                     BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
-                    return BinarySPDecompositionTree{
-                      BinarySeriesSplit{x, accum},
-                    };
-                  });
+    return foldr1(
+        children,
+        [](BinarySPDecompositionTree const &accum,
+           BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
+          return BinarySPDecompositionTree{
+              BinarySeriesSplit{x, accum},
+          };
+        });
   };
 
   auto from_parallel = [&](ParallelSplit const &s) {
     std::vector<BinarySPDecompositionTree> children =
         transform(vector_of(s.get_children()), from_parallel_child);
-    return foldr1(children,
-                  [](BinarySPDecompositionTree const &accum,
-                     BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
-                    return BinarySPDecompositionTree{
-                      BinaryParallelSplit{x, accum},
-                    };
-                  });
+    return foldr1(
+        children,
+        [](BinarySPDecompositionTree const &accum,
+           BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
+          return BinarySPDecompositionTree{
+              BinaryParallelSplit{x, accum},
+          };
+        });
   };
 
   from_parallel_child = [&](std::variant<SeriesSplit, Node> const &v)

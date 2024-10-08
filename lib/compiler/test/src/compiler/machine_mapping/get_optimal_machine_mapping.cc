@@ -16,28 +16,29 @@ using namespace FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_optimal_machine_mapping") {
     auto make_leaf = [](UnmappedOpCostEstimateKey const &k) {
-      return MachineMappingProblemTree{k}; 
+      return MachineMappingProblemTree{k};
     };
 
-    auto make_series_split = [](AbstractedTensorSetMovement const &tensor_set_movement,
-                                MachineMappingProblemTree const &lhs,
-                                MachineMappingProblemTree const &rhs) {
-      return MachineMappingProblemTree{
-        MMProblemTreeSeriesSplit{
-          /*tensor_set_movement=*/tensor_set_movement,
-          /*left_child=*/lhs,
-          /*right_child=*/rhs,
-        },
-      };
-    };
+    auto make_series_split =
+        [](AbstractedTensorSetMovement const &tensor_set_movement,
+           MachineMappingProblemTree const &lhs,
+           MachineMappingProblemTree const &rhs) {
+          return MachineMappingProblemTree{
+              MMProblemTreeSeriesSplit{
+                  /*tensor_set_movement=*/tensor_set_movement,
+                  /*left_child=*/lhs,
+                  /*right_child=*/rhs,
+              },
+          };
+        };
 
     auto make_parallel_split = [](MachineMappingProblemTree const &lhs,
                                   MachineMappingProblemTree const &rhs) {
       return MachineMappingProblemTree{
-        MMProblemTreeParallelSplit{
-          /*left_child=*/lhs,
-          /*right_child=*/rhs,
-        },
+          MMProblemTreeParallelSplit{
+              /*left_child=*/lhs,
+              /*right_child=*/rhs,
+          },
       };
     };
 
@@ -200,7 +201,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("pair of layers in parallel") {
       MachineMappingProblemTree problem_tree =
-        make_parallel_split(make_leaf(k1), make_leaf(k2));
+          make_parallel_split(make_leaf(k1), make_leaf(k2));
 
       MachineMappingConstraints constraints =
           get_unconstrained_solution_for_layers(

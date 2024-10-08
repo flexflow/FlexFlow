@@ -8,9 +8,11 @@ using Series = value_type<1>;
 using Parallel = value_type<2>;
 using Leaf = value_type<3>;
 
-template
-  std::unordered_multiset<Leaf>
-      get_leaves(Tree const &, 
-                 GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &);
+template std::unordered_multiset<Leaf>
+    get_leaves(Tree const &,
+               GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                              Series,
+                                                              Parallel,
+                                                              Leaf> const &);
 
 } // namespace FlexFlow

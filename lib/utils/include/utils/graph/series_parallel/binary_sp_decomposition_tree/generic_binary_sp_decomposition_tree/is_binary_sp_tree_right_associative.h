@@ -9,21 +9,32 @@ namespace FlexFlow {
 template <typename Tree, typename Series, typename Parallel, typename Leaf>
 bool is_binary_sp_tree_right_associative(
     Tree const &tree,
-    GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &impl) { 
-  auto visitor = GenericBinarySPDecompositionTreeVisitor<bool, Tree, Series, Parallel, Leaf>{
-    [&](Series const &split) {
-      return impl.get_node_type(impl.series_get_left_child(split)) != SPDecompositionTreeNodeType::SERIES &&
-             is_binary_sp_tree_right_associative(impl.series_get_left_child(split), impl) &&
-             is_binary_sp_tree_right_associative(impl.series_get_right_child(split), impl);
-    },
-    [&](Parallel const &split) {
-      return impl.get_node_type(impl.parallel_get_left_child(split)) != SPDecompositionTreeNodeType::PARALLEL &&
-             is_binary_sp_tree_right_associative(impl.parallel_get_left_child(split), impl) &&
-             is_binary_sp_tree_right_associative(impl.parallel_get_right_child(split), impl);
-    },
-    [&](Leaf const &leaf) {
-      return true;
-    },
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &impl) {
+  auto visitor = GenericBinarySPDecompositionTreeVisitor<bool,
+                                                         Tree,
+                                                         Series,
+                                                         Parallel,
+                                                         Leaf>{
+      [&](Series const &split) {
+        return impl.get_node_type(impl.series_get_left_child(split)) !=
+                   SPDecompositionTreeNodeType::SERIES &&
+               is_binary_sp_tree_right_associative(
+                   impl.series_get_left_child(split), impl) &&
+               is_binary_sp_tree_right_associative(
+                   impl.series_get_right_child(split), impl);
+      },
+      [&](Parallel const &split) {
+        return impl.get_node_type(impl.parallel_get_left_child(split)) !=
+                   SPDecompositionTreeNodeType::PARALLEL &&
+               is_binary_sp_tree_right_associative(
+                   impl.parallel_get_left_child(split), impl) &&
+               is_binary_sp_tree_right_associative(
+                   impl.parallel_get_right_child(split), impl);
+      },
+      [&](Leaf const &leaf) { return true; },
   };
 
   return visit(tree, impl, visitor);

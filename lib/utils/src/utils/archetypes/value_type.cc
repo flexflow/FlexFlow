@@ -2,7 +2,6 @@
 
 namespace FlexFlow {
 
-template 
-  struct value_type<0>;
+template struct value_type<0>;
 
 } // namespace FlexFlow

@@ -16,17 +16,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n5 = Node{5};
     Node n6 = Node{6};
 
-    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs,
+                                  BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinaryParallelSplit{lhs, rhs}};
     };
 
-    auto make_leaf = [](Node const &n) {
-      return BinarySPDecompositionTree{n};
-    };
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
 
     SUBCASE("only node") {
       SeriesParallelDecomposition input = SeriesParallelDecomposition{n1};
@@ -47,8 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           right_associative_binary_sp_tree_from_nary(input);
 
       BinarySPDecompositionTree correct = make_series_split(
-          make_leaf(n1),
-          make_series_split(make_leaf(n2), make_leaf(n3)));
+          make_leaf(n1), make_series_split(make_leaf(n2), make_leaf(n3)));
 
       CHECK(result == correct);
     }

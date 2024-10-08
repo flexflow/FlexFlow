@@ -12,23 +12,23 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n3 = Node{3};
     Node n4 = Node{4};
 
-    GenericBinarySPDecompositionTreeImplementation<
-      BinarySPDecompositionTree,
-      BinarySeriesSplit,
-      BinaryParallelSplit,
-      Node> impl = generic_impl_for_binary_sp_tree();
+    GenericBinarySPDecompositionTreeImplementation<BinarySPDecompositionTree,
+                                                   BinarySeriesSplit,
+                                                   BinaryParallelSplit,
+                                                   Node>
+        impl = generic_impl_for_binary_sp_tree();
 
-    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs,
+                                  BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinaryParallelSplit{lhs, rhs}};
     };
 
-    auto make_leaf = [](Node const &n) {
-      return BinarySPDecompositionTree{n};
-    };
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
 
     SUBCASE("input is actually right associative") {
       SUBCASE("just node") {

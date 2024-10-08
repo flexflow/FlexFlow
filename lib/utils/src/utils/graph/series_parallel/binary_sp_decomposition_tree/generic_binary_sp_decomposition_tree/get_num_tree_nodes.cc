@@ -8,8 +8,11 @@ using Series = value_type<1>;
 using Parallel = value_type<2>;
 using Leaf = value_type<3>;
 
-template
-  int get_num_tree_nodes(Tree const &tree,
-                         GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &);
+template int get_num_tree_nodes(
+    Tree const &tree,
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &);
 
 } // namespace FlexFlow

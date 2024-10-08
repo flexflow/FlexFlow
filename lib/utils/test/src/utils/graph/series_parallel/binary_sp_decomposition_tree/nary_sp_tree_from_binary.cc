@@ -14,17 +14,17 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n5 = Node{5};
     Node n6 = Node{6};
 
-    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs,
+                                  BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinaryParallelSplit{lhs, rhs}};
     };
 
-    auto make_leaf = [](Node const &n) {
-      return BinarySPDecompositionTree{n};
-    };
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
 
     SUBCASE("leaf") {
       BinarySPDecompositionTree input = make_leaf(n1);
@@ -37,8 +37,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("left associative series") {
       BinarySPDecompositionTree input = make_series_split(
-          make_series_split(make_leaf(n2), make_leaf(n1)),
-          make_leaf(n3));
+          make_series_split(make_leaf(n2), make_leaf(n1)), make_leaf(n3));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
       SeriesParallelDecomposition correct =
@@ -49,8 +48,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("right associative series") {
       BinarySPDecompositionTree input = make_series_split(
-          make_leaf(n2),
-          make_series_split(make_leaf(n1), make_leaf(n3)));
+          make_leaf(n2), make_series_split(make_leaf(n1), make_leaf(n3)));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
       SeriesParallelDecomposition correct =
@@ -73,8 +71,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("left associative parallel") {
       BinarySPDecompositionTree input = make_parallel_split(
-          make_parallel_split(make_leaf(n2), make_leaf(n1)),
-          make_leaf(n3));
+          make_parallel_split(make_leaf(n2), make_leaf(n1)), make_leaf(n3));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
       SeriesParallelDecomposition correct =
@@ -85,8 +82,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("right associative parallel") {
       BinarySPDecompositionTree input = make_parallel_split(
-          make_leaf(n2),
-          make_parallel_split(make_leaf(n1), make_leaf(n3)));
+          make_leaf(n2), make_parallel_split(make_leaf(n1), make_leaf(n3)));
 
       SeriesParallelDecomposition result = nary_sp_tree_from_binary(input);
       SeriesParallelDecomposition correct =
@@ -113,9 +109,9 @@ TEST_SUITE(FF_TEST_SUITE) {
               make_parallel_split(
                   make_leaf(n1),
                   make_series_split(
-                      make_series_split(make_series_split(make_leaf(n2),
-                                                          make_leaf(n3)),
-                                        make_leaf(n3)),
+                      make_series_split(
+                          make_series_split(make_leaf(n2), make_leaf(n3)),
+                          make_leaf(n3)),
                       make_leaf(n5))),
               make_series_split(make_leaf(n6), make_leaf(n4))),
           make_leaf(n5));

@@ -8,9 +8,11 @@ using Series = value_type<1>;
 using Parallel = value_type<2>;
 using Leaf = value_type<3>;
 
-template 
-  bool is_binary_sp_tree_left_associative(
-      Tree const &tree,
-      GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &);
+template bool is_binary_sp_tree_left_associative(
+    Tree const &tree,
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &);
 
 } // namespace FlexFlow

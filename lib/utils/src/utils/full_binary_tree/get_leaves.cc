@@ -7,9 +7,8 @@ using Tree = value_type<0>;
 using Parent = value_type<1>;
 using Leaf = value_type<2>;
 
-template 
-  std::unordered_multiset<Leaf>
-      get_leaves(Tree const &,
-                 FullBinaryTreeImplementation<Tree, Parent, Leaf> const &);
+template std::unordered_multiset<Leaf>
+    get_leaves(Tree const &,
+               FullBinaryTreeImplementation<Tree, Parent, Leaf> const &);
 
 } // namespace FlexFlow

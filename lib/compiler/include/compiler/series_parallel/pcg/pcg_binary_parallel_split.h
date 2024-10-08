@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-BinaryParallelSplit binary_parallel_split_from_pcg_parallel_split(PCGBinaryParallelSplit const &);
+BinaryParallelSplit binary_parallel_split_from_pcg_parallel_split(
+    PCGBinaryParallelSplit const &);
 
 } // namespace FlexFlow
 

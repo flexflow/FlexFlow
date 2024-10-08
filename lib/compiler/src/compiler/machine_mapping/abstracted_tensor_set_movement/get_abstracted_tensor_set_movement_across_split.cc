@@ -16,9 +16,8 @@ AbstractedTensorSetMovement get_abstracted_tensor_set_movement_across_split(
   std::unordered_set<ParallelComputationGraphEdge> edges_across_split =
       pcg_get_transitive_reduced_edges_across_split(tr_pcg, split);
 
-  auto get_movement_for_tensor = [&](parallel_tensor_guid_t const &t) 
-    -> AbstractedSingleTensorMovement
-  {
+  auto get_movement_for_tensor =
+      [&](parallel_tensor_guid_t const &t) -> AbstractedSingleTensorMovement {
     std::unordered_set<ParallelComputationGraphEdge> tensor_edges =
         filter(edges_across_split, [&](ParallelComputationGraphEdge const &e) {
           return get_parallel_tensor(e) == t;

@@ -12,17 +12,17 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_transitive_reduced_edges_across_split") {
     DataflowGraph g = DataflowGraph::create<UnorderedSetDataflowGraph>();
 
-    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs,
+                                  BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_leaf = [](Node const &n) {
-      return BinarySPDecompositionTree{n};
-    };
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
 
     SUBCASE("multiple nodes with edges across") {
       NodeAddedResult n1_added = g.add_node({}, 1);
@@ -82,7 +82,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           get_dataflow_graph_transitive_reduction(g);
 
       BinarySeriesSplit split = BinarySeriesSplit{
-          make_leaf(n1), 
+          make_leaf(n1),
           make_leaf(n2),
       };
 

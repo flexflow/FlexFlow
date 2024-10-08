@@ -12,24 +12,23 @@ TEST_SUITE(FF_TEST_SUITE) {
       return PCGBinarySPDecomposition{l};
     };
 
-    auto pcg_make_series = [](PCGBinarySPDecomposition const &lhs, 
+    auto pcg_make_series = [](PCGBinarySPDecomposition const &lhs,
                               PCGBinarySPDecomposition const &rhs) {
       return PCGBinarySPDecomposition{
-        PCGBinarySeriesSplit{
-          lhs,
-          rhs,
-        },
+          PCGBinarySeriesSplit{
+              lhs,
+              rhs,
+          },
       };
     };
 
     auto pcg_make_parallel = [](PCGBinarySPDecomposition const &lhs,
                                 PCGBinarySPDecomposition const &rhs) {
-
       return PCGBinarySPDecomposition{
-        PCGBinaryParallelSplit{
-          lhs,
-          rhs,
-        },
+          PCGBinaryParallelSplit{
+              lhs,
+              rhs,
+          },
       };
     };
 
@@ -37,28 +36,29 @@ TEST_SUITE(FF_TEST_SUITE) {
       return MachineMappingProblemTree{k};
     };
 
-    auto mm_problem_tree_make_series = [](AbstractedTensorSetMovement const &tensor_set_movement,
-                                          MachineMappingProblemTree const &lhs,
-                                          MachineMappingProblemTree const &rhs) {
-      return MachineMappingProblemTree{
-        MMProblemTreeSeriesSplit{
-          tensor_set_movement,
-          lhs,
-          rhs,
-        },
-      };
-    };
+    auto mm_problem_tree_make_series =
+        [](AbstractedTensorSetMovement const &tensor_set_movement,
+           MachineMappingProblemTree const &lhs,
+           MachineMappingProblemTree const &rhs) {
+          return MachineMappingProblemTree{
+              MMProblemTreeSeriesSplit{
+                  tensor_set_movement,
+                  lhs,
+                  rhs,
+              },
+          };
+        };
 
-    auto mm_problem_tree_make_parallel = [](MachineMappingProblemTree const &lhs,
-                                            MachineMappingProblemTree const &rhs) {
-
-      return MachineMappingProblemTree{
-        MMProblemTreeParallelSplit{
-          lhs,
-          rhs,
-        },
-      };
-    };
+    auto mm_problem_tree_make_parallel =
+        [](MachineMappingProblemTree const &lhs,
+           MachineMappingProblemTree const &rhs) {
+          return MachineMappingProblemTree{
+              MMProblemTreeParallelSplit{
+                  lhs,
+                  rhs,
+              },
+          };
+        };
 
     ParallelComputationGraph pcg = empty_parallel_computation_graph();
 
@@ -113,7 +113,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       UnmappedOpCostEstimateKey input_key = make_input_key(input_shape);
 
-      PCGBinarySPDecomposition sp_decomposition = PCGBinarySPDecomposition{input_layer};
+      PCGBinarySPDecomposition sp_decomposition =
+          PCGBinarySPDecomposition{input_layer};
 
       MachineMappingProblemTree result =
           get_machine_mapping_problem_tree(pcg, sp_decomposition);
@@ -198,9 +199,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       MachineMappingProblemTree result =
           get_machine_mapping_problem_tree(pcg, sp_decomposition);
 
-      MachineMappingProblemTree correct = mm_problem_tree_make_parallel(
-          mm_problem_tree_make_leaf(input1_key),
-          mm_problem_tree_make_leaf(input2_key));
+      MachineMappingProblemTree correct =
+          mm_problem_tree_make_parallel(mm_problem_tree_make_leaf(input1_key),
+                                        mm_problem_tree_make_leaf(input2_key));
 
       CHECK(result == correct);
     }
@@ -240,10 +241,10 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*output_shapes=*/{ew_op_output_shape},
       };
 
-      PCGBinarySPDecomposition sp_decomposition = pcg_make_series(
-          pcg_make_parallel(pcg_make_leaf(input1_layer),
-                                  pcg_make_leaf(input2_layer)),
-          pcg_make_leaf(ew_op_layer));
+      PCGBinarySPDecomposition sp_decomposition =
+          pcg_make_series(pcg_make_parallel(pcg_make_leaf(input1_layer),
+                                            pcg_make_leaf(input2_layer)),
+                          pcg_make_leaf(ew_op_layer));
 
       MachineMappingProblemTree result =
           get_machine_mapping_problem_tree(pcg, sp_decomposition);
@@ -278,9 +279,8 @@ TEST_SUITE(FF_TEST_SUITE) {
               },
           }},
           /*pre=*/
-          mm_problem_tree_make_parallel(
-              mm_problem_tree_make_leaf(input1_key),
-              mm_problem_tree_make_leaf(input2_key)),
+          mm_problem_tree_make_parallel(mm_problem_tree_make_leaf(input1_key),
+                                        mm_problem_tree_make_leaf(input2_key)),
           /*post=*/mm_problem_tree_make_leaf(ew_op_key));
 
       CHECK(result == correct);

@@ -7,12 +7,15 @@
 namespace FlexFlow {
 
 template <typename Tree, typename Series, typename Parallel, typename Leaf>
-std::unordered_multiset<Leaf>
-    get_leaves(Tree const &tree, 
-               GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &impl) {
+std::unordered_multiset<Leaf> get_leaves(
+    Tree const &tree,
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &impl) {
 
-  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf> 
-    full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
+  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf>
+      full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
 
   return get_leaves(tree, full_binary_impl);
 }

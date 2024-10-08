@@ -7,11 +7,15 @@
 namespace FlexFlow {
 
 template <typename Tree, typename Series, typename Parallel, typename Leaf>
-int get_num_tree_nodes(Tree const &tree,
-                       GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &impl) {
+int get_num_tree_nodes(
+    Tree const &tree,
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &impl) {
 
-  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf> 
-    full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
+  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf>
+      full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
 
   return get_num_tree_nodes(tree, full_binary_impl);
 }

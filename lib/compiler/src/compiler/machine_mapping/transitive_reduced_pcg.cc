@@ -41,7 +41,8 @@ std::unordered_set<ParallelComputationGraphEdge>
   TransitiveReducedDataflowGraphView raw_tr_g =
       get_underlying_transitive_reduced_dataflow_graph(tr_pcg);
 
-  BinarySeriesSplit raw_split = binary_series_split_from_pcg_series_split(split);
+  BinarySeriesSplit raw_split =
+      binary_series_split_from_pcg_series_split(split);
 
   std::unordered_set<DataflowEdge> raw_edges =
       get_transitive_reduced_edges_across_split(raw_tr_g, raw_split);
@@ -57,7 +58,8 @@ std::unordered_set<parallel_tensor_guid_t>
   TransitiveReducedDataflowGraphView raw_tr_g =
       get_underlying_transitive_reduced_dataflow_graph(tr_pcg);
 
-  BinarySeriesSplit raw_split = binary_series_split_from_pcg_series_split(split);
+  BinarySeriesSplit raw_split =
+      binary_series_split_from_pcg_series_split(split);
 
   std::unordered_set<DataflowOutput> raw_outputs =
       get_transitive_reduced_outputs_across_split(raw_tr_g, raw_split);
@@ -72,7 +74,8 @@ PCGSplitBoundaryLayers pcg_get_transitive_reduced_boundary_layers_for_split(
   TransitiveReducedDataflowGraphView raw_tr_g =
       get_underlying_transitive_reduced_dataflow_graph(tr_pcg);
 
-  BinarySeriesSplit raw_split = binary_series_split_from_pcg_series_split(split);
+  BinarySeriesSplit raw_split =
+      binary_series_split_from_pcg_series_split(split);
 
   SplitBoundaryNodes raw_boundary =
       get_transitive_reduced_boundary_nodes_for_split(raw_tr_g, raw_split);

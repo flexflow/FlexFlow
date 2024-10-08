@@ -23,26 +23,28 @@ BinarySPDecompositionTree left_associative_binary_sp_tree_from_nary(
   auto from_series = [&](SeriesSplit const &s) -> BinarySPDecompositionTree {
     std::vector<BinarySPDecompositionTree> children =
         transform(s.children, from_series_child);
-    return foldl1(children,
-                  [](BinarySPDecompositionTree const &accum,
-                     BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
-                    return BinarySPDecompositionTree{
-                      BinarySeriesSplit{accum, x},
-                    };
-                  });
+    return foldl1(
+        children,
+        [](BinarySPDecompositionTree const &accum,
+           BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
+          return BinarySPDecompositionTree{
+              BinarySeriesSplit{accum, x},
+          };
+        });
   };
 
   auto from_parallel =
       [&](ParallelSplit const &s) -> BinarySPDecompositionTree {
     std::vector<BinarySPDecompositionTree> children =
         transform(vector_of(s.get_children()), from_parallel_child);
-    return foldl1(children,
-                  [](BinarySPDecompositionTree const &accum,
-                     BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
-                    return BinarySPDecompositionTree{
-                      BinaryParallelSplit{accum, x},
-                    };
-                  });
+    return foldl1(
+        children,
+        [](BinarySPDecompositionTree const &accum,
+           BinarySPDecompositionTree const &x) -> BinarySPDecompositionTree {
+          return BinarySPDecompositionTree{
+              BinaryParallelSplit{accum, x},
+          };
+        });
   };
 
   from_parallel_child = [&](std::variant<SeriesSplit, Node> const &v)

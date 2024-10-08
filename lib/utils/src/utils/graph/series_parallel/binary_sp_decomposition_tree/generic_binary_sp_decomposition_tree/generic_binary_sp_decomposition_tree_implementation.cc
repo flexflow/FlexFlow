@@ -9,6 +9,10 @@ using Parallel = value_type<2>;
 using Leaf = value_type<3>;
 
 FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf>
-  get_full_binary_impl_from_generic_sp_impl(GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &);
+    get_full_binary_impl_from_generic_sp_impl(
+        GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                       Series,
+                                                       Parallel,
+                                                       Leaf> const &);
 
 } // namespace FlexFlow

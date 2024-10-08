@@ -2,7 +2,6 @@
 
 namespace fmt {
 
-template
-  struct formatter<::nlohmann::json, char>;
+template struct formatter<::nlohmann::json, char>;
 
 }

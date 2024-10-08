@@ -1,6 +1,6 @@
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_leaves.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.dtg.h"
 #include "test/utils/doctest/fmt/unordered_multiset.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include <doctest/doctest.h>
 
@@ -12,11 +12,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n2 = Node{2};
     Node n3 = Node{3};
 
-    GenericBinarySPDecompositionTreeImplementation<
-      BinarySPDecompositionTree,
-      BinarySeriesSplit,
-      BinaryParallelSplit,
-      Node> impl = generic_impl_for_binary_sp_tree();
+    GenericBinarySPDecompositionTreeImplementation<BinarySPDecompositionTree,
+                                                   BinarySeriesSplit,
+                                                   BinaryParallelSplit,
+                                                   Node>
+        impl = generic_impl_for_binary_sp_tree();
 
     auto generic_get_leaves = [&](BinarySPDecompositionTree const &tree) {
       return get_leaves(tree, impl);
@@ -33,13 +33,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("series split") {
       SUBCASE("children are not the same") {
-        BinarySPDecompositionTree input =
-          BinarySPDecompositionTree{
+        BinarySPDecompositionTree input = BinarySPDecompositionTree{
             BinarySeriesSplit{
-              BinarySPDecompositionTree{n1},
-              BinarySPDecompositionTree{n2},
+                BinarySPDecompositionTree{n1},
+                BinarySPDecompositionTree{n2},
             },
-          };
+        };
 
         std::unordered_multiset<Node> result = generic_get_leaves(input);
         std::unordered_multiset<Node> correct = {n1, n2};
@@ -48,13 +47,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("children are the same") {
-        BinarySPDecompositionTree input =
-          BinarySPDecompositionTree{
+        BinarySPDecompositionTree input = BinarySPDecompositionTree{
             BinarySeriesSplit{
-              BinarySPDecompositionTree{n1},
-              BinarySPDecompositionTree{n1},
+                BinarySPDecompositionTree{n1},
+                BinarySPDecompositionTree{n1},
             },
-          };
+        };
 
         std::unordered_multiset<Node> result = generic_get_leaves(input);
         std::unordered_multiset<Node> correct = {n1, n1};
@@ -66,10 +64,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("parallel split") {
       SUBCASE("children are not the same") {
         BinarySPDecompositionTree input = BinarySPDecompositionTree{
-          BinaryParallelSplit{
-            BinarySPDecompositionTree{n1},
-            BinarySPDecompositionTree{n2},
-          },
+            BinaryParallelSplit{
+                BinarySPDecompositionTree{n1},
+                BinarySPDecompositionTree{n2},
+            },
         };
 
         std::unordered_multiset<Node> result = generic_get_leaves(input);
@@ -80,10 +78,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("children are the same") {
         BinarySPDecompositionTree input = BinarySPDecompositionTree{
-          BinaryParallelSplit{
-            BinarySPDecompositionTree{n1},
-            BinarySPDecompositionTree{n1},
-          },
+            BinaryParallelSplit{
+                BinarySPDecompositionTree{n1},
+                BinarySPDecompositionTree{n1},
+            },
         };
 
         std::unordered_multiset<Node> result = generic_get_leaves(input);
@@ -93,29 +91,23 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
     }
 
-    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs,
+                                  BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_leaf = [](Node const &n) {
-      return BinarySPDecompositionTree{n};
-    };
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
 
     SUBCASE("nested") {
-      BinarySPDecompositionTree input =
-          make_parallel_split(
-              make_series_split(
-                  make_leaf(n1),
-                  make_series_split(
-                      make_leaf(n2),
-                      make_leaf(n3))),
-              make_parallel_split(
-                  make_leaf(n2),
-                  make_leaf(n1)));
+      BinarySPDecompositionTree input = make_parallel_split(
+          make_series_split(make_leaf(n1),
+                            make_series_split(make_leaf(n2), make_leaf(n3))),
+          make_parallel_split(make_leaf(n2), make_leaf(n1)));
 
       std::unordered_multiset<Node> result = generic_get_leaves(input);
       std::unordered_multiset<Node> correct = {n1, n1, n2, n2, n3};

@@ -11,31 +11,31 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n2 = Node{2};
     Node n3 = Node{3};
 
-    GenericBinarySPDecompositionTreeImplementation<
-      BinarySPDecompositionTree,
-      BinarySeriesSplit,
-      BinaryParallelSplit,
-      Node> impl = generic_impl_for_binary_sp_tree();
+    GenericBinarySPDecompositionTreeImplementation<BinarySPDecompositionTree,
+                                                   BinarySeriesSplit,
+                                                   BinaryParallelSplit,
+                                                   Node>
+        impl = generic_impl_for_binary_sp_tree();
 
-    auto make_series_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
     };
 
-    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs,
+                                  BinarySPDecompositionTree const &rhs) {
       return BinarySPDecompositionTree{BinaryParallelSplit{lhs, rhs}};
     };
 
-    auto make_leaf = [](Node const &n) {
-      return BinarySPDecompositionTree{n};
-    };
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
 
-    auto generic_get_num_tree_nodes = [&](BinarySPDecompositionTree const &tree) {
-      return get_num_tree_nodes(tree, impl);
-    };
+    auto generic_get_num_tree_nodes =
+        [&](BinarySPDecompositionTree const &tree) {
+          return get_num_tree_nodes(tree, impl);
+        };
 
     SUBCASE("leaf") {
-      BinarySPDecompositionTree input =
-          make_leaf(n1);
+      BinarySPDecompositionTree input = make_leaf(n1);
 
       int result = generic_get_num_tree_nodes(input);
       int correct = 1;
@@ -88,16 +88,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("nested") {
-      BinarySPDecompositionTree input =
-          make_parallel_split(
-              make_series_split(
-                  make_leaf(n1),
-                  make_series_split(
-                      make_leaf(n2),
-                      make_leaf(n3))),
-              make_parallel_split(
-                  make_leaf(n2),
-                  make_leaf(n1)));
+      BinarySPDecompositionTree input = make_parallel_split(
+          make_series_split(make_leaf(n1),
+                            make_series_split(make_leaf(n2), make_leaf(n3))),
+          make_parallel_split(make_leaf(n2), make_leaf(n1)));
 
       int result = generic_get_num_tree_nodes(input);
       int correct = 9;

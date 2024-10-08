@@ -8,10 +8,12 @@ using Series = value_type<1>;
 using Parallel = value_type<2>;
 using Leaf = value_type<3>;
 
-template 
-  std::optional<Tree>
-      get_subtree_at_path(Tree const &, 
-                          GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &,
-                          BinaryTreePath const &);
+template std::optional<Tree> get_subtree_at_path(
+    Tree const &,
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &,
+    BinaryTreePath const &);
 
 } // namespace FlexFlow

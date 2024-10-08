@@ -7,8 +7,9 @@ using Tree = value_type<0>;
 using Parent = value_type<1>;
 using Leaf = value_type<2>;
 
-template 
-  std::unordered_set<BinaryTreePath>
-      find_paths_to_leaf(Tree const &, FullBinaryTreeImplementation<Tree, Parent, Leaf> const &, Leaf const &);
+template std::unordered_set<BinaryTreePath>
+    find_paths_to_leaf(Tree const &,
+                       FullBinaryTreeImplementation<Tree, Parent, Leaf> const &,
+                       Leaf const &);
 
 } // namespace FlexFlow

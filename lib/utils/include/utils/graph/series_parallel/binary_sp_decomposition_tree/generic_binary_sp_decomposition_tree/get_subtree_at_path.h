@@ -8,12 +8,15 @@
 namespace FlexFlow {
 
 template <typename Tree, typename Series, typename Parallel, typename Leaf>
-std::optional<Tree>
-    get_subtree_at_path(Tree const &tree, 
-                        GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &impl,
-                        BinaryTreePath const &path) {
-  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf> 
-    full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
+std::optional<Tree> get_subtree_at_path(
+    Tree const &tree,
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &impl,
+    BinaryTreePath const &path) {
+  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf>
+      full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
 
   return get_subtree_at_path(tree, full_binary_impl, path);
 }

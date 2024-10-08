@@ -12,16 +12,18 @@
 namespace FlexFlow {
 
 GenericBinarySPDecompositionTreeImplementation<
-  ComputationGraphBinarySPDecomposition,
-  ComputationGraphBinarySeriesSplit,
-  ComputationGraphBinaryParallelSplit,
-  layer_guid_t> generic_impl_for_computation_graph_sp_tree();
+    ComputationGraphBinarySPDecomposition,
+    ComputationGraphBinarySeriesSplit,
+    ComputationGraphBinaryParallelSplit,
+    layer_guid_t>
+    generic_impl_for_computation_graph_sp_tree();
 
 SPDecompositionTreeNodeType
     get_node_type(ComputationGraphBinarySPDecomposition const &);
 
-ComputationGraphBinarySPDecomposition 
-  computation_graph_sp_decomp_from_binary_sp_decomp(BinarySPDecompositionTree const &);
+ComputationGraphBinarySPDecomposition
+    computation_graph_sp_decomp_from_binary_sp_decomp(
+        BinarySPDecompositionTree const &);
 
 std::optional<ComputationGraphBinarySPDecomposition>
     get_computation_graph_left_assoc_binary_sp_decomposition(
@@ -34,7 +36,7 @@ bool is_right_associative(ComputationGraphBinarySPDecomposition const &);
 std::unordered_multiset<layer_guid_t>
     get_layers(ComputationGraphBinarySPDecomposition const &);
 
-V1BinarySPDecomposition to_v1(ComputationGraphBinarySPDecomposition const &, 
+V1BinarySPDecomposition to_v1(ComputationGraphBinarySPDecomposition const &,
                               bidict<int, layer_guid_t> const &layer_numbering);
 
 } // namespace FlexFlow

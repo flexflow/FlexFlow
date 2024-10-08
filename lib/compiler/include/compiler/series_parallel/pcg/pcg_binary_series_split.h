@@ -6,7 +6,8 @@
 
 namespace FlexFlow {
 
-BinarySeriesSplit binary_series_split_from_pcg_series_split(PCGBinarySeriesSplit const &);
+BinarySeriesSplit
+    binary_series_split_from_pcg_series_split(PCGBinarySeriesSplit const &);
 
 } // namespace FlexFlow
 

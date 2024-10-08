@@ -45,7 +45,8 @@ MachineMappingResult
     }
   }
 
-  MachineMappingResult result = problem_tree.visit<MachineMappingResult>(overload{
+  MachineMappingResult result =
+      problem_tree.visit<MachineMappingResult>(overload{
           [&](MMProblemTreeSeriesSplit const &series_split) {
             return get_optimal_machine_mapping(
                 result_cache,
@@ -86,8 +87,9 @@ MachineMappingResult
             [&](BinaryTreePath const &l) -> std::unordered_set<MachineView> {
               UnmappedOpCostEstimateKey leaf =
                   mm_problem_tree_get_subtree_at_path(
-                                   MachineMappingProblemTree{series_split}, l)
-                                   .value().get<UnmappedOpCostEstimateKey>();
+                      MachineMappingProblemTree{series_split}, l)
+                      .value()
+                      .get<UnmappedOpCostEstimateKey>();
               return context.allowed_machine_views(leaf, resources);
             });
     return transform(
@@ -130,7 +132,8 @@ MachineMappingResult
       };
 
   MachineMappingResult result = infeasible_machine_mapping_result();
-  AbstractedTensorSetMovement tensor_movement = series_split.tensor_set_movement;
+  AbstractedTensorSetMovement tensor_movement =
+      series_split.tensor_set_movement;
 
   for (ParallelLayerGuidObliviousMachineMapping const
            &assigned_pre_machine_views :
@@ -178,9 +181,9 @@ MachineMappingResult get_optimal_machine_mapping(
 
   MachineMappingResult series_result = [&] {
     MMProblemTreeSeriesSplit series_split = MMProblemTreeSeriesSplit{
-      /*tensor_set_movement=*/empty_abstracted_tensor_set_movement(),
-      /*left_child=*/lhs,
-      /*right_child=*/rhs,
+        /*tensor_set_movement=*/empty_abstracted_tensor_set_movement(),
+        /*left_child=*/lhs,
+        /*right_child=*/rhs,
     };
 
     return get_optimal_machine_mapping(result_cache,

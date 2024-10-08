@@ -20,32 +20,31 @@ MachineMappingProblemTree get_machine_mapping_problem_tree(
   to_problem_tree =
       [&](PCGBinarySPDecomposition const &sp) -> MachineMappingProblemTree {
     return sp.visit<MachineMappingProblemTree>(overload{
-                 [&](PCGBinarySeriesSplit const &series) {
-                   AbstractedTensorSetMovement tensor_movement =
-                       get_abstracted_tensor_set_movement_across_split(tr_pcg,
-                                                                       series);
-                   return MachineMappingProblemTree{
-                     MMProblemTreeSeriesSplit{
-                       /*tensor_set_movement=*/tensor_movement,
-                       /*lhs=*/to_problem_tree(series.get_left_child()),
-                       /*rhs=*/to_problem_tree(series.get_right_child()),
-                     },
-                   };
-                 },
-                 [&](PCGBinaryParallelSplit const &parallel) {
-                   return MachineMappingProblemTree{
-                     MMProblemTreeParallelSplit{
-                       to_problem_tree(parallel.get_left_child()),
-                       to_problem_tree(parallel.get_right_child()),
-                     },
-                   };
-                 },
-                 [&](parallel_layer_guid_t const &leaf) {
-                   return MachineMappingProblemTree{
-                     get_unmapped_op_cost_estimate_key_for_layer(pcg, leaf),
-                   };
-                 },
-        });
+        [&](PCGBinarySeriesSplit const &series) {
+          AbstractedTensorSetMovement tensor_movement =
+              get_abstracted_tensor_set_movement_across_split(tr_pcg, series);
+          return MachineMappingProblemTree{
+              MMProblemTreeSeriesSplit{
+                  /*tensor_set_movement=*/tensor_movement,
+                  /*lhs=*/to_problem_tree(series.get_left_child()),
+                  /*rhs=*/to_problem_tree(series.get_right_child()),
+              },
+          };
+        },
+        [&](PCGBinaryParallelSplit const &parallel) {
+          return MachineMappingProblemTree{
+              MMProblemTreeParallelSplit{
+                  to_problem_tree(parallel.get_left_child()),
+                  to_problem_tree(parallel.get_right_child()),
+              },
+          };
+        },
+        [&](parallel_layer_guid_t const &leaf) {
+          return MachineMappingProblemTree{
+              get_unmapped_op_cost_estimate_key_for_layer(pcg, leaf),
+          };
+        },
+    });
   };
 
   return to_problem_tree(sp_decomposition_tree);

@@ -9,7 +9,7 @@
 namespace FlexFlow {
 
 template <typename Tree, typename Parent, typename Leaf>
-Tree get_child(Parent const &parent, 
+Tree get_child(Parent const &parent,
                FullBinaryTreeImplementation<Tree, Parent, Leaf> const &impl,
                BinaryTreePathEntry const &e) {
   switch (e) {

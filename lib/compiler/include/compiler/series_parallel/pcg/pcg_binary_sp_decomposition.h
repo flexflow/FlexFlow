@@ -13,13 +13,14 @@
 
 namespace FlexFlow {
 
-GenericBinarySPDecompositionTreeImplementation<
-  PCGBinarySPDecomposition,
-  PCGBinarySeriesSplit,
-  PCGBinaryParallelSplit,
-  parallel_layer_guid_t> generic_impl_for_pcg_sp_tree();
+GenericBinarySPDecompositionTreeImplementation<PCGBinarySPDecomposition,
+                                               PCGBinarySeriesSplit,
+                                               PCGBinaryParallelSplit,
+                                               parallel_layer_guid_t>
+    generic_impl_for_pcg_sp_tree();
 
-BinarySPDecompositionTree binary_sp_tree_from_pcg_sp_tree(PCGBinarySPDecomposition const &);
+BinarySPDecompositionTree
+    binary_sp_tree_from_pcg_sp_tree(PCGBinarySPDecomposition const &);
 
 std::optional<PCGBinarySPDecomposition>
     get_pcg_balanced_binary_sp_decomposition(ParallelComputationGraph const &);

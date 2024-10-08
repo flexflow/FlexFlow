@@ -49,27 +49,29 @@ std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(
 
 std::variant<IntermediateSpDecompositionTree, Node>
     from_binary_sp_tree(BinarySPDecompositionTree const &binary) {
-  return binary.template visit<std::variant<IntermediateSpDecompositionTree, Node>>(overload{
-          [](Node const &n) { return n; },
-          [](BinarySeriesSplit const &s) {
-            return IntermediateSpDecompositionTree{
-                SplitType::SERIES,
-                {
-                    from_binary_sp_tree(s.get_left_child()),
-                    from_binary_sp_tree(s.get_right_child()),
-                },
-            };
-          },
-          [](BinaryParallelSplit const &p) {
-            return IntermediateSpDecompositionTree{
-                SplitType::PARALLEL,
-                {
-                    from_binary_sp_tree(p.get_left_child()),
-                    from_binary_sp_tree(p.get_right_child()),
-                },
-            };
-          },
-      });
+  return binary
+      .template visit<std::variant<IntermediateSpDecompositionTree, Node>>(
+          overload{
+              [](Node const &n) { return n; },
+              [](BinarySeriesSplit const &s) {
+                return IntermediateSpDecompositionTree{
+                    SplitType::SERIES,
+                    {
+                        from_binary_sp_tree(s.get_left_child()),
+                        from_binary_sp_tree(s.get_right_child()),
+                    },
+                };
+              },
+              [](BinaryParallelSplit const &p) {
+                return IntermediateSpDecompositionTree{
+                    SplitType::PARALLEL,
+                    {
+                        from_binary_sp_tree(p.get_left_child()),
+                        from_binary_sp_tree(p.get_right_child()),
+                    },
+                };
+              },
+          });
 }
 
 } // namespace FlexFlow

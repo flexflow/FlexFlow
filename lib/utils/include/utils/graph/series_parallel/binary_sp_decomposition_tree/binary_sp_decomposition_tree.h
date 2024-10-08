@@ -10,11 +10,11 @@
 
 namespace FlexFlow {
 
-GenericBinarySPDecompositionTreeImplementation<
-  BinarySPDecompositionTree,
-  BinarySeriesSplit,
-  BinaryParallelSplit,
-  Node> generic_impl_for_binary_sp_tree();
+GenericBinarySPDecompositionTreeImplementation<BinarySPDecompositionTree,
+                                               BinarySeriesSplit,
+                                               BinaryParallelSplit,
+                                               Node>
+    generic_impl_for_binary_sp_tree();
 
 bool is_binary_sp_tree_left_associative(BinarySPDecompositionTree const &);
 bool is_binary_sp_tree_right_associative(BinarySPDecompositionTree const &);

@@ -9,10 +9,16 @@ using Series = value_type<2>;
 using Parallel = value_type<3>;
 using Leaf = value_type<4>;
 
-template
-  ReturnType visit(
-      Tree const &,
-      GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &,
-      GenericBinarySPDecompositionTreeVisitor<ReturnType, Tree, Series, Parallel, Leaf> const &);
+template ReturnType
+    visit(Tree const &,
+          GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                         Series,
+                                                         Parallel,
+                                                         Leaf> const &,
+          GenericBinarySPDecompositionTreeVisitor<ReturnType,
+                                                  Tree,
+                                                  Series,
+                                                  Parallel,
+                                                  Leaf> const &);
 
 } // namespace FlexFlow

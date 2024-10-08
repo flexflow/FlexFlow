@@ -7,12 +7,15 @@
 namespace FlexFlow {
 
 template <typename Tree, typename Series, typename Parallel, typename Leaf>
-std::unordered_set<BinaryTreePath>
-    find_paths_to_leaf(Tree const &tree,
-                       GenericBinarySPDecompositionTreeImplementation<Tree, Series, Parallel, Leaf> const &impl,
-                       Leaf const &needle) {
-  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf> 
-    full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
+std::unordered_set<BinaryTreePath> find_paths_to_leaf(
+    Tree const &tree,
+    GenericBinarySPDecompositionTreeImplementation<Tree,
+                                                   Series,
+                                                   Parallel,
+                                                   Leaf> const &impl,
+    Leaf const &needle) {
+  FullBinaryTreeImplementation<Tree, std::variant<Series, Parallel>, Leaf>
+      full_binary_impl = get_full_binary_impl_from_generic_sp_impl(impl);
 
   return find_paths_to_leaf(tree, full_binary_impl, needle);
 }
