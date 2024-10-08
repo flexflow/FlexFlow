@@ -32,7 +32,10 @@ public:
 
   GenericTensorAccessorW() = delete;
 
-  GenericTensorAccessorW(DataType data_type, ArrayShape const &shape, void *ptr, DeviceType device_type);
+  GenericTensorAccessorW(DataType data_type,
+                         ArrayShape const &shape,
+                         void *ptr,
+                         DeviceType device_type);
 
   bool operator==(GenericTensorAccessorW const &) const;
   bool operator!=(GenericTensorAccessorW const &) const;
