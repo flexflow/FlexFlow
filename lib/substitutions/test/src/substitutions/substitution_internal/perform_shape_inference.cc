@@ -1,4 +1,7 @@
 #include "substitutions/substitution_internal/perform_shape_inference.h"
+#include "op-attrs/ops/element_unary.h"
+#include "op-attrs/ops/linear.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "utils/containers/get_only.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/get_graph_data.h"

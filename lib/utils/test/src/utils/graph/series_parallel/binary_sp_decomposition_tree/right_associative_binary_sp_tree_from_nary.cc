@@ -16,34 +16,45 @@ TEST_SUITE(FF_TEST_SUITE) {
     Node n5 = Node{5};
     Node n6 = Node{6};
 
+    auto make_series_split = [](BinarySPDecompositionTree const &lhs,
+                                BinarySPDecompositionTree const &rhs) {
+      return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
+    };
+
+    auto make_parallel_split = [](BinarySPDecompositionTree const &lhs,
+                                  BinarySPDecompositionTree const &rhs) {
+      return BinarySPDecompositionTree{BinaryParallelSplit{lhs, rhs}};
+    };
+
+    auto make_leaf = [](Node const &n) { return BinarySPDecompositionTree{n}; };
+
     SUBCASE("only node") {
       SeriesParallelDecomposition input = SeriesParallelDecomposition{n1};
 
       BinarySPDecompositionTree result =
           right_associative_binary_sp_tree_from_nary(input);
-      BinarySPDecompositionTree correct = make_leaf_node(n1);
+      BinarySPDecompositionTree correct = make_leaf(n1);
 
       CHECK(result == correct);
     }
 
     SUBCASE("only serial") {
       SeriesParallelDecomposition input = SeriesParallelDecomposition{
-          SeriesSplit{n1, n2, n3},
+          SeriesSplit{{n1, n2, n3}},
       };
 
       BinarySPDecompositionTree result =
           right_associative_binary_sp_tree_from_nary(input);
 
       BinarySPDecompositionTree correct = make_series_split(
-          make_leaf_node(n1),
-          make_series_split(make_leaf_node(n2), make_leaf_node(n3)));
+          make_leaf(n1), make_series_split(make_leaf(n2), make_leaf(n3)));
 
       CHECK(result == correct);
     }
 
     SUBCASE("only parallel") {
       SeriesParallelDecomposition input = SeriesParallelDecomposition{
-          ParallelSplit{n1, n2, n3},
+          ParallelSplit{{n1, n2, n3}},
       };
 
       BinarySPDecompositionTree result =
@@ -62,20 +73,20 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("nested") {
       SeriesParallelDecomposition input = SeriesParallelDecomposition{
-          ParallelSplit{
+          ParallelSplit{{
               n1,
-              SeriesSplit{
+              SeriesSplit{{
                   n2,
                   n3,
                   n3,
                   n5,
-              },
-              SeriesSplit{
+              }},
+              SeriesSplit{{
                   n6,
                   n4,
-              },
+              }},
               n5,
-          },
+          }},
       };
 
       BinarySPDecompositionTree result =

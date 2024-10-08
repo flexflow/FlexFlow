@@ -1,0 +1,17 @@
+namespace = "FlexFlow"
+name = "TransitiveReducedDataflowGraphView"
+features = []
+
+includes = [
+  "utils/graph/dataflow_graph/dataflow_graph_view.h",
+  "utils/graph/digraph/digraph_view.h",
+]
+
+[[fields]]
+name = "full_dataflow_graph"
+type = "::FlexFlow::DataflowGraphView"
+
+[[fields]]
+name = "transitive_reduction"
+type = "::FlexFlow::DiGraphView"
+

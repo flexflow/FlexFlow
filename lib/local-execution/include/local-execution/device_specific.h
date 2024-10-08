@@ -28,10 +28,11 @@ struct DeviceSpecific {
 
   T const *get(size_t curr_device_idx) const {
     if (curr_device_idx != this->device_idx) {
-      throw mk_runtime_error("Invalid access to DeviceSpecific: attempted "
-                             "device_idx {} != correct device_idx {})",
-                             curr_device_idx,
-                             this->device_idx);
+      throw mk_runtime_error(
+          fmt::format("Invalid access to DeviceSpecific: attempted "
+                      "device_idx {} != correct device_idx {})",
+                      curr_device_idx,
+                      this->device_idx));
     }
     return (T const *)this->ptr.get();
   }

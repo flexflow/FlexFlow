@@ -1,0 +1,33 @@
+namespace = "FlexFlow"
+name = "MMProblemTreeSeriesSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+fwd_decls = [
+  "struct MachineMappingProblemTree",
+]
+
+post_includes = [
+  "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.dtg.h",
+]
+
+includes = [
+  "compiler/machine_mapping/abstracted_tensor_set_movement/abstracted_tensor_set_movement.dtg.h",
+]
+
+[[fields]]
+name = "tensor_set_movement"
+type = "::FlexFlow::AbstractedTensorSetMovement"
+
+[[fields]]
+name = "left_child"
+type = "::FlexFlow::MachineMappingProblemTree"
+indirect = true
+
+[[fields]]
+name = "right_child"
+type = "::FlexFlow::MachineMappingProblemTree"
+indirect = true

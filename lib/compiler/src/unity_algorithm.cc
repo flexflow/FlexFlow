@@ -1,20 +1,16 @@
 #include "compiler/unity_algorithm.h"
-#include "compiler/graph_utils.h"
-#include "compiler/machine_mapping.h"
+#include "compiler/graph_optimize_state.h"
+#include "compiler/machine_mapping/get_optimal_machine_mapping.h"
 #include "pcg/machine_specification.dtg.h"
 #include "substitutions/substitution.h"
 #include "utils/deduplicated_priority_queue.h"
 #include "utils/graph/node/algorithms.h"
 namespace FlexFlow {
 
-bool StrategyRuntimeCmp::operator()(Strategy const &lhs, Strategy const &rhs) {
-  return lhs.runtime < rhs.runtime;
-}
-
 /*
  * Gets all substitutions applicable to a PCG
  */
-std::unordered_set<Substitution>
+std::vector<Substitution>
     get_all_applicable_substitutions(ParallelComputationGraph const &pcg) {
   NOT_IMPLEMENTED();
 }
@@ -22,14 +18,14 @@ std::unordered_set<Substitution>
 /*
  * Applies a substitution to all possible positions in PCG
  */
-std::unordered_set<ParallelComputationGraph>
+std::vector<ParallelComputationGraph>
     apply_substitution(ParallelComputationGraph const &pcg,
                        Substitution const &) {
   NOT_IMPLEMENTED();
 }
 
-Strategy graph_optimize(
-    ComputationGraph &cg,
+GraphOptimizeResult graph_optimize(
+    ParallelComputationGraph &pcg,
     CostEstimator const &cost_estimator,
     MachineSpecification const &resources,
     std::function<std::unordered_set<MachineView>(
@@ -37,58 +33,61 @@ Strategy graph_optimize(
         &allowed_machine_views,
     OptimizerConfig const &opt_config) {
   NOT_IMPLEMENTED();
-  // ParallelComputationGraph pcg = cg_to_pcg(cg);
 
-  // std::unordered_set<Substitution> subs =
-  // get_all_applicable_substitutions(pcg);
-
-  // OptimalCostCache cached_subgraph_costs;
-  // DeduplicatedPriorityQueue<Strategy, std::vector<Strategy>,
-  // StrategyRuntimeCmp>
-  //     candidates;
-
-  // OptimalCostResult initial_pcg_result = optimal_cost(pcg,
-  //                                                     allowed_machine_views,
-  //                                                     cost_estimator,
-  //                                                     resources,
-  //                                                     cached_subgraph_costs);
-  // Strategy initial_result{
-  //     pcg, initial_pcg_result.machine_mapping, initial_pcg_result.runtime};
-
-  // Strategy best_result = initial_result;
-  // candidates.push(initial_result);
-
+  // std::vector<Substitution> substitutions =
+  //     get_all_applicable_substitutions(pcg);
+  //
+  // MachineMappingCache cached_subgraph_costs;
+  // DeduplicatedPriorityQueue<GraphOptimizeState> candidates;
+  //
+  // MachineMappingResult original_pcg_cost =
+  //     get_optimal_machine_mapping(pcg,
+  //                                 allowed_machine_views,
+  //                                 cost_estimator,
+  //                                 resources,
+  //                                 cached_subgraph_costs);
+  //
+  // GraphOptimizeState initial_state = {
+  //     GraphOptimizeResult(pcg, original_pcg_cost.machine_mapping),
+  //     original_pcg_cost.runtime};
+  //
+  // GraphOptimizeState best_state = initial_state;
+  // candidates.push(initial_state);
+  //
   // for (int iteration = 0; !candidates.empty() && iteration <
   // opt_config.budget;
   //      ++iteration) {
-  //   Strategy const &current_result = candidates.top();
+  //   GraphOptimizeState current_state = candidates.top();
   //   candidates.pop();
-
-  //   if (current_result.runtime < best_result.runtime) {
-  //     best_result = current_result;
-  //   } else if (current_result.runtime >
-  //              best_result.runtime * opt_config.alpha) {
+  //
+  //   if (current_state.runtime < best_state.runtime) {
+  //     best_state = current_state;
+  //   } else if (current_state.runtime > best_state.runtime * opt_config.alpha)
+  //   {
   //     continue;
   //   }
-
-  //   for (auto const &sub : subs) {
-  //     for (auto const &new_pcg : apply_substitution(current_result.pcg, sub))
-  //     {
-  //       OptimalCostResult c = optimal_cost(new_pcg,
-  //                                          allowed_machine_views,
-  //                                          cost_estimator,
-  //                                          resources,
-  //                                          cached_subgraph_costs);
-  //       Strategy new_result{new_pcg, c.machine_mapping, c.runtime};
-  //       if (new_result.runtime <= opt_config.threshold &&
+  //
+  //   for (Substitution const &substitution : substitutions) {
+  //     for (ParallelComputationGraph const &new_pcg : apply_substitution(
+  //              current_state.graph_optimize_result.pcg, substitution)) {
+  //       MachineMappingResult new_pcg_cost =
+  //           get_optimal_machine_mapping(new_pcg,
+  //                                       allowed_machine_views,
+  //                                       cost_estimator,
+  //                                       resources,
+  //                                       cached_subgraph_costs);
+  //       GraphOptimizeState new_state{
+  //           GraphOptimizeResult(new_pcg, new_pcg_cost.machine_mapping),
+  //           new_pcg_cost.runtime};
+  //       if (new_pcg_cost.runtime <= opt_config.threshold &&
   //           get_nodes(new_pcg.raw_graph).size() <= opt_config.max_num_ops) {
-  //         candidates.push(new_result);
+  //         candidates.push(new_state);
   //       }
   //     }
   //   }
   // }
 
-  // return best_result;
+  // return best_state.graph_optimize_result;
 }
 
 } // namespace FlexFlow

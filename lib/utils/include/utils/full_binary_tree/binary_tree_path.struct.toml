@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "BinaryTreePath"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+  "json",
+  "rapidcheck",
+]
+
+includes = [
+  "utils/full_binary_tree/binary_tree_path_entry.dtg.h",
+  "<vector>",
+]
+
+src_includes = [
+  "utils/fmt/vector.h",
+  "utils/hash/vector.h",
+]
+
+[[fields]]
+name = "entries"
+type = "std::vector<::FlexFlow::BinaryTreePathEntry>"

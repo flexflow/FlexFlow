@@ -23,7 +23,7 @@ Out dispatch(DataType dt, Args &&...args) {
     case DataType::BOOL:
       return F<DataType::BOOL>{}(std::forward<Args>(args)...);
     default:
-      throw mk_runtime_error("Unknown datatype {}", dt);
+      throw mk_runtime_error(fmt::format("Unknown datatype {}", dt));
   }
 }
 

@@ -33,7 +33,7 @@ GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
   } else if (priv == Permissions::RW || priv == Permissions::WO) {
     return tensor_backing;
   } else {
-    throw mk_runtime_error("Unhandled privilege mode {}", priv);
+    throw mk_runtime_error(fmt::format("Unhandled privilege mode {}", priv));
   }
 }
 
@@ -56,7 +56,7 @@ VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
   } else if (priv == Permissions::RW || priv == Permissions::WO) {
     return variadic_tensor_backing;
   } else {
-    throw mk_runtime_error("Unhandled privilege mode {}", priv);
+    throw mk_runtime_error(fmt::format("Unhandled privilege mode {}", priv));
   }
 }
 

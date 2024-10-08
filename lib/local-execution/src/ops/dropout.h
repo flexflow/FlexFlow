@@ -4,7 +4,7 @@
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/sim_environment.h"
 #include "local-execution/task_id_t.dtg.h"
-#include "op-attrs/ops/dropout.h"
+#include "op-attrs/ops/dropout_attrs.dtg.h"
 
 namespace FlexFlow {
 

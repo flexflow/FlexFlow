@@ -64,7 +64,7 @@ std::unordered_multiset<Node> get_nodes(SeriesSplit const &serial) {
 
 std::unordered_multiset<Node> get_nodes(ParallelSplit const &parallel) {
   return multiset_union(transform(
-      vector_of(parallel.children),
+      vector_of(parallel.get_children()),
       [](std::variant<SeriesSplit, Node> const &child) {
         return std::visit([](auto &&t) { return get_nodes(t); }, child);
       }));
