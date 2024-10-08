@@ -6431,6 +6431,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(FUSEDOP_INIT_TASK_ID, "FusedOp Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<OpMeta *, FusedOp::init_task>(
           registrar, "FusedOp Init Task");
@@ -6445,6 +6446,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(FUSEDOP_FWD_TASK_ID, "FusedOp Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<FusedOp::forward_task>(
           registrar, "FusedOp Forward Task");
@@ -6459,6 +6461,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(FUSEDOP_INF_TASK_ID, "FusedOp Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<FusedOp::inference_task>(
           registrar, "FusedOp Inference Task");
@@ -6473,6 +6476,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(FUSEDOP_BWD_TASK_ID, "FusedOp Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<FusedOp::backward_task>(
           registrar, "FusedOp Backward Task");
@@ -6665,6 +6669,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ALLREDUCE_INIT_TASK_ID, "AllReduce Init");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<OpMeta *, AllReduce::init_task>(
           registrar, "AllReduce init Task");
@@ -6680,6 +6685,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "AllReduce Inference");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::inference_task>(
           registrar, "AllReduce Inference Task");
@@ -6694,6 +6700,9 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ALLREDUCE_FWD_TASK_ID, "AllReduce Forward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    // AllReduce forward and backward must run concurrentluy since they
+    // use ncclAllReduce internally
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::forward_task>(
           registrar, "AllReduce Forward Task");
@@ -6708,6 +6717,9 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ALLREDUCE_BWD_TASK_ID, "AllReduce Backward");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    // AllReduce forward and backward must run concurrentluy since they
+    // use ncclAllReduce internally
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::backward_task>(
           registrar, "AllReduce Backward Task");

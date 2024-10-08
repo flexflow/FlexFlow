@@ -420,6 +420,14 @@ void FlexFlow::top_level_task(Task const *task,
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
 
+  // Sanity check for SpecInfer old version
+  if (spec_infer_old_version) {
+    assert(max_tree_depth = 8);
+    assert(max_tree_width >= 3);
+    // Total verified tokens
+    assert(max_tokens_per_batch >= max_requests_per_batch * 21);
+  }
+
   // Create SentencePiece tokenizer or OPT tokenizer
   srand(sampling_seed);
   GenerationConfig generationConfig(do_sample, 0.8, 0.6, spec_sampling, 16);
@@ -443,8 +451,8 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_baseline_latency(baseline_latency_ms);
   rm->set_ssm_spec_latency(ssm_spec_latency_ms);
   rm->set_llm_verify_latency(llm_verify_latency_ms);
-  rm->register_output_filepath(file_paths.output_file_path);
   rm->set_spec_infer_old_version(spec_infer_old_version);
+  rm->register_output_filepath(file_paths.output_file_path);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
@@ -569,7 +577,7 @@ void FlexFlow::top_level_task(Task const *task,
             prompt_json[i]["prompt"].get<std::string>(), -1.0, 0));
       }
       PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
-      // ConstantEmissionMachine emission_machine(-1, slo_ratios);
+      //   ConstantEmissionMachine emission_machine(-1, slo_ratios);
       results = tree_model.generate(requests, emission_machine);
     } else if (!file_paths.trace_file_path.empty()) {
       std::ifstream file_handle(file_paths.trace_file_path);
