@@ -198,17 +198,36 @@ void load_attention_bias_v2(DT *ptr,
   // linear layer weights: [output_size, input_size]
   // bias layer weights: [output_size]
   // Q,K,V projection weights: [head_dim*num_heads, hidden_size] = [768, 768]
-  // QKV bias weights: [head_dim*num_heads] = [768], organized as: [head_dim_0, head_dim_1, ...]
+  // QKV bias weights: [head_dim*num_heads] = [768], organized as: [head_dim_0,
+  // head_dim_1, ...]
 
-  // need to rearrange: [q_head_dim_0, k_head_dim_0, v_head_dim_0, q_head_dim_1, k_head_dim_1, v_head_dim_1, ...]
+  // need to rearrange: [[q_heads_shard_0], [k_heads_shard_0],
+  // [v_heads_shard_0], ..., [q_heads_shard_n], [k_heads_shard_n],
+  // [v_heads_shard_n]] where n = tp_degree
+  assert(num_heads % tp_degree == 0);
+  assert(num_kv_heads % tp_degree == 0);
+  assert(hidden_dim % num_heads == 0);
+  assert(qkv_inner_dim == hidden_dim / num_heads);
+  size_t q_heads_per_shard = num_heads / tp_degree;
+  size_t kv_heads_per_shard = num_kv_heads / tp_degree;
+  size_t shard_chunk_size =
+      (q_heads_per_shard + 2 * kv_heads_per_shard) * qkv_inner_dim;
 
   int file_index = 0;
   for (auto filename : bias_files) {
     std::cout << "Loading weight file " << filename << std::endl;
     std::string weight_filepath = join_path({weights_folder, filename});
 
+    int n_heads = file_index == 0 ? num_heads : num_kv_heads;
+    assert(n_heads % tp_degree == 0);
+    int heads_per_shard = n_heads / tp_degree;
+    int qkv_prev_heads_cur_shard =
+        (file_index == 2) ? num_heads + num_kv_heads : file_index * num_heads;
+    assert(qkv_prev_heads_cur_shard % tp_degree == 0);
+    qkv_prev_heads_cur_shard /= tp_degree;
+
     // load into memory first
-    size_t bias_size = qkv_inner_dim * num_heads;
+    size_t bias_size = qkv_inner_dim * n_heads;
     std::ifstream in(weight_filepath, std::ios::in | std::ios::binary);
     assert(in.good() && "incorrect bias file path");
     std::vector<DT> host_array(bias_size);
@@ -226,12 +245,13 @@ void load_attention_bias_v2(DT *ptr,
     assert(bias_size == host_array.size());
 
     // now copy chunks into ptr
-    assert(num_heads % tp_degree == 0);
-    int n_heads = file_index == 0 ? num_heads : num_kv_heads;
-    for (int i=0; i<n_heads; i++) {
-      for (int j=0; j<qkv_inner_dim; j++) {
-        int src_idx = i*qkv_inner_dim + j;
-        int dst_idx = (3*i + file_index) * qkv_inner_dim +j;
+    for (int i = 0; i < n_heads; i++) {
+      int shard_idx = i / heads_per_shard;
+      for (int j = 0; j < qkv_inner_dim; j++) {
+        int src_idx = i * qkv_inner_dim + j;
+        int dst_idx = shard_idx * shard_chunk_size +
+                      qkv_prev_heads_cur_shard * qkv_inner_dim +
+                      (i % heads_per_shard) * qkv_inner_dim + j;
         ptr[dst_idx] = host_array.at(src_idx);
       }
     }

@@ -428,7 +428,7 @@ class OPTAlignmentTest(AlignmentTest):
                 f_version = f"layers.{layernum}."
                 f_version += hf_filename.replace(".base_layer", "").replace(".default", "")
                 # right now, attention in flexflow is done with a single operator, so there is a single output file without the projection suffix
-                f_version = f_version.replace(".q_proj", "").replace(".k_proj", "").replace(".v_proj", "").replace(".o_proj", "")
+                f_version = f_version.replace(".q_proj", ".qkv_proj").replace(".k_proj", ".qkv_proj").replace(".v_proj", ".qkv_proj")
             return f_version
         
         def get_hf_tensor(hf_tensor_name, tensor_comparison_idx):
@@ -539,6 +539,48 @@ class OPTAlignmentTest(AlignmentTest):
             compare(hf_tensor, ff_tensor, label=f"Self attention layernorm {i} output")
 
             # Attention
+            hf_q_proj_tensor_name = f"layers.{i}.self_attn.q_proj"
+            hf_k_proj_tensor_name = f"layers.{i}.self_attn.k_proj"
+            hf_v_proj_tensor_name = f"layers.{i}.self_attn.v_proj"
+            ff_qkv_tensor_name = convert_hf_filename_to_ff(hf_q_proj_tensor_name)
+            input_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="output", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            hf_q_proj_in = get_hf_tensor(hf_q_proj_tensor_name, input_comparison)
+            hf_k_proj_in = get_hf_tensor(hf_k_proj_tensor_name, input_comparison)
+            hf_v_proj_in = get_hf_tensor(hf_v_proj_tensor_name, input_comparison)
+            hf_q_proj_out = get_hf_tensor(hf_q_proj_tensor_name, output_comparison)
+            hf_k_proj_out = get_hf_tensor(hf_k_proj_tensor_name, output_comparison)
+            hf_v_proj_out = get_hf_tensor(hf_v_proj_tensor_name, output_comparison)
+            ff_qkv_tensor_in = get_ff_tensor(ff_qkv_tensor_name, input_comparison, hf_q_proj_in.shape)
+            torch.testing.assert_close(hf_q_proj_in, hf_k_proj_in)
+            torch.testing.assert_close(hf_k_proj_in, hf_v_proj_in)
+            compare(hf_q_proj_in, ff_qkv_tensor_in, label=f"QKV proj {i} input")
+            ff_qkv_tensor_out = get_ff_tensor(
+                ff_qkv_tensor_name, 
+                output_comparison, 
+                torch.Size([hf_q_proj_out.shape[0], hf_q_proj_out.shape[1], 3*hf_q_proj_out.shape[2]]), 
+                tp_type=TPType.PARTITION
+            )
+            head_dim = hf_q_proj_out.shape[2] // self.num_attention_heads
+            heads_per_shard = self.num_attention_heads // self.tp_degree
+            chunk_size = head_dim * heads_per_shard
+            # print(ff_qkv_tensor_out.shape)
+            ff_qproj_out = ff_qkv_tensor_out[:chunk_size, :, :]
+            ff_kproj_out = ff_qkv_tensor_out[chunk_size:2*chunk_size, :, :]
+            ff_vproj_out = ff_qkv_tensor_out[2*chunk_size : 3*chunk_size, :, :]
+            qkv_chunk_size = 3*chunk_size
+            for tp_idx in range(1, self.tp_degree):
+                prev_size = tp_idx * qkv_chunk_size
+                ff_qproj_out_ = ff_qkv_tensor_out[prev_size : prev_size + chunk_size, :, :]
+                ff_kproj_out_ = ff_qkv_tensor_out[prev_size + chunk_size : prev_size + 2*chunk_size, :, :]
+                ff_vproj_out_ = ff_qkv_tensor_out[prev_size + 2*chunk_size : prev_size + 3*chunk_size, :, :]
+                ff_qproj_out = np.concatenate((ff_qproj_out, ff_qproj_out_), axis=0)
+                ff_kproj_out = np.concatenate((ff_kproj_out, ff_kproj_out_), axis=0)
+                ff_vproj_out = np.concatenate((ff_vproj_out, ff_vproj_out_), axis=0)
+            compare_loaded_tensors(hf_q_proj_out.T, ff_qproj_out)
+            compare_loaded_tensors(hf_k_proj_out.T, ff_kproj_out)
+            compare_loaded_tensors(hf_v_proj_out.T, ff_vproj_out)
+
             hf_tensor_name = f"layers.{i}.self_attn.out_proj"
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name.replace(".out_proj", ".o_proj"))
             # the raw attention result, w/o o_proj. This is the output of senf_attn of FF and the input of o_proj in HF

@@ -1,10 +1,12 @@
 #! /usr/bin/env bash
-# set -x
+set -x
 set -e
 
 MODEL_NAME=${MODEL_NAME:-"JackFram/llama-160m"}
 MEMORY_PER_GPU=${MEMORY_PER_GPU:-14000}
 ZCOPY_MEMORY=${ZCOPY_MEMORY:-40000}
+TP_DEGREE=${TP_DEGREE:-2}
+PP_DEGREE=${PP_DEGREE:-2}
 CACHE_PATH=${FF_CACHE_PATH:-"~/.cache/flexflow"}
 NUM_STEPS=${NUM_STEPS:-2}
 
@@ -52,16 +54,17 @@ python ./tests/inference/huggingface_inference.py \
     --use-full-precision \
     --inference-debugging
 
+NUM_GPUS=$((TP_DEGREE * PP_DEGREE))
 json_config=$(cat <<-END
     {
-        "num_gpus": 4,
+        "num_gpus": ${NUM_GPUS},
         "memory_per_gpu": ${MEMORY_PER_GPU},
         "zero_copy_memory_per_node": ${ZCOPY_MEMORY},
         "num_cpus": 4,
         "legion_utility_processors": 4,
         "data_parallelism_degree": 1,
-        "tensor_parallelism_degree": 2,
-        "pipeline_parallelism_degree": 2,
+        "tensor_parallelism_degree": ${TP_DEGREE},
+        "pipeline_parallelism_degree": ${PP_DEGREE},
         "inference_debugging": true,
         "fusion": true,
         "refresh_cache": false,
@@ -90,7 +93,7 @@ python ./inference/python/incr_decoding.py -config-file ./fine_grained_alignment
 #     --inference-debugging
 
 # Check alignment
-python ./tests/inference/inference_alignment_test.py -m $MODEL_NAME -tp 2 -n $NUM_STEPS
+python ./tests/inference/inference_alignment_test.py -m $MODEL_NAME -tp $TP_DEGREE -n $NUM_STEPS
 
 # Print succeess message
 echo ""
