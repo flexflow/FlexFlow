@@ -46,8 +46,8 @@ public:
       throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
     }
     if (this->data_type != DT) {
-      throw mk_runtime_error(
-          "Invalid access data type ({} != {})", this->data_type, DT);
+      throw mk_runtime_error(fmt::format(
+          "Invalid access data type ({} != {})", this->data_type, DT));
     }
 
     using T = real_type_t<DT>;
@@ -64,8 +64,8 @@ public:
       throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
     }
     if (this->data_type != DT) {
-      throw mk_runtime_error(
-          "Invalid access data type ({} != {})", this->data_type, DT);
+      throw mk_runtime_error(fmt::format(
+          "Invalid access data type ({} != {})", this->data_type, DT));
     }
 
     using T = real_type_t<DT>;
@@ -131,7 +131,7 @@ public:
     }
     if (this->data_type != DT) {
       throw mk_runtime_error(
-          "Invalid access data type ({} != {})", this->data_type, DT);
+          fmt::format("Invalid access data type ({} != {})", this->data_type, DT));
     }
 
     using T = real_type_t<DT>;

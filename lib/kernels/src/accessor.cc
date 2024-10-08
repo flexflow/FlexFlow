@@ -21,10 +21,10 @@ size_t GenericTensorAccessorW::calculate_index_offset(
     std::initializer_list<size_t> const &indices) const {
 
   if (indices.size() != this->shape.num_dims()) {
-    throw mk_runtime_error(
+    throw mk_runtime_error(fmt::format(
         "Number of indices ({}) does not match the number of dimensions ({}).",
         indices.size(),
-        this->shape.num_dims());
+        this->shape.num_dims()));
   }
 
   size_t offset = 0;
@@ -36,11 +36,11 @@ size_t GenericTensorAccessorW::calculate_index_offset(
     cur_idx = *it--;
 
     if (cur_idx >= this->shape[legion_dim_t(i)]) {
-      throw mk_runtime_error("In {} dimension, attempting to access index {} "
+      throw mk_runtime_error(fmt::format("In {} dimension, attempting to access index {} "
                              "when only {} indexes exist",
                              i,
                              cur_idx,
-                             this->shape[legion_dim_t(i)]);
+                             this->shape[legion_dim_t(i)]));
     }
 
     offset += cur_idx * multiplier;
@@ -110,10 +110,10 @@ size_t GenericTensorAccessorR::calculate_index_offset(
     std::initializer_list<size_t> const &indices) const {
 
   if (indices.size() != this->shape.num_dims()) {
-    throw mk_runtime_error(
+    throw mk_runtime_error(fmt::format(
         "Number of indices ({}) does not match the number of dimensions ({}).",
         indices.size(),
-        this->shape.num_dims());
+        this->shape.num_dims()));
   }
 
   size_t offset = 0;
@@ -125,11 +125,11 @@ size_t GenericTensorAccessorR::calculate_index_offset(
     cur_idx = *it--;
 
     if (cur_idx >= this->shape[legion_dim_t(i)]) {
-      throw mk_runtime_error("In {} dimension, attempting to access index {} "
+      throw mk_runtime_error(fmt::format("In {} dimension, attempting to access index {} "
                              "when only {} indexes exist",
                              i,
                              cur_idx,
-                             this->shape[legion_dim_t(i)]);
+                             this->shape[legion_dim_t(i)]));
     }
 
     offset += cur_idx * multiplier;
