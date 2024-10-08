@@ -9,16 +9,16 @@ features = [
 
 includes = [
   "pcg/file_format/v1/v1_computation_graph.dtg.h",
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree.dtg.h",
+  "pcg/file_format/v1/v1_binary_sp_decomposition/v1_binary_sp_decomposition.dtg.h",
 ]
 
 src_includes = [
-  "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/json.h",
+  "pcg/file_format/v1/v1_binary_sp_decomposition/json.h",
 ]
 
 [[fields]]
 name = "sp_decomposition"
-type = "::FlexFlow::LeafOnlyBinarySPDecompositionTree<int>"
+type = "::FlexFlow::V1BinarySPDecomposition"
 
 [[fields]]
 name = "computation_graph"

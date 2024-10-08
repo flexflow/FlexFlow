@@ -1,5 +1,4 @@
 #include "compiler/series_parallel/pcg/pcg_binary_sp_decomposition.h"
-#include "compiler/series_parallel/pcg/pcg_binary_parallel_split.h"
 #include "compiler/series_parallel/pcg/pcg_binary_series_split.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_leaves.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/find_paths_to_leaf.h"
@@ -55,7 +54,10 @@ BinarySPDecompositionTree binary_sp_tree_from_pcg_sp_tree(PCGBinarySPDecompositi
     },
     [](PCGBinaryParallelSplit const &parallel) -> BinarySPDecompositionTree {
       return BinarySPDecompositionTree{
-        binary_parallel_split_from_pcg_parallel_split(parallel),
+        BinaryParallelSplit{
+          binary_sp_tree_from_pcg_sp_tree(parallel.get_left_child()),
+          binary_sp_tree_from_pcg_sp_tree(parallel.get_right_child()),
+        },
       };
     },
     [](parallel_layer_guid_t const &layer) -> BinarySPDecompositionTree {

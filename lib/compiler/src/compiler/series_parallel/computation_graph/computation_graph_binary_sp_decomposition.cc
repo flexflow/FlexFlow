@@ -142,4 +142,31 @@ std::unordered_multiset<layer_guid_t>
   return get_leaves(tree, generic_impl_for_computation_graph_sp_tree());
 }
 
+V1BinarySPDecomposition to_v1(ComputationGraphBinarySPDecomposition const &tree, 
+                              bidict<int, layer_guid_t> const &layer_numbering) {
+  return tree.visit<V1BinarySPDecomposition>(overload {
+    [&](ComputationGraphBinarySeriesSplit const &series) {
+      return V1BinarySPDecomposition{
+        V1BinarySeriesSplit{
+          to_v1(series.get_left_child(), layer_numbering),
+          to_v1(series.get_right_child(), layer_numbering),
+        },
+      };
+    },
+    [&](ComputationGraphBinaryParallelSplit const &parallel) {
+      return V1BinarySPDecomposition{
+        V1BinaryParallelSplit{
+          to_v1(parallel.get_left_child(), layer_numbering),
+          to_v1(parallel.get_right_child(), layer_numbering),
+        },
+      };
+    },
+    [&](layer_guid_t const &layer) {
+      return V1BinarySPDecomposition{
+        layer_numbering.at_r(layer),
+      };
+    }
+  });
+}
+
 } // namespace FlexFlow

@@ -21,7 +21,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     auto make_parallel_split = [](BinarySPDecompositionTree const &lhs, BinarySPDecompositionTree const &rhs) {
-      return BinarySPDecompositionTree{BinarySeriesSplit{lhs, rhs}};
+      return BinarySPDecompositionTree{BinaryParallelSplit{lhs, rhs}};
     };
 
     auto make_leaf = [](Node const &n) {

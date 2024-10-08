@@ -3,7 +3,6 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/vector_of.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/leaf_only_binary_sp_decomposition_tree/leaf_only_binary_parallel_split.dtg.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {
