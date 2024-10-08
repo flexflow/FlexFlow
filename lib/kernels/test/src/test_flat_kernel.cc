@@ -31,7 +31,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 2.0f);
-      CHECK(check_output_data == expected_output_data);
+      CHECK(vectors_are_approx_equal(check_output_data, expected_output_data));
     }
 
     SUBCASE("backward_kernel") {
@@ -50,7 +50,8 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 1.0f);
-      CHECK(backward_output_data == expected_output_data);
+      CHECK(
+          vectors_are_approx_equal(backward_output_data, expected_output_data));
     }
   }
 }

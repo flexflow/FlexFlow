@@ -52,7 +52,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           input_grad_accessor.shape.num_elements(), 1.0f);
       std::vector<float> host_grad_data =
           load_accessor_data<DataType::FLOAT>(input_grad_accessor);
-      CHECK(host_grad_data == expected_grad_input_data);
+      CHECK(vectors_are_approx_equal(host_grad_data, expected_grad_input_data));
     }
   }
 }

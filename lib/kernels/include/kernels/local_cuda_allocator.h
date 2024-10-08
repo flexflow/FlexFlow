@@ -10,8 +10,9 @@ struct LocalCudaAllocator : public IAllocator {
   ~LocalCudaAllocator() override;
 
   void *allocate(size_t) override;
-  void *allocate_and_zero(size_t) override;
   void deallocate(void *) override;
+
+  DeviceType get_allocation_device_type() const override;
 
 private:
   std::unordered_set<void *> ptrs;

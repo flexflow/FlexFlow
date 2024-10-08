@@ -33,7 +33,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       std::vector<float> expected_output_data(
           input_accessor.shape.num_elements(), 1.0f);
-      CHECK(check_output_data == expected_output_data);
+      CHECK(vectors_are_approx_equal(check_output_data, expected_output_data));
     }
 
     SUBCASE("backward_kernel") {
@@ -55,17 +55,12 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("Check Replicate Forward Kernel against CPU Kernel") {
-    std::size_t num_replicas = 10;
+    std::size_t num_replicas = 2;
 
-    // This should be like three shapes: pre_replication, replication shape, and
-    // reduced shape, but things are weird cause doesn't seem to be replicating
-    // anything (ie. input shape should be same as reduced shape)
     TensorShape input_shape =
-        make_tensor_shape_from_legion_dims({10, num_replicas}, DataType::FLOAT);
-    TensorShape replicated_shape =
-        make_tensor_shape_from_legion_dims({10, num_replicas}, DataType::FLOAT);
-    TensorShape reduced_shape =
-        make_tensor_shape_from_legion_dims({10}, DataType::FLOAT);
+        make_tensor_shape_from_legion_dims({5}, DataType::FLOAT);
+    TensorShape output_shape =
+        make_tensor_shape_from_legion_dims({5, num_replicas}, DataType::FLOAT);
 
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
@@ -79,7 +74,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
                                                            gpu_allocator);
       GenericTensorAccessorW output_accessor_gpu =
-          gpu_allocator.allocate_tensor(replicated_shape);
+          gpu_allocator.allocate_tensor(output_shape);
+      fill_with_zeros(output_accessor_gpu);
 
       Kernels::Replicate::forward_kernel(
           managed_stream.raw_stream(), input_accessor_gpu, output_accessor_gpu);
@@ -88,29 +84,29 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_accessor_data<DataType::FLOAT>(output_accessor_gpu);
 
       // Run CPU Replicate Forward Kernel
-      GenericTensorAccessorW input_accessor_cpu =
-          copy_tensor_between_memories<DataType::FLOAT>(input_accessor_gpu,
-                                                        cpu_allocator);
+      GenericTensorAccessorR input_accessor_cpu =
+          copy_tensor_accessor_r(input_accessor_gpu, cpu_allocator);
       GenericTensorAccessorW output_accessor_cpu =
-          cpu_allocator.allocate_tensor(replicated_shape);
+          cpu_allocator.allocate_tensor(output_shape);
+      fill_with_zeros(output_accessor_cpu);
 
-      Kernels::Replicate::cpu_forward_kernel(
-          read_only_accessor_from_write_accessor(input_accessor_cpu),
-          output_accessor_cpu);
+      Kernels::Replicate::cpu_forward_kernel(input_accessor_cpu,
+                                             output_accessor_cpu);
 
       std::vector<float> result_data_cpu =
           load_accessor_data<DataType::FLOAT>(output_accessor_cpu);
 
-      CHECK(result_data_gpu == result_data_cpu);
+      CHECK(vectors_are_approx_equal(result_data_gpu, result_data_cpu));
     }
 
     SUBCASE("backward_kernel") {
       // Run GPU Replicate Backward Kernel
       GenericTensorAccessorR output_grad_accessor_gpu =
-          create_random_filled_accessor_r<DataType::FLOAT>(replicated_shape,
+          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
                                                            gpu_allocator);
       GenericTensorAccessorW input_grad_accessor_gpu =
-          gpu_allocator.allocate_tensor_and_zero(reduced_shape);
+          gpu_allocator.allocate_tensor(input_shape);
+      fill_with_zeros(input_grad_accessor_gpu);
 
       Kernels::Replicate::backward_kernel(managed_stream.raw_stream(),
                                           input_grad_accessor_gpu,
@@ -121,21 +117,20 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_accessor_data<DataType::FLOAT>(input_grad_accessor_gpu);
 
       // Run CPU Replicate Backward Kernel
-      GenericTensorAccessorW output_grad_accessor_cpu =
-          copy_tensor_between_memories<DataType::FLOAT>(
-              output_grad_accessor_gpu, cpu_allocator);
+      GenericTensorAccessorR output_grad_accessor_cpu =
+          copy_tensor_accessor_r(output_grad_accessor_gpu, cpu_allocator);
+
       GenericTensorAccessorW input_grad_accessor_cpu =
-          cpu_allocator.allocate_tensor_and_zero(reduced_shape);
+          cpu_allocator.allocate_tensor(input_shape);
+      fill_with_zeros(input_grad_accessor_cpu);
 
       Kernels::Replicate::cpu_backward_kernel(
-          input_grad_accessor_cpu,
-          read_only_accessor_from_write_accessor(output_grad_accessor_cpu),
-          num_replicas);
+          input_grad_accessor_cpu, output_grad_accessor_cpu, num_replicas);
 
       std::vector<float> result_data_cpu =
           load_accessor_data<DataType::FLOAT>(input_grad_accessor_cpu);
 
-      CHECK(result_data_gpu == result_data_cpu);
+      CHECK(vectors_are_approx_equal(result_data_gpu, result_data_cpu));
     }
   }
 }

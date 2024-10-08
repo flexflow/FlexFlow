@@ -4,9 +4,7 @@
 #include "device.h"
 #include "kernels/accessor.h"
 
-namespace FlexFlow {
-namespace Kernels {
-namespace Combine {
+namespace FlexFlow::Kernels::Combine {
 
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
@@ -16,8 +14,6 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output_grad,
                      GenericTensorAccessorW const &input_grad);
 
-} // namespace Combine
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Combine
 
 #endif // _FLEXFLOW_OPS_KERNELS_COMBINE_KERNELS_H

@@ -12,8 +12,7 @@ struct TopKPerDeviceState {
 
 FF_VISITABLE_STRUCT(TopKPerDeviceState, sorted);
 
-namespace Kernels {
-namespace TopK {
+namespace Kernels::TopK {
 
 TopKPerDeviceState init_kernel(bool sorted);
 
@@ -35,8 +34,7 @@ void backward_kernel(ffStream_t stream,
                      int length,
                      int k);
 
-} // namespace TopK
-} // namespace Kernels
+} // namespace Kernels::TopK
 } // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_TOPK_KERNELS_H

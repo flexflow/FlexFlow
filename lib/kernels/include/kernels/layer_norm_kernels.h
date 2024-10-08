@@ -30,8 +30,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LayerNormPerDeviceState,
                                              bias,
                                              data_type);
 
-namespace Kernels {
-namespace LayerNorm {
+namespace Kernels::LayerNorm {
 
 // todo: this may have some problem.
 LayerNormPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
@@ -57,8 +56,7 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorW const &gamma_grad,
                      GenericTensorAccessorW const &beta_grad);
 
-} // namespace LayerNorm
-} // namespace Kernels
+} // namespace Kernels::LayerNorm
 } // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_LAYER_NORM_KERNELS_H

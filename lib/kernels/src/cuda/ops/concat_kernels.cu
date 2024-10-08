@@ -17,9 +17,7 @@
 #include "kernels/concat_kernels.h"
 #include <cassert>
 
-namespace FlexFlow {
-namespace Kernels {
-namespace Concat {
+namespace FlexFlow::Kernels::Concat {
 
 void calc_blk_size(size_t &num_blocks,
                    size_t &blk_size,
@@ -87,6 +85,4 @@ void backward_kernel(cudaStream_t stream,
   }
 }
 
-} // namespace Concat
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Concat

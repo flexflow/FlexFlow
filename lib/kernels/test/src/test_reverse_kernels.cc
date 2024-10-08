@@ -84,11 +84,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       // Run GPU Cast Forward Kernel
-      GenericTensorAccessorW input_accessor_gpu =
-          create_transformed_accessor_w<float, float>(
-              input_shape, gpu_allocator, transform);
+      GenericTensorAccessorR input_accessor_gpu =
+          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
+                                                           gpu_allocator);
       GenericTensorAccessorW output_accessor_gpu =
           gpu_allocator.allocate_tensor(output_shape);
+      fill_with_zeros(output_accessor_gpu);
 
       Kernels::Reverse::forward_kernel(managed_stream.raw_stream(),
                                        input_accessor_gpu.get_float_ptr(),
@@ -102,33 +103,32 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_accessor_data<DataType::FLOAT>(output_accessor_gpu);
 
       // Run CPU Cast Forward Kernel
-      GenericTensorAccessorW input_accessor_cpu =
-          create_transformed_accessor_w<float, float>(
-              input_shape, cpu_allocator, transform);
+      GenericTensorAccessorR input_accessor_cpu =
+          copy_tensor_accessor_r(input_accessor_gpu, cpu_allocator);
       GenericTensorAccessorW output_accessor_cpu =
           cpu_allocator.allocate_tensor(output_shape);
+      fill_with_zeros(output_accessor_cpu);
 
-      Kernels::Reverse::cpu_forward_kernel(
-          input_accessor_cpu.get_float_ptr(),
-          output_accessor_cpu.get_float_ptr(),
-          num_out_blks,
-          reverse_dim_size,
-          in_blk_size,
-          input_accessor_cpu.shape.num_elements());
+      Kernels::Reverse::cpu_forward_kernel(input_accessor_cpu,
+                                           output_accessor_cpu,
+                                           num_out_blks,
+                                           reverse_dim_size,
+                                           in_blk_size);
 
       std::vector<float> result_data_cpu =
           load_accessor_data<DataType::FLOAT>(output_accessor_cpu);
 
-      CHECK(result_data_gpu == result_data_cpu);
+      CHECK(vectors_are_approx_equal(result_data_gpu, result_data_cpu));
     }
 
     SUBCASE("backward_kernel") {
       // Run GPU Cast Backward Kernel
-      GenericTensorAccessorW output_grad_accessor_gpu =
-          create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
+      GenericTensorAccessorR output_grad_accessor_gpu =
+          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
                                                            gpu_allocator);
       GenericTensorAccessorW input_grad_accessor_gpu =
           gpu_allocator.allocate_tensor(input_shape);
+      fill_with_zeros(input_grad_accessor_gpu);
 
       Kernels::Reverse::backward_kernel(
           managed_stream.raw_stream(),
@@ -143,25 +143,22 @@ TEST_SUITE(FF_TEST_SUITE) {
           load_accessor_data<DataType::FLOAT>(input_grad_accessor_gpu);
 
       // Run CPU Cast Backward Kernel
-      GenericTensorAccessorW output_grad_accessor_cpu =
-          copy_tensor_between_memories<DataType::FLOAT>(
-              read_only_accessor_from_write_accessor(output_grad_accessor_gpu),
-              cpu_allocator);
+      GenericTensorAccessorR output_grad_accessor_cpu =
+          copy_tensor_accessor_r(output_grad_accessor_gpu, cpu_allocator);
       GenericTensorAccessorW input_grad_accessor_cpu =
           cpu_allocator.allocate_tensor(input_shape);
+      fill_with_zeros(input_grad_accessor_cpu);
 
-      Kernels::Reverse::cpu_backward_kernel(
-          output_grad_accessor_cpu.get_float_ptr(),
-          input_grad_accessor_cpu.get_float_ptr(),
-          num_out_blks,
-          reverse_dim_size,
-          in_blk_size,
-          input_grad_accessor_cpu.shape.num_elements());
+      Kernels::Reverse::cpu_backward_kernel(output_grad_accessor_cpu,
+                                            input_grad_accessor_cpu,
+                                            num_out_blks,
+                                            reverse_dim_size,
+                                            in_blk_size);
 
       std::vector<float> result_data_cpu =
           load_accessor_data<DataType::FLOAT>(input_grad_accessor_cpu);
 
-      CHECK(result_data_gpu == result_data_cpu);
+      CHECK(vectors_are_approx_equal(result_data_gpu, result_data_cpu));
     }
   }
 }

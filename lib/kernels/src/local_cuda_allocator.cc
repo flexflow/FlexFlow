@@ -10,14 +10,6 @@ void *LocalCudaAllocator::allocate(size_t requested_memory_size) {
   return ptr;
 }
 
-void *LocalCudaAllocator::allocate_and_zero(size_t requested_memory_size) {
-  void *ptr;
-  checkCUDA(cudaMalloc(&ptr, requested_memory_size));
-  checkCUDA(cudaMemset(ptr, 0, requested_memory_size));
-  this->ptrs.insert(ptr);
-  return ptr;
-}
-
 void LocalCudaAllocator::deallocate(void *ptr) {
   if (contains(this->ptrs, ptr)) {
     checkCUDA(cudaFree(ptr));
@@ -28,6 +20,10 @@ void LocalCudaAllocator::deallocate(void *ptr) {
   }
 }
 
+DeviceType LocalCudaAllocator::get_allocation_device_type() const {
+  return DeviceType::GPU;
+}
+
 LocalCudaAllocator::~LocalCudaAllocator() {
   for (void *ptr : this->ptrs) {
     checkCUDA(cudaFree(ptr));
@@ -36,7 +32,6 @@ LocalCudaAllocator::~LocalCudaAllocator() {
 
 Allocator create_local_cuda_memory_allocator() {
   Allocator allocator = Allocator::create<LocalCudaAllocator>();
-  allocator.alloc_location = AllocLocation::DEVICE;
   return allocator;
 }
 

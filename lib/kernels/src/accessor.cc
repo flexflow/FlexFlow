@@ -2,6 +2,64 @@
 
 namespace FlexFlow {
 
+GenericTensorAccessorW::GenericTensorAccessorW(
+    DataType data_type,
+    ArrayShape const &shape,
+    void *ptr,
+    DeviceType device_type = DeviceType::GPU)
+    : data_type(data_type), shape(shape), ptr(ptr), device_type(device_type) {}
+
+std::tuple<DataType const &,
+           ArrayShape const &,
+           void *const &,
+           DeviceType const &>
+    GenericTensorAccessorW::tie() const {
+  return std::tie(this->data_type, this->shape, this->ptr, this->device_type);
+}
+
+size_t GenericTensorAccessorW::calculate_index_offset(
+    std::initializer_list<size_t> const &indices) const {
+
+  if (indices.size() != this->shape.num_dims()) {
+    throw mk_runtime_error(
+        "Number of indices ({}) does not match the number of dimensions ({}).",
+        indices.size(),
+        this->shape.num_dims());
+  }
+
+  size_t offset = 0;
+  size_t multiplier = 1;
+  size_t cur_idx;
+  auto it = indices.end() - 1;
+
+  for (std::size_t i = this->shape.num_dims(); i-- > 0;) {
+    cur_idx = *it--;
+
+    if (cur_idx >= this->shape[legion_dim_t(i)]) {
+      throw mk_runtime_error("In {} dimension, attempting to access index {} "
+                             "when only {} indexes exist",
+                             i,
+                             cur_idx,
+                             this->shape[legion_dim_t(i)]);
+    }
+
+    offset += cur_idx * multiplier;
+    multiplier *= this->shape[legion_dim_t(i)];
+  }
+
+  return offset;
+}
+
+bool GenericTensorAccessorW::operator==(
+    GenericTensorAccessorW const &other) const {
+  return this->tie() == other.tie();
+}
+
+bool GenericTensorAccessorW::operator!=(
+    GenericTensorAccessorW const &other) const {
+  return this->tie() != other.tie();
+}
+
 int32_t *GenericTensorAccessorW::get_int32_ptr() const {
   return this->get<DataType::INT32>();
 }
@@ -31,6 +89,64 @@ std::string format_as(GenericTensorAccessorW const &a) {
 
 std::ostream &operator<<(std::ostream &s, GenericTensorAccessorW const &a) {
   return (s << fmt::to_string(a));
+}
+
+GenericTensorAccessorR::GenericTensorAccessorR(
+    DataType data_type,
+    ArrayShape const &shape,
+    void const *ptr,
+    DeviceType device_type = DeviceType::GPU)
+    : data_type(data_type), shape(shape), ptr(ptr), device_type(device_type) {}
+
+std::tuple<DataType const &,
+           ArrayShape const &,
+           void const *const &,
+           DeviceType const &>
+    GenericTensorAccessorR::tie() const {
+  return std::tie(this->data_type, this->shape, this->ptr, this->device_type);
+}
+
+size_t GenericTensorAccessorR::calculate_index_offset(
+    std::initializer_list<size_t> const &indices) const {
+
+  if (indices.size() != this->shape.num_dims()) {
+    throw mk_runtime_error(
+        "Number of indices ({}) does not match the number of dimensions ({}).",
+        indices.size(),
+        this->shape.num_dims());
+  }
+
+  size_t offset = 0;
+  size_t multiplier = 1;
+  size_t cur_idx;
+  auto it = indices.end() - 1;
+
+  for (std::size_t i = this->shape.num_dims(); i-- > 0;) {
+    cur_idx = *it--;
+
+    if (cur_idx >= this->shape[legion_dim_t(i)]) {
+      throw mk_runtime_error("In {} dimension, attempting to access index {} "
+                             "when only {} indexes exist",
+                             i,
+                             cur_idx,
+                             this->shape[legion_dim_t(i)]);
+    }
+
+    offset += cur_idx * multiplier;
+    multiplier *= this->shape[legion_dim_t(i)];
+  }
+
+  return offset;
+}
+
+bool GenericTensorAccessorR::operator==(
+    GenericTensorAccessorR const &other) const {
+  return this->tie() == other.tie();
+}
+
+bool GenericTensorAccessorR::operator!=(
+    GenericTensorAccessorR const &other) const {
+  return this->tie() != other.tie();
 }
 
 int32_t const *GenericTensorAccessorR::get_int32_ptr() const {
@@ -159,7 +275,7 @@ GenericTensorAccessorR read_only_accessor_from_write_accessor(
   return GenericTensorAccessorR{writable.data_type,
                                 writable.shape,
                                 req<void const *>(writable.ptr),
-                                writable.on_device};
+                                writable.device_type};
 }
 
 bool is_shape_and_dtype_equal(GenericTensorAccessorW const &acc1,

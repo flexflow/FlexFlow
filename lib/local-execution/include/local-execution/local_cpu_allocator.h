@@ -12,6 +12,8 @@ struct LocalCPUAllocator : public IAllocator {
   void *allocate(size_t) override;
   void deallocate(void *) override;
 
+  DeviceType get_allocation_device_type() const override;
+
 private:
   std::unordered_map<void *, std::unique_ptr<void, decltype(&free)>> ptrs;
 };

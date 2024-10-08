@@ -1,9 +1,7 @@
 #include "kernels/combine_kernels_cpu.h"
 #include "kernels/datatype_dispatch.h"
 
-namespace FlexFlow {
-namespace Kernels {
-namespace Combine {
+namespace FlexFlow::Kernels::Combine {
 
 template <DataType DT>
 struct CPUForwardKernel {
@@ -37,6 +35,4 @@ void cpu_backward_kernel(GenericTensorAccessorR const &output_grad,
       input_grad.data_type, output_grad, input_grad);
 }
 
-} // namespace Combine
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Combine

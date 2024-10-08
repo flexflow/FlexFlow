@@ -4,9 +4,7 @@
 #include "device.h"
 #include "kernels/accessor.h"
 
-namespace FlexFlow {
-namespace Kernels {
-namespace Cast {
+namespace FlexFlow::Kernels::Cast {
 
 void cpu_forward_kernel(GenericTensorAccessorR const &input,
                         GenericTensorAccessorW const &output,
@@ -18,8 +16,6 @@ void cpu_backward_kernel(GenericTensorAccessorR const &input,
                          DataType input_type,
                          DataType output_type);
 
-} // namespace Cast
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Cast
 
 #endif

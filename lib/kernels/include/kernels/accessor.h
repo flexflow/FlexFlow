@@ -5,6 +5,7 @@
 #include "device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/datatype.h"
+#include "pcg/device_type.dtg.h"
 #include "utils/exception.h"
 #include "utils/required.h"
 #include "utils/variant.h"
@@ -29,20 +30,65 @@ public:
   double *get_double_ptr() const;
   half *get_half_ptr() const;
 
-  GenericTensorAccessorW(DataType dt,
-                         ArrayShape sh,
-                         req<void *> p,
-                         bool on_dev = true)
-      : data_type(dt), shape(sh), ptr(p), on_device(on_dev) {}
+  GenericTensorAccessorW() = delete;
+
+  GenericTensorAccessorW(DataType data_type, ArrayShape const &shape, void *ptr, DeviceType device_type);
+
+  bool operator==(GenericTensorAccessorW const &) const;
+  bool operator!=(GenericTensorAccessorW const &) const;
+
+  template <DataType DT, typename... Indices>
+  real_type_t<DT> &at(Indices... indices) {
+    if (this->device_type != DeviceType::CPU) {
+      throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
+    }
+    if (this->data_type != DT) {
+      throw mk_runtime_error(
+          "Invalid access data type ({} != {})", this->data_type, DT);
+    }
+
+    using T = real_type_t<DT>;
+
+    T *data_ptr = static_cast<T *>(this->ptr);
+    size_t offset = calculate_index_offset({static_cast<size_t>(indices)...});
+
+    return data_ptr[offset];
+  }
+
+  template <DataType DT, typename... Indices>
+  real_type_t<DT> const &at(Indices... indices) const {
+    if (this->device_type != DeviceType::CPU) {
+      throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
+    }
+    if (this->data_type != DT) {
+      throw mk_runtime_error(
+          "Invalid access data type ({} != {})", this->data_type, DT);
+    }
+
+    using T = real_type_t<DT>;
+
+    T const *data_ptr = static_cast<T const *>(this->ptr);
+    size_t offset = calculate_index_offset({static_cast<size_t>(indices)...});
+
+    return data_ptr[offset];
+  }
 
 public:
   DataType data_type;
   ArrayShape shape;
-  req<void *> ptr;
-  bool on_device;
+  void *ptr;
+  DeviceType device_type;
+
+private:
+  std::tuple<decltype(data_type) const &,
+             decltype(shape) const &,
+             decltype(ptr) const &,
+             decltype(device_type) const &>
+      tie() const;
+
+  size_t calculate_index_offset(
+      std::initializer_list<size_t> const &indices) const;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
-    GenericTensorAccessorW, data_type, shape, ptr, on_device);
 
 std::string format_as(GenericTensorAccessorW const &);
 std::ostream &operator<<(std::ostream &, GenericTensorAccessorW const &);
@@ -65,20 +111,50 @@ public:
   double const *get_double_ptr() const;
   half const *get_half_ptr() const;
 
-  GenericTensorAccessorR(DataType dt,
-                         ArrayShape sh,
-                         req<void const *> p,
-                         bool on_dev = true)
-      : data_type(dt), shape(sh), ptr(p), on_device(on_dev) {}
+  GenericTensorAccessorR() = delete;
+
+  GenericTensorAccessorR(DataType data_type,
+                         ArrayShape const &shape,
+                         void const *ptr,
+                         DeviceType device_type);
+
+  bool operator==(GenericTensorAccessorR const &) const;
+  bool operator!=(GenericTensorAccessorR const &) const;
+
+  template <DataType DT, typename... Indices>
+  real_type_t<DT> const &at(Indices... indices) const {
+    if (this->device_type != DeviceType::CPU) {
+      throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
+    }
+    if (this->data_type != DT) {
+      throw mk_runtime_error(
+          "Invalid access data type ({} != {})", this->data_type, DT);
+    }
+
+    using T = real_type_t<DT>;
+
+    T const *data_ptr = static_cast<T const *>(this->ptr);
+    size_t offset = calculate_index_offset({static_cast<size_t>(indices)...});
+
+    return data_ptr[offset];
+  }
 
 public:
   DataType data_type;
   ArrayShape shape;
-  req<void const *> ptr;
-  bool on_device;
+  void const *ptr;
+  DeviceType device_type;
+
+private:
+  std::tuple<decltype(data_type) const &,
+             decltype(shape) const &,
+             decltype(ptr) const &,
+             decltype(device_type) const &>
+      tie() const;
+
+  size_t calculate_index_offset(
+      std::initializer_list<size_t> const &indices) const;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(
-    GenericTensorAccessorR, data_type, shape, ptr, on_device);
 
 std::string format_as(GenericTensorAccessorR const &);
 std::ostream &operator<<(std::ostream &, GenericTensorAccessorR const &);

@@ -13,8 +13,7 @@ struct RepartitionPerDeviceState {
 
 FF_VISITABLE_STRUCT_NO_EQ(RepartitionPerDeviceState, handle, data_type);
 
-namespace Kernels {
-namespace Repartition {
+namespace Kernels::Repartition {
 
 RepartitionPerDeviceState init_kernel(PerDeviceFFHandle const &handle,
                                       DataType data_type);
@@ -29,8 +28,7 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorW const &output_grad,
                      GenericTensorAccessorR const &input_grad);
 
-} // namespace Repartition
-} // namespace Kernels
+} // namespace Kernels::Repartition
 } // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_PARTITION_KERNELS_H

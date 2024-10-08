@@ -1,13 +1,14 @@
 #include "doctest/doctest.h"
 #include "kernels/concat_kernels.h"
 #include "test_utils.h"
+#include "utils/containers/repeat.h"
 
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test concat kernel forward and backward") {
-    size_t num_inputs = 3;
-    size_t size_per_input = 100;
-    ff_dim_t concat_axis = ff_dim_t(0);
+    size_t num_inputs = 2;
+    size_t size_per_input = 10;
+    ff_dim_t concat_axis = ff_dim_t(1);
 
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
@@ -15,7 +16,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape input_shape =
         make_tensor_shape_from_legion_dims({size_per_input}, DataType::FLOAT);
     TensorShape output_shape = make_tensor_shape_from_legion_dims(
-        {size_per_input, num_inputs}, DataType::FLOAT);
+        {num_inputs, size_per_input}, DataType::FLOAT);
 
     Allocator allocator = create_local_cuda_memory_allocator();
 

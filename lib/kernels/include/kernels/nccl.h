@@ -23,15 +23,11 @@ struct ncclUniqueId {};
 struct ncclComm_t {};
 #endif
 
-namespace FlexFlow {
-namespace Kernels {
-namespace NCCL {
+namespace FlexFlow::Kernels::NCCL {
 
 ncclUniqueId generate_unique_id();
 ncclComm_t create_comm(ncclUniqueId const &, int num_ranks, int my_rank);
 
-} // namespace NCCL
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::NCCL
 
 #endif

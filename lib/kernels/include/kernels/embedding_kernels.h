@@ -5,9 +5,7 @@
 #include "kernels/accessor.h"
 #include "op-attrs/ops/embedding.h"
 
-namespace FlexFlow {
-namespace Kernels {
-namespace Embedding {
+namespace FlexFlow::Kernels::Embedding {
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
                     GenericTensorAccessorW const &output,
@@ -35,8 +33,6 @@ void rand_generate_int32_wrapper(int32_t *ptr, size_t size, int32_t p);
 template <typename TD>
 __global__ void rand_generate_int(TD *ptr, size_t size, TD p);
 
-} // namespace Embedding
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Embedding
 
 #endif // _FLEXFLOW_OPS_KERNELS_EMBEDDING_KERNELS_H

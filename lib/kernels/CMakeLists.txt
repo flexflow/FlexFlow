@@ -30,6 +30,7 @@ target_link_libraries(
   cudnn
   nccl
   utils
+  pcg
 )
 
 define_ff_vars(${project_target})

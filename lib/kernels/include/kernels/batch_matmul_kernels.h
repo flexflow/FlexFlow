@@ -5,9 +5,7 @@
 #include "kernels/allocation.h"
 #include "kernels/ff_handle.h"
 
-namespace FlexFlow {
-namespace Kernels {
-namespace BatchMatmul {
+namespace FlexFlow::Kernels::BatchMatmul {
 
 void forward_kernel(ffStream_t stream,
                     PerDeviceFFHandle const &handle,
@@ -35,8 +33,6 @@ void backward_kernel(ffStream_t stream,
                      int k,
                      int batch);
 
-} // namespace BatchMatmul
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::BatchMatmul
 
 #endif

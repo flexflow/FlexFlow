@@ -33,8 +33,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(LinearPerDeviceState,
                                              weight_type,
                                              output_type);
 
-namespace Kernels {
-namespace Linear {
+namespace Kernels::Linear {
 
 LinearPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  float *one_ptr,
@@ -72,8 +71,7 @@ void backward_kernel(ffStream_t stream,
                      int out_dim,
                      int batch_size);
 
-} // namespace Linear
-} // namespace Kernels
+} // namespace Kernels::Linear
 } // namespace FlexFlow
 
 #endif

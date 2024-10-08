@@ -26,8 +26,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(ElementBinaryPerDeviceState,
                                              opDesc,
                                              reduceAddDesc);
 
-namespace Kernels {
-namespace ElementBinary {
+namespace Kernels::ElementBinary {
 
 ElementBinaryPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                         OperatorType op_type,
@@ -58,8 +57,7 @@ void backward_kernel(ffStream_t stream,
                      bool broadcast_inputRHS,
                      PerDeviceFFHandle handle);
 
-} // namespace ElementBinary
-} // namespace Kernels
+} // namespace Kernels::ElementBinary
 } // namespace FlexFlow
 
 #endif

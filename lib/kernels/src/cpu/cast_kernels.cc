@@ -1,9 +1,7 @@
 #include "kernels/cast_kernels_cpu.h"
 #include "kernels/datatype_dispatch.h"
 
-namespace FlexFlow {
-namespace Kernels {
-namespace Cast {
+namespace FlexFlow::Kernels::Cast {
 
 template <typename IDT, typename ODT>
 void cpu_cast_forward(IDT const *input, ODT *output, size_t volume) {
@@ -53,6 +51,4 @@ void cpu_backward_kernel(GenericTensorAccessorR const &input,
       input_type, output_type, input, output);
 }
 
-} // namespace Cast
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Cast

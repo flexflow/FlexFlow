@@ -34,8 +34,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Conv2DPerDeviceState,
                                              bwdFilterAlgo,
                                              bwdDataAlgo);
 
-namespace Kernels {
-namespace Conv2D {
+namespace Kernels::Conv2D {
 
 Conv2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  std::optional<Activation> activation,
@@ -70,8 +69,7 @@ void backward_kernel(ffStream_t stream,
                      float *bias_grad_ptr,
                      std::optional<Activation> activation);
 
-} // namespace Conv2D
-} // namespace Kernels
+} // namespace Kernels::Conv2D
 } // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_CONV_2D_KERNELS_H

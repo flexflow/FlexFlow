@@ -19,8 +19,7 @@ FF_VISITABLE_STRUCT_NO_EQ(ElementUnaryPerDeviceState,
                           outputTensor,
                           actiDesc);
 
-namespace Kernels {
-namespace ElementUnary {
+namespace Kernels::ElementUnary {
 
 ElementUnaryPerDeviceState init_kernel(ArrayShape const &input_shape,
                                        ArrayShape const &output_shape,
@@ -42,8 +41,7 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &output,
                      GenericTensorAccessorR const &output_grad);
 
-} // namespace ElementUnary
-} // namespace Kernels
+} // namespace Kernels::ElementUnary
 } // namespace FlexFlow
 
 #endif

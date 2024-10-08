@@ -25,7 +25,10 @@ GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
       this->tensor_slots_backing.at(slot_grad_pair));
   if (priv == Permissions::RO) {
     GenericTensorAccessorR readonly_tensor_backing = {
-        tensor_backing.data_type, tensor_backing.shape, tensor_backing.ptr};
+        tensor_backing.data_type,
+        tensor_backing.shape,
+        tensor_backing.ptr,
+        this->allocator.get_allocation_device_type()};
     return readonly_tensor_backing;
   } else if (priv == Permissions::RW || priv == Permissions::WO) {
     return tensor_backing;
@@ -33,6 +36,7 @@ GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
     throw mk_runtime_error("Unhandled privilege mode {}", priv);
   }
 }
+
 VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
     slot_id_t slot, Permissions priv, IsGrad is_grad) const {
   SlotGradId slot_grad_pair = SlotGradId{slot, is_grad};
@@ -43,7 +47,10 @@ VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
     for (GenericTensorAccessorW const &tensor_backing :
          variadic_tensor_backing) {
       readonly_variadic_tensor_backing.push_back(
-          {tensor_backing.data_type, tensor_backing.shape, tensor_backing.ptr});
+          {tensor_backing.data_type,
+           tensor_backing.shape,
+           tensor_backing.ptr,
+           this->allocator.get_allocation_device_type()});
     }
     return readonly_variadic_tensor_backing;
   } else if (priv == Permissions::RW || priv == Permissions::WO) {

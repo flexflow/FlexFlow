@@ -17,6 +17,10 @@ void LocalCPUAllocator::deallocate(void *ptr) {
   }
 }
 
+DeviceType LocalCPUAllocator::get_allocation_device_type() const {
+  return DeviceType::CPU;
+}
+
 Allocator create_local_cpu_memory_allocator() {
   return Allocator::create<LocalCPUAllocator>();
 }

@@ -1,34 +1,16 @@
 #include "kernels/local_cpu_allocator.h"
 #include "kernels/device.h"
+#include "utils/containers/contains_key.h"
 
 namespace FlexFlow {
 void *LocalCPUAllocator::allocate(size_t requested_memory_size) {
   void *ptr = malloc(requested_memory_size);
-
-  if (ptr != nullptr) {
-    this->ptrs.insert(ptr);
-  } else {
-    throw std::bad_alloc();
-  }
-
-  return ptr;
-}
-
-void *LocalCPUAllocator::allocate_and_zero(size_t requested_memory_size) {
-  void *ptr = calloc(1, requested_memory_size);
-
-  if (ptr != nullptr) {
-    this->ptrs.insert(ptr);
-  } else {
-    throw std::bad_alloc();
-  }
-
+  this->ptrs.insert({ptr, std::unique_ptr<void, decltype(&free)>(ptr, free)});
   return ptr;
 }
 
 void LocalCPUAllocator::deallocate(void *ptr) {
-  if (contains(this->ptrs, ptr)) {
-    free(ptr);
+  if (contains_key(this->ptrs, ptr)) {
     this->ptrs.erase(ptr);
   } else {
     throw std::runtime_error(
@@ -36,15 +18,12 @@ void LocalCPUAllocator::deallocate(void *ptr) {
   }
 }
 
-LocalCPUAllocator::~LocalCPUAllocator() {
-  for (void *ptr : this->ptrs) {
-    free(ptr);
-  }
+DeviceType LocalCPUAllocator::get_allocation_device_type() const {
+  return DeviceType::CPU;
 }
 
 Allocator create_local_cpu_memory_allocator() {
   Allocator allocator = Allocator::create<LocalCPUAllocator>();
-  allocator.alloc_location = AllocLocation::HOST;
   return allocator;
 }
 
