@@ -1,4 +1,5 @@
 #include "kernels/reverse_kernels_cpu.h"
+#include "kernels/datatype_dispatch.h"
 #include <algorithm>
 #include <vector>
 
