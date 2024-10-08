@@ -645,7 +645,7 @@ __host__ void
         assert(false && "Fusion currently does not support type");
       }
     }
-    if (metas->meta[op]->inference_debugging ) {
+    if (metas->meta[op]->inference_debugging) {
       std::vector<GenericTensorAccessorR> input_accessors_to_save;
       std::vector<GenericTensorAccessorR> weight_accessors_to_save;
       std::vector<GenericTensorAccessorR> output_accessors_to_save;
