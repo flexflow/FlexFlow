@@ -584,7 +584,7 @@ class OPTAlignmentTest(AlignmentTest):
             hf_tensor_name = f"layers.{i}.self_attn.out_proj"
             ff_tensor_name = convert_hf_filename_to_ff(hf_tensor_name.replace(".out_proj", ".o_proj"))
             # the raw attention result, w/o o_proj. This is the output of senf_attn of FF and the input of o_proj in HF
-            output_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="output", hf_tensor_idx=0, ff_tensor_idx=0)
+            output_comparison = TensorComparisonIdxs(hf_tensor_type="input", ff_tensor_type="input", hf_tensor_idx=0, ff_tensor_idx=0)
             hf_tensor = get_hf_tensor(hf_tensor_name, output_comparison)
             # ff_tensor = get_ff_tensor(ff_tensor_name, output_comparison, hf_tensor.shape, tp_type=TPType.TO_REDUCE)
             # TP for self-attn partitions the attention heads across TP workers

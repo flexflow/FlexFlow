@@ -645,12 +645,7 @@ __host__ void
         assert(false && "Fusion currently does not support type");
       }
     }
-    if (metas->meta[op]->inference_debugging &&
-        !(fused->op_op_type[op] == OP_ALLREDUCE ||
-          fused->op_op_type[op] == OP_PARALLEL_IDENTITY ||
-          fused->op_op_type[op] == OP_REPLICATE ||
-          fused->op_op_type[op] == OP_REPARTITION ||
-          fused->op_op_type[op] == OP_COMBINE)) {
+    if (metas->meta[op]->inference_debugging ) {
       std::vector<GenericTensorAccessorR> input_accessors_to_save;
       std::vector<GenericTensorAccessorR> weight_accessors_to_save;
       std::vector<GenericTensorAccessorR> output_accessors_to_save;
