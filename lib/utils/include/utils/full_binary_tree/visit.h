@@ -4,7 +4,6 @@
 #include "utils/exception.h"
 #include "utils/full_binary_tree/full_binary_tree_visitor.dtg.h"
 #include "utils/full_binary_tree/full_binary_tree_implementation.dtg.h"
-#include "utils/full_binary_tree/get_node_type.h"
 
 namespace FlexFlow {
 
