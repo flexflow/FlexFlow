@@ -33,7 +33,8 @@ static int as_int(Permissions p) {
     case Permissions::RW:
       return 2;
     default:
-      throw mk_runtime_error("Unknown permission {}", static_cast<int>(p));
+      throw mk_runtime_error(
+          fmt::format("Unknown permission {}", static_cast<int>(p)));
   }
 }
 

@@ -24,10 +24,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::optional<SeriesParallelDecomposition> result =
         get_series_parallel_decomposition(g);
     std::optional<SeriesParallelDecomposition> correct =
-        SeriesParallelDecomposition{ParallelSplit{
+        SeriesParallelDecomposition{ParallelSplit{{
             n.at(0),
             n.at(1),
-        }};
+        }}};
     CHECK(result == correct);
   }
 
@@ -39,10 +39,10 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::optional<SeriesParallelDecomposition> result =
         get_series_parallel_decomposition(g);
     std::optional<SeriesParallelDecomposition> correct =
-        SeriesParallelDecomposition{SeriesSplit{
+        SeriesParallelDecomposition{SeriesSplit{{
             n.at(0),
             n.at(1),
-        }};
+        }}};
     CHECK(result == correct);
   }
 
@@ -59,13 +59,13 @@ TEST_SUITE(FF_TEST_SUITE) {
         get_series_parallel_decomposition(g);
     std::optional<SeriesParallelDecomposition> correct =
         SeriesParallelDecomposition{
-            SeriesSplit{
+            SeriesSplit{{
                 n.at(0),
-                ParallelSplit{
+                ParallelSplit{{
                     n.at(1),
                     n.at(2),
-                },
-            },
+                }},
+            }},
         };
     CHECK(result == correct);
   }
@@ -86,20 +86,20 @@ TEST_SUITE(FF_TEST_SUITE) {
               });
 
     std::optional<SeriesParallelDecomposition> correct =
-        SeriesParallelDecomposition{SeriesSplit{
+        SeriesParallelDecomposition{SeriesSplit{{
             n.at(0),
-            ParallelSplit{
-                SeriesSplit{
+            ParallelSplit{{
+                SeriesSplit{{
                     n.at(1),
                     n.at(3),
-                },
-                SeriesSplit{
+                }},
+                SeriesSplit{{
                     n.at(2),
                     n.at(4),
-                },
-            },
+                }},
+            }},
             n.at(5),
-        }};
+        }}};
 
     std::optional<SeriesParallelDecomposition> result =
         get_series_parallel_decomposition(g);
@@ -122,16 +122,16 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     std::optional<SeriesParallelDecomposition> correct =
         SeriesParallelDecomposition{
-            SeriesSplit{
-                ParallelSplit{
+            SeriesSplit{{
+                ParallelSplit{{
                     n.at(0),
                     n.at(1),
-                },
-                ParallelSplit{
+                }},
+                ParallelSplit{{
                     n.at(2),
                     n.at(3),
-                },
-            },
+                }},
+            }},
         };
 
     std::optional<SeriesParallelDecomposition> result =
@@ -177,12 +177,12 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     std::optional<SeriesParallelDecomposition> correct =
         SeriesParallelDecomposition{
-            SeriesSplit{
+            SeriesSplit{{
                 n.at(0),
                 n.at(1),
                 n.at(2),
                 n.at(3),
-            },
+            }},
         };
     std::optional<SeriesParallelDecomposition> result =
         get_series_parallel_decomposition(g);

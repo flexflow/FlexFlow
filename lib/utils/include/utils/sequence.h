@@ -135,7 +135,7 @@ auto seq_get(F const &f, int i, seq<X, S...> const &s)
 template <typename F>
 auto seq_get(F const &f, int i, seq<> const &)
     -> decltype(f(std::declval<std::integral_constant<int, 0>>())) {
-  throw mk_runtime_error("Failed seq_get for index {}", i);
+  throw mk_runtime_error(fmt::format("Failed seq_get for index {}", i));
 }
 
 } // namespace FlexFlow

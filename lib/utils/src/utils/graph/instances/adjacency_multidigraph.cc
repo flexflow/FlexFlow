@@ -6,6 +6,7 @@
 #include "utils/containers/values.h"
 #include "utils/graph/multidigraph/algorithms/get_edges.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/hash/unordered_set.h"
 
 namespace FlexFlow {
 

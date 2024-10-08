@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "PCGBinarySPDecomposition"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/parallel_computation_graph/parallel_layer_guid_t.dtg.h",
+  "compiler/series_parallel/pcg/pcg_binary_series_split.dtg.h",
+  "compiler/series_parallel/pcg/pcg_binary_parallel_split.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::PCGBinarySeriesSplit"
+key = "series"
+
+[[values]]
+type = "::FlexFlow::PCGBinaryParallelSplit"
+key = "parallel"
+
+[[values]]
+type = "::FlexFlow::parallel_layer_guid_t"
+key = "leaf"

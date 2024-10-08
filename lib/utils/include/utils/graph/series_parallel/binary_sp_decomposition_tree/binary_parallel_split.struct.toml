@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "BinaryParallelSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+fwd_decls = [
+  "struct BinarySPDecompositionTree",
+]
+
+post_includes = [
+  "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.dtg.h",
+]
+
+[[fields]]
+name = "left_child"
+type = "::FlexFlow::BinarySPDecompositionTree"
+indirect = true
+
+[[fields]]
+name = "right_child"
+type = "::FlexFlow::BinarySPDecompositionTree"
+indirect = true

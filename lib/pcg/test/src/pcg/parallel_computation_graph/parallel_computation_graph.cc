@@ -1,4 +1,7 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
+#include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/replicate.h"
+#include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "test/utils/rapidcheck.h"
 #include "utils/containers/get_only.h"
@@ -261,5 +264,52 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       CHECK(result == correct);
     }
+  }
+
+  TEST_CASE("pcg_add_input_layer") {
+    ParallelTensorShape tensor_shape = ParallelTensorShape{
+        ParallelTensorDims{
+            FFOrdered<ShardParallelDim>{
+                ShardParallelDim{12, 2},
+                ShardParallelDim{10, 1},
+            },
+            ReplicaParallelDimSet{
+                SumDegree{2},
+                DiscardCopyDegree{2},
+            },
+        },
+        DataType::FLOAT,
+    };
+
+    ParallelComputationGraph result = [&] {
+      ParallelComputationGraph pcg = empty_parallel_computation_graph();
+      pcg_add_input_layer(pcg, tensor_shape);
+      return pcg;
+    }();
+
+    ParallelComputationGraph correct = [&] {
+      ParallelComputationGraph pcg = empty_parallel_computation_graph();
+
+      ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
+          /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
+          /*name=*/std::nullopt,
+      };
+
+      ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
+          /*shape=*/tensor_shape,
+          /*sync_type=*/std::nullopt,
+          /*initializer=*/std::nullopt,
+          /*create_gradients=*/CreateGrad::NO,
+      };
+
+      add_parallel_layer(/*pcg=*/pcg,
+                         /*layer_attrs=*/layer_attrs,
+                         /*inputs=*/{},
+                         /*output_labels=*/{tensor_attrs});
+
+      return pcg;
+    }();
+
+    CHECK(pcgs_are_isomorphic(result, correct));
   }
 }

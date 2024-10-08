@@ -42,8 +42,8 @@ struct formatter<::FlexFlow::Permissions> : formatter<string_view> {
         name = "READ_WRITE";
         break;
       default:
-        throw ::FlexFlow::mk_runtime_error("Unknown permission {}",
-                                           static_cast<int>(p));
+        throw ::FlexFlow::mk_runtime_error(
+            fmt::format("Unknown permission {}", static_cast<int>(p)));
     }
     return formatter<string_view>::format(name, ctx);
   }

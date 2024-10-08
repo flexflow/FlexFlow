@@ -11,6 +11,8 @@
 #include "utils/graph/digraph/algorithms/get_subgraph_successors.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/find_isomorphism.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/rewrite_node_labels.h"
 #include "utils/graph/labelled_dataflow_graph/algorithms/view_as_labelled_open_dataflow_graph.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/as_dot.h"
 #include "utils/graph/node/algorithms.h"
@@ -173,6 +175,26 @@ layer_guid_t get_layer_by_name(ComputationGraph const &cg,
         return get_layer_attrs(cg, l).name == name;
       });
   return get_only(found);
+}
+
+ComputationGraph without_layer_names(ComputationGraph const &cg) {
+  return ComputationGraph{
+      LabelledDataflowGraph<LayerAttrs, TensorAttrs>::create_copy_of<
+          UnorderedSetLabelledOpenDataflowGraph<LayerAttrs, TensorAttrs>>(
+          rewrite_node_labels(cg.raw_graph,
+                              [](Node const &n, LayerAttrs const &old_attrs) {
+                                LayerAttrs new_attrs = old_attrs;
+                                new_attrs.name = std::nullopt;
+                                return new_attrs;
+                              })),
+  };
+}
+
+bool computation_graphs_are_isomorphic(ComputationGraph const &lhs,
+                                       ComputationGraph const &rhs) {
+  return find_isomorphism(without_layer_names(lhs).raw_graph,
+                          without_layer_names(rhs).raw_graph)
+      .has_value();
 }
 
 std::string as_dot(ComputationGraph const &cg) {

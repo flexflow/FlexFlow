@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "V1BinarySeriesSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+fwd_decls = [
+  "struct V1BinarySPDecomposition"
+]
+
+post_includes = [
+  "pcg/file_format/v1/v1_binary_sp_decomposition/v1_binary_sp_decomposition.dtg.h",
+]
+
+[[fields]]
+name = "left_child"
+type = "::FlexFlow::V1BinarySPDecomposition"
+indirect = true
+
+[[fields]]
+name = "right_child"
+type = "::FlexFlow::V1BinarySPDecomposition"
+indirect = true
