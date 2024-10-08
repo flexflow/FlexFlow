@@ -36,31 +36,33 @@ using TokenId = BatchConfig::TokenId;
 class LogicalTokenBlock {
 public:
     using TokenId = BatchConfig::TokenId;
+
     // Constructor
     LogicalTokenBlock(int block_number, uint32_t block_size);
 
     // Method to check if the block is empty
     bool is_empty() const;
 
+    // Method to check if the block is full
+    bool is_full() const;
+
     // Method to get the number of empty slots
     int get_num_empty_slots() const;
 
     // Method to get the number of allocated slots
-    int get_num_alloc_slots();
-
-    // Method to check if the block is full
-    bool is_full() const;
-
-    // Method to append tokens
-    void append_tokens(const std::vector<TokenId>& token_ids_to_append, bool committed);
+    int get_num_alloc_slots() const;
 
     // Used to clean up the spec tokens in a block since these spec tokens may not be committed after use
     void reset_num_spec_tokens();
 
+    // Method to append tokens
+    void append_tokens(const std::vector<TokenId>& token_ids_to_append, bool committed);
+
     std::vector<TokenId> get_token_ids() const;
 
+private:
     int block_number; // the index of the logical token block
-    uint32_t block_size; // the size of the block
+    int block_size; // the size of the block
     int num_tokens; // the number of tokens currently stored in the block
     int num_commit_tokens; // the number of tokens inside this block that are already committed
     int num_spec_tokens; // the number of tokens inside this block that are speculative tokens, which is stored temporarily
@@ -78,9 +80,13 @@ public:
     // Constructor
     PhysicalTokenBlock(int block_number, uint32_t block_size);
 
+    // Method to get the block number
+    int get_block_number() const { return block_number; }
+
+private:
     int ref_count; // reference count
     int block_number; // the index of the physical token block
-    uint32_t block_size; // the size of the block
+    int block_size; // the size of the block
 };
 
 /**
@@ -90,7 +96,7 @@ public:
 class BlockAllocator {
 public:
     // Constructor
-    BlockAllocator(uint32_t block_size, int num_blocks);
+    BlockAllocator(int block_size, int num_total_blocks);
 
     // Allocate a block
     PhysicalTokenBlock allocate();
@@ -99,11 +105,11 @@ public:
     void free(PhysicalTokenBlock& block);
 
     // Get the number of free blocks
-    size_t get_num_free_blocks() const;
+    int get_num_free_blocks() const;
 
 private:
-    uint32_t block_size;
-    int num_blocks;
+    int block_size;
+    int num_total_blocks;
     std::deque<PhysicalTokenBlock> free_blocks;
 };
 
@@ -118,24 +124,21 @@ public:
     static PageManager *get_page_manager();
     using BlockTable = std::vector<PhysicalTokenBlock>;
     using RequestGuid = BatchConfig::RequestGuid;
-    PageManager(uint32_t block_size, int num_total_blocks);
+    PageManager(int block_size, int num_total_blocks);
 
-    // Prefill the block with the given token ids at the llm prefilling stage
-    bool prefill(const RequestGuid& request_guid, const std::vector<int>& token_ids);
-    bool allocate(const RequestGuid& request_guid);
-    void free(const RequestGuid& request_guid);
+    int allocate_one_block(const RequestGuid& request_guid);
+    void free_request(const RequestGuid& request_guid);
+    void free_multiple_blocks(const RequestGuid& request_guid, int num_blocks);
 
-    size_t get_num_free_blocks() const;
-    std::vector<int32_t> get_block_table_indices(const RequestGuid& request_guid) const;
-    int get_num_allocated_blocks(const RequestGuid& request_guid) const;
-
-    void erase_last_pages(const RequestGuid& request_guid, int num_pages);
-
+    std::vector<int> get_block_table_indices(const RequestGuid& request_guid) const;
 private:
-    uint32_t block_size; // the size of the block
+    int block_size; // the size of the block
     int num_total_blocks; // the total number of blocks
     BlockAllocator block_allocator;
-    std::unordered_map<int, BlockTable> block_tables;
+    std::unordered_map<RequestGuid, BlockTable> block_tables;
+
+    int get_num_total_free_blocks() const;
+    int get_num_allocated_blocks(const RequestGuid& request_guid) const;
 };
 
 }; // namespace FlexFlow
