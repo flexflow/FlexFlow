@@ -1,4 +1,5 @@
 #include "kernels/array_shape.h"
+#include "op-attrs/dim_ordered/slice.h"
 #include "utils/containers/product.h"
 
 namespace FlexFlow {
@@ -18,6 +19,9 @@ ArrayShape::ArrayShape(TensorShape const &shape)
 
 ArrayShape::ArrayShape(std::vector<std::size_t> const &input_dims)
     : dims(input_dims) {}
+
+ArrayShape::ArrayShape(LegionTensorDims const &legion_tensor_dims)
+    : dims(legion_tensor_dims) {}
 
 std::size_t ArrayShape::get_volume() const {
   return this->num_elements();
@@ -50,10 +54,20 @@ std::size_t ArrayShape::at(ff_dim_t idx) const {
   return dims.at(legion_dim_from_ff_dim(idx, this->num_dims()));
 }
 
-ArrayShape ArrayShape::sub_shape(
-    std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
-    std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const {
-  NOT_IMPLEMENTED();
+ArrayShape ArrayShape::sub_shape(legion_dim_t start, ff_dim_t end) const {
+  legion_dim_t legion_end = legion_dim_from_ff_dim(end, num_dims());
+  return this->sub_shape(start, legion_end);
+}
+
+ArrayShape ArrayShape::sub_shape(std::optional<ff_dim_t> start,
+                                 std::optional<ff_dim_t> end) const {
+  return ArrayShape{legion_dims_from_ff_dims(
+      slice(ff_ordered_from_legion_ordered(this->dims), start, end))};
+}
+
+ArrayShape ArrayShape::sub_shape(std::optional<legion_dim_t> start,
+                                 std::optional<legion_dim_t> end) const {
+  return ArrayShape{slice(this->dims, start, end)};
 }
 
 std::optional<std::size_t> ArrayShape::at_maybe(legion_dim_t index) const {
@@ -75,6 +89,14 @@ size_t get_volume(ArrayShape const &shape) {
 TensorShape get_tensor_shape(ArrayShape const &shape, DataType dtype) {
   return TensorShape{TensorDims{ff_ordered_from_legion_ordered(shape.dims)},
                      dtype};
+}
+
+bool ArrayShape::operator==(ArrayShape const &other) const {
+  return this->dims == other.dims;
+}
+
+bool ArrayShape::operator!=(ArrayShape const &other) const {
+  return this->dims != other.dims;
 }
 
 std::string format_as(ArrayShape const &x) {

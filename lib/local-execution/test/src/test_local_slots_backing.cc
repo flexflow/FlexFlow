@@ -157,10 +157,16 @@ TEST_SUITE(FF_TEST_SUITE) {
         local_slots_backing.allocate_outgoing_tensors(
             layer_guid, cg_builder.computation_graph, allocator);
         SUBCASE("Input tensor slots") {
-          std::vector<tensor_guid_t> correct_incoming_tensors =
-              get_incoming_tensors(cg_builder.computation_graph, layer_guid);
-          CHECK(correct_incoming_tensors ==
+          std::vector<tensor_guid_t> correct_incoming_input_tensors =
+              get_incoming_inputs(cg_builder.computation_graph, layer_guid);
+          CHECK(correct_incoming_input_tensors ==
                 local_slots_backing.input_tensor_slots.at(layer_guid));
+        }
+        SUBCASE("Weight tensor slots") {
+          std::vector<tensor_guid_t> correct_incoming_weight_tensors =
+              get_incoming_weights(cg_builder.computation_graph, layer_guid);
+          CHECK(correct_incoming_weight_tensors ==
+                local_slots_backing.weight_tensor_slots.at(layer_guid));
         }
         SUBCASE("Output tensor slots") {
           std::vector<tensor_guid_t> correct_outgoing_tensors =
@@ -192,7 +198,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         b.bind(QUERY, input_tensor(0));
         b.bind(KEY, input_tensor(1));
         b.bind(VALUE, input_tensor(2));
-        b.bind(WEIGHTS, weight_tensor(3));
+        b.bind(WEIGHTS, weight_tensor(0));
         b.bind(OUTPUT, output_tensor(0));
 
         b.bind_grad(QUERY, input_tensor(0));

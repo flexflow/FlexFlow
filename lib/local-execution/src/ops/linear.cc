@@ -161,13 +161,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_linear_init_task_impl() {
-  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
+  return TaskImplFunction{InitOpTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_linear_fwd_task_impl() {
-  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
+  return TaskImplFunction{FwdBwdOpTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_linear_bwd_task_impl() {
-  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
+  return TaskImplFunction{FwdBwdOpTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_linear_init_signature() {

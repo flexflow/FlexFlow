@@ -1,5 +1,5 @@
 #include "local-execution/task_signature_impl.h"
-#include "local-execution/ops/attention.h"
+#include "ops/attention.h"
 #include "ops/batch_matmul.h"
 #include "ops/batch_norm.h"
 #include "ops/cast.h"
@@ -50,8 +50,8 @@ TaskSignatureAndImpl get_task_sig_impl(task_id_t const &task_id) {
       return TaskSignatureAndImpl{get_element_unary_fwd_task_impl(),
                                   get_element_unary_fwd_signature()};
     case task_id_t::ELEMENTUNARY_BWD_TASK_ID:
-      return TaskSignatureAndImpl{get_element_binary_bwd_task_impl(),
-                                  get_element_binary_bwd_signature()};
+      return TaskSignatureAndImpl{get_element_unary_bwd_task_impl(),
+                                  get_element_unary_bwd_signature()};
     case task_id_t::CONV2D_INIT_TASK_ID:
       return TaskSignatureAndImpl{get_conv_2d_init_task_impl(),
                                   get_conv_2d_init_signature()};

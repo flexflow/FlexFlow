@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "non_graph_tensor_guid_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+  "json",
+]
+
+[[fields]]
+name = "raw_uid"
+type = "int"

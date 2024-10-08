@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "TensorGuidSlotSpec"
+features = [
+  "eq",
+  "fmt",
+  "hash",
+  "ord",
+]
+
+includes = [
+  "local-execution/slot_type.dtg.h",
+  "local-execution/is_grad.dtg.h",
+]
+
+[[fields]]
+name = "slot_type"
+type = "::FlexFlow::SlotType"
+
+[[fields]]
+name = "is_grad"
+type = "::FlexFlow::IsGrad"
+

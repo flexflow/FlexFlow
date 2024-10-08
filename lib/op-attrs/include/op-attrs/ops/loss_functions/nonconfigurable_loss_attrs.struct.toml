@@ -1,16 +1,16 @@
 namespace = "FlexFlow"
-name = "OtherLossAttrs"
+name = "NonconfigurableLossAttrs"
 features = [
   "eq",
   "ord",
   "hash",
-  "fmt",
-  "rapidcheck",
   "json",
+  "rapidcheck",
+  "fmt",
 ]
 
 includes = [
-  "op-attrs/ops/loss_functions/loss_function.dtg.h",
+  "op-attrs/ops/loss_functions/loss_function.dtg.h"
 ]
 
 [[fields]]

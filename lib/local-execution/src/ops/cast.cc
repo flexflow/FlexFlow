@@ -79,10 +79,10 @@ static std::optional<float>
 }
 
 TaskImplFunction get_cast_fwd_task_impl() {
-  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
+  return TaskImplFunction{FwdBwdOpTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_cast_bwd_task_impl() {
-  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
+  return TaskImplFunction{FwdBwdOpTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_cast_fwd_signature() {

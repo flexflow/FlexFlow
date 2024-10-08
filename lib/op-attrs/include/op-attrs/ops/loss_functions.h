@@ -4,16 +4,13 @@
 #include "op-attrs/ops/core.h"
 #include "op-attrs/ops/loss_functions/loss_attrs.dtg.h"
 #include "op-attrs/ops/loss_functions/loss_function.dtg.h"
+#include "op-attrs/ops/loss_functions/nonconfigurable_loss_attrs.dtg.h"
+#include "op-attrs/ops/loss_functions/sparse_categorical_cross_entropy_loss_attrs.dtg.h"
 
 namespace FlexFlow {
 
-CHECK_VALID_OP_ATTR(LossAttrs);
-
-LossFunction parse_loss_function_name(std::string const &);
-
-LossFunction get_loss_function(OtherLossAttrs const &);
-LossFunction get_loss_function(SparseCategoricalCrossEntropyLossAttrs const &);
 LossFunction get_loss_function(LossAttrs const &);
+LossFunction parse_loss_name(std::string const &raw_name);
 
 } // namespace FlexFlow
 

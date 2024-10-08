@@ -35,7 +35,9 @@ OpTaskInvocation forward(ElementUnaryAttrs const &attrs) {
 
   b.bind(INPUT, input_tensor(0));
   b.bind(OUTPUT, output_tensor(0));
+  b.bind_arg(ATTRS, attrs);
 
+  b.bind_arg(HANDLE, ff_handle());
   b.bind_arg(PROFILING, profiling_settings());
   b.bind_arg(PER_DEVICE_STATE,
              per_device_op_state<ElementUnaryPerDeviceState>());
@@ -52,8 +54,8 @@ OpTaskInvocation backward(ElementUnaryAttrs const &attrs) {
 static DeviceSpecificDeviceStates
     init_task_impl(TaskArgumentAccessor const &acc) {
 
-  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
-  ProfilingSettings profiling = acc.get_argument<ProfilingSettings>(PROFILING);
+  auto attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
+
   ParallelTensorShape input_shape =
       acc.get_argument<ParallelTensorShape>(INPUT_SHAPE);
 
@@ -69,7 +71,7 @@ static DeviceSpecificDeviceStates
 static std::optional<float> forward_task_impl(TaskArgumentAccessor const &acc) {
   auto input = acc.get_tensor<Permissions::RO>(INPUT);
   auto output = acc.get_tensor<Permissions::WO>(OUTPUT);
-  auto const &attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
+  auto attrs = acc.get_argument<ElementUnaryAttrs>(ATTRS);
 
   auto handle = acc.get_argument<PerDeviceFFHandle>(HANDLE);
 
@@ -114,13 +116,13 @@ static std::optional<float>
 }
 
 TaskImplFunction get_element_unary_init_task_impl() {
-  return TaskImplFunction{InitTaskImplFunction{init_task_impl}};
+  return TaskImplFunction{InitOpTaskImplFunction{init_task_impl}};
 }
 TaskImplFunction get_element_unary_fwd_task_impl() {
-  return TaskImplFunction{FwdBwdTaskImplFunction{forward_task_impl}};
+  return TaskImplFunction{FwdBwdOpTaskImplFunction{forward_task_impl}};
 }
 TaskImplFunction get_element_unary_bwd_task_impl() {
-  return TaskImplFunction{FwdBwdTaskImplFunction{backward_task_impl}};
+  return TaskImplFunction{FwdBwdOpTaskImplFunction{backward_task_impl}};
 }
 
 OpTaskSignature get_element_unary_init_signature() {

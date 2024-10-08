@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "OptimizerAttrs"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+  "rapidcheck",
+]
+
+includes = [
+  "pcg/optimizers/sgd_optimizer_attrs.dtg.h",
+  "pcg/optimizers/adam_optimizer_attrs.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::SGDOptimizerAttrs"
+key = "sgd_optimizer"
+
+[[values]]
+type = "::FlexFlow::AdamOptimizerAttrs"
+key = "adam_optimizer"

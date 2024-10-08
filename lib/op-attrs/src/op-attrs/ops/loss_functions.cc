@@ -1,22 +1,18 @@
-#include "op-attrs/ops/loss_functions/loss_functions.h"
+#include "op-attrs/ops/loss_functions.h"
 #include "utils/containers/transform.h"
+#include "utils/exception.h"
+#include "utils/overload.h"
 #include <algorithm>
 #include <cassert>
 
 namespace FlexFlow {
 
-LossFunction get_loss_type(OtherLossAttrs const &attrs) {
-  return attrs.loss_type;
-}
-
-LossFunction
-    get_loss_type(SparseCategoricalCrossEntropyLossAttrs const &attrs) {
-  return LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY;
-}
-
-LossFunction get_loss_type(LossAttrs const &attrs) {
+LossFunction get_loss_function(LossAttrs const &attrs) {
   return attrs.visit<LossFunction>(
-      [](auto const &t) { return get_loss_type(t); });
+      overload{[&](SparseCategoricalCrossEntropyLossAttrs const &s) {
+                 return LossFunction::SPARSE_CATEGORICAL_CROSSENTROPY;
+               },
+               [&](NonconfigurableLossAttrs const &s) { return s.loss_type; }});
 }
 
 LossFunction parse_loss_name(std::string const &raw_name) {
