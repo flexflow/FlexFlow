@@ -1825,13 +1825,13 @@ template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<float>(
     BatchConfig const *bc,
     int shard_id,
     float *output_ptr,
-    ffStream_t stream);
+    cudaStream_t stream);
 
 template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     int shard_id,
     half *output_ptr,
-    ffStream_t stream);
+    cudaStream_t stream);
 
 }; // namespace FlexFlow

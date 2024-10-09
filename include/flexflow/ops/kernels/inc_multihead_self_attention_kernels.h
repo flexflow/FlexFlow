@@ -26,6 +26,13 @@ void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          ffStream_t stream);
 
 template <typename DT>
+void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        int shard_id,
+                        DT *output_ptr,
+                        ffStream_t stream);
+
+template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,
                                           int num_tokens,
                                           int num_total_tokens,
@@ -64,13 +71,6 @@ __global__ void
                            int q_array_size,
                            bool q_tensor);
 #endif
-
-template <typename DT>
-void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        int shard_id,
-                        DT *output_ptr,
-                        ffStream_t stream);
 
 template <typename DT>
 void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,

@@ -19,8 +19,8 @@
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
 #include "flexflow/utils/hip_helper.h"
 #include "hip/hip_complex.h"
+#include <hip/hip_math_constants.h>
 #include <hip/hip_runtime.h>
-#include <math_constants.h>
 
 namespace FlexFlow {
 
@@ -732,7 +732,7 @@ __global__ void
         pos * (1.0 / pow(rope_theta, (float)2 * pos_i / proj_size)); // θ_i
 
     if (llama3_rope) {
-      float pi = CUDART_PI_F;
+      float pi = HIP_PI_F;
       float wavelen = 2 * pi / freq;
       float low_freq_wavelen =
           original_max_position_embeddings / low_freq_factor;
@@ -799,7 +799,7 @@ __global__ void
         pos * (1.0 / pow(rope_theta, (float)2 * idx / proj_size)); // θ_i
 
     if (llama3_rope) {
-      float pi = CUDART_PI_F;
+      float pi = HIP_PI_F;
       float wavelen = 2 * pi / freq;
       float low_freq_wavelen =
           original_max_position_embeddings / low_freq_factor;
@@ -829,7 +829,6 @@ template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
-                        DT const *input_ptr,
                         DT *output_ptr,
                         hipStream_t stream) {
 
@@ -1091,9 +1090,7 @@ void peft_bwd_kernel(IncMultiHeadSelfAttentionMeta const *m,
                      BatchConfig const *bc,
                      int shard_id,
                      DT *input_grad_ptr,
-                     DT const *weight_ptr,
                      DT const *output_grad_ptr,
-                     DT const *bias_ptr,
                      hipStream_t stream) {
   assert(!m->offload);
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
@@ -1854,13 +1851,13 @@ template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<float>(
     BatchConfig const *bc,
     int shard_id,
     float *output_ptr,
-    ffStream_t stream);
+    hipStream_t stream);
 
 template void Kernels::IncMultiHeadAttention::compute_qkv_kernel<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     BatchConfig const *bc,
     int shard_id,
     half *output_ptr,
-    ffStream_t stream);
+    hipStream_t stream);
 
 }; // namespace FlexFlow

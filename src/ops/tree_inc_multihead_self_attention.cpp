@@ -17,7 +17,6 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
-#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_complex.h>
 #include <hip/hip_runtime.h>
