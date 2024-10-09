@@ -15,7 +15,7 @@
 
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/beam_topk.h"
-#include "flexflow/request_manager.h"
+// #include "flexflow/request_manager.h"
 #include "flexflow/utils/cuda_helper.h"
 
 namespace FlexFlow {

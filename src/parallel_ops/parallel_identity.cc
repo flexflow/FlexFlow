@@ -133,6 +133,7 @@ void ParallelIdentity::init(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          outputs[0]->machine_view.hash());
+  launcher.concurrent = true;
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -214,6 +215,7 @@ void ParallelIdentity::backward(FFModel const &ff) {
                          false /*must*/,
                          0 /*mapper_id*/,
                          inputs[0]->machine_view.hash());
+  launcher.concurrent = true;
   launcher.add_region_requirement(RegionRequirement(inputs[0]->part_grad,
                                                     0 /*projection id*/,
                                                     READ_WRITE,
@@ -268,6 +270,7 @@ void ParallelIdentity::init_inference(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.concurrent = true;
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -381,6 +384,7 @@ FutureMap
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
+  launcher.concurrent = true;
   launcher.add_future(bc);
   launcher.add_region_requirement(
       RegionRequirement(batch_inputs[0]->part_grad,
