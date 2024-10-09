@@ -19,7 +19,12 @@ DeviceType get_device_type(MachineView const &mv);
 std::vector<stride_t> get_strides(MachineView const &mv);
 
 std::vector<MachineSpecificationDimension>
-    get_projections(MachineView const &mv);
+    get_dimensions(MachineView const &mv);
+
+MachineView machine_view_from_strides_and_machine_spec_dimensions(
+    MachineSpaceCoordinate const &start,
+    std::vector<stride_t> const &strides,
+    std::vector<MachineSpecificationDimension> const &dims);
 
 std::optional<MachineSpaceCoordinate>
     get_machine_space_coordinate(OperatorTaskSpace const &task,

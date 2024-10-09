@@ -24,19 +24,19 @@ namespace FlexFlow {
 bool is_valid_machine_view(MachineView const &mv,
                            OperatorTaskSpace const &task,
                            MachineSpecification const &ms) {
-  std::optional<MachineSpaceCoordinate> maximum_device_coords =
+  std::optional<MachineSpaceCoordinate> maximum_device_coord =
       get_machine_space_coordinate(
           task, mv, get_task_space_maximum_coordinate(task), ms);
-  return maximum_device_coords.has_value();
+  return maximum_device_coord.has_value();
 }
 
-/* Generates a set of candidate `MachineView`s
- * The returned set includes all valid machine views, and might contain
- invalid ones. This function should never be used externally (see
- * `get_allowed_partial_machine_view_mappings` instead). There is no
- guarantee that a non-empty returned set contains a valid machine view (i.e.
- its possible for all
- * `MachineView`s to be invalid)
+/*
+ * Generates a set of candidate `MachineView`s.
+ * The returned set includes all valid machine views, and might contain invalid
+ * ones. This function should not be used externally (see
+ * `get_allowed_machine_views` instead). There is no guarantee that a non-empty
+ * returned set contains a valid machine view (i.e. it's possible for all
+ * the returned `MachineView`s to be invalid)
  */
 static std::unordered_set<MachineView>
     get_candidate_machine_views(MachineSpecification const &machine_spec,
@@ -58,7 +58,7 @@ static std::unordered_set<MachineView>
 
     std::vector<stride_t> single_stride_range =
         transform(range(1, max_stride_upper_bound + 1),
-                  [](int stride) { return stride_t(stride); });
+                  [](int stride) { return stride_t{stride}; });
     std::unordered_multiset<std::vector<stride_t>> raw_stride_vectors =
         cartesian_product(replicate(tensor_dims.size(), single_stride_range));
     std::unordered_multiset<MultiDimensionalStride> strides =
@@ -71,15 +71,16 @@ static std::unordered_set<MachineView>
   auto candidate_starts = [](MachineSpecification const &ms,
                              DeviceType const &device_type) {
     std::unordered_set<MachineSpaceCoordinate> result;
-    for (int i : range(ms.num_nodes)) {
-      for (int j : range(get_num_devices_per_node(ms, device_type))) {
-        result.insert(MachineSpaceCoordinate{i, j, device_type});
+    for (int node_idx : range(ms.num_nodes)) {
+      for (int device_idx : range(get_num_devices_per_node(ms, device_type))) {
+        result.insert(
+            MachineSpaceCoordinate{node_idx, device_idx, device_type});
       }
     }
     return result;
   };
 
-  auto candidate_projections = [](OperatorTaskSpace const &task) {
+  auto candidate_dimensions = [](OperatorTaskSpace const &task) {
     std::unordered_set<MachineSpecificationDimension> options = {
         MachineSpecificationDimension::INTER_NODE,
         MachineSpecificationDimension::INTRA_NODE};
@@ -95,13 +96,11 @@ static std::unordered_set<MachineView>
        candidate_strides(tensor_dims, total_devices)) {
     for (MachineSpaceCoordinate start :
          candidate_starts(machine_spec, device_type)) {
-      for (std::vector<MachineSpecificationDimension> const &proj :
-           candidate_projections(task)) {
-        std::vector<MachineViewDimension> dimensions =
-            transform(zip(strides.raw_strides, proj), [&](auto const &p) {
-              return MachineViewDimension{p.first, p.second};
-            });
-        machine_views.insert(MachineView{start, dimensions});
+      for (std::vector<MachineSpecificationDimension> const &dims :
+           candidate_dimensions(task)) {
+        machine_views.insert(
+            machine_view_from_strides_and_machine_spec_dimensions(
+                start, strides.raw_strides, dims));
       }
     }
   }
