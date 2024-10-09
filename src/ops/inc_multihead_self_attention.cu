@@ -577,9 +577,9 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                            min(CUDA_NUM_THREADS, parallelism),
                            0,
                            stream>>>(output_ptr,
+                                     m->qProjSize,
                                      num_tokens,
                                      m->num_q_heads,
-                                     m->qProjSize,
                                      m->scaling_factor,
                                      m->hidden_size);
   }
@@ -810,6 +810,21 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
       assert(false);
     }
   }
+}
+
+std::string get_fwd_dbg_folder(IncMultiHeadSelfAttentionMeta const *m,
+                               int shard_id) {
+  std::string op_name_without_uid =
+      IncMultiHeadSelfAttention::get_op_name_without_uid(m);
+  fs::path dst_filepath = get_dst_folder("fwd", m->decoding_step, shard_id);
+  if (m->layer_guid.model_id > 0) {
+    assert(false && "Model ID > 0 not supported yet");
+  }
+  std::string layername = "layers." +
+                          std::to_string(m->layer_guid.transformer_layer_id) +
+                          "." + op_name_without_uid;
+  dst_filepath /= layername;
+  return dst_filepath.string();
 }
 
 template <typename DT>
