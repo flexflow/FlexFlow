@@ -12,8 +12,6 @@ def test_spec_inc_multiquery_self_attention(
         kdim: int = 0,
         vdim: int = 0,
         dropout: float = 0.0,
-        bias: bool = True,
-        add_bias_kv: bool = False,
         add_zero_attn: bool = False,
         data_type: DataType = DataType.DT_NONE,
         kernel_initializer=None,
@@ -36,8 +34,6 @@ def test_spec_inc_multiquery_self_attention(
         kdim=kdim,
         vdim=vdim,
         dropout=dropout,
-        bias=bias,
-        add_bias_kv=add_bias_kv,
         add_zero_attn=add_zero_attn,
         data_type=data_type,
         kernel_initializer=kernel_initializer,
@@ -89,8 +85,6 @@ if __name__ == '__main__':
         kdim=0,  # Example value for kdim
         vdim=0,  # Example value for vdim
         dropout=0.1,  # Example value for dropout
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_FLOAT,
         kernel_initializer=None,  # Example value for kernel_initializer

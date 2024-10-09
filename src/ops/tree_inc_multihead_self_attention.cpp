@@ -17,7 +17,6 @@
 #include "flexflow/ffconst_utils.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
-#include "flexflow/ops/tree_inc_multihead_self_attention.h"
 #include "flexflow/utils/hip_helper.h"
 #include <hip/hip_complex.h>
 #include <hip/hip_runtime.h>
@@ -519,300 +518,6 @@ __global__ void tree_fill_entries_above_diagonal(DT *matrix,
   }
 }
 
-template <typename DT>
-void compute_attention_kernel(TreeIncMultiHeadSelfAttentionMeta const *m,
-                              TreeVerifyBatchConfig const *bc,
-                              int shard_id,
-                              DT *output_ptr,
-                              DT const *bias_ptr,
-                              DT const *weight_ptr,
-                              hipStream_t stream) {
-  checkCUDA(hipblasSetStream(m->handle.blas, stream));
-  checkCUDNN(miopenSetStream(m->handle.dnn, stream));
-  hipblasDatatype_t hipblas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-  miopenDataType_t miopen_data_type = ff_to_cudnn_datatype(m->output_type[0]);
-  assert(data_type_size(m->output_type[0]) == sizeof(DT));
-  hipblasDatatype_t compute_type = hipblas_data_type;
-  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  //   hipblasDatatype_t compute_type = hipblas_data_type;
-  // #else
-  //   // TODO: currently use the hipblas_data_type
-  //   // cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  //   hipblasDatatype_t compute_type = hipblas_data_type;
-  // #endif
-  // int num_requests = bc->num_active_requests();
-  int processed_tokens_in_batch = 0;
-  // int qkv_block_size =
-  //     (m->qProjSize + m->kProjSize + m->vProjSize) * bc->num_active_tokens();
-  int q_block_size = m->qProjSize;
-  int kt_block_size = m->kProjSize;
-  int kt_req_block_size =
-      kt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
-      BatchConfig::max_spec_tree_token_num();
-  int vt_block_size = m->vProjSize;
-  int vt_req_block_size =
-      vt_block_size * m->num_q_heads * BatchConfig::max_sequence_length() +
-      BatchConfig::max_spec_tree_token_num();
-  assert(m->qProjSize == m->kProjSize);
-
-  for (int i = 0; i < bc->max_requests_per_batch(); i++) {
-    if (bc->request_completed[i]) {
-      continue;
-    }
-    assert(processed_tokens_in_batch ==
-           bc->requestsInfo[i].first_token_offset_in_batch);
-    int last_token_idx_of_the_request =
-        processed_tokens_in_batch + bc->requestsInfo[i].num_tokens_in_batch - 1;
-    while (processed_tokens_in_batch <= last_token_idx_of_the_request) {
-      int num_new_tokens = 1;
-      int j = processed_tokens_in_batch;
-      while ((j + 1 <= last_token_idx_of_the_request) &&
-             (bc->tokensInfo[j].abs_depth_in_request + 1 ==
-              bc->tokensInfo[j + 1].abs_depth_in_request)) {
-        j++;
-        num_new_tokens++;
-      }
-
-      int total_tokens_in_request = bc->tokensInfo[j].abs_depth_in_request + 1;
-      assert(num_new_tokens >= 1 && total_tokens_in_request >= num_new_tokens);
-      {
-        // update K-V cache
-        int parallelism = m->hidden_size * KV_WEIGHT_NUM * num_new_tokens;
-        hipLaunchKernelGGL(
-            HIP_KERNEL_NAME(update_tree_branch_kv_cache<DT>),
-            GET_BLOCKS(parallelism),
-            min(CUDA_NUM_THREADS, parallelism),
-            0,
-            stream,
-            static_cast<DT *>(m->devQKVProjArray),
-            static_cast<DT *>(m->keyCache),
-            static_cast<DT *>(m->valueCache),
-            m->token_infos,
-            m->qProjSize,
-            m->kProjSize,
-            m->vProjSize,
-            num_new_tokens,            // num_tokens_in_branch
-            processed_tokens_in_batch, // num_processed_tokens_in_batch
-            m->num_active_infr_tokens, // total_tokens_in_batch
-            BatchConfig::max_sequence_length(),
-            m->hidden_size);
-      }
-
-      // bc->token_last_available_idx[i] + 1;
-      // Compute (QK^T/sqrt(d_k))
-      int m_ = num_new_tokens;
-      int n = total_tokens_in_request;
-      int k = m->qProjSize;
-      int lda = k * m->num_q_heads * QKV_WEIGHT_NUM, ldb = k * m->num_q_heads,
-          ldc = m_;
-      int strideA = q_block_size;
-      int strideB = kt_block_size;
-      int strideC = num_new_tokens * total_tokens_in_request;
-
-      // a flag of using this scaling alpha
-      DT alpha = 1.0f, beta = 0.0f;
-      if (*m->qk_prod_scaling) {
-        alpha = static_cast<DT>(1.0f / sqrt(m->kProjSize));
-      }
-      // To get A, skip over Q entries from previous requests (same head)
-      DT const *A = static_cast<DT *>(m->devQKVProjArray) +
-                    processed_tokens_in_batch * m->qProjSize * m->num_q_heads *
-                        QKV_WEIGHT_NUM;
-      // To get B, skip over K entries from previous requests (all heads +
-      // padding)
-      DT const *B = static_cast<DT *>(m->keyCache) + i * kt_req_block_size;
-      // To get C, skip over QK^T products from previous requests
-      DT *C = static_cast<DT *>(m->qk_prods);
-
-      checkCUDA(hipblasGemmStridedBatchedEx(m->handle.blas,
-                                            HIPBLAS_OP_T,
-                                            HIPBLAS_OP_N,
-                                            m_,
-                                            n,
-                                            k,
-                                            &alpha,
-                                            A,
-                                            hipblas_data_type,
-                                            lda,
-                                            strideA,
-                                            B,
-                                            hipblas_data_type,
-                                            ldb,
-                                            strideB,
-                                            &beta,
-                                            C,
-                                            hipblas_data_type,
-                                            ldc,
-                                            strideC,
-                                            m->num_q_heads,
-                                            compute_type,
-                                            HIPBLAS_GEMM_DEFAULT));
-
-      if (*m->position_bias) {
-        size_t parallelism =
-            m->num_q_heads * total_tokens_in_request * num_new_tokens;
-        hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_position_bias_qkprd<DT>),
-                           GET_BLOCKS(parallelism),
-                           min((size_t)CUDA_NUM_THREADS, parallelism),
-                           0,
-                           stream,
-                           C,
-                           num_new_tokens,
-                           total_tokens_in_request,
-                           m->num_q_heads,
-                           m->global_num_q_heads,
-                           shard_id);
-      }
-
-      // Fill all elements above diagonal in qk prods with -inf to force
-      // causal attention.
-      assert(num_new_tokens <= total_tokens_in_request);
-      if (num_new_tokens > 1) {
-        size_t parallelism =
-            m->num_q_heads * num_new_tokens * total_tokens_in_request;
-        hipLaunchKernelGGL(
-            HIP_KERNEL_NAME(tree_fill_entries_above_diagonal<DT>),
-            GET_BLOCKS(parallelism),
-            min((size_t)CUDA_NUM_THREADS, parallelism),
-            0,
-            stream,
-            C,
-            num_new_tokens,
-            total_tokens_in_request,
-            m->num_q_heads,
-            static_cast<DT>(-INFINITY));
-      }
-      // Compute Softmax(QK^T/sqrt(d_k))
-      // Before modifying the parameters below, make sure to read the following
-      // description of the CUDNN_TENSOR_NCHW tensor layout, from
-      // https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnTensorFormat_t:
-      // This tensor format specifies that the data is laid out in the following
-      // order: batch size, feature maps, rows, columns. The strides are
-      // implicitly defined in such a way that the data are contiguous in memory
-      // with no padding between images, feature maps, rows, and columns; the
-      // columns are the inner dimension and the images are the outermost
-      // dimension.
-      int n_param = m->num_q_heads;
-      int c_param = total_tokens_in_request;
-      int h_param = 1;
-      int w_param = num_new_tokens;
-      checkCUDNN(miopenSet4dTensorDescriptor(
-          m->qk_tensor, miopen_data_type, n_param, c_param, h_param, w_param));
-      float softmax_alpha = 1.0f, softmax_beta = 0.0f;
-      DT *C_softmax = static_cast<DT *>(m->qk_prods_softmax);
-      // The softmax operation below is executed according to the
-      // CUDNN_SOFTMAX_MODE_CHANNEL, which is also described in the docs: The
-      // softmax operation is computed per spatial location (H,W) per image (N)
-      // across dimension C.
-      checkCUDNN(miopenSoftmaxForward_V2(m->handle.dnn,
-                                         &softmax_alpha,
-                                         m->qk_tensor,
-                                         C,
-                                         &softmax_beta,
-                                         m->qk_tensor,
-                                         C_softmax,
-                                         MIOPEN_SOFTMAX_ACCURATE,
-                                         MIOPEN_SOFTMAX_MODE_CHANNEL));
-      // Matmul softmax(QK^T/sqrt(d_k)) by V
-      alpha = 1.0f, beta = 0.0f;
-      m_ = m->vProjSize;
-      n = num_new_tokens;
-      k = total_tokens_in_request;
-      lda = m_ * m->num_q_heads, ldb = n, ldc = m_ * m->num_q_heads;
-      strideA = vt_block_size;
-      strideB = num_new_tokens * total_tokens_in_request;
-      strideC = m->vProjSize;
-      // To get A, skip over V^T entries from previous requests (all heads +
-      // padding)
-      A = static_cast<DT *>(m->valueCache) + i * vt_req_block_size;
-      // To get B, skip over softmax(QK^T/sqrt(d_k)) entries from previous
-      // requests (all heads)
-      B = C_softmax;
-      // To get C, skip over softmax(QK^T/sqrt(d_k))V products from previous
-      // requests
-      C = static_cast<DT *>(m->attn_heads) +
-          processed_tokens_in_batch * m->num_q_heads * m->vProjSize;
-      checkCUDA(hipblasGemmStridedBatchedEx(m->handle.blas,
-                                            HIPBLAS_OP_N,
-                                            HIPBLAS_OP_T,
-                                            m_,
-                                            n,
-                                            k,
-                                            &alpha,
-                                            A,
-                                            hipblas_data_type,
-                                            lda,
-                                            strideA,
-                                            B,
-                                            hipblas_data_type,
-                                            ldb,
-                                            strideB,
-                                            &beta,
-                                            C,
-                                            hipblas_data_type,
-                                            ldc,
-                                            strideC,
-                                            m->num_q_heads,
-                                            compute_type,
-                                            HIPBLAS_GEMM_DEFAULT));
-      processed_tokens_in_batch += num_new_tokens;
-    }
-    // Before moving to the next request
-    // check that we have finished all tokens of the request
-    assert(last_token_idx_of_the_request + 1 == processed_tokens_in_batch);
-  }
-  // Project to output, save result directly on output tensor
-  DT alpha = 1.0f, beta = 0.0f;
-  int m_ = m->oProjSize;
-  int k = m->vProjSize * m->num_q_heads;
-  int n = processed_tokens_in_batch;
-  int lda = k, ldb = k, ldc = m_;
-  DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                         m->kProjSize * m->num_q_heads +
-                                         m->vProjSize * m->num_q_heads);
-  DT const *B = static_cast<DT *>(m->attn_heads);
-  DT *C = static_cast<DT *>(output_ptr);
-
-  checkCUDA(hipblasGemmEx(m->handle.blas,
-                          HIPBLAS_OP_T,
-                          HIPBLAS_OP_T,
-                          m_,
-                          n,
-                          k,
-                          &alpha,
-                          A,
-                          hipblas_data_type,
-                          lda,
-                          B,
-                          hipblas_data_type,
-                          ldb,
-                          &beta,
-                          C,
-                          hipblas_data_type,
-                          ldc,
-                          compute_type,
-                          HIPBLAS_GEMM_DEFAULT));
-
-  if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * processed_tokens_in_batch;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_w<DT>),
-                       GET_BLOCKS(parallelism),
-                       min(CUDA_NUM_THREADS, parallelism),
-                       0,
-                       stream,
-                       output_ptr,
-                       bias_ptr,
-                       processed_tokens_in_batch,
-                       qkv_weight_size,
-                       m->oProjSize);
-  }
-
-  assert(processed_tokens_in_batch == bc->num_active_infr_tokens());
-}
-
 #define LAUNCH_TREE_VERIFY_ATTENTION_SCORE_KERNEL(                             \
     DT, Dh, Dh_MAX, THDS_PER_KEY, THDS_PER_VALUE, THDS_PER_BLOCK, stream)      \
   smem_size_in_bytes_tree<DT>(m->qProjSize,                                    \
@@ -895,27 +600,10 @@ template <typename DT>
 void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       TreeVerifyBatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
-                      DT const *weight_ptr,
+                      DT const *qkv_ptr,
                       DT *output_ptr,
-                      DT const *bias_ptr,
                       hipStream_t stream) {
-  // additional processing for weight uploading
-  if (m->handle.offload_reserve_space != nullptr) {
-    // Note that we update weight_ptr and bias_ptr when uploading weight and
-    // bias
-    checkCUDA(hipMemcpyAsync(m->weight_ptr,
-                             weight_ptr,
-                             m->weightSize,
-                             hipMemcpyHostToDevice,
-                             stream));
-    weight_ptr = static_cast<DT *>(m->weight_ptr);
-    if (m->biasSize > 0) {
-      checkCUDA(hipMemcpyAsync(
-          m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
-      bias_ptr = static_cast<DT *>(m->bias_ptr);
-    }
-  }
+
   // copy committed tokens info to GPU for the commit_tokens kernel
   // Note that m->num_active_infr_tokens stores the number of active
   // tokens in the previous batch, which is needed for committing
@@ -929,39 +617,36 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
   // tokens for the current batch
   m->num_active_infr_tokens = bc->num_active_infr_tokens();
 
-  // here because we need postion info in infernece 1
-  if (m->offload && m->biasSize > 0) {
-    checkCUDA(hipMemcpyAsync(
-        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
-    bias_ptr = static_cast<DT *>(m->bias_ptr);
-  }
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size =
+      m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  hipMemcpyAsync(m->devQKVProjArray,
+                 qkv_ptr,
+                 qkv_proj_size *
+                     sizeof(DT), // is this right, do we need layers etc here
+                 hipMemcpyDeviceToDevice,
+                 stream);
+
   // phase 1: Implement kernel to compute KQV for input tokens
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn
+  // first
+  compute_qkv_kernel(
+      m, bc, shard_id, static_cast<DT *>(m->devQKVProjArray), stream);
 
   // phase 2: No need to update key/val cache
-  // IncMultiHeadSelfAttention::update_kv_cache_kernel(
-  //    m, bc, stream);
-  // use the new kernel
   compute_attention_kernel_fused<DT>(
       m, bc, static_cast<DT *>(m->attn_heads), stream);
 
   int processed_tokens_in_batch = bc->num_active_tokens();
 
-  compute_o_prod_bias(m,
-                      bc,
-                      shard_id,
-                      output_ptr,
-                      weight_ptr,
-                      bias_ptr,
-                      processed_tokens_in_batch,
-                      stream);
+  int num_tokens = bc->num_active_tokens();
+  hipMemcpyAsync(output_ptr,
+                 m->attn_heads,
+                 m->oProjSize * num_tokens * sizeof(DT),
+                 hipMemcpyDeviceToDevice,
+                 stream);
 }
 
 } // namespace TreeIncMultiHeadAttention
@@ -973,12 +658,9 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     TreeVerifyBatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
-    GenericTensorAccessorR const &weight,
-    GenericTensorAccessorW const &output,
-    GenericTensorAccessorR const &bias) {
+    GenericTensorAccessorW const &output) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -987,44 +669,14 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     checkCUDA(hipEventRecord(t_start, stream));
   }
 
-  // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  if (use_bias) {
-    assert(input.data_type == bias.data_type);
-  }
 
   if (input.data_type == DT_HALF) {
-    if (m->offload) {
-      pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
-    }
-
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_half_ptr(),
-        m->offload ? static_cast<half *>(m->weight_ptr) : weight.get_half_ptr(),
-        output.get_half_ptr(),
-        bias_ptr,
-        stream);
+        m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
-    if (m->offload) {
-      pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
-    }
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::TreeIncMultiHeadAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_float_ptr(),
-        m->offload ? static_cast<float *>(m->weight_ptr)
-                   : weight.get_float_ptr(),
-        output.get_float_ptr(),
-        bias_ptr,
-        stream);
+        m, bc, shard_id, input.get_float_ptr(), output.get_float_ptr(), stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -1037,16 +689,12 @@ void TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
     checkCUDA(hipEventDestroy(t_start));
     checkCUDA(hipEventDestroy(t_end));
     printf("TreeIncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
-    // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
-    // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
-    // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
 TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     TreeIncMultiHeadSelfAttention const *attn,
-    GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_q_heads,
@@ -1061,14 +709,11 @@ TreeIncMultiHeadSelfAttentionMeta::TreeIncMultiHeadSelfAttentionMeta(
                                     attn->kProjSize,
                                     attn->vProjSize,
                                     attn->oProjSize,
-                                    attn->apply_rotary_embedding,
-                                    attn->qkv_bias,
+                                    attn->rotary_embedding_meta,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->final_bias,
                                     attn->scaling_factor,
-                                    weight,
                                     gpu_mem_allocator,
                                     num_samples,
                                     attn->num_q_heads,

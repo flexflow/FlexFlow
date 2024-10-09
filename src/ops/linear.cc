@@ -668,11 +668,11 @@ void Linear::inference_task(Task const *task,
     }
     Linear::save_inference_tensors_to_file(
         m, shard_id, bc, {input}, weights_accessors, {output});
-    printf("\tin=[%i,%i].T @ w=[%i,%i] -> out=[%i,%i]\n",
-           in_dim,
-           bc->num_tokens,
+    printf("\tw=[%i,%i].T @ in=[%i,%i] -> out=[%i,%i]\n",
            in_dim,
            out_dim,
+           in_dim,
+           bc->num_tokens,
            out_dim,
            bc->num_tokens);
   }

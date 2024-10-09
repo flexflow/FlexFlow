@@ -988,9 +988,20 @@ void ResidualLayerNorm::inference_task(
     return;
   }
 
-  assert(regions.size() ==
-         3 + m->use_two_residuals +
-             (m->elementwise_affine ? (m->use_bias ? 2 : 1) : 0));
+  int expected_num_regions = 4; // input, residual1, added_output, output
+  if (m->use_two_residuals) {
+    expected_num_regions++; // residual2
+  }
+  if (m->inplace_residual) {
+    expected_num_regions--; // added_output = input
+  }
+  if (m->elementwise_affine) {
+    expected_num_regions += 1; // gamma
+    if (m->use_bias) {
+      expected_num_regions += 1; // beta
+    }
+  }
+  assert(regions.size() == expected_num_regions);
 
   int region_idx = 0, task_region_idx = 0;
   GenericTensorAccessorR input =

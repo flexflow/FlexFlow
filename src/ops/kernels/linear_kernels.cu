@@ -511,6 +511,7 @@ void forward_kernel(LinearMeta const *m,
                          out_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
   // use_bias = True
   if (bias_ptr != NULL) {
     // fuse bias and relu

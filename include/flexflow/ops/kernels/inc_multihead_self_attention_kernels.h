@@ -15,20 +15,22 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 template <typename DT>
+void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
+                                     BatchConfig const *bc,
+                                     int shard_id,
+                                     ffStream_t stream);
+template <typename DT>
 void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          BatchConfig const *bc,
                                          DT *output_ptr,
                                          ffStream_t stream);
 
 template <typename DT>
-void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
-                         BatchConfig const *bc,
-                         int shard_id,
-                         DT *output_ptr,
-                         DT const *weight_ptr,
-                         DT const *bias_ptr,
-                         int num_tokens,
-                         ffStream_t stream);
+void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
+                        BatchConfig const *bc,
+                        int shard_id,
+                        DT *output_ptr,
+                        ffStream_t stream);
 
 template <typename DT>
 __global__ void apply_position_bias_qkprd(DT *input_ptr,
@@ -37,27 +39,6 @@ __global__ void apply_position_bias_qkprd(DT *input_ptr,
                                           int num_heads,
                                           int global_num_q_heads,
                                           int shard_id);
-
-template <typename DT>
-__global__ void apply_proj_bias_w(DT *input_ptr,
-                                  DT const *bias_ptr,
-                                  int num_tokens,
-                                  int qkv_weight_size,
-                                  int oProjSize);
-
-template <typename DT>
-__global__ void apply_proj_bias_qkv(DT *input_ptr,
-                                    DT const *bias_ptr,
-                                    int shard_id,
-                                    int num_tokens,
-                                    int qProjSize,
-                                    int kProjSize,
-                                    int vProjSize,
-                                    int num_heads,
-                                    int num_kv_heads,
-                                    bool scaling_query,
-                                    float scaling_factor,
-                                    int hidden_size);
 
 #if defined(FF_USE_CUDA) || defined(FF_USE_HIP_CUDA)
 template <typename DT>
@@ -90,16 +71,6 @@ __global__ void
                            int q_array_size,
                            bool q_tensor);
 #endif
-
-template <typename DT>
-void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
-                        BatchConfig const *bc,
-                        int shard_id,
-                        DT const *input_ptr,
-                        DT const *weight_ptr,
-                        DT *output_ptr,
-                        DT const *bias_ptr,
-                        ffStream_t stream);
 
 template <typename DT>
 void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,

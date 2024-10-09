@@ -102,11 +102,28 @@ void STARCODER::create_starcoder_model(
     Tensor hidden_states = res_ln_outputs[0];
     Tensor ln_1 = res_ln_outputs[1];
 
+    Tensor qkv_proj = ff.dense(
+        ln_1,
+        startcoder_config.hidden_size *
+            3, // q, k, v. need to change if want to remove replication.
+               // (q_heads + 2 * kv_heads) * proj_size
+        AC_MODE_NONE,
+        false,         // seems like it does not use bias
+        DT_NONE,       // what is this
+        nullptr,       // ?
+        nullptr,       // ?
+        nullptr,       // ?
+        REG_MODE_NONE, // no regularization
+        0.0f,          // no dropout
+        std::string("layers." + std::to_string(i) + ".self_attention.qkv_proj")
+            .c_str());
+
     Tensor mha;
+    Tensor o_proj;
     switch (mode) {
       case INC_DECODING_MODE: {
-        mha = ff.inc_multiquery_self_attention(
-            ln_1,
+        o_proj = ff.inc_multiquery_self_attention(
+            qkv_proj,
             startcoder_config.hidden_size,
             startcoder_config.num_attention_heads,
             1,
@@ -114,17 +131,15 @@ void STARCODER::create_starcoder_model(
                 startcoder_config.num_attention_heads,
             startcoder_config.hidden_size /
                 startcoder_config.num_attention_heads,
-            startcoder_config.dropout_p, /*dropout*/
-            true,                        /*bias*/
-            false,                       /*add_bias_kv*/
-            false,                       /*add_zero_attn*/
-            DT_NONE,                     /*data_type*/
-            nullptr,                     /*kernel_initializer*/
-            false,                       /*apply_rotary_embedding*/
-            false,                       /*scaling query*/
-            1.0f,                        /*scaling factor*/
-            true,                        /*qk_prod_scaling*/
-            false,                       /*position_bias*/
+            startcoder_config.dropout_p,             /*dropout*/
+            false,                                   /*add_zero_attn*/
+            DT_NONE,                                 /*data_type*/
+            nullptr,                                 /*kernel_initializer*/
+            startcoder_config.rotary_embedding_meta, /*apply_rotary_embedding*/
+            false,                                   /*scaling query*/
+            1.0f,                                    /*scaling factor*/
+            true,                                    /*qk_prod_scaling*/
+            false,                                   /*position_bias*/
             std::string("layers." + std::to_string(i) + ".attn.c_attn")
                 .c_str() /*name*/
         );
@@ -134,6 +149,20 @@ void STARCODER::create_starcoder_model(
         assert(false);
       }
     }
+
+    mha = ff.dense(
+        o_proj,
+        startcoder_config.hidden_size,
+        AC_MODE_NONE,
+        true,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers." + std::to_string(i) + ".self_attn.o_proj")
+            .c_str());
 
     ff.residual_layer_norm(
         hidden_states,
