@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_CARTESIAN_PRODUCT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_CARTESIAN_PRODUCT_H
 
-#include "utils/containers/vector_of.h"
 #include "utils/hash/vector.h"
 #include <functional>
 #include <unordered_set>
@@ -9,10 +8,10 @@
 
 namespace FlexFlow {
 
-template <typename E>
-std::unordered_set<std::vector<E>>
-    cartesian_product(std::vector<std::unordered_set<E>> const &containers) {
-  std::unordered_set<std::vector<E>> result;
+template <typename C, typename E = typename C::value_type>
+std::unordered_multiset<std::vector<E>>
+    cartesian_product(std::vector<C> const &containers) {
+  std::unordered_multiset<std::vector<E>> result;
 
   std::function<void(std::vector<E> &, size_t)> recurse =
       [&](std::vector<E> &current, size_t depth) {

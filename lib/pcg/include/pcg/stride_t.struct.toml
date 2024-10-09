@@ -1,5 +1,5 @@
 namespace = "FlexFlow"
-name = "side_size_t"
+name = "stride_t"
 features = [
   "eq",
   "ord",

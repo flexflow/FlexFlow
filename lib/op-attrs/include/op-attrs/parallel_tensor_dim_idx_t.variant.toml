@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "parallel_tensor_dim_idx_t"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/ff_dim.dtg.h",
+  "op-attrs/replica_type.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::ff_dim_t"
+
+[[values]]
+type = "::FlexFlow::ReplicaType"

@@ -119,7 +119,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     CHECK(result == expected);
   }
 
-  TEST_CASE("without_order") {
+  TEST_CASE("unordered_multiset_of") {
     std::vector<int> v = {1, 4, 6, 4, 6};
     std::unordered_set<int> expected = {1, 4, 6};
     CHECK(unordered_set_of(v) == expected);

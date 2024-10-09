@@ -6,8 +6,35 @@ using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("series_combine") {
-    MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
-    MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
+    MachineView machine_view_0 = MachineView{
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
+        },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{1},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
+    };
+
+    MachineView machine_view_1 = MachineView{
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
+        },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{2},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
+    };
 
     float pre_cost = 2.0;
     MachineMappingResult pre = MachineMappingResult{
@@ -49,7 +76,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     float comm_cost = 3.0;
 
-    SUBCASE("pre is infeasbile") {
+    SUBCASE("pre is infeasible") {
       MachineMappingResult result = series_combine(
           comm_cost, infeasible, post, ParallelSplitTransformation::LthenR);
       MachineMappingResult correct = infeasible;
@@ -57,7 +84,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
-    SUBCASE("post is infeasbile") {
+    SUBCASE("post is infeasible") {
       MachineMappingResult result = series_combine(
           comm_cost, pre, infeasible, ParallelSplitTransformation::LthenR);
       MachineMappingResult correct = infeasible;
@@ -160,8 +187,35 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("parallel_combine") {
-    MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
-    MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
+    MachineView machine_view_0 = MachineView{
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
+        },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{1},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
+    };
+
+    MachineView machine_view_1 = MachineView{
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
+        },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{2},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
+    };
 
     MachineMappingResult lhs = MachineMappingResult{
         FeasibleMachineMappingResult{
@@ -199,14 +253,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MachineMappingResult infeasible = infeasible_machine_mapping_result();
 
-    SUBCASE("lhs is infeasbile") {
+    SUBCASE("lhs is infeasible") {
       MachineMappingResult result = parallel_combine(infeasible, rhs);
       MachineMappingResult correct = infeasible;
 
       CHECK(result == correct);
     }
 
-    SUBCASE("rhs is infeasbile") {
+    SUBCASE("rhs is infeasible") {
       MachineMappingResult result = parallel_combine(lhs, infeasible);
       MachineMappingResult correct = infeasible;
 
@@ -256,8 +310,35 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("minimize_runtime") {
-    MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
-    MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
+    MachineView machine_view_0 = MachineView{
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
+        },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{1},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
+    };
+
+    MachineView machine_view_1 = MachineView{
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
+        },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{2},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
+    };
 
     MachineMappingResult faster = MachineMappingResult{
         FeasibleMachineMappingResult{
@@ -295,7 +376,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MachineMappingResult infeasible = infeasible_machine_mapping_result();
 
-    SUBCASE("lhs is infeasbile") {
+    SUBCASE("lhs is infeasible") {
       MachineMappingResult result = minimize_runtime(infeasible, slower);
       MachineMappingResult correct = slower;
 

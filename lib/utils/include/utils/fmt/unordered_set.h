@@ -24,7 +24,6 @@ struct formatter<
         ::FlexFlow::join_strings(m.cbegin(), m.cend(), ", ", [](T const &t) {
           return fmt::to_string(t);
         });
-    // }
     return formatter<std::string>::format("{" + result + "}", ctx);
   }
 };
