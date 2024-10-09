@@ -17,7 +17,7 @@ int get_num_devices(MachineSpecification const &ms,
     case DeviceType::CPU:
       return get_num_cpus(ms);
     default:
-      throw mk_runtime_error("Unknown DeviceType {}", device_type);
+      throw mk_runtime_error(fmt::format("Unknown DeviceType {}", device_type));
   }
 }
 
@@ -29,7 +29,7 @@ int get_num_devices_per_node(MachineSpecification const &ms,
     case DeviceType::CPU:
       return ms.num_cpus_per_node;
     default:
-      throw mk_runtime_error("Unknown DeviceType {}", device_type);
+      throw mk_runtime_error(fmt::format("Unknown DeviceType {}", device_type));
   }
 }
 bool is_valid_machine_space_coordinate(MachineSpecification const &ms,
