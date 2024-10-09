@@ -9,31 +9,33 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("combine_disjoint_mappings(MachineMapping, MachineMappping)") {
     MachineView machine_view_0 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{1},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{1},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineView machine_view_1 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{2},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{2},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineMapping machine_mapping_0 = MachineMapping({
@@ -53,31 +55,33 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("nodes_are_disjoint(MachineMapping, MachineMappping)") {
     MachineView machine_view_0 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{1},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{1},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineView machine_view_1 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{2},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{2},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineMapping machine_mapping_0 = MachineMapping({

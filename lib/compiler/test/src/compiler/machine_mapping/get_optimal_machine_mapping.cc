@@ -43,31 +43,33 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     MachineView mv1 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{1},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{1},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineView mv2 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{2},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{2},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineSpecification full_machine_spec = MachineSpecification{

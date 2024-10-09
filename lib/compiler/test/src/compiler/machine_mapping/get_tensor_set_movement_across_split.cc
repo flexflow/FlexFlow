@@ -65,59 +65,63 @@ TEST_SUITE(FF_TEST_SUITE) {
         pcg, relu_attrs, {get_only(relu_1.outputs)}, {relu_output_attrs});
 
     MachineView pre_mv1 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{1},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{1},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineView pre_mv2 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{2},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{2},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineView post_mv1 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{3},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{3},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     MachineView post_mv2 = MachineView{
-      /*start=*/MachineSpaceCoordinate{
-        /*node_idx=*/0,
-        /*device_idx=*/0,
-        /*device_type=*/DeviceType::GPU,
-      },
-      /*dimensions=*/{
-        MachineViewDimension{
-          stride_t{4},
-          MachineSpecificationDimension::INTRA_NODE,
+        /*start=*/MachineSpaceCoordinate{
+            /*node_idx=*/0,
+            /*device_idx=*/0,
+            /*device_type=*/DeviceType::GPU,
         },
-      },
+        /*dimensions=*/
+        {
+            MachineViewDimension{
+                stride_t{4},
+                MachineSpecificationDimension::INTRA_NODE,
+            },
+        },
     };
 
     SUBCASE("single edge across split") {
