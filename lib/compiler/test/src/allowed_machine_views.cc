@@ -60,17 +60,24 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("2 degrees of parallelism") {
 
-      MachineSpecification ms = MachineSpecification{3, 3, 3, 0, 0};
+      MachineSpecification ms = MachineSpecification{
+          /*num_nodes=*/3,
+          /*num_cpus_per_node=*/3,
+          /*num_gpus_per_node=*/3,
+          /*inter_node_bandwidth=*/0,
+          /*intra_node_bandwidth=*/0,
+      };
       OperatorTaskSpace task = OperatorTaskSpace{{2, 3}};
 
-      auto make_2d_view = [&](int start_x,
-                              int start_y,
+      auto make_2d_view = [&](int start_node_idx,
+                              int start_device_idx,
                               int stride1,
                               int stride2,
                               MachineSpecificationDimension m1,
                               MachineSpecificationDimension m2) {
         return MachineView{
-            MachineSpaceCoordinate{start_x, start_y, DeviceType::GPU},
+            MachineSpaceCoordinate{
+                start_node_idx, start_device_idx, DeviceType::GPU},
             {MachineViewDimension{stride_t{stride1}, m1},
              MachineViewDimension{stride_t{stride2}, m2}},
         };

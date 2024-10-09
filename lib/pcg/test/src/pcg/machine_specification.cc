@@ -41,7 +41,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         device_id_t result = get_device_id(ms, coord);
         CHECK(correct == result);
       }
-      SUBCASE("MachineSpaceCoordinate for given machine spec") {
+      SUBCASE("MachineSpaceCoordinate out of bounds for given machine spec") {
         MachineSpaceCoordinate coord = MachineSpaceCoordinate{
             /*node_idx=*/2,
             /*device_idx=*/18,
