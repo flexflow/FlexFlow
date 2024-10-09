@@ -18,7 +18,7 @@ template <typename DT>
 void compute_attention_kernel_prompt(IncMultiHeadSelfAttentionMeta *m,
                                      BatchConfig const *bc,
                                      int shard_id,
-                                     cudaStream_t stream);
+                                     ffStream_t stream);
 template <typename DT>
 void compute_attention_kernel_generation(IncMultiHeadSelfAttentionMeta const *m,
                                          BatchConfig const *bc,
