@@ -98,14 +98,14 @@ class LllamaAlignmentTest(AlignmentTest):
 
                 # 1. get shape of hf weight
                 hf_weight = torch.load(hf_w_path, map_location='cpu')
-                hf_weigth_shape = hf_weight.shape
+                hf_weight_shape = hf_weight.shape
                 ff_partition_dim = get_tp_partition_dim(ff_weight_name)
-                ff_weigth_shape = list(hf_weigth_shape)[::-1]
+                ff_weight_shape = list(hf_weight_shape)[::-1]
                 if ff_partition_dim >= 0:
-                    ff_weigth_shape[ff_partition_dim] //= self.tp_degree
+                    ff_weight_shape[ff_partition_dim] //= self.tp_degree
                 
                 # 2. handle flexflow shards in case of tensor parallelism
-                ff_weights = [load_ff_tensor(ff_w_path.replace("shard_0", f"shard_{tp_idx}"), ff_weigth_shape) for tp_idx in range(self.tp_degree)]
+                ff_weights = [load_ff_tensor(ff_w_path.replace("shard_0", f"shard_{tp_idx}"), ff_weight_shape) for tp_idx in range(self.tp_degree)]
                 if self.tp_degree > 1:
                     if ff_partition_dim >= 0:
                         ff_weight = np.concatenate(ff_weights, axis=ff_partition_dim)

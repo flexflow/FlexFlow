@@ -82,7 +82,7 @@ def main():
         make_debug_dirs()
         register_inference_hooks(model)
         # Save weights
-        # save_model_weights(model, target_modules=["lora", "lm_head", "down_proj"])
+        save_model_weights(model, target_modules=["lora", "lm_head", "final_layer_norm", "self_attn_layer_norm", "out_proj", "fc1", "fc2"])
 
     ###############################################
     # Generate output

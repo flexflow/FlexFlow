@@ -29,7 +29,8 @@ mkdir -p ./inference/output
 
 # Enable backtrace in case we run into a segfault or assertion failure
 export LEGION_BACKTRACE=1
-export FF_DEBG_NO_WEIGHTS=1
+export FF_DEBG_NO_WEIGHTS=0
+FUSION=false
 
 PROMPT_LENGTH=$(python -c "
 from transformers import AutoTokenizer
@@ -66,7 +67,7 @@ json_config=$(cat <<-END
         "tensor_parallelism_degree": ${TP_DEGREE},
         "pipeline_parallelism_degree": ${PP_DEGREE},
         "inference_debugging": true,
-        "fusion": true,
+        "fusion": ${FUSION},
         "refresh_cache": false,
         "llm_model": "${MODEL_NAME}",
         "cache_path": "${CACHE_PATH}",
