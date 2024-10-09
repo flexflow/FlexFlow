@@ -11,7 +11,7 @@ CACHE_PATH=${FF_CACHE_PATH:-"~/.cache/flexflow"}
 NUM_STEPS=${NUM_STEPS:-2}
 
 cleanup() {
-    rm -rf ${CACHE_PATH}/debug ./fine_grained_alignment_config.json ./inference/output/fine_grained_alignment_test_ff.txt ./inference/output/fine_grained_alignment_test_hf.txt
+    rm -rf "${CACHE_PATH}"/debug ./fine_grained_alignment_config.json ./inference/output/fine_grained_alignment_test_ff.txt ./inference/output/fine_grained_alignment_test_hf.txt
 }
 
 # Cd into directory holding this script
@@ -29,18 +29,19 @@ mkdir -p ./inference/output
 
 # Enable backtrace in case we run into a segfault or assertion failure
 export LEGION_BACKTRACE=1
-export FF_DEBG_NO_WEIGHTS=0
-FUSION=false
+export FF_DEBG_NO_WEIGHTS=1
+FUSION=true
 
-PROMPT_LENGTH=$(python -c "
+
+# Check if the Python code executed successfully
+if ! PROMPT_LENGTH=$(python -c "
 from transformers import AutoTokenizer
 import os
 tokenizer = AutoTokenizer.from_pretrained(\"$MODEL_NAME\")
 tokens = tokenizer.tokenize('Three tips for staying healthy are: ')
 print(len(tokens))
-")
-# Check if the Python code executed successfully
-if [ $? -ne 0 ]; then
+");
+then
     echo "Error: Failed to execute Python code"
     exit 1
 fi
@@ -48,8 +49,8 @@ fi
 MAX_LENGTH=$((PROMPT_LENGTH + NUM_STEPS + 1))
 
 python ./tests/inference/huggingface_inference.py \
-    --model-name $MODEL_NAME \
-    --max-length $MAX_LENGTH \
+    --model-name "${MODEL_NAME}" \
+    --max-length "${MAX_LENGTH}" \
     --prompt-file ../../inference/prompt/test.json \
     --output-file ../../inference/output/fine_grained_alignment_test_hf.txt \
     --use-full-precision \
@@ -78,7 +79,7 @@ json_config=$(cat <<-END
     }
 END
 )
-echo $json_config > ./fine_grained_alignment_config.json
+echo "$json_config" > ./fine_grained_alignment_config.json
 
 python ./inference/python/incr_decoding.py -config-file ./fine_grained_alignment_config.json
 
@@ -94,7 +95,7 @@ python ./inference/python/incr_decoding.py -config-file ./fine_grained_alignment
 #     --inference-debugging
 
 # Check alignment
-python ./tests/inference/inference_alignment_test.py -m $MODEL_NAME -tp $TP_DEGREE -n $NUM_STEPS
+python ./tests/inference/inference_alignment_test.py -m "$MODEL_NAME" -tp "$TP_DEGREE" -n "$NUM_STEPS"
 
 # Print succeess message
 echo ""
