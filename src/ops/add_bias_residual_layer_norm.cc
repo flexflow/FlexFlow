@@ -670,8 +670,18 @@ void AddBiasResidualLayerNorm::inference_task(
   AddBiasResidualLayerNormMeta *m =
       *((AddBiasResidualLayerNormMeta **)task->local_args);
 
-  assert(regions.size() ==
-         4 + (m->elementwise_affine ? (m->use_bias ? 2 : 1) : 0));
+  int expected_regions =
+      5; // input, attn_bias, residual (input), added_output, output
+  if (m->inplace_residual) {
+    expected_regions--; // input == added_output
+  }
+  if (m->elementwise_affine) {
+    expected_regions += 1; // gamma
+    if (m->use_bias) {
+      expected_regions += 1; // beta
+    }
+  }
+  assert(regions.size() == expected_regions);
 
   int rid = 0, tid = 0, did = 0;
   GenericTensorAccessorR input =

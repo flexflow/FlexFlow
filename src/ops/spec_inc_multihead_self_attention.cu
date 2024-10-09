@@ -463,8 +463,6 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
                                      BeamSearchBatchConfig const *bc,
                                      int shard_id,
                                      DT *output_ptr,
-                                     DT const *bias_ptr,
-                                     DT const *weight_ptr,
                                      cudaStream_t stream) {
   checkCUDA(cublasSetStream(m->handle.blas, stream));
   checkCUDNN(cudnnSetStream(m->handle.dnn, stream));
@@ -472,23 +470,10 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
   cudaDataType_t compute_type = cublas_data_type;
-  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  //   cudaDataType_t compute_type = cublas_data_type;
-  // #else
-  //   // For best performance, set the default cublas compute type to
-  //   // CUBLAS_COMPUTE_16F for half precision and to
-  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  //   if (m->output_type[0] == DT_FLOAT) {
-  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  //   }
-  // #endif
-  // int num_requests = bc->num_active_requests();
+
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
   int tokens_prev_requests_squares = 0;
-  // int qkv_block_size =
-  //     (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
   int q_block_size = m->qProjSize;
 
   int kt_block_size = m->kProjSize;
@@ -568,8 +553,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
                                          m->num_q_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // print_tensor<float>((float*)C, 32, "C");
-    // add alibi position bias to qk production
+
     // add alibi position bias to qk production
     if (*m->position_bias) {
       size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
@@ -698,21 +682,26 @@ template <typename DT>
 void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
                       BeamSearchBatchConfig const *bc,
                       int shard_id,
-                      DT const *input_ptr,
-                      DT const *weight_ptr,
+                      DT const *qkv_ptr,
                       DT *output_ptr,
-                      DT const *bias_ptr,
                       cudaStream_t stream) {
-  // phase 1: Implement kernel to compute KQV for input tokens
 
-  compute_qkv_kernel(m,
-                     bc,
-                     shard_id,
-                     input_ptr,
-                     weight_ptr,
-                     static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
-                     stream);
+  // phase 0: copy calculated qkv into devQKVProjArray
+  // [qProjSize, num_heads, 3, num_new_tokens]
+  size_t qkv_proj_size =
+      m->qProjSize * m->num_q_heads * QKV_WEIGHT_NUM * bc->num_active_tokens();
+
+  cudaMemcpyAsync(m->devQKVProjArray,
+                  qkv_ptr,
+                  qkv_proj_size *
+                      sizeof(DT), // is this right, do we need layers etc here
+                  cudaMemcpyDeviceToDevice,
+                  stream);
+  // phase 1: Implement kernel to compute KQV for input tokens
+  // TODO WARNING: this is commented out only because we are fixing the inc_attn
+  // first
+  compute_qkv_kernel(
+      m, bc, shard_id, static_cast<DT *>(m->devQKVProjArray), stream);
   // phase 2: Update key/val cache
   update_kv_cache_kernel<DT>(m, bc, stream);
   if (bc->num_generation_tokens > 0) {
@@ -722,14 +711,16 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   // phase 3: Compute attention score
   // 3 kernels for pahse 3: matmul1 - softmax - matmal2
   if (bc->num_tokens > bc->num_generation_tokens) {
-    compute_attention_kernel_prompt(
-        m, bc, shard_id, output_ptr, bias_ptr, weight_ptr, stream);
+    compute_attention_kernel_prompt(m, bc, shard_id, output_ptr, stream);
   }
-  // compute output production and bias together for all tokens
+
   int num_tokens = bc->num_active_tokens();
 
-  compute_o_prod_bias(
-      m, bc, shard_id, output_ptr, weight_ptr, bias_ptr, num_tokens, stream);
+  cudaMemcpyAsync(output_ptr,
+                  m->attn_heads,
+                  m->oProjSize * num_tokens * sizeof(DT),
+                  cudaMemcpyDeviceToDevice,
+                  stream);
 }
 
 } // namespace SpecIncMultiHeadSelfAttention
@@ -741,12 +732,9 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     BeamSearchBatchConfig const *bc,
     int shard_id,
     GenericTensorAccessorR const &input,
-    GenericTensorAccessorR const &weight,
-    GenericTensorAccessorW const &output,
-    GenericTensorAccessorR const &bias) {
+    GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -755,36 +743,14 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventRecord(t_start, stream);
   }
 
-  assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  if (use_bias) {
-    assert(input.data_type == bias.data_type);
-  }
 
   if (input.data_type == DT_HALF) {
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_half_ptr(),
-        weight.get_half_ptr(),
-        output.get_half_ptr(),
-        bias_ptr,
-        stream);
+        m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
-        m,
-        bc,
-        shard_id,
-        input.get_float_ptr(),
-        weight.get_float_ptr(),
-        output.get_float_ptr(),
-        bias_ptr,
-        stream);
+        m, bc, shard_id, input.get_float_ptr(), output.get_float_ptr(), stream);
   } else {
     assert(false && "Unspported data type");
   }
@@ -797,16 +763,12 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("SpecIncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
-    // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
-    // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
-    // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
 SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     SpecIncMultiHeadSelfAttention const *attn,
-    GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_q_heads,
@@ -821,14 +783,11 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->kProjSize,
                                     attn->vProjSize,
                                     attn->oProjSize,
-                                    attn->apply_rotary_embedding,
-                                    attn->qkv_bias,
+                                    attn->rotary_embedding_meta,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->final_bias,
                                     attn->scaling_factor,
-                                    weight,
                                     gpu_mem_allocator,
                                     num_samples,
                                     attn->num_q_heads,

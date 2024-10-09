@@ -93,22 +93,35 @@ void MPT::create_mpt_model(FFModel &ff,
       layernorm_output = res_ln_outputs[1];
     }
 
-    Tensor attn_outputs;
+    Tensor qkv_proj = ff.dense(
+        layernorm_output,
+        mpt_config.hidden_size *
+            3, // q, k, v. need to change if want to remove replication.
+               // (q_heads + 2 * kv_heads) * proj_size
+        AC_MODE_NONE,
+        false,         // seems like it does not use bias
+        DT_NONE,       // what is this
+        nullptr,       // ?
+        nullptr,       // ?
+        nullptr,       // ?
+        REG_MODE_NONE, // no regularization
+        0.0f,          // no dropout
+        std::string("layers." + std::to_string(i) + ".attn.qkv_proj").c_str());
+
+    Tensor o_proj;
     switch (mode) {
       case BEAM_SEARCH_MODE: {
-        attn_outputs = ff.spec_inc_multihead_self_attention(
-            layernorm_output,
+        o_proj = ff.spec_inc_multihead_self_attention(
+            qkv_proj,
             mpt_config.hidden_size,
             mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
             0.0f,
             false,
-            false,
-            false,
             DT_NONE, /*data_type*/
             NULL,
-            false,
+            mpt_config.rotary_embedding_meta,
             /*scaling query*/ true,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
@@ -120,19 +133,17 @@ void MPT::create_mpt_model(FFModel &ff,
         break;
       }
       case TREE_VERIFY_MODE: {
-        attn_outputs = ff.inc_multihead_self_attention_verify(
-            layernorm_output,
+        o_proj = ff.inc_multihead_self_attention_verify(
+            qkv_proj,
             mpt_config.hidden_size,
             mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
             0.0f,
             false,
-            false,
-            false,
             DT_NONE, /*data_type*/
             NULL,
-            false,
+            mpt_config.rotary_embedding_meta,
             /*scaling query*/ true,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
@@ -144,19 +155,17 @@ void MPT::create_mpt_model(FFModel &ff,
         break;
       }
       case INC_DECODING_MODE: {
-        attn_outputs = ff.inc_multihead_self_attention(
-            layernorm_output,
+        o_proj = ff.inc_multihead_self_attention(
+            qkv_proj,
             mpt_config.hidden_size,
             mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
             mpt_config.hidden_size / mpt_config.n_heads,
             0.0f,
             false,
-            false,
-            false,
             DT_NONE, /*data_type*/
             NULL,
-            false,
+            mpt_config.rotary_embedding_meta,
             /*scaling query*/ true,
             /*scaling factor*/
             pow((mpt_config.hidden_size / mpt_config.n_heads), -0.5),
@@ -171,6 +180,19 @@ void MPT::create_mpt_model(FFModel &ff,
         assert(false);
       }
     }
+
+    Tensor attn_outputs = ff.dense(
+        o_proj,
+        mpt_config.hidden_size,
+        AC_MODE_NONE,
+        false,
+        DT_NONE,
+        nullptr,
+        nullptr,
+        nullptr,
+        REG_MODE_NONE,
+        0.0f,
+        std::string("layers." + std::to_string(i) + ".attn.o_proj").c_str());
 
     ff.residual_layer_norm(
         attn_outputs,
