@@ -763,9 +763,6 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     cudaEventDestroy(t_start);
     cudaEventDestroy(t_end);
     printf("SpecIncMultiHeadSelfAttention forward time = %.2fms\n", elapsed);
-    // print_tensor<3, float>(acc_query.ptr, acc_query.rect,
-    // "[Attention:forward:query]"); print_tensor<3, float>(acc_output.ptr,
-    // acc_output.rect, "[Attention:forward:output]");
   }
 }
 
