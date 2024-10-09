@@ -239,10 +239,6 @@ void load_attention_weights_to_dense_v2(DT *ptr,
   size_t one_weight_file_size =
       num_heads * single_proj_size; // size of each of Q/K/V/O for all heads
 
-  std::cout << "hidden_dim: " << hidden_dim
-            << ", qkv_inner_dim: " << qkv_inner_dim
-            << ", num_heads: " << num_heads << std::endl;
-
   size_t q_size = one_weight_file_size, o_size = one_weight_file_size;
   size_t k_size = single_proj_size * num_kv_heads,
          v_size = single_proj_size * num_kv_heads;
