@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_PCG_INCLUDE_PCG_START_INVARIANT_MACHINE_VIEW_H
 #define _FLEXFLOW_PCG_INCLUDE_PCG_START_INVARIANT_MACHINE_VIEW_H
 
+#include "pcg/machine_space_offset.h"
 #include "pcg/machine_specification.dtg.h"
 #include "pcg/machine_view.dtg.h"
 #include "pcg/operator_task_space.dtg.h"
@@ -30,16 +31,16 @@ StartInvariantMachineView
         std::vector<stride_t> const &strides,
         std::vector<MachineSpecificationDimension> const &dims);
 
-std::optional<MachineSpaceCoordinate>
-    get_machine_space_coordinate(OperatorTaskSpace const &task,
-                                 StartInvariantMachineView const &mv,
-                                 TaskSpaceCoordinate const &coordinates,
-                                 MachineSpecification const &ms);
+std::optional<MachineSpaceOffset>
+    get_machine_space_offset(OperatorTaskSpace const &task,
+                             StartInvariantMachineView const &mv,
+                             TaskSpaceCoordinate const &coordinates,
+                             MachineSpecification const &ms);
 
-std::unordered_set<MachineSpaceCoordinate>
-    get_machine_space_coordinates(OperatorTaskSpace const &task,
-                                  StartInvariantMachineView const &mv,
-                                  MachineSpecification const &ms);
+std::unordered_set<MachineSpaceOffset>
+    get_machine_space_offsets(OperatorTaskSpace const &task,
+                              StartInvariantMachineView const &mv,
+                              MachineSpecification const &ms);
 
 } // namespace FlexFlow
 

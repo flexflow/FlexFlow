@@ -1,4 +1,5 @@
 #include "pcg/start_invariant_machine_view.h"
+#include "pcg/machine_space_offset.h"
 #include "pcg/machine_view.h"
 #include "pcg/operator_task_space.h"
 #include "utils/containers/count.h"
@@ -6,7 +7,6 @@
 #include "utils/containers/scanl.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/zip.h"
-
 namespace FlexFlow {
 
 MachineView machine_view_from_start_invariant(
@@ -53,24 +53,31 @@ StartInvariantMachineView
   return StartInvariantMachineView{dimensions, device_type};
 }
 
-std::optional<MachineSpaceCoordinate> get_machine_space_coordinate(
+std::optional<MachineSpaceOffset> get_machine_space_offset(
     OperatorTaskSpace const &task,
     StartInvariantMachineView const &start_inv_machine_view,
     TaskSpaceCoordinate const &coord,
     MachineSpecification const &machine_specification) {
-  MachineView mv = machine_view_from_start_invariant(
-      start_inv_machine_view,
-      MachineSpaceCoordinate{0, 0, get_device_type(start_inv_machine_view)});
-  return get_machine_space_coordinate(task, mv, coord, machine_specification);
+  MachineSpaceCoordinate dummy_start =
+      MachineSpaceCoordinate{0, 0, get_device_type(start_inv_machine_view)};
+  MachineView mv =
+      machine_view_from_start_invariant(start_inv_machine_view, dummy_start);
+  std::optional<MachineSpaceCoordinate> ms_coord =
+      get_machine_space_coordinate(task, mv, coord, machine_specification);
+  if (ms_coord == std::nullopt) {
+    return std::nullopt;
+  }
+  return get_machine_space_offset_from_coordinate(dummy_start,
+                                                  ms_coord.value());
 }
 
-std::unordered_set<MachineSpaceCoordinate> get_machine_space_coordinates(
+std::unordered_set<MachineSpaceOffset> get_machine_space_offsets(
     OperatorTaskSpace const &task,
     StartInvariantMachineView const &start_inv_machine_view,
     MachineSpecification const &machine_specification) {
   return transform(
       get_task_space_coordinates(task), [&](TaskSpaceCoordinate const &coord) {
-        return get_machine_space_coordinate(
+        return get_machine_space_offset(
                    task, start_inv_machine_view, coord, machine_specification)
             .value();
       });
