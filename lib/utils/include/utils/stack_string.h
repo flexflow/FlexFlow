@@ -82,6 +82,13 @@ void from_json(json const &j, stack_string<MAXSIZE> &v) {
   v = stack_string<MAXSIZE>{as_string};
 }
 
+template <typename Char, std::size_t MAXSIZE>
+std::basic_ostream<Char> &
+    operator<<(std::basic_ostream<Char> &s,
+               stack_basic_string<Char, MAXSIZE> const &v) {
+  return s << fmt::to_string(v);
+}
+
 } // namespace FlexFlow
 
 namespace std {
@@ -133,16 +140,5 @@ CHECK_HASHABLE(stack_string<1>);
 // CHECK_FMTABLE(stack_string<1>);
 
 } // namespace FlexFlow
-
-namespace doctest {
-
-template <size_t MAXSIZE>
-struct StringMaker<FlexFlow::stack_string<MAXSIZE>> {
-  static String convert(FlexFlow::stack_string<MAXSIZE> const &s) {
-    return toString(fmt::to_string(s));
-  }
-};
-
-} // namespace doctest
 
 #endif

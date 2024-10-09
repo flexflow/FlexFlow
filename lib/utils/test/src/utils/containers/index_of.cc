@@ -11,13 +11,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     std::vector<int> v = {1, 2, 3, 4, 3, 5};
 
-    SUBCASE("unique element") {
+    SUBCASE("element occurs once in container") {
       CHECK(index_of(v, 4).value() == 3);
     }
-    SUBCASE("duplicate elements") {
-      CHECK(index_of(v, 3).value() == 2); // Returns first occurrence
+    SUBCASE("if element appears multiple times, return the first occurrence") {
+      CHECK(index_of(v, 3).value() == 2);
     }
-    SUBCASE("element not present") {
+    SUBCASE("element not in container") {
       CHECK(index_of(v, 7) == std::nullopt);
     }
   }

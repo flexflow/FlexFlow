@@ -184,8 +184,7 @@ bool contains_edge(DiGraphView const &g, DirectedEdge const &e) {
 }
 
 bool contains_edge(UndirectedGraphView const &g, UndirectedEdge const &e) {
-  UndirectedEdgeQuery q =
-      UndirectedEdgeQuery{{e.endpoints.max(), e.endpoints.min()}};
+  UndirectedEdgeQuery q = UndirectedEdgeQuery{{e.bigger, e.smaller}};
   return contains(g.query_edges(q), e);
 }
 
@@ -213,7 +212,7 @@ void remove_edges(UndirectedGraph &g,
 }
 
 std::unordered_set<Node> get_endpoints(UndirectedEdge const &e) {
-  return {e.endpoints.min(), e.endpoints.max()};
+  return {e.smaller, e.bigger};
 }
 
 // std::unordered_set<MultiDiEdge> get_edges(MultiDiGraphView const &g) {

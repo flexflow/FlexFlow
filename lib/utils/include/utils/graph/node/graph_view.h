@@ -22,6 +22,8 @@ protected:
   GraphView();
   cow_ptr_t<IGraphView> ptr;
   GraphView(cow_ptr_t<IGraphView> ptr);
+
+  friend struct GraphInternal;
 };
 
 } // namespace FlexFlow

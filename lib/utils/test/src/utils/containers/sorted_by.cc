@@ -24,7 +24,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
-    SUBCASE("duplicates") {
+    SUBCASE("container contains duplicate elements") {
       std::vector<int> input = {3, 1, 3, -4, 1};
       std::vector<int> result =
           sorted_by(input, [](int a, int b) { return a < b; });

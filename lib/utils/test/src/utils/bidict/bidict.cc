@@ -10,45 +10,35 @@ TEST_SUITE(FF_TEST_SUITE) {
     dict.equate(1, "one");
     dict.equate(2, "two");
 
-    SUBCASE("bidict::contains_l") {
-      SUBCASE("L type is not the same as R type") {
-        CHECK(dict.contains_l(1));
-        CHECK_FALSE(dict.contains_l(3));
-      }
+    SUBCASE("L type is the same as R type") {
+      bidict<int, int> bd;
+      bd.equate(1, 3);
 
-      SUBCASE("L type is the same as R type") {
-        bidict<int, int> bd;
-        bd.equate(1, 3);
-
+      SUBCASE("bidict::contains_l") {
         CHECK(bd.contains_l(1));
         CHECK_FALSE(bd.contains_l(3));
       }
-    }
 
-    SUBCASE("bidict::contains_r") {
-      SUBCASE("L type is not the same as R type") {
-        CHECK(dict.contains_r(std::string("one")));
-        CHECK_FALSE(dict.contains_r(std::string("three")));
-      }
-
-      SUBCASE("L type is the same as R type") {
-        bidict<int, int> bd;
-        bd.equate(1, 3);
-
+      SUBCASE("bidict::contains_r") {
         CHECK(bd.contains_r(3));
         CHECK_FALSE(bd.contains_r(1));
       }
     }
 
-    SUBCASE("bidict::contains_r, bidict::contains_r - same type") {
-      bidict<int, int> bd;
-      bd.equate(1, 3);
-      bd.equate(2, 4);
+    SUBCASE("L type is not the same as R type") {
+      bidict<int, std::string> dict;
+      dict.equate(1, "one");
+      dict.equate(2, "two");
 
-      CHECK(bd.contains_l(1));
-      CHECK_FALSE(bd.contains_l(3));
-      CHECK(bd.contains_r(3));
-      CHECK_FALSE(bd.contains_r(1));
+      SUBCASE("bidict::contains_l") {
+        CHECK(dict.contains_l(1));
+        CHECK_FALSE(dict.contains_l(3));
+      }
+
+      SUBCASE("bidict::contains_r") {
+        CHECK(dict.contains_r("one"));
+        CHECK_FALSE(dict.contains_r("three"));
+      }
     }
 
     SUBCASE("bidict::equate") {

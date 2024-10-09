@@ -31,6 +31,8 @@ public:
 private:
   IGraph const &get_ptr() const;
   IGraph &get_ptr();
+
+  friend struct GraphInternal;
 };
 
 } // namespace FlexFlow

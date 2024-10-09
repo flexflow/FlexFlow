@@ -12,7 +12,7 @@ struct formatter<std::variant<Ts...>, Char>
     /* std::enable_if_t<!detail::has_format_as<::tl::expected<T, E>>::value>> */
     : formatter<::std::string> {
   template <typename FormatContext>
-  auto format(std::variant<Ts...> const &m, FormatContext &ctx)
+  auto format(std::variant<Ts...> const &m, FormatContext &ctx) const
       -> decltype(ctx.out()) {
 
     std::string result =

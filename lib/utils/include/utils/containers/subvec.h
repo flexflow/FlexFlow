@@ -1,7 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_SUBVEC_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_SUBVEC_H
 
+#include "utils/exception.h"
 #include <optional>
+#include <stdexcept>
 #include <vector>
 
 namespace FlexFlow {
@@ -15,11 +17,15 @@ std::vector<T> subvec(std::vector<T> const &v,
 
   auto resolve_loc = [&](int idx) ->
       typename std::vector<T>::iterator::difference_type {
+        int size = static_cast<int>(v.size());
+        int new_idx = idx;
         if (idx < 0) {
-          return std::max(0, static_cast<int>(v.size()) + idx);
-        } else {
-          return std::min(idx, static_cast<int>(v.size()));
+          new_idx = size + idx;
         }
+        if (new_idx < 0 || new_idx > size) {
+          throw mk_runtime_error("Index {} is out of bounds for array {}");
+        }
+        return new_idx;
       };
 
   if (maybe_start.has_value()) {

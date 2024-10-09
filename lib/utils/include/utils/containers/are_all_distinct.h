@@ -3,7 +3,6 @@
 
 #include "utils/containers/unordered_multiset_of.h"
 #include "utils/containers/unordered_set_of.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

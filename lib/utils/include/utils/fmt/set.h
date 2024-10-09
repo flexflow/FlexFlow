@@ -17,7 +17,7 @@ struct formatter<::std::set<T>,
                  std::enable_if_t<!detail::has_format_as<std::set<T>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>
-  auto format(::std::set<T> const &m, FormatContext &ctx)
+  auto format(::std::set<T> const &m, FormatContext &ctx) const
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(T);
 

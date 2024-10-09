@@ -1,5 +1,4 @@
 #include "utils/graph/instances/hashmap_undirected_graph.h"
-#include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/keys.h"
 #include "utils/exception.h"
@@ -23,45 +22,33 @@ void HashmapUndirectedGraph::remove_node_unsafe(Node const &n) {
 }
 
 void HashmapUndirectedGraph::add_edge(UndirectedEdge const &e) {
-  if (!contains_key(this->adjacency, e.endpoints.min())) {
+  if (!contains_key(this->adjacency, e.bigger)) {
     throw mk_runtime_error(
-        "Could not add edge connected to non-existent node {}",
-        e.endpoints.min());
+        "Could not add edge connected to non-existent node {}", e.bigger);
   }
-  if (!contains_key(this->adjacency, e.endpoints.max())) {
+  if (!contains_key(this->adjacency, e.smaller)) {
     throw mk_runtime_error(
-        "Could not add edge connected to non-existent node {}",
-        e.endpoints.max());
+        "Could not add edge connected to non-existent node {}", e.smaller);
   }
 
-  this->adjacency.at(e.endpoints.min()).insert(e.endpoints.max());
-  this->adjacency.at(e.endpoints.max()).insert(e.endpoints.min());
+  this->adjacency.at(e.bigger).insert(e.smaller);
+  this->adjacency.at(e.smaller).insert(e.bigger);
 }
 
 void HashmapUndirectedGraph::remove_edge(UndirectedEdge const &e) {
-  this->adjacency.at(e.endpoints.max()).erase(e.endpoints.min());
-  this->adjacency.at(e.endpoints.min()).erase(e.endpoints.max());
+  std::unordered_set<Node> &m = this->adjacency.at(e.bigger);
+  m.erase(e.smaller);
+  m.erase(e.bigger);
 }
 
 std::unordered_set<UndirectedEdge> HashmapUndirectedGraph::query_edges(
     UndirectedEdgeQuery const &query) const {
   std::unordered_set<UndirectedEdge> result;
-  std::unordered_set<Node> nodes =
-      keys(query_keys(query.nodes, this->adjacency));
-  for (auto const &[src, n] : query_keys(query.nodes, this->adjacency)) {
-    for (auto const &dst : n) {
-      result.insert(UndirectedEdge{{src, dst}});
+  for (auto const &src_kv : query_keys(query.nodes, this->adjacency)) {
+    for (auto const &dst : src_kv.second) {
+      result.insert({src_kv.first, dst});
     }
   }
-  for (auto const &[src, n] :
-       query_keys(query_set<Node>::matchall(), this->adjacency)) {
-    for (auto const &dst : n) {
-      if (contains(nodes, dst)) {
-        result.insert(UndirectedEdge{{src, dst}});
-      }
-    }
-  }
-
   return result;
 }
 

@@ -1,5 +1,5 @@
-#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_BIDICTS_H
-#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_BIDICTS_H
+#ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_DISJOINT_BIDICTS_H
+#define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_BIDICT_ALGORITHMS_MERGE_DISJOINT_BIDICTS_H
 
 #include "utils/bidict/algorithms/left_entries.h"
 #include "utils/bidict/algorithms/right_entries.h"
@@ -10,14 +10,15 @@
 namespace FlexFlow {
 
 template <typename K, typename V>
-bidict<K, V> merge_bidicts(bidict<K, V> const &lhs, bidict<K, V> const &rhs) {
+bidict<K, V> merge_disjoint_bidicts(bidict<K, V> const &lhs,
+                                    bidict<K, V> const &rhs) {
   if (!are_disjoint(left_entries(lhs), left_entries(rhs))) {
     throw mk_runtime_error(
-        "Left entries of merge_bidicts parameters are non-disjoint");
+        fmt::format("Left entries of {} and {} are non-disjoint"), lhs, rhs);
   }
   if (!are_disjoint(right_entries(lhs), right_entries(rhs))) {
     throw mk_runtime_error(
-        "Right entries of merge_bidicts parameters are non-disjoint");
+        fmt::format("Right entries of {} and {} are non-disjoint"), lhs, rhs);
   }
 
   bidict<K, V> result;

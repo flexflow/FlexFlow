@@ -25,7 +25,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("correct distribution") {
-      auto check_probabilities = [](std::vector<int> values,
+      auto check_probabilities = [](std::vector<int> const &values,
                                     std::vector<float> const &weights) {
         int num_iterations = 10'000;
         std::vector<int> trials = repeat(

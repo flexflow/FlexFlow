@@ -52,15 +52,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("Out of bounds index from above") {
-      auto result = subvec(v, 2, 100);
-      std::vector<int> correct = {3, 4, 5};
-      CHECK(result == correct);
+      CHECK_THROWS(subvec(v, 2, 100));
     }
 
     SUBCASE("Out of bounds index from below") {
-      auto result = subvec(v, -100, 2);
-      std::vector<int> correct = {1, 2};
-      CHECK(result == correct);
+      CHECK_THROWS(subvec(v, -100, 2));
     }
   }
 }

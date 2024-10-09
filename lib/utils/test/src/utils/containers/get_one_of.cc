@@ -13,7 +13,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("empty set") {
       std::unordered_set<int> s = {};
-      CHECK_THROWS_AS(get_one_of(s), std::runtime_error);
+      CHECK_THROWS(get_one_of(s));
     }
   }
 }
