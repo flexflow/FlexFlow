@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "ComputationGraphBinarySPDecomposition"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/layer_guid_t.dtg.h",
+  "compiler/series_parallel/computation_graph/computation_graph_binary_series_split.dtg.h",
+  "compiler/series_parallel/computation_graph/computation_graph_binary_parallel_split.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::ComputationGraphBinarySeriesSplit"
+key = "series"
+
+[[values]]
+type = "::FlexFlow::ComputationGraphBinaryParallelSplit"
+key = "parallel"
+
+[[values]]
+type = "::FlexFlow::layer_guid_t"
+key = "leaf"

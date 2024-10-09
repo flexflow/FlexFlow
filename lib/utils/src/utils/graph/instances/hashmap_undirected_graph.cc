@@ -23,12 +23,12 @@ void HashmapUndirectedGraph::remove_node_unsafe(Node const &n) {
 
 void HashmapUndirectedGraph::add_edge(UndirectedEdge const &e) {
   if (!contains_key(this->adjacency, e.bigger)) {
-    throw mk_runtime_error(
-        "Could not add edge connected to non-existent node {}", e.bigger);
+    throw mk_runtime_error(fmt::format(
+        "Could not add edge connected to non-existent node {}", e.bigger));
   }
   if (!contains_key(this->adjacency, e.smaller)) {
-    throw mk_runtime_error(
-        "Could not add edge connected to non-existent node {}", e.smaller);
+    throw mk_runtime_error(fmt::format(
+        "Could not add edge connected to non-existent node {}", e.smaller));
   }
 
   this->adjacency.at(e.bigger).insert(e.smaller);

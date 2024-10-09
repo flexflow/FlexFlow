@@ -126,34 +126,6 @@ std::optional<bool> optional_all_of(Container const &container,
   return true;
 }
 
-template <typename In, typename F, typename Out>
-std::vector<Out> flatmap(std::vector<In> const &v, F const &f) {
-  std::vector<Out> result;
-  for (auto const &elem : v) {
-    extend(result, f(elem));
-  }
-  return result;
-}
-
-template <typename In, typename F, typename Out>
-std::unordered_set<Out> flatmap(std::unordered_set<In> const &v, F const &f) {
-  std::unordered_set<Out> result;
-  for (auto const &elem : v) {
-    extend(result, f(elem));
-  }
-  return result;
-}
-
-template <typename Out, typename In>
-std::unordered_set<Out> flatmap_v2(std::unordered_set<In> const &v,
-                                   std::unordered_set<Out> (*f)(In const &)) {
-  std::unordered_set<Out> result;
-  for (auto const &elem : v) {
-    extend(result, f(elem));
-  }
-  return result;
-}
-
 template <typename T, typename F>
 std::function<bool(T const &, T const &)> compare_by(F const &f) {
   return [=](T const &lhs, T const &rhs) { return f(lhs) < f(rhs); };

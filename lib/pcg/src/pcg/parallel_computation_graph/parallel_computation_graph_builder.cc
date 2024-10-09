@@ -1,5 +1,18 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
 #include "op-attrs/get_incoming_tensor_roles.h"
+#include "op-attrs/ops/attention.h"
+#include "op-attrs/ops/batch_matmul.h"
+#include "op-attrs/ops/batch_norm.h"
+#include "op-attrs/ops/cast.h"
+#include "op-attrs/ops/combine.h"
+#include "op-attrs/ops/conv_2d.h"
+#include "op-attrs/ops/element_binary.h"
+#include "op-attrs/ops/element_unary.h"
+#include "op-attrs/ops/embedding.h"
+#include "op-attrs/ops/linear.h"
+#include "op-attrs/ops/reduction.h"
+#include "op-attrs/ops/repartition.h"
+#include "op-attrs/ops/replicate.h"
 #include "op-attrs/ops/weight_attrs.dtg.h"
 #include "op-attrs/parallel_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
@@ -182,7 +195,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::dense(
     std::optional<Activation> activation,
     bool use_bias,
     DataType data_type,
-    std::optional<InitializerAttrs> const &kernel_initializer,
+    std::optional<InitializerAttrs> const &projection_initializer,
     std::optional<InitializerAttrs> const &bias_initializer,
     std::optional<std::string> const &maybe_name) {
   LinearAttrs attrs = LinearAttrs{
@@ -205,9 +218,10 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::dense(
   std::vector<ParallelTensorAttrs> weights;
 
   {
-    ParallelTensorShape kernel_shape =
+    ParallelTensorShape projection_shape =
         throw_if_unexpected(get_projection_shape(attrs, input_shape));
-    weights.push_back(make_weight_attrs(kernel_shape, kernel_initializer));
+    weights.push_back(
+        make_weight_attrs(projection_shape, projection_initializer));
   }
 
   if (use_bias) {

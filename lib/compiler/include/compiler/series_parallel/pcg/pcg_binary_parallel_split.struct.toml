@@ -1,0 +1,27 @@
+namespace = "FlexFlow"
+name = "PCGBinaryParallelSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+fwd_decls = [
+  "struct PCGBinarySPDecomposition",
+]
+
+post_includes = [
+  "compiler/series_parallel/pcg/pcg_binary_sp_decomposition.dtg.h",
+]
+
+includes = []
+
+[[fields]]
+name = "left_child"
+type = "::FlexFlow::PCGBinarySPDecomposition"
+indirect = true
+
+[[fields]]
+name = "right_child"
+type = "::FlexFlow::PCGBinarySPDecomposition"
+indirect = true

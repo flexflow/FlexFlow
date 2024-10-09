@@ -1,4 +1,5 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph_builder.h"
+#include "op-attrs/ops/conv_2d.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
 #include "pcg/parallel_computation_graph/parallel_layer_attrs.h"

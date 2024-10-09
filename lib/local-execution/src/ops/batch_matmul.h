@@ -4,7 +4,7 @@
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/op_task_signature.h"
 #include "local-execution/sim_environment.h"
-#include "op-attrs/ops/batch_matmul.h"
+#include "op-attrs/ops/batch_matmul.dtg.h"
 
 namespace FlexFlow {
 

@@ -1,0 +1,32 @@
+namespace = "FlexFlow"
+name = "ParallelSplit"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+fwd_decls = [
+  "struct SeriesSplit"
+]
+
+post_includes = [
+  "utils/graph/series_parallel/series_split.dtg.h",
+]
+
+includes = [
+  "<unordered_set>",
+  "<variant>",
+  "utils/graph/node/node.dtg.h",
+]
+
+src_includes = [
+  "utils/fmt/variant.h",
+  "utils/fmt/unordered_multiset.h",
+  "utils/hash/unordered_multiset.h",
+]
+
+[[fields]]
+name = "children"
+type = "std::unordered_multiset<std::variant<::FlexFlow::SeriesSplit, ::FlexFlow::Node>>"
+indirect = true

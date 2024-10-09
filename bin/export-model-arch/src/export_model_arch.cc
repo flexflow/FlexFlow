@@ -1,5 +1,5 @@
-#include "compiler/series_parallel/computation_graph_binary_sp_decomposition.h"
-#include "compiler/series_parallel/get_computation_graph_series_parallel_decomposition.h"
+#include "compiler/series_parallel/computation_graph/computation_graph_binary_sp_decomposition.h"
+#include "compiler/series_parallel/computation_graph/get_computation_graph_series_parallel_decomposition.h"
 #include "export_model_arch/json_sp_model_export.dtg.h"
 #include "models/bert/bert.h"
 #include "models/candle_uno/candle_uno.h"
@@ -13,7 +13,6 @@
 #include "utils/cli/cli_parse.h"
 #include "utils/cli/cli_parse_result.h"
 #include "utils/cli/cli_spec.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/transform.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/right_associative_binary_sp_tree_from_nary.h"
 #include "utils/graph/series_parallel/get_series_parallel_decomposition.h"
 
@@ -105,9 +104,8 @@ tl::expected<JsonSPModelExport, std::string>
       to_v1_including_node_numbering(computation_graph);
   V1ComputationGraph v1_cg = v1_result.first;
   bidict<int, layer_guid_t> layer_numbering = v1_result.second;
-  GenericBinarySPDecompositionTree<int> v1_sp_decomposition =
-      transform(sp_decomposition.raw_tree,
-                [&](layer_guid_t const &l) { return layer_numbering.at_r(l); });
+  V1BinarySPDecomposition v1_sp_decomposition =
+      to_v1(sp_decomposition, layer_numbering);
 
   return JsonSPModelExport{
       v1_sp_decomposition,

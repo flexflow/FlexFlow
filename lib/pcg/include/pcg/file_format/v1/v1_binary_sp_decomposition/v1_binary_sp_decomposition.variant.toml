@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "V1BinarySPDecomposition"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "pcg/file_format/v1/v1_binary_sp_decomposition/v1_binary_series_split.dtg.h",
+  "pcg/file_format/v1/v1_binary_sp_decomposition/v1_binary_parallel_split.dtg.h",
+]
+
+[[values]]
+type = "::FlexFlow::V1BinarySeriesSplit"
+key = "series"
+
+[[values]]
+type = "::FlexFlow::V1BinaryParallelSplit"
+key = "parallel"
+
+[[values]]
+type = "int"
+key = "leaf"

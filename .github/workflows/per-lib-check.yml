@@ -123,9 +123,9 @@ jobs:
         run: |
           test_target.sh substitutions
 
-      # - name: Test compiler
-      #   run: |
-      #     test_target.sh compiler
+      - name: Test compiler
+        run: |
+          test_target.sh compiler
 
       - name: Test substitution-generator
         run: |

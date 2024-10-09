@@ -1,8 +1,6 @@
 #include "utils/graph/series_parallel/intermediate_sp_decomposition_tree.h"
 #include "utils/containers/extend.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_left_child.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/get_right_child.h"
-#include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/visit.h"
+#include "utils/graph/series_parallel/binary_sp_decomposition_tree/binary_sp_decomposition_tree.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {
@@ -50,35 +48,30 @@ std::variant<IntermediateSpDecompositionTree, Node> flatten_ast(
 }
 
 std::variant<IntermediateSpDecompositionTree, Node>
-    from_binary_sp_tree(GenericBinarySPDecompositionTree<Node> const &binary) {
-  return visit<std::variant<IntermediateSpDecompositionTree, Node>>(
-      binary,
-      overload{
-          [](Node const &n) { return n; },
-          [](GenericBinarySeriesSplit<Node> const &s) {
-            return IntermediateSpDecompositionTree{
-                SplitType::SERIES,
-                {
-                    from_binary_sp_tree(get_left_child(s)),
-                    from_binary_sp_tree(get_right_child(s)),
-                },
-            };
-          },
-          [](GenericBinaryParallelSplit<Node> const &p) {
-            return IntermediateSpDecompositionTree{
-                SplitType::PARALLEL,
-                {
-                    from_binary_sp_tree(get_left_child(p)),
-                    from_binary_sp_tree(get_right_child(p)),
-                },
-            };
-          },
-      });
-}
-
-std::variant<IntermediateSpDecompositionTree, Node>
     from_binary_sp_tree(BinarySPDecompositionTree const &binary) {
-  return from_binary_sp_tree(binary.raw_tree);
+  return binary
+      .template visit<std::variant<IntermediateSpDecompositionTree, Node>>(
+          overload{
+              [](Node const &n) { return n; },
+              [](BinarySeriesSplit const &s) {
+                return IntermediateSpDecompositionTree{
+                    SplitType::SERIES,
+                    {
+                        from_binary_sp_tree(s.get_left_child()),
+                        from_binary_sp_tree(s.get_right_child()),
+                    },
+                };
+              },
+              [](BinaryParallelSplit const &p) {
+                return IntermediateSpDecompositionTree{
+                    SplitType::PARALLEL,
+                    {
+                        from_binary_sp_tree(p.get_left_child()),
+                        from_binary_sp_tree(p.get_right_child()),
+                    },
+                };
+              },
+          });
 }
 
 } // namespace FlexFlow

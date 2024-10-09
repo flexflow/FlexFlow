@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "GraphOptimizeResult"
+features = [ ]
+
+includes = [ 
+  "compiler/machine_mapping/machine_mapping.dtg.h",
+  "pcg/parallel_computation_graph/parallel_computation_graph.h"
+]
+
+[[fields]]
+name = "pcg"
+type = "::FlexFlow::ParallelComputationGraph"
+
+[[fields]]
+name = "machine_mapping"
+type = "::FlexFlow::MachineMapping"

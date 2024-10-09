@@ -1,0 +1,22 @@
+namespace = "FlexFlow"
+name = "FullBinaryTreeVisitor"
+features = []
+
+template_params = [
+  "Result",
+  "Tree",
+  "Parent",
+  "Leaf",
+]
+
+includes = [
+  "<functional>",
+]
+
+[[fields]]
+name = "parent_func"
+type = "std::function<Result(Parent const &)>"
+
+[[fields]]
+name = "leaf_func"
+type = "std::function<Result(Leaf const &)>"
