@@ -3526,8 +3526,6 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
@@ -3559,12 +3557,6 @@ class FFModel(object):
 
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
-
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
 
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
@@ -3606,8 +3598,6 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
@@ -3635,8 +3625,6 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
@@ -3668,12 +3656,6 @@ class FFModel(object):
 
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
-
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
 
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
@@ -3715,8 +3697,6 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
@@ -3744,8 +3724,6 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
@@ -3777,12 +3755,6 @@ class FFModel(object):
 
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
-
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
 
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
@@ -3824,8 +3796,6 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
@@ -3854,8 +3824,6 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
@@ -3890,12 +3858,6 @@ class FFModel(object):
 
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
-
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
 
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
@@ -3938,8 +3900,6 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
@@ -3968,8 +3928,6 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
@@ -4004,12 +3962,6 @@ class FFModel(object):
 
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
-
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
 
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
@@ -4052,8 +4004,6 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
@@ -4082,8 +4032,6 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
@@ -4118,12 +4066,6 @@ class FFModel(object):
 
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
-
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
 
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
@@ -4166,8 +4108,6 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,

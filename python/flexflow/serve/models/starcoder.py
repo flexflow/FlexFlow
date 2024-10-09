@@ -140,7 +140,7 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 ln_1,
                 3 * self.starcoder_config.hidden_size,
                 ActiMode.AC_MODE_NONE,
-                False,
+                True,
                 name=f"layers.{i}.self_attn.qkv_proj",
             )
 
@@ -155,8 +155,6 @@ class FlexFlowSTARCODER(FlexFlowModel):
                 self.starcoder_config.hidden_size
                 // self.starcoder_config.num_attention_heads,
                 0.0,  # dropout
-                True,  # qkv_bias
-                False,  # final_bias
                 False,  # add_zero_attn
                 DataType.DT_NONE,  # data_type
                 None,  # kernel initializer

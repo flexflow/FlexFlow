@@ -132,8 +132,6 @@ void STARCODER::create_starcoder_model(
             startcoder_config.hidden_size /
                 startcoder_config.num_attention_heads,
             startcoder_config.dropout_p,             /*dropout*/
-            true,                                    /*bias*/
-            false,                                   /*add_bias_kv*/
             false,                                   /*add_zero_attn*/
             DT_NONE,                                 /*data_type*/
             nullptr,                                 /*kernel_initializer*/
@@ -156,7 +154,7 @@ void STARCODER::create_starcoder_model(
         o_proj,
         startcoder_config.hidden_size,
         AC_MODE_NONE,
-        false,
+        true,
         DT_NONE,
         nullptr,
         nullptr,

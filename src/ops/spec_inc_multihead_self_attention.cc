@@ -59,8 +59,6 @@ Tensor FFModel::spec_inc_multihead_self_attention(
     int kdim,
     int vdim,
     float dropout,
-    bool qkv_bias,
-    bool final_bias,
     bool add_zero_attn,
     DataType data_type,
     Initializer *kernel_initializer,
@@ -77,8 +75,6 @@ Tensor FFModel::spec_inc_multihead_self_attention(
                                             kdim,
                                             vdim,
                                             dropout,
-                                            qkv_bias,
-                                            final_bias,
                                             add_zero_attn,
                                             data_type,
                                             kernel_initializer,
@@ -98,8 +94,6 @@ Tensor FFModel::spec_inc_multiquery_self_attention(
     int kdim,
     int vdim,
     float dropout,
-    bool qkv_bias,
-    bool final_bias,
     bool add_zero_attn,
     DataType data_type,
     Initializer *kernel_initializer,
@@ -113,7 +107,6 @@ Tensor FFModel::spec_inc_multiquery_self_attention(
     data_type = input->data_type;
   }
   Layer *li = nullptr;
-  int weight_num = (qkv_bias || final_bias) ? 2 : 1;
   if (data_type != input->data_type) {
     Tensor casted_input = cast(input, data_type, "type cast for IncMHA");
     li = new Layer(this,
@@ -144,16 +137,6 @@ Tensor FFModel::spec_inc_multiquery_self_attention(
     li->outputs[0] = create_tensor_legion_ordering(
         numdims, dims, data_type, li, 0, true /*create_grad*/);
   }
-  // Compute weight size
-  int qProjSize = kdim, kProjSize = kdim, vProjSize = kdim,
-      oProjSize = embed_dim;
-  int qSize = input->dims[0], kSize = input->dims[0], vSize = input->dims[0];
-  int qParas = qProjSize * qSize;
-  int kParas = kProjSize * kSize;
-  int vParas = vProjSize * vSize;
-  int oParas = oProjSize * (vProjSize > 0 ? vProjSize : vSize);
-  int weight_size = qParas * num_q_heads + kParas * num_q_heads +
-                    vParas * num_q_heads + oParas * num_q_heads;
 
   li->data_type = data_type;
   li->add_int_property("embed_dim", embed_dim);
@@ -161,8 +144,6 @@ Tensor FFModel::spec_inc_multiquery_self_attention(
   li->add_int_property("num_kv_heads", num_kv_heads);
   li->add_int_property("kdim", kdim);
   li->add_int_property("vdim", vdim);
-  li->add_int_property("qkv_bias", qkv_bias);
-  li->add_int_property("final_bias", final_bias);
   li->add_int_property("add_zero_attn", add_zero_attn);
   li->add_float_property("dropout", dropout);
   li->add_int_property("apply_rotary_embedding",
@@ -203,10 +184,6 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
   int vdim = value;
   float dropout;
   layer->get_float_property("dropout", dropout);
-  layer->get_int_property("qkv_bias", value);
-  bool qkv_bias = (bool)value;
-  layer->get_int_property("final_bias", value);
-  bool final_bias = (bool)value;
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
   RotaryEmbeddingMeta rotary_embedding_meta;
@@ -239,15 +216,12 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
                                            kdim,
                                            vdim,
                                            dropout,
-                                           qkv_bias,
-                                           final_bias,
                                            add_zero_attn,
                                            rotary_embedding_meta,
                                            scaling_query,
                                            scaling_factor,
                                            qk_prod_scaling,
                                            position_bias,
-                                           false /*allocate_weights*/,
                                            layer->name);
 }
 
@@ -261,17 +235,13 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     int _kdim,
     int _vdim,
     float _dropout,
-    bool _qkv_bias,
-    bool _final_bias,
     bool _add_zero_attn,
     RotaryEmbeddingMeta _rotary_embedding_meta,
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
     bool _position_bias,
-    bool allocate_weights,
     char const *name)
-    // Initializer* _bias_initializer)
     : Op(model,
          OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
          _input->data_type,
@@ -281,7 +251,6 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
          1 /*outputs*/,
          _input),
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
-      qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       rotary_embedding_meta(_rotary_embedding_meta),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
@@ -302,25 +271,6 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
-  if (allocate_weights) {
-    // Create weight tensor
-    int num_dims = inputs[0]->num_dims;
-    // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = this->kProjSize * this->kSize;
-    int vParas = this->vProjSize * this->vSize;
-    int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
-    ParallelDim dims[2];
-    dims[0] = inputs[0]->dims[num_dims - 2];
-    dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_q_heads * (qParas + oParas) +
-                   this->num_q_heads * (kParas + vParas);
-    dims[1].is_replica_dim = false;
-    int seed = std::rand();
-    Initializer *initializer = new GlorotUniform(seed);
-  }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, this->data_type, this);
@@ -329,24 +279,19 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     FFModel &model,
     ParallelTensor const _input,
-    ParallelTensor const _weight,
     int _embed_dim,
     int _num_q_heads,
     int _num_kv_heads,
     int _kdim,
     int _vdim,
     float _dropout,
-    bool _qkv_bias,
-    bool _final_bias,
     bool _add_zero_attn,
     RotaryEmbeddingMeta _rotary_embedding_meta,
     bool _scaling_query,
     float _scaling_factor,
     bool _qk_prod_scaling,
     bool _position_bias,
-    bool allocate_weights,
     char const *name)
-    // Initializer* _bias_initializer)
     : Op(model,
          OP_SPEC_INC_MULTIHEAD_SELF_ATTENTION,
          _input->data_type,
@@ -354,10 +299,8 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
          1 /*inputs*/,
          0 /*weights*/,
          1 /*outputs*/,
-         _input,
-         _weight),
+         _input),
       num_q_heads(_num_q_heads), num_kv_heads(_num_kv_heads), dropout(_dropout),
-      qkv_bias(_qkv_bias), final_bias(_final_bias),
       add_zero_attn(_add_zero_attn),
       rotary_embedding_meta(_rotary_embedding_meta),
       qSize(_input->dims[0].size), kSize(_input->dims[0].size),
@@ -365,9 +308,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
       vProjSize(_vdim), oProjSize(_embed_dim),
       qoSeqLength(_input->dims[1].size), kvSeqLength(_input->dims[1].size),
       scaling_query(_scaling_query), scaling_factor(_scaling_factor),
-      qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias)
-// bias_initializer(_bias_initializer)
-{
+      qk_prod_scaling(_qk_prod_scaling), position_bias(_position_bias) {
   numOutputs = 1;
   int numdim = _input->num_dims;
   ParallelDim dims[MAX_TENSOR_DIM];
@@ -377,26 +318,6 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
   dims[0].size = _embed_dim;
   // Currently require no parallelism along this dim
   assert(dims[0].degree == 1);
-  if (allocate_weights) {
-    // Create weight tensor
-    int num_dims = inputs[0]->num_dims;
-    // Compute weight size
-    int qParas = this->qProjSize * this->qSize;
-    int kParas = this->kProjSize * this->kSize;
-    int vParas = this->vProjSize * this->vSize;
-    int oParas =
-        this->oProjSize * (this->vProjSize > 0 ? this->vProjSize : this->vSize);
-    ParallelDim dims[2];
-    dims[0] = inputs[0]->dims[num_dims - 2];
-    dims[0].size = dims[0].degree;
-    dims[1] = inputs[0]->dims[num_dims - 1];
-    dims[1].size = this->num_q_heads * (qParas + oParas) +
-                   this->num_q_heads * (kParas + vParas);
-    dims[1].is_replica_dim = false;
-    // dims[2].size = qParas + kParas + vParas + oParas;
-    int seed = std::rand();
-    Initializer *initializer = new GlorotUniform(seed);
-  }
 
   outputs[0] = model.create_parallel_tensor_legion_ordering(
       _input->num_dims, dims, this->data_type, this);
@@ -405,8 +326,7 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     FFModel &model,
     SpecIncMultiHeadSelfAttention const &other,
-    ParallelTensor const input,
-    bool allocate_weights)
+    ParallelTensor const input)
     : SpecIncMultiHeadSelfAttention(model,
                                     other.layer_guid,
                                     input,
@@ -416,22 +336,18 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                     other.qProjSize,
                                     other.vProjSize,
                                     other.dropout,
-                                    other.qkv_bias,
-                                    other.final_bias,
                                     other.add_zero_attn,
                                     other.rotary_embedding_meta,
                                     other.scaling_query,
                                     other.scaling_factor,
                                     other.qk_prod_scaling,
                                     other.position_bias,
-                                    allocate_weights,
                                     other.name) {}
 
 SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
     FFModel &model,
     SpecIncMultiHeadSelfAttentionParams const &params,
     ParallelTensor const &input,
-    bool allocate_weights,
     char const *name)
     : SpecIncMultiHeadSelfAttention(model,
                                     params.layer_guid,
@@ -442,15 +358,12 @@ SpecIncMultiHeadSelfAttention::SpecIncMultiHeadSelfAttention(
                                     params.kdim,
                                     params.vdim,
                                     params.dropout,
-                                    params.qkv_bias,
-                                    params.final_bias,
                                     params.add_zero_attn,
                                     params.rotary_embedding_meta,
                                     params.scaling_query,
                                     params.scaling_factor,
                                     params.qk_prod_scaling,
                                     params.position_bias,
-                                    allocate_weights,
                                     params.name) {}
 
 void SpecIncMultiHeadSelfAttention::init_inference(
@@ -527,8 +440,7 @@ void SpecIncMultiHeadSelfAttention::init(FFModel const &ff) {
 
 /*
   regions[0](I): input
-  regions[1](I): weight
-  regions[2](O): output
+  regions[1](O): output
 */
 OpMeta *SpecIncMultiHeadSelfAttention::init_task(
     Task const *task,
@@ -564,14 +476,8 @@ OpMeta *SpecIncMultiHeadSelfAttention::init_task(
   Memory gpu_mem = get_proc_mem(Machine::get_machine(), task->target_proc);
   MemoryAllocator gpu_mem_allocator(gpu_mem);
   // We don't do offloading for SSMs (small speculative models)
-  SpecIncMultiHeadSelfAttentionMeta *m =
-      new SpecIncMultiHeadSelfAttentionMeta(handle,
-                                            attn,
-                                            GenericTensorAccessorR(),
-                                            gpu_mem_allocator,
-                                            num_samples,
-                                            num_q_heads,
-                                            num_kv_heads);
+  SpecIncMultiHeadSelfAttentionMeta *m = new SpecIncMultiHeadSelfAttentionMeta(
+      handle, attn, gpu_mem_allocator, num_samples, num_q_heads, num_kv_heads);
   // assert that we didn't over allocate memory
   assert(gpu_mem_allocator.instance_allocated_size ==
          gpu_mem_allocator.instance_total_size);
@@ -651,7 +557,6 @@ void SpecIncMultiHeadSelfAttention::inference_task(
       m->input_type[0], regions[0], task->regions[0], FID_DATA, ctx, runtime);
   GenericTensorAccessorW output = helperGetGenericTensorAccessorWO(
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
-  GenericTensorAccessorR biases;
 
   Domain input_domain = runtime->get_index_space_domain(
       ctx, task->regions[0].region.get_index_space());
@@ -692,8 +597,7 @@ Op *SpecIncMultiHeadSelfAttention::materialize(FFModel &ff,
                                                ParallelTensor inputs[],
                                                int num_inputs) const {
   SpecIncMultiHeadSelfAttentionParams params = get_params();
-  return new SpecIncMultiHeadSelfAttention(
-      ff, params, inputs[0], true, this->name);
+  return new SpecIncMultiHeadSelfAttention(ff, params, inputs[0], this->name);
 }
 
 bool SpecIncMultiHeadSelfAttention::measure_operator_cost(
@@ -706,7 +610,6 @@ bool operator==(SpecIncMultiHeadSelfAttentionParams const &lhs,
   return lhs.layer_guid == rhs.layer_guid && lhs.embed_dim == rhs.embed_dim &&
          lhs.num_q_heads == rhs.num_q_heads && lhs.kdim == rhs.kdim &&
          lhs.vdim == rhs.vdim && lhs.dropout == rhs.dropout &&
-         lhs.qkv_bias == rhs.qkv_bias && lhs.final_bias == rhs.final_bias &&
          lhs.add_zero_attn == rhs.add_zero_attn &&
          lhs.rotary_embedding_meta.apply_rotary_embedding ==
              rhs.rotary_embedding_meta.apply_rotary_embedding &&
@@ -737,8 +640,6 @@ SpecIncMultiHeadSelfAttentionParams
   params.kdim = this->kProjSize;
   params.vdim = this->vProjSize;
   params.dropout = this->dropout;
-  params.qkv_bias = this->qkv_bias;
-  params.final_bias = this->final_bias;
   params.add_zero_attn = this->add_zero_attn;
   params.rotary_embedding_meta = this->rotary_embedding_meta;
   params.scaling_query = this->scaling_query;
@@ -765,8 +666,6 @@ size_t hash<FlexFlow::SpecIncMultiHeadSelfAttentionParams>::operator()(
   hash_combine(key, params.kdim);
   hash_combine(key, params.vdim);
   hash_combine(key, params.dropout);
-  hash_combine(key, params.qkv_bias);
-  hash_combine(key, params.final_bias);
   hash_combine(key, params.add_zero_attn);
   hash_combine(key, params.rotary_embedding_meta.apply_rotary_embedding);
   hash_combine(key, params.rotary_embedding_meta.rope_theta);

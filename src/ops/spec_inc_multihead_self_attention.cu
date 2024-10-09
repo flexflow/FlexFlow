@@ -470,23 +470,10 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
   cudnnDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
   assert(data_type_size(m->output_type[0]) == sizeof(DT));
   cudaDataType_t compute_type = cublas_data_type;
-  // #if defined(CUDA_VERSION) && (CUDA_VERSION < 11000)
-  //   cudaDataType_t compute_type = cublas_data_type;
-  // #else
-  //   // For best performance, set the default cublas compute type to
-  //   // CUBLAS_COMPUTE_16F for half precision and to
-  //   // CUBLAS_COMPUTE_32F_FAST_16F for full precision
-  //   cublasComputeType_t compute_type = CUBLAS_COMPUTE_16F;
-  //   if (m->output_type[0] == DT_FLOAT) {
-  //     compute_type = CUBLAS_COMPUTE_32F_FAST_16F;
-  //   }
-  // #endif
-  // int num_requests = bc->num_active_requests();
+
   int num_tokens = bc->num_active_tokens();
   int tokens_previous_requests = 0;
   int tokens_prev_requests_squares = 0;
-  // int qkv_block_size =
-  //     (m->qProjSize + m->kProjSize + m->vProjSize) * num_tokens;
   int q_block_size = m->qProjSize;
 
   int kt_block_size = m->kProjSize;
@@ -566,8 +553,7 @@ void compute_attention_kernel_prompt(SpecIncMultiHeadSelfAttentionMeta const *m,
                                          m->num_q_heads,
                                          compute_type,
                                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
-    // print_tensor<float>((float*)C, 32, "C");
-    // add alibi position bias to qk production
+
     // add alibi position bias to qk production
     if (*m->position_bias) {
       size_t parallelism = m->num_q_heads * total_tokens * num_new_tokens;
@@ -727,7 +713,7 @@ void inference_kernel(SpecIncMultiHeadSelfAttentionMeta const *m,
   if (bc->num_tokens > bc->num_generation_tokens) {
     compute_attention_kernel_prompt(m, bc, shard_id, output_ptr, stream);
   }
-  // compute output production and bias together for all tokens
+
   int num_tokens = bc->num_active_tokens();
 
   cudaMemcpyAsync(output_ptr,
@@ -749,7 +735,6 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorW const &output) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -761,7 +746,6 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
   assert(input.data_type == output.data_type);
 
   if (input.data_type == DT_HALF) {
-    // half const *bias_ptr = static_cast<half const *>(nullptr);
     Kernels::SpecIncMultiHeadSelfAttention::inference_kernel(
         m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
@@ -788,7 +772,6 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
 SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
     FFHandler handler,
     SpecIncMultiHeadSelfAttention const *attn,
-    GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
     int num_samples,
     int _num_q_heads,
@@ -804,13 +787,10 @@ SpecIncMultiHeadSelfAttentionMeta::SpecIncMultiHeadSelfAttentionMeta(
                                     attn->vProjSize,
                                     attn->oProjSize,
                                     attn->rotary_embedding_meta,
-                                    attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->final_bias,
                                     attn->scaling_factor,
-                                    weight,
                                     gpu_mem_allocator,
                                     num_samples,
                                     attn->num_q_heads,

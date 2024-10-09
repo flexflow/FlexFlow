@@ -125,8 +125,6 @@ void FALCON::create_falcon_model(FFModel &ff,
             falcon_config.hidden_size / falcon_config.n_head,
             falcon_config.hidden_size / falcon_config.n_head,
             0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
@@ -150,8 +148,6 @@ void FALCON::create_falcon_model(FFModel &ff,
             falcon_config.hidden_size / falcon_config.n_head,
             falcon_config.hidden_size / falcon_config.n_head,
             0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
@@ -175,8 +171,6 @@ void FALCON::create_falcon_model(FFModel &ff,
             falcon_config.hidden_size / falcon_config.n_head,
             falcon_config.hidden_size / falcon_config.n_head,
             0.0f,    /*dropout*/
-            false,   /*qkv_bias*/
-            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/

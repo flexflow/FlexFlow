@@ -12,8 +12,7 @@ struct TreeIncMultiHeadSelfAttentionParams {
   int embed_dim, num_q_heads, kdim, vdim, num_kv_heads,
       tensor_parallelism_degree;
   float dropout, scaling_factor;
-  bool qkv_bias, final_bias, add_zero_attn, scaling_query, qk_prod_scaling,
-      position_bias;
+  bool add_zero_attn, scaling_query, qk_prod_scaling, position_bias;
   RotaryEmbeddingMeta rotary_embedding_meta;
   DataType quantization_type;
   bool offload;

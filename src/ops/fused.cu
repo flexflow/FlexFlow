@@ -451,7 +451,6 @@ __host__ void
         assert(fused->op_num_weights[op] == 0);
         IncMultiHeadSelfAttentionMeta *m =
             (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        GenericTensorAccessorR biases;
         IncMultiHeadSelfAttention::inference_kernel_wrapper(
             m,
             bc,
@@ -468,7 +467,6 @@ __host__ void
             (TreeIncMultiHeadSelfAttentionMeta *)metas->meta[op];
         TreeVerifyBatchConfig const &tree_bc =
             Future(task->futures[0]).get_result<TreeVerifyBatchConfig>();
-        GenericTensorAccessorR biases;
         TreeIncMultiHeadSelfAttention::inference_kernel_wrapper(
             m,
             &tree_bc,
@@ -487,7 +485,6 @@ __host__ void
         //     (BeamSearchBatchConfig *)task->args;
         BeamSearchBatchConfig const &beam_bc =
             Future(task->futures[0]).get_result<BeamSearchBatchConfig>();
-        GenericTensorAccessorR biases;
         SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
             m,
             &beam_bc,
@@ -1022,19 +1019,13 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         assert(fused->op_num_outputs[op] == 1);
         IncMultiHeadSelfAttentionMeta *m =
             (IncMultiHeadSelfAttentionMeta *)metas->meta[op];
-        assert(fused->op_num_weights[op] ==
-               (1 + (int)(*m->qkv_bias || *m->final_bias)));
+        assert(fused->op_num_weights[op] == 0);
         GenericTensorAccessorR biases;
-        if (*m->qkv_bias || *m->final_bias) {
-          assert(fused->op_num_weights[op] == 2);
-          biases = my_weight_accessor[1];
-        }
         IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
             m,
             bc,
             task->index_point.point_data[0],
             my_input_grad_accessor[0],
-            // my_weight_accessor[0],
             my_output_grad_accessor[0]);
         // biases);
         break;

@@ -11,8 +11,7 @@ struct SpecIncMultiHeadSelfAttentionParams {
   LayerID layer_guid;
   int embed_dim, num_q_heads, num_kv_heads, kdim, vdim;
   float dropout, scaling_factor;
-  bool qkv_bias, final_bias, add_zero_attn, scaling_query, qk_prod_scaling,
-      position_bias;
+  bool add_zero_attn, scaling_query, qk_prod_scaling, position_bias;
   RotaryEmbeddingMeta rotary_embedding_meta;
   char name[MAX_OPNAME];
   bool is_valid(ParallelTensorShape const &) const;

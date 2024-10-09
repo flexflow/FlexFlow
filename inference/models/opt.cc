@@ -127,8 +127,6 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,    /*dropout*/
-            true,    /*qkv_bias*/
-            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
@@ -151,8 +149,6 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,    /*dropout*/
-            true,    /*qkv_bias*/
-            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
@@ -175,8 +171,6 @@ void OPT::create_opt_model(FFModel &ff,
             opt_config.hidden_size / opt_config.num_attention_heads,
             opt_config.hidden_size / opt_config.num_attention_heads,
             0.0f,    /*dropout*/
-            true,    /*qkv_bias*/
-            false,   /*final_bias*/
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/

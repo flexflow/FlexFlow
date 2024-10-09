@@ -153,8 +153,6 @@ class FlexFlowLLAMA(FlexFlowModel):
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     0.0,  # dropout
-                    False,  # qkv_bias
-                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -172,8 +170,6 @@ class FlexFlowLLAMA(FlexFlowModel):
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     0.0,  # dropout
-                    False,  # qkv_bias
-                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -191,8 +187,6 @@ class FlexFlowLLAMA(FlexFlowModel):
                     self.llama_config.hidden_size
                     // self.llama_config.num_attention_heads,
                     0.0,  # dropout
-                    False,  # qkv_bias
-                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer

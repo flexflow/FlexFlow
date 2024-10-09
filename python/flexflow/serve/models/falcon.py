@@ -161,8 +161,6 @@ class FlexFlowFalcon(FlexFlowModel):
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     0.0,  # dropout
-                    False,  # qkv_bias
-                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -178,8 +176,6 @@ class FlexFlowFalcon(FlexFlowModel):
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     0.0,  # dropout
-                    False,  # qkv_bias
-                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
@@ -195,8 +191,6 @@ class FlexFlowFalcon(FlexFlowModel):
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     self.falcon_config.hidden_size // self.falcon_config.n_head,
                     0.0,  # dropout
-                    False,  # qkv_bias
-                    False,  # final_bias
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer

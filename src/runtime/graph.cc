@@ -2331,8 +2331,6 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
-        sez.serialize(attn->qkv_bias);
-        sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->rotary_embedding_meta.apply_rotary_embedding);
         sez.serialize(attn->rotary_embedding_meta.rope_theta);
@@ -2367,8 +2365,6 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
-        sez.serialize(attn->qkv_bias);
-        sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->rotary_embedding_meta.apply_rotary_embedding);
         sez.serialize(attn->rotary_embedding_meta.rope_theta);
@@ -2400,8 +2396,6 @@ GraphOptimalViewSerialized
         sez.serialize(attn->qProjSize);
         sez.serialize(attn->vProjSize);
         sez.serialize(attn->dropout);
-        sez.serialize(attn->qkv_bias);
-        sez.serialize(attn->final_bias);
         sez.serialize(attn->add_zero_attn);
         sez.serialize(attn->rotary_embedding_meta.apply_rotary_embedding);
         sez.serialize(attn->rotary_embedding_meta.rope_theta);
@@ -2844,8 +2838,8 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn, scaling_query,
-            qk_prod_scaling, offload, position_bias;
+        bool add_zero_attn, scaling_query, qk_prod_scaling, offload,
+            position_bias;
         RotaryEmbeddingMeta rotary_embedding_meta;
         DataType quantization_type;
         size_t id, transformer_layer_id, deserialized_model_id;
@@ -2858,8 +2852,6 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
-        dez.deserialize(qkv_bias);
-        dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
         dez.deserialize(rotary_embedding_meta.apply_rotary_embedding);
         dez.deserialize(rotary_embedding_meta.rope_theta);
@@ -2891,8 +2883,6 @@ void FFModel::deserialize_graph_optimal_view(
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
-        params.qkv_bias = qkv_bias;
-        params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.rotary_embedding_meta = rotary_embedding_meta;
@@ -2912,8 +2902,7 @@ void FFModel::deserialize_graph_optimal_view(
         assert(num_inputs == 1);
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads;
         float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn, scaling_query,
-            qk_prod_scaling, position_bias;
+        bool add_zero_attn, scaling_query, qk_prod_scaling, position_bias;
         RotaryEmbeddingMeta rotary_embedding_meta;
         size_t id, transformer_layer_id, deserialized_model_id;
         dez.deserialize(id);
@@ -2925,8 +2914,6 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
-        dez.deserialize(qkv_bias);
-        dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
         dez.deserialize(rotary_embedding_meta.apply_rotary_embedding);
         dez.deserialize(rotary_embedding_meta.rope_theta);
@@ -2955,8 +2942,6 @@ void FFModel::deserialize_graph_optimal_view(
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
-        params.qkv_bias = qkv_bias;
-        params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.rotary_embedding_meta = rotary_embedding_meta;
@@ -2975,8 +2960,8 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn, scaling_query,
-            qk_prod_scaling, offload, position_bias;
+        bool add_zero_attn, scaling_query, qk_prod_scaling, offload,
+            position_bias;
         RotaryEmbeddingMeta rotary_embedding_meta;
         DataType quantization_type;
         size_t id, transformer_layer_id, deserialized_model_id;
@@ -2989,8 +2974,6 @@ void FFModel::deserialize_graph_optimal_view(
         dez.deserialize(k_dim);
         dez.deserialize(v_dim);
         dez.deserialize(dropout);
-        dez.deserialize(qkv_bias);
-        dez.deserialize(final_bias);
         dez.deserialize(add_zero_attn);
         dez.deserialize(rotary_embedding_meta.apply_rotary_embedding);
         dez.deserialize(rotary_embedding_meta.rope_theta);
@@ -3022,8 +3005,6 @@ void FFModel::deserialize_graph_optimal_view(
         params.kdim = k_dim;
         params.vdim = v_dim;
         params.dropout = dropout;
-        params.qkv_bias = qkv_bias;
-        params.final_bias = final_bias;
         params.add_zero_attn = add_zero_attn;
         params.layer_guid = layer_guid;
         params.rotary_embedding_meta = rotary_embedding_meta;

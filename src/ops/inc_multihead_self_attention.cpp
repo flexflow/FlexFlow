@@ -336,63 +336,6 @@ __global__ void apply_position_bias_qkprd(DT *input_ptr,
 }
 
 template <typename DT>
-__global__ void apply_proj_bias_w(DT *input_ptr,
-                                  DT const *bias_ptr,
-                                  int num_tokens,
-                                  int qkv_weight_size,
-                                  int oProjSize) {
-  CUDA_KERNEL_LOOP(i, num_tokens * oProjSize) {
-    int bias_idx = qkv_weight_size + i % oProjSize;
-    input_ptr[i] += bias_ptr[bias_idx];
-  }
-}
-
-template <typename DT>
-__global__ void apply_proj_bias_qkv(DT *input_ptr,
-                                    DT const *bias_ptr,
-                                    int shard_id,
-                                    int num_tokens,
-                                    int qProjSize,
-                                    int kProjSize,
-                                    int vProjSize,
-                                    int global_num_q_heads,
-                                    int num_q_heads,
-                                    bool scaling_query,
-                                    float scaling_factor,
-                                    int hidden_size) {
-  CUDA_KERNEL_LOOP(i, num_tokens * hidden_size * QKV_WEIGHT_NUM) {
-    // for simplicity, assume q, k, v is in same shape
-    // 0->q, 1->k, 2->v
-    // int qkv_index = i / (num_tokens * qProjSize) % 3;
-
-    int token_idx = i / (hidden_size * QKV_WEIGHT_NUM);
-    size_t in_token_idx = i - token_idx * hidden_size * QKV_WEIGHT_NUM;
-
-    int qkv_index = in_token_idx / hidden_size;
-
-    int proj_size = qkv_index == 0 ? qProjSize : kProjSize;
-
-    int head_idx =
-        (in_token_idx - qkv_index * num_q_heads * proj_size) / proj_size;
-    int global_head_idx = head_idx + shard_id * num_q_heads;
-
-    size_t pre_length =
-        qkv_index == 0
-            ? 0
-            : (qkv_index == 1 ? qProjSize * global_num_q_heads
-                              : qProjSize * global_num_q_heads * KV_WEIGHT_NUM);
-
-    size_t bias_idx = pre_length + global_head_idx * proj_size + i % proj_size;
-
-    input_ptr[i] += bias_ptr[bias_idx];
-
-    if (scaling_query && qkv_index == 0) {
-      input_ptr[i] *= scaling_factor;
-    }
-  }
-}
-
-template <typename DT>
 __global__ void scaling_query_kernel(DT *input_ptr,
                                      int qProjSize,
                                      int num_tokens,
@@ -570,10 +513,8 @@ template <typename DT>
 void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
                         BatchConfig const *bc,
                         int shard_id,
-                        // DT const *input_ptr,
-                        DT const *weight_ptr,
+                        DT const *input_ptr,
                         DT *output_ptr,
-                        DT const *bias_ptr,
                         hipStream_t stream) {
 
   checkCUDA(hipblasSetStream(m->handle.blas, stream));
@@ -637,26 +578,7 @@ void compute_qkv_kernel(IncMultiHeadSelfAttentionMeta const *m,
   int parallelism = m->kProjSize * num_tokens * m->num_q_heads;
   size_t q_array_size = m->qProjSize * num_tokens * m->num_q_heads;
 
-  // Step 2: apply bias for QKV, or scale the query
-  if (*m->qkv_bias) {
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_qkv),
-                       GET_BLOCKS(parallelism),
-                       min(CUDA_NUM_THREADS, parallelism),
-                       0,
-                       stream,
-                       output_ptr,
-                       bias_ptr,
-                       shard_id,
-                       num_tokens,
-                       m->qProjSize,
-                       m->kProjSize,
-                       m->vProjSize,
-                       m->global_num_q_heads,
-                       m->num_q_heads,
-                       *m->scaling_query,
-                       m->scaling_factor,
-                       m->hidden_size);
-  } else if (m->scaling_query) {
+  if (m->scaling_query) {
     hipLaunchKernelGGL(HIP_KERNEL_NAME(scaling_query_kernel),
                        GET_BLOCKS(parallelism),
                        min(CUDA_NUM_THREADS, parallelism),
@@ -747,84 +669,6 @@ void update_kv_cache_kernel(IncMultiHeadSelfAttentionMeta const *m,
   }
 }
 
-template <typename DT>
-void compute_o_prod_bias(IncMultiHeadSelfAttentionMeta const *m,
-                         BatchConfig const *bc,
-                         int shard_id,
-                         DT *output_ptr,
-                         DT const *weight_ptr,
-                         DT const *bias_ptr,
-                         int num_tokens,
-                         hipStream_t stream) {
-  hipblasDatatype_t cublas_data_type = ff_to_cuda_datatype(m->output_type[0]);
-  miopenDataType_t cudnn_data_type = ff_to_cudnn_datatype(m->output_type[0]);
-  assert(data_type_size(m->output_type[0]) == sizeof(DT));
-#if CUDA_VERSION >= 11000
-  // TODO: currently set the default to CUBLAS_COMPUTE_16F for best performance
-  hipblasDatatype_t compute_type = HIPBLAS_R_16F;
-#else
-  hipblasDatatype_t compute_type = cublas_data_type;
-#endif
-  // Project to output, save result directly on output tensor
-  {
-    DT alpha = 1.0f, beta = 0.0f;
-    // after transpositions
-    int m_ = m->oProjSize;
-    int k = m->vProjSize * m->num_q_heads;
-    int n = num_tokens;
-    // before transpositions
-    int lda = k, ldb = k, ldc = m_;
-    // matrix A: output projection weight
-    // matrix A's layout: [vProjSize * num_heads, oProjSize]
-    DT const *A = weight_ptr + m->qSize * (m->qProjSize * m->num_q_heads +
-                                           m->kProjSize * m->num_q_heads +
-                                           m->vProjSize * m->num_q_heads);
-    // matrix B: attn heads
-    // matrix B's layout: [vProjSize * num_heads, num_new_tokens]
-    DT const *B = static_cast<DT *>(m->attn_heads);
-    // matrix B: output
-    // matrix B's layout: [oProjSize, num_new_tokens]
-    DT *C = static_cast<DT *>(output_ptr);
-
-    checkCUDA(hipblasGemmEx(m->handle.blas,
-                            HIPBLAS_OP_T,
-                            HIPBLAS_OP_N,
-                            m_,
-                            n,
-                            k,
-                            &alpha,
-                            A,
-                            cublas_data_type,
-                            lda,
-                            B,
-                            cublas_data_type,
-                            ldb,
-                            &beta,
-                            C,
-                            cublas_data_type,
-                            ldc,
-                            compute_type,
-                            HIPBLAS_GEMM_DEFAULT));
-  }
-  // Add final output bias
-  if (*m->final_bias && shard_id == 0) {
-    int parallelism = m->oProjSize * num_tokens;
-    int qkv_weight_size = m->qProjSize * m->global_num_q_heads +
-                          m->kProjSize * m->global_num_q_heads +
-                          m->vProjSize * m->global_num_q_heads;
-    hipLaunchKernelGGL(HIP_KERNEL_NAME(apply_proj_bias_w),
-                       GET_BLOCKS(parallelism),
-                       min(CUDA_NUM_THREADS, parallelism),
-                       0,
-                       stream,
-                       output_ptr,
-                       bias_ptr,
-                       num_tokens,
-                       qkv_weight_size,
-                       m->oProjSize);
-  }
-}
-
 #define LAUNCH_ATTENTION_SCORE_KERNEL(                                         \
     DT, Dh, Dh_MAX, THDS_PER_KEY, THREADS_PER_VALUE, THDS_PER_BLOCK, stream)   \
   smem_sz = smem_size_in_bytes<DT>(m->qProjSize,                               \
@@ -876,8 +720,7 @@ void pre_build_weight_kernel(IncMultiHeadSelfAttentionMeta const *m,
                              DataType data_type,
                              hipStream_t stream) {
   // additional processing for weight uploading
-  // Note that we update weight_ptr and bias_ptr when uploading weight and
-  // bias
+  // Note that we update weight_ptr  when uploading weight
   if (m->quantization_type != DT_NONE) {
     // copy weight_ptr to quantized_weight_ptr, do compression and store in
     // m->weight_ptr
@@ -940,20 +783,12 @@ void inference_kernel(IncMultiHeadSelfAttentionMeta *m,
                       DT *output_ptr,
                       hipStream_t stream) {
 
-  if (m->offload && m->biasSize > 0) {
-    checkCUDA(hipMemcpyAsync(
-        m->bias_ptr, bias_ptr, m->biasSize, hipMemcpyHostToDevice, stream));
-    bias_ptr = static_cast<DT *>(m->bias_ptr);
-  }
-
   // phase 1: Implement kernel to compute KQV for input tokens
   compute_qkv_kernel(m,
                      bc,
                      shard_id,
-                     //  input_ptr,
-                     weight_ptr,
+                     input_ptr,
                      static_cast<DT *>(m->devQKVProjArray),
-                     bias_ptr,
                      stream);
   update_kv_cache_kernel<DT>(m, bc, stream);
 
@@ -1804,24 +1639,17 @@ void IncMultiHeadSelfAttention::inference_kernel_wrapper(
 
   // assert(input.data_type == weight.data_type);
   assert(input.data_type == output.data_type);
-  if (use_bias) {
-    assert(input.data_type == bias.data_type);
-  }
 
   if (input.data_type == DT_HALF) {
     if (m->offload) {
       pre_build_weight_kernel<half>(m, weight, input.data_type, stream);
     }
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(
         m, bc, shard_id, input.get_half_ptr(), output.get_half_ptr(), stream);
   } else if (input.data_type == DT_FLOAT) {
     if (m->offload) {
       pre_build_weight_kernel<float>(m, weight, input.data_type, stream);
     }
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::inference_kernel(
         m, bc, shard_id, input.get_float_ptr(), output.get_float_ptr(), stream);
   } else {
@@ -1846,11 +1674,9 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
     int shard_id,
     GenericTensorAccessorW const &input_grad,
     GenericTensorAccessorR const &weight,
-    GenericTensorAccessorR const &output_grad,
-    GenericTensorAccessorR const &bias) {
+    GenericTensorAccessorR const &output_grad) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   hipEvent_t t_start, t_end;
   if (m->profiling) {
@@ -1861,33 +1687,22 @@ void IncMultiHeadSelfAttention::peft_bwd_kernel_wrapper(
 
   // assert(input.data_type == weight.data_type);
   assert(input_grad.data_type == output_grad.data_type);
-  if (use_bias) {
-    assert(input_grad.data_type == bias.data_type);
-  }
 
   if (input_grad.data_type == DT_HALF) {
     assert(!m->offload);
-    half const *bias_ptr =
-        use_bias ? bias.get_half_ptr() : static_cast<half const *>(nullptr);
     Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
                                                     bc,
                                                     shard_id,
                                                     input_grad.get_half_ptr(),
-                                                    weight.get_half_ptr(),
                                                     output_grad.get_half_ptr(),
-                                                    bias_ptr,
                                                     stream);
   } else if (input_grad.data_type == DT_FLOAT) {
     assert(!m->offload);
-    float const *bias_ptr =
-        use_bias ? bias.get_float_ptr() : static_cast<float const *>(nullptr);
     Kernels::IncMultiHeadAttention::peft_bwd_kernel(m,
                                                     bc,
                                                     shard_id,
                                                     input_grad.get_float_ptr(),
-                                                    weight.get_float_ptr(),
                                                     output_grad.get_float_ptr(),
-                                                    bias_ptr,
                                                     stream);
   } else {
     assert(false && "Unspported data type");
@@ -1922,11 +1737,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->vProjSize,
                                     attn->oProjSize,
                                     attn->rotary_embedding_meta,
-                                    attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
                                     attn->position_bias,
-                                    attn->final_bias,
                                     attn->scaling_factor,
                                     weight,
                                     gpu_mem_allocator,
@@ -1950,11 +1763,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _vProjSize,
     int _oProjSize,
     RotaryEmbeddingMeta _rotary_embedding_meta,
-    bool _qkv_bias,
     bool _scaling_query,
     bool _qk_prod_scaling,
     bool _position_bias,
-    bool _final_bias,
     float _scaling_factor,
     GenericTensorAccessorR const &weight,
     MemoryAllocator &gpu_mem_allocator,
@@ -1965,7 +1776,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _num_kv_heads,
     DataType _quantization_type,
     bool _offload)
-    : OpMeta(handler, attn), weight_ptr(nullptr), bias_ptr(nullptr) {
+    : OpMeta(handler, attn) {
   hipStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   checkCUDNN(miopenSetStream(handler.dnn, stream));
@@ -2000,21 +1811,12 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     quantized_weightSize = get_quantization_to_byte_size(
         attn->data_type, quantization_type, weightSize);
   }
-  // biasSize = _bias ? oProjSize * size_of_dt * 4 : 0;
-
-  int qkv_bias_size =
-      qProjSize * num_q_heads + (kProjSize + vProjSize) * num_q_heads;
-  int final_bias_size = oProjSize;
-  biasSize =
-      (_qkv_bias ? qkv_bias_size : 0) + (final_bias ? final_bias_size : 0);
 
   // has_load_weights = (bool *)calloc(1, sizeof(bool));
   //*has_load_weights = false;
   rotary_embedding_meta =
       (RotaryEmbeddingMeta *)calloc(1, sizeof(RotaryEmbeddingMeta));
   *rotary_embedding_meta = _rotary_embedding_meta;
-  qkv_bias = (bool *)calloc(1, sizeof(bool));
-  *qkv_bias = _qkv_bias;
   scaling_query = (bool *)calloc(1, sizeof(bool));
   *scaling_query = _scaling_query;
   scaling_factor = _scaling_factor;
@@ -2022,14 +1824,6 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
   *qk_prod_scaling = _qk_prod_scaling;
   position_bias = (bool *)calloc(1, sizeof(bool));
   *position_bias = _position_bias;
-  final_bias = (bool *)calloc(1, sizeof(bool));
-  *final_bias = _final_bias;
-
-  // allocate weight and bias in the reserve space for cpu offloading
-  if (offload) {
-    weight_ptr = gpu_mem_allocator.allocate_reserved_untyped(weightSize);
-    bias_ptr = gpu_mem_allocator.allocate_reserved_untyped(biasSize);
-  }
 
   // allocate memory for the seqArray and reserve space
   {
@@ -2196,26 +1990,6 @@ template void Kernels::IncMultiHeadAttention::pre_build_weight_kernel<half>(
     IncMultiHeadSelfAttentionMeta const *m,
     GenericTensorAccessorR const weight,
     DataType data_type,
-    hipStream_t stream);
-
-template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<float>(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    int shard_id,
-    float *output_ptr,
-    float const *weight_ptr,
-    float const *bias_ptr,
-    int num_tokens,
-    hipStream_t stream);
-
-template void Kernels::IncMultiHeadAttention::compute_o_prod_bias<half>(
-    IncMultiHeadSelfAttentionMeta const *m,
-    BatchConfig const *bc,
-    int shard_id,
-    half *output_ptr,
-    half const *weight_ptr,
-    half const *bias_ptr,
-    int num_tokens,
     hipStream_t stream);
 
 template void

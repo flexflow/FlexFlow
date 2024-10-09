@@ -33,43 +33,34 @@ public:
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
-                                bool _qkv_bias,
-                                bool _final_bias,
                                 bool _add_zero_attn,
                                 RotaryEmbeddingMeta _rotary_embedding_meta,
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
                                 bool _position_bias,
-                                bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 const ParallelTensor _input,
-                                const ParallelTensor _weight,
                                 int _embed_dim,
                                 int _num_q_heads,
                                 int _num_kv_heads,
                                 int _kdim,
                                 int _vdim,
                                 float _dropout,
-                                bool _qkv_bias,
-                                bool _final_bias,
                                 bool _add_zero_attn,
                                 RotaryEmbeddingMeta _rotary_embedding_meta,
                                 bool _scaling_query,
                                 float _scaling_factor,
                                 bool _qk_prod_scaling,
                                 bool _position_bias,
-                                bool allocate_weights,
                                 char const *name);
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 SpecIncMultiHeadSelfAttention const &other,
-                                const ParallelTensor input,
-                                bool allocate_weights);
+                                const ParallelTensor input);
   SpecIncMultiHeadSelfAttention(FFModel &model,
                                 Params const &params,
                                 Input const &inputs,
-                                bool allocate_weights = false,
                                 char const *name = nullptr);
   static Op *
       create_operator_from_layer(FFModel &model,
@@ -118,8 +109,7 @@ public:
 public:
   int num_q_heads, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
-  bool qkv_bias;
-  bool final_bias, add_zero_attn, scaling_query, qk_prod_scaling, position_bias;
+  bool add_zero_attn, scaling_query, qk_prod_scaling, position_bias;
   RotaryEmbeddingMeta rotary_embedding_meta;
   int qSize, kSize, vSize, qProjSize, kProjSize, vProjSize, oProjSize;
   int qoSeqLength, kvSeqLength;
@@ -129,7 +119,6 @@ class SpecIncMultiHeadSelfAttentionMeta : public IncMultiHeadSelfAttentionMeta {
 public:
   SpecIncMultiHeadSelfAttentionMeta(FFHandler handler,
                                     SpecIncMultiHeadSelfAttention const *attn,
-                                    GenericTensorAccessorR const &weight,
                                     MemoryAllocator &gpu_mem_allocator,
                                     int num_samples,
                                     int _num_q_heads,
