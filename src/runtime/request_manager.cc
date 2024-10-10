@@ -2629,6 +2629,39 @@ void RequestManager::terminate_background_server() {
     }
     latency_per_request_ms += ")";
     str += latency_per_request_ms;
+
+    std::string ttft_per_request_ms = "\n ttft_per_request_ms( ";
+    for (auto const &profiling_info : profiling_requests) {
+      double prefilling_time_ms = 0;
+      auto const &profiling = profiling_info.second;
+      if (profiling.start_decoding_time != 0) {
+        prefilling_time_ms =
+            (profiling.start_decoding_time - profiling.start_time) / 1000.0;
+      } else {
+        prefilling_time_ms =
+            (profiling.finish_time - profiling.start_time) / 1000.0;
+      }
+      ttft_per_request_ms += std::to_string(prefilling_time_ms) + " ";
+    }
+    ttft_per_request_ms += ")";
+    str += ttft_per_request_ms;
+
+    std::string per_token_time_per_request_ms =
+        "\n per_token_time_per_request_ms( ";
+    for (auto const &profiling_info : profiling_requests) {
+      double per_token_time_ms = 0;
+      auto const &request = all_requests[profiling_info.first];
+      auto const &profiling = profiling_info.second;
+      if (profiling.start_decoding_time != 0) {
+        per_token_time_ms =
+            (profiling.finish_time - profiling.start_decoding_time) / 1000.0 /
+            (request.tokens.size() - request.llm_prefill_len);
+      }
+      per_token_time_per_request_ms += std::to_string(per_token_time_ms) + " ";
+    }
+    per_token_time_per_request_ms += ")";
+    str += per_token_time_per_request_ms;
+
     average_latency_per_request /= total_requests;
     str += "\n average_latency_per_request_ms(" +
            std::to_string(average_latency_per_request) + ")";
