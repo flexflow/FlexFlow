@@ -2,12 +2,6 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_CONTAINERS_MAXIMUM_H
 
 #include "utils/exception.h"
-#include "utils/fmt/map.h"
-#include "utils/fmt/multiset.h"
-#include "utils/fmt/set.h"
-#include "utils/fmt/unordered_map.h"
-#include "utils/fmt/unordered_set.h"
-#include "utils/fmt/vector.h"
 #include <algorithm>
 
 namespace FlexFlow {
