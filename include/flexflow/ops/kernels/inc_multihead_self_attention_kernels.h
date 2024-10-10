@@ -15,7 +15,7 @@ namespace Kernels {
 namespace IncMultiHeadAttention {
 
 // kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
-__device__ __forceinline__ size_t get_k_entry_offset(int const token_idx,
+__device__ __forceinline__ size_t get_k_entry_offset_verify(int const token_idx,
                                                      int const page_idx,
                                                      int const num_heads,
                                                      int const head_dim) {
@@ -24,7 +24,7 @@ __device__ __forceinline__ size_t get_k_entry_offset(int const token_idx,
 }
 
 // kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
-__device__ __forceinline__ size_t get_v_entry_offset(int const token_idx,
+__device__ __forceinline__ size_t get_v_entry_offset_verify(int const token_idx,
                                                      int const page_idx,
                                                      int const num_heads,
                                                      int const head_dim) {
@@ -33,28 +33,28 @@ __device__ __forceinline__ size_t get_v_entry_offset(int const token_idx,
 }
 
 // // kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
-// __device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
-//                                                      int const token_idx,
-//                                                      int const max_num_pages,
-//                                                      int const num_heads,
-//                                                      int const head_dim) {
-//   return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-//           token_idx % kPagesize) * /* page slot index */
-//          num_heads *
-//          head_dim;
-// }
+__device__ __forceinline__ size_t get_k_entry_offset(int const req_idx,
+                                                     int const token_idx,
+                                                     int const max_num_pages,
+                                                     int const num_heads,
+                                                     int const head_dim) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
+          token_idx % kPagesize) * /* page slot index */
+         num_heads *
+         head_dim;
+}
 
-// // kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
-// __device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
-//                                                      int const token_idx,
-//                                                      int const max_num_pages,
-//                                                      int const num_heads,
-//                                                      int const head_dim) {
-//   return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
-//           kPagesize + token_idx % kPagesize) * /* page slot index */
-//          num_heads *
-//          head_dim;
-// }
+// kv layout: [num_pages, 2, page_size, num_kv_heads, head_dim]
+__device__ __forceinline__ size_t get_v_entry_offset(int const req_idx,
+                                                     int const token_idx,
+                                                     int const max_num_pages,
+                                                     int const num_heads,
+                                                     int const head_dim) {
+  return ((req_idx * max_num_pages + token_idx / kPagesize) * kPagesize * 2 +
+          kPagesize + token_idx % kPagesize) * /* page slot index */
+         num_heads *
+         head_dim;
+}
 
 template <typename DT>
 void pre_build_weight(IncMultiHeadSelfAttentionMeta const *m,
@@ -106,6 +106,10 @@ template <typename DT>
 void update_qkv_in_batch(IncMultiHeadSelfAttentionMeta const *m,
                          BatchConfig const *bc,
                          cudaStream_t stream);
+
+void update_qkv_in_batch_verify(IncMultiHeadSelfAttentionMeta const *m,
+                                BatchConfig const *bc,
+                                cudaStream_t stream);
 
 // [For the tokens in streaming cache]
 // Convert the out-of-order cache to in-order relative position.

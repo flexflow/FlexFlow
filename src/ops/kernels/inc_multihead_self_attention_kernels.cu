@@ -459,8 +459,6 @@ __global__ void
     update_qkv_in_batch_kernel(DT *qkv_proj_array,
                                half *qTmp_ptr,
                                half *kvCache_ptr,
-                               int32_t *kv_indptr,
-                               int32_t *kv_page_indices,
                                BatchConfig::PerTokenInfo const *tokenInfos,
                                int const max_num_pages,
                                int num_q_heads,
@@ -485,12 +483,10 @@ __global__ void
       static_cast<half>(qkv_proj_array[from_idx + offset]);
 
   if (offset < kv_hidden_size) {
-    int start = kv_indptr[req_idx];
-    int page_idx = kv_page_indices[start + (token_abs_idx / kPagesize)];
     size_t to_k_idx = get_k_entry_offset(
-           token_abs_idx, page_idx, num_kv_heads, head_dim);
+               req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim),
            to_v_idx = get_v_entry_offset(
-           token_abs_idx, page_idx, num_kv_heads, head_dim);
+               req_idx, token_abs_idx, max_num_pages, num_kv_heads, head_dim);
     // key and value cache should be stored interleaved
     int const stride = num_q_heads / num_kv_heads;
     int const kv_offset =

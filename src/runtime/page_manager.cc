@@ -98,7 +98,7 @@ PhysicalTokenBlock BlockAllocator::allocate() {
     }
     PhysicalTokenBlock block = free_blocks.front();
     free_blocks.pop_front();
-    block.ref_count = 1;
+    block.incr_ref_count();
     return block;
 }
 
@@ -107,7 +107,7 @@ void BlockAllocator::free(PhysicalTokenBlock& block) {
     if (block.ref_count == 0) {
         throw std::runtime_error("Double free! Block is already freed.");
     }
-    block.ref_count -= 1;
+    block.decr_ref_count();
     if (block.ref_count == 0) {
         free_blocks.push_back(block);
     }else{
@@ -134,17 +134,19 @@ int PageManager::allocate_one_block(const RequestGuid& request_guid) {
     return block.get_block_number();
 }
 
-void PageManager::_free_block_table(BlockTable& block_table) {
+void PageManager::free_block_table(BlockTable& block_table) {
     for (auto& block : block_table) {
             block_allocator.free(block);
     } 
+    return;
 }
 
 void PageManager::free_request(const RequestGuid& request_guid) {
     //we only free the blocks that are already used
     assert(block_tables.find(request_guid) != block_tables.end());
-    auto& block_table = block_tables[request_guid];
-    _free_block_table(block_table);
+    BlockTable block_table = block_tables[request_guid];
+    free_block_table(block_table);
+    block_tables.erase(request_guid);
     return;
 }
 
@@ -172,7 +174,6 @@ int PageManager::get_index_last_block(const RequestGuid& request_guid) const {
 
 std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request_guid) const {
     std::vector<int> indices;
-    try {
     const auto& block_table = block_tables.at(request_guid);
     for (const auto& block : block_table) {
         // printf("get block indice block number is: %d\n", block.block_number);

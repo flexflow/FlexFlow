@@ -1050,7 +1050,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
          "No prefilling request to process in the prefilling phase.");
 
   // get page manager
-  PageManager *page_manager = get_page_manager();
+  PageManager *page_manager = PageManager::get_page_manager();
 
   BatchConfig bc;
   if (decoding_mode == INCREMENTAL_DECODING) {
@@ -1879,15 +1879,15 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
 }
 
 /* --------- Page Attention Related Functions --------- */
-int get_num_blocks_allocated(Request &request) const {
+int RequestManager::get_num_blocks_allocated(Request &request) const {
   return request.blocks.size();
 }
 
-int get_len_last_block(Request &request) const {
+int RequestManager::get_len_last_block(Request &request) const {
   return request.blocks.back().num_tokens;
 }
 
-int get_idx_last_logical_token(Request &request) const {
+int RequestManager::get_idx_last_logical_token(Request &request) const {
   if (request.blocks.empty()) {
     printf("Error: request.blocks is empty\n");
     return -1;
@@ -1896,7 +1896,7 @@ int get_idx_last_logical_token(Request &request) const {
   }
 }
 
-int idx_logical_to_physical(Request &request, int idx_logical) {
+int RequestManager::idx_logical_to_physical(Request &request, int idx_logical) {
   // get physical indices
   PageManager *page_manager = PageManager::get_page_manager();
   std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
