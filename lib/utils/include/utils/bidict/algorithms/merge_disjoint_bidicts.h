@@ -14,11 +14,11 @@ bidict<K, V> merge_disjoint_bidicts(bidict<K, V> const &lhs,
                                     bidict<K, V> const &rhs) {
   if (!are_disjoint(left_entries(lhs), left_entries(rhs))) {
     throw mk_runtime_error(
-        fmt::format("Left entries of {} and {} are non-disjoint"), lhs, rhs);
+        fmt::format("Left entries of {} and {} are non-disjoint", lhs, rhs));
   }
   if (!are_disjoint(right_entries(lhs), right_entries(rhs))) {
     throw mk_runtime_error(
-        fmt::format("Right entries of {} and {} are non-disjoint"), lhs, rhs);
+        fmt::format("Right entries of {} and {} are non-disjoint", lhs, rhs));
   }
 
   bidict<K, V> result;

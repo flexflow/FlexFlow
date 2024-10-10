@@ -22,7 +22,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(postfix == std::vector<int>({1, 2, 3, 4, 5}));
     }
 
-    SUBCASE("Boundary case: idx is the last index in the list") {
+    SUBCASE("Boundary case: idx == list_size") {
       auto [prefix, postfix] = vector_split(v, 5);
       CHECK(prefix == std::vector<int>({1, 2, 3, 4, 5}));
       CHECK(postfix.empty());

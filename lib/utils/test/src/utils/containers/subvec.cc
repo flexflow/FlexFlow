@@ -51,12 +51,12 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
-    SUBCASE("Out of bounds index from above") {
-      CHECK_THROWS(subvec(v, 2, 100));
+    SUBCASE("Upper index is out of bounds by 1") {
+      CHECK_THROWS(subvec(v, 2, 6));
     }
 
-    SUBCASE("Out of bounds index from below") {
-      CHECK_THROWS(subvec(v, -100, 2));
+    SUBCASE("Lower index is out of bounds by 1") {
+      CHECK_THROWS(subvec(v, -6, 2));
     }
   }
 }
