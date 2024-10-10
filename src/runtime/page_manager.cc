@@ -163,14 +163,10 @@ void PageManager::free_multiple_blocks(const RequestGuid& request_guid, int num_
     return;
 }
 
-std::vector<int> PageManager::copy_block_table(const RequestGuid& request_guid) const {
-    return block_tables.at(request_guid);
-}
-
-int PageManager::get_index_last_block(const RequestGuid& request_guid) const {
-    const auto& block_table = block_tables.at(request_guid);
-    return block_table.back.get_block_number();
-}
+// int PageManager::get_index_last_block(const RequestGuid& request_guid) const {
+//     const auto& block_table = block_tables.at(request_guid);
+//     return block_table.back.get_block_number();
+// }
 
 std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request_guid) const {
     std::vector<int> indices;

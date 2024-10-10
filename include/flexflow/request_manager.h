@@ -149,7 +149,7 @@ struct Request {
   std::vector<BatchConfig::TokenId> tokens;
 
   //page attention
-  int page_last_commited = 0;
+  int page_last_committed = 0;
   std::vector<LogicalTokenBlock> blocks;
 
   // TokenTree speculative_token_tree;
@@ -517,6 +517,16 @@ private:
   void update_bitmask_prompt(RequestGuid guid, int num_committed_tokens);
   void init_bitmask_spec(RequestGuid guid);
   BatchConfig::BitMask create_llm_bitmask(RequestGuid guid);
+
+  // Page Attention related
+  int get_num_blocks_allocated(Request &request) const;
+  int get_len_last_block(Request &request) const;
+  int get_idx_last_logical_token(Request &request) const;
+  int idx_logical_to_physical(Request &request, int idx_logical);
+  void _append_logical_block_to_request(
+    Request &request, bool is_commit);
+  int append_token_to_block(Request &request, TokenId token, bool is_commit);
+  void reset_block_table(Request &request);
 
   // Token tree related
   void init_token_tree(RequestGuid guid);

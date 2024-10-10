@@ -1095,15 +1095,15 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
       bc.tokensInfo[token_idx].token_id =
           request->tokens[request->llm_prefill_len + idx];
 
-      append_token_to_block(request, request->tokens[request->llm_prefill_len + idx], true);
+      append_token_to_block(*request, request->tokens[request->llm_prefill_len + idx], true);
     }
     num_tokens += num_tokens_in_batch;
     if (num_tokens_in_batch > 0) {
       bc.num_available_requests++;
     }
     //update related page info in batch config
-    bc.requestsInfo[request_index].num_kv_pages = get_num_blocks_allocated(request);
-    bc.requestsInfo[request_index].kv_last_page_len = get_len_last_block(request);
+    bc.requestsInfo[request_index].num_kv_pages = get_num_blocks_allocated(*request);
+    bc.requestsInfo[request_index].kv_last_page_len = get_len_last_block(*request);
   }
   bc.num_tokens = num_tokens;
 
@@ -1484,6 +1484,9 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
             std::begin(new_bc.request_available));
   new_bc.num_available_requests = num_available_requests;
 
+  // get page manager
+  PageManager *page_manager = PageManager::get_page_manager();
+
   for (int request_index = 0; request_index < get_max_requests_per_batch();
        ++request_index) {
     if (!request_available[request_index]) {
@@ -1494,7 +1497,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     assert(request.status == Request::RUNNING);
 
     //page attention: before commit token, reset the pages assigned by cleaning all the tokens
-    std::vector<int> block_table_before_commit = get_block_table_indices(guid);
+    std::vector<int> block_table_before_commit = page_manager->get_block_table_indices(guid);
     // also need to reset the pages
 
 
@@ -1520,7 +1523,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
           committed_tokens.at(committed_token_index);
       
       int idx_to_physical = append_token_to_block(request, committed_token.token_id, true);
-      int idx_from_logical = committed_token.from_index - first_token_offset_in_batch;
+      int idx_from_logical = committed_token.from_index - request.first_token_offset_in_batch;
       int idx_from_physical = block_table_before_commit[idx_from_logical / kPagesize] * kPagesize + committed_token.from_index % kPagesize;
       reset_block_table(request);
 
@@ -1884,7 +1887,7 @@ int RequestManager::get_num_blocks_allocated(Request &request) const {
 }
 
 int RequestManager::get_len_last_block(Request &request) const {
-  return request.blocks.back().num_tokens;
+  return request.blocks.back().get_num_tokens();
 }
 
 int RequestManager::get_idx_last_logical_token(Request &request) const {
@@ -1892,7 +1895,7 @@ int RequestManager::get_idx_last_logical_token(Request &request) const {
     printf("Error: request.blocks is empty\n");
     return -1;
   }else{
-    return (request.blocks.size() - 1) * kPagesize + request.blocks.back().num_tokens - 1;
+    return (request.blocks.size() - 1) * kPagesize + request.blocks.back().get_num_tokens() - 1;
   }
 }
 
@@ -1912,28 +1915,26 @@ void RequestManager::_append_logical_block_to_request(
                                   kPagesize);
   request.blocks.push_back(block);
   PageManager *page_manager = PageManager::get_page_manager();
-  page_manager->allocate(request.guid);
+  page_manager->allocate_one_block(request.guid);
   // update page_id_commit
   if (is_commit) {
-    request.page_id_commit++;
-    assert(request.page_id_commit < request.blocks.size());
+    request.page_last_committed++;
+    assert(request.page_last_committed < request.blocks.size());
   }
 }
 
 //this function is used for appending a token to the last logical block and also the last physical block
 //it will return the physical position of this token
 int RequestManager::append_token_to_block(Request &request, TokenId token, bool is_commit) {
-  int page_cur_physical = PageManager::get_page_manager()->get_index_last_block(request.guid);
   if (request.blocks.empty() ||
       request.blocks.back().is_full()) {
     PageManager *page_manager = PageManager::get_page_manager();
     // Append a new logical block
     _append_logical_block_to_request(request, is_commit);
     // also allocate one physical page
-    page_cur_physical = page_manager->allocate_one_block(request.guid);
   }
   // insert token to both logical block and physical block
-  request.blocks.back().append_token(token, is_commit);
+  request.blocks.back().append_tokens({token}, is_commit);
   int idx_logical = get_idx_last_logical_token(request);
   int idx_physical = idx_logical_to_physical(request, idx_logical);
   return idx_physical;
@@ -1942,13 +1943,12 @@ int RequestManager::append_token_to_block(Request &request, TokenId token, bool 
 void RequestManager::reset_block_table(Request &request){
   // get the indices of original physical block table for request
   PageManager *page_manager = PageManager::get_page_manager();
+  std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
   // reset the block table according to the request's page_last_commit
-  page_manager->free_multiple_blocks(request.guid, block_table_indices.size() - request.page_id_commit);
+  page_manager->free_multiple_blocks(request.guid, block_table_indices.size() - request.page_last_committed);
   // reset this request's logical block table
-  request.blocks.erase(request.blocks.begin() + request.page_id_commit + 1, request.blocks.end());
+  request.blocks.erase(request.blocks.begin() + request.page_last_committed + 1, request.blocks.end());
 
-
-  BlockTable block_table = page_manager->get_block_table(request.guid);
   assert(request.blocks.size() == block_table_indices.size());
   return;
 }
