@@ -148,8 +148,8 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
-  //page attention
-  int page_last_committed = 0;
+  //page attention, page_last_committed should be -1 because there are no blocks at the beginning
+  int page_last_committed = -1;
   std::vector<LogicalTokenBlock> blocks;
 
   // TokenTree speculative_token_tree;
@@ -523,7 +523,7 @@ private:
   int get_len_last_block(Request &request) const;
   int get_idx_last_logical_token(Request &request) const;
   int idx_logical_to_physical(Request &request, int idx_logical);
-  void _append_logical_block_to_request(
+  void _append_block_to_request(
     Request &request, bool is_commit);
   int append_token_to_block(Request &request, TokenId token, bool is_commit);
   void reset_block_table(Request &request);
