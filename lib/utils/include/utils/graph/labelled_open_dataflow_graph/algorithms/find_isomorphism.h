@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_OPEN_DATAFLOW_GRAPH_ALGORITHMS_FIND_ISOMORPHISM_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_LABELLED_OPEN_DATAFLOW_GRAPH_ALGORITHMS_FIND_ISOMORPHISM_H
 
-#include "utils/containers/as_vector.h"
 #include "utils/containers/get_all_permutations.h"
 #include "utils/containers/zip.h"
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/is_isomorphic_under.h"

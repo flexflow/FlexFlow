@@ -3,7 +3,7 @@
 
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/sim_environment.h"
-#include "op-attrs/ops/layer_norm.h"
+#include "op-attrs/ops/layer_norm_attrs.dtg.h"
 
 namespace FlexFlow {
 

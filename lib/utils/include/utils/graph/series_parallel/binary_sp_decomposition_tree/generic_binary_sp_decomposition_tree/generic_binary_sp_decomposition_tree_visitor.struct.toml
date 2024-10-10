@@ -1,0 +1,27 @@
+namespace = "FlexFlow"
+name = "GenericBinarySPDecompositionTreeVisitor"
+features = []
+
+template_params = [
+  "ReturnType",
+  "Tree",
+  "Series",
+  "Parallel",
+  "Leaf",
+]
+
+includes = [
+  "<functional>",
+]
+
+[[fields]]
+name = "series_func"
+type = "std::function<ReturnType(Series const &)>"
+
+[[fields]]
+name = "parallel_func"
+type = "std::function<ReturnType(Parallel const &)>"
+
+[[fields]]
+name = "leaf_func"
+type = "std::function<ReturnType(Leaf const &)>"

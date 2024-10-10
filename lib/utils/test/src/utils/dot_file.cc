@@ -1,5 +1,5 @@
 #include "utils/dot_file.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include <sstream>
 
 TEST_SUITE(FF_TEST_SUITE) {

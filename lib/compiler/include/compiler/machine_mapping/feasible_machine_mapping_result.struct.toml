@@ -1,0 +1,19 @@
+namespace = "FlexFlow"
+name = "FeasibleMachineMappingResult"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.dtg.h",
+]
+
+[[fields]]
+name = "runtime"
+type = "float"
+
+[[fields]]
+name = "machine_mapping"
+type = "::FlexFlow::ParallelLayerGuidObliviousMachineMapping"

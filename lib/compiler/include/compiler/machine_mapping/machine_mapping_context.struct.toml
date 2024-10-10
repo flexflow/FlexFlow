@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "MachineMappingContext"
+features = []
+
+includes = [
+  "compiler/cost_estimator/cost_estimator.h",
+  "pcg/machine_view.dtg.h",
+  "pcg/machine_specification.dtg.h",
+  "compiler/machine_mapping/machine_mapping_problem_tree/unmapped_op_cost_estimate_key.dtg.h",
+]
+
+[[fields]]
+name = "cost_estimator"
+type = "::FlexFlow::CostEstimator"
+
+[[fields]]
+name = "allowed_machine_views"
+type = "std::function<std::unordered_set<::FlexFlow::MachineView>(::FlexFlow::UnmappedOpCostEstimateKey const &, ::FlexFlow::MachineSpecification const &)>"

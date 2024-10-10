@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "OperatorTaskSpace"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "<vector>",
+]
+
+src_includes = [
+  "utils/fmt/vector.h",
+  "utils/hash/vector.h"
+]
+
+[[fields]]
+name = "degrees"
+type = "std::vector<int>"

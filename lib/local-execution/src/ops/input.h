@@ -2,7 +2,7 @@
 #define _FLEXFLOW_INPUT_H
 
 #include "local-execution/op_task_invocation.h"
-#include "op-attrs/ops/input.h"
+#include "op-attrs/ops/input_attrs.dtg.h"
 
 namespace FlexFlow {
 

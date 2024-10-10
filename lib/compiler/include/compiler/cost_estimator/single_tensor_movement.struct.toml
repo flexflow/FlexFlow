@@ -1,0 +1,30 @@
+namespace = "FlexFlow"
+name = "SingleTensorMovement"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "op-attrs/parallel_tensor_shape.dtg.h",
+  "pcg/machine_view.dtg.h",
+  "<unordered_set>",
+]
+
+src_includes = [
+  "utils/hash/unordered_set.h",
+  "utils/fmt/unordered_set.h",
+]
+
+[[fields]]
+name = "parallel_tensor_shape"
+type = "::FlexFlow::ParallelTensorShape"
+
+[[fields]]
+name = "src_machine_views"
+type = "std::unordered_set<::FlexFlow::MachineView>"
+
+[[fields]]
+name = "dst_machine_views"
+type = "std::unordered_set<::FlexFlow::MachineView>"

@@ -1,0 +1,27 @@
+namespace = "FlexFlow"
+name = "CLIParseResult"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<unordered_map>",
+  "<string>",
+  "utils/cli/cli_flag_key.dtg.h",
+  "utils/cli/cli_positional_argument_key.dtg.h",
+]
+
+src_includes = [
+  "utils/fmt/unordered_map.h",
+  "utils/hash/unordered_map.h",
+]
+
+[[fields]]
+name = "flags"
+type = "std::unordered_map<::FlexFlow::CLIFlagKey, bool>"
+
+[[fields]]
+name = "positional_arguments"
+type = "std::unordered_map<::FlexFlow::CLIPositionalArgumentKey, std::string>"

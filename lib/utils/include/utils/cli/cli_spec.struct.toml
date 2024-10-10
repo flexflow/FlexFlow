@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "CLISpec"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "<unordered_map>",
+  "utils/cli/cli_flag_spec.dtg.h",
+  "utils/cli/cli_positional_argument_spec.dtg.h",
+  "<vector>",
+]
+
+src_includes = [
+  "utils/fmt/unordered_set.h",
+  "utils/hash/unordered_set.h",
+  "utils/fmt/vector.h",
+  "utils/hash/vector.h",
+]
+
+[[fields]]
+name = "flags"
+type = "std::vector<::FlexFlow::CLIFlagSpec>"
+
+[[fields]]
+name = "positional_arguments"
+type = "std::vector<::FlexFlow::CLIPositionalArgumentSpec>"

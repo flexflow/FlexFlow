@@ -3,7 +3,6 @@
 
 #include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
-#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <vector>
 
@@ -40,16 +39,5 @@ std::ostream &operator<<(std::ostream &s, std::vector<T> const &v) {
 }
 
 } // namespace FlexFlow
-
-namespace doctest {
-
-template <typename T>
-struct StringMaker<std::vector<T>> {
-  static String convert(std::vector<T> const &m) {
-    return toString(fmt::to_string(m));
-  }
-};
-
-} // namespace doctest
 
 #endif

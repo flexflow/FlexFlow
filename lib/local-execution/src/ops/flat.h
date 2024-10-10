@@ -2,7 +2,7 @@
 #define _FLEXFLOW_FLAT_H
 
 #include "local-execution/sim_environment.h"
-#include "op-attrs/ops/flat.h"
+#include "op-attrs/ops/flat_attrs.dtg.h"
 
 namespace FlexFlow {
 

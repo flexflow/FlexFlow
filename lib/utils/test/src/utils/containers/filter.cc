@@ -1,10 +1,11 @@
 #include "utils/containers/filter.h"
-#include "test/utils/all.h"
-#include "utils/fmt/map.h"
-#include "utils/fmt/set.h"
-#include "utils/fmt/unordered_map.h"
-#include "utils/fmt/unordered_set.h"
-#include "utils/fmt/vector.h"
+#include "test/utils/doctest/fmt/map.h"
+#include "test/utils/doctest/fmt/set.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/unordered_multiset.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include "test/utils/rapidcheck.h"
 
 using namespace ::FlexFlow;
 
@@ -93,6 +94,15 @@ TEST_SUITE(FF_TEST_SUITE) {
         {3, "4"},
         {2, "9"},
     };
+    CHECK(result == correct);
+  }
+
+  TEST_CASE("filter(std::unordered_multiset, F)") {
+    std::unordered_multiset<int> input = {1, 1, 2, 2, 2, 3, 4, 5, 6, 7, 8, 8};
+    auto predicate = [](int x) { return x % 2 == 0; };
+
+    std::unordered_multiset<int> result = filter(input, predicate);
+    std::unordered_multiset<int> correct = {2, 2, 2, 4, 6, 8, 8};
     CHECK(result == correct);
   }
 }

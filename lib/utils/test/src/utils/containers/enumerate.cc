@@ -1,16 +1,14 @@
 #include "utils/containers/enumerate.h"
-#include "utils/containers/as_vector.h"
+#include "test/utils/doctest/fmt/map.h"
+#include "test/utils/doctest/fmt/pair.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
 #include "utils/containers/keys.h"
-#include "utils/containers/unordered_multiset_of.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/containers/values.h"
-#include "utils/fmt/map.h"
-#include "utils/fmt/pair.h"
-#include "utils/fmt/unordered_multiset.h"
-#include "utils/fmt/unordered_set.h"
-#include "utils/fmt/vector.h"
+#include "utils/containers/vector_of.h"
 #include <doctest/doctest.h>
 #include <string>
-#include <unordered_set>
 
 using namespace ::FlexFlow;
 
@@ -31,7 +29,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("check iteration order") {
       std::vector<std::pair<int const, std::string>> iterated_result =
-          as_vector(result);
+          vector_of(result);
       std::vector<std::pair<int const, std::string>> correct_iteration_order = {
           {0, "zero"},
           {1, "one"},

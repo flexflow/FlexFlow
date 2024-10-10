@@ -3,7 +3,7 @@
 
 #include "local-execution/op_task_invocation.h"
 #include "local-execution/sim_environment.h"
-#include "op-attrs/ops/reshape.h"
+#include "op-attrs/ops/reshape_attrs.dtg.h"
 
 namespace FlexFlow {
 

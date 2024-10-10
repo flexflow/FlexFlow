@@ -219,10 +219,6 @@ std::unordered_set<Node> get_endpoints(UndirectedEdge const &e) {
 //   return g.query_edges(MultiDiEdgeQuery::all());
 // }
 
-std::unordered_set<UndirectedEdge> get_edges(UndirectedGraphView const &g) {
-  return g.query_edges(undirected_edge_query_all());
-}
-
 // std::unordered_set<OpenMultiDiEdge> get_edges(OpenMultiDiGraphView const &g)
 // {
 //   return g.query_edges(OpenMultiDiEdgeQuery::all());

@@ -5,6 +5,20 @@
 
 namespace FlexFlow {
 
+std::vector<IncomingTensorRole>
+    get_conv2d_incoming_tensor_roles(Conv2DAttrs const &attrs) {
+  std::vector<IncomingTensorRole> result = {
+      IncomingTensorRole::INPUT,
+      IncomingTensorRole::WEIGHT,
+  };
+
+  if (attrs.use_bias) {
+    result.push_back(IncomingTensorRole::WEIGHT);
+  }
+
+  return result;
+}
+
 TensorShape get_kernel_shape(Conv2DAttrs const &attrs,
                              TensorShape const &raw_input_shape) {
   assert(attrs.groups == 1); // TODO(@lockshaw): currently not supported
@@ -40,11 +54,11 @@ TensorShape get_output_shape(Conv2DAttrs const &attrs,
   Conv2DInputShape input = parse_input_shape(raw_input_shape);
 
   size_t out_height =
-      (input.height - (2 * attrs.padding_h) - (attrs.kernel_h - 1)) /
-      attrs.stride_h;
+      (input.height + (2 * attrs.padding_h) - attrs.kernel_h) / attrs.stride_h +
+      1;
   size_t out_width =
-      (input.width - (2 * attrs.padding_w) - (attrs.kernel_w - 1)) /
-      attrs.stride_w;
+      (input.width + (2 * attrs.padding_w) - attrs.kernel_w) / attrs.stride_w +
+      1;
 
   assert(attrs.out_channels > 0);
 

@@ -1,0 +1,33 @@
+namespace = "FlexFlow"
+name = "FullBinaryTreeImplementation"
+features = []
+
+template_params = [
+  "Tree",
+  "Parent",
+  "Leaf",
+]
+
+includes = [
+  "<functional>",
+]
+
+[[fields]]
+name = "get_left_child"
+type = "std::function<Tree const &(Parent const &)>"
+
+[[fields]]
+name = "get_right_child"
+type = "std::function<Tree const &(Parent const &)>"
+
+[[fields]]
+name = "is_leaf"
+type = "std::function<bool(Tree const &)>"
+
+[[fields]]
+name = "require_leaf"
+type = "std::function<Leaf const &(Tree const &)>"
+
+[[fields]]
+name = "require_parent"
+type = "std::function<Parent(Tree const &)>"

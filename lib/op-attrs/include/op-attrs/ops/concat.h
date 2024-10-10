@@ -10,10 +10,11 @@ namespace FlexFlow {
 
 CHECK_VALID_OP_ATTR(ConcatAttrs);
 
-TensorShape get_output_shape(ConcatAttrs const &,
-                             std::vector<TensorShape> const &);
-ParallelTensorShape get_output_shape(ConcatAttrs const &,
-                                     std::vector<ParallelTensorShape> const &);
+tl::expected<TensorShape, std::string>
+    get_output_shape(ConcatAttrs const &, std::vector<TensorShape> const &);
+tl::expected<ParallelTensorShape, std::string>
+    get_output_shape(ConcatAttrs const &,
+                     std::vector<ParallelTensorShape> const &);
 
 } // namespace FlexFlow
 

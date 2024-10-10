@@ -1,7 +1,7 @@
 #include "utils/containers/transform.h"
-#include "utils/fmt/optional.h"
-#include "utils/fmt/unordered_set.h"
-#include "utils/fmt/vector.h"
+#include "test/utils/doctest/fmt/optional.h"
+#include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

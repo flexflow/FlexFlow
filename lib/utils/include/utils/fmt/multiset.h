@@ -3,7 +3,6 @@
 
 #include "utils/check_fmtable.h"
 #include "utils/join_strings.h"
-#include <doctest/doctest.h>
 #include <fmt/format.h>
 #include <set>
 
@@ -41,16 +40,5 @@ std::ostream &operator<<(std::ostream &s, std::multiset<T> const &x) {
 }
 
 } // namespace FlexFlow
-
-namespace doctest {
-
-template <typename T>
-struct StringMaker<std::multiset<T>> {
-  static String convert(std::multiset<T> const &m) {
-    return toString(fmt::to_string(m));
-  }
-};
-
-} // namespace doctest
 
 #endif

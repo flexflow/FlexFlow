@@ -1,5 +1,5 @@
 #include "utils/tuple.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include <iostream>
 #include <utility>
 

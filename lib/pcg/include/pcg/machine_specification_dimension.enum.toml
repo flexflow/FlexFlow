@@ -1,0 +1,14 @@
+namespace = "FlexFlow"
+name = "MachineSpecificationDimension"
+features = [
+  "hash",
+  "json",
+  "fmt",
+  "rapidcheck",
+]
+
+[[values]]
+name = "INTER_NODE"
+
+[[values]]
+name = "INTRA_NODE"

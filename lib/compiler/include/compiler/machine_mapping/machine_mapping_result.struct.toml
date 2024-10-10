@@ -1,0 +1,20 @@
+namespace = "FlexFlow"
+name = "MachineMappingResult"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "compiler/machine_mapping/feasible_machine_mapping_result.dtg.h",
+  "<optional>",
+]
+
+src_includes = [
+  "utils/fmt/optional.h",
+]
+
+[[fields]]
+name = "raw_result"
+type = "std::optional<::FlexFlow::FeasibleMachineMappingResult>"

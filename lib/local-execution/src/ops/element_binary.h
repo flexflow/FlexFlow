@@ -3,7 +3,7 @@
 
 #include "local-execution/sim_environment.h"
 #include "local-execution/task_signature_impl.h"
-#include "op-attrs/ops/element_binary.h"
+#include "op-attrs/ops/element_binary_attrs.dtg.h"
 
 namespace FlexFlow {
 

@@ -1,16 +1,27 @@
 #include "utils/containers/reversed.h"
-#include "utils/fmt/vector.h"
+#include "test/utils/doctest/fmt/vector.h"
 #include <doctest/doctest.h>
-#include <vector>
 
-using namespace FlexFlow;
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("reversed(std::vector<int>)") {
-    std::vector<int> input_vec = {1, 2, 3, 4, 5};
-    std::vector<int> result = reversed(input_vec);
-    std::vector<int> correct = {5, 4, 3, 2, 1};
+  TEST_CASE("reversed(std::vector<T>)") {
+    SUBCASE("non-empty input") {
+      std::vector<int> input = {1, 2, 3, 2};
 
-    CHECK(result == correct);
+      std::vector<int> result = reversed(input);
+      std::vector<int> correct = {2, 3, 2, 1};
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("empty input") {
+      std::vector<int> input = {};
+
+      std::vector<int> result = reversed(input);
+      std::vector<int> correct = {};
+
+      CHECK(result == correct);
+    }
   }
 }

@@ -1,0 +1,25 @@
+namespace = "FlexFlow"
+name = "JsonSPModelExport"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+  "json", 
+]
+
+includes = [
+  "pcg/file_format/v1/v1_computation_graph.dtg.h",
+  "pcg/file_format/v1/v1_binary_sp_decomposition/v1_binary_sp_decomposition.dtg.h",
+]
+
+src_includes = [
+  "pcg/file_format/v1/v1_binary_sp_decomposition/json.h",
+]
+
+[[fields]]
+name = "sp_decomposition"
+type = "::FlexFlow::V1BinarySPDecomposition"
+
+[[fields]]
+name = "computation_graph"
+type = "::FlexFlow::V1ComputationGraph"

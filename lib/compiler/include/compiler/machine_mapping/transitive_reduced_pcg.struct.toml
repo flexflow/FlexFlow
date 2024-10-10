@@ -1,0 +1,16 @@
+namespace = "FlexFlow"
+name = "TransitiveReducedPCG"
+features = []
+
+includes = [
+  "pcg/parallel_computation_graph/parallel_computation_graph.dtg.h",
+]
+
+[[fields]]
+name = "full_pcg"
+type = "::FlexFlow::ParallelComputationGraph"
+
+[[fields]]
+name = "transitive_reduction"
+type = "::FlexFlow::DiGraphView"
+

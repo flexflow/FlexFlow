@@ -1,9 +1,14 @@
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
+#include "op-attrs/get_incoming_tensor_roles.h"
+#include "utils/containers/filtrans.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/transform.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
+#include "utils/graph/dataflow_graph/algorithms/get_dataflow_edges_from_node_to_node.h"
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/graph/instances/unordered_set_labelled_open_dataflow_graph.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/find_isomorphism.h"
+#include "utils/graph/labelled_dataflow_graph/algorithms/rewrite_node_labels.h"
 #include "utils/graph/node/algorithms.h"
 
 namespace FlexFlow {
@@ -40,9 +45,42 @@ ParallelLayerAddedResult
   };
 }
 
+ParallelLayerAddedResult
+    pcg_add_input_layer(ParallelComputationGraph &pcg,
+                        ParallelTensorShape const &tensor_shape) {
+  ParallelLayerAttrs layer_attrs = ParallelLayerAttrs{
+      /*op_attrs=*/PCGOperatorAttrs{InputAttrs{}},
+      /*name=*/std::nullopt,
+  };
+
+  ParallelTensorAttrs tensor_attrs = ParallelTensorAttrs{
+      /*shape=*/tensor_shape,
+      /*sync_type=*/std::nullopt,
+      /*initializer=*/std::nullopt,
+      /*create_gradients=*/CreateGrad::NO,
+  };
+
+  return add_parallel_layer(/*pcg=*/pcg,
+                            /*layer_attrs=*/layer_attrs,
+                            /*inputs=*/{},
+                            /*output_labels=*/{tensor_attrs});
+}
+
+std::unordered_set<ParallelComputationGraphEdge>
+    get_pcg_edges_from_layer_to_layer(ParallelComputationGraph const &pcg,
+                                      parallel_layer_guid_t const &src,
+                                      parallel_layer_guid_t const &dst) {
+  std::unordered_set<DataflowEdge> raw_edges =
+      get_dataflow_edges_from_node_to_node(
+          pcg.raw_graph, src.raw_graph_node, dst.raw_graph_node);
+  return transform(raw_edges, [](DataflowEdge const &e) {
+    return ParallelComputationGraphEdge{e};
+  });
+}
+
 std::vector<parallel_tensor_guid_t>
-    get_layer_inputs(ParallelComputationGraph const &pcg,
-                     parallel_layer_guid_t const &l) {
+    get_incoming_tensors(ParallelComputationGraph const &pcg,
+                         parallel_layer_guid_t const &l) {
   return transform(
       get_input_values(pcg.raw_graph, l.raw_graph_node),
       [](DataflowOutput const &o) { return parallel_tensor_guid_t{o}; });
@@ -56,6 +94,48 @@ std::vector<parallel_tensor_guid_t>
       [](DataflowOutput const &o) { return parallel_tensor_guid_t{o}; });
 }
 
+static std::vector<parallel_tensor_guid_t>
+    get_incoming_tensors_with_role(ParallelComputationGraph const &pcg,
+                                   parallel_layer_guid_t const &l,
+                                   IncomingTensorRole desired_role) {
+  PCGOperatorAttrs attrs = get_parallel_layer_attrs(pcg, l).op_attrs;
+
+  std::vector<parallel_tensor_guid_t> incoming_tensors =
+      get_incoming_tensors(pcg, l);
+
+  std::vector<IncomingTensorRole> incoming_tensor_roles =
+      get_incoming_tensor_roles(attrs, incoming_tensors.size());
+
+  assert(incoming_tensors.size() == incoming_tensor_roles.size());
+
+  std::vector<parallel_tensor_guid_t> result = filtrans(
+      zip(incoming_tensors, incoming_tensor_roles),
+      [&](std::pair<parallel_tensor_guid_t, IncomingTensorRole> const &p)
+          -> std::optional<parallel_tensor_guid_t> {
+        parallel_tensor_guid_t tensor = p.first;
+        IncomingTensorRole role = p.second;
+
+        if (role == desired_role) {
+          return tensor;
+        } else {
+          return std::nullopt;
+        }
+      });
+  return result;
+}
+
+std::vector<parallel_tensor_guid_t>
+    get_incoming_inputs(ParallelComputationGraph const &pcg,
+                        parallel_layer_guid_t const &l) {
+  return get_incoming_tensors_with_role(pcg, l, IncomingTensorRole::INPUT);
+}
+
+std::vector<parallel_tensor_guid_t>
+    get_incoming_weights(ParallelComputationGraph const &pcg,
+                         parallel_layer_guid_t const &l) {
+  return get_incoming_tensors_with_role(pcg, l, IncomingTensorRole::WEIGHT);
+}
+
 parallel_layer_guid_t get_source_layer(ParallelComputationGraph const &g,
                                        parallel_tensor_guid_t const &t) {
   return parallel_layer_guid_t{t.raw_graph_output.node};
@@ -66,10 +146,21 @@ ParallelLayerAttrs get_parallel_layer_attrs(ParallelComputationGraph const &pcg,
   return pcg.raw_graph.at(l.raw_graph_node);
 }
 
+PCGOperatorAttrs pcg_get_op_attrs(ParallelComputationGraph const &pcg,
+                                  parallel_layer_guid_t const &l) {
+  return get_parallel_layer_attrs(pcg, l).op_attrs;
+}
+
 ParallelTensorAttrs
     get_parallel_tensor_attrs(ParallelComputationGraph const &pcg,
                               parallel_tensor_guid_t const &t) {
   return pcg.raw_graph.at(t.raw_graph_output);
+}
+
+ParallelTensorShape
+    get_parallel_tensor_shape(ParallelComputationGraph const &pcg,
+                              parallel_tensor_guid_t const &t) {
+  return get_parallel_tensor_attrs(pcg, t).shape;
 }
 
 std::vector<parallel_layer_guid_t>
@@ -86,6 +177,30 @@ parallel_layer_guid_t
         return get_parallel_layer_attrs(pcg, l).name == name;
       });
   return get_only(found);
+}
+
+ParallelComputationGraph
+    without_layer_names(ParallelComputationGraph const &pcg) {
+  return ParallelComputationGraph{
+      LabelledDataflowGraph<ParallelLayerAttrs, ParallelTensorAttrs>::
+          create_copy_of<
+              UnorderedSetLabelledOpenDataflowGraph<ParallelLayerAttrs,
+                                                    ParallelTensorAttrs>>(
+              rewrite_node_labels(
+                  pcg.raw_graph,
+                  [](Node const &n, ParallelLayerAttrs const &old_attrs) {
+                    ParallelLayerAttrs new_attrs = old_attrs;
+                    new_attrs.name = std::nullopt;
+                    return new_attrs;
+                  })),
+  };
+}
+
+bool pcgs_are_isomorphic(ParallelComputationGraph const &lhs,
+                         ParallelComputationGraph const &rhs) {
+  return find_isomorphism(without_layer_names(lhs).raw_graph,
+                          without_layer_names(rhs).raw_graph)
+      .has_value();
 }
 
 } // namespace FlexFlow

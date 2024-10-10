@@ -149,6 +149,11 @@ function(ff_add_executable)
     ${FF_EXEC_NAME}
     ${SRC})
 
+  target_include_directories(
+    ${FF_EXEC_NAME}
+    PRIVATE
+    ${FF_EXEC_PRIVATE_INCLUDE})
+
   target_link_libraries(
     ${FF_EXEC_NAME}
     ${FF_EXEC_DEPS})

@@ -1,0 +1,21 @@
+namespace = "FlexFlow"
+name = "AbstractedTensorSetMovement"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = [
+  "compiler/machine_mapping/abstracted_tensor_set_movement/abstracted_single_tensor_movement.dtg.h",
+  "<unordered_set>",
+]
+
+src_includes = [
+  "utils/fmt/unordered_multiset.h",
+  "utils/hash/unordered_multiset.h",
+]
+
+[[fields]]
+name = "single_tensor_movements"
+type = "std::unordered_multiset<::FlexFlow::AbstractedSingleTensorMovement>"

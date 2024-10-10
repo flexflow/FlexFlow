@@ -4,7 +4,7 @@
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/keys.h"
 #include "utils/exception.h"
-#include <cassert>
+#include "utils/fmt/unordered_map.h"
 #include <unordered_map>
 
 namespace FlexFlow {

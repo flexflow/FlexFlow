@@ -5,6 +5,7 @@
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
 #include "pcg/computation_graph_builder.h"
+#include "pcg/machine_view.dtg.h"
 #include "pcg/parallel_tensor_attrs.h"
 #include "utils/containers/transform.h"
 
@@ -51,7 +52,7 @@ CostDetails LocalCostEstimator::estimate_cost(
   for (ParallelTensorShape const &input : inputs) {
     TensorShape tensor_shape = get_piece_shape(input);
     tensor_guid_t tensor_id =
-        cg_builder.create_tensor(tensor_shape, CreateGrad::YES);
+        cg_builder.create_input(tensor_shape, CreateGrad::YES);
     GenericTensorAccessorW tensor_backing =
         allocator.allocate_tensor(tensor_shape);
     tensor_backing_map.insert({tensor_id, tensor_backing});
@@ -69,7 +70,10 @@ CostDetails LocalCostEstimator::estimate_cost(
   std::vector<tensor_guid_t> output_tensor_ids =
       cg_builder.add_layer(layer_attrs,
                            input_tensor_ids,
-                           get_vector_piece_attrs(weights),
+                           transform(get_vector_piece_attrs(weights),
+                                     [&](TensorAttrs const &a) {
+                                       return cg_builder.create_weight(a);
+                                     }),
                            get_vector_piece_attrs(outputs));
 
   LocalTrainingBacking local_backing(allocator,

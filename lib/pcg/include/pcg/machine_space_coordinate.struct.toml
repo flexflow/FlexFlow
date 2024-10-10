@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "MachineSpaceCoordinate"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "pcg/device_type.dtg.h",
+]
+
+[[fields]]
+name = "node_idx"
+type = "int"
+
+[[fields]]
+name = "device_idx"
+type = "int"
+
+[[fields]]
+name = "device_type"
+type = "::FlexFlow::DeviceType"

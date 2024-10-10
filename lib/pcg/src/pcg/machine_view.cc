@@ -1,121 +1,115 @@
 #include "pcg/machine_view.h"
-#include "pcg/device_id.h"
-#include "pcg/strided_rectangle.dtg.h"
-#include "pcg/strided_rectangle.h"
-#include "pcg/strided_rectangle_side.h"
+#include "pcg/machine_specification.h"
+#include "pcg/operator_task_space.h"
+#include "utils/containers/contains.h"
+#include "utils/containers/count.h"
+#include "utils/containers/filter.h"
+#include "utils/containers/scanl.h"
+#include "utils/containers/sum.h"
+#include "utils/containers/transform.h"
+#include "utils/containers/zip.h"
 
 namespace FlexFlow {
 
-std::vector<device_id_t> device_ids(MachineView const &) {
-  NOT_IMPLEMENTED();
-}
-
-std::size_t num_dims(MachineView const &mv) {
-  return get_num_dims(mv.rect);
-}
-
-size_t num_devices(MachineView const &mv) {
-  return get_num_points(mv.rect).unwrapped;
+size_t num_dims(MachineView const &mv) {
+  return get_strides(mv).size();
 }
 
 DeviceType get_device_type(MachineView const &mv) {
-  return get_device_type(mv.start);
+  return mv.start.device_type;
 }
 
-static StridedRectangle make_1d_rect(int start, int stop, int stride) {
-  assert(stop > start);
-  assert(stride > 0);
-  StridedRectangleSide side =
-      strided_side_from_size_and_stride(side_size_t{stop - start}, stride);
-  StridedRectangle rect =
-      StridedRectangle{std::vector<StridedRectangleSide>{side}};
-  return rect;
+std::vector<stride_t> get_strides(MachineView const &mv) {
+  return transform(mv.dimensions,
+                   [](MachineViewDimension const &dim) { return dim.stride; });
 }
 
-MachineView make_1d_machine_view(gpu_id_t start, gpu_id_t stop, int stride) {
-  StridedRectangle rect = make_1d_rect(start.gpu_index, stop.gpu_index, stride);
-  return MachineView{device_id_t{start}, rect};
+std::vector<MachineSpecificationDimension>
+    get_dimensions(MachineView const &mv) {
+  return transform(mv.dimensions, [](MachineViewDimension const &dim) {
+    return dim.projection;
+  });
 }
 
-MachineView make_1d_machine_view(cpu_id_t start, cpu_id_t stop, int stride) {
-  StridedRectangle rect = make_1d_rect(start.cpu_index, stop.cpu_index, stride);
-  return MachineView{device_id_t{start}, rect};
+MachineView machine_view_from_strides_and_machine_spec_dimensions(
+    MachineSpaceCoordinate const &start,
+    std::vector<stride_t> const &strides,
+    std::vector<MachineSpecificationDimension> const &dims) {
+  std::vector<MachineViewDimension> dimensions =
+      transform(zip(strides, dims), [&](auto const &p) {
+        return MachineViewDimension{p.first, p.second};
+      });
+  return MachineView{start, dimensions};
 }
 
-MachineView
-    make_1d_machine_view(device_id_t start, device_id_t stop, int stride) {
-  assert(get_device_type(start) == get_device_type(stop));
-  if (get_device_type(start) == DeviceType::CPU) {
-    return make_1d_machine_view(unwrap_cpu(start), unwrap_cpu(stop), stride);
+std::optional<MachineSpaceCoordinate> get_machine_space_coordinate(
+    OperatorTaskSpace const &task,
+    MachineView const &machine_view,
+    TaskSpaceCoordinate const &coord,
+    MachineSpecification const &machine_specification) {
+
+  auto get_dimension_indices_for_dimension =
+      [&](MachineSpecificationDimension dimension) {
+        std::vector<MachineSpecificationDimension> mv_dimensions =
+            get_dimensions(machine_view);
+        return filter(count(mv_dimensions.size()), [&](size_t idx) {
+          return mv_dimensions.at(idx) == dimension;
+        });
+      };
+
+  auto compute_index = [&](int start_idx,
+                           std::vector<size_t> const &dimension_indices) {
+    std::vector<stride_t> mv_strides = get_strides(machine_view);
+
+    std::vector<int> sizes = transform(dimension_indices, [&](size_t i) {
+      return task.degrees.at(i) * mv_strides.at(i).unwrapped;
+    });
+    std::vector<int> coord_points = transform(
+        dimension_indices, [&](size_t i) { return coord.raw_coord.at(i); });
+    std::vector<int> strides = transform(dimension_indices, [&](size_t i) {
+      return mv_strides.at(i).unwrapped;
+    });
+
+    std::vector<int> coeffs = scanl(sizes, 1, std::multiplies<int>());
+
+    int index = start_idx;
+    for (auto [coeff, coord_point, stride] :
+         zip(coeffs, coord_points, strides)) {
+      index += coeff * coord_point * stride;
+    }
+    return index;
+  };
+
+  std::vector<size_t> inter_dimension_indices =
+      get_dimension_indices_for_dimension(
+          MachineSpecificationDimension::INTER_NODE);
+  std::vector<size_t> intra_dimension_indices =
+      get_dimension_indices_for_dimension(
+          MachineSpecificationDimension::INTRA_NODE);
+
+  int node_idx =
+      compute_index(machine_view.start.node_idx, inter_dimension_indices);
+  int device_idx =
+      compute_index(machine_view.start.device_idx, intra_dimension_indices);
+  MachineSpaceCoordinate ms_coord = MachineSpaceCoordinate{
+      node_idx, device_idx, get_device_type(machine_view)};
+
+  if (!is_valid_machine_space_coordinate(machine_specification, ms_coord)) {
+    return std::nullopt;
   }
-  assert(get_device_type(start) == DeviceType::GPU);
-  return make_1d_machine_view(unwrap_gpu(start), unwrap_gpu(stop), stride);
+  return ms_coord;
 }
 
-static StridedRectangle
-    make_1d_rect(int start, num_points_t num_points, int stride) {
-  return make_1d_rect(start, start + num_points.unwrapped * stride, stride);
+std::unordered_set<MachineSpaceCoordinate> get_machine_space_coordinates(
+    OperatorTaskSpace const &task,
+    MachineView const &machine_view,
+    MachineSpecification const &machine_specification) {
+  return transform(
+      get_task_space_coordinates(task), [&](TaskSpaceCoordinate const &coord) {
+        return get_machine_space_coordinate(
+                   task, machine_view, coord, machine_specification)
+            .value();
+      });
 }
-
-MachineView
-    make_1d_machine_view(cpu_id_t start, num_points_t num_points, int stride) {
-  StridedRectangle rect = make_1d_rect(start.cpu_index, num_points, stride);
-  return MachineView{device_id_t{start}, rect};
-}
-
-MachineView
-    make_1d_machine_view(gpu_id_t start, num_points_t num_points, int stride) {
-  StridedRectangle rect = make_1d_rect(start.gpu_index, num_points, stride);
-  return MachineView{device_id_t{start}, rect};
-}
-
-MachineView make_1d_machine_view(device_id_t start,
-                                 num_points_t num_points,
-                                 int stride) {
-  if (get_device_type(start) == DeviceType::CPU) {
-    return make_1d_machine_view(unwrap_cpu(start), num_points, stride);
-  } else {
-    assert(get_device_type(start) == DeviceType::GPU);
-    return make_1d_machine_view(unwrap_gpu(start), num_points, stride);
-  }
-}
-
-static StridedRectangle
-    make_1d_rect(int start, side_size_t interval_size, int stride) {
-  return make_1d_rect(start, start + interval_size.unwrapped, stride);
-}
-
-MachineView make_1d_machine_view(cpu_id_t start,
-                                 side_size_t interval_size,
-                                 int stride) {
-  StridedRectangle rect = make_1d_rect(start.cpu_index, interval_size, stride);
-  return MachineView{device_id_t{start}, rect};
-}
-
-MachineView make_1d_machine_view(gpu_id_t start,
-                                 side_size_t interval_size,
-                                 int stride) {
-  StridedRectangle rect = make_1d_rect(start.gpu_index, interval_size, stride);
-  return MachineView{device_id_t{start}, rect};
-}
-MachineView make_1d_machine_view(device_id_t start,
-                                 side_size_t interval_size,
-                                 int stride) {
-
-  if (get_device_type(start) == DeviceType::CPU) {
-    return make_1d_machine_view(unwrap_cpu(start), interval_size, stride);
-  } else {
-    assert(get_device_type(start) == DeviceType::GPU);
-    return make_1d_machine_view(unwrap_gpu(start), interval_size, stride);
-  }
-}
-MachineView make_1d_machine_view(device_id_t start, size_t interval_size) {
-  NOT_IMPLEMENTED();
-}
-
-/* device_id_t MachineView::at(FFOrdered<num_points_t> const &coord) const { */
-/*   size_t offset = this->rect.at(coord); */
-/*   return this->start + offset; */
-/* } */
 
 } // namespace FlexFlow
