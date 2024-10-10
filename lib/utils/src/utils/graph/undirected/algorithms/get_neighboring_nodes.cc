@@ -10,7 +10,7 @@ std::unordered_set<Node> get_neighboring_nodes(UndirectedGraphView const &g,
 
   std::unordered_set<Node> result =
       set_union(transform(vector_of(edges), [](UndirectedEdge const &e) {
-        return std::unordered_set{e.bigger, e.smaller};
+        return std::unordered_set{e.endpoints.max(), e.endpoints.max()};
       }));
   result.erase(n);
   return result;

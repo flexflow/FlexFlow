@@ -1,0 +1,18 @@
+namespace = "FlexFlow"
+name = "UndirectedEdge"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "fmt",
+  "rapidcheck"
+]
+
+includes = [
+  "utils/commutative_pair.h",
+  "utils/graph/node/node.dtg.h",
+]
+
+[[fields]]
+name = "endpoints"
+type = "::FlexFlow::commutative_pair<::FlexFlow::Node>"

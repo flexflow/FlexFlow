@@ -1,4 +1,5 @@
 #include "utils/graph/views/views.h"
+#include "utils/bidict/algorithms/right_entries.h"
 #include "utils/containers/flatmap.h"
 #include "utils/containers/transform.h"
 #include "utils/disjoint_set.h"
@@ -7,8 +8,8 @@
 #include "utils/graph/digraph/directed_edge_query.h"
 #include "utils/graph/node/algorithms.h"
 #include "utils/graph/node/node_query.h"
+#include "utils/graph/query_set.h"
 #include "utils/graph/undirected/undirected_edge_query.h"
-
 namespace FlexFlow {
 
 UndirectedSubgraphView::UndirectedSubgraphView(
@@ -78,9 +79,13 @@ JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {
 
 std::unordered_set<Node>
     JoinedNodeView::query_nodes(NodeQuery const &query) const {
-  // TODO @lockshaw this is going to be reimplemented in 984, so don't bother
-  // fixing it for now
-  NOT_IMPLEMENTED();
+  std::unordered_set<Node> nodes = right_entries(this->mapping);
+  if (query == node_query_all()) {
+    return nodes;
+  }
+  return filter(nodes, [&](Node const &n) {
+    return contains(allowed_values(query.nodes), n);
+  });
 }
 
 std::pair<std::unordered_set<Node>, std::unordered_set<Node>>
@@ -146,17 +151,18 @@ std::unordered_set<UndirectedEdge> JoinedUndirectedGraphView::query_edges(
 
 UndirectedEdge
     JoinedUndirectedGraphView::fix_lhs_edge(UndirectedEdge const &e) const {
-  return {
-      this->joined_nodes.at_join_key(JoinNodeKey{e.smaller, LRDirection::LEFT}),
-      this->joined_nodes.at_join_key(JoinNodeKey{e.bigger, LRDirection::LEFT})};
+  return UndirectedEdge{{this->joined_nodes.at_join_key(
+                             JoinNodeKey{e.endpoints.min(), LRDirection::LEFT}),
+                         this->joined_nodes.at_join_key(JoinNodeKey{
+                             e.endpoints.max(), LRDirection::LEFT})}};
 }
 
 UndirectedEdge
     JoinedUndirectedGraphView::fix_rhs_edge(UndirectedEdge const &e) const {
-  return {this->joined_nodes.at_join_key(
-              JoinNodeKey{e.smaller, LRDirection::RIGHT}),
-          this->joined_nodes.at_join_key(
-              JoinNodeKey{e.bigger, LRDirection::RIGHT})};
+  return UndirectedEdge{{this->joined_nodes.at_join_key(JoinNodeKey{
+                             e.endpoints.min(), LRDirection::RIGHT}),
+                         this->joined_nodes.at_join_key(JoinNodeKey{
+                             e.endpoints.max(), LRDirection::RIGHT})}};
 }
 
 JoinedDigraphView::JoinedDigraphView(DiGraphView const &lhs,
@@ -208,7 +214,7 @@ DirectedEdge JoinedDigraphView::fix_rhs_edge(DirectedEdge const &e) const {
 }
 
 UndirectedEdge to_undirected_edge(DirectedEdge const &e) {
-  return {e.src, e.dst};
+  return UndirectedEdge{{e.src, e.dst}};
 }
 
 std::unordered_set<UndirectedEdge> to_undirected_edges(
@@ -218,8 +224,9 @@ std::unordered_set<UndirectedEdge> to_undirected_edges(
 }
 
 std::unordered_set<DirectedEdge> to_directed_edges(UndirectedEdge const &e) {
-  return std::unordered_set<DirectedEdge>{DirectedEdge{e.smaller, e.bigger},
-                                          DirectedEdge{e.bigger, e.smaller}};
+  return std::unordered_set<DirectedEdge>{
+      DirectedEdge{e.endpoints.min(), e.endpoints.max()},
+      DirectedEdge{e.endpoints.max(), e.endpoints.min()}};
 }
 
 std::unordered_set<DirectedEdge> to_directed_edges(

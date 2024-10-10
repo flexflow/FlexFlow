@@ -29,8 +29,6 @@ public:
 
   using GraphView::GraphView;
 
-  friend struct GraphInternal;
-
 private:
   IUndirectedGraphView const &get_ptr() const;
 };

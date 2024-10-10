@@ -27,8 +27,8 @@ void UnorderedSetUndirectedGraph::remove_node_unsafe(Node const &n) {
 }
 
 void UnorderedSetUndirectedGraph::add_edge(UndirectedEdge const &e) {
-  assert(contains(this->nodes, e.bigger));
-  assert(contains(this->nodes, e.smaller));
+  assert(contains(this->nodes, e.endpoints.min()));
+  assert(contains(this->nodes, e.endpoints.max()));
   this->edges.insert(e);
 }
 
