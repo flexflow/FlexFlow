@@ -111,9 +111,15 @@ def main():
     
     if len(configs.prompt) > 0:
         prompts = [s for s in json.load(open(configs.prompt))]
-        results = llm.generate(prompts)
+        if "max_length" not in configs_dict:
+            results = llm.generate(prompts)
+        else:
+            results = llm.generate(prompts, max_length=configs.max_length)
     else:
-        result = llm.generate("Three tips for staying healthy are: ")
+        if "max_length" not in configs_dict:
+            result = llm.generate("Three tips for staying healthy are: ")
+        else:
+            result = llm.generate("Three tips for staying healthy are: ", max_length=configs.max_length)
         
     llm.stop_server()
 

@@ -68,7 +68,8 @@ struct Request {
   };
   BatchConfig::RequestGuid guid;
   PEFTModelID peft_model_id = PEFTModelID::NO_ID;
-  int max_sequence_length = 128;
+  int max_length = -1;
+  int max_new_tokens = 128;
   int initial_len;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;

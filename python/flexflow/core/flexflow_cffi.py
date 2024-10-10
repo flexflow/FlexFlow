@@ -38,9 +38,11 @@ from flexflow.type import (
 )
 from flexflow.config import *
 from .flexflowlib import ffi, flexflow_library
-from typing import Union, List
+from typing import Union, List, Optional
+from dataclasses import dataclass
 from peft import LoraConfig
-import json
+import json, math
+from dataclasses import dataclass
 
 
 def ffc():
@@ -2049,25 +2051,32 @@ class PEFTModelID(object):
 # Request
 # -----------------------------------------------------------------------
 
-
+@dataclass
 class Request:
     """A class to record the metadata of an inference or finetuning request."""
+    req_type: RequestType
+    prompt: Optional[str] = None
+    max_length: int = -1
+    max_new_tokens: int = 128
+    peft_model_id: Optional[PEFTModelID] = None
+    dataset_filepath: Optional[str] = None
+    max_training_steps: int = 1
 
-    def __init__(
-        self,
-        req_type: RequestType,
-        prompt: str = None,
-        max_sequence_length: int = 128,
-        peft_model_id: PEFTModelID = None,
-        dataset_filepath: str = None,
-        max_training_steps: int = 1,
-    ):
-        self.req_type = req_type
-        self.prompt = prompt
-        self.max_sequence_length = max_sequence_length
-        self.peft_model_id = peft_model_id
-        self.dataset_filepath = dataset_filepath
-        self.max_training_steps = max_training_steps
+
+# -----------------------------------------------------------------------
+# RotaryEmbeddingMeta
+# -----------------------------------------------------------------------
+
+
+@dataclass
+class RotaryEmbeddingMeta:
+    apply_rotary_embedding: bool = False
+    rope_theta: float = 10000.0
+    rope_type: str = "default"
+    factor: float = 8.0
+    low_freq_factor: float = 1.0
+    high_freq_factor: float = 4.0
+    original_max_position_embeddings: int = 8192
 
 
 # -----------------------------------------------------------------------
@@ -3509,12 +3518,10 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3543,12 +3550,6 @@ class FFModel(object):
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
 
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
-
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
 
@@ -3558,8 +3559,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -3589,12 +3590,16 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -3612,12 +3617,10 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3646,12 +3649,6 @@ class FFModel(object):
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
 
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
-
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
 
@@ -3661,8 +3658,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -3692,12 +3689,16 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -3715,12 +3716,10 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3749,12 +3748,6 @@ class FFModel(object):
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
 
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
-
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
 
@@ -3764,8 +3757,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -3795,12 +3788,16 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -3819,12 +3816,10 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3856,12 +3851,6 @@ class FFModel(object):
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
 
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
-
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
 
@@ -3871,8 +3860,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -3903,12 +3892,16 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -3927,12 +3920,10 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -3964,12 +3955,6 @@ class FFModel(object):
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
 
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
-
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
 
@@ -3979,8 +3964,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -4011,12 +3996,16 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -4035,12 +4024,10 @@ class FFModel(object):
         kdim=0,
         vdim=0,
         dropout=0.0,
-        bias=True,
-        add_bias_kv=False,
         add_zero_attn=False,
         data_type=DataType.DT_NONE,
         kernel_initializer=None,
-        apply_rotary_embedding=False,
+        rotary_embedding_meta=RotaryEmbeddingMeta(),
         scaling_query=False,
         scaling_factor=1.0,
         qk_prod_scaling=True,
@@ -4072,12 +4059,6 @@ class FFModel(object):
         :param dropout: a Dropout layer on attn_output_weights. Default is 0.0
         :type dropout: float(0-1)
 
-        :param bias: Whether the dense layers use bias vectors. Default is True.
-        :type bias: bool
-
-        :param add_bias_kv: add bias to the key and value sequences at dim=0. Default is False.
-        :type add_bias_kv: bool
-
         :param add_zero_attn: add a new batch of zeros to the key and value sequences at dim=1. Default is False.
         :type add_zero_attn: bool
 
@@ -4087,8 +4068,8 @@ class FFModel(object):
         :param kernel_initializer: Initializer for dense layer kernels. If it is set to None, the GlorotUniformInitializer is applied.
         :type kernel_initializer: Initializer
 
-        :param apply_rotary_embedding: Whether to apply rotary embeddings. Default is False.
-        :type apply_rotary_embedding: bool
+        :param rotary_embedding_meta: Metadata regarding the RoPE embedding, if used.
+        :type rotary_embedding_meta: RotaryEmbeddingMeta
 
         :param scaling_query: Whether to apply scaling query. Default is False.
         :type scaling_query: bool
@@ -4119,12 +4100,16 @@ class FFModel(object):
             kdim,
             vdim,
             dropout,
-            bias,
-            add_bias_kv,
             add_zero_attn,
             c_data_type,
             kernel_init_handle,
-            apply_rotary_embedding,
+            rotary_embedding_meta.apply_rotary_embedding,
+            rotary_embedding_meta.rope_theta,
+            get_c_name(rotary_embedding_meta.rope_type),
+            rotary_embedding_meta.factor,
+            rotary_embedding_meta.low_freq_factor,
+            rotary_embedding_meta.high_freq_factor,
+            rotary_embedding_meta.original_max_position_embeddings,
             scaling_query,
             scaling_factor,
             qk_prod_scaling,
@@ -4665,19 +4650,23 @@ class FFModel(object):
         assert ret_val == True
         return np_array
 
-    def generate_inf_only(self, prompt_list: List[str], max_sequence_length: int = 128):
+    def generate_inf_only(self, prompt_list: List[str], max_length: int = -1, max_new_tokens: int = 128):
+        if max_length != -1 and max_new_tokens != -1:
+            warnings.warn(f"Both `max_new_tokens` (={self.max_new_tokens}) and `max_length`(={self.max_length}) seem to have been set. `max_new_tokens` will take precedence.")
         assert isinstance(prompt_list, list)
         c_input_texts = [get_c_name(prompt) for prompt in prompt_list]
-        max_num_chars = 5 * (max_sequence_length + 100)
+        estimated_max_tokens = math.ceil(max_new_tokens + max([len(prompt.split()) for prompt in prompt_list])*1.5) if max_new_tokens != -1 else max_length
+        max_num_chars = 5 * (estimated_max_tokens + 100)
         c_output_texts = [ffi.new("char[]", max_num_chars) for prompt in prompt_list]
         c_output_length_and_tokens = [
-            ffi.new("int[]", max_sequence_length + 100) for prompt in prompt_list
+            ffi.new("int[]", estimated_max_tokens + 100) for prompt in prompt_list
         ]
         c_request_types = [
             enum_to_int(RequestType, RequestType.REQ_INFERENCE)
             for prompt in prompt_list
         ]
-        max_sequence_lengths = [max_sequence_length for prompt in prompt_list]
+        max_lengths = [max_length for prompt in prompt_list]
+        max_new_tokens_ = [max_new_tokens for prompt in prompt_list]
         peft_model_ids = [PEFTModelID.no_id_handle() for prompt in prompt_list]
         dataset_filepaths = [ffi.NULL for prompt in prompt_list]
         training_steps = [0 for prompt in prompt_list]
@@ -4689,7 +4678,8 @@ class FFModel(object):
             c_request_types,
             c_input_texts,
             c_output_texts,
-            max_sequence_lengths,
+            max_lengths,
+            max_new_tokens_,
             peft_model_ids,
             dataset_filepaths,
             training_steps,
@@ -4726,9 +4716,16 @@ class FFModel(object):
         c_request_types = [
             enum_to_int(RequestType, request.req_type) for request in requests_list
         ]
-        max_sequence_lengths = [
-            request.max_sequence_length for request in requests_list
+        max_lengths = [
+            request.max_length for request in requests_list
         ]
+        max_new_tokens_ = [
+            request.max_new_tokens for request in requests_list
+        ]
+        for i in range(len(requests_list)):
+            if max_lengths[i] != -1 and max_new_tokens_[i] != -1:
+                warnings.warn(f"Both `max_new_tokens` (={max_new_tokens_[i]}) and `max_length`(={max_lengths[i]}) seem to have been set. `max_new_tokens` will take precedence.")
+        
         peft_model_ids = [
             (
                 request.peft_model_id
@@ -4752,7 +4749,8 @@ class FFModel(object):
             c_request_types,
             c_input_texts,
             c_output_texts,
-            max_sequence_lengths,
+            max_lengths,
+            max_new_tokens_,
             peft_model_ids,
             dataset_filepaths,
             training_steps,

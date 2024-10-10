@@ -239,7 +239,7 @@ void inference_kernel_wrapper(LinearMeta *m,
           continue;
         }
         int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-        int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
+        int max_peft_tokens = bc->requestsInfo[i].max_length;
         int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
         if (bc->requestsInfo[i].peft_bwd) {
           size_t activation_size_needed =
@@ -511,6 +511,7 @@ void forward_kernel(LinearMeta const *m,
                          out_dim,
                          compute_type,
                          CUBLAS_GEMM_DEFAULT_TENSOR_OP));
+
   // use_bias = True
   if (bias_ptr != NULL) {
     // fuse bias and relu

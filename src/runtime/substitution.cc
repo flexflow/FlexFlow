@@ -3734,15 +3734,14 @@ bool FFModel::convert_graph_to_operators(
       case OP_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(inList.size() == 1);
         IncMultiHeadSelfAttention *attn = (IncMultiHeadSelfAttention *)node.ptr;
-        new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
+        new_op = new IncMultiHeadSelfAttention(*this, *attn, inputs[0]);
         break;
       }
       case OP_TREE_INC_MULTIHEAD_SELF_ATTENTION: {
         assert(inList.size() == 1);
         TreeIncMultiHeadSelfAttention *attn =
             (TreeIncMultiHeadSelfAttention *)node.ptr;
-        new_op =
-            new TreeIncMultiHeadSelfAttention(*this, *attn, inputs[0], true);
+        new_op = new TreeIncMultiHeadSelfAttention(*this, *attn, inputs[0]);
         break;
       }
       case OP_RMS_NORM: {

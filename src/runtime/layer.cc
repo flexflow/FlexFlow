@@ -87,6 +87,11 @@ void Layer::add_int_vector_property(std::string const &key,
   int_vector_properties[key] = value;
 }
 
+void Layer::add_string_property(std::string const &key,
+                                std::string const &value) {
+  string_properties[key] = value;
+}
+
 void Layer::add_initializer(std::string const &key, Initializer *initializer) {
   initializers[key] = initializer;
 }
@@ -117,6 +122,18 @@ bool Layer::get_int_vector_property(std::string const &key,
                                     std::vector<int> &value) const {
   auto const &it = int_vector_properties.find(key);
   if (it == int_vector_properties.end()) {
+    assert(false);
+    return false;
+  } else {
+    value = it->second;
+    return true;
+  }
+}
+
+bool Layer::get_string_property(std::string const &key,
+                                std::string &value) const {
+  auto const &it = string_properties.find(key);
+  if (it == string_properties.end()) {
     assert(false);
     return false;
   } else {
