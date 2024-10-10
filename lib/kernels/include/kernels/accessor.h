@@ -7,7 +7,6 @@
 #include "op-attrs/datatype.h"
 #include "utils/exception.h"
 #include "utils/required.h"
-#include "utils/variant.h"
 
 namespace FlexFlow {
 

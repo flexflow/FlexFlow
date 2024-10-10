@@ -1,5 +1,4 @@
 #include "compiler/machine_mapping/machine_mapping.h"
-#include "utils/containers.h"
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/keys.h"
 #include "utils/containers/merge_maps.h"

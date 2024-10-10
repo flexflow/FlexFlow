@@ -15,7 +15,7 @@ struct formatter<
     std::enable_if_t<!detail::has_format_as<std::unordered_multiset<T>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>
-  auto format(::std::unordered_multiset<T> const &m, FormatContext &ctx)
+  auto format(::std::unordered_multiset<T> const &m, FormatContext &ctx) const
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(T);
 

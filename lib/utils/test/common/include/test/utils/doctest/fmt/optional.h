@@ -13,6 +13,11 @@ struct StringMaker<std::optional<T>> {
   }
 };
 
+template <>
+struct StringMaker<std::nullopt_t> {
+  static String convert(std::nullopt_t const &);
+};
+
 } // namespace doctest
 
 #endif

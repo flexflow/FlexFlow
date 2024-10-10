@@ -1,18 +1,19 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_MAXIMUM_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_MAXIMUM_H
 
+#include "utils/exception.h"
 #include <algorithm>
-#include <optional>
 
 namespace FlexFlow {
 
-template <typename C, typename E = typename C::value_type>
-std::optional<E> maximum(C const &v) {
-  if (v.empty()) {
-    return std::nullopt;
+template <typename C>
+typename C::value_type maximum(C const &c) {
+  if (c.empty()) {
+    throw mk_runtime_error(
+        fmt::format("maximum expected non-empty container but received {}", c));
   }
 
-  return *std::max_element(std::cbegin(v), std::cend(v));
+  return *std::max_element(c.begin(), c.end());
 }
 
 } // namespace FlexFlow

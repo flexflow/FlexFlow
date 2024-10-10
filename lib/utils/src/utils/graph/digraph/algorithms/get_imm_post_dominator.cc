@@ -1,6 +1,6 @@
 #include "utils/graph/digraph/algorithms/get_imm_post_dominator.h"
 #include "utils/containers/generate_map.h"
-#include "utils/containers/get_first.h"
+#include "utils/containers/get_one_of.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/intersection.h"
 #include "utils/containers/restrict_keys.h"
@@ -31,7 +31,7 @@ std::optional<Node>
     return get_imm_post_dominator(g, get_only(nodes));
   }
 
-  Node contracted_node = get_first(nodes);
+  Node contracted_node = get_one_of(nodes);
   std::unordered_map<Node, Node> contraction =
       generate_map(nodes, [&](Node const &) { return contracted_node; });
   return get_imm_post_dominator(apply_contraction(g, contraction),

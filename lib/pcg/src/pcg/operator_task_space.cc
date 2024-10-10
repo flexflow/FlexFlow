@@ -5,6 +5,7 @@
 #include "utils/containers/range.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/unordered_set_of.h"
+#include "utils/fmt/unordered_set.h"
 
 namespace FlexFlow {
 
@@ -25,7 +26,7 @@ std::unordered_set<TaskSpaceCoordinate>
 
 TaskSpaceCoordinate
     get_task_space_maximum_coordinate(OperatorTaskSpace const &task) {
-  return maximum(get_task_space_coordinates(task)).value();
+  return maximum(get_task_space_coordinates(task));
 }
 
 size_t num_dims(OperatorTaskSpace const &task) {

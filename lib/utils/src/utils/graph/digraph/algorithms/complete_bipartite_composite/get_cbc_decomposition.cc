@@ -1,12 +1,9 @@
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/get_cbc_decomposition.h"
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/extend.h"
-#include "utils/containers/get_first.h"
 #include "utils/containers/set_minus.h"
-#include "utils/containers/set_of.h"
 #include "utils/containers/values.h"
 #include "utils/containers/vector_of.h"
-#include "utils/fmt/set.h"
 #include "utils/graph/algorithms.h"
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/is_complete_bipartite_digraph.h"
@@ -16,7 +13,6 @@
 #include "utils/graph/digraph/algorithms/get_successors.h"
 #include "utils/graph/digraph/algorithms/get_weakly_connected_components.h"
 #include "utils/graph/node/algorithms.h"
-#include "utils/hash/unordered_set.h"
 #include <queue>
 
 namespace FlexFlow {
