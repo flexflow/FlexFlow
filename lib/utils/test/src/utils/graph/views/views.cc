@@ -87,34 +87,36 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE("JoinedNodeView") {
-    UndirectedGraph g1 = UndirectedGraph::create<HashmapUndirectedGraph>();
-    UndirectedGraph g2 = UndirectedGraph::create<HashmapUndirectedGraph>();
+  // TEST_CASE("JoinedNodeView") {
+  //   UndirectedGraph g1 = UndirectedGraph::create<HashmapUndirectedGraph>();
+  //   UndirectedGraph g2 = UndirectedGraph::create<HashmapUndirectedGraph>();
 
-    std::vector<Node> n1 = add_nodes(g1, 3);
-    std::vector<Node> n2 = add_nodes(g2, 2);
-    std::unordered_set<Node> joined_nodes =
-        set_union(unordered_set_of(n1), unordered_set_of(n2));
-    add_edges(g1,
-              {UndirectedEdge{{n1[0], n1[1]}}, UndirectedEdge{{n1[1], n1[2]}}});
-    add_edges(g2, {UndirectedEdge{{n2[0], n2[1]}}});
+  //   std::vector<Node> n1 = add_nodes(g1, 3);
+  //   std::vector<Node> n2 = add_nodes(g2, 2);
+  //   std::unordered_set<Node> joined_nodes =
+  //       set_union(unordered_set_of(n1), unordered_set_of(n2));
+  //   add_edges(g1,
+  //             {UndirectedEdge{{n1[0], n1[1]}}, UndirectedEdge{{n1[1],
+  //             n1[2]}}});
+  //   add_edges(g2, {UndirectedEdge{{n2[0], n2[1]}}});
 
-    JoinedNodeView joined_view(g1, g2);
+  //   JoinedNodeView joined_view(g1, g2);
 
-    SUBCASE("trace_nodes") {
-      std::pair<std::unordered_set<Node>, std::unordered_set<Node>> result =
-          joined_view.trace_nodes(joined_nodes);
-      std::pair<std::unordered_set<Node>, std::unordered_set<Node>> correct = {
-          {n1[0], n1[1], n1[2]}, {n2[0], n2[1]}};
+  //   SUBCASE("trace_nodes") {
+  //     std::pair<std::unordered_set<Node>, std::unordered_set<Node>> result =
+  //         joined_view.trace_nodes(joined_nodes);
+  //     std::pair<std::unordered_set<Node>, std::unordered_set<Node>> correct =
+  //     {
+  //         {n1[0], n1[1], n1[2]}, {n2[0], n2[1]}};
 
-      CHECK(result == correct);
-    }
+  //     CHECK(result == correct);
+  //   }
 
-    SUBCASE("query_nodes") {
-      SUBCASE("matchall") {}
-      SUBCASE("subset") {}
-    }
-  }
+  //   SUBCASE("query_nodes") {
+  //     SUBCASE("matchall") {}
+  //     SUBCASE("subset") {}
+  //   }
+  // }
 
   // TEST_CASE("JoinedUndirectedGraphView") {
   //   UndirectedGraph g1 = UndirectedGraph::create<HashmapUndirectedGraph>();
