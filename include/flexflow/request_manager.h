@@ -19,6 +19,7 @@
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/file_loader.h"
+#include "flexflow/page_manager.h"
 #include <condition_variable>
 #include <future>
 #include <mutex>
