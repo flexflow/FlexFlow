@@ -1,9 +1,9 @@
 #include "utils/graph/multidigraph/multidigraph.h"
-#include "test/utils/doctest.h"
 #include "utils/containers/contains.h"
 #include "utils/graph/instances/adjacency_multidigraph.h"
 #include "utils/graph/multidigraph/multidiedge_query.h"
 #include "utils/graph/query_set.h"
+#include <doctest/doctest.h>
 #include <unordered_set>
 #include <vector>
 

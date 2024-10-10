@@ -1,5 +1,5 @@
 #include "utils/join_strings.h"
-#include "test/utils/doctest.h"
+#include <doctest/doctest.h>
 #include <string>
 #include <vector>
 

@@ -1,7 +1,7 @@
 #include "utils/stack_map.h"
-#include "test/utils/doctest.h"
-#include "utils/fmt/pair.h"
-#include "utils/fmt/vector.h"
+#include "test/utils/doctest/fmt/pair.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 
@@ -9,7 +9,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("stack_map") {
     stack_map<int, int, 5> map;
 
-    SUBCASE("bracket operator") {
+    SUBCASE("operator[]") {
       map[1] = 10;
       map[2] = 20;
 

@@ -1,8 +1,9 @@
 #include "utils/type_index.h"
+#include "test/utils/doctest/check_without_stringify.h"
 #include <doctest/doctest.h>
 #include <typeindex>
 
-using namespace FlexFlow;
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("get_type_index_for_type") {

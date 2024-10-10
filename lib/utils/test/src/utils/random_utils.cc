@@ -1,11 +1,13 @@
 #include "utils/random_utils.h"
-#include "test/utils/doctest.h"
 #include "utils/containers/contains.h"
 #include "utils/containers/filter.h"
 #include "utils/containers/repeat.h"
 #include "utils/containers/sum.h"
 #include "utils/containers/zip.h"
 #include <algorithm>
+#include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("select_random(std::vector<T>)") {
@@ -31,7 +33,9 @@ TEST_SUITE(FF_TEST_SUITE) {
         std::vector<int> trials = repeat(
             num_iterations, [&]() { return select_random(values, weights); });
 
-        for (auto const [v, w] : zip(values, weights)) {
+        for (std::pair<int, float> const &p : zip(values, weights)) {
+          int v = p.first;
+          float w = p.second;
           float expectedProbability = w / sum(weights);
           int num_occurrences =
               filter(trials, [&](int c) { return (c == v); }).size();

@@ -1,8 +1,10 @@
 #include "utils/variant.h"
+#include "test/utils/doctest/fmt/optional.h"
+#include "test/utils/doctest/fmt/variant.h"
 #include "test/utils/rapidcheck.h"
-#include "utils/fmt/optional.h"
-#include "utils/fmt/variant.h"
 #include <doctest/doctest.h>
+
+using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("widen and narrow functions") {

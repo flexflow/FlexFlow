@@ -1,5 +1,6 @@
-#include "test/utils/rapidcheck.h"
 #include "utils/stack_vector.h"
+#include "test/utils/doctest/fmt/vector.h"
+#include "test/utils/rapidcheck.h"
 #include <doctest/doctest.h>
 #include <iterator>
 

@@ -1,6 +1,7 @@
 #include "utils/containers/find.h"
-#include "test/utils/doctest.h"
+#include "test/utils/doctest/check_without_stringify.h"
 #include <algorithm>
+#include <doctest/doctest.h>
 #include <set>
 #include <unordered_set>
 #include <vector>

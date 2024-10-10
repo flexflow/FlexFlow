@@ -48,9 +48,7 @@ std::ostream &operator<<(std::ostream &s, std::optional<T> const &t) {
   return s << fmt::to_string(t);
 }
 
-inline std::ostream &operator<<(std::ostream &s, std::nullopt_t) {
-  return s << "nullopt";
-}
+std::ostream &operator<<(std::ostream &, std::nullopt_t);
 
 } // namespace FlexFlow
 

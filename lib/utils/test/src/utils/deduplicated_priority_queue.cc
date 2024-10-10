@@ -1,6 +1,8 @@
 #include "utils/deduplicated_priority_queue.h"
 #include <doctest/doctest.h>
 
+using namespace ::FlexFlow;
+
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("DeduplicatedPriorityQueue push and pop") {
     DeduplicatedPriorityQueue<int> queue;

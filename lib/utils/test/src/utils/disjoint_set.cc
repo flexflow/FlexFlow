@@ -1,6 +1,6 @@
 #include "utils/disjoint_set.h"
-#include "test/utils/doctest.h"
-#include "utils/fmt/optional.h"
+#include "test/utils/doctest/fmt/optional.h"
+#include <doctest/doctest.h>
 
 using namespace FlexFlow;
 

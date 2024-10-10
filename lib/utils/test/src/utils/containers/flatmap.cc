@@ -2,6 +2,7 @@
 #include "test/utils/doctest/fmt/pair.h"
 #include "test/utils/doctest/fmt/unordered_map.h"
 #include "test/utils/doctest/fmt/unordered_set.h"
+#include "test/utils/doctest/fmt/vector.h"
 #include "utils/containers/map_keys.h"
 #include "utils/hash/pair.h"
 #include <doctest/doctest.h>
@@ -41,6 +42,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           "1", "2", "4", "3", "4", "8", "9", "10", "20"};
       CHECK(result == correct);
     }
+  }
 
   TEST_CASE("flatmap(std::unordered_set<T>, F)") {
     auto get_chars = [](std::string const &s) {

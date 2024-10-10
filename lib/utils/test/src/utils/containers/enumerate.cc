@@ -1,10 +1,11 @@
 #include "utils/containers/enumerate.h"
 #include "test/utils/doctest/fmt/map.h"
 #include "test/utils/doctest/fmt/pair.h"
+#include "test/utils/doctest/fmt/unordered_multiset.h"
 #include "test/utils/doctest/fmt/unordered_set.h"
 #include "test/utils/doctest/fmt/vector.h"
 #include "utils/containers/keys.h"
-#include "utils/containers/unordered_set_of.h"
+#include "utils/containers/unordered_multiset_of.h"
 #include "utils/containers/values.h"
 #include "utils/containers/vector_of.h"
 #include <doctest/doctest.h>

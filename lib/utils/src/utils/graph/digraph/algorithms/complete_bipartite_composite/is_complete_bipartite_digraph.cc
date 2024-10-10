@@ -1,5 +1,4 @@
 #include "utils/graph/digraph/algorithms/complete_bipartite_composite/is_complete_bipartite_digraph.h"
-#include "utils/containers/get_first.h"
 #include "utils/containers/set_minus.h"
 #include "utils/graph/digraph/algorithms.h"
 #include "utils/graph/node/algorithms.h"

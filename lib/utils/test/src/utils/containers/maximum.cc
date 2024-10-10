@@ -1,6 +1,6 @@
 #include "utils/containers/maximum.h"
+#include "test/utils/doctest/fmt/vector.h"
 #include <doctest/doctest.h>
-#include <stdexcept>
 #include <vector>
 
 using namespace ::FlexFlow;

@@ -1,7 +1,8 @@
 #include "utils/containers/restrict_keys.h"
-#include "utils/fmt/unordered_map.h"
+#include "test/utils/doctest/fmt/unordered_map.h"
 #include <doctest/doctest.h>
 #include <string>
+
 using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
