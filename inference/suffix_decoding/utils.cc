@@ -8,6 +8,7 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       ModelNames &model_names,
+                      std::string &partition_name,
                       bool &use_full_precision,
                       bool &verbose,
                       int &max_requests_per_batch,
@@ -35,6 +36,11 @@ void parse_input_args(char **argv,
     // cache folder
     if (!strcmp(argv[i], "-cache-folder")) {
       paths.cache_folder_path = std::string(argv[++i]);
+      continue;
+    }
+    // cache folder
+    if (!strcmp(argv[i], "-partition-name")) {
+      partition_name = std::string(argv[++i]);
       continue;
     }
     // prompts
@@ -308,4 +314,61 @@ void init_ssms(RequestManager *rm, std::vector<FFModel> &ssm_models, int num_ssm
 
         rm->register_ssm_model(&beam_model);
     }
+}
+
+json load_trace(std::string input_filename) {
+    std::cout << "Loading input file: " << input_filename << std::endl;
+    std::ifstream file(input_filename);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << input_filename << std::endl;
+        return nullptr;
+    }
+
+    try {
+        json data = json::parse(file);
+        
+        // Print metadata
+        const auto& metadata = data["metadata"];
+        std::cout << "Metadata:" << std::endl;
+        std::cout << "Average entries per partition: " << metadata["avg_entries_per_partition"] << std::endl;
+        std::cout << "Max prompt length: " << metadata["max_prompt_length"] << std::endl;
+        std::cout << "Min prompt length: " << metadata["min_prompt_length"] << std::endl;
+        std::cout << "Avg prompt length: " << metadata["avg_prompt_length"] << std::endl;
+        std::cout << "Max response length: " << metadata["max_response_length"] << std::endl;
+        std::cout << "Min response length: " << metadata["min_response_length"] << std::endl;
+        std::cout << "Avg response length: " << metadata["avg_response_length"] << std::endl;
+        // Print list of partition names
+        const auto& partitions = data["partitions"];
+        std::cout << "Partitions:" << std::endl;
+        int counter = 0;
+        for (const auto& partition : partitions) {
+            std::cout << counter++ << ". " << partition["name"] << std::endl;
+        }
+    }
+    catch (json::parse_error& e) {
+        std::cerr << "JSON parse error: " << e.what() << std::endl;
+        return nullptr;
+    }
+}
+
+json get_training_entries(json data, std::string partition_name) {
+    const auto& partitions = data["partitions"];
+    for (const auto& partition : partitions) {
+        if (partition["name"] == partition_name) {
+            return partition["training_entries"];
+        }
+    }
+    std::cerr << "Partition not found: " << partition_name << std::endl;
+    return 1;
+}
+
+json get_eval_entries(json data, std::string partition_name) {
+    const auto& partitions = data["partitions"];
+    for (const auto& partition : partitions) {
+        if (partition["name"] == partition_name) {
+            return partition["eval_entries"];
+        }
+    }
+    std::cerr << "Partition not found: " << partition_name << std::endl;
+    return 1;
 }

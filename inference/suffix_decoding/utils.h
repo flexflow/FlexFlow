@@ -41,6 +41,7 @@ void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
                       ModelNames &model_names,
+                      std::string &partition_name,
                       bool &use_full_precision,
                       bool &verbose,
                       int &max_requests_per_batch,
@@ -63,3 +64,7 @@ void init_llm(FFModel &tree_model, ModelMeta &model_metadata,
 void init_ssms(RequestManager *rm, std::vector<FFModel> &ssm_models, int num_ssms,
                 ModelMeta &model_metadata, GenerationConfig &generationConfig,
                 bool use_full_precision);
+
+json load_trace(std::string filename);
+json get_training_entries(json data, std::string partition_name);
+json get_eval_entries(json data, std::string partition_name);

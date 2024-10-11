@@ -22,6 +22,8 @@ using json = nlohmann::json;
 Legion::Logger log_app("llama");
 
 
+void process_partition(RequestManager *rm, std::string input_filename) {
+}
 
 void FlexFlow::top_level_task(Task const *task,
                               std::vector<PhysicalRegion> const &regions,
@@ -30,13 +32,14 @@ void FlexFlow::top_level_task(Task const *task,
   FFConfig ffconfig;
   FilePaths file_paths;
   ModelMeta model_metadata;
+  std::string partition_name;
   bool use_full_precision = false;
   bool verbose = false;
   int max_requests_per_batch = 16;
   int max_tokens_per_batch = 256;
   int max_sequence_length = 1024;
   int max_spec_tree_token_num = 23;
-  int expansion_degree = 3;
+  int expansion_degree = 1;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -45,6 +48,7 @@ void FlexFlow::top_level_task(Task const *task,
                    argc,
                    file_paths,
                    model_metadata.model_names,
+                   partition_name,
                    use_full_precision,
                    verbose,
                    max_requests_per_batch,
@@ -57,6 +61,10 @@ void FlexFlow::top_level_task(Task const *task,
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
+  
+  json trace = load_trace(file_paths.prompt_file_path);
+  json training_entries = get_training_entries(trace, partition_name);
+  json eval_entries = get_eval_entries(trace, partition_name);
 
   GenerationConfig generationConfig;
   InferenceManager *im = InferenceManager::get_inference_manager();
@@ -88,30 +96,47 @@ void FlexFlow::top_level_task(Task const *task,
   
   rm->start_background_server(&tree_model);
 
-  // Register requests from prompt file
   int total_num_requests = 0;
   {
-    using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
-
     std::vector<Request> requests;
-    for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+    for (auto entry: eval_entries) {
+      std::string prompt = entry["prompt"];
+      int response_length = entry["response_length"];
+      // printf("Prompt[%d]: %s\n", total_num_requests, prompt.c_str());
       // Add inference request
       Request inference_req;
-      inference_req.prompt = text;
-      inference_req.max_length = 128;
+      inference_req.prompt = prompt;
+      inference_req.max_new_tokens = response_length;
       requests.push_back(inference_req);
       total_num_requests++;
     }
     tree_model.generate(requests);
-  }
+  }  
+
+  // Register requests from prompt file
+  // int total_num_requests = 0;
+  // {
+  //   using json = nlohmann::json;
+  //   std::ifstream file_handle(file_paths.prompt_file_path);
+  //   assert(file_handle.good() && "Prompt file does not exist.");
+  //   json prompt_json = json::parse(file_handle,
+  //                                  /*parser_callback_t */ nullptr,
+  //                                  /*allow_exceptions */ true,
+  //                                  /*ignore_comments */ true);
+
+  //   std::vector<Request> requests;
+  //   for (auto &prompt : prompt_json) {
+  //     std::string text = prompt.get<std::string>();
+  //     printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+  //     // Add inference request
+  //     Request inference_req;
+  //     inference_req.prompt = text;
+  //     inference_req.max_length = 128;
+  //     requests.push_back(inference_req);
+  //     total_num_requests++;
+  //   }
+  //   tree_model.generate(requests);
+  // }
 
   // terminate the request manager by stopping the background thread
   rm->terminate_background_server();
