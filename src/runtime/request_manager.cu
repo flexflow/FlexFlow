@@ -122,6 +122,14 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       kv_last_page_len_h[indptr_idx] = batch_config->requestsInfo[req_idx].kv_last_page_len;
       indptr_idx++;
     }
+    // }else{
+    //   q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx];
+    //   q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx];
+    //   kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx];
+    //   qk_indptr_h[indptr_idx + 1] = 0;
+    //   kv_last_page_len_h[indptr_idx] = 0;
+    //   indptr_idx++;
+    // }
   }
 
   // do the copy

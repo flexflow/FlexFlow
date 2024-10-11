@@ -1112,6 +1112,10 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     //update related page info in batch config
     bc.requestsInfo[request_index].num_kv_pages = get_num_blocks_allocated(*request);
     printf("request: %d has %d kv pages after prefilling\n", request->guid, bc.requestsInfo[request_index].num_kv_pages);
+    if (bc.requestsInfo[request_index].num_kv_pages <= 0){
+      printf("request num tokens in batch: %d\n", bc.requestsInfo[request_index].num_tokens_in_batch);
+      printf("request: %d has %d kv pages after prefilling\n", request->guid, bc.requestsInfo[request_index].num_kv_pages);
+    }
     assert(bc.requestsInfo[request_index].num_kv_pages > 0);
     bc.requestsInfo[request_index].kv_last_page_len = get_len_last_block(*request);
     printf("request: %d has %d kv last page len after prefilling\n", request->guid, bc.requestsInfo[request_index].kv_last_page_len);
@@ -1514,8 +1518,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     std::vector<int> block_table_before_commit = page_manager->get_block_table_indices(guid);
     // also need to reset the pages
     reset_block_table(request);
-
-
+    
     int token_offset = request.first_token_offset_in_batch;
 
     // 1. Maintain requestsInfo
