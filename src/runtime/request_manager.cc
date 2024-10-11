@@ -1529,10 +1529,11 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
           committed_tokens.at(committed_token_index);
       
       // assert(request.page_last_committed < request.blocks.size());
-      // printf("in verify: page_last_committed: %d, request->blocks.size(): %d\n", request.page_last_committed, request.blocks.size());
+      printf("in verify: page_last_committed: %d, request->blocks.size(): %d\n", request.page_last_committed, request.blocks.size());
       int idx_to_physical = append_token_to_block(request, committed_token.token_id, true);
       int idx_from_logical = committed_token.from_index - request.first_token_offset_in_batch;
       int idx_from_physical = block_table_before_commit[idx_from_logical / kPagesize] * kPagesize + committed_token.from_index % kPagesize;
+      printf("id to physical: %d, from physical: %d\n", idx_to_physical, idx_from_physical);
 
 
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
@@ -1941,6 +1942,10 @@ void RequestManager::_append_block_to_request(
                                   kPagesize);
   request.blocks.push_back(block);
   page_manager->allocate_one_block(request.guid);
+  std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
+  for (int i = 0; i < block_table_indices.size(); i++) {
+    printf("block table indices: %d\n", block_table_indices[i]);
+  }
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   // update page_id_commit
   if (is_commit) {
@@ -1969,7 +1974,9 @@ int RequestManager::append_token_to_block(Request &request, TokenId token, bool 
   request.blocks.back().append_tokens({token}, is_commit);
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   int idx_logical = get_idx_last_logical_token(request);
+  // printf("idx_logical: %d\n", idx_logical);
   int idx_physical = idx_logical_to_physical(request, idx_logical);
+  // printf("idx_physical: %d\n", idx_physical);
   return idx_physical;
 }
 
@@ -1992,6 +1999,11 @@ void RequestManager::reset_block_table(Request &request){
   printf("number of blocks: %d\n", request.blocks.size()); 
   printf("num spec tokens: %d\n", request.blocks.back().get_num_spec_tokens());
   printf("num committed tokens: %d\n", request.blocks.back().get_num_commit_tokens());
+  // the indices of block table should be the same as the number of blocks
+  std::vector<int> block_table = page_manager->get_block_table_indices(request.guid);
+  for (int i = 0; i < request.blocks.size(); i++) {
+    printf("block table indices: %d\n", block_table[i]);
+  }
 
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   return;

@@ -149,8 +149,8 @@ __global__ void commit_tokens_kernel(
     }
   }
 
-  int start = kv_indptr[requext_idx_in_batch];
-  int end = kv_indptr[requext_idx_in_batch + 1] - 1;
+  // int start = kv_indptr[requext_idx_in_batch];
+  // int end = kv_indptr[requext_idx_in_batch + 1] - 1;
 
   for (int i = 0; i < *num_committed_tokens; i++) {
     if (committedTokenInfos[i].request_index == requext_idx_in_batch) {

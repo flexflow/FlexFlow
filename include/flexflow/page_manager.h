@@ -59,6 +59,8 @@ public:
     void append_tokens(const std::vector<TokenId>& token_ids_to_append, bool committed);
 
     int get_num_tokens() const { return num_tokens; }
+    int get_num_commit_tokens() const { return num_commit_tokens; }
+    int get_num_spec_tokens() const { return num_spec_tokens; }
 
     std::vector<TokenId> get_token_ids() const;
 

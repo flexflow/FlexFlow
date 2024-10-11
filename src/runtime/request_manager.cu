@@ -98,6 +98,7 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
       int kv_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch +
                   batch_config->requestsInfo[req_idx].first_token_index_in_request;
+      
       q_lens += q_len;
       qk_lens += (q_len * kv_len + 7) / 8;
       indices_offset = indices_lens;
@@ -106,8 +107,12 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       kv_indptr_h[indptr_idx + 1] = batch_config->requestsInfo[req_idx].num_kv_pages + kv_indptr_h[indptr_idx];
 
       assert(batch_config->requestsInfo[req_idx].num_kv_pages == (kv_len + kPagesize - 1) / kPagesize);
-      assert(batch_config->requestsInfo[req_idx].kv_last_page_len <= 64);
+      assert(batch_config->requestsInfo[req_idx].kv_last_page_len <= kPagesize);
       std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
+      printf("request_guid: %d\n", batch_config->requestsInfo[req_idx].request_guid);
+      printf("kv_indices.size() = %d, kv_len = %d\n", kv_indices.size(), kv_len);
+      printf("kv last page len = %d\n", batch_config->requestsInfo[req_idx].kv_last_page_len);
+      printf("num_kv_pages = %d\n", batch_config->requestsInfo[req_idx].num_kv_pages);
       assert(kv_indices.size() == (kv_len + kPagesize - 1) / kPagesize);
       for (int i = indices_offset; i < indices_lens; i++) {
         kv_indices_h[i] = kv_indices[i - indices_offset];
@@ -616,7 +621,9 @@ void RequestManager::load_batch_config_task(
       }
     }
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
-    static PageManager *pm = PageManager::get_page_manager();
+    PageManager *pm = PageManager::get_page_manager();
+    // hardcode request 
+    // printf("request has allocated %d pages\n", pm -> get_block_table_indices(1000000).size());
     static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
     static int32_t kv_indices_h[BatchConfig::MAX_NUM_REQUESTS * BatchConfig::MAX_NUM_TOKENS];
     static int32_t qk_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
@@ -760,6 +767,12 @@ void RequestManager::load_batch_config_task(
             handle.tree_verify_attention_metadata->num_kv_heads(),
             handle.tree_verify_attention_metadata->head_dim(),
             kPagesize);
+
+            cudaError_t syncErr = cudaDeviceSynchronize();
+            if (syncErr != cudaSuccess) {
+              printf("Kernel execution error: %s\n", cudaGetErrorString(syncErr));
+              assert(false);
+            }
       }
     }
   }

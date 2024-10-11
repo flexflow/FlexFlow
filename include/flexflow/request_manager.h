@@ -527,6 +527,7 @@ private:
     Request &request, bool is_commit);
   int append_token_to_block(Request &request, TokenId token, bool is_commit);
   void reset_block_table(Request &request);
+  void print_num_tokens(Request &request);
 
   // Token tree related
   void init_token_tree(RequestGuid guid);
