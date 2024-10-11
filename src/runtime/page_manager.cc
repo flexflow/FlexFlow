@@ -109,7 +109,8 @@ void BlockAllocator::free(PhysicalTokenBlock& block) {
     }
     block.decr_ref_count();
     if (block.ref_count == 0) {
-        free_blocks.push_back(block);
+        printf("put block number: %d back to free_blocks\n", block.get_block_number());
+        free_blocks.push_front(block);
     }else{
         // in current implementation this should not be the case
         throw std::runtime_error("Block is not freed. Ref count: " + std::to_string(block.ref_count));
@@ -131,6 +132,7 @@ int PageManager::allocate_one_block(const RequestGuid& request_guid) {
     PhysicalTokenBlock block = block_allocator.allocate();
     block_table.push_back(block);
     block_tables[request_guid] = block_table;
+    printf("request_guid: %d, block_number: %d\n", request_guid, block.get_block_number());
     return block.get_block_number();
 }
 
@@ -150,6 +152,7 @@ void PageManager::free_request(const RequestGuid& request_guid) {
     return;
 }
 
+// delete the last num_blocks in the request_guid
 void PageManager::free_multiple_blocks(const RequestGuid& request_guid, int num_blocks) {
     assert(block_tables.find(request_guid) != block_tables.end());
     auto& block_table = block_tables[request_guid];
@@ -158,7 +161,8 @@ void PageManager::free_multiple_blocks(const RequestGuid& request_guid, int num_
     for (int i = 0; i < num_blocks; i++) {
         block_allocator.free(block_table[num_blocks_allocated - i - 1]);
     }
-    block_table = std::vector<PhysicalTokenBlock>(block_table.begin() + num_blocks, block_table.end());
+    // only keep the first num_blocks_allocated - num_blocks blocks
+    block_table.erase(block_table.begin() + num_blocks_allocated - num_blocks, block_table.end());
     block_tables[request_guid] = block_table;
     return;
 }
@@ -170,7 +174,12 @@ void PageManager::free_multiple_blocks(const RequestGuid& request_guid, int num_
 
 std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request_guid) const {
     std::vector<int> indices;
-    const auto& block_table = block_tables.at(request_guid);
+    const auto& it = block_tables.find(request_guid);
+    if (it == block_tables.end()) {
+        printf("not found request_guid: %d\n", request_guid);
+        return indices;
+    }
+    const auto& block_table = it->second;
     for (const auto& block : block_table) {
         // printf("get block indice block number is: %d\n", block.block_number);
         indices.push_back(block.get_block_number());
