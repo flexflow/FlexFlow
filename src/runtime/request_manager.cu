@@ -105,14 +105,15 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       indices_lens += (kv_len + kPagesize - 1) / kPagesize;
       q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
       kv_indptr_h[indptr_idx + 1] = batch_config->requestsInfo[req_idx].num_kv_pages + kv_indptr_h[indptr_idx];
+      assert(kv_indptr_h[indptr_idx] >= 0);
 
       assert(batch_config->requestsInfo[req_idx].num_kv_pages == (kv_len + kPagesize - 1) / kPagesize);
       assert(batch_config->requestsInfo[req_idx].kv_last_page_len <= kPagesize);
       std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
-      printf("request_guid: %d\n", batch_config->requestsInfo[req_idx].request_guid);
-      printf("kv_indices.size() = %d, kv_len = %d\n", kv_indices.size(), kv_len);
-      printf("kv last page len = %d\n", batch_config->requestsInfo[req_idx].kv_last_page_len);
-      printf("num_kv_pages = %d\n", batch_config->requestsInfo[req_idx].num_kv_pages);
+      // printf("request_guid: %d\n", batch_config->requestsInfo[req_idx].request_guid);
+      // printf("kv_indices.size() = %d, kv_len = %d\n", kv_indices.size(), kv_len);
+      // printf("kv last page len = %d\n", batch_config->requestsInfo[req_idx].kv_last_page_len);
+      // printf("num_kv_pages = %d\n", batch_config->requestsInfo[req_idx].num_kv_pages);
       assert(kv_indices.size() == (kv_len + kPagesize - 1) / kPagesize);
       for (int i = indices_offset; i < indices_lens; i++) {
         kv_indices_h[i] = kv_indices[i - indices_offset];

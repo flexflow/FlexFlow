@@ -79,6 +79,13 @@ __global__ void
 
   if (offset < kv_hidden_size) {
     int start = kv_indptr[req_idx];
+    int end = kv_indptr[req_idx + 1] - 1;
+    if (start > end) {
+      printf("Invalid kv_indptr: %d %d\n", start, end);
+    }
+    assert(start <= end && "Invalid kv_indptr");
+    assert(start + (token_abs_idx / kPagesize) <= end &&
+           "Invalid page index");
     int page_idx = kv_page_indices[start + (token_abs_idx / kPagesize)];
     size_t to_k_idx = get_k_entry_offset_verify(
            token_abs_idx, page_idx, num_kv_heads, head_dim),
@@ -160,7 +167,7 @@ __global__ void commit_tokens_kernel(
       }
 
       // int const req_id = committedTokenInfos[i].request_index;
-      int const tok_id = committedTokenInfos[i].token_depth;
+      // int const tok_id = committedTokenInfos[i].token_depth;
       int const page_to_idx = committedTokenInfos[i].token_depth / kPagesize;
       int const page_from_idx = committedTokenInfos[i].index_in_kv_cache / kPagesize;
 
@@ -172,7 +179,6 @@ __global__ void commit_tokens_kernel(
                  committedTokenInfos[i].token_depth, page_to_idx, num_kv_heads, head_dim),
              to_v_idx = get_v_entry_offset_verify(
                  committedTokenInfos[i].token_depth, page_to_idx, num_kv_heads, head_dim);
-      assert(to_k_idx <= from_k_idx);
 
       kCache_ptr[to_k_idx + offset] = kCache_ptr[from_k_idx + offset];
       kCache_ptr[to_v_idx + offset] = kCache_ptr[from_v_idx + offset];

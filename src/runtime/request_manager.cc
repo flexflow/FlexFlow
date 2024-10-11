@@ -624,6 +624,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
 
   // page attention: free the pages
   PageManager *page_manager = PageManager::get_page_manager();
+  printf("free request %d\n", guid);
   page_manager->free_request(guid);
 
   // Find the sos and eos in the sequence
@@ -1109,9 +1110,11 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     }
     //update related page info in batch config
     bc.requestsInfo[request_index].num_kv_pages = get_num_blocks_allocated(*request);
-    printf("num kv pages: %d\n", bc.requestsInfo[request_index].num_kv_pages);
+    printf("request: %d has %d kv pages after prefilling\n", request->guid, bc.requestsInfo[request_index].num_kv_pages);
+    assert(bc.requestsInfo[request_index].num_kv_pages > 0);
     bc.requestsInfo[request_index].kv_last_page_len = get_len_last_block(*request);
-    printf("kv last page len: %d\n", bc.requestsInfo[request_index].kv_last_page_len);
+    printf("request: %d has %d kv last page len after prefilling\n", request->guid, bc.requestsInfo[request_index].kv_last_page_len);
+    assert(bc.requestsInfo[request_index].kv_last_page_len > 0);
     bc.requestsInfo[request_index].request_guid = request->guid;
   }
   bc.num_tokens = num_tokens;
@@ -1589,7 +1592,9 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
 
     // page attention information
     new_bc.requestsInfo[request_index].num_kv_pages = get_num_blocks_allocated(request);
+    assert(new_bc.requestsInfo[request_index].num_kv_pages > 0);
     new_bc.requestsInfo[request_index].kv_last_page_len = get_len_last_block(request);
+    assert(new_bc.requestsInfo[request_index].kv_last_page_len > 0);
     new_bc.requestsInfo[request_index].request_guid = request.guid;
   }
 
@@ -1910,6 +1915,10 @@ int RequestManager::get_num_blocks_allocated(Request &request) const {
 }
 
 int RequestManager::get_len_last_block(Request &request) const {
+  int num_tokens = request.blocks.back().get_num_tokens();
+  if (request.blocks.empty()) {
+    return 0;
+  }
   return request.blocks.back().get_num_tokens();
 }
 
@@ -1947,9 +1956,9 @@ void RequestManager::_append_block_to_request(
   request.blocks.push_back(block);
   page_manager->allocate_one_block(request.guid);
   std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
-  for (int i = 0; i < block_table_indices.size(); i++) {
-    printf("block table indices: %d\n", block_table_indices[i]);
-  }
+  // for (int i = 0; i < block_table_indices.size(); i++) {
+  //   printf("block table indices: %d\n", block_table_indices[i]);
+  // }
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   // update page_id_commit
   if (is_commit) {

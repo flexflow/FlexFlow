@@ -137,9 +137,11 @@ int PageManager::allocate_one_block(const RequestGuid& request_guid) {
 }
 
 void PageManager::free_block_table(BlockTable& block_table) {
-    for (auto& block : block_table) {
-            block_allocator.free(block);
-    } 
+    // make it reverse order to free the last allocated block first
+    BlockTable::reverse_iterator rit = block_table.rbegin();
+    for (; rit != block_table.rend(); ++rit) {
+        block_allocator.free(*rit);
+    }
     return;
 }
 
@@ -176,12 +178,11 @@ std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request
     std::vector<int> indices;
     const auto& it = block_tables.find(request_guid);
     if (it == block_tables.end()) {
-        printf("not found request_guid: %d\n", request_guid);
+        printf("page manager not found request_guid: %d\n", request_guid);
         return indices;
     }
     const auto& block_table = it->second;
     for (const auto& block : block_table) {
-        // printf("get block indice block number is: %d\n", block.block_number);
         indices.push_back(block.get_block_number());
     }
     return indices;
