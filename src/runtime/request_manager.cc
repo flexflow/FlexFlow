@@ -1102,6 +1102,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
 
       // printf("in prefilling: page_last_committed: %d, request->blocks.size(): %d\n", request->page_last_committed, request->blocks.size());
       // assert(request->page_last_committed < static_cast<int>(request->blocks.size()));
+      assert(request->llm_prefill_len + idx < request->tokens.size());
       append_token_to_block(*request, request->tokens[request->llm_prefill_len + idx], true);
     }
     num_tokens += num_tokens_in_batch;
@@ -1123,6 +1124,7 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     std::cout << "prepare_llm_prefilling_batch NEW batchconfig:" << std::endl;
     bc.print();
   }
+  printf("there are %d requests in the batch in prefilling stage\n", bc.num_available_requests);
   return bc;
 }
 
@@ -1538,7 +1540,12 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       // assert(request.page_last_committed < request.blocks.size());
       printf("in verify: page_last_committed: %d, request->blocks.size(): %d\n", request.page_last_committed, request.blocks.size());
       int idx_to_physical = append_token_to_block(request, committed_token.token_id, true);
-      int idx_from_logical = committed_token.from_index - request.first_token_offset_in_batch;
+      int idx_from_logical = committed_token.from_index;
+      if (idx_from_logical < 0) {
+        printf("idx_from_logical: %d, from_index: %d, first_token_offset_in_batch: %d\n", idx_from_logical, committed_token.from_index, request.first_token_offset_in_batch);
+      }
+      assert(idx_from_logical >= 0);
+      assert(idx_from_logical / kPagesize < block_table_before_commit.size());
       int idx_from_physical = block_table_before_commit[idx_from_logical / kPagesize] * kPagesize + committed_token.from_index % kPagesize;
       printf("id to physical: %d, from physical: %d\n", idx_to_physical, idx_from_physical);
 
