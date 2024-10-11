@@ -622,6 +622,10 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   num_available_requests--;
   request.status = Request::COMPLETED;
 
+  // page attention: free the pages
+  PageManager *page_manager = PageManager::get_page_manager();
+  page_manager->free_request(guid);
+
   // Find the sos and eos in the sequence
   auto bos_it = std::find(
       request.tokens.begin(), request.tokens.end(), this->bos_token_id);
