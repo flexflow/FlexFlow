@@ -544,6 +544,7 @@ if(NOT BUILD_LEGION_ONLY)
 
   if(FF_BUILD_INFERENCE)
     add_subdirectory(inference/spec_infer)
+    add_subdirectory(inference/suffix_decoding)
     add_subdirectory(inference/incr_decoding)
     add_subdirectory(inference/peft)
   endif()
