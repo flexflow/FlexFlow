@@ -48,7 +48,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                out_dim,
                                batch_size,
                                m->aggr,
-                               output.domain.get_volume(),
+                               out_dim * batch_size,
                                stream);
     } else if (weight.data_type == DT_FLOAT) {
       Internal::forward_kernel(input.get_int32_ptr(),
@@ -58,7 +58,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                out_dim,
                                batch_size,
                                m->aggr,
-                               output.domain.get_volume(),
+                               out_dim * batch_size,
                                stream);
     } else if (weight.data_type == DT_DOUBLE) {
       Internal::forward_kernel(input.get_int32_ptr(),
@@ -68,7 +68,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                out_dim,
                                batch_size,
                                m->aggr,
-                               output.domain.get_volume(),
+                               out_dim * batch_size,
                                stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
@@ -82,7 +82,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                out_dim,
                                batch_size,
                                m->aggr,
-                               output.domain.get_volume(),
+                               out_dim * batch_size,
                                stream);
     } else if (weight.data_type == DT_FLOAT) {
       Internal::forward_kernel(input.get_int64_ptr(),
@@ -92,7 +92,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                out_dim,
                                batch_size,
                                m->aggr,
-                               output.domain.get_volume(),
+                               out_dim * batch_size,
                                stream);
     } else if (weight.data_type == DT_DOUBLE) {
       Internal::forward_kernel(input.get_int64_ptr(),
@@ -102,7 +102,7 @@ void forward_kernel_wrapper(EmbeddingMeta const *m,
                                out_dim,
                                batch_size,
                                m->aggr,
-                               output.domain.get_volume(),
+                               out_dim * batch_size,
                                stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
@@ -139,7 +139,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 out_dim,
                                 batch_size,
                                 m->aggr,
-                                output.domain.get_volume(),
+                                out_dim * batch_size,
                                 stream);
     } else if (m->output_type[0] == DT_FLOAT) {
       Internal::backward_kernel(input.get_int32_ptr(),
@@ -149,7 +149,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 out_dim,
                                 batch_size,
                                 m->aggr,
-                                output.domain.get_volume(),
+                                out_dim * batch_size,
                                 stream);
     } else if (m->output_type[0] == DT_DOUBLE) {
       Internal::backward_kernel(input.get_int32_ptr(),
@@ -159,7 +159,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 out_dim,
                                 batch_size,
                                 m->aggr,
-                                output.domain.get_volume(),
+                                out_dim * batch_size,
                                 stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");
@@ -173,7 +173,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 out_dim,
                                 batch_size,
                                 m->aggr,
-                                output.domain.get_volume(),
+                                out_dim * batch_size,
                                 stream);
     } else if (m->output_type[0] == DT_FLOAT) {
       Internal::backward_kernel(input.get_int64_ptr(),
@@ -183,7 +183,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 out_dim,
                                 batch_size,
                                 m->aggr,
-                                output.domain.get_volume(),
+                                out_dim * batch_size,
                                 stream);
     } else if (m->output_type[0] == DT_DOUBLE) {
       Internal::backward_kernel(input.get_int64_ptr(),
@@ -193,7 +193,7 @@ void backward_kernel_wrapper(EmbeddingMeta const *m,
                                 out_dim,
                                 batch_size,
                                 m->aggr,
-                                output.domain.get_volume(),
+                                out_dim * batch_size,
                                 stream);
     } else {
       assert(false && "Unsupported DataType in Embedding");

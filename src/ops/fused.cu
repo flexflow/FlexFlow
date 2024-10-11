@@ -839,6 +839,7 @@ __host__ void
               assert(effective_batch_size * in_dim ==
                      my_input_accessor[0].domain.get_volume());
             }
+            effective_batch_size = bc->num_active_tokens();
 
             assert(my_input_accessor[0].data_type == DT_INT32 ||
                    my_input_accessor[0].data_type == DT_INT64);
