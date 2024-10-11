@@ -1730,7 +1730,7 @@ void flexflow_model_generate(flexflow_model_t handle_,
                   handle,
                   dataset_fp.c_str(),
                   max_lengths[i],
-                  max_new_tokens[i],
+                  max_new_tokens_[i],
                   training_steps[i]);
     } else {
       assert(false && "Unknown request type");

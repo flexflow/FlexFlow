@@ -229,29 +229,29 @@ RequestManager::RequestManager()
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
 
-  std::string model_name = "meta-llama/Meta-Llama-3-70B";
-  DailSqlTrace dail_sql_trace =
-      load_trace_dail_sql("/usr/suffix-tree-decoding/trace/spider.json");
-  int num_prompts = dail_sql_trace.prompts.size();
-  int num_responses = dail_sql_trace.responses.size();
-  assert(num_prompts == num_responses);
-  auto tokenizer = get_tokenizer(model_name);
-  int bos_token_id = get_bos_token_id(model_name);
-  int train_size = num_prompts / 2;
-  std::cout << "Number of prompts: " << num_prompts << std::endl;
-  std::cout << "Train size: " << train_size << std::endl;
-  std::vector<std::vector<int>> training_dataset;
-  for (int i = 0; i < train_size; i++) {
-    std::string text = dail_sql_trace.prompts[i] + dail_sql_trace.responses[i];
-    std::vector<int> encoded = tokenizer->Encode(text);
-    encoded.insert(encoded.begin(), bos_token_id);
-    training_dataset.push_back(encoded);
-  }
-  suffix_tree = new SuffixTree(50);
-  for (auto const &text : training_dataset) {
-    suffix_tree->insert(text, suffix_tree->query_guid);
-    suffix_tree->query_guid++;
-  }
+  // std::string model_name = "meta-llama/Meta-Llama-3-70B";
+  // DailSqlTrace dail_sql_trace =
+  //     load_trace_dail_sql("/usr/suffix-tree-decoding/trace/spider.json");
+  // int num_prompts = dail_sql_trace.prompts.size();
+  // int num_responses = dail_sql_trace.responses.size();
+  // assert(num_prompts == num_responses);
+  // auto tokenizer = get_tokenizer(model_name);
+  // int bos_token_id = get_bos_token_id(model_name);
+  // int train_size = num_prompts / 2;
+  // std::cout << "Number of prompts: " << num_prompts << std::endl;
+  // std::cout << "Train size: " << train_size << std::endl;
+  // std::vector<std::vector<int>> training_dataset;
+  // for (int i = 0; i < train_size; i++) {
+  //   std::string text = dail_sql_trace.prompts[i] + dail_sql_trace.responses[i];
+  //   std::vector<int> encoded = tokenizer->Encode(text);
+  //   encoded.insert(encoded.begin(), bos_token_id);
+  //   training_dataset.push_back(encoded);
+  // }
+  // suffix_tree = new SuffixTree(50);
+  // for (auto const &text : training_dataset) {
+  //   suffix_tree->insert(text, suffix_tree->query_guid);
+  //   suffix_tree->query_guid++;
+  // }
 }
 
 void RequestManager::set_max_requests_per_batch(int max_num_requests) {
@@ -348,6 +348,8 @@ void RequestManager::register_tokenizer(ModelType type,
                   << std::endl;
         assert(false);
       }
+      std::cout << "Loading tokenizer from: " << tokenizer_json_path
+                << std::endl;
       this->tokenizer_ = Tokenizer::FromBlobJSON(
           LoadBytesFromFile(tokenizer_json_path.string()));
     }

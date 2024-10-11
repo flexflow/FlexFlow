@@ -342,8 +342,9 @@ json load_trace(std::string input_filename) {
         std::cout << "Partitions:" << std::endl;
         int counter = 0;
         for (const auto& partition : partitions) {
-            std::cout << counter++ << ". " << partition["name"] << std::endl;
+            std::cout << counter++ << ". " << partition["partition_name"] << std::endl;
         }
+        return data;
     }
     catch (json::parse_error& e) {
         std::cerr << "JSON parse error: " << e.what() << std::endl;
@@ -354,7 +355,7 @@ json load_trace(std::string input_filename) {
 json get_training_entries(json data, std::string partition_name) {
     const auto& partitions = data["partitions"];
     for (const auto& partition : partitions) {
-        if (partition["name"] == partition_name) {
+        if (partition["partition_name"] == partition_name) {
             return partition["training_entries"];
         }
     }
@@ -365,7 +366,7 @@ json get_training_entries(json data, std::string partition_name) {
 json get_eval_entries(json data, std::string partition_name) {
     const auto& partitions = data["partitions"];
     for (const auto& partition : partitions) {
-        if (partition["name"] == partition_name) {
+        if (partition["partition_name"] == partition_name) {
             return partition["eval_entries"];
         }
     }
