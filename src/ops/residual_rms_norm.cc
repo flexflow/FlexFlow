@@ -447,7 +447,7 @@ void ResidualRMSNorm::inference_task(Task const *task,
       m->output_type[1], regions[3], task->regions[3], FID_DATA, ctx, runtime);
   GenericTensorAccessorR weight = helperGetGenericTensorAccessorRO(
       m->weight_type[0], regions[4], task->regions[4], FID_DATA, ctx, runtime);
-  forward_kernel_wrapper(m, input1, input2, weight, residual_output, output);
+  forward_kernel_wrapper(m, input1, input2, weight, residual_output, output, bc->num_tokens);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

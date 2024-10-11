@@ -903,7 +903,8 @@ __host__ void
                 my_input_accessor[1],
                 my_weight_accessor[0],
                 my_output_accessor[0],
-                my_output_accessor[1]);
+                my_output_accessor[1],
+                bc->num_active_tokens());
             break;
           }
           case OP_INC_MULTIHEAD_SELF_ATTENTION: {
