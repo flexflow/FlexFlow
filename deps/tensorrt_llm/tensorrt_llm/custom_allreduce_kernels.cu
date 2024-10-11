@@ -437,6 +437,10 @@ void customAllReduce(AllReduceParams &params,
   params.local_output_buffer_ptr = data;
   params.elts_total = elts;
 
+  if (elts == 0) {
+    return;
+  }
+
   if (dataType == DT_FLOAT) {
     invokeOneOrTwoShotAllReduceKernel<float>(params, strat, stream);
   } else if (dataType == DT_HALF) {
