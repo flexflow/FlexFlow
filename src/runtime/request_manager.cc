@@ -2547,8 +2547,7 @@ void RequestManager::terminate_background_server() {
     ttft_per_request_ms += ")";
     str += ttft_per_request_ms;
 
-    std::string per_token_time_per_request_ms =
-        "\n per_token_time_per_request_ms( ";
+    std::string tpot_per_request_ms = "\n tpot_per_request_ms( ";
     for (auto const &profiling_info : profiling_requests) {
       double per_token_time_ms = 0;
       auto const &request = all_requests[profiling_info.first];
@@ -2558,10 +2557,10 @@ void RequestManager::terminate_background_server() {
             (profiling.finish_time - profiling.start_decoding_time) / 1000.0 /
             (request.tokens.size() - request.llm_prefill_len);
       }
-      per_token_time_per_request_ms += std::to_string(per_token_time_ms) + " ";
+      tpot_per_request_ms += std::to_string(per_token_time_ms) + " ";
     }
-    per_token_time_per_request_ms += ")";
-    str += per_token_time_per_request_ms;
+    tpot_per_request_ms += ")";
+    str += tpot_per_request_ms;
 
     average_latency_per_request /= total_requests;
     str += "\n average_latency_per_request_ms(" +
