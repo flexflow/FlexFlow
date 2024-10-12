@@ -407,7 +407,10 @@ void RequestManager::load_batch_config_task(
             handle.incr_attention_metadata->qk_indptr);
 
             // check on error
-            checkCUDA(cudaGetLastError());
+            cudaError_t error = cudaGetLastError();
+            if (error != cudaSuccess) {
+              printf("CUDA error in prepare_inference_params_kernel: %s\n", cudaGetErrorString(error));
+            }
       }
 
       // prepare attention forward handler
