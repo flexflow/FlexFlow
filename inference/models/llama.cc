@@ -215,7 +215,7 @@ void LLAMA::create_llama_model(FFModel &ff,
                  std::string("layers_" + std::to_string(i) + "_feed_forward_w3")
                      .c_str());
 
-    Tensor multi = ff.sigmoid_silu_multi(w1, w3);
+    Tensor multi = ff.sigmoid_silu_multi(w1, w3, llama_config.intermediate_size);
 
     w2 =
         ff.dense(multi,

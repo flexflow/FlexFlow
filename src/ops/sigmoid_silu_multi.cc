@@ -41,7 +41,9 @@ using Legion::TaskLauncher;
 
 bool operator==(SigmoidSiluMultiParams const &lhs,
                 SigmoidSiluMultiParams const &rhs) {
-  return lhs.layer_guid == rhs.layer_guid;
+  return lhs.layer_guid == rhs.layer_guid &&
+         lhs.intermediate_size == rhs.intermediate_size &&
+         lhs.tensor_parallelism_degree == rhs.tensor_parallelism_degree;
 }
 
 bool SigmoidSiluMultiParams::is_valid(
@@ -52,6 +54,8 @@ bool SigmoidSiluMultiParams::is_valid(
 SigmoidSiluMultiParams SigmoidSiluMulti::get_params() const {
   SigmoidSiluMultiParams params;
   params.layer_guid = this->layer_guid;
+  params.intermediate_size = this->intermediate_size;
+  params.tensor_parallelism_degree = this->tensor_parallelism_degree;
   if (this->name != nullptr) {
     strcpy(params.name, this->name);
   }
@@ -60,6 +64,7 @@ SigmoidSiluMultiParams SigmoidSiluMulti::get_params() const {
 
 Tensor FFModel::sigmoid_silu_multi(const Tensor input1,
                                    const Tensor input2,
+                                   int intermediate_size,
                                    DataType data_type,
                                    char const *name) {
 
@@ -94,6 +99,8 @@ Tensor FFModel::sigmoid_silu_multi(const Tensor input1,
                          casted_input2);
   ssm->outputs[0] = create_tensor_legion_ordering(
       input1->num_dims, input1->dims, data_type, ssm, 0, false /*create_grad*/);
+  ssm->add_int_property("intermediate_size", intermediate_size);
+  ssm->add_int_property("tensor_parallelism_degree", config.tensor_parallelism_degree);
   layers.push_back(ssm);
   return ssm->outputs[0];
 }
@@ -102,9 +109,15 @@ Op *SigmoidSiluMulti::create_operator_from_layer(
     FFModel &model,
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
-
+  long long value;
+  layer->get_int_property("intermediate_size", value);
+  int intermediate_size = value;
+  layer->get_int_property("tensor_parallelism_degree", value);
+  int tensor_parallelism_degree = value;
   return new SigmoidSiluMulti(
-      model, layer->layer_guid, inputs[0], inputs[1], layer->name);
+      model, layer->layer_guid, inputs[0], inputs[1], 
+      intermediate_size, tensor_parallelism_degree,
+      layer->name);
 }
 
 SigmoidSiluMulti::SigmoidSiluMulti(
@@ -113,12 +126,15 @@ SigmoidSiluMulti::SigmoidSiluMulti(
     std::pair<ParallelTensor, ParallelTensor> const &inputs,
     char const *name)
     : SigmoidSiluMulti(
-          model, params.layer_guid, inputs.first, inputs.second, params.name) {}
+          model, params.layer_guid, inputs.first, inputs.second, 
+          params.intermediate_size, params.tensor_parallelism_degree, params.name) {}
 
 SigmoidSiluMulti::SigmoidSiluMulti(FFModel &model,
                                    LayerID const &_layer_guid,
                                    const ParallelTensor _input1,
                                    const ParallelTensor _input2,
+                                   int _intermediate_size,
+                                   int _tensor_parallelism_degree,
                                    char const *name)
     : Op(model,
          OP_SIGMOID_SILU_MULTI,
@@ -128,7 +144,9 @@ SigmoidSiluMulti::SigmoidSiluMulti(FFModel &model,
          0 /*weights*/,
          1 /*outputs*/,
          _input1,
-         _input2) {
+         _input2),
+      intermediate_size(_intermediate_size),
+      tensor_parallelism_degree(_tensor_parallelism_degree) {
   // overwrite layer_guid
   layer_guid = _layer_guid;
   outputs[0] = model.create_parallel_tensor_legion_ordering(_input1->num_dims,
@@ -242,8 +260,9 @@ OpMeta *SigmoidSiluMulti::init_task(Task const *task,
                        .best_affinity_to(task->target_proc)
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
+  int intermediate_size = ssm->intermediate_size / ssm->tensor_parallelism_degree;
   SigmoidSiluMultiMeta *meta =
-      new SigmoidSiluMultiMeta(handle, ssm, gpu_mem_allocator);
+      new SigmoidSiluMultiMeta(handle, ssm, gpu_mem_allocator, ssm->intermediate_size, intermediate_size);
   meta->input_type[0] = ssm->inputs[0]->data_type;
   meta->input_type[1] = ssm->inputs[1]->data_type;
   meta->output_type[0] = ssm->outputs[0]->data_type;
@@ -350,7 +369,8 @@ void SigmoidSiluMulti::inference_task(
   assert(input1_domain == input2_domain);
   assert(input1_domain == output_domain);
 
-  SigmoidSiluMulti::inference_kernel_wrapper(m, input1, input2, output);
+  // use active number of tokens
+  SigmoidSiluMulti::inference_kernel_wrapper(m, input1, input2, output, bc->num_active_tokens());
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
@@ -369,6 +389,8 @@ void SigmoidSiluMulti::serialize(Legion::Serializer &sez) const {
   sez.serialize(this->layer_guid.id);
   sez.serialize(this->layer_guid.transformer_layer_id);
   sez.serialize(this->layer_guid.model_id);
+  sez.serialize(this->intermediate_size);
+  sez.serialize(this->tensor_parallelism_degree);
   sez.serialize(strlen(this->name));
   sez.serialize(this->name, strlen(this->name));
 }
@@ -381,9 +403,12 @@ Node SigmoidSiluMulti::deserialize(FFModel &ff,
                                    int num_inputs) {
   assert(num_inputs == 2);
   size_t id, transformer_layer_id, deserialized_model_id;
+  int intermediate_size, tensor_parallelism_degree;
   dez.deserialize(id);
   dez.deserialize(transformer_layer_id);
   dez.deserialize(deserialized_model_id);
+  dez.deserialize(intermediate_size);
+  dez.deserialize(tensor_parallelism_degree);
   size_t name_len;
   char name[MAX_OPNAME] = {0};
   dez.deserialize(name_len);
@@ -392,6 +417,8 @@ Node SigmoidSiluMulti::deserialize(FFModel &ff,
 
   SigmoidSiluMultiParams params;
   params.layer_guid = layer_guid;
+  params.intermediate_size = intermediate_size;
+  params.tensor_parallelism_degree = tensor_parallelism_degree;
   strcpy(params.name, name);
   return ff.get_or_create_node<SigmoidSiluMulti>({inputs[0], inputs[1]},
                                                  params);
@@ -406,6 +433,8 @@ size_t hash<FlexFlow::SigmoidSiluMultiParams>::operator()(
   hash_combine(key, params.layer_guid.id);
   hash_combine(key, params.layer_guid.transformer_layer_id);
   hash_combine(key, params.layer_guid.model_id);
+  hash_combine(key, params.intermediate_size);
+  hash_combine(key, params.tensor_parallelism_degree);
   return key;
 }
 }; // namespace std

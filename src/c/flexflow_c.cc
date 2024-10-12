@@ -748,12 +748,13 @@ flexflow_tensor_t
     flexflow_model_add_sigmoid_silu_multi(flexflow_model_t handle_,
                                           flexflow_tensor_t const input1_,
                                           flexflow_tensor_t const input2_,
+                                          int intermediate_size,
                                           char const *name) {
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor const input1 = FFCObjectWrapper::unwrap(input1_);
   Tensor const input2 = FFCObjectWrapper::unwrap(input2_);
   Tensor tensor =
-      handle->sigmoid_silu_multi(input1, input2, input1->data_type, name);
+      handle->sigmoid_silu_multi(input1, input2, intermediate_size, input1->data_type, name);
   DEBUG_PRINT("[SigmoidSiluMulti] new Tensor %p, input1 %p, input2 %p, name %s",
               tensor,
               input1,

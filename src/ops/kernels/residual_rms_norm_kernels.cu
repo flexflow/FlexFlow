@@ -148,6 +148,7 @@ void forward_kernel(ResidualRMSNormMeta const *m,
                     int batch_size,
                     cudaStream_t stream) {
   assert(batch_size <= m->batch_size);
+  // use active batch size
   std::pair<int, int> kernel1_parallelism =
       std::make_pair(batch_size, kCUDABlockReduceNumThreads);
   std::pair<int, int> kernel2_parallelism =

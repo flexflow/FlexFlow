@@ -2046,10 +2046,10 @@ class FFModel(object):
             handles_array[0], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM
         ), Tensor(handles_array[1], owner_op_type=OpType.ADD_BIAS_RESIDUAL_LAYERNORM)
 
-    def sigmoid_silu_multi(self, input1, input2, name=None):
+    def sigmoid_silu_multi(self, input1, input2, intermediate_size, name=None):
         c_name = get_c_name(name)
         handle = ffc().flexflow_model_add_sigmoid_silu_multi(
-            self.handle, input1.handle, input2.handle, c_name
+            self.handle, input1.handle, input2.handle, intermediate_size, c_name
         )
         self.add_layer(OpType.SIGMOID_SILU_MULTI, name)
         return Tensor(handle, owner_op_type=OpType.SIGMOID_SILU_MULTI)

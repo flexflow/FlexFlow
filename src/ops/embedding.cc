@@ -626,6 +626,7 @@ void Embedding::inference_task(Task const *task,
     effective_batch_size = output.domain.get_volume() / out_dim;
     assert(effective_batch_size * in_dim == input.domain.get_volume());
   }
+  // use active batch size
   effective_batch_size = bc->num_active_tokens();
   forward_kernel_wrapper(
       m, input, output, kernel, in_dim, out_dim, effective_batch_size);

@@ -839,6 +839,7 @@ __host__ void
               assert(effective_batch_size * in_dim ==
                      my_input_accessor[0].domain.get_volume());
             }
+            // use active batch size
             effective_batch_size = bc->num_active_tokens();
 
             assert(my_input_accessor[0].data_type == DT_INT32 ||
@@ -1079,10 +1080,12 @@ __host__ void
             assert(fused->op_num_outputs[op] == 1);
             SigmoidSiluMultiMeta const *m =
                 (SigmoidSiluMultiMeta *)metas->meta[op];
+            // use active number of tokens
             SigmoidSiluMulti::inference_kernel_wrapper(m,
                                                        my_input_accessor[0],
                                                        my_input_accessor[1],
-                                                       my_output_accessor[0]);
+                                                       my_output_accessor[0],
+                                                       bc->num_active_tokens());
             break;
           }
           case OP_SOFTMAX: {

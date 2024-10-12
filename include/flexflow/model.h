@@ -580,6 +580,7 @@ public:
   // Add a sigmoid_silu_multi layer
   Tensor sigmoid_silu_multi(Tensor const input1,
                             Tensor const input2,
+                            int intermediate_size,
                             DataType data_type = DT_NONE,
                             char const *name = NULL);
   // Add a batch_norm layer
