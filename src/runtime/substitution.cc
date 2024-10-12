@@ -3826,9 +3826,13 @@ bool FFModel::convert_graph_to_operators(
       case OP_SIGMOID_SILU_MULTI: {
         assert(inList.size() == 2);
         SigmoidSiluMulti *ssm = (SigmoidSiluMulti *)node.ptr;
-        SigmoidSiluMultiParams params = ssm->get_params();
-        new_op = new SigmoidSiluMulti(
-            *this, ssm->layer_guid, inputs[0], inputs[1], NULL);
+        new_op = new SigmoidSiluMulti(*this,
+                                      ssm->layer_guid,
+                                      inputs[0],
+                                      inputs[1],
+                                      ssm->intermediate_size,
+                                      ssm->tensor_parallelism_degree,
+                                      NULL);
         break;
       }
       default: {

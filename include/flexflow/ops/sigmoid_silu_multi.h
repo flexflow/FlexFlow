@@ -19,6 +19,8 @@ public:
                    LayerID const &_layer_guid,
                    const ParallelTensor _input1,
                    const ParallelTensor _input2,
+                   int _intermediate_size,
+                   int _tensor_parallelism_degree,
                    char const *name = nullptr);
   void init(FFModel const &) override;
   void init_inference(FFModel const &,
@@ -68,18 +70,25 @@ public:
   static void inference_kernel_wrapper(SigmoidSiluMultiMeta const *m,
                                        GenericTensorAccessorR const &input1,
                                        GenericTensorAccessorR const &input2,
-                                       GenericTensorAccessorW const &output);
+                                       GenericTensorAccessorW const &output,
+                                       int token_size);
+
+public:
+  int intermediate_size, tensor_parallelism_degree;
 };
 
 class SigmoidSiluMultiMeta : public OpMeta {
 public:
   SigmoidSiluMultiMeta(FFHandler handle,
                        SigmoidSiluMulti const *ln,
-                       MemoryAllocator &gpu_mem_allocator);
+                       MemoryAllocator &gpu_mem_allocator,
+                       int _global_intermediate_size,
+                       int _intermediate_size);
   ~SigmoidSiluMultiMeta(void);
 
 public:
   Realm::RegionInstance reserveInst;
+  int global_intermediate_size, intermediate_size;
 };
 
 }; // namespace FlexFlow

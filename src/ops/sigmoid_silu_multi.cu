@@ -21,10 +21,14 @@ namespace FlexFlow {
 
 SigmoidSiluMultiMeta::SigmoidSiluMultiMeta(FFHandler handle,
                                            SigmoidSiluMulti const *ssm,
-                                           MemoryAllocator &gpu_mem_allocator)
+                                           MemoryAllocator &gpu_mem_allocator,
+                                           int _global_intermediate_size,
+                                           int _intermediate_size)
     : OpMeta(handle) {
   profiling = ssm->profiling;
   inference_debugging = ssm->inference_debugging;
+  global_intermediate_size = _global_intermediate_size;
+  intermediate_size = _intermediate_size;
 }
 
 SigmoidSiluMultiMeta::~SigmoidSiluMultiMeta(void) {
@@ -50,13 +54,18 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
     SigmoidSiluMultiMeta const *m,
     GenericTensorAccessorR const &input1,
     GenericTensorAccessorR const &input2,
-    GenericTensorAccessorW const &output) {
+    GenericTensorAccessorW const &output,
+    int token_size) {
+  if (token_size == 0) {
+    return;
+  }
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
 
-  int num_elements = input1.domain.get_volume();
-  assert(input2.domain.get_volume() == num_elements);
-  assert(output.domain.get_volume() == num_elements);
+  assert(input2.domain.get_volume() == input1.domain.get_volume());
+  assert(output.domain.get_volume() == input1.domain.get_volume());
+
+  int num_elements = token_size * m->intermediate_size;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
@@ -68,7 +77,7 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
     SigmoidSiluMultiKernel<<<GET_BLOCKS(num_elements),
                              min(CUDA_NUM_THREADS, num_elements),
                              0,
-                             stream>>>(input1.domain.get_volume(),
+                             stream>>>(num_elements,
                                        input1.get_float_ptr(),
                                        input2.get_float_ptr(),
                                        output.get_float_ptr());
@@ -76,7 +85,7 @@ void SigmoidSiluMulti::inference_kernel_wrapper(
     SigmoidSiluMultiKernel<<<GET_BLOCKS(num_elements),
                              min(CUDA_NUM_THREADS, num_elements),
                              0,
-                             stream>>>(input1.domain.get_volume(),
+                             stream>>>(num_elements,
                                        input1.get_half_ptr(),
                                        input2.get_half_ptr(),
                                        output.get_half_ptr());

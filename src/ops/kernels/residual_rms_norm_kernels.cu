@@ -145,12 +145,14 @@ void forward_kernel(ResidualRMSNormMeta const *m,
                     T const *weight_ptr,
                     T *residual_output_ptr,
                     T *output_ptr,
+                    int batch_size,
                     cudaStream_t stream) {
-
+  assert(batch_size <= m->batch_size);
+  // use active batch size
   std::pair<int, int> kernel1_parallelism =
-      std::make_pair(m->batch_size, kCUDABlockReduceNumThreads);
+      std::make_pair(batch_size, kCUDABlockReduceNumThreads);
   std::pair<int, int> kernel2_parallelism =
-      std::make_pair(m->batch_size, kCUDANumThreads);
+      std::make_pair(batch_size, kCUDANumThreads);
 
   int num_blocks =
       std::max(kernel1_parallelism.first, kernel2_parallelism.first);
@@ -174,7 +176,8 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
                             GenericTensorAccessorR const &input2,
                             GenericTensorAccessorR const &weight,
                             GenericTensorAccessorW const &residual_output,
-                            GenericTensorAccessorW const &output) {
+                            GenericTensorAccessorW const &output,
+                            int batch_size) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
   cudaEvent_t t_start, t_end;
@@ -195,6 +198,7 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
                    weight.get_half_ptr(),
                    residual_output.get_half_ptr(),
                    output.get_half_ptr(),
+                   batch_size,
                    stream);
   } else if (output.data_type == DT_FLOAT) {
     forward_kernel(m,
@@ -203,6 +207,7 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
                    weight.get_float_ptr(),
                    residual_output.get_float_ptr(),
                    output.get_float_ptr(),
+                   batch_size,
                    stream);
   } else {
     assert(false && "Unsupported data type");

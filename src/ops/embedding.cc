@@ -470,7 +470,7 @@ FutureMap Embedding::inference(
   set_argumentmap_for_inference(ff, argmap, batch_outputs[0]);
   size_t machine_view_hash = view->hash();
 
-  IndexLauncher launcher(EMBED_FWD_TASK_ID,
+  IndexLauncher launcher(EMBED_INF_TASK_ID,
                          parallel_is,
                          TaskArgument(NULL, 0),
                          argmap,
@@ -626,6 +626,8 @@ void Embedding::inference_task(Task const *task,
     effective_batch_size = output.domain.get_volume() / out_dim;
     assert(effective_batch_size * in_dim == input.domain.get_volume());
   }
+  // use active batch size
+  effective_batch_size = bc->num_active_tokens();
   forward_kernel_wrapper(
       m, input, output, kernel, in_dim, out_dim, effective_batch_size);
   if (m->inference_debugging) {

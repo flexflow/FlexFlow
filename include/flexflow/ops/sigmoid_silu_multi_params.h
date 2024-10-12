@@ -8,6 +8,7 @@ namespace FlexFlow {
 
 struct SigmoidSiluMultiParams {
   LayerID layer_guid;
+  int intermediate_size, tensor_parallelism_degree;
   char name[MAX_OPNAME];
   bool is_valid(
       std::pair<ParallelTensorShape, ParallelTensorShape> const &) const;

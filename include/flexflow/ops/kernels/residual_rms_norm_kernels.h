@@ -47,7 +47,8 @@ void forward_kernel_wrapper(ResidualRMSNormMeta const *m,
                             GenericTensorAccessorR const &input2,
                             GenericTensorAccessorR const &weight,
                             GenericTensorAccessorW const &residual_output,
-                            GenericTensorAccessorW const &output);
+                            GenericTensorAccessorW const &output,
+                            int batch_size);
 } // namespace ResidualRMSNorm
 } // namespace Kernels
 } // namespace FlexFlow
