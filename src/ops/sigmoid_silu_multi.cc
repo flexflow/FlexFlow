@@ -100,7 +100,8 @@ Tensor FFModel::sigmoid_silu_multi(const Tensor input1,
   ssm->outputs[0] = create_tensor_legion_ordering(
       input1->num_dims, input1->dims, data_type, ssm, 0, false /*create_grad*/);
   ssm->add_int_property("intermediate_size", intermediate_size);
-  ssm->add_int_property("tensor_parallelism_degree", config.tensor_parallelism_degree);
+  ssm->add_int_property("tensor_parallelism_degree",
+                        config.tensor_parallelism_degree);
   layers.push_back(ssm);
   return ssm->outputs[0];
 }
@@ -114,10 +115,13 @@ Op *SigmoidSiluMulti::create_operator_from_layer(
   int intermediate_size = value;
   layer->get_int_property("tensor_parallelism_degree", value);
   int tensor_parallelism_degree = value;
-  return new SigmoidSiluMulti(
-      model, layer->layer_guid, inputs[0], inputs[1], 
-      intermediate_size, tensor_parallelism_degree,
-      layer->name);
+  return new SigmoidSiluMulti(model,
+                              layer->layer_guid,
+                              inputs[0],
+                              inputs[1],
+                              intermediate_size,
+                              tensor_parallelism_degree,
+                              layer->name);
 }
 
 SigmoidSiluMulti::SigmoidSiluMulti(
@@ -125,9 +129,13 @@ SigmoidSiluMulti::SigmoidSiluMulti(
     SigmoidSiluMultiParams const &params,
     std::pair<ParallelTensor, ParallelTensor> const &inputs,
     char const *name)
-    : SigmoidSiluMulti(
-          model, params.layer_guid, inputs.first, inputs.second, 
-          params.intermediate_size, params.tensor_parallelism_degree, params.name) {}
+    : SigmoidSiluMulti(model,
+                       params.layer_guid,
+                       inputs.first,
+                       inputs.second,
+                       params.intermediate_size,
+                       params.tensor_parallelism_degree,
+                       params.name) {}
 
 SigmoidSiluMulti::SigmoidSiluMulti(FFModel &model,
                                    LayerID const &_layer_guid,
@@ -260,9 +268,13 @@ OpMeta *SigmoidSiluMulti::init_task(Task const *task,
                        .best_affinity_to(task->target_proc)
                        .first();
   MemoryAllocator gpu_mem_allocator(gpu_mem);
-  int intermediate_size = ssm->intermediate_size / ssm->tensor_parallelism_degree;
-  SigmoidSiluMultiMeta *meta =
-      new SigmoidSiluMultiMeta(handle, ssm, gpu_mem_allocator, ssm->intermediate_size, intermediate_size);
+  int intermediate_size =
+      ssm->intermediate_size / ssm->tensor_parallelism_degree;
+  SigmoidSiluMultiMeta *meta = new SigmoidSiluMultiMeta(handle,
+                                                        ssm,
+                                                        gpu_mem_allocator,
+                                                        ssm->intermediate_size,
+                                                        intermediate_size);
   meta->input_type[0] = ssm->inputs[0]->data_type;
   meta->input_type[1] = ssm->inputs[1]->data_type;
   meta->output_type[0] = ssm->outputs[0]->data_type;
@@ -370,7 +382,8 @@ void SigmoidSiluMulti::inference_task(
   assert(input1_domain == output_domain);
 
   // use active number of tokens
-  SigmoidSiluMulti::inference_kernel_wrapper(m, input1, input2, output, bc->num_active_tokens());
+  SigmoidSiluMulti::inference_kernel_wrapper(
+      m, input1, input2, output, bc->num_active_tokens());
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

@@ -753,8 +753,8 @@ flexflow_tensor_t
   FFModel *handle = FFCObjectWrapper::unwrap(handle_);
   Tensor const input1 = FFCObjectWrapper::unwrap(input1_);
   Tensor const input2 = FFCObjectWrapper::unwrap(input2_);
-  Tensor tensor =
-      handle->sigmoid_silu_multi(input1, input2, intermediate_size, input1->data_type, name);
+  Tensor tensor = handle->sigmoid_silu_multi(
+      input1, input2, intermediate_size, input1->data_type, name);
   DEBUG_PRINT("[SigmoidSiluMulti] new Tensor %p, input1 %p, input2 %p, name %s",
               tensor,
               input1,
