@@ -64,6 +64,7 @@ void LogicalTokenBlock::append_tokens(const std::vector<TokenId>& token_ids_to_a
     assert(num_spec_tokens + num_commit_tokens == num_tokens);
     assert(num_tokens <= block_size);
     if (num_tokens + token_ids_to_append.size() > block_size) {
+        printf("block is full! Cannot append more tokens\n");
         throw std::runtime_error("Block is full! Cannot append more tokens.");
     }
     token_ids.insert(token_ids.end(), token_ids_to_append.begin(), token_ids_to_append.end());
@@ -94,6 +95,7 @@ BlockAllocator::BlockAllocator(int block_size, int num_total_blocks) {
 // Allocate a block
 PhysicalTokenBlock BlockAllocator::allocate() {
     if (free_blocks.empty()) {
+        printf("no free blocks are available\n");
         throw std::runtime_error("Out of memory! No free blocks are available.");
     }
     PhysicalTokenBlock block = free_blocks.front();
@@ -105,14 +107,16 @@ PhysicalTokenBlock BlockAllocator::allocate() {
 // Free a block
 void BlockAllocator::free(PhysicalTokenBlock& block) {
     if (block.ref_count == 0) {
+        printf("block is already freed\n");
         throw std::runtime_error("Double free! Block is already freed.");
     }
     block.decr_ref_count();
     if (block.ref_count == 0) {
         printf("put block number: %d back to free_blocks\n", block.get_block_number());
-        free_blocks.push_front(block);
+        free_blocks.push_back(block);
     }else{
         // in current implementation this should not be the case
+        printf("block is not freed. Ref count: %d\n", block.ref_count);
         throw std::runtime_error("Block is not freed. Ref count: " + std::to_string(block.ref_count));
     }
 }
@@ -123,7 +127,9 @@ int BlockAllocator::get_num_free_blocks() const {
 
 PageManager::PageManager(int block_size, int num_total_blocks)
     : block_size(block_size), num_total_blocks(num_total_blocks),
-      block_allocator(block_size, num_total_blocks) {}
+      block_allocator(block_size, num_total_blocks) {
+        printf("page manager init with block_size: %d, num_total_blocks: %d\n", block_size, num_total_blocks);
+      }
 
 //return the physical number of this block
 int PageManager::allocate_one_block(const RequestGuid& request_guid) {

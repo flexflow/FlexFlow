@@ -29,6 +29,9 @@
 #include <stdexcept>
 #include <thread>
 #include <vector>
+#include <exception>
+#include <cstdlib>
+#include <execinfo.h> 
 
 namespace FlexFlow {
 
@@ -36,6 +39,12 @@ using namespace Legion;
 using tokenizers::Tokenizer;
 
 Legion::Logger log_req_mgr("RequestManager");
+
+void printStackTrace() {
+    void *array[10];
+    size_t size = backtrace(array, 10);   // Get stack frames
+    backtrace_symbols_fd(array, size, STDERR_FILENO);  // Print stack trace to stderr
+}
 
 bool operator<(std::shared_ptr<TokenTreeNode> const &lhs,
                std::shared_ptr<TokenTreeNode> const &rhs) {
@@ -613,6 +622,10 @@ void RequestManager::request_update_attainment(int batch_index, bool attained) {
 
 void RequestManager::request_complete_clean_up(int batch_index) {
   RequestGuid guid = guid_of_requests[batch_index];
+  if (profiling_requests[guid].finish_time != 0) {
+    printf("some request has been completed!!\n");
+  }
+
   profiling_requests[guid].finish_time =
       Realm::Clock::current_time_in_microseconds();
   Request &request = all_requests[guid];
@@ -1100,8 +1113,6 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
       bc.tokensInfo[token_idx].token_id =
           request->tokens[request->llm_prefill_len + idx];
 
-      // printf("in prefilling: page_last_committed: %d, request->blocks.size(): %d\n", request->page_last_committed, request->blocks.size());
-      // assert(request->page_last_committed < static_cast<int>(request->blocks.size()));
       assert(request->llm_prefill_len + idx < request->tokens.size());
       append_token_to_block(*request, request->tokens[request->llm_prefill_len + idx], true);
     }
@@ -1997,9 +2008,9 @@ int RequestManager::append_token_to_block(Request &request, TokenId token, bool 
   request.blocks.back().append_tokens({token}, is_commit);
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   int idx_logical = get_idx_last_logical_token(request);
-  // printf("idx_logical: %d\n", idx_logical);
+  assert(idx_logical >= 0);
   int idx_physical = idx_logical_to_physical(request, idx_logical);
-  // printf("idx_physical: %d\n", idx_physical);
+  assert(idx_physical >= 0);
   return idx_physical;
 }
 
@@ -2019,14 +2030,14 @@ void RequestManager::reset_block_table(Request &request){
   request.blocks.back().reset_num_spec_tokens();
   printf("after reset, block now has %d tokens\n", request.blocks.back().get_num_tokens());
   printf("number of pages allocated: %d\n", page_manager->get_block_table_indices(request.guid).size());
-  printf("number of blocks: %d\n", request.blocks.size()); 
-  printf("num spec tokens: %d\n", request.blocks.back().get_num_spec_tokens());
-  printf("num committed tokens: %d\n", request.blocks.back().get_num_commit_tokens());
+  // printf("number of blocks: %d\n", request.blocks.size()); 
+  // printf("num spec tokens: %d\n", request.blocks.back().get_num_spec_tokens());
+  // printf("num committed tokens: %d\n", request.blocks.back().get_num_commit_tokens());
   // the indices of block table should be the same as the number of blocks
   std::vector<int> block_table = page_manager->get_block_table_indices(request.guid);
-  for (int i = 0; i < request.blocks.size(); i++) {
-    printf("block table indices: %d\n", block_table[i]);
-  }
+  // for (int i = 0; i < request.blocks.size(); i++) {
+  //   printf("block table indices: %d\n", block_table[i]);
+  // }
 
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   return;
@@ -2428,13 +2439,18 @@ void RequestManager::start_background_server(FFModel *model) {
   background_server_handler = runtime->execute_task(ctx, launcher);
   // Register callbacks for normal exit
   {
+    printf("called exit\n");
     int ret = std::atexit(RequestManager::terminate_background_server_at_exit);
+    printf("return from exit\n");
     assert(ret == 0); // make sure the callback is successfully registered
   }
   // Register callbacks for termination
   {
+    printf("called terminate\n");
     std::set_terminate([]() {
       RequestManager::terminate_background_server_at_exit();
+      printf("return from terminate\n");
+      printStackTrace();
       std::abort();
     });
   }
@@ -2706,11 +2722,25 @@ void RequestManager::terminate_background_server() {
            std::to_string(total_tokens / (total_time / 1e6)) + ")";
 
     double average_latency_per_request = 0;
+
+    // information dump
+    for (auto const &profiling_info : profiling_requests) {
+      int request_id = profiling_info.first;
+      Request &request = all_requests[request_id];
+      if (request.status != Request::COMPLETED) {
+        continue;
+      }
+    }
+
+
+
+
     std::string latency_per_request_ms = "\n latency_per_request_ms( ";
     for (auto const &profiling_info : profiling_requests) {
       double latency_ms = (profiling_info.second.finish_time -
                            profiling_info.second.start_time) /
                           1000.0;
+
       // latency_per_request_ms += "[" + std::to_string(profiling_info.first)
       // +
       // ","; latency_per_request_ms += std::to_string(latency_ms) + "] ";
@@ -2832,7 +2862,6 @@ void RequestManager::terminate_background_server() {
     goodput_str += std::to_string(goodput);
     goodput_str += ")";
     str += goodput_str;
-
     write_to_output_file("", str);
     background_server_status = TERMINATED;
     request_queue_cv.notify_all();

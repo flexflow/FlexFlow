@@ -405,6 +405,9 @@ void RequestManager::load_batch_config_task(
             handle.incr_attention_metadata->kv_indices,
             handle.incr_attention_metadata->kv_last_page_len,
             handle.incr_attention_metadata->qk_indptr);
+
+            // check on error
+            checkCUDA(cudaGetLastError());
       }
 
       // prepare attention forward handler

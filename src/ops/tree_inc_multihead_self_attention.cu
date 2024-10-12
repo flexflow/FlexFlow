@@ -88,6 +88,8 @@ __global__ void
     cnt++;
   }
 
+  assert(req_idx_compact >= 0 && "Invalid request index");
+
   size_t from_idx = token_idx * (q_hidden_size + temp_kv_hidden_size * 2);
   qTmp_ptr[token_idx * q_hidden_size + offset] =
       static_cast<half>(qkv_proj_array[from_idx + offset]);
@@ -435,7 +437,7 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
                       DT *output_ptr,
                       DT const *bias_ptr,
                       cudaStream_t stream) {
-
+  printf("entered inference_kernel\n");
   //   int device;
   //   checkCUDA(cudaGetDevice(&device));
   //   cudaEvent_t t_start, t_end;
@@ -611,6 +613,11 @@ void inference_kernel(TreeIncMultiHeadSelfAttentionMeta *m,
 
   //   delete[] temp_output;
   // }
+  cudaError_t err = cudaDeviceSynchronize();
+  if (err != cudaSuccess) {
+      std::cerr << "Kernel launch failed with error: " << cudaGetErrorString(err) << std::endl;
+  }
+  printf("exited inference_kernel\n");
 }
 
 } // namespace TreeIncMultiHeadAttention
