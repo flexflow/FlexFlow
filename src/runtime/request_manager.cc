@@ -99,6 +99,10 @@ double Request::get_slo_ratio() {
   return slo_ratio;
 }
 
+int Request::decode_length() const {
+  return tokens.size() - llm_prefill_len;
+}
+
 RequestManager::RequestManager()
     : background_server_status(INITIALIZED), verbose(false),
       next_available_guid(1000000), num_processed_requests(0),
@@ -115,6 +119,7 @@ RequestManager::RequestManager()
   max_tokens_per_prefilling_batch = -1;
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
+  max_output_length = -1;
   max_tree_depth = -1;
   max_tree_width = -1;
   k = -1;
@@ -184,6 +189,16 @@ void RequestManager::set_max_sequence_length(int max_seq_length) {
 int RequestManager::get_max_sequence_length() {
   assert(max_sequence_length > 0);
   return max_sequence_length;
+}
+
+void RequestManager::set_max_output_length(int max_output_length) {
+  assert(max_output_length > 0);
+  this->max_output_length = max_output_length;
+}
+
+int RequestManager::get_max_output_length() {
+  assert(max_output_length > 0);
+  return max_output_length;
 }
 
 void RequestManager::set_decoding_mode(DecodingMode mode) {
@@ -306,7 +321,7 @@ bool RequestManager::get_spec_infer_old_version() {
 
 double RequestManager::get_request_expected_latency(Request &request) {
   return request.get_slo_ratio() * baseline_latency_ms *
-         (request.tokens.size() - request.llm_prefill_len);
+         request.decode_length();
 }
 
 Request &RequestManager::get_request_with_guid(RequestGuid guid) {
@@ -583,6 +598,13 @@ bool RequestManager::load_pending_request_to_batch() {
     RequestGuid guid = pending_request_queue.front().guid;
     pending_request_queue.pop();
     Request *request = &all_requests[guid];
+    if (request->tokens.size() > get_max_sequence_length()) {
+      std::cerr << "Request " << guid
+                << " exceeds the maximum sequence length: "
+                << request->tokens.size() << " > " << get_max_sequence_length()
+                << std::endl;
+      continue;
+    }
 
     request->status = Request::RUNNING;
     // Find an empty slot
@@ -949,6 +971,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     profiling_requests[guid].llm_decoding_steps++;
     nb_requests_decoded++;
     if (request.tokens.back() == eos_token_id or
+        request.decode_length() >= get_max_output_length() or
         request.tokens.size() >= get_max_sequence_length()) {
       request_update_attainment(request_index, attained);
       request_completed = true;
@@ -1637,7 +1660,8 @@ bool RequestManager::update_llm_verify_results(
         break;
       }
     }
-    if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
+    if (eos_token_found or request.decode_length() >= get_max_output_length() or
+        request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_update_attainment(request_index, attained);
       request_completed = true;
@@ -2508,7 +2532,7 @@ void RequestManager::terminate_background_server() {
     }
     str += "\n total_time_ms(" + std::to_string(total_time / 1000.0) + ")";
     str += "\n total_requests(" + std::to_string(total_requests) + "/" +
-           std::to_string(profiling_requests.size()) + ")";
+           std::to_string(all_requests.size()) + ")";
     str += "\n total_tokens(" + std::to_string(total_tokens) + ")";
     // throughput
     str += "\n throughput_requests_per_sec(" +
@@ -2555,7 +2579,7 @@ void RequestManager::terminate_background_server() {
       if (profiling.start_decoding_time != 0) {
         per_token_time_ms =
             (profiling.finish_time - profiling.start_decoding_time) / 1000.0 /
-            (request.tokens.size() - request.llm_prefill_len);
+            request.decode_length();
       }
       tpot_per_request_ms += std::to_string(per_token_time_ms) + " ";
     }
@@ -2627,7 +2651,7 @@ void RequestManager::terminate_background_server() {
       Request &request = request_pair.second;
       if (request.attained) {
         attainment += 1;
-        goodput += request.tokens.size() - request.llm_prefill_len;
+        goodput += request.decode_length();
       }
     }
     attainment /= total_requests;

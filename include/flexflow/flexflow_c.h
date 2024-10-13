@@ -986,6 +986,9 @@ void flexflow_request_manager_set_max_tokens_per_prefilling_batch(
 void flexflow_request_manager_set_max_sequence_length(
     flexflow_request_manager_t handle_, int max_seq_length);
 
+void flexflow_request_manager_set_max_output_length(
+    flexflow_request_manager_t handle_, int max_output_length);
+
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,

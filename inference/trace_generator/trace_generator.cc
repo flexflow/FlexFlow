@@ -63,6 +63,7 @@ void parse_input_args(char **argv,
                       bool &use_full_precision,
                       bool &verbose,
                       int &max_sequence_length,
+                      int &max_output_length,
                       double &scaling_factor) {
   for (int i = 1; i < argc; i++) {
     // llm model name
@@ -112,6 +113,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--max-sequence-length")) {
       max_sequence_length = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-output-length")) {
+      max_output_length = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--scaling-factor")) {
@@ -271,6 +276,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool use_full_precision = false;
   bool verbose = false;
   int max_sequence_length = 256;
+  int max_output_length = 512;
   double scaling_factor = 1.0;
 
   int max_requests_per_batch = 8;
@@ -302,6 +308,7 @@ void FlexFlow::top_level_task(Task const *task,
                    use_full_precision,
                    verbose,
                    max_sequence_length,
+                   max_output_length,
                    scaling_factor);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
@@ -328,6 +335,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
   rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
   rm->set_max_sequence_length(max_sequence_length);
+  rm->set_max_output_length(max_output_length);
   rm->set_max_tree_depth(max_tree_depth);
   rm->set_max_tree_width(max_tree_width);
   rm->set_verbose(verbose);
@@ -460,7 +468,7 @@ void FlexFlow::top_level_task(Task const *task,
       std::string timestamp = log_json[i]["TIMESTAMP"].get<std::string>();
       EmissionTrace trace(prompt,
                           input_tokens.size(),
-                          max_sequence_length,
+                          max_output_length,
                           emission_machine.sample_slo_ratio(),
                           time_diff_ms(start_time, timestamp) * scaling_factor);
       traces.push_back(trace);

@@ -75,6 +75,7 @@ public:
   static int max_tokens_per_prefilling_batch();
   static int max_spec_tree_token_num();
   static int max_sequence_length();
+  static int max_output_length();
   static int get_max_tree_depth();
   friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;

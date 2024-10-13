@@ -216,6 +216,7 @@ struct Request {
   double get_length_weight();
   void set_slo_ratio(double slo_ratio_);
   double get_slo_ratio();
+  int decode_length() const;
 
   Request() {
     std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
@@ -271,6 +272,8 @@ public:
   int get_max_spec_tree_token_num();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
+  void set_max_output_length(int max_output_length);
+  int get_max_output_length();
   void set_decoding_mode(DecodingMode mode);
   void set_verbose(bool verbose_);
   int get_k();
@@ -380,6 +383,7 @@ private:
   int max_tokens_per_prefilling_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
+  int max_output_length;
   int max_tree_depth;
   int max_tree_width;
   int k;
