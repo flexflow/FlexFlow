@@ -610,7 +610,8 @@ __host__ void
 
   // bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE or bc->get_mode()
   // == TREE_VERIFY_MODE);
-  bool use_cuda_graph = (bc->get_mode() == TREE_SEARCH_MODE);
+  bool use_cuda_graph =
+      (bc->get_mode() == TREE_SEARCH_MODE && bc->prompt_phase == 0);
   // bool use_cuda_graph = (bc->get_mode() == TREE_VERIFY_MODE);
   // bool use_cuda_graph = false;
   bool captured = false;
