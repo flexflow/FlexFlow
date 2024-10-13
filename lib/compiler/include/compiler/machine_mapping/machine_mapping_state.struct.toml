@@ -9,7 +9,9 @@ features = [
 includes = [
   "pcg/machine_specification.dtg.h",
   "compiler/machine_mapping/machine_mapping_constraints.dtg.h",
+  "compiler/machine_mapping/machine_mapping_config.dtg.h",
   "compiler/machine_mapping/machine_mapping_problem_tree/machine_mapping_problem_tree.dtg.h",
+  "compiler/machine_mapping/machine_memory_constraints/machine_memory_constraints.dtg.h",
 ]
 
 [[fields]]
@@ -23,3 +25,11 @@ type = "::FlexFlow::MachineSpecification"
 [[fields]]
 name = "constraints"
 type = "::FlexFlow::MachineMappingConstraints"
+
+[[fields]]
+name = "memory_constraints"
+type = "::FlexFlow::MachineMemoryConstraints"
+
+[[fields]]
+name = "config"
+type = "::FlexFlow::MachineMappingConfig"

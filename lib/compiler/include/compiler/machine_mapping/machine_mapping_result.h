@@ -3,6 +3,8 @@
 
 #include "compiler/machine_mapping/machine_mapping_result.dtg.h"
 #include "compiler/machine_mapping/parallel_split_transformation.dtg.h"
+#include "compiler/machine_mapping/machine_memory_constraints/machine_memory_constraints.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_config.dtg.h"
 
 namespace FlexFlow {
 
@@ -14,22 +16,32 @@ FeasibleMachineMappingResult require_feasible(MachineMappingResult const &);
     std::unordered_set<MachineMappingResult> const &);
 
 [[nodiscard]] MachineMappingResult
-    series_combine(float comm_cost,
+    series_combine(MachineMappingConfig const &config,
+                   MachineMemoryConstraints const &memory_constraints,
+                   CostMetric const &comm_cost,
                    MachineMappingResult const &pre_result,
                    MachineMappingResult const &post_result,
                    std::optional<ParallelSplitTransformation> const
                        &parallel_split_transformation);
 [[nodiscard]] MachineMappingResult
-    parallel_combine(MachineMappingResult const &lhs_result,
+    parallel_combine(MachineMappingConfig const &config,
+                     MachineMemoryConstraints const &memory_constraints,
+                     MachineMappingResult const &lhs_result,
                      MachineMappingResult const &rhs_result);
 
 [[nodiscard]] MachineMappingResult
     minimize_runtime(MachineMappingResult const &m1,
                      MachineMappingResult const &m2);
 
+[[nodiscard]] MachineMappingResult make_singleton_machine_mapping_result(
+    MachineMappingConfig const &config,
+    MachineMemoryConstraints const &memory_constraints,
+    CostMetric const &cost,
+    MachineView const &machine_view);
+
 [[nodiscard]] MachineMappingResult
-    make_singleton_machine_mapping_result(float runtime,
-                                          MachineView const &machine_view);
+    machine_mapping_memory_check(MachineMemoryConstraints const &memory_constraints,
+                                 MachineMappingResult const &result);
 
 } // namespace FlexFlow
 
