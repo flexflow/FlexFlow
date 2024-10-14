@@ -1625,6 +1625,10 @@ bool RequestManager::update_llm_verify_results(
         (current_time - profiling_requests[guid].start_decoding_time) * 1e-3;
     bool attained =
         request.decode_latency_ms <= get_request_expected_latency(request);
+    bool current_attained =
+        request.decode_latency_ms <=
+        get_request_expected_latency(request) +
+            get_baseline_latency() * request.get_slo_ratio() * 6;
 
     // Initialize the token tree for the request
     init_token_tree(guid);
@@ -1648,7 +1652,7 @@ bool RequestManager::update_llm_verify_results(
       request_update_attainment(request_index, attained);
       request_completed = true;
       request_complete_clean_up(request_index);
-    } else if (!attained and slo_violation_early_termination) {
+    } else if (!current_attained and slo_violation_early_termination) {
       // Early drop that request
       request_update_attainment(request_index, attained);
       request_completed = true;
