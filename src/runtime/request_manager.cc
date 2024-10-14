@@ -1642,8 +1642,9 @@ bool RequestManager::update_llm_verify_results(
 
     request.decode_latency_ms =
         (current_time - profiling_requests[guid].start_decoding_time) * 1e-3;
-    bool attained =
-        request.decode_latency_ms <= get_request_expected_latency(request);
+    bool attained = request.decode_latency_ms <=
+                    get_request_expected_latency(request) +
+                        get_baseline_latency() * request.get_slo_ratio() * 6;
 
     // Initialize the token tree for the request
     init_token_tree(guid);
