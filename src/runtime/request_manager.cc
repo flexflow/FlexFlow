@@ -750,9 +750,9 @@ void RequestManager::request_load_onto_batch(int batch_index) {
 }
 
 void RequestManager::update_token_tree_depth() {
-  ssm_tree_depth = min(int(std::ceil(get_max_tokens_per_ssm_batch() /
-                                     get_num_active_requests())),
-                       get_max_tree_depth());
+  ssm_tree_depth = min(
+      int(std::ceil(get_max_tokens_per_batch() / get_num_active_requests())),
+      get_max_tree_depth());
 }
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
