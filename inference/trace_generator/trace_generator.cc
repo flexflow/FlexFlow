@@ -66,22 +66,22 @@ struct ModelMeta {
 };
 
 template <typename T>
-std::vector<T> split_by_comma(const std::string& input) {
-    std::vector<T> result;
-    std::stringstream ss(input);
-    std::string item;
-    while (std::getline(ss, item, ',')) {
-        std::stringstream item_stream(item);
-        if constexpr (std::is_same<T, double>::value) {
-            double value;
-            if (item_stream >> value) {
-                result.push_back(value);
-            }
-        } else if constexpr (std::is_same<T, std::string>::value) {
-            result.push_back(item);
-        }
+std::vector<T> split_by_comma(std::string const &input) {
+  std::vector<T> result;
+  std::stringstream ss(input);
+  std::string item;
+  while (std::getline(ss, item, ',')) {
+    std::stringstream item_stream(item);
+    if constexpr (std::is_same<T, double>::value) {
+      double value;
+      if (item_stream >> value) {
+        result.push_back(value);
+      }
+    } else if constexpr (std::is_same<T, std::string>::value) {
+      result.push_back(item);
     }
-    return result;
+  }
+  return result;
 }
 
 void parse_input_args(char **argv,
@@ -358,18 +358,16 @@ void FlexFlow::top_level_task(Task const *task,
 
   assert(prompts.file_paths.size() == prompts.proportions.size() &&
          prompts.file_paths.size() == prompts.slo_ratios.size());
-  double total =
-        std::accumulate(prompts.proportions.begin(),
-                        prompts.proportions.end(),
-                        0.0,
-                        [](double sum, double proportion) {
-                          return sum + proportion;
-                        });
-    if (std::abs(total - 1.0) > 1e-6) {
-      std::cerr << "Error: proportions do not sum to 1. Total sum: "
-                << total << std::endl;
-      assert(false);
-    }
+  double total = std::accumulate(
+      prompts.proportions.begin(),
+      prompts.proportions.end(),
+      0.0,
+      [](double sum, double proportion) { return sum + proportion; });
+  if (std::abs(total - 1.0) > 1e-6) {
+    std::cerr << "Error: proportions do not sum to 1. Total sum: " << total
+              << std::endl;
+    assert(false);
+  }
   for (size_t i = 1; i < prompts.proportions.size(); ++i) {
     prompts.proportions[i] += prompts.proportions[i - 1];
   }
@@ -441,9 +439,9 @@ void FlexFlow::top_level_task(Task const *task,
       std::ifstream file_handle(prompts.file_paths[i]);
       assert(file_handle.good() && "Prompt file does not exist.");
       json prompt_json = json::parse(file_handle,
-                                    /*parser_callback_t */ nullptr,
-                                    /*allow_exceptions */ true,
-                                    /*ignore_comments */ true);
+                                     /*parser_callback_t */ nullptr,
+                                     /*allow_exceptions */ true,
+                                     /*ignore_comments */ true);
       prompts.jsons.push_back(prompt_json);
       prompts.idxs.push_back(0);
       num_requests += prompt_json.size();
@@ -508,7 +506,7 @@ void FlexFlow::top_level_task(Task const *task,
           break;
         }
       }
-      int& idx = prompts.idxs[ptr];
+      int &idx = prompts.idxs[ptr];
       std::string prompt = prompts.jsons[ptr][idx]["prompt"].get<std::string>();
       idx = (idx + 1) % prompts.jsons[ptr].size();
       std::vector<int32_t> input_tokens = rm->tokenize(prompt);

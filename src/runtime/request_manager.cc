@@ -2584,8 +2584,8 @@ void RequestManager::terminate_background_server() {
     std::string average_tpot_per_slo_ms = "\n average_tpot_per_slo_ms( ";
     for (auto const &kv : tpots) {
       double average_tpot = kv.second.second / kv.second.first;
-      average_tpot_per_slo_ms += std::to_string(kv.first) + ":" +
-                                 std::to_string(average_tpot) + " ";
+      average_tpot_per_slo_ms +=
+          std::to_string(kv.first) + ":" + std::to_string(average_tpot) + " ";
     }
     average_tpot_per_slo_ms += ")";
     str += average_tpot_per_slo_ms;
