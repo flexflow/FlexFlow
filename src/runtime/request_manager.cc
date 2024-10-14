@@ -747,8 +747,9 @@ void RequestManager::request_load_onto_batch(int batch_index) {
 }
 
 void RequestManager::update_token_tree_depth() {
-  ssm_tree_depth = min(get_max_tokens_per_batch() / get_num_active_requests(),
-                       get_max_tree_depth());
+  ssm_tree_depth = min(
+      int(std::ceil(get_max_tokens_per_batch() / get_num_active_requests())),
+      get_max_tree_depth());
 }
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
@@ -2939,7 +2940,12 @@ void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
   // In function add_root_to_spec_token_tree
   double current_added = 1.0;
 
-  while (budget > 0 and current_added < num_tokens_to_decode) {
+  // The max token that can be added to the token tree when fulfilling the SLO
+  int max_token_toward_slo =
+      get_max_tokens_per_batch() / get_num_active_requests() * 2;
+
+  while (budget > 0 and max_token_toward_slo > 0 and
+         current_added < num_tokens_to_decode) {
     if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
       break;
     }
@@ -2949,6 +2955,7 @@ void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
     node_ptr->included = true;
     current_added += exp(log_acc_prob);
     budget--;
+    max_token_toward_slo--;
   }
 }
 
