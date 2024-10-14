@@ -571,6 +571,9 @@ BatchConfig
 
 // Return value: true if load a pending request to the batch
 bool RequestManager::load_pending_request_to_batch() {
+  if (num_running_requests >= get_max_requests_per_batch()) {
+    return false;
+  }
   std::unique_lock<std::mutex> lock(request_queue_mutex);
   if (pending_request_queue.empty()) {
     if (num_running_requests > 0) {
@@ -769,24 +772,20 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
   switch (request_manager_status) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
-        if (update_llm_prefill_results(result)) {
-          // This indicates that the prefilling of the current request
-          // finishes
-
-          // Check if there are more empty slots
-          if (num_running_requests < get_max_requests_per_batch() &&
-              load_pending_request_to_batch()) {
-            // Load the pending request to the batch
-            request_manager_status = PREFILLING;
-          } else {
-            // No more empty slots, start the decoding
-            while (!prefilled_requests.empty()) {
-              Request *request = prefilled_requests.front();
-              request_load_onto_batch(request->batch_index);
-              prefilled_requests.pop();
-            }
-            request_manager_status = DECODING;
+        // This indicates that the prefilling of the requests finishes
+        bool all_prefilled = update_llm_prefill_results(result);
+        // Check if there are more empty slots
+        if (load_pending_request_to_batch() or !all_prefilled) {
+          // Load the pending request to the batch
+          request_manager_status = PREFILLING;
+        } else {
+          // No more empty slots, start the decoding
+          while (!prefilled_requests.empty()) {
+            Request *request = prefilled_requests.front();
+            request_load_onto_batch(request->batch_index);
+            prefilled_requests.pop();
           }
+          request_manager_status = DECODING;
         }
         // Not completed, continue prefilling
       } else if (decoding_mode == SPECULATIVE_DECODING) {
@@ -804,31 +803,23 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             prefill_model = LLM;
           }
         } else if (prefill_model == LLM) {
-          if (update_llm_prefill_results(result)) {
-            // This indicates that the prefilling phase finishes
-
-            // Check if there are more empty slots
-            if (num_running_requests < get_max_requests_per_batch() &&
-                load_pending_request_to_batch()) {
-              // Load the pending request to the batch
-              prefill_model = SSM;
-              current_ssm_step = 0;
-            } else {
-              // No more empty slots, start the speculation
-              while (!prefilled_requests.empty()) {
-                Request *request = prefilled_requests.front();
-                request_load_onto_batch(request->batch_index);
-                prefilled_requests.pop();
-              }
-              request_manager_status = SSM_SPEC;
-              // Reset the prefill_request
-              current_ssm_step = 0;
-              ssm_completed = false;
-            }
-          } else {
-            // Not completed, start the next iteration of prefilling
+          // This indicates that the prefilling of the requests finishes
+          bool all_prefilled = update_llm_prefill_results(result);
+          if (load_pending_request_to_batch() or !all_prefilled) {
+            request_manager_status = PREFILLING;
             prefill_model = SSM;
             current_ssm_step = 0;
+          } else {
+            // No more empty slots, start the speculation
+            while (!prefilled_requests.empty()) {
+              Request *request = prefilled_requests.front();
+              request_load_onto_batch(request->batch_index);
+              prefilled_requests.pop();
+            }
+            request_manager_status = SSM_SPEC;
+            // Reset the prefill_request
+            current_ssm_step = 0;
+            ssm_completed = false;
           }
         } else {
           assert(false && "Invalid prefill model.");
@@ -837,36 +828,26 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         assert(false && "Invalid inference mode.");
       }
       break;
-    case DECODING:
-      if (update_llm_decode_results(result)) {
-        // A request completed after the decode
-        if (load_pending_request_to_batch() == false) {
-          // No pending request to process, continue the speculation
-          request_manager_status = DECODING;
-        } else {
-          request_manager_status = PREFILLING;
-        }
+    case DECODING: {
+      bool request_completed = update_llm_decode_results(result);
+      if (load_pending_request_to_batch()) {
+        request_manager_status = PREFILLING;
+      } else {
+        request_manager_status = DECODING;
       }
-      break;
-    case LLM_VERIFY:
-      if (update_llm_verify_results(result)) {
-        // A request completed after the verification
-        if (load_pending_request_to_batch() == false) {
-          // No pending request to process, continue the speculation
-          request_manager_status = SSM_SPEC;
-          current_ssm_step = 0;
-          ssm_completed = false;
-        } else {
-          request_manager_status = PREFILLING;
-          prefill_model = SSM;
-          current_ssm_step = 0;
-        }
+    } break;
+    case LLM_VERIFY: {
+      bool request_completed = update_llm_verify_results(result);
+      if (load_pending_request_to_batch()) {
+        request_manager_status = PREFILLING;
+        prefill_model = SSM;
+        current_ssm_step = 0;
       } else {
         request_manager_status = SSM_SPEC;
         current_ssm_step = 0;
         ssm_completed = false;
       }
-      break;
+    } break;
     case SSM_SPEC:
       // Update current_ssm_step first because when we first call
       // update_ssm_inference_results, there's already a step of small model
