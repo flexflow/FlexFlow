@@ -28,6 +28,7 @@
 #include <stack>
 #include <stdexcept>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 namespace FlexFlow {
@@ -2541,6 +2542,10 @@ void RequestManager::terminate_background_server() {
     latency_per_request_ms += ")";
     str += latency_per_request_ms;
 
+    average_latency_per_request /= total_requests;
+    str += "\n average_latency_per_request_ms(" +
+           std::to_string(average_latency_per_request) + ")";
+
     std::string ttft_per_request_ms = "\n ttft_per_request_ms( ";
     for (auto const &profiling_info : profiling_requests) {
       double prefilling_time_ms = 0;
@@ -2557,6 +2562,7 @@ void RequestManager::terminate_background_server() {
     ttft_per_request_ms += ")";
     str += ttft_per_request_ms;
 
+    std::unordered_map<double, std::pair<int, double>> tpots;
     std::string tpot_per_request_ms = "\n tpot_per_request_ms( ";
     for (auto const &profiling_info : profiling_requests) {
       double per_token_time_ms = 0;
@@ -2568,13 +2574,21 @@ void RequestManager::terminate_background_server() {
             request.decode_length();
       }
       tpot_per_request_ms += std::to_string(per_token_time_ms) + " ";
+      auto &tpot = tpots[request.slo_ratio];
+      tpot.first++;
+      tpot.second += per_token_time_ms;
     }
     tpot_per_request_ms += ")";
     str += tpot_per_request_ms;
 
-    average_latency_per_request /= total_requests;
-    str += "\n average_latency_per_request_ms(" +
-           std::to_string(average_latency_per_request) + ")";
+    std::string average_tpot_per_slo_ms = "\n average_tpot_per_slo_ms( ";
+    for (auto const &kv : tpots) {
+      double average_tpot = kv.second.second / kv.second.first;
+      average_tpot_per_slo_ms += std::to_string(kv.first) + ":" +
+                                 std::to_string(average_tpot) + " ";
+    }
+    average_tpot_per_slo_ms += ")";
+    str += average_tpot_per_slo_ms;
 
     std::string req_per_step = "\n requests_per_step( ";
     for (int nb : profiling.requests_per_step) {
