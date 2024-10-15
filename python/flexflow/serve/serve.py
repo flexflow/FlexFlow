@@ -34,8 +34,11 @@ import torch, shutil, hashlib, json, gc
 from typing import Union, List
 from huggingface_hub import snapshot_download
 
+
 class _SupportedModels:
-    def __init__(self,):
+    def __init__(
+        self,
+    ):
         self.supported_models = {
             "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
@@ -292,8 +295,8 @@ class LLM:
 
                     weights_path = get_weights_path(peft_model_id)
                     refresh_cache_if_needed(peft_model_id)
-                    ff_revision, ff_revision_file, latest_revision = self.__get_revision_hashes(
-                        peft_model_id, weights_path
+                    ff_revision, ff_revision_file, latest_revision = (
+                        self.__get_revision_hashes(peft_model_id, weights_path)
                     )
 
                     if ff_revision != latest_revision:
@@ -350,11 +353,19 @@ class LLM:
                 f"'{self.model_name}' tokenizer needs updating! Downloading tokenizer now..."
             )
             # Load/download the tokenizer files
-            target_tokenizer_files = ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "vocab.json", "merges.txt"]
+            target_tokenizer_files = [
+                "tokenizer.json",
+                "tokenizer_config.json",
+                "special_tokens_map.json",
+                "vocab.json",
+                "merges.txt",
+            ]
             if os.path.exists(self.model_name):
                 hf_tokenizer_path = self.model_name
             else:
-                hf_tokenizer_path = snapshot_download(repo_id=self.model_name, allow_patterns=target_tokenizer_files)
+                hf_tokenizer_path = snapshot_download(
+                    repo_id=self.model_name, allow_patterns=target_tokenizer_files
+                )
             for file in target_tokenizer_files:
                 src_path = os.path.join(hf_tokenizer_path, file)
                 dst_path = os.path.join(self.tokenizer_path, file)
@@ -423,6 +434,8 @@ class LLM:
             self.ffconfig.pipeline_parallelism_degree = (
                 model_specific_pipeline_parallelism_degree
             )
+
+        self.max_seq_length = max_seq_length
 
         # Create request manager and set serving configuration
         self.rm = RequestManager()
@@ -506,7 +519,7 @@ class LLM:
         self,
         requests_or_prompts: Union[str, List[str], Request, List[Request]],
         max_length: int = -1,
-        max_new_tokens: int = 128,
+        max_new_tokens: int = -1,
     ):
         """Generate tokens based on the input prompt(s)
 
@@ -519,6 +532,109 @@ class LLM:
         :return: the generation results
         :rtype: GenerationResult
         """
+
+        def inf_only() -> bool:
+            if type(requests_or_prompts) == str:
+                return True
+            if type(requests_or_prompts) == list:
+                if type(requests_or_prompts[0]) == str:
+                    return True
+            return False
+
+        # Inference only (type is str or List[str])
+        # - if max_length and max_new_tokens are both unset, set max_length to max_sequence_length
+        # - if both are set, give precedence to max_new_tokens
+        # - if only one of them is set, all good. just check that we don't exceed the max_sequence_length
+        # Inference + finetunining (type is Request or List[Request]):
+        # - inference requests: same conditions as above
+        # - finetuning requests: return error if max_new_tokens is set. If max_lenght is unset, set it to max_sequence_length. If it's set, check that it doesn't exceed max_sequence_length
+        if inf_only():
+            # single prompt (str) or list of prompts in str format
+            if max_length == -1 and max_new_tokens == -1:
+                max_length = self.max_seq_length
+            elif max_length != -1 and max_new_tokens != -1:
+                warnings.warn(
+                    f"Both `max_new_tokens` (={max_new_tokens}) and `max_length`(={max_length}) seem to have been set. `max_new_tokens` will take precedence."
+                )
+                max_length = -1
+            if max_length > self.max_seq_length or max_new_tokens > self.max_seq_length:
+                raise ValueError(
+                    f"max_length ({max_length}) or max_new_tokens ({max_new_tokens}) exceeds the maximum sequence length ({self.max_seq_length})"
+                )
+        elif type(requests_or_prompts) == Request:
+            # single Request object (inference or finetuning)
+            if max_length != -1 or max_new_tokens != -1:
+                warnings.warn(
+                    f"max_length (={max_length}) and max_new_tokens (={max_new_tokens}) are not used for Request objects."
+                )
+            if requests_or_prompts.req_type == RequestType.REQ_INFERENCE:
+                # check max_length and max_new_tokens parameters
+                if (
+                    requests_or_prompts.max_length == -1
+                    and requests_or_prompts.max_new_tokens == -1
+                ):
+                    requests_or_prompts.max_length = self.max_seq_length
+                elif (
+                    requests_or_prompts.max_length != -1
+                    and requests_or_prompts.max_new_tokens != -1
+                ):
+                    warnings.warn(
+                        f"Both `max_new_tokens` (={requests_or_prompts.max_new_tokens}) and `max_length`(={requests_or_prompts.max_length}) seem to have been set. `max_new_tokens` will take precedence."
+                    )
+                    requests_or_prompts.max_length = -1
+                if (
+                    requests_or_prompts.max_length > self.max_seq_length
+                    or requests_or_prompts.max_new_tokens > self.max_seq_length
+                ):
+                    raise ValueError(
+                        f"max_length ({requests_or_prompts.max_length}) or max_new_tokens ({requests_or_prompts.max_new_tokens}) exceeds the maximum sequence length ({self.max_seq_length})"
+                    )
+            else:
+                if requests_or_prompts.max_new_tokens != -1:
+                    raise ValueError(
+                        f"max_new_tokens ({requests_or_prompts.max_new_tokens}) is not allowed for finetuning requests."
+                    )
+                if requests_or_prompts.max_length == -1:
+                    requests_or_prompts.max_length = self.max_seq_length
+                if requests_or_prompts.max_length > self.max_seq_length:
+                    raise ValueError(
+                        f"max_length ({requests_or_prompts.max_length}) exceeds the maximum sequence length ({self.max_seq_length})"
+                    )
+        else:
+            # list of Request objects (inference or finetuning)
+            if max_length != -1 or max_new_tokens != -1:
+                warnings.warn(
+                    f"max_length (={max_length}) and max_new_tokens (={max_new_tokens}) are not used for Request objects."
+                )
+            for req in requests_or_prompts:
+                if req.req_type == RequestType.REQ_INFERENCE:
+                    # check max_length and max_new_tokens parameters
+                    if req.max_length == -1 and req.max_new_tokens == -1:
+                        req.max_length = self.max_seq_length
+                    elif req.max_length != -1 and req.max_new_tokens != -1:
+                        warnings.warn(
+                            f"Both `max_new_tokens` (={req.max_new_tokens}) and `max_length`(={req.max_length}) seem to have been set. `max_new_tokens` will take precedence."
+                        )
+                        req.max_length = -1
+                    if (
+                        req.max_length > self.max_seq_length
+                        or req.max_new_tokens > self.max_seq_length
+                    ):
+                        raise ValueError(
+                            f"max_length ({req.max_length}) or max_new_tokens ({req.max_new_tokens}) exceeds the maximum sequence length ({self.max_seq_length})"
+                        )
+                else:
+                    if req.max_new_tokens != -1:
+                        raise ValueError(
+                            f"max_new_tokens ({req.max_new_tokens}) is not allowed for finetuning requests."
+                        )
+                    if req.max_length == -1:
+                        req.max_length = self.max_seq_length
+                    if req.max_length > self.max_seq_length:
+                        raise ValueError(
+                            f"max_length ({req.max_length}) exceeds the maximum sequence length ({self.max_seq_length})"
+                        )
+
         if type(requests_or_prompts) == str:
             if len(requests_or_prompts) == 0:
                 return None
