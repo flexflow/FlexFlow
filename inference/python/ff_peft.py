@@ -162,7 +162,7 @@ def main():
             ff.Request(
                 ff.RequestType.REQ_INFERENCE,
                 prompt=prompt,
-                max_sequence_length=128,
+                max_new_tokens=128,
                 peft_model_id=llm.get_ff_peft_id(lora_inference_config),
             )
             for prompt in prompts
@@ -172,7 +172,6 @@ def main():
     if len(configs.finetuning_dataset) > 0:
         finetuning_request = ff.Request(
             ff.RequestType.REQ_FINETUNING,
-            max_sequence_length=128,
             peft_model_id=llm.get_ff_peft_id(lora_finetuning_config),
             dataset_filepath=configs.finetuning_dataset,
             max_training_steps=2,
