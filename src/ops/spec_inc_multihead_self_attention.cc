@@ -170,7 +170,7 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
     Layer const *layer,
     std::vector<ParallelTensor> const &inputs) {
 
-  std::cout << "spec create operator: " << layer->name << "\n";
+  // std::cout << "spec create operator: " << layer->name << "\n";
   long long value;
   layer->get_int_property("embed_dim", value);
   int embed_dim = value;
@@ -182,10 +182,10 @@ Op *SpecIncMultiHeadSelfAttention::create_operator_from_layer(
   int kdim = value;
   layer->get_int_property("vdim", value);
   int vdim = value;
-  float dropout;
-  layer->get_float_property("dropout", dropout);
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
+  float dropout;
+  layer->get_float_property("dropout", dropout);
   RotaryEmbeddingMeta rotary_embedding_meta;
   layer->get_int_property("apply_rotary_embedding", value);
   rotary_embedding_meta.apply_rotary_embedding = (bool)value;

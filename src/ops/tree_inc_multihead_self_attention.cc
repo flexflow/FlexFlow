@@ -163,6 +163,7 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
                        rotary_embedding_meta.original_max_position_embeddings);
   li->add_int_property("scaling_query", scaling_query);
   li->add_float_property("scaling_factor", scaling_factor);
+  li->add_int_property("qk_prod_scaling", qk_prod_scaling);
   li->add_int_property("position_bias", position_bias);
   li->add_int_property("quantization_type", quantization_type);
   li->add_int_property("offload", offload);
@@ -187,10 +188,10 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
   int kdim = value;
   layer->get_int_property("vdim", value);
   int vdim = value;
-  float dropout;
-  layer->get_float_property("dropout", dropout);
   layer->get_int_property("add_zero_attn", value);
   bool add_zero_attn = (bool)value;
+  float dropout;
+  layer->get_float_property("dropout", dropout);
   RotaryEmbeddingMeta rotary_embedding_meta;
   layer->get_int_property("apply_rotary_embedding", value);
   rotary_embedding_meta.apply_rotary_embedding = (bool)value;
@@ -203,6 +204,7 @@ Op *TreeIncMultiHeadSelfAttention::create_operator_from_layer(
                             rotary_embedding_meta.high_freq_factor);
   layer->get_int_property("original_max_position_embeddings", value);
   rotary_embedding_meta.original_max_position_embeddings = (int)value;
+  layer->get_int_property("scaling_query", value);
   bool scaling_query = (bool)value;
   float scaling_factor;
   layer->get_float_property("scaling_factor", scaling_factor);
