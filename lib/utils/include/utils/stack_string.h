@@ -82,6 +82,13 @@ void from_json(nlohmann::json const &j, stack_string<MAXSIZE> &v) {
   v = stack_string<MAXSIZE>{as_string};
 }
 
+template <typename Char, std::size_t MAXSIZE>
+std::basic_ostream<Char> &
+    operator<<(std::basic_ostream<Char> &s,
+               stack_basic_string<Char, MAXSIZE> const &v) {
+  return s << fmt::to_string(v);
+}
+
 } // namespace FlexFlow
 
 namespace std {

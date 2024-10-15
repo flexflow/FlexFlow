@@ -213,15 +213,4 @@ std::optional<VariantOut> cast(VariantIn const &v) {
 
 } // namespace FlexFlow
 
-namespace rc {
-
-template <typename... Ts>
-struct Arbitrary<std::variant<Ts...>> {
-  static Gen<std::variant<Ts...>> arbitrary() {
-    return gen::oneOf(gen::cast<std::variant<Ts...>>(gen::arbitrary<Ts>())...);
-  }
-};
-
-} // namespace rc
-
 #endif

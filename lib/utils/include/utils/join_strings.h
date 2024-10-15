@@ -13,15 +13,12 @@ std::string join_strings(InputIt first,
                          F const &f) {
   std::ostringstream oss;
   bool first_iter = true;
-  /* int i = 0; */
   for (; first != last; first++) {
     if (!first_iter) {
       oss << delimiter;
     }
     oss << f(*first);
-    /* break; */
     first_iter = false;
-    /* i++; */
   }
   return oss.str();
 }
@@ -36,6 +33,12 @@ std::string
 template <typename Container>
 std::string join_strings(Container const &c, std::string const &delimiter) {
   return join_strings(c.cbegin(), c.cend(), delimiter);
+}
+
+template <typename Container, typename F>
+std::string
+    join_strings(Container const &c, std::string const &delimiter, F const &f) {
+  return join_strings(c.cbegin(), c.cend(), delimiter, f);
 }
 
 } // namespace FlexFlow

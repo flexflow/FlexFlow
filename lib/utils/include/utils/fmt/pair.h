@@ -14,7 +14,7 @@ struct formatter<
     std::enable_if_t<!detail::has_format_as<::std::pair<L, R>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>
-  auto format(::std::pair<L, R> const &m, FormatContext &ctx)
+  auto format(::std::pair<L, R> const &m, FormatContext &ctx) const
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(L);
     CHECK_FMTABLE(R);

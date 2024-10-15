@@ -27,7 +27,6 @@
 #include "parallel_tensor_mapping.h"
 #include "task_spec/task_argument_accessor.h"
 #include "test_utils.h"
-#include "utils/containers.h"
 #include "utils/random_utils.h"
 #include <dirent.h>
 #include <queue>

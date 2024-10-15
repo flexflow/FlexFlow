@@ -2,6 +2,7 @@
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/maximum.h"
 #include "utils/containers/transform.h"
+#include "utils/fmt/vector.h"
 #include "utils/integer_conversions.h"
 #include "utils/join_strings.h"
 #include <sstream>
@@ -53,7 +54,7 @@ std::string cli_get_help_message(std::string const &program_name,
 
   if (!all_arg_columns.empty()) {
     int max_column_width =
-        std::min(int_from_size_t(maximum(all_arg_column_widths).value()), 20);
+        std::min(int_from_size_t(maximum(all_arg_column_widths)), 20);
 
     auto render_column = [&](std::string const &key,
                              std::optional<std::string> const &description) {

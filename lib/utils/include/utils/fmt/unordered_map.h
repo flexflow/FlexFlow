@@ -18,7 +18,7 @@ struct formatter<
     std::enable_if_t<!detail::has_format_as<::std::unordered_map<K, V>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>
-  auto format(::std::unordered_map<K, V> const &m, FormatContext &ctx)
+  auto format(::std::unordered_map<K, V> const &m, FormatContext &ctx) const
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(K);
     CHECK_FMTABLE(V);

@@ -1,0 +1,29 @@
+namespace = "FlexFlow"
+name = "StartInvariantMachineView"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "pcg/machine_view_dimension.dtg.h",
+  "pcg/device_type.dtg.h"
+]
+
+src_includes = [
+  "utils/fmt/vector.h",
+  "utils/hash/vector.h",
+]
+
+[[fields]]
+name = "dimensions"
+type = "std::vector<::FlexFlow::MachineViewDimension>"
+
+
+[[fields]]
+name = "device_type"
+type = "::FlexFlow::DeviceType"

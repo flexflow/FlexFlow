@@ -1,7 +1,6 @@
 #include "doctest/doctest.h"
 #include "kernels/dropout_kernels.h"
 #include "test_utils.h"
-#include "utils/containers/count.h"
 
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {

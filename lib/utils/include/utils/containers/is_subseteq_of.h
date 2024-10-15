@@ -7,14 +7,14 @@
 namespace FlexFlow {
 
 template <typename T>
-bool is_subseteq_of(std::unordered_set<T> const &l,
-                    std::unordered_set<T> const &r) {
-  if (l.size() > r.size()) {
+bool is_subseteq_of(std::unordered_set<T> const &sub,
+                    std::unordered_set<T> const &super) {
+  if (sub.size() > super.size()) {
     return false;
   }
 
-  for (auto const &ll : l) {
-    if (!contains(r, ll)) {
+  for (auto const &s : sub) {
+    if (!contains(super, s)) {
       return false;
     }
   }
