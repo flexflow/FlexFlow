@@ -273,7 +273,7 @@ RequestManager::RequestGuid
   request.max_new_tokens = request_.max_new_tokens;
   // both unset
   if (request.max_length == -1 && request.max_new_tokens == -1) {
-    request.max_length = get_max_sequence_length()-1;
+    request.max_length = get_max_sequence_length() - 1;
   }
   // both set
   if (request.max_length != -1 && request.max_new_tokens != -1) {
@@ -385,7 +385,7 @@ RequestManager::RequestGuid
     assert(false);
   }
   if (request.max_length == -1) {
-    request.max_length = get_max_sequence_length() -1;
+    request.max_length = get_max_sequence_length() - 1;
   }
   request.peft_model_id = request_.peft_model_id;
   request.req_type = RequestType::REQ_FINETUNING;
