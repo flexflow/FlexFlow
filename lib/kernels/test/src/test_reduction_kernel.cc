@@ -36,7 +36,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       TensorShape output_shape = input_shape;
 
       GenericTensorAccessorR output_grad_accessor =
-              create_filled_accessor_r(output_shape, allocator, 1.0f);
+          create_filled_accessor_r(output_shape, allocator, 1.0f);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
