@@ -15,10 +15,16 @@ There is no single type of graph. Should it be directed? Allow multiple edges be
 Because there is no single answer to this question, similar to [networkx](https://networkx.org/) we provide a number of different graph variants. 
 At their core, they are as follows:
 
-- `UndirectedGraph`: at most one edge allowed between every pair of nodes, edges are undirected
-- `DirectedGraph`: at most one edge allowed between every ordered pair of nodes, edges are directed (i.e., have a source node and a destination node)
-- `MultiDiGraph`: arbitrary numbers of edges allowed between every pair of nodes, but each must have not only source/destination nodes but also _source/destination indices_, which serve to disambiguate different edges between the same nodes. There can exist at most one edge for every ordered tuple of source node, destination node, source index, and destination index.
+- `UndirectedGraph`: at most one edge allowed between every pair of nodes, edges are undirected.
+- `DiGraph`: at most one edge allowed between every ordered pair of nodes, edges are directed (i.e., have a source node and a destination node)
+- `MultiDiGraph`: arbitrary numbers of directed edges allowed between every pair of nodes.
+- `DataflowGraph`: similar to `MultiDiGraph`, but with the following differences:
+  - The edges entering, exiting a given nodes now have a well-defined order. 
+  - Due to the interface used to construct them (where essentially a node can only be added to the graph after all of its predecessor nodes have been added) `DataflowGraph`s are directed acyclic graphs.
+  - Each node has an associated ordered sequence of inputs and outputs, with the restriction that one and only one edge can enter an individual input.
 
+Conceptually, `DataflowGraph` is used within FlexFlow to represent computation-style graphs, where edges represent value uses and nodes represent multivariate functions from tuples of inputs to tuples of outputs. 
+   
 Examples of the different graph variants are shown below.
 
 Example of `UndirectedGraph`:
@@ -37,7 +43,7 @@ flowchart TD
     D --- B
 ```
 
-Example of `DirectedGraph`:
+Example of `DiGraph`:
 ```mermaid
 flowchart TD
     A(" ")
@@ -58,98 +64,34 @@ flowchart TD
 Example of `MultiDiGraph`:
 ```mermaid
 flowchart TD
-    A("A")
-    B("B")
-    C("C")
-    D("D")
-    E("E")
-    F("F")
+    A
+    B
+    C
+    D
+    E
+    F
 
-    A -->|"(&#x25A0, &#x2605)"| B
-    B -->|"(&#x25CF, &#x2605)"| C
-    C -->|"(&#x2665, &#x25B2)"| D
-    D -->|"(&#x25CF, &#x25A0)"| A
-    B -->|"(&#x2605, &#x25CF)"| E 
-    E -->|"(&#x25A0, &#x25A0)"| B
-    D -->|"(&#x25CF, &#x25CF)"| A
-    A -->|"(&#x25CF, &#x25A0)"| E
-    D -->|"(&#x25A0, &#x25CF)"| D 
-    E -->|"(&#x25A0, &#x25A0)"| E
-```
-or visualized a different way,
-```mermaid
-flowchart TD
-    Acirc("&#x25CF")
-    Asqua("&#x25A0")
-    Bcirc("&#x25CF")
-    Bstar("&#x2605")
-    Bsqua("&#x25A0")
-    Chear("&#x2665")
-    Cstar("&#x2605")
-    Dsqua("&#x25A0")
-    Dcirc("&#x25CF")
-    Dtria("&#x25B2")
-    Ecirc("&#x25CF")
-    Esqua("&#x25A0")
-    Fplaceholder(" ")
-
-    style Fplaceholder fill:#0000,stroke:#0000
-
-    subgraph "A"
-      Acirc
-      Asqua
-    end
-
-    subgraph "B"
-        Bsqua
-        Bcirc
-        Bstar
-    end
-
-    subgraph "C"
-        Chear
-        Cstar
-    end
-
-    subgraph "D"
-        Dsqua 
-        Dcirc
-        Dtria
-    end
-
-    subgraph "E"
-        Ecirc 
-        Esqua
-    end
-
-    subgraph "F"
-        Fplaceholder
-    end
-
-    Asqua --> Bstar 
-    Bcirc --> Cstar
-    Chear --> Dtria
-    Dcirc --> Asqua 
-    Bstar --> Ecirc 
-    Esqua --> Bsqua
-    Dcirc --> Acirc
-    Acirc --> Esqua 
-    Dsqua --> Dcirc
-    Esqua --> Esqua
+    A --> B
+    B --> C
+    C --> D
+    D --> A
+    B --> E
+    E --> B
+    D --> A
+    A --> E
+    D --> D
+    E --> E
 ```
 
-Note that the nodes and source/destination indices are just nameless things: they have no apparent ordering or other meaning besides representing the topology of the graph.
-This is the case as well with `UndirectedGraph`, `DiGraph`, and `MultiDiGraph`.
+Note that the node names are just nameless things: they have no apparent ordering or other meaning besides representing the topology of the graph.
+This is the case with all of the 4 core graph classes.
 Nodes are of type `Node`, and from a user perspective are simply opaque handles, and source and destination indices should similarly be considered opaque from a user point of view.
 In addition, nodes should only be used in the context of their graph, so comparing or checking equality of nodes between different graphs (even of the same type) is undefined behavior[^1].
 
 All three core graph variants allow insertion and deletion of both edges and nodes. 
 To add a node to an `UndirectedGraph g`, simply call `g.add_node()` (the interface is identical for `DiGraph` and `MultiDiGraph`).
 To add an edge between two nodes `Node n1` and `Node n2` to an `UndirectedGraph g`, call `g.add_edge({n1, n2})`.
-In `UndirectedGraph` the order of the arguments of `add_edge` doesn't matter as edges are undirected, but the order does matter for `DiGraph` and `MultiDiGraph`.
-`MultiDiGraph::add_edge` takes in two additional arguments of type `NodePort`, specifying the source and destination indices.
-Similar to `Node`s, `NodePort`s can be generated via `g.add_node_port()`.
-`NodePort:` an opaque object used within `MultiDiGraph` to disambiguate between multiple edges. `MultiDiGraph` will be able to distinguish between 2 edges that share the same source and destination as long as at at least one `NodePort` differs. Within the context of a PCG, `NodePorts` must be thought of as the various inputs and outputs of a single node.
+In `UndirectedGraph` the order of the arguments of `add_edge` doesn't matter as edges are undirected, but the order does matter for `DiGraph`, `MultiDiGraph` and `DataflowGraph`.
 
 The last paragraph covered the base API used to write to graphs, but we also want to be able to read from graphs.
 Reading from graphs is implemented with the `query_nodes` and `query_edges` methods, which can be thought of as executing a database query over the nodes and edges of the target graph, respectively (where queries are restricted to an incredibly simple set of operations).
@@ -158,11 +100,13 @@ The argument to `query_nodes` is a `NodeQuery` (which is simply a set of `Node`s
 The set of nodes in the query is actually an `optional`, so `nullopt` could also be passed, which would simply retrieve all nodes from the target graph (essentially `nullopt` acts as the set of all nodes that could ever exist).
 `query_edges` functions similarly, but as with `add_edge` its behavior is differs slightly between the three graph variants.
 `UndirectedGraph::query_edges` simply takes an optional set of nodes and returns all edges that touch any of those nodes.
-`DirectedGraph::query_edges` allows separate sets for source and destination nodes, and `MultiDiGraph::query_edges` adds the ability to filter by source and destination indices as well.
+`DiGraph::query_edges` allows separate sets for source and destination nodes, and `MultiDiGraph::query_edges` adds the ability to filter by source and destination indices as well.
 
 In practice you will rarely ever use `query_nodes` and `query_edges` as the graph library provides a large number of algorithms that do that work for you, but it can be helpful to understand this base layer if you ever need to implement your own algorithms.
-The layer users will most commonly interact with is the interface provided by [algorithms.h](./algorithms.h), which provides a large number of pre-implemented algorithms on graphs, ranging from as simple as `get_nodes` to as complex as `get_transitive_reduction` and `get_dominators`.
-You may notice that the most of the functions declared in `algorithms.h` take as arguments not `UndirectedGraph`, `DiGraph`, and `MultiDiGraph`, but actually operator on `UndirectedGraphView`, `DiGraphView`, and `MultiDiGraphView`. 
+The layer users will most commonly interact with is the interface provided within either the `algorithms.h` header files or the `algorithms` folders, present in their respective graph class folders.
+They provide a large number of pre-implemented algorithms on graphs, ranging from as simple as `get_nodes` to as complex as `get_transitive_reduction` and `get_dominators`.
+Note that, due to the internal virtual inheritance structure, some functions for more privitive classes can be employed by the derived classes. (For example, `get_nodes` present in `node/algorithms.h` can be used by `DiGraph`).
+You may notice that the most of algorithms present take as arguments not `UndirectedGraph`, `DiGraph`, and `MultiDiGraph`, but rather `UndirectedGraphView`, `DiGraphView`, and `MultiDiGraphView`. 
 These `GraphView` objects represent read-only (i.e., immutable) graphs.
 Similar to C++'s `const` semantics, `Graph`s can be coerced[^2] to `GraphView`s but not the other way around.
 To transform a `GraphView` to a `Graph`, we can perform an explicit copy with `materialize_view`.
@@ -171,39 +115,34 @@ This may seem wasteful (oftentimes graphs are large objects that are passed arou
 
 At this point, however, we still have not discussed how to create a graph.
 The user-facing graph interface is intentially separated from the underlying graph representations, so representations can be changed without requiring any user-side code modifications besides the choice of which implementation to use.
-For example, to construct a `DiGraph` which internally uses a representation `MyDiGraphImpl`:
+For example, to construct a `DiGDiraph` which internally uses a representation such as `AdjacencyDiGraph` we do the following:
 ```cpp
-DiGraph g = DiGraph::create<MyDiGraphImpl>();
+DiGraph g = DiGraph::create<AdjacencyDiGraph>();
 ```
 Generally users will use underlying representations provided by the graph library, but advanced users can create their own implementations (see the [Internals](#internals) section).
 
 [^1]: At some point we will likely add actual runtime checks on this, but for now we rely on the user not to mess up. Currently the implementation will keep going silently until the incorrectness grows so large that something breaks/crashes.
 [^2]: See <https://en.wikipedia.org/wiki/Type_conversion> if you're not familiar with the term _type coercion_
 
-### Open, Upward, Downward
+### Open DataFlow Variant
 
 `Open` is to be intended similarly to the topological sense: that is, a graph that contains some edges where one of the 2 nodes is not present in the graph itself.
-We can further specify the "openeness" of a **directed** graph by specifying whether they are `UpwardOpen` (so some of the incoming edges are open) or `DownwardOpen` (so some of the outgoing edges are open).
+This graph class is particularly useful for processing a sub-graph of a given graph while still maintaining information regarding the edges that cross the cut.
 
-![Open graphs inheritance diagram](docs/open.svg)
-
-Arrows with pointed tips indicate inheritance, while arrows with square tips indicate that the pointing class has a 'cow_ptr' of the type of the pointed class. (for more info, see [cow_ptr](#cow_ptr-and-interfaces))
-
-
-### Labelled Graphs
+### Labelled Dataflow Variant
 
 As nice as all of the above is, graphs without labels are mostly useless--in practice, nodes and edges represent some other system and the properties of that system (or at least a way to map the result of graph algorithms back to the underlying system) are necessary.
-Thus, FlexFlow's graph library provides the ability to add labels via [labelled\_graphs.h](./labelled_graphs.h): examples include `NodeLabelledMultiDiGraph<T>` (nodes have labels of type `T` and edges are unlabelled) and `OutputLabelledMultiDiGraph<T, U>` (nodes have labels of type `T` and source indices have labels of type `U`).
-While the interfaces of these graphs differ slightly from the core graph variants, they still have corresponding `GraphView` types, `add_node`/`add_edge` methods, and `query_nodes`/`query_edges` methods.
-Note that all of the labelled graph types require that each element of the labelled types have a label (e.g., every node in a `NodeLabelledMultiDiGraph<T>` must have a label of type `T`)., which is enforced via the interfaces they provide.
+Thus, FlexFlow's graph library provides the ability to add labels to `DataflowGraph`, through the `LabelleledDataflowGraph` and `OpenLabelleledDataflowGraph`, which allow users to label different components of the graph. 
+- `LabelledDataflowGraph` allows for labelling of `Node`s and `DataflowOutput`s.
+- `OpenLabelledDataflowGraph` allows for labelling of `Node`s and `OpenDataflowValue`s, which is a variant describing both `DataflowOutput`s and `DataflowGraphInput`s, which represent the open inputs to the graph (i.e. the inputs for which their corresponding output is not present in the graph).
+
+While the interfaces of these graphs differ slightly from the core graph variants, they still have the corresponding `add_node` methods, and `query_nodes`/`query_edges` methods. (Note that there is no `add_edge` method since, for `DataflowGraph`, edges are implicitly added when we add a node and specify its predecessors)
+Note that all of the labelled graph types require that each element of the labelled types have a label, which is enforced via the interfaces they provide.
 Partial labelling can be implement via wrapping the label type in `optional`.
-Interacting with `Node` and `Edge` objects is still necessary to use the labelled graph types: intuitively the labelled graph types can be thought of as a pair of a core graph variant and a hash map the maps nodes (or other types depending in which labelled graph type is used) to labels.
-As such, the labelled graph types provide the typical `at` method (as on `std::unordered_map`[^3]) and can be coerced to their underlying core graph variants for use in functions provided by `algorithms.h`, etc.
+Interacting with `Node` and `Edge` objects is still necessary to use the labelled graph types: intuitively the labelled graph types can be thought of as a pair of a core graph variant and a hash map the maps nodes/edges to labels.
+As such, the labelled graph types provide the typical `at` method (as on `std::unordered_map`[^3]) and can be coerced to their underlying core graph variants.
 
 [^3]: `operator[]` currently is not present because all nodes must have labels and we don't require label types to be default constructible, though some simple template programming could probably add `operator[]` support in the cases where the label types _are_ default constructible.
-
-![Labelled Graphs Inheritance Diagram](docs/labelled.svg)
-
 
 
 ## Internals
@@ -236,12 +175,7 @@ To address this, graph classes store a `cow_ptr` as a member variable, which poi
 
 All member functions present in `ClassName` and `ClassNameView` delegate their calls to their corresponding interface classes (which implement the actual logic), meaning that these classes essentially act as wrappers to their interface counterparts.
 
-To create graphs within the library, we thus use the following syntax:
-`BaseGraph obj = BaseGraph::create<DerivedGraph>();`
-
-Resulting in an object that, while of type `BaseGraph`, can access at runtime the member functions defined in `DerivedGraph`
-
 ### Virtual Inheritance
-Due to the complexity of the graph library, diamond-style inheritance patterns emerge (consider, for example, the `OutputLabelledOpenMultiDiGraphView` class, which inherits from both `NodeLabelledOpenMultiDiGraphView` and `OutputLabelledMultiDiGraphView`, which in turn inherit from both `NodeLabelledMultiDiGraphView`).
-In the case of a diamond inheritance pattern C++ will instantiate multiple copies of the base class whenever we instantiate a derived class.
+Due to the complexity of the graph library, diamond-style inheritance patterns emerge.
+In the case of a diamond inheritance pattern, C++ will instantiate multiple copies of the base class whenever we instantiate a derived class.
 To address this issue, we employ [Virtual Inheritance](https://en.wikipedia.org/wiki/Virtual_inheritance), which removes the ambiguity associated with the multiple copies.

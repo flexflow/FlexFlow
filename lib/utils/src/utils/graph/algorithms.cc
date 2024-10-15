@@ -184,7 +184,8 @@ bool contains_edge(DiGraphView const &g, DirectedEdge const &e) {
 }
 
 bool contains_edge(UndirectedGraphView const &g, UndirectedEdge const &e) {
-  UndirectedEdgeQuery q = UndirectedEdgeQuery{{e.bigger, e.smaller}};
+  UndirectedEdgeQuery q =
+      UndirectedEdgeQuery{{e.endpoints.max(), e.endpoints.min()}};
   return contains(g.query_edges(q), e);
 }
 
@@ -212,7 +213,7 @@ void remove_edges(UndirectedGraph &g,
 }
 
 std::unordered_set<Node> get_endpoints(UndirectedEdge const &e) {
-  return {e.smaller, e.bigger};
+  return {e.endpoints.min(), e.endpoints.max()};
 }
 
 // std::unordered_set<MultiDiEdge> get_edges(MultiDiGraphView const &g) {
@@ -479,15 +480,6 @@ DiGraphView get_subgraph(DiGraphView const &g,
 //                       MultiDiGraphView const &rhs) {
 //   return MultiDiGraphView::create<JoinedMultiDigraphView>(lhs, rhs);
 // }
-
-DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs) {
-  return DiGraphView::create<JoinedDigraphView>(lhs, rhs);
-}
-
-UndirectedGraphView join(UndirectedGraphView const &lhs,
-                         UndirectedGraphView const &rhs) {
-  return UndirectedGraphView::create<JoinedUndirectedGraphView>(lhs, rhs);
-}
 
 UndirectedGraphView as_undirected(DiGraphView const &g) {
   return UndirectedGraphView::create<ViewDiGraphAsUndirectedGraph>(g);
