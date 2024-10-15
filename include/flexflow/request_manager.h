@@ -415,6 +415,7 @@ private:
   ModelType model_type;
   int bos_token_id;
   int eos_token_id;
+  bool old_llama_tokenizer = false;
   std::string output_filepath;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> all_requests;
