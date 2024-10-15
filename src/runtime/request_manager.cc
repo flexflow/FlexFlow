@@ -388,19 +388,27 @@ void RequestManager::register_tokenizer(ModelType type,
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
   if (model_type == ModelType::LLAMA) {
+    // try with tokenizer.json first
     std::filesystem::path tokenizer_json_path;
     if (std::filesystem::is_directory(tokenizer_folder)) {
-      tokenizer_json_path =
-          std::filesystem::path(tokenizer_folder) / "tokenizer.json";
+      tokenizer_json_path = std::filesystem::path(tokenizer_folder) / "tokenizer.json";
     } else {
       tokenizer_json_path = tokenizer_folder;
     }
-    if (!std::filesystem::exists(tokenizer_json_path)) {
-      std::cerr << "Failed to open file: " << tokenizer_json_path << std::endl;
-      assert(false);
+    if (std::filesystem::exists(tokenizer_json_path)) {
+      // load from tokenizer.json
+      this->tokenizer_ = Tokenizer::FromBlobJSON(LoadBytesFromFile(tokenizer_json_path.string()));
+    } else {
+      // load from tokenizer.model
+      std::filesystem::path tokenizer_model_path =
+          tokenizer_folder / "tokenizer.model";
+      if (!std::filesystem::exists(tokenizer_model_path)) {
+        std::cerr << "Failed to open file: " << tokenizer_model_path
+                  << std::endl;
+        assert(false);
+      }
+      this->tokenizer_ = Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(tokenizer_model_path.string()));
     }
-    this->tokenizer_ = Tokenizer::FromBlobJSON(
-        LoadBytesFromFile(tokenizer_json_path.string()));
   } else if (model_type == ModelType::OPT) {
     std::string vocab_file = tokenizer_folder + "vocab.json";
     std::string merges_file = tokenizer_folder + "merges.txt";
