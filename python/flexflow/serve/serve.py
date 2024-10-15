@@ -27,12 +27,12 @@ from flexflow.serve.models import (
     MPTConfig,
 )
 from flexflow.core import *
-from transformers import AutoConfig, AutoModelForCausalLM, AutoTokenizer, LlamaTokenizer
+from transformers import AutoConfig, AutoModelForCausalLM
 from peft import PeftModel, PeftConfig, LoraConfig
 from huggingface_hub import HfApi
 import torch, shutil, hashlib, json, gc
 from typing import Union, List
-
+from huggingface_hub import snapshot_download
 
 class _SupportedModels:
     def __init__(self,):
@@ -349,10 +349,17 @@ class LLM:
             print(
                 f"'{self.model_name}' tokenizer needs updating! Downloading tokenizer now..."
             )
-            # Download tokenizer from HuggingFace, or load it from the local folder
-            hf_tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
-            # Save tokenizer
-            hf_tokenizer.save_pretrained(self.tokenizer_path)
+            # Load/download the tokenizer files
+            target_tokenizer_files = ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.json"]
+            if os.path.exists(self.model_name):
+                hf_tokenizer_path = self.model_name
+            else:
+                hf_tokenizer_path = snapshot_download(repo_id=self.model_name, allow_patterns=target_tokenizer_files)
+            for file in target_tokenizer_files:
+                src_path = os.path.join(hf_tokenizer_path, file)
+                dst_path = os.path.join(self.tokenizer_path, file)
+                if os.path.exists(src_path):
+                    shutil.copy(src_path, dst_path)
             print("Done updating HF tokenizer.")
             # Save new revision hash to file
             with open(ff_revision_file, "w+") as f:
