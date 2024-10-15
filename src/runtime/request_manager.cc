@@ -271,7 +271,13 @@ RequestManager::RequestGuid
   request.guid = next_available_guid++;
   request.max_length = request_.max_length;
   request.max_new_tokens = request_.max_new_tokens;
+  // both unset
+  if (request.max_length == -1 && request.max_new_tokens == -1) {
+    request.max_length = get_max_sequence_length();
+  }
+  // both set
   if (request.max_length != -1 && request.max_new_tokens != -1) {
+    request.max_length = -1;
     std::cout
         << "Both `max_new_tokens` (=" << request.max_new_tokens
         << ") and `max_length`(=" << request.max_length
@@ -372,15 +378,14 @@ RequestManager::RequestGuid
   request.initial_len = 0;
   request.max_length = request_.max_length;
   request.max_new_tokens = request_.max_new_tokens;
-  if (request.max_length != -1) {
-    std::cout << "Warning: max_length is set for PEFT finetuning, but it will "
-                 "be ignored."
-              << std::endl;
-  }
   if (request.max_new_tokens != -1) {
-    std::cout << "Warning: max_new_tokens is set for PEFT finetuning, but "
-                 "it will be ignored."
-              << std::endl;
+    std::cerr
+        << "Error: max_new_tokens is not allowed for PEFT finetuning requests"
+        << std::endl;
+    assert(false);
+  }
+  if (request.max_length == -1) {
+    request.max_length = get_max_sequence_length();
   }
   request.peft_model_id = request_.peft_model_id;
   request.req_type = RequestType::REQ_FINETUNING;

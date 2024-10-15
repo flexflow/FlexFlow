@@ -340,7 +340,7 @@ void FlexFlow::top_level_task(Task const *task,
         printf("Inference prompt[%d]: %s\n", total_num_requests, text.c_str());
         Request inference_req;
         inference_req.prompt = text;
-        inference_req.max_length = 128;
+        inference_req.max_new_tokens = 128;
         inference_req.peft_model_id =
             (peft_model_id != nullptr) ? *peft_model_id : PEFTModelID::NO_ID;
         requests.push_back(inference_req);
