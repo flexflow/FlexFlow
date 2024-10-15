@@ -66,153 +66,6 @@ DiGraphView view_subgraph(DiGraphView const &g,
   return DiGraphView::create<DiSubgraphView>(g, subgraph_nodes);
 }
 
-JoinedNodeView::JoinedNodeView(GraphView const &lhs, GraphView const &rhs) {
-  for (Node const &n : get_nodes(lhs)) {
-    this->mapping.equate(JoinNodeKey{n, LRDirection::LEFT},
-                         this->node_source.new_node());
-  }
-  for (Node const &n : get_nodes(rhs)) {
-    this->mapping.equate(JoinNodeKey{n, LRDirection::RIGHT},
-                         this->node_source.new_node());
-  }
-}
-
-std::unordered_set<Node>
-    JoinedNodeView::query_nodes(NodeQuery const &query) const {
-  std::unordered_set<Node> nodes = right_entries(this->mapping);
-  if (query == node_query_all()) {
-    return nodes;
-  }
-  return filter(nodes, [&](Node const &n) {
-    return contains(allowed_values(query.nodes), n);
-  });
-}
-
-std::pair<std::unordered_set<Node>, std::unordered_set<Node>>
-    JoinedNodeView::trace_nodes(std::unordered_set<Node> const &nodes) const {
-  std::unordered_set<Node> left_nodes, right_nodes;
-
-  for (Node const &n : nodes) {
-    JoinNodeKey k = this->at_node(n);
-    if (k.direction == LRDirection::LEFT) {
-      left_nodes.insert(k.node);
-    } else {
-      assert(k.direction == LRDirection::RIGHT);
-      right_nodes.insert(k.node);
-    }
-  }
-
-  return {left_nodes, right_nodes};
-}
-
-Node JoinedNodeView::at_join_key(JoinNodeKey const &k) const {
-  return this->mapping.at_l(k);
-}
-
-JoinNodeKey JoinedNodeView::at_node(Node const &n) const {
-  return this->mapping.at_r(n);
-}
-
-JoinedUndirectedGraphView::JoinedUndirectedGraphView(
-    UndirectedGraphView const &lhs, UndirectedGraphView const &rhs)
-    : lhs(lhs), rhs(rhs), joined_nodes(lhs, rhs) {}
-
-std::unordered_set<Node>
-    JoinedUndirectedGraphView::query_nodes(NodeQuery const &query) const {
-  return this->joined_nodes.query_nodes(query);
-}
-
-std::unordered_set<UndirectedEdge> JoinedUndirectedGraphView::query_edges(
-    UndirectedEdgeQuery const &query) const {
-  std::unordered_set<Node> nodes = this->query_nodes(NodeQuery{query.nodes});
-  std::unordered_set<Node> left_nodes, right_nodes;
-  for (Node const &n : nodes) {
-    JoinNodeKey k = this->joined_nodes.at_node(n);
-    if (k.direction == LRDirection::LEFT) {
-      left_nodes.insert(k.node);
-    } else {
-      assert(k.direction == LRDirection::RIGHT);
-      right_nodes.insert(k.node);
-    }
-  }
-
-  std::unordered_set<UndirectedEdge> result;
-  for (UndirectedEdge const &e :
-       this->lhs.query_edges(UndirectedEdgeQuery{left_nodes})) {
-    result.insert(this->fix_lhs_edge(e));
-  }
-  for (UndirectedEdge const &e :
-       this->rhs.query_edges(UndirectedEdgeQuery{right_nodes})) {
-    result.insert(this->fix_rhs_edge(e));
-  }
-
-  return result;
-}
-
-UndirectedEdge
-    JoinedUndirectedGraphView::fix_lhs_edge(UndirectedEdge const &e) const {
-  return UndirectedEdge{{this->joined_nodes.at_join_key(
-                             JoinNodeKey{e.endpoints.min(), LRDirection::LEFT}),
-                         this->joined_nodes.at_join_key(JoinNodeKey{
-                             e.endpoints.max(), LRDirection::LEFT})}};
-}
-
-UndirectedEdge
-    JoinedUndirectedGraphView::fix_rhs_edge(UndirectedEdge const &e) const {
-  return UndirectedEdge{{this->joined_nodes.at_join_key(JoinNodeKey{
-                             e.endpoints.min(), LRDirection::RIGHT}),
-                         this->joined_nodes.at_join_key(JoinNodeKey{
-                             e.endpoints.max(), LRDirection::RIGHT})}};
-}
-
-JoinedDigraphView::JoinedDigraphView(DiGraphView const &lhs,
-                                     DiGraphView const &rhs)
-    : lhs(lhs), rhs(rhs), joined_nodes(lhs, rhs) {}
-
-JoinedDigraphView *JoinedDigraphView::clone() const {
-  return new JoinedDigraphView(lhs, rhs);
-}
-
-std::unordered_set<Node>
-    JoinedDigraphView::query_nodes(NodeQuery const &query) const {
-  return this->joined_nodes.query_nodes(query);
-}
-
-std::unordered_set<DirectedEdge>
-    JoinedDigraphView::query_edges(DirectedEdgeQuery const &query) const {
-
-  std::unordered_set<Node> srcs = this->query_nodes(NodeQuery{query.srcs});
-  std::unordered_set<Node> dsts = this->query_nodes(NodeQuery{query.dsts});
-  auto traced_srcs = this->joined_nodes.trace_nodes(srcs);
-  auto traced_dsts = this->joined_nodes.trace_nodes(dsts);
-  DirectedEdgeQuery left_query =
-      DirectedEdgeQuery{traced_srcs.first, traced_dsts.first};
-  DirectedEdgeQuery right_query =
-      DirectedEdgeQuery{traced_srcs.second, traced_dsts.second};
-
-  std::unordered_set<DirectedEdge> result;
-  for (DirectedEdge const &e : this->lhs.query_edges(left_query)) {
-    result.insert(this->fix_lhs_edge(e));
-  }
-  for (DirectedEdge const &e : this->rhs.query_edges(right_query)) {
-    result.insert(this->fix_rhs_edge(e));
-  }
-
-  return result;
-}
-
-DirectedEdge JoinedDigraphView::fix_lhs_edge(DirectedEdge const &e) const {
-  return DirectedEdge{
-      this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::LEFT}),
-      this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::LEFT})};
-}
-
-DirectedEdge JoinedDigraphView::fix_rhs_edge(DirectedEdge const &e) const {
-  return DirectedEdge{
-      this->joined_nodes.at_join_key(JoinNodeKey{e.src, LRDirection::RIGHT}),
-      this->joined_nodes.at_join_key(JoinNodeKey{e.dst, LRDirection::RIGHT})};
-}
-
 UndirectedEdge to_undirected_edge(DirectedEdge const &e) {
   return UndirectedEdge{{e.src, e.dst}};
 }
@@ -265,8 +118,8 @@ ViewUndirectedGraphAsDiGraph *ViewUndirectedGraphAsDiGraph::clone() const {
 std::unordered_set<DirectedEdge> ViewUndirectedGraphAsDiGraph::query_edges(
     DirectedEdgeQuery const &q) const {
   std::unordered_set<UndirectedEdge> undirected_edges =
-      intersection(g.query_edges(UndirectedEdgeQuery{q.srcs}),
-                   g.query_edges(UndirectedEdgeQuery{q.dsts}));
+      set_union(g.query_edges(UndirectedEdgeQuery{q.srcs}),
+                g.query_edges(UndirectedEdgeQuery{q.dsts}));
   std::unordered_set<DirectedEdge> directed_edges =
       flatmap(undirected_edges,
               [](UndirectedEdge const &e) { return to_directed_edges(e); });
@@ -277,10 +130,6 @@ std::unordered_set<DirectedEdge> ViewUndirectedGraphAsDiGraph::query_edges(
 std::unordered_set<Node>
     ViewUndirectedGraphAsDiGraph::query_nodes(NodeQuery const &q) const {
   return g.query_nodes(q);
-}
-
-JoinedUndirectedGraphView *JoinedUndirectedGraphView::clone() const {
-  return new JoinedUndirectedGraphView(lhs, rhs);
 }
 
 } // namespace FlexFlow

@@ -481,15 +481,6 @@ DiGraphView get_subgraph(DiGraphView const &g,
 //   return MultiDiGraphView::create<JoinedMultiDigraphView>(lhs, rhs);
 // }
 
-DiGraphView join(DiGraphView const &lhs, DiGraphView const &rhs) {
-  return DiGraphView::create<JoinedDigraphView>(lhs, rhs);
-}
-
-UndirectedGraphView join(UndirectedGraphView const &lhs,
-                         UndirectedGraphView const &rhs) {
-  return UndirectedGraphView::create<JoinedUndirectedGraphView>(lhs, rhs);
-}
-
 UndirectedGraphView as_undirected(DiGraphView const &g) {
   return UndirectedGraphView::create<ViewDiGraphAsUndirectedGraph>(g);
 }
