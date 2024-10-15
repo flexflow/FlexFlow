@@ -2941,7 +2941,7 @@ void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
 
   // The max token that can be added to the token tree when fulfilling the SLO
   int max_token_toward_slo =
-      get_max_tokens_per_batch() / get_num_active_requests() * 2;
+      int(get_max_tokens_per_batch() / get_num_active_requests());
 
   while (budget > 0 and max_token_toward_slo > 0 and
          current_added < num_tokens_to_decode) {
