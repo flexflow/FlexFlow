@@ -4671,6 +4671,7 @@ class FFModel(object):
             + 100
         )
 
+    # deprecated
     def generate_inf_only(
         self,
         prompt_list: List[str],
