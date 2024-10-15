@@ -189,23 +189,32 @@ void RequestManager::register_tokenizer(ModelType type,
     // try with tokenizer.json first
     std::filesystem::path tokenizer_json_path;
     if (std::filesystem::is_directory(tokenizer_folder)) {
-      tokenizer_json_path = std::filesystem::path(tokenizer_folder) / "tokenizer.json";
+      tokenizer_json_path =
+          std::filesystem::path(tokenizer_folder) / "tokenizer.json";
     } else {
       tokenizer_json_path = tokenizer_folder;
     }
     if (std::filesystem::exists(tokenizer_json_path)) {
+      old_llama_tokenizer = true;
       // load from tokenizer.json
-      this->tokenizer_ = Tokenizer::FromBlobJSON(LoadBytesFromFile(tokenizer_json_path.string()));
+      this->tokenizer_ = Tokenizer::FromBlobJSON(
+          LoadBytesFromFile(tokenizer_json_path.string()));
     } else {
       // load from tokenizer.model
-      std::filesystem::path tokenizer_model_path =
-          tokenizer_folder / "tokenizer.model";
+      std::filesystem::path tokenizer_model_path;
+      if (std::filesystem::is_directory(tokenizer_folder)) {
+        tokenizer_model_path =
+            std::filesystem::path(tokenizer_folder) / "tokenizer.model";
+      } else {
+        tokenizer_model_path = tokenizer_folder;
+      }
       if (!std::filesystem::exists(tokenizer_model_path)) {
         std::cerr << "Failed to open file: " << tokenizer_model_path
                   << std::endl;
         assert(false);
       }
-      this->tokenizer_ = Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(tokenizer_model_path.string()));
+      this->tokenizer_ = Tokenizer::FromBlobSentencePiece(
+          LoadBytesFromFile(tokenizer_model_path.string()));
     }
   } else if (model_type == ModelType::OPT) {
     std::filesystem::path vocab_file = tokenizer_folder / "vocab.json";
@@ -658,7 +667,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA &&
+        if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
             request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
@@ -1119,7 +1128,7 @@ BeamSearchBatchConfig
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA &&
+        if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
             request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
@@ -1262,7 +1271,7 @@ BeamSearchBatchConfig
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA &&
+        if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
             request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
@@ -1310,7 +1319,7 @@ BeamSearchBatchConfig
       std::string output = this->tokenizer_->Decode(request.tokens);
       // Unlike Huggingface, the sentencepiece C++ library automatically removes
       // the BOS token
-      if (model_type == ModelType::LLAMA &&
+      if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
           request.tokens.at(0) == bos_token_id) {
         output = "<s> " + output;
       }
