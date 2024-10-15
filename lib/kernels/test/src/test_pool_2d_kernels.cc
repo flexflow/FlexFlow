@@ -42,11 +42,9 @@ TEST_SUITE(FF_TEST_SUITE) {
         {output_w, output_h, output_c, output_n}, DataType::FLOAT);
 
     GenericTensorAccessorW input_accessor =
-        create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
-                                                         allocator);
+        create_random_filled_accessor_w(input_shape, allocator);
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
-                                                         allocator);
+        create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
       Kernels::Pool2D::forward_kernel(managed_stream.raw_stream(),
@@ -54,14 +52,12 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       input_accessor.ptr,
                                       output_accessor.ptr);
 
-      std::vector<float> host_output_data =
-          load_accessor_data<DataType::FLOAT>(output_accessor);
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_accessor =
-          create_filled_accessor_w<float>(output_shape, allocator, 1.0f);
+          create_filled_accessor_w(output_shape, allocator, 1.0f);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
@@ -72,9 +68,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        output_accessor.ptr,
                                        output_grad_accessor.ptr);
 
-      std::vector<float> host_input_grad =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
-      CHECK(contains_non_zero(host_input_grad));
+      CHECK(contains_non_zero(input_grad_accessor));
     }
   }
 }

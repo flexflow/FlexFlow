@@ -31,16 +31,15 @@ TEST_SUITE(FF_TEST_SUITE) {
                                         epsilon);
 
     GenericTensorAccessorR input_accessor =
-        create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
-                                                         allocator);
+        create_random_filled_accessor_r(input_shape, allocator);
     GenericTensorAccessorW gamma_accessor =
-        create_filled_accessor_w<float>(feature_shape, allocator, 1.0f);
+        create_filled_accessor_w(feature_shape, allocator, 1.0f);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
       GenericTensorAccessorW beta_accessor =
-          create_filled_accessor_w<float>(feature_shape, allocator, 0.0f);
+          create_filled_accessor_w(feature_shape, allocator, 0.0f);
 
       Kernels::LayerNorm::forward_kernel(managed_stream.raw_stream(),
                                          state,
@@ -52,11 +51,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
-          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
-                                                           allocator);
+          create_random_filled_accessor_r(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(input_shape, allocator);
       GenericTensorAccessorW gamma_grad_accessor =
           allocator.allocate_tensor(feature_shape);
       GenericTensorAccessorW beta_grad_accessor =

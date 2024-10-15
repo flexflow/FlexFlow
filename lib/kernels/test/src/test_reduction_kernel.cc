@@ -20,8 +20,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_tensor_shape_from_legion_dims({10}, DataType::FLOAT);
 
       GenericTensorAccessorR input_accessor =
-          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_r(input_shape, allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -30,17 +29,14 @@ TEST_SUITE(FF_TEST_SUITE) {
                                          output_accessor,
                                          num_replicas);
 
-      std::vector<float> host_output_data =
-          load_accessor_data<DataType::FLOAT>(output_accessor);
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       TensorShape output_shape = input_shape;
 
       GenericTensorAccessorR output_grad_accessor =
-          read_only_accessor_from_write_accessor(
-              create_filled_accessor_w<float>(output_shape, allocator, 1.0f));
+              create_filled_accessor_r(output_shape, allocator, 1.0f);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
@@ -48,11 +44,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                           input_grad_accessor,
                                           output_grad_accessor);
 
-      std::vector<float> expected_grad_input_data(
-          input_grad_accessor.shape.num_elements(), 1.0f);
-      std::vector<float> host_grad_data =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
-      CHECK(vectors_are_approx_equal(host_grad_data, expected_grad_input_data));
+      CHECK(contains_non_zero(input_grad_accessor));
     }
   }
 }

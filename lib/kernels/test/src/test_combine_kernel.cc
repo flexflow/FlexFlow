@@ -17,23 +17,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_r(input_shape, allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
       Kernels::Combine::forward_kernel(
           managed_stream.raw_stream(), input_accessor, output_accessor);
 
-      std::vector<float> host_output_data =
-          load_accessor_data<DataType::FLOAT>(output_accessor);
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
-          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
-                                                           allocator);
+          create_random_filled_accessor_r(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
@@ -41,9 +37,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                         output_grad_accessor,
                                         input_grad_accessor);
 
-      std::vector<float> host_input_grad =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
-      CHECK(contains_non_zero(host_input_grad));
+      CHECK(contains_non_zero(input_grad_accessor));
     }
   }
 
@@ -60,16 +54,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("forward_kernel") {
       // Run GPU Combine Forward Kernel
       GenericTensorAccessorR input_accessor_gpu =
-          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
-                                                           gpu_allocator);
+          create_random_filled_accessor_r(input_shape, gpu_allocator);
       GenericTensorAccessorW output_accessor_gpu =
           gpu_allocator.allocate_tensor(output_shape);
 
       Kernels::Combine::forward_kernel(
           managed_stream.raw_stream(), input_accessor_gpu, output_accessor_gpu);
-
-      std::vector<float> result_data_gpu =
-          load_accessor_data<DataType::FLOAT>(output_accessor_gpu);
 
       // Run CPU Combine Forward Kernel
       GenericTensorAccessorR input_accessor_cpu =
@@ -80,42 +70,32 @@ TEST_SUITE(FF_TEST_SUITE) {
       Kernels::Combine::cpu_forward_kernel(input_accessor_cpu,
                                            output_accessor_cpu);
 
-      std::vector<float> result_data_cpu =
-          load_accessor_data<DataType::FLOAT>(output_accessor_cpu);
-
-      CHECK(vectors_are_approx_equal(result_data_gpu, result_data_cpu));
+      CHECK(w_accessors_are_equal<DataType::FLOAT>(output_accessor_gpu,
+                                                   output_accessor_cpu));
     }
 
     SUBCASE("backward_kernel") {
       // Run GPU Combine Backward Kernel
       GenericTensorAccessorR output_grad_accessor_gpu =
-          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
-                                                           gpu_allocator);
+          create_random_filled_accessor_r(output_shape, gpu_allocator);
       GenericTensorAccessorW input_grad_accessor_gpu =
-          gpu_allocator.allocate_tensor(input_shape);
-      fill_with_zeros(input_grad_accessor_gpu);
+          create_zero_filled_accessor_w(input_shape, gpu_allocator);
 
       Kernels::Combine::backward_kernel(managed_stream.raw_stream(),
                                         output_grad_accessor_gpu,
                                         input_grad_accessor_gpu);
 
-      std::vector<float> result_data_gpu =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor_gpu);
-
       // Run CPU Combine Backward Kernel
       GenericTensorAccessorR output_grad_accessor_cpu =
           copy_tensor_accessor_r(output_grad_accessor_gpu, cpu_allocator);
       GenericTensorAccessorW input_grad_accessor_cpu =
-          cpu_allocator.allocate_tensor(input_shape);
-      fill_with_zeros(input_grad_accessor_cpu);
+          create_zero_filled_accessor_w(input_shape, cpu_allocator);
 
       Kernels::Combine::cpu_backward_kernel(output_grad_accessor_cpu,
                                             input_grad_accessor_cpu);
 
-      std::vector<float> result_data_cpu =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor_cpu);
-
-      CHECK(vectors_are_approx_equal(result_data_gpu, result_data_cpu));
+      CHECK(w_accessors_are_equal<DataType::FLOAT>(input_grad_accessor_gpu,
+                                                   input_grad_accessor_cpu));
     }
   }
 }

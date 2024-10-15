@@ -1,5 +1,5 @@
-#include "kernels/reverse_kernels_cpu.h"
 #include "kernels/datatype_dispatch.h"
+#include "kernels/reverse_kernels_cpu.h"
 #include <algorithm>
 #include <vector>
 
@@ -8,31 +8,20 @@ namespace FlexFlow::Kernels::Reverse {
 template <DataType DT>
 struct CPUReverseForwardKernel {
   void operator()(GenericTensorAccessorR const &input,
-                  GenericTensorAccessorW &output,
-                  coord_t num_out_blks,
-                  coord_t reverse_dim_size,
-                  coord_t in_blk_size) {
+                  GenericTensorAccessorW &output) {
     assert(input.data_type == DT && output.data_type == DT);
 
-    // For each output block, copy the input block
-    for (coord_t blk_idx = 0; blk_idx < num_out_blks; ++blk_idx) {
-      for (coord_t rev_idx = 0; rev_idx < reverse_dim_size; ++rev_idx) {
-        for (coord_t i = 0; i < in_blk_size; ++i) {
-          output.at<DT>(blk_idx, rev_idx, i) =
-              input.at<DT>(blk_idx, rev_idx, i);
-        }
-      }
-    }
+    coord_t num_out_blocks = input.shape.at(legion_dim_t(0));
+    coord_t reverse_dim_size = input.shape.at(legion_dim_t(1));
+    coord_t in_block_size = input.shape.at(legion_dim_t(2));
 
-    // Reverse the blocks within each output block
-    for (coord_t blk_idx = 0; blk_idx < num_out_blks; ++blk_idx) {
-      for (coord_t rev_idx = 0; rev_idx < reverse_dim_size / 2; ++rev_idx) {
-        coord_t start_idx = rev_idx;
-        coord_t end_idx = reverse_dim_size - 1 - rev_idx;
-
-        for (coord_t i = 0; i < in_blk_size; ++i) {
-          std::swap(output.at<DT>(blk_idx, start_idx, i),
-                    output.at<DT>(blk_idx, end_idx, i));
+    for (coord_t block_idx = 0; block_idx < num_out_blocks; block_idx++) {
+      for (coord_t rev_idx = 0; rev_idx < reverse_dim_size; rev_idx++) {
+        for (coord_t i = 0; i < in_block_size; i++) {
+          output.at<DT>(block_idx, rev_idx, i) =
+              input.at<DT>(num_out_blocks - 1 - block_idx,
+                           reverse_dim_size - 1 - rev_idx,
+                           in_block_size - 1 - i);
         }
       }
     }
@@ -40,29 +29,15 @@ struct CPUReverseForwardKernel {
 };
 
 void cpu_forward_kernel(GenericTensorAccessorR const &input_accessor,
-                        GenericTensorAccessorW &output_accessor,
-                        coord_t num_out_blks,
-                        coord_t reverse_dim_size,
-                        coord_t in_blk_size) {
-  DataTypeDispatch1<CPUReverseForwardKernel>{}(input_accessor.data_type,
-                                               input_accessor,
-                                               std::ref(output_accessor),
-                                               num_out_blks,
-                                               reverse_dim_size,
-                                               in_blk_size);
+                        GenericTensorAccessorW &output_accessor) {
+  DataTypeDispatch1<CPUReverseForwardKernel>{}(
+      input_accessor.data_type, input_accessor, std::ref(output_accessor));
 }
 
 void cpu_backward_kernel(GenericTensorAccessorR const &output_accessor,
-                         GenericTensorAccessorW &input_accessor,
-                         coord_t num_out_blks,
-                         coord_t reverse_dim_size,
-                         coord_t in_blk_size) {
-  DataTypeDispatch1<CPUReverseForwardKernel>{}(output_accessor.data_type,
-                                               output_accessor,
-                                               std::ref(input_accessor),
-                                               num_out_blks,
-                                               reverse_dim_size,
-                                               in_blk_size);
+                         GenericTensorAccessorW &input_accessor) {
+  DataTypeDispatch1<CPUReverseForwardKernel>{}(
+      output_accessor.data_type, output_accessor, std::ref(input_accessor));
 }
 
 } // namespace FlexFlow::Kernels::Reverse

@@ -33,17 +33,15 @@ TEST_SUITE(FF_TEST_SUITE) {
         {output_n, output_c, output_h, output_w}, DataType::FLOAT);
 
     GenericTensorAccessorW input_accessor =
-        create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
-                                                         allocator);
+        create_random_filled_accessor_w(input_shape, allocator);
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
-                                                         allocator);
+        create_random_filled_accessor_w(output_shape, allocator);
     GenericTensorAccessorW scale_accessor =
-        create_filled_accessor_w<float>(scale_shape, allocator, 1.0f);
+        create_filled_accessor_w(scale_shape, allocator, 1.0f);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW bias_accessor =
-          create_filled_accessor_w<float>(bias_shape, allocator, 0.0f);
+          create_filled_accessor_w(bias_shape, allocator, 0.0f);
 
       Kernels::BatchNorm::forward_kernel(managed_stream.raw_stream(),
                                          state,
@@ -52,24 +50,18 @@ TEST_SUITE(FF_TEST_SUITE) {
                                          scale_accessor.get_float_ptr(),
                                          bias_accessor.get_float_ptr());
 
-      std::vector<float> host_output_data =
-          load_accessor_data<DataType::FLOAT>(output_accessor);
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_accessor =
-          create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(input_shape, allocator);
       GenericTensorAccessorW scale_grad_accessor =
-          create_random_filled_accessor_w<DataType::FLOAT>(scale_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(scale_shape, allocator);
       GenericTensorAccessorW bias_grad_accessor =
-          create_random_filled_accessor_w<DataType::FLOAT>(bias_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(bias_shape, allocator);
 
       Kernels::BatchNorm::backward_kernel(managed_stream.raw_stream(),
                                           state,
@@ -82,16 +74,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                                           bias_grad_accessor.get_float_ptr(),
                                           input_accessor.shape.num_elements());
 
-      std::vector<float> host_input_grad_data =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
-      std::vector<float> host_scale_grad_data =
-          load_accessor_data<DataType::FLOAT>(scale_grad_accessor);
-      std::vector<float> host_bias_grad_data =
-          load_accessor_data<DataType::FLOAT>(bias_grad_accessor);
-
-      CHECK(contains_non_zero(host_input_grad_data));
-      CHECK(contains_non_zero(host_scale_grad_data));
-      CHECK(contains_non_zero(host_bias_grad_data));
+      CHECK(contains_non_zero(input_grad_accessor));
+      CHECK(contains_non_zero(scale_grad_accessor));
+      CHECK(contains_non_zero(bias_grad_accessor));
     }
 
     Kernels::BatchNorm::cleanup_kernel(allocator,

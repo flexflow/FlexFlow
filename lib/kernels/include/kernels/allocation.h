@@ -1,7 +1,7 @@
 #ifndef _FLEXFLOW_KERNELS_ALLOCATION_H
 #define _FLEXFLOW_KERNELS_ALLOCATION_H
 
-#include "accessor.h"
+#include "kernels/accessor.h"
 #include <cstddef>
 #include <memory>
 

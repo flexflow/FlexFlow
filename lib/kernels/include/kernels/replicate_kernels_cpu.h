@@ -7,10 +7,10 @@
 namespace FlexFlow::Kernels::Replicate {
 
 void cpu_forward_kernel(GenericTensorAccessorR const &input,
-                        GenericTensorAccessorW const &output);
+                        GenericTensorAccessorW &output);
 
-void cpu_backward_kernel(GenericTensorAccessorW const &input,
-                         GenericTensorAccessorR const &output,
+void cpu_backward_kernel(GenericTensorAccessorR const &output,
+                         GenericTensorAccessorW &input,
                          size_t num_replicas);
 
 } // namespace FlexFlow::Kernels::Replicate

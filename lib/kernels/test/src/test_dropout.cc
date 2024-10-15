@@ -1,6 +1,7 @@
 #include "doctest/doctest.h"
 #include "kernels/dropout_kernels.h"
 #include "test_utils.h"
+#include "utils/containers/count.h"
 
 using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
@@ -30,8 +31,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_r(input_shape, allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -40,19 +40,14 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        input_accessor.get_float_ptr(),
                                        output_accessor.get_float_ptr());
 
-      std::vector<float> host_output_accessor =
-          load_accessor_data<DataType::FLOAT>(output_accessor);
-
-      CHECK(contains_non_zero(host_output_accessor));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorW output_grad_data =
-          create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(output_shape, allocator);
       GenericTensorAccessorW input_grad_data =
-          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(input_shape, allocator);
 
       Kernels::Dropout::backward_kernel(managed_stream.raw_stream(),
                                         state,

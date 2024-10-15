@@ -18,8 +18,10 @@ DeviceType Allocator::get_allocation_device_type() const {
 GenericTensorAccessorW
     Allocator::allocate_tensor(TensorShape const &tensor_shape) {
   void *ptr = this->allocate(get_size_in_bytes(tensor_shape));
-  return {
-      tensor_shape.data_type, tensor_shape, ptr, get_allocation_device_type()};
+  return {tensor_shape.data_type,
+          tensor_shape,
+          ptr,
+          this->get_allocation_device_type()};
 }
 
 } // namespace FlexFlow

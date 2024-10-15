@@ -24,11 +24,8 @@ GenericTensorAccessor LocalTaskArgumentAccessor::get_tensor(
   auto tensor_backing = std::get<GenericTensorAccessorW>(
       this->tensor_slots_backing.at(slot_grad_pair));
   if (priv == Permissions::RO) {
-    GenericTensorAccessorR readonly_tensor_backing = {
-        tensor_backing.data_type,
-        tensor_backing.shape,
-        tensor_backing.ptr,
-        this->allocator.get_allocation_device_type()};
+    GenericTensorAccessorR readonly_tensor_backing =
+        read_only_accessor_from_write_accessor(tensor_backing);
     return readonly_tensor_backing;
   } else if (priv == Permissions::RW || priv == Permissions::WO) {
     return tensor_backing;
@@ -47,10 +44,7 @@ VariadicGenericTensorAccessor LocalTaskArgumentAccessor::get_variadic_tensor(
     for (GenericTensorAccessorW const &tensor_backing :
          variadic_tensor_backing) {
       readonly_variadic_tensor_backing.push_back(
-          {tensor_backing.data_type,
-           tensor_backing.shape,
-           tensor_backing.ptr,
-           this->allocator.get_allocation_device_type()});
+          read_only_accessor_from_write_accessor(tensor_backing));
     }
     return readonly_variadic_tensor_backing;
   } else if (priv == Permissions::RW || priv == Permissions::WO) {

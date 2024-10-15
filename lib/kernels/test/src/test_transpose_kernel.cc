@@ -23,35 +23,28 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          create_random_filled_accessor_r<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_r(input_shape, allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
       Kernels::Transpose::forward_kernel(
           managed_stream.raw_stream(), state, input_accessor, output_accessor);
 
-      std::vector<float> host_output_data =
-          load_accessor_data<DataType::FLOAT>(output_accessor);
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
-          create_random_filled_accessor_r<DataType::FLOAT>(output_shape,
-                                                           allocator);
+          create_random_filled_accessor_r(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
-          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(input_shape, allocator);
 
       Kernels::Transpose::backward_kernel(managed_stream.raw_stream(),
                                           state,
                                           input_grad_accessor,
                                           output_grad_accessor);
 
-      std::vector<float> host_grad_input_data =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
-      CHECK(contains_non_zero(host_grad_input_data));
+      CHECK(contains_non_zero(input_grad_accessor));
     }
   }
 }

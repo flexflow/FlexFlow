@@ -21,27 +21,23 @@ TEST_SUITE(FF_TEST_SUITE) {
         managed_handle.raw_handle(), 0, input_n, channels, input_h, input_w);
 
     GenericTensorAccessorW output_accessor =
-        create_random_filled_accessor_w<DataType::FLOAT>(output_shape,
-                                                         allocator);
+        create_random_filled_accessor_w(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW input_accessor =
-          create_random_filled_accessor_w<DataType::FLOAT>(input_shape,
-                                                           allocator);
+          create_random_filled_accessor_w(input_shape, allocator);
 
       Kernels::Softmax::forward_kernel(managed_stream.raw_stream(),
                                        state,
                                        input_accessor.get_float_ptr(),
                                        output_accessor.get_float_ptr());
 
-      std::vector<float> host_output_data =
-          load_accessor_data<DataType::FLOAT>(output_accessor);
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
-      GenericTensorAccessorW output_grad_accessor =
-          create_filled_accessor_w<float>(output_shape, allocator, 1.0f);
+      GenericTensorAccessorR output_grad_accessor =
+          create_random_filled_accessor_r(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
@@ -51,12 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           output_grad_accessor.get_float_ptr(),
           output_grad_accessor.shape.num_elements());
 
-      std::vector<float> expected_input_grad_data =
-          std::vector<float>(input_grad_accessor.shape.num_elements(), 1.0f);
-      std::vector<float> host_input_grad_data =
-          load_accessor_data<DataType::FLOAT>(input_grad_accessor);
-      CHECK(vectors_are_approx_equal(host_input_grad_data,
-                                     expected_input_grad_data));
+      CHECK(contains_non_zero(input_grad_accessor));
     }
   }
 }

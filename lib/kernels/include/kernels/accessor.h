@@ -11,6 +11,8 @@
 
 namespace FlexFlow {
 
+struct Allocator;
+
 class GenericTensorAccessorW {
 public:
   template <DataType DT>
@@ -129,8 +131,8 @@ public:
       throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
     }
     if (this->data_type != DT) {
-      throw mk_runtime_error(
-          fmt::format("Invalid access data type ({} != {})", this->data_type, DT));
+      throw mk_runtime_error(fmt::format(
+          "Invalid access data type ({} != {})", this->data_type, DT));
     }
 
     using T = real_type_t<DT>;
@@ -254,6 +256,22 @@ std::pair<ArrayShape, DataType>
     get_shape_and_datatype(GenericTensorAccessorR const &accessor);
 std::pair<ArrayShape, DataType>
     get_shape_and_datatype(GenericTensorAccessorW const &accessor);
+
+void transfer_data_between_accessors(
+    GenericTensorAccessorW &dst_accessor,
+    GenericTensorAccessorR const &src_accessor);
+
+void transfer_data_between_accessors(
+    GenericTensorAccessorW &dst_accessor,
+    GenericTensorAccessorW const &src_accessor);
+
+GenericTensorAccessorR
+    copy_tensor_accessor_r(GenericTensorAccessorR const &src_accessor,
+                           Allocator &allocator);
+
+GenericTensorAccessorW
+    copy_tensor_accessor_w(GenericTensorAccessorW const &src_accessor,
+                           Allocator &allocator);
 
 } // namespace FlexFlow
 
