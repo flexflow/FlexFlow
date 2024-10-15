@@ -388,14 +388,19 @@ void RequestManager::register_tokenizer(ModelType type,
   std::string tokenizer_folder =
       (!path.empty() && path.back() != '/') ? path + '/' : path;
   if (model_type == ModelType::LLAMA) {
-    bool path_to_file = !path.empty() &&
-                        (path.size() >= strlen("tokenizer.model")) &&
-                        path.find("tokenizer.model") ==
-                            (path.size() - strlen("tokenizer.model"));
-    std::string tokenizer_filepath =
-        path_to_file ? path : tokenizer_folder + "tokenizer.model";
-    this->tokenizer_ =
-        Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(tokenizer_filepath));
+    std::filesystem::path tokenizer_json_path;
+    if (std::filesystem::is_directory(tokenizer_folder)) {
+      tokenizer_json_path =
+          std::filesystem::path(tokenizer_folder) / "tokenizer.json";
+    } else {
+      tokenizer_json_path = tokenizer_folder;
+    }
+    if (!std::filesystem::exists(tokenizer_json_path)) {
+      std::cerr << "Failed to open file: " << tokenizer_json_path << std::endl;
+      assert(false);
+    }
+    this->tokenizer_ = Tokenizer::FromBlobJSON(
+        LoadBytesFromFile(tokenizer_json_path.string()));
   } else if (model_type == ModelType::OPT) {
     std::string vocab_file = tokenizer_folder + "vocab.json";
     std::string merges_file = tokenizer_folder + "merges.txt";
