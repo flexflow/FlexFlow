@@ -551,13 +551,13 @@ class LLM:
         if inf_only():
             # single prompt (str) or list of prompts in str format
             if max_length == -1 and max_new_tokens == -1:
-                max_length = self.max_seq_length
+                max_length = self.max_seq_length -1
             elif max_length != -1 and max_new_tokens != -1:
                 warnings.warn(
                     f"Both `max_new_tokens` (={max_new_tokens}) and `max_length`(={max_length}) seem to have been set. `max_new_tokens` will take precedence."
                 )
                 max_length = -1
-            if max_length > self.max_seq_length or max_new_tokens > self.max_seq_length:
+            if max_length >= self.max_seq_length or max_new_tokens >= self.max_seq_length:
                 raise ValueError(
                     f"max_length ({max_length}) or max_new_tokens ({max_new_tokens}) exceeds the maximum sequence length ({self.max_seq_length})"
                 )
@@ -573,7 +573,7 @@ class LLM:
                     requests_or_prompts.max_length == -1
                     and requests_or_prompts.max_new_tokens == -1
                 ):
-                    requests_or_prompts.max_length = self.max_seq_length
+                    requests_or_prompts.max_length = self.max_seq_length -1
                 elif (
                     requests_or_prompts.max_length != -1
                     and requests_or_prompts.max_new_tokens != -1
@@ -583,8 +583,8 @@ class LLM:
                     )
                     requests_or_prompts.max_length = -1
                 if (
-                    requests_or_prompts.max_length > self.max_seq_length
-                    or requests_or_prompts.max_new_tokens > self.max_seq_length
+                    requests_or_prompts.max_length >= self.max_seq_length
+                    or requests_or_prompts.max_new_tokens >= self.max_seq_length
                 ):
                     raise ValueError(
                         f"max_length ({requests_or_prompts.max_length}) or max_new_tokens ({requests_or_prompts.max_new_tokens}) exceeds the maximum sequence length ({self.max_seq_length})"
@@ -595,8 +595,8 @@ class LLM:
                         f"max_new_tokens ({requests_or_prompts.max_new_tokens}) is not allowed for finetuning requests."
                     )
                 if requests_or_prompts.max_length == -1:
-                    requests_or_prompts.max_length = self.max_seq_length
-                if requests_or_prompts.max_length > self.max_seq_length:
+                    requests_or_prompts.max_length = self.max_seq_length -1
+                if requests_or_prompts.max_length >= self.max_seq_length:
                     raise ValueError(
                         f"max_length ({requests_or_prompts.max_length}) exceeds the maximum sequence length ({self.max_seq_length})"
                     )
@@ -610,15 +610,15 @@ class LLM:
                 if req.req_type == RequestType.REQ_INFERENCE:
                     # check max_length and max_new_tokens parameters
                     if req.max_length == -1 and req.max_new_tokens == -1:
-                        req.max_length = self.max_seq_length
+                        req.max_length = self.max_seq_length -1
                     elif req.max_length != -1 and req.max_new_tokens != -1:
                         warnings.warn(
                             f"Both `max_new_tokens` (={req.max_new_tokens}) and `max_length`(={req.max_length}) seem to have been set. `max_new_tokens` will take precedence."
                         )
                         req.max_length = -1
                     if (
-                        req.max_length > self.max_seq_length
-                        or req.max_new_tokens > self.max_seq_length
+                        req.max_length >= self.max_seq_length
+                        or req.max_new_tokens >= self.max_seq_length
                     ):
                         raise ValueError(
                             f"max_length ({req.max_length}) or max_new_tokens ({req.max_new_tokens}) exceeds the maximum sequence length ({self.max_seq_length})"
@@ -629,8 +629,8 @@ class LLM:
                             f"max_new_tokens ({req.max_new_tokens}) is not allowed for finetuning requests."
                         )
                     if req.max_length == -1:
-                        req.max_length = self.max_seq_length
-                    if req.max_length > self.max_seq_length:
+                        req.max_length = self.max_seq_length -1
+                    if req.max_length >= self.max_seq_length:
                         raise ValueError(
                             f"max_length ({req.max_length}) exceeds the maximum sequence length ({self.max_seq_length})"
                         )
