@@ -14,7 +14,7 @@ struct formatter<
     std::enable_if_t<!detail::has_format_as<::std::optional<T>>::value>>
     : formatter<::std::string> {
   template <typename FormatContext>
-  auto format(::std::optional<T> const &m, FormatContext &ctx)
+  auto format(::std::optional<T> const &m, FormatContext &ctx) const
       -> decltype(ctx.out()) {
     CHECK_FMTABLE(T);
 
@@ -29,6 +29,14 @@ struct formatter<
   }
 };
 
+template <typename Char>
+struct formatter<std::nullopt_t, Char> : formatter<std::string> {
+  template <typename FormatContext>
+  auto format(std::nullopt_t, FormatContext &ctx) const -> decltype(ctx.out()) {
+    return formatter<std::string>::format("nullopt", ctx);
+  }
+};
+
 } // namespace fmt
 
 namespace FlexFlow {
@@ -39,6 +47,8 @@ std::ostream &operator<<(std::ostream &s, std::optional<T> const &t) {
 
   return s << fmt::to_string(t);
 }
+
+std::ostream &operator<<(std::ostream &, std::nullopt_t);
 
 } // namespace FlexFlow
 

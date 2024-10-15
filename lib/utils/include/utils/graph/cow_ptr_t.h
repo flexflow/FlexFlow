@@ -2,8 +2,6 @@
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_GRAPH_COW_PTR_T_H
 
 #include "utils/type_traits.h"
-#include "utils/unique.h"
-#include "utils/variant.h"
 #include <memory>
 #include <type_traits>
 

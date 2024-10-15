@@ -2,6 +2,7 @@
 #define _FLEXFLOW_LIB_COMPILER_INCLUDE_COMPILER_MACHINE_MAPPING_PARALLEL_LAYER_GUID_OBLIVIOUS_MACHINE_MAPPING_H
 
 #include "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.dtg.h"
+#include <optional>
 
 namespace FlexFlow {
 

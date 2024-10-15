@@ -5,6 +5,9 @@
 
 namespace FlexFlow {
 
+/**
+ * @details An empty container vacuously has product 1
+ **/
 template <typename Container, typename Element = typename Container::value_type>
 Element product(Container const &container) {
   Element result = 1;

@@ -3,11 +3,14 @@
 
 namespace FlexFlow {
 
-template <typename C, typename T = typename C::value_type>
-T sum(C const &c) {
-  T result = 0;
-  for (T const &t : c) {
-    result += t;
+/**
+ * @details An empty container vacuously has sum 0
+ **/
+template <typename Container, typename Element = typename Container::value_type>
+Element sum(Container const &container) {
+  Element result = 0;
+  for (Element const &element : container) {
+    result += element;
   }
   return result;
 }

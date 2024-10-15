@@ -9,15 +9,21 @@ features = [
   "fmt",
 ]
 
-includes = [ 
-  "pcg/device_id_t.dtg.h",
-  "pcg/strided_rectangle.dtg.h",
+includes = [
+  "pcg/machine_view_dimension.dtg.h",
+  "pcg/machine_space_coordinate.dtg.h"
 ]
+
+src_includes = [
+  "utils/fmt/vector.h",
+  "utils/hash/vector.h"
+]
+
 
 [[fields]]
 name = "start"
-type = "::FlexFlow::device_id_t"
+type = "::FlexFlow::MachineSpaceCoordinate"
 
 [[fields]]
-name = "rect"
-type = "::FlexFlow::StridedRectangle"
+name = "dimensions"
+type = "std::vector<::FlexFlow::MachineViewDimension>"

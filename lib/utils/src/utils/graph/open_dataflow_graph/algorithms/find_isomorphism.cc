@@ -1,5 +1,5 @@
 #include "utils/graph/open_dataflow_graph/algorithms/find_isomorphism.h"
-#include "utils/containers/get_first.h"
+#include "utils/containers/get_one_of.h"
 #include "utils/graph/open_dataflow_graph/algorithms/find_isomorphisms.h"
 
 namespace FlexFlow {
@@ -13,7 +13,7 @@ std::optional<OpenDataflowGraphIsomorphism>
   if (all_isomorphisms.empty()) {
     return std::nullopt;
   } else {
-    return get_first(all_isomorphisms);
+    return get_one_of(all_isomorphisms);
   }
 }
 

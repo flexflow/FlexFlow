@@ -2,7 +2,7 @@
 #include "substitutions/output_graph/output_graph_expr.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "utils/bidict/algorithms/bidict_from_keys_and_values.h"
-#include "utils/bidict/algorithms/merge_bidicts.h"
+#include "utils/bidict/algorithms/merge_disjoint_bidicts.h"
 
 namespace FlexFlow {
 
@@ -23,7 +23,7 @@ bidict<parallel_tensor_guid_t, OutputGraphExprNodeOutput>
         mapping_for_layer = bidict_from_keys_and_values(
             layer_outputs, output_graph_expr_outputs);
 
-    result = merge_bidicts(result, mapping_for_layer);
+    result = merge_disjoint_bidicts(result, mapping_for_layer);
   }
 
   return result;

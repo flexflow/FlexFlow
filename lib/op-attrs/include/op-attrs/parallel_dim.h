@@ -11,6 +11,7 @@ bool is_replica_dim(ParallelDim const &);
 ParallelDim with_size_set_to(ParallelDim const &, size_t);
 ParallelDim with_degree_set_to(ParallelDim const &, int);
 ParallelDim with_is_replica_set_to(ParallelDim const &, bool);
+int get_degree(ParallelDim const &);
 
 } // namespace FlexFlow
 

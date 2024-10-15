@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "MachineSpaceOffset"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  # "rapidcheck",
+  "fmt",
+]
+
+includes = [ 
+  "pcg/device_type.dtg.h",
+]
+
+[[fields]]
+name = "node_offset"
+type = "int"
+
+[[fields]]
+name = "device_offset"
+type = "int"
+
+[[fields]]
+name = "device_type"
+type = "::FlexFlow::DeviceType"

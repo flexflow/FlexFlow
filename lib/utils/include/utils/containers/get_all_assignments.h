@@ -5,6 +5,7 @@
 #include "utils/containers/keys.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/unordered_map_from_pairs.h"
+#include "utils/containers/unordered_set_of.h"
 #include "utils/containers/vector_of.h"
 #include "utils/containers/zip.h"
 #include "utils/hash/unordered_map.h"
@@ -30,7 +31,7 @@ std::unordered_set<std::unordered_map<K, V>> get_all_assignments(
       ordered_keys, [&](K const &k) { return options_per_key.at(k); });
 
   std::unordered_set<std::unordered_map<K, V>> result = transform(
-      cartesian_product(ordered_value_option_sets),
+      unordered_set_of(cartesian_product(ordered_value_option_sets)),
       [&](std::vector<V> const &chosen_values) {
         return unordered_map_from_pairs(zip(ordered_keys, chosen_values));
       });

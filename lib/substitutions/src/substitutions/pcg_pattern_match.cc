@@ -2,7 +2,7 @@
 #include "substitutions/pcg_pattern.h"
 #include "substitutions/sub_parallel_computation_graph.h"
 #include "utils/bidict/algorithms/bidict_from_keys_and_values.h"
-#include "utils/bidict/algorithms/merge_bidicts.h"
+#include "utils/bidict/algorithms/merge_disjoint_bidicts.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/zip.h"
 
@@ -27,7 +27,7 @@ bidict<PatternNodeOutput, parallel_tensor_guid_t>
         bidict_from_keys_and_values(pattern_node_outputs,
                                     matched_layer_output_tensors);
 
-    result = merge_bidicts(result, mapping);
+    result = merge_disjoint_bidicts(result, mapping);
   }
 
   return result;
