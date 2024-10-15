@@ -236,7 +236,9 @@ void RequestManager::set_max_tree_depth(int max_tree_depth) {
          "Invalid max_tree_depth");
   this->max_tree_depth = max_tree_depth;
   if (max_tree_width > 0) {
-    max_spec_tree_token_num = max_tree_depth * max_tree_width;
+    // 8 is k of topk, if max_tree_width <= k, we will fill the second level
+    max_spec_tree_token_num =
+        max_tree_depth * max_tree_width + (max_tree_width <= 8);
     assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
   }
 }
@@ -254,7 +256,9 @@ void RequestManager::set_max_tree_width(int max_tree_width) {
          "Invalid max_tree_width");
   this->max_tree_width = max_tree_width;
   if (max_tree_depth > 0) {
-    max_spec_tree_token_num = max_tree_depth * max_tree_width;
+    // 8 is k of topk, if max_tree_width <= k, we will fill the second level
+    max_spec_tree_token_num =
+        max_tree_depth * max_tree_width + (max_tree_width <= 8);
     assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
   }
 }
