@@ -3,7 +3,7 @@ set -e
 set -x
 
 # Cd into parent directory of folder holding this script
-cd "${BASH_SOURCE[0]%/*}/build"
+cd "${BASH_SOURCE[0]%/*}/../build"
 
 # Download models
 python ../inference/utils/download_hf_model.py --half-precision-only meta-llama/Meta-Llama-3-8B Felladrin/Llama-160M-Chat-v1
