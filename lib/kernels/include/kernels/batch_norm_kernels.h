@@ -43,8 +43,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(BatchNormPerDeviceState,
                                              output_w,
                                              relu);
 
-namespace Kernels {
-namespace BatchNorm {
+namespace Kernels::BatchNorm {
 
 BatchNormPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                     Allocator allocator,
@@ -81,8 +80,7 @@ void cleanup_kernel(Allocator allocator,
                     bool relu,
                     float *runningMean);
 
-} // namespace BatchNorm
-} // namespace Kernels
+} // namespace Kernels::BatchNorm
 } // namespace FlexFlow
 
 #endif

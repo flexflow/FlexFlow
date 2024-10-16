@@ -25,8 +25,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(Pool2DPerDeviceState,
                                              poolDesc,
                                              relu);
 
-namespace Kernels {
-namespace Pool2D {
+namespace Kernels::Pool2D {
 
 Pool2DPerDeviceState init_kernel(PerDeviceFFHandle handle,
                                  std::optional<Activation> activation,
@@ -75,8 +74,7 @@ void backward_kernel(ffStream_t stream,
                      void const *output_ptr,
                      void const *output_grad_ptr);
 
-} // namespace Pool2D
-} // namespace Kernels
+} // namespace Kernels::Pool2D
 } // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H

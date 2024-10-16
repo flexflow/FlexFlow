@@ -13,6 +13,9 @@ struct TrackedAllocator : public IAllocator {
 
   void *allocate(size_t) override;
   void deallocate(void *) override;
+
+  DeviceType get_allocation_device_type() const override;
+
   size_t get_current_mem_usage();
 
 private:

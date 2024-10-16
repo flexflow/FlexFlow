@@ -50,8 +50,8 @@ struct ForwardKernel {
 template <DataType T>
 struct BackwardKernel {
   void operator()(cudaStream_t stream,
-                  GenericTensorAccessorW const &input,
                   GenericTensorAccessorR const &output,
+                  GenericTensorAccessorW const &input,
                   size_t num_replicas) {
     size_t total_elements = input.shape.num_elements() * num_replicas;
     replicate_backward_kernel<real_type_t<T>>
@@ -70,11 +70,11 @@ void forward_kernel(cudaStream_t stream,
 }
 
 void backward_kernel(cudaStream_t stream,
-                     GenericTensorAccessorW const &input,
                      GenericTensorAccessorR const &output,
+                     GenericTensorAccessorW const &input,
                      size_t num_replicas) {
   DataTypeDispatch1<BackwardKernel>{}(
-      input.data_type, stream, input, output, num_replicas);
+      input.data_type, stream, output, input, num_replicas);
 }
 
 } // namespace Replicate

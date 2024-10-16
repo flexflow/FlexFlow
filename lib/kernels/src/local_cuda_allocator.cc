@@ -20,6 +20,10 @@ void LocalCudaAllocator::deallocate(void *ptr) {
   }
 }
 
+DeviceType LocalCudaAllocator::get_allocation_device_type() const {
+  return DeviceType::GPU;
+}
+
 LocalCudaAllocator::~LocalCudaAllocator() {
   for (void *ptr : this->ptrs) {
     checkCUDA(cudaFree(ptr));
@@ -27,7 +31,8 @@ LocalCudaAllocator::~LocalCudaAllocator() {
 }
 
 Allocator create_local_cuda_memory_allocator() {
-  return Allocator::create<LocalCudaAllocator>();
+  Allocator allocator = Allocator::create<LocalCudaAllocator>();
+  return allocator;
 }
 
 } // namespace FlexFlow

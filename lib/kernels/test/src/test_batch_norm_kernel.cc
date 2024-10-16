@@ -23,14 +23,14 @@ TEST_SUITE(FF_TEST_SUITE) {
                                         output_w,
                                         true);
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
-    TensorShape output_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
-    TensorShape scale_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
-    TensorShape bias_shape = make_float_tensor_shape_from_legion_dims(
-        {output_n, output_c, output_h, output_w});
+    TensorShape input_shape = make_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w}, DataType::FLOAT);
+    TensorShape output_shape = make_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w}, DataType::FLOAT);
+    TensorShape scale_shape = make_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w}, DataType::FLOAT);
+    TensorShape bias_shape = make_tensor_shape_from_legion_dims(
+        {output_n, output_c, output_h, output_w}, DataType::FLOAT);
 
     GenericTensorAccessorW input_accessor =
         create_random_filled_accessor_w(input_shape, allocator);
@@ -50,10 +50,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                          scale_accessor.get_float_ptr(),
                                          bias_accessor.get_float_ptr());
 
-      std::vector<float> host_output_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_accessor));
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
@@ -77,19 +74,9 @@ TEST_SUITE(FF_TEST_SUITE) {
                                           bias_grad_accessor.get_float_ptr(),
                                           input_accessor.shape.num_elements());
 
-      std::vector<float> host_input_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(input_grad_accessor));
-      std::vector<float> host_scale_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(scale_grad_accessor));
-      std::vector<float> host_bias_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(bias_grad_accessor));
-
-      CHECK(contains_non_zero(host_input_grad_data));
-      CHECK(contains_non_zero(host_scale_grad_data));
-      CHECK(contains_non_zero(host_bias_grad_data));
+      CHECK(contains_non_zero(input_grad_accessor));
+      CHECK(contains_non_zero(scale_grad_accessor));
+      CHECK(contains_non_zero(bias_grad_accessor));
     }
 
     Kernels::BatchNorm::cleanup_kernel(allocator,

@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_KERNELS_DATATYPE_DISPATCH_H
 #define _FLEXFLOW_KERNELS_DATATYPE_DISPATCH_H
 
-#include "accessor.h"
+#include "op-attrs/datatype.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

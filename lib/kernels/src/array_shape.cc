@@ -53,6 +53,7 @@ std::size_t ArrayShape::at(ff_dim_t idx) const {
 ArrayShape ArrayShape::sub_shape(
     std::optional<std::variant<ff_dim_t, legion_dim_t>> start,
     std::optional<std::variant<ff_dim_t, legion_dim_t>> end) const {
+
   NOT_IMPLEMENTED();
 }
 

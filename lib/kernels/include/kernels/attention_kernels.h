@@ -64,8 +64,7 @@ FF_VISITABLE_STRUCT_NO_EQ(MHAPerDeviceState,
 std::string format_as(MHAPerDeviceState const &x);
 std::ostream &operator<<(std::ostream &s, MHAPerDeviceState const &x);
 
-namespace Kernels {
-namespace MultiHeadAttention {
+namespace Kernels::MultiHeadAttention {
 
 MHAPerDeviceState init_kernel(PerDeviceFFHandle const &,
                               Allocator &,
@@ -105,8 +104,7 @@ void backward_kernel(ffStream_t stream,
 void cleanup_kernel(Allocator &allocator,
                     MHAPerDeviceState const &device_state);
 
-} // namespace MultiHeadAttention
-} // namespace Kernels
+} // namespace Kernels::MultiHeadAttention
 } // namespace FlexFlow
 
 #endif

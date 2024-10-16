@@ -17,7 +17,6 @@
 #include "kernels/reverse_kernels.h"
 
 namespace FlexFlow {
-
 namespace Kernels {
 namespace Reverse {
 

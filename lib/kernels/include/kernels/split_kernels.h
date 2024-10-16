@@ -3,10 +3,7 @@
 
 #include "device.h"
 
-namespace FlexFlow {
-
-namespace Kernels {
-namespace Split {
+namespace FlexFlow::Kernels::Split {
 void forward_kernel(ffStream_t stream,
                     float **out_ptrs,
                     float const *in_ptr,
@@ -22,8 +19,6 @@ void backward_kernel(ffStream_t stream,
                      coord_t num_blks,
                      int numOutputs);
 
-} // namespace Split
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Split
 
 #endif // _FLEXFLOW_OPS_KERNELS_SPLIT_KERNELS_H

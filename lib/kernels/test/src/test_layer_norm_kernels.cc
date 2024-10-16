@@ -11,11 +11,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     float epsilon = 1e-5f;
     bool elementwise_affine = true;
 
-    TensorShape input_shape =
-        make_float_tensor_shape_from_legion_dims({batch_size, feature_size});
+    TensorShape input_shape = make_tensor_shape_from_legion_dims(
+        {batch_size, feature_size}, DataType::FLOAT);
     TensorShape output_shape = input_shape;
     TensorShape feature_shape =
-        make_float_tensor_shape_from_legion_dims({feature_size});
+        make_tensor_shape_from_legion_dims({feature_size}, DataType::FLOAT);
 
     ManagedPerDeviceFFHandle managed_handle{};
     ManagedFFStream managed_stream{};
@@ -31,8 +31,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                         epsilon);
 
     GenericTensorAccessorR input_accessor =
-        read_only_accessor_from_write_accessor(
-            create_random_filled_accessor_w(input_shape, allocator));
+        create_random_filled_accessor_r(input_shape, allocator);
     GenericTensorAccessorW gamma_accessor =
         create_filled_accessor_w(feature_shape, allocator, 1.0f);
 
@@ -52,8 +51,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(output_shape, allocator));
+          create_random_filled_accessor_r(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
           create_random_filled_accessor_w(input_shape, allocator);
       GenericTensorAccessorW gamma_grad_accessor =

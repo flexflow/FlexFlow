@@ -20,11 +20,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     Allocator allocator = create_local_cuda_memory_allocator();
 
     TensorShape input_shape_a =
-        make_float_tensor_shape_from_legion_dims({m, k, batch});
+        make_tensor_shape_from_legion_dims({m, k, batch}, DataType::FLOAT);
     TensorShape input_shape_b =
-        make_float_tensor_shape_from_legion_dims({k, n, batch});
+        make_tensor_shape_from_legion_dims({k, n, batch}, DataType::FLOAT);
     TensorShape output_shape =
-        make_float_tensor_shape_from_legion_dims({m, n, batch});
+        make_tensor_shape_from_legion_dims({m, n, batch}, DataType::FLOAT);
 
     GenericTensorAccessorW a_accessor =
         create_random_filled_accessor_w(input_shape_a, allocator);

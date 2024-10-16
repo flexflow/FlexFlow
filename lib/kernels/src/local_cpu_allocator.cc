@@ -1,4 +1,5 @@
-#include "local-execution/local_cpu_allocator.h"
+#include "kernels/local_cpu_allocator.h"
+#include "kernels/device.h"
 #include "utils/containers/contains_key.h"
 
 namespace FlexFlow {
@@ -22,7 +23,8 @@ DeviceType LocalCPUAllocator::get_allocation_device_type() const {
 }
 
 Allocator create_local_cpu_memory_allocator() {
-  return Allocator::create<LocalCPUAllocator>();
+  Allocator allocator = Allocator::create<LocalCPUAllocator>();
+  return allocator;
 }
 
 } // namespace FlexFlow

@@ -12,17 +12,17 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     GatherPerDeviceState state = {managed_handle.raw_handle(), legion_dim_t(2)};
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
-    TensorShape output_shape = make_float_tensor_shape_from_legion_dims({50});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims({100}, DataType::FLOAT);
+    TensorShape output_shape =
+        make_tensor_shape_from_legion_dims({50}, DataType::FLOAT);
 
     GenericTensorAccessorR index_accessor =
-        read_only_accessor_from_write_accessor(
-            create_random_filled_accessor_w(output_shape, allocator));
+        create_random_filled_accessor_r(output_shape, allocator);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(input_shape, allocator));
+          create_random_filled_accessor_r(input_shape, allocator);
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
@@ -32,16 +32,12 @@ TEST_SUITE(FF_TEST_SUITE) {
                                       index_accessor,
                                       output_accessor);
 
-      std::vector<float> host_output_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(output_accessor));
-      CHECK(contains_non_zero(host_output_data));
+      CHECK(contains_non_zero(output_accessor));
     }
 
     SUBCASE("backward_kernel") {
       GenericTensorAccessorR output_grad_accessor =
-          read_only_accessor_from_write_accessor(
-              create_random_filled_accessor_w(output_shape, allocator));
+          create_random_filled_accessor_r(output_shape, allocator);
       GenericTensorAccessorW input_grad_accessor =
           create_random_filled_accessor_w(input_shape, allocator);
 
@@ -51,10 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                                        index_accessor,
                                        input_grad_accessor);
 
-      std::vector<float> host_input_grad_data =
-          load_data_to_host_from_device<float>(
-              read_only_accessor_from_write_accessor(input_grad_accessor));
-      CHECK(contains_non_zero(host_input_grad_data));
+      CHECK(contains_non_zero(input_grad_accessor));
     }
   }
 }

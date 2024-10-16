@@ -67,8 +67,8 @@ static std::optional<float>
   return profile(backward_kernel,
                  profiling,
                  "[replicate] backward_time = {:.2lf}ms\n",
-                 input_grad,
                  output_grad,
+                 input_grad,
                  attrs.replicate_degree);
 }
 

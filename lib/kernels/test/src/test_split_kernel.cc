@@ -1,6 +1,7 @@
 #include "doctest/doctest.h"
 #include "kernels/split_kernels.h"
 #include "test_utils.h"
+#include "utils/containers/repeat.h"
 
 using namespace ::FlexFlow;
 
@@ -16,8 +17,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     Allocator allocator = create_local_cuda_memory_allocator();
 
-    TensorShape input_shape = make_float_tensor_shape_from_legion_dims({100});
-    TensorShape output_shape = make_float_tensor_shape_from_legion_dims({50});
+    TensorShape input_shape =
+        make_tensor_shape_from_legion_dims({100}, DataType::FLOAT);
+    TensorShape output_shape =
+        make_tensor_shape_from_legion_dims({50}, DataType::FLOAT);
 
     SUBCASE("forward_kernel") {
       GenericTensorAccessorW input_accessor =

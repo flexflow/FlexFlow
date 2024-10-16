@@ -5,10 +5,13 @@
 #include "device.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/datatype.h"
+#include "pcg/device_type.dtg.h"
 #include "utils/exception.h"
 #include "utils/required.h"
 
 namespace FlexFlow {
+
+struct Allocator;
 
 class GenericTensorAccessorW {
 public:
@@ -28,15 +31,68 @@ public:
   double *get_double_ptr() const;
   half *get_half_ptr() const;
 
+  GenericTensorAccessorW() = delete;
+
+  GenericTensorAccessorW(DataType data_type,
+                         ArrayShape const &shape,
+                         void *ptr,
+                         DeviceType device_type);
+
+  bool operator==(GenericTensorAccessorW const &) const;
+  bool operator!=(GenericTensorAccessorW const &) const;
+
+  template <DataType DT, typename... Indices>
+  real_type_t<DT> &at(Indices... indices) {
+    if (this->device_type != DeviceType::CPU) {
+      throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
+    }
+    if (this->data_type != DT) {
+      throw mk_runtime_error(fmt::format(
+          "Invalid access data type ({} != {})", this->data_type, DT));
+    }
+
+    using T = real_type_t<DT>;
+
+    T *data_ptr = static_cast<T *>(this->ptr);
+    size_t offset = calculate_index_offset({static_cast<size_t>(indices)...});
+
+    return data_ptr[offset];
+  }
+
+  template <DataType DT, typename... Indices>
+  real_type_t<DT> const &at(Indices... indices) const {
+    if (this->device_type != DeviceType::CPU) {
+      throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
+    }
+    if (this->data_type != DT) {
+      throw mk_runtime_error(fmt::format(
+          "Invalid access data type ({} != {})", this->data_type, DT));
+    }
+
+    using T = real_type_t<DT>;
+
+    T const *data_ptr = static_cast<T const *>(this->ptr);
+    size_t offset = calculate_index_offset({static_cast<size_t>(indices)...});
+
+    return data_ptr[offset];
+  }
+
 public:
   DataType data_type;
   ArrayShape shape;
-  req<void *> ptr;
+  void *ptr;
+  DeviceType device_type;
+
+private:
+  std::tuple<decltype(data_type) const &,
+             decltype(shape) const &,
+             decltype(ptr) const &,
+             decltype(device_type) const &>
+      tie() const;
+
+  size_t calculate_index_offset(
+      std::initializer_list<size_t> const &indices) const;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorW,
-                                             data_type,
-                                             shape,
-                                             ptr);
 
 std::string format_as(GenericTensorAccessorW const &);
 std::ostream &operator<<(std::ostream &, GenericTensorAccessorW const &);
@@ -59,15 +115,50 @@ public:
   double const *get_double_ptr() const;
   half const *get_half_ptr() const;
 
+  GenericTensorAccessorR() = delete;
+
+  GenericTensorAccessorR(DataType data_type,
+                         ArrayShape const &shape,
+                         void const *ptr,
+                         DeviceType device_type);
+
+  bool operator==(GenericTensorAccessorR const &) const;
+  bool operator!=(GenericTensorAccessorR const &) const;
+
+  template <DataType DT, typename... Indices>
+  real_type_t<DT> const &at(Indices... indices) const {
+    if (this->device_type != DeviceType::CPU) {
+      throw mk_runtime_error("Calling at() on non-CPU allocated tensor");
+    }
+    if (this->data_type != DT) {
+      throw mk_runtime_error(fmt::format(
+          "Invalid access data type ({} != {})", this->data_type, DT));
+    }
+
+    using T = real_type_t<DT>;
+
+    T const *data_ptr = static_cast<T const *>(this->ptr);
+    size_t offset = calculate_index_offset({static_cast<size_t>(indices)...});
+
+    return data_ptr[offset];
+  }
+
 public:
   DataType data_type;
   ArrayShape shape;
-  req<void const *> ptr;
+  void const *ptr;
+  DeviceType device_type;
+
+private:
+  std::tuple<decltype(data_type) const &,
+             decltype(shape) const &,
+             decltype(ptr) const &,
+             decltype(device_type) const &>
+      tie() const;
+
+  size_t calculate_index_offset(
+      std::initializer_list<size_t> const &indices) const;
 };
-FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GenericTensorAccessorR,
-                                             data_type,
-                                             shape,
-                                             ptr);
 
 std::string format_as(GenericTensorAccessorR const &);
 std::ostream &operator<<(std::ostream &, GenericTensorAccessorR const &);
@@ -165,6 +256,22 @@ std::pair<ArrayShape, DataType>
     get_shape_and_datatype(GenericTensorAccessorR const &accessor);
 std::pair<ArrayShape, DataType>
     get_shape_and_datatype(GenericTensorAccessorW const &accessor);
+
+void transfer_data_between_accessors(
+    GenericTensorAccessorW &dst_accessor,
+    GenericTensorAccessorR const &src_accessor);
+
+void transfer_data_between_accessors(
+    GenericTensorAccessorW &dst_accessor,
+    GenericTensorAccessorW const &src_accessor);
+
+GenericTensorAccessorR
+    copy_tensor_accessor_r(GenericTensorAccessorR const &src_accessor,
+                           Allocator &allocator);
+
+GenericTensorAccessorW
+    copy_tensor_accessor_w(GenericTensorAccessorW const &src_accessor,
+                           Allocator &allocator);
 
 } // namespace FlexFlow
 

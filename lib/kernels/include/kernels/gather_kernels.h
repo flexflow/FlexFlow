@@ -15,8 +15,7 @@ FF_VISITABLE_STRUCT_NONSTANDARD_CONSTRUCTION(GatherPerDeviceState,
                                              handle,
                                              legion_dim);
 
-namespace Kernels {
-namespace Gather {
+namespace Kernels::Gather {
 
 void forward_kernel(ffStream_t stream,
                     GatherPerDeviceState const &m,
@@ -30,8 +29,7 @@ void backward_kernel(ffStream_t stream,
                      GenericTensorAccessorR const &index,
                      GenericTensorAccessorW const &input_grad);
 
-} // namespace Gather
-} // namespace Kernels
+} // namespace Kernels::Gather
 } // namespace FlexFlow
 
 #endif

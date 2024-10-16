@@ -3,12 +3,8 @@
 
 #include "device.h"
 #include "kernels/accessor.h"
-#include "kernels/ff_handle.h"
-#include "op-attrs/activation.dtg.h"
 
-namespace FlexFlow {
-namespace Kernels {
-namespace Cast {
+namespace FlexFlow::Kernels::Cast {
 
 void forward_kernel(ffStream_t stream,
                     GenericTensorAccessorR const &input,
@@ -22,8 +18,6 @@ void backward_kernel(ffStream_t stream,
                      DataType input_type,
                      DataType output_type);
 
-} // namespace Cast
-} // namespace Kernels
-} // namespace FlexFlow
+} // namespace FlexFlow::Kernels::Cast
 
 #endif
