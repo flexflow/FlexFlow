@@ -320,8 +320,24 @@ void RequestManager::set_spec_infer_old_version(bool spec_infer_old_version_) {
   spec_infer_old_version = spec_infer_old_version_;
 }
 
+void RequestManager::set_greedy_scheduler(bool greedy_scheduler_) {
+  greedy_scheduler = greedy_scheduler_;
+}
+
+void RequestManager::set_equal_schedule(bool equal_schedule_) {
+  equal_schedule = equal_schedule_;
+}
+
 bool RequestManager::get_spec_infer_old_version() {
   return spec_infer_old_version;
+}
+
+bool RequestManager::get_greedy_scheduler() {
+  return greedy_scheduler;
+}
+
+bool RequestManager::get_equal_schedule() {
+  return equal_schedule;
 }
 
 double RequestManager::get_request_expected_latency(Request &request) {
@@ -2888,6 +2904,12 @@ void RequestManager::add_tokens_to_spec_token_tree_old_version(
 }
 
 void RequestManager::prune_token_tree() {
+  if (get_greedy_schedule()) {
+    return prune_token_tree_greedy();
+  } else if (get_equal_schedule()) {
+    return prune_token_tree_equal();
+  }
+
   // Each reqeust has at least one token
   int budget = get_max_tokens_per_batch() - num_available_requests;
   assert(budget >= 0);
@@ -2930,6 +2952,48 @@ void RequestManager::prune_token_tree() {
     } else {
       add_tokens_toward_goodput(budget);
     }
+  }
+}
+
+void RequestManager::prune_token_tree_equal() {
+  // Each reqeust has at least one token
+  int const equal_budget =
+      get_max_tokens_per_batch() / get_num_active_requests();
+  assert(equal_budget >= 0);
+
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    int budget = equal_budget;
+    assert(budget >= 0);
+    if (budget > 0) {
+      add_tokens_toward_goodput_per_request(budget, request_index);
+    }
+  }
+}
+
+void RequestManager::prune_token_tree_greedy() {
+  // Each reqeust has at least one token
+  int budget = get_max_tokens_per_batch();
+  assert(budget >= 0);
+
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+  }
+
+  if (budget > 0) {
+    add_tokens_toward_goodput(budget);
   }
 }
 
@@ -3106,6 +3170,36 @@ void RequestManager::add_tokens_toward_goodput(int budget) {
         SharedTokenTreeNodePtrDoubleLess>(SharedTokenTreeNodePtrDoubleLess(),
                                           std::move(_prealloc_vector));
   }
+}
+
+void RequestManager::add_tokens_toward_goodput_per_request(int budget,
+                                                           int request_index) {
+  RequestGuid guid = guid_of_requests[request_index];
+  Request &request = all_requests[guid];
+  assert(request.status == Request::RUNNING);
+  if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
+    continue;
+  }
+
+  auto &pq = request.token_tree_nodes_acc_prob_pair_pq;
+
+  // Perform dequeue and enqueue until the budget is used up
+  while (budget > 0 and !pq.empty()) {
+    auto [node_ptr, acc_log_prob] = pq.top();
+    pq.pop();
+    node_ptr->included = true;
+    budget--;
+  }
+
+  // Clear the priority queue in each requests
+  std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
+      _prealloc_vector;
+  _prealloc_vector.reserve(BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  request.token_tree_nodes_acc_prob_pair_pq = std::priority_queue<
+      std::pair<std::shared_ptr<TokenTreeNode>, double>,
+      std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>,
+      SharedTokenTreeNodePtrDoubleLess>(SharedTokenTreeNodePtrDoubleLess(),
+                                        std::move(_prealloc_vector));
 }
 
 std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {
