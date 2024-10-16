@@ -6,7 +6,7 @@
 
 namespace FlexFlow {
 
-OptimizerAttrs next(OptimizerAttrs const &old);
+OptimizerAttrs get_next_iteration_optimizer_attrs(OptimizerAttrs const &old);
 
 } // namespace FlexFlow
 

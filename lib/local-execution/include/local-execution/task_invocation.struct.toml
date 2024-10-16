@@ -1,7 +1,9 @@
 namespace = "FlexFlow"
 name = "TaskInvocation"
 features = [
-  "eq"
+  "eq",
+  "fmt",
+  "hash"
 ]
 
 includes = [

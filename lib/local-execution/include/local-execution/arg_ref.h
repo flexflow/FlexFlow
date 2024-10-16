@@ -60,6 +60,20 @@ private:
   friend struct std::hash<ArgRefSpec<LABEL_TYPE>>;
 };
 
+template <typename T>
+std::string format_as(ArgRefSpec<T> const &x) {
+  std::ostringstream oss;
+  oss << "<ArgRefSpec";
+  oss << " type_idx=" << x.get_type_index().name();
+  oss << ">";
+  return oss.str();
+}
+
+template <typename T>
+std::ostream &operator<<(std::ostream &s, ArgRefSpec<T> const &x) {
+  return (s << fmt::to_string(x));
+}
+
 } // namespace FlexFlow
 
 namespace std {
@@ -68,8 +82,7 @@ template <typename LABEL_TYPE>
 struct hash<::FlexFlow::ArgRefSpec<LABEL_TYPE>> {
   size_t operator()(::FlexFlow::ArgRefSpec<LABEL_TYPE> const &s) const {
     size_t result = 0;
-    hash_combine(s.type_idx);
-    hash_combine(s.ref_type);
+    ::FlexFlow::hash_combine(result, s.type_idx);
     return result;
   }
 };

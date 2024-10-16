@@ -20,7 +20,7 @@ static std::string get_default_name(PCGOperatorAttrs const &attrs) {
   return get_default_name(get_op_type(attrs));
 }
 
-static ParallelTensorAttrs make_weight_attrs(
+ParallelTensorAttrs make_weight_attrs(
     ParallelTensorShape const &shape,
     std::optional<InitializerAttrs> const &initializer_attrs) {
   return ParallelTensorAttrs{

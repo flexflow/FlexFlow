@@ -39,7 +39,6 @@ LocalTrainingBacking::LocalTrainingBacking(
 
     // allocate optimizer buffers
     if (attrs.has<WeightAttrs>() && this->training_instance.has_value()) {
-      assert(this->optimizer_attrs.has_value());
       TaskSignature sig = get_update_signature(this->optimizer_attrs.value());
       tensor_guid_t weight_tensor =
           get_only(get_outgoing_tensors(this->computation_graph, node));
@@ -179,7 +178,8 @@ void LocalTrainingBacking::execute_update() {
     }
   }
 
-  this->optimizer_attrs = next(this->optimizer_attrs.value());
+  this->optimizer_attrs =
+      get_next_iteration_optimizer_attrs(this->optimizer_attrs.value());
 }
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(

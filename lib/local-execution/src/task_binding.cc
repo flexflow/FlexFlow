@@ -1,5 +1,6 @@
 #include "local-execution/task_binding.h"
 #include "utils/containers/contains_key.h"
+#include "utils/fmt/unordered_map.h"
 
 namespace FlexFlow {
 
@@ -39,6 +40,18 @@ std::unordered_map<SlotGradId, TensorGuidSpec> const &
 std::unordered_map<slot_id_t, TaskArgSpec> const &
     TaskBinding::get_arg_bindings() const {
   return this->arg_bindings;
+}
+
+std::string format_as(TaskBinding const &x) {
+  std::ostringstream oss;
+  oss << "<TaskBinding";
+  oss << " tensor_bindings=" << x.get_tensor_bindings();
+  oss << " arg_bindings=" << x.get_arg_bindings();
+  return oss.str();
+}
+
+std::ostream &operator<<(std::ostream &s, TaskBinding const &x) {
+  return (s << fmt::to_string(x));
 }
 
 } // namespace FlexFlow

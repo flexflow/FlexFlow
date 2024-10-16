@@ -1,7 +1,9 @@
 namespace = "FlexFlow"
 name = "TaskArgSpec"
 features = [
-  "eq"
+  "eq",
+  "fmt",
+  "hash"
 ]
 
 includes = [

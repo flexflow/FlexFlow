@@ -10,6 +10,9 @@ legion_dim_t add_to_legion_dim(legion_dim_t legion_dim, int value);
 
 legion_dim_t legion_dim_from_ff_dim(ff_dim_t, int num_dimensions);
 
+std::optional<legion_dim_t> legion_dim_from_ff_dim(std::optional<ff_dim_t>,
+                                                   int num_dimensions);
+
 template <typename T>
 using LegionOrdered = DimOrdered<legion_dim_t, T>;
 

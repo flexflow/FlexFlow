@@ -61,8 +61,10 @@ static DeviceSpecificDeviceStates
 
   ParallelTensorShape output_shape =
       throw_if_unexpected(get_output_shape(attrs, input_shape));
-  ElementUnaryPerDeviceState per_device_state = init_kernel(
-      get_piece_shape(input_shape), get_piece_shape(output_shape), attrs);
+  ElementUnaryPerDeviceState per_device_state =
+      init_kernel(ArrayShape{get_piece_shape(input_shape)},
+                  ArrayShape{get_piece_shape(output_shape)},
+                  attrs);
 
   return DeviceSpecificDeviceStates{
       DeviceSpecific<ElementUnaryPerDeviceState>::create(per_device_state)};

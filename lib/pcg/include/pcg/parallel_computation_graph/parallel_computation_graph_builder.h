@@ -179,6 +179,10 @@ public:
   ParallelComputationGraph pcg;
 };
 
+ParallelTensorAttrs
+    make_weight_attrs(ParallelTensorShape const &shape,
+                      std::optional<InitializerAttrs> const &initializer_attrs);
+
 } // namespace FlexFlow
 
 #endif

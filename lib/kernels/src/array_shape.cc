@@ -61,8 +61,11 @@ ArrayShape ArrayShape::sub_shape(legion_dim_t start, ff_dim_t end) const {
 
 ArrayShape ArrayShape::sub_shape(std::optional<ff_dim_t> start,
                                  std::optional<ff_dim_t> end) const {
-  return ArrayShape{legion_dims_from_ff_dims(
-      slice(ff_ordered_from_legion_ordered(this->dims), start, end))};
+  std::optional<legion_dim_t> legion_start =
+      legion_dim_from_ff_dim(start, num_dims());
+  std::optional<legion_dim_t> legion_end =
+      legion_dim_from_ff_dim(end, num_dims());
+  return this->sub_shape(legion_start, legion_end);
 }
 
 ArrayShape ArrayShape::sub_shape(std::optional<legion_dim_t> start,

@@ -14,7 +14,7 @@ void Allocator::deallocate(void *ptr) {
 GenericTensorAccessorW
     Allocator::allocate_tensor(TensorShape const &tensor_shape) {
   void *ptr = this->allocate(get_size_in_bytes(tensor_shape));
-  return {tensor_shape.data_type, tensor_shape, ptr};
+  return {tensor_shape.data_type, ArrayShape{tensor_shape}, ptr};
 }
 
 } // namespace FlexFlow
