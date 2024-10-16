@@ -1,10 +1,10 @@
 #ifndef _FLEXFLOW_COMPILER_MACHINE_MAPPING_MACHINE_MAPPING_RESULT_H
 #define _FLEXFLOW_COMPILER_MACHINE_MAPPING_MACHINE_MAPPING_RESULT_H
 
-#include "compiler/machine_mapping/machine_mapping_result.dtg.h"
-#include "compiler/machine_mapping/parallel_split_transformation.dtg.h"
-#include "compiler/machine_mapping/machine_memory_constraints/machine_memory_constraints.dtg.h"
 #include "compiler/machine_mapping/machine_mapping_config.dtg.h"
+#include "compiler/machine_mapping/machine_mapping_result.dtg.h"
+#include "compiler/machine_mapping/machine_memory_constraints/machine_memory_constraints.dtg.h"
+#include "compiler/machine_mapping/parallel_split_transformation.dtg.h"
 
 namespace FlexFlow {
 
@@ -39,9 +39,9 @@ FeasibleMachineMappingResult require_feasible(MachineMappingResult const &);
     CostMetric const &cost,
     MachineView const &machine_view);
 
-[[nodiscard]] MachineMappingResult
-    machine_mapping_memory_check(MachineMemoryConstraints const &memory_constraints,
-                                 MachineMappingResult const &result);
+[[nodiscard]] MachineMappingResult machine_mapping_memory_check(
+    MachineMemoryConstraints const &memory_constraints,
+    MachineMappingResult const &result);
 
 } // namespace FlexFlow
 

@@ -75,7 +75,8 @@ MachineMappingResult
   };
 
   if (config.enable_memory_optimization) {
-    return machine_mapping_memory_check(memory_constraints, result_without_memory_check);
+    return machine_mapping_memory_check(memory_constraints,
+                                        result_without_memory_check);
   } else {
     return result_without_memory_check;
   }
@@ -111,7 +112,8 @@ MachineMappingResult
   };
 
   if (config.enable_memory_optimization) {
-    return machine_mapping_memory_check(memory_constraints, result_without_memory_check);
+    return machine_mapping_memory_check(memory_constraints,
+                                        result_without_memory_check);
   } else {
     return result_without_memory_check;
   }
@@ -155,12 +157,13 @@ MachineMappingResult make_singleton_machine_mapping_result(
       },
   };
 
-  return machine_mapping_memory_check(memory_constraints, result_without_memory_check);
+  return machine_mapping_memory_check(memory_constraints,
+                                      result_without_memory_check);
 }
 
-MachineMappingResult
-    machine_mapping_memory_check(MachineMemoryConstraints const &memory_constraints,
-                                 MachineMappingResult const &result) {
+MachineMappingResult machine_mapping_memory_check(
+    MachineMemoryConstraints const &memory_constraints,
+    MachineMappingResult const &result) {
   FeasibleMachineMappingResult feasible_result = ({
     if (is_infeasible(result)) {
       return infeasible_machine_mapping_result();

@@ -24,14 +24,14 @@
 
 namespace FlexFlow {
 
-MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingCache &result_cache,
-                                MachineMappingContext const &context,
-                                MachineMappingProblemTree const &problem_tree,
-                                MachineSpecification const &resources,
-                                MachineMappingConstraints const &constraints,
-                                MachineMemoryConstraints const &memory_constraints,
-                                MachineMappingConfig const &config) {
+MachineMappingResult get_optimal_machine_mapping(
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &context,
+    MachineMappingProblemTree const &problem_tree,
+    MachineSpecification const &resources,
+    MachineMappingConstraints const &constraints,
+    MachineMemoryConstraints const &memory_constraints,
+    MachineMappingConfig const &config) {
 
   MachineMappingState state = MachineMappingState{
       problem_tree,
@@ -77,16 +77,16 @@ MachineMappingResult
   return result;
 }
 
-MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingCache &result_cache,
-                                MachineMappingContext const &context,
-                                MMProblemTreeSeriesSplit const &series_split,
-                                MachineSpecification const &resources,
-                                MachineMappingConstraints const &constraints,
-                                MachineMemoryConstraints const &memory_constraints,
-                                std::optional<ParallelSplitTransformation> const
-                                    &parallel_split_transformation,
-                                MachineMappingConfig const &config) {
+MachineMappingResult get_optimal_machine_mapping(
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &context,
+    MMProblemTreeSeriesSplit const &series_split,
+    MachineSpecification const &resources,
+    MachineMappingConstraints const &constraints,
+    MachineMemoryConstraints const &memory_constraints,
+    std::optional<ParallelSplitTransformation> const
+        &parallel_split_transformation,
+    MachineMappingConfig const &config) {
 
   auto get_boundary_machine_view_assignments =
       [&](std::unordered_set<BinaryTreePath> const &boundary_layers)
@@ -222,8 +222,14 @@ MachineMappingResult get_optimal_machine_mapping(
   auto evaluate_resource_split =
       [&](std::pair<MachineSpecification, MachineSpecification> const
               &resource_split) {
-        MachineMappingResult left_result = get_optimal_machine_mapping(
-            result_cache, context, lhs, resource_split.first, left_constraints, memory_constraints, config);
+        MachineMappingResult left_result =
+            get_optimal_machine_mapping(result_cache,
+                                        context,
+                                        lhs,
+                                        resource_split.first,
+                                        left_constraints,
+                                        memory_constraints,
+                                        config);
         MachineMappingResult right_result =
             get_optimal_machine_mapping(result_cache,
                                         context,
@@ -233,7 +239,8 @@ MachineMappingResult get_optimal_machine_mapping(
                                         memory_constraints,
                                         config);
 
-        return parallel_combine(config, memory_constraints, left_result, right_result);
+        return parallel_combine(
+            config, memory_constraints, left_result, right_result);
       };
 
   std::unordered_set<MachineMappingResult> parallel_results = transform(
@@ -243,14 +250,14 @@ MachineMappingResult get_optimal_machine_mapping(
                           get_mapping_with_minimal_runtime(parallel_results));
 }
 
-MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingCache &result_cache,
-                                MachineMappingContext const &context,
-                                UnmappedOpCostEstimateKey const &leaf,
-                                MachineSpecification const &resource,
-                                MachineMappingConstraints const &constraints,
-                                MachineMemoryConstraints const &memory_constraints,
-                                MachineMappingConfig const &config) {
+MachineMappingResult get_optimal_machine_mapping(
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &context,
+    UnmappedOpCostEstimateKey const &leaf,
+    MachineSpecification const &resource,
+    MachineMappingConstraints const &constraints,
+    MachineMemoryConstraints const &memory_constraints,
+    MachineMappingConfig const &config) {
 
   std::unordered_set<MachineView> candidates = [&] {
     std::optional<MachineView> machine_view = require_only_root(constraints);
@@ -266,7 +273,8 @@ MachineMappingResult
         map_unmapped_op_cost_estimate_key(leaf, machine_view);
     CostMetric cost = context.cost_estimator.estimate_cost(mapped);
 
-    return make_singleton_machine_mapping_result(config, memory_constraints, cost, machine_view);
+    return make_singleton_machine_mapping_result(
+        config, memory_constraints, cost, machine_view);
   };
 
   std::unordered_set<MachineMappingResult> candidate_results =

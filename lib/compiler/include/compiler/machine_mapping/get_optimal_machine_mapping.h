@@ -14,25 +14,25 @@
 
 namespace FlexFlow {
 
-MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingCache &result_cache,
-                                MachineMappingContext const &context,
-                                MachineMappingProblemTree const &problem_tree,
-                                MachineSpecification const &resources,
-                                MachineMappingConstraints const &constraints,
-                                MachineMemoryConstraints const &memory_constraints,
-                                MachineMappingConfig const &config);
+MachineMappingResult get_optimal_machine_mapping(
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &context,
+    MachineMappingProblemTree const &problem_tree,
+    MachineSpecification const &resources,
+    MachineMappingConstraints const &constraints,
+    MachineMemoryConstraints const &memory_constraints,
+    MachineMappingConfig const &config);
 
-MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingCache &result_cache,
-                                MachineMappingContext const &context,
-                                MMProblemTreeSeriesSplit const &series_split,
-                                MachineSpecification const &resources,
-                                MachineMappingConstraints const &constraints,
-                                MachineMemoryConstraints const &memory_constraints,
-                                std::optional<ParallelSplitTransformation> const
-                                    &parallel_split_transformation,
-                                MachineMappingConfig const &config);
+MachineMappingResult get_optimal_machine_mapping(
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &context,
+    MMProblemTreeSeriesSplit const &series_split,
+    MachineSpecification const &resources,
+    MachineMappingConstraints const &constraints,
+    MachineMemoryConstraints const &memory_constraints,
+    std::optional<ParallelSplitTransformation> const
+        &parallel_split_transformation,
+    MachineMappingConfig const &config);
 
 MachineMappingResult get_optimal_machine_mapping(
     MachineMappingCache &result_cache,
@@ -43,14 +43,14 @@ MachineMappingResult get_optimal_machine_mapping(
     MachineMemoryConstraints const &memory_constraints,
     MachineMappingConfig const &config);
 
-MachineMappingResult
-    get_optimal_machine_mapping(MachineMappingCache &result_cache,
-                                MachineMappingContext const &,
-                                UnmappedOpCostEstimateKey const &leaf,
-                                MachineSpecification const &resources,
-                                MachineMappingConstraints const &constraints,
-                                MachineMemoryConstraints const &memory_constraints,
-                                MachineMappingConfig const &config);
+MachineMappingResult get_optimal_machine_mapping(
+    MachineMappingCache &result_cache,
+    MachineMappingContext const &,
+    UnmappedOpCostEstimateKey const &leaf,
+    MachineSpecification const &resources,
+    MachineMappingConstraints const &constraints,
+    MachineMemoryConstraints const &memory_constraints,
+    MachineMappingConfig const &config);
 
 } // namespace FlexFlow
 

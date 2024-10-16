@@ -4,8 +4,8 @@ namespace FlexFlow {
 
 CostMetric zero_cost_metric() {
   return CostMetric{
-    /*runtime=*/0,
-    /*memory=*/0,
+      /*runtime=*/0,
+      /*memory=*/0,
   };
 }
 
