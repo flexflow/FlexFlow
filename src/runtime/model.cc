@@ -1677,6 +1677,7 @@ void FFModel::finish_nccl_comms() {
                                  false /*must*/,
                                  0 /*mapper_id*/,
                                  comm.first);
+    index_launcher.concurrent = true;
     FutureMap fm = runtime->execute_index_space(ctx, index_launcher);
     fm.wait_all_results();
   }
@@ -7664,6 +7665,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "NCCL Finish Communicators");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
     if (pre_register) {
       Runtime::preregister_task_variant<Op::finish_nccl_comms_task>(
           registrar, "NCCL Finish Communicators Task", 111 /*variant ID*/);
