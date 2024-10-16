@@ -11,27 +11,27 @@
 namespace FlexFlow {
 
 struct TestCostEstimator : public ICostEstimator {
-  std::function<float(OpCostEstimateKey const &)> get_operator_cost;
-  std::function<float(TensorSetMovement const &)> get_communication_cost;
+  std::function<CostMetric(OpCostEstimateKey const &)> get_operator_cost;
+  std::function<CostMetric(TensorSetMovement const &)> get_communication_cost;
 
   TestCostEstimator() = delete;
   TestCostEstimator(decltype(get_operator_cost) const &get_operator_cost,
                     decltype(get_communication_cost)
                         const &get_communication_cost);
 
-  float estimate_cost(OpCostEstimateKey const &) const override;
-
-  float estimate_cost(TensorSetMovement const &) const override;
+  CostMetric estimate_cost(OpCostEstimateKey const &) const override;
+  CostMetric estimate_cost(TensorSetMovement const &) const override;
 };
 
 CostEstimator make_fake_cost_estimator(
-    std::function<float(OpCostEstimateKey const &)> const &get_operator_cost,
-    std::function<float(TensorSetMovement const &)> const
+    std::function<CostMetric(OpCostEstimateKey const &)> const
+        &get_operator_cost,
+    std::function<CostMetric(TensorSetMovement const &)> const
         &get_communication_cost);
 
 CostEstimator make_fake_cost_estimator(
-    std::unordered_map<OpCostEstimateKey, float> const &op_cost_map,
-    std::unordered_map<TensorSetMovement, float> const &comm_cost_map);
+    std::unordered_map<OpCostEstimateKey, CostMetric> const &op_cost_map,
+    std::unordered_map<TensorSetMovement, CostMetric> const &comm_cost_map);
 
 } // namespace FlexFlow
 

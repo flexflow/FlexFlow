@@ -6,10 +6,20 @@ using namespace FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("series_combine") {
+    MachineMemoryConstraints memory_constraints = MachineMemoryConstraints{
+        /*memory_limit=*/10,
+    };
+    MachineMappingConfig config = MachineMappingConfig{
+        /*enable_memory_optimization=*/false,
+    };
+
     MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
     MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
 
-    float pre_cost = 2.0;
+    CostMetric pre_cost = CostMetric{
+        /*runtime=*/2.0,
+        /*memory=*/2,
+    };
     MachineMappingResult pre = MachineMappingResult{
         FeasibleMachineMappingResult{
             /*runtime=*/pre_cost,
@@ -31,7 +41,10 @@ TEST_SUITE(FF_TEST_SUITE) {
         },
     };
 
-    float post_cost = 4.0;
+    CostMetric post_cost = CostMetric{
+        /*runtime=*/4.0,
+        /*memory=*/1,
+    };
     MachineMappingResult post = MachineMappingResult{
         FeasibleMachineMappingResult{
             /*runtime=*/post_cost,
@@ -47,19 +60,32 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MachineMappingResult infeasible = infeasible_machine_mapping_result();
 
-    float comm_cost = 3.0;
+    CostMetric comm_cost = CostMetric{
+        /*runtime=*/3.0,
+        /*memory=*/0,
+    };
 
     SUBCASE("pre is infeasbile") {
-      MachineMappingResult result = series_combine(
-          comm_cost, infeasible, post, ParallelSplitTransformation::LthenR);
+      MachineMappingResult result =
+          series_combine(config,
+                         memory_constraints,
+                         comm_cost,
+                         infeasible,
+                         post,
+                         ParallelSplitTransformation::LthenR);
       MachineMappingResult correct = infeasible;
 
       CHECK(result == correct);
     }
 
     SUBCASE("post is infeasbile") {
-      MachineMappingResult result = series_combine(
-          comm_cost, pre, infeasible, ParallelSplitTransformation::LthenR);
+      MachineMappingResult result =
+          series_combine(config,
+                         memory_constraints,
+                         comm_cost,
+                         pre,
+                         infeasible,
+                         ParallelSplitTransformation::LthenR);
       MachineMappingResult correct = infeasible;
 
       CHECK(result == correct);
@@ -67,7 +93,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("both are infeasible") {
       MachineMappingResult result =
-          series_combine(comm_cost,
+          series_combine(config,
+                         memory_constraints,
+                         comm_cost,
                          infeasible,
                          infeasible,
                          ParallelSplitTransformation::LthenR);
@@ -77,9 +105,13 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("both are feasible") {
+      CostMetric no_parallel_split_transform_cost = CostMetric{
+          /*runtime=*/pre_cost.runtime + post_cost.runtime + comm_cost.runtime,
+          /*memory=*/pre_cost.memory + post_cost.memory + comm_cost.memory,
+      };
       MachineMappingResult no_parallel_split_transform = MachineMappingResult{
           FeasibleMachineMappingResult{
-              /*runtime=*/pre_cost + comm_cost + post_cost,
+              /*cost=*/no_parallel_split_transform_cost,
               /*machine_mapping=*/
               ParallelLayerGuidObliviousMachineMapping{{
                   {
@@ -107,27 +139,42 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       SUBCASE("parallel_split_transformation = std::nullopt") {
-        MachineMappingResult result =
-            series_combine(comm_cost, pre, post, std::nullopt);
+        MachineMappingResult result = series_combine(
+            config, memory_constraints, comm_cost, pre, post, std::nullopt);
         MachineMappingResult correct = no_parallel_split_transform;
 
         CHECK(result == correct);
       }
 
       SUBCASE("parallel_split_transformation = LthenR") {
-        MachineMappingResult result = series_combine(
-            comm_cost, pre, post, ParallelSplitTransformation::LthenR);
+        MachineMappingResult result =
+            series_combine(config,
+                           memory_constraints,
+                           comm_cost,
+                           pre,
+                           post,
+                           ParallelSplitTransformation::LthenR);
         MachineMappingResult correct = no_parallel_split_transform;
 
         CHECK(result == correct);
       }
 
       SUBCASE("parallel_split_transformation = RthenL") {
-        MachineMappingResult result = series_combine(
-            comm_cost, pre, post, ParallelSplitTransformation::RthenL);
+        MachineMappingResult result =
+            series_combine(config,
+                           memory_constraints,
+                           comm_cost,
+                           pre,
+                           post,
+                           ParallelSplitTransformation::RthenL);
+        CostMetric correct_cost = CostMetric{
+            /*runtime=*/pre_cost.runtime + post_cost.runtime +
+                comm_cost.runtime,
+            /*memory=*/pre_cost.memory + post_cost.memory + comm_cost.memory,
+        };
         MachineMappingResult correct = MachineMappingResult{
             FeasibleMachineMappingResult{
-                /*runtime=*/pre_cost + comm_cost + post_cost,
+                /*runtime=*/correct_cost,
                 /*machine_mapping=*/
                 ParallelLayerGuidObliviousMachineMapping{{
                     {
@@ -160,12 +207,29 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("parallel_combine") {
+    MachineMemoryConstraints memory_constraints = MachineMemoryConstraints{
+        /*memory_limit=*/10,
+    };
+    MachineMappingConfig config = MachineMappingConfig{
+        /*enable_memory_optimization=*/false,
+    };
+
     MachineView machine_view_0 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(1));
     MachineView machine_view_1 = make_1d_machine_view(gpu_id_t(0), gpu_id_t(2));
 
+    CostMetric lhs_cost = CostMetric{
+        /*runtime=*/2.0,
+        /*memory=*/2,
+    };
+
+    CostMetric rhs_cost = CostMetric{
+        /*runtime=*/4.0,
+        /*memory=*/1,
+    };
+
     MachineMappingResult lhs = MachineMappingResult{
         FeasibleMachineMappingResult{
-            /*runtime=*/2.0,
+            /*cost=*/lhs_cost,
             /*machine_mapping=*/
             ParallelLayerGuidObliviousMachineMapping{{
                 {
@@ -186,7 +250,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MachineMappingResult rhs = MachineMappingResult{
         FeasibleMachineMappingResult{
-            /*runtime=*/4.0,
+            /*cost=*/rhs_cost,
             /*machine_mapping=*/
             ParallelLayerGuidObliviousMachineMapping{{
                 {
@@ -200,31 +264,40 @@ TEST_SUITE(FF_TEST_SUITE) {
     MachineMappingResult infeasible = infeasible_machine_mapping_result();
 
     SUBCASE("lhs is infeasbile") {
-      MachineMappingResult result = parallel_combine(infeasible, rhs);
+      MachineMappingResult result =
+          parallel_combine(config, memory_constraints, infeasible, rhs);
       MachineMappingResult correct = infeasible;
 
       CHECK(result == correct);
     }
 
     SUBCASE("rhs is infeasbile") {
-      MachineMappingResult result = parallel_combine(lhs, infeasible);
+      MachineMappingResult result =
+          parallel_combine(config, memory_constraints, lhs, infeasible);
       MachineMappingResult correct = infeasible;
 
       CHECK(result == correct);
     }
 
     SUBCASE("both are infeasible") {
-      MachineMappingResult result = parallel_combine(infeasible, infeasible);
+      MachineMappingResult result =
+          parallel_combine(config, memory_constraints, infeasible, infeasible);
       MachineMappingResult correct = infeasible;
 
       CHECK(result == correct);
     }
 
     SUBCASE("both are feasible") {
-      MachineMappingResult result = parallel_combine(lhs, rhs);
+      MachineMappingResult result =
+          parallel_combine(config, memory_constraints, lhs, rhs);
+
+      CostMetric correct_cost = CostMetric{
+          /*runtime=*/4.0,
+          /*memory=*/2,
+      };
       MachineMappingResult correct = MachineMappingResult{
           FeasibleMachineMappingResult{
-              /*runtime=*/4.0,
+              /*cost=*/correct_cost,
               /*machine_mapping=*/
               ParallelLayerGuidObliviousMachineMapping{{
                   {
@@ -261,7 +334,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MachineMappingResult faster = MachineMappingResult{
         FeasibleMachineMappingResult{
-            /*runtime=*/2.0,
+            /*cost=*/CostMetric{2.0, 2},
             /*machine_mapping=*/
             ParallelLayerGuidObliviousMachineMapping{{
                 {
@@ -282,7 +355,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MachineMappingResult slower = MachineMappingResult{
         FeasibleMachineMappingResult{
-            /*runtime=*/4.0,
+            /*cost=*/CostMetric{4.0, 1},
             /*machine_mapping=*/
             ParallelLayerGuidObliviousMachineMapping{{
                 {
