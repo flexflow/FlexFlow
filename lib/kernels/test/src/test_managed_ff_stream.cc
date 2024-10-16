@@ -5,11 +5,11 @@ using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Test Managed FF Stream") {
-    ManagedFFStream base_stream{}; 
+    ManagedFFStream base_stream{};
 
     SUBCASE("Test ManagedFFStream Move Constructor") {
       ffStream_t const *base_stream_ptr = &base_stream.raw_stream();
-      
+
       ManagedFFStream new_stream(std::move(base_stream));
 
       CHECK(&base_stream.raw_stream() == nullptr);
@@ -21,7 +21,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       ManagedFFStream new_stream{};
       new_stream = std::move(base_stream);
-      
+
       CHECK(&base_stream.raw_stream() == nullptr);
       CHECK(&new_stream.raw_stream() == base_stream_ptr);
     }
