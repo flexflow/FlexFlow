@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "MachineMemoryConstraints"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = []
+
+[[fields]]
+name = "memory_limit"
+type = "size_t"

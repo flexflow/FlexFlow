@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LIB_COMPILER_INCLUDE_COMPILER_COST_ESTIMATOR_COST_ESTIMATOR_H
 #define _FLEXFLOW_LIB_COMPILER_INCLUDE_COMPILER_COST_ESTIMATOR_COST_ESTIMATOR_H
 
+#include "compiler/cost_estimator/cost_metric.dtg.h"
 #include "compiler/cost_estimator/op_cost_estimate_key.dtg.h"
 #include "compiler/cost_estimator/tensor_set_movement.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
@@ -11,8 +12,8 @@
 namespace FlexFlow {
 
 struct ICostEstimator {
-  virtual float estimate_cost(OpCostEstimateKey const &) const = 0;
-  virtual float estimate_cost(TensorSetMovement const &) const = 0;
+  virtual CostMetric estimate_cost(OpCostEstimateKey const &) const = 0;
+  virtual CostMetric estimate_cost(TensorSetMovement const &) const = 0;
 
   ICostEstimator() = default;
   ICostEstimator(ICostEstimator const &) = delete;
@@ -23,8 +24,8 @@ struct ICostEstimator {
 CHECK_RC_COPY_VIRTUAL_COMPLIANT(ICostEstimator);
 
 struct CostEstimator {
-  float estimate_cost(OpCostEstimateKey const &k) const;
-  float estimate_cost(TensorSetMovement const &m) const;
+  CostMetric estimate_cost(OpCostEstimateKey const &k) const;
+  CostMetric estimate_cost(TensorSetMovement const &m) const;
 
   template <typename T, typename... Args>
   static typename std::enable_if<std::is_base_of<ICostEstimator, T>::value,

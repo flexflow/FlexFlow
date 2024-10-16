@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "MachineMappingConfig"
+features = [
+  "eq",
+  "hash",
+  "fmt",
+]
+
+includes = []
+
+[[fields]]
+name = "enable_memory_optimization"
+type = "bool"

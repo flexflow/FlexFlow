@@ -1,4 +1,5 @@
 #include "compiler/machine_mapping/machine_mapping_result.h"
+#include "compiler/cost_estimator/cost_metric.h"
 #include "compiler/machine_mapping/machine_mapping.h"
 #include "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.h"
 #include "utils/containers/map_keys.h"
@@ -32,7 +33,9 @@ FeasibleMachineMappingResult
 }
 
 MachineMappingResult
-    series_combine(float comm_cost,
+    series_combine(MachineMappingConfig const &config,
+                   MachineMemoryConstraints const &memory_constraints,
+                   CostMetric const &comm_cost,
                    MachineMappingResult const &maybe_pre_result,
                    MachineMappingResult const &maybe_post_result,
                    std::optional<ParallelSplitTransformation> const
@@ -63,16 +66,26 @@ MachineMappingResult
     }
   }();
 
-  return MachineMappingResult{
+  MachineMappingResult result_without_memory_check = MachineMappingResult{
       FeasibleMachineMappingResult{
-          /*runtime=*/pre_result.runtime + comm_cost + post_result.runtime,
+          /*cost=*/combine_cost_metrics_inter_device(
+              {pre_result.cost, comm_cost, post_result.cost}),
           /*machine_mapping=*/mapping,
       },
   };
+
+  if (config.enable_memory_optimization) {
+    return machine_mapping_memory_check(memory_constraints,
+                                        result_without_memory_check);
+  } else {
+    return result_without_memory_check;
+  }
 }
 
 MachineMappingResult
-    parallel_combine(MachineMappingResult const &maybe_lhs_result,
+    parallel_combine(MachineMappingConfig const &config,
+                     MachineMemoryConstraints const &memory_constraints,
+                     MachineMappingResult const &maybe_lhs_result,
                      MachineMappingResult const &maybe_rhs_result) {
   FeasibleMachineMappingResult lhs_result = ({
     if (is_infeasible(maybe_lhs_result)) {
@@ -88,14 +101,22 @@ MachineMappingResult
     require_feasible(maybe_rhs_result);
   });
 
-  return MachineMappingResult{
+  MachineMappingResult result_without_memory_check = MachineMappingResult{
       FeasibleMachineMappingResult{
-          /*runtime=*/std::max(lhs_result.runtime, rhs_result.runtime),
+          /*cost=*/combine_cost_metrics_intra_device_parallel(lhs_result.cost,
+                                                              rhs_result.cost),
           /*machine_mapping=*/
           binary_combine_mappings(/*lhs=*/lhs_result.machine_mapping,
                                   /*rhs=*/rhs_result.machine_mapping),
       },
   };
+
+  if (config.enable_memory_optimization) {
+    return machine_mapping_memory_check(memory_constraints,
+                                        result_without_memory_check);
+  } else {
+    return result_without_memory_check;
+  }
 }
 
 MachineMappingResult minimize_runtime(MachineMappingResult const &maybe_m1,
@@ -114,25 +135,47 @@ MachineMappingResult minimize_runtime(MachineMappingResult const &maybe_m1,
     require_feasible(maybe_m2);
   });
 
-  if (m2.runtime < m1.runtime) {
+  if (m2.cost.runtime < m1.cost.runtime) {
     return maybe_m2;
   } else {
     return maybe_m1;
   }
 }
 
-MachineMappingResult
-    make_singleton_machine_mapping_result(float runtime,
-                                          MachineView const &machine_view) {
-  return MachineMappingResult{
+MachineMappingResult make_singleton_machine_mapping_result(
+    MachineMappingConfig const &config,
+    MachineMemoryConstraints const &memory_constraints,
+    CostMetric const &cost,
+    MachineView const &machine_view) {
+  MachineMappingResult result_without_memory_check = MachineMappingResult{
       FeasibleMachineMappingResult{
-          /*runtime=*/runtime,
+          /*cost=*/cost,
           /*machine_mapping=*/
           ParallelLayerGuidObliviousMachineMapping{{
               {binary_tree_root_path(), machine_view},
           }},
       },
   };
+
+  return machine_mapping_memory_check(memory_constraints,
+                                      result_without_memory_check);
+}
+
+MachineMappingResult machine_mapping_memory_check(
+    MachineMemoryConstraints const &memory_constraints,
+    MachineMappingResult const &result) {
+  FeasibleMachineMappingResult feasible_result = ({
+    if (is_infeasible(result)) {
+      return infeasible_machine_mapping_result();
+    }
+    require_feasible(result);
+  });
+
+  if (feasible_result.cost.memory > memory_constraints.memory_limit) {
+    return infeasible_machine_mapping_result();
+  } else {
+    return result;
+  }
 }
 
 } // namespace FlexFlow

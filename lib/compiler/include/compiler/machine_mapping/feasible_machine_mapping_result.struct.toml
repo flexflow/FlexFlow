@@ -8,11 +8,12 @@ features = [
 
 includes = [
   "compiler/machine_mapping/parallel_layer_guid_oblivious_machine_mapping.dtg.h",
+  "compiler/cost_estimator/cost_metric.dtg.h",
 ]
 
 [[fields]]
-name = "runtime"
-type = "float"
+name = "cost"
+type = "::FlexFlow::CostMetric"
 
 [[fields]]
 name = "machine_mapping"
