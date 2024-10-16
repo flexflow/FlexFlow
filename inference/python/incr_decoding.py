@@ -51,12 +51,12 @@ def get_configs():
             "tensor_parallelism_degree": 1,
             "pipeline_parallelism_degree": 2,
             "offload": False,
-            "offload_reserve_space_size": 8 * 1024, # 8GB
+            "offload_reserve_space_size": 8 * 1024,  # 8GB
             "use_4bit_quantization": False,
             "use_8bit_quantization": False,
             "enable_peft": False,
-            "peft_activation_reserve_space_size": 1024, # 1GB
-            "peft_weight_reserve_space_size": 1024, # 1GB
+            "peft_activation_reserve_space_size": 1024,  # 1GB
+            "peft_weight_reserve_space_size": 1024,  # 1GB
             "profiling": False,
             "benchmarking": False,
             "inference_debugging": False,
@@ -71,6 +71,7 @@ def get_configs():
             "full_precision": False,
             "prompt": "",
             "output_file": "",
+            "max_length": 128,
         }
         # Merge dictionaries
         ff_init_configs.update(llm_configs)
@@ -106,9 +107,9 @@ def main():
         max_seq_length=256,
         max_tokens_per_batch=64,
     )
-    
+
     llm.start_server()
-    
+
     if len(configs.prompt) > 0:
         prompts = [s for s in json.load(open(configs.prompt))]
         if "max_length" not in configs_dict:
@@ -119,8 +120,10 @@ def main():
         if "max_length" not in configs_dict:
             result = llm.generate("Three tips for staying healthy are: ")
         else:
-            result = llm.generate("Three tips for staying healthy are: ", max_length=configs.max_length)
-        
+            result = llm.generate(
+                "Three tips for staying healthy are: ", max_length=configs.max_length
+            )
+
     llm.stop_server()
 
 
