@@ -67,7 +67,8 @@ struct Request {
   };
   BatchConfig::RequestGuid guid;
   PEFTModelID peft_model_id = PEFTModelID::NO_ID;
-  int max_sequence_length = 128;
+  int max_length = -1;
+  int max_new_tokens = -1;
   int initial_len;
   int ssm_cache_size = 0;
   int llm_cache_size = 0;
@@ -301,6 +302,7 @@ private:
   ModelType model_type;
   int bos_token_id;
   int eos_token_id;
+  bool old_llama_tokenizer = false;
   std::string output_filepath;
   std::queue<Request> pending_infr_request_queue;
   std::queue<Request> pending_peft_request_queue;

@@ -58,8 +58,8 @@ std::ostream &operator<<(std::ostream &os, TreeVerifyBatchConfig const &bc) {
       os << "    PEFT Model ID: " << bc.requestsInfo[i].peft_model_id
          << std::endl;
       os << "    PEFT bwd: " << bc.requestsInfo[i].peft_bwd << std::endl;
-      os << "    Max sequence length: "
-         << bc.requestsInfo[i].max_sequence_length << std::endl;
+      os << "    Max sequence length: " << bc.requestsInfo[i].max_length
+         << std::endl;
       os << "    Request completed: " << bc.request_completed[i] << std::endl;
       os << "    Request running: " << bc.request_running[i] << std::endl;
     }

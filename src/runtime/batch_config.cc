@@ -162,8 +162,8 @@ std::ostream &operator<<(std::ostream &os, BatchConfig const &bc) {
          << bc.requestsInfo[i].first_token_offset_in_batch << std::endl;
       os << "    Number of tokens in batch: "
          << bc.requestsInfo[i].num_tokens_in_batch << std::endl;
-      os << "    Max sequence length: "
-         << bc.requestsInfo[i].max_sequence_length << std::endl;
+      os << "    Max sequence length: " << bc.requestsInfo[i].max_length
+         << std::endl;
       os << "    BatchConfig Req ID: "
          << bc.requestsInfo[i].batch_config_request_id << std::endl;
       os << "    Prompt phase: " << bc.requestsInfo[i].prompt_phase

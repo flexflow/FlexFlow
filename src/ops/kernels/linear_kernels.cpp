@@ -238,7 +238,7 @@ void inference_kernel_wrapper(LinearMeta *m,
           continue;
         }
         int num_peft_tokens = bc->requestsInfo[i].num_tokens_in_batch;
-        int max_peft_tokens = bc->requestsInfo[i].max_sequence_length;
+        int max_peft_tokens = bc->requestsInfo[i].max_length;
         int first_token_offset = bc->requestsInfo[i].num_tokens_in_batch;
         if (bc->requestsInfo[i].peft_bwd) {
           size_t activation_size_needed =

@@ -34,6 +34,7 @@ llm_configs = {
     "full_precision": True,
     "prompt": "",
     "output_file": "",
+    "max_length": 128,
 }
 ssm_configs = {
     "ssms": [
