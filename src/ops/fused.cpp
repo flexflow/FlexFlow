@@ -612,8 +612,10 @@ __host__ void
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         AllReduceMeta const *m = (AllReduceMeta *)metas->meta[op];
+        runtime->concurrent_task_barrier(ctx);
         Kernels::AllReduce::inference_kernel_wrapper(
             m, bc, my_input_accessor[0], my_output_accessor[0]);
+        runtime->concurrent_task_barrier(ctx);
         break;
       }
       case OP_PARALLEL_IDENTITY: {
@@ -870,7 +872,12 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         // since we ``inplace'' the output for LoRA
         assert(my_input_grad_accessor[1].ptr == my_output_grad_accessor[0].ptr);
         Kernels::LoraLinear::peft_bwd_kernel_wrapper(
-            m, bc, my_input_grad_accessor[0], my_output_grad_accessor[0]);
+            ctx,
+            runtime,
+            m,
+            bc,
+            my_input_grad_accessor[0],
+            my_output_grad_accessor[0]);
         break;
       }
       case OP_BATCHMATMUL: {
@@ -1129,8 +1136,10 @@ __host__ void FusedOp::peft_bwd_task(Task const *task,
         assert(fused->op_num_inputs[op] == 1);
         assert(fused->op_num_outputs[op] == 1);
         ParallelIdentityMeta const *m = (ParallelIdentityMeta *)metas->meta[op];
+        runtime->concurrent_task_barrier(ctx);
         Kernels::ParallelIdentity::peft_bwd_kernel_wrapper(
             m, bc, my_input_grad_accessor[0], my_output_grad_accessor[0]);
+        runtime->concurrent_task_barrier(ctx);
         break;
       }
       default: {

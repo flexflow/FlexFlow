@@ -20,7 +20,8 @@
 #include "legion.h"
 
 namespace FlexFlow {
-
+using Legion::Context;
+using Legion::Runtime;
 class FFModel;
 class OpMeta;
 
@@ -60,7 +61,9 @@ public:
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
-  static void nccl_update_task_gpu(SGDOptimizer const *op,
+  static void nccl_update_task_gpu(Context ctx,
+                                   Runtime *runtime,
+                                   SGDOptimizer const *op,
                                    OpMeta const *meta,
                                    float const *w_grad_ptr,
                                    size_t size,
@@ -103,7 +106,9 @@ public:
                        std::vector<Legion::PhysicalRegion> const &regions,
                        Legion::Context ctx,
                        Legion::Runtime *runtime);
-  static void nccl_update_task_gpu(AdamOptimizer const *op,
+  static void nccl_update_task_gpu(Context ctx,
+                                   Runtime *runtime,
+                                   AdamOptimizer const *op,
                                    OpMeta const *meta,
                                    float const *w_grad_ptr,
                                    size_t size,

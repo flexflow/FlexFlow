@@ -96,7 +96,9 @@ void inference_kernel_wrapper(LoraLinearMeta *m,
   }
 }
 
-void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
+void peft_bwd_kernel_wrapper(Context ctx,
+                             Runtime *runtime,
+                             LoraLinearMeta *m,
                              BatchConfig const *bc,
                              GenericTensorAccessorW const &input_grad,
                              GenericTensorAccessorR const &output_grad) {
@@ -111,7 +113,9 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
   int in_dim = input_grad.domain.hi()[0] - input_grad.domain.lo()[0] + 1;
   int out_dim = output_grad.domain.hi()[0] - output_grad.domain.lo()[0] + 1;
   if (m->input_type[0] == DT_FLOAT) {
-    Internal::peft_bwd_kernel<float>(m,
+    Internal::peft_bwd_kernel<float>(ctx,
+                                     runtime,
+                                     m,
                                      bc,
                                      input_grad.get_float_ptr(),
                                      output_grad.get_float_ptr(),
@@ -119,7 +123,9 @@ void peft_bwd_kernel_wrapper(LoraLinearMeta *m,
                                      out_dim,
                                      stream);
   } else if (m->input_type[0] == DT_HALF) {
-    Internal::peft_bwd_kernel<half>(m,
+    Internal::peft_bwd_kernel<half>(ctx,
+                                    runtime,
+                                    m,
                                     bc,
                                     input_grad.get_half_ptr(),
                                     output_grad.get_half_ptr(),
@@ -361,7 +367,9 @@ __global__ void sgd_update(size_t count,
 }
 
 template <typename DT>
-void peft_bwd_kernel(LoraLinearMeta *m,
+void peft_bwd_kernel(Context ctx,
+                      Runtime *runtime,
+                      LoraLinearMeta *m,
                      BatchConfig const *bc,
                      DT *input_grad_ptr,
                      DT const *output_grad_ptr,
@@ -543,13 +551,15 @@ void peft_bwd_kernel(LoraLinearMeta *m,
         // and sum first
 #ifdef FF_USE_NCCL
         ncclDataType_t nccl_data_type = ff_to_nccl_datatype(m->output_type[0]);
-        checkCUDA(ncclAllReduce(static_cast<DT const *>(weight.w1_grad_ptr),
+        runtime->concurrent_task_barrier(ctx);
+        checkNCCL(ncclAllReduce(static_cast<DT const *>(weight.w1_grad_ptr),
                                 static_cast<DT *>(weight.w1_grad_ptr),
                                 w1_num_elements,
                                 nccl_data_type,
                                 ncclSum,
                                 m->handle.ncclComm,
                                 stream));
+        runtime->concurrent_task_barrier(ctx);
 #else
         assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
 #endif
