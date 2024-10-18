@@ -75,7 +75,9 @@ __host__ void SGDOptimizer::ps_update_task_gpu(SGDOptimizer const *op,
 }
 
 #ifdef FF_USE_NCCL
-__host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
+__host__ void SGDOptimizer::nccl_update_task_gpu(Context ctx,
+                                                 Runtime *runtime,
+                                                 SGDOptimizer const *op,
                                                  OpMeta const *meta,
                                                  float const *w_grad_ptr,
                                                  size_t size,
@@ -85,6 +87,7 @@ __host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
   // fprintf(stderr, "weight(%p) Before ncclAllReduce...\n", w_grad_ptr);
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  runtime->concurrent_task_barrier(ctx);
   checkNCCL(ncclAllReduce(w_grad_ptr,
                           (float *)w_grad_ptr,
                           size,
@@ -92,6 +95,7 @@ __host__ void SGDOptimizer::nccl_update_task_gpu(SGDOptimizer const *op,
                           ncclSum,
                           meta->handle.ncclComm,
                           stream));
+  runtime->concurrent_task_barrier(ctx);
   // fprintf(stderr, "weight(%p) After ncclAllReduce...\n", w_grad_ptr);
   // print_tensor<float>((float*)w_grad_ptr, 16, "[After ncclAllReduce]");
 
@@ -183,7 +187,9 @@ __host__ void AdamOptimizer::ps_update_task_gpu(AdamOptimizer const *op,
 }
 
 #ifdef FF_USE_NCCL
-__host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
+__host__ void AdamOptimizer::nccl_update_task_gpu(Context ctx,
+                                                  Runtime *runtime,
+                                                  AdamOptimizer const *op,
                                                   OpMeta const *meta,
                                                   float const *w_grad_ptr,
                                                   size_t size,
@@ -193,6 +199,7 @@ __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
   // Use NCCL to sync gradients
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
+  runtime->concurrent_task_barrier(ctx);
   checkNCCL(ncclAllReduce(w_grad_ptr,
                           (float *)w_grad_ptr,
                           size,
@@ -200,6 +207,7 @@ __host__ void AdamOptimizer::nccl_update_task_gpu(AdamOptimizer const *op,
                           ncclSum,
                           meta->handle.ncclComm,
                           stream));
+  runtime->concurrent_task_barrier(ctx);
   // fprintf(stderr, "alpha = %.8lf alpha_t = %.8lf decay = %.8lf\n",
   //         op->alpha, op->alpha_t, op->weight_decay);
   //  Step 2: Adam update

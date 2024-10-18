@@ -55,18 +55,18 @@ ENV CUDA_DIR /usr/local/cuda
 ARG FF_GPU_BACKEND "cuda"
 
 # Update NCCL if FF_GPU_BACKEND is cuda
-RUN /bin/bash -c 'if [ "$FF_GPU_BACKEND" = "cuda" ]; then \
-        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Updating NCCL"; \
-        ubuntu_version=$(lsb_release -rs); \
-        ubuntu_version=${ubuntu_version//./}; \
-        wget "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${ubuntu_version}/x86_64/cuda-keyring_1.0-1_all.deb"; \
-        DEBIAN_FRONTEND=noninteractive dpkg -i cuda-keyring_1.0-1_all.deb; \
-        DEBIAN_FRONTEND=noninteractive apt-get update -y --allow-change-held-packages; \
-        rm -f cuda-keyring_1.0-1_all.deb; \
-        DEBIAN_FRONTEND=noninteractive apt install -y --allow-change-held-packages libnccl2 libnccl-dev; \
-    else \
-        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping updating NCCL"; \
-    fi'
+# RUN /bin/bash -c 'if [ "$FF_GPU_BACKEND" = "cuda" ]; then \
+#         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Updating NCCL"; \
+#         ubuntu_version=$(lsb_release -rs); \
+#         ubuntu_version=${ubuntu_version//./}; \
+#         wget "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu${ubuntu_version}/x86_64/cuda-keyring_1.0-1_all.deb"; \
+#         DEBIAN_FRONTEND=noninteractive dpkg -i cuda-keyring_1.0-1_all.deb; \
+#         DEBIAN_FRONTEND=noninteractive apt-get update -y --allow-change-held-packages; \
+#         rm -f cuda-keyring_1.0-1_all.deb; \
+#         DEBIAN_FRONTEND=noninteractive apt install -y --allow-change-held-packages libnccl2 libnccl-dev; \
+#     else \
+#         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Skipping updating NCCL"; \
+#     fi'
 
 # Install hip dependencies if FF_GPU_BACKEND is hip_cuda or hip_rocm
 # Note that amd's docs say to also install the `hip-runtime-nvidia` package. This
