@@ -197,9 +197,9 @@ void AllReduce::forward_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input.data_type == output.data_type);
-  runtime->concurrent_task_barrier(ctx);
+  // runtime->concurrent_task_barrier(ctx);
   forward_kernel_wrapper(m, input, output);
-  runtime->concurrent_task_barrier(ctx);
+  // runtime->concurrent_task_barrier(ctx);
 }
 
 void AllReduce::backward(FFModel const &ff) {
@@ -349,9 +349,9 @@ void AllReduce::inference_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input.data_type == output.data_type);
-  runtime->concurrent_task_barrier(ctx);
+  // runtime->concurrent_task_barrier(ctx);
   inference_kernel_wrapper(m, bc, input, output);
-  runtime->concurrent_task_barrier(ctx);
+  // runtime->concurrent_task_barrier(ctx);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];

@@ -368,8 +368,8 @@ __global__ void sgd_update(size_t count,
 
 template <typename DT>
 void peft_bwd_kernel(Context ctx,
-                      Runtime *runtime,
-                      LoraLinearMeta *m,
+                     Runtime *runtime,
+                     LoraLinearMeta *m,
                      BatchConfig const *bc,
                      DT *input_grad_ptr,
                      DT const *output_grad_ptr,

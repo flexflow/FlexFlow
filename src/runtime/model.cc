@@ -7283,7 +7283,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     // AllReduce forward and backward must run concurrently since they
     // use ncclAllReduce internally
     registrar.set_concurrent();
-    registrar.set_concurrent_barrier();
+    // registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::forward_task>(
           registrar, "AllReduce Forward Task");
@@ -7316,7 +7316,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     // AllReduce forward and backward must run concurrently since they
     // use ncclAllReduce internally
     registrar.set_concurrent();
-    registrar.set_concurrent_barrier();
+    // registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::inference_task>(
           registrar, "AllReduce Inference Task");
@@ -7380,7 +7380,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
-    registrar.set_concurrent_barrier();
+    // registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<ParallelIdentity::backward_task>(
           registrar, "ParallelIdentity Backward Task");
@@ -7414,7 +7414,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
-    registrar.set_concurrent_barrier();
+    // registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<ParallelIdentity::peft_bwd_task>(
           registrar, "ParallelIdentity PEFT Backward Task");
@@ -7655,7 +7655,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
-    registrar.set_concurrent_barrier();
+    // registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
           registrar, "NCCL Init Communicators Task", 111 /*variant ID*/);
@@ -7673,7 +7673,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
-    registrar.set_concurrent_barrier();
+    // registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<Op::finish_nccl_comms_task>(
           registrar, "NCCL Finish Communicators Task", 111 /*variant ID*/);
