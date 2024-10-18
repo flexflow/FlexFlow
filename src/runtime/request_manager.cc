@@ -56,6 +56,7 @@ std::ostream &operator<<(std::ostream &os, Request const &req) {
   os << "  peft_model_id: " << req.peft_model_id << "\n";
   os << "  max_length: " << req.max_length << "\n";
   os << "  max_new_tokens: " << req.max_new_tokens << "\n";
+  os << "  add_special_tokens: " << req.add_special_tokens << "\n";
   os << "  initial_len: " << req.initial_len << "\n";
   os << "  ssm_cache_size: " << req.ssm_cache_size << "\n";
   os << "  llm_cache_size: " << req.llm_cache_size << "\n";
@@ -413,6 +414,7 @@ RequestManager::RequestGuid
   request.guid = next_available_guid++;
   request.max_length = request_.max_length;
   request.max_new_tokens = request_.max_new_tokens;
+  request.add_special_tokens = request_.add_special_tokens;
   // both unset
   if (request.max_length == -1 && request.max_new_tokens == -1) {
     request.max_length = get_max_sequence_length() - 1;
@@ -427,7 +429,7 @@ RequestManager::RequestGuid
   }
   request.peft_model_id = request_.peft_model_id;
   request.warmup = request_.warmup;
-  if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
+  if (bos_token_id >= 0 && request.add_special_tokens && model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
   if (request_.benchmarking_tokens >= 0) {
@@ -520,6 +522,7 @@ RequestManager::RequestGuid
   request.initial_len = 0;
   request.max_length = request_.max_length;
   request.max_new_tokens = request_.max_new_tokens;
+  request.add_special_tokens = request_.add_special_tokens;
   if (request.max_new_tokens != -1) {
     std::cerr
         << "Error: max_new_tokens is not allowed for PEFT finetuning requests"
@@ -544,7 +547,7 @@ RequestManager::RequestGuid
     request.benchmarking_tokens = request_.benchmarking_tokens;
     std::vector<int32_t> input_tokens;
     std::vector<int32_t> output_tokens;
-    bool bos_added = (bos_token_id >= 0 && model_type != ModelType::FALCON);
+    bool bos_added = (bos_token_id >= 0 && request.add_special_tokens && model_type != ModelType::FALCON);
     if (bos_added) {
       input_tokens.push_back(bos_token_id);
     }
@@ -566,7 +569,7 @@ RequestManager::RequestGuid
       std::string output_text("");
       std::vector<int32_t> input_tokens;
       input_tokens = this->tokenizer_->Encode(text);
-      if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
+      if (bos_token_id >= 0 && request.add_special_tokens && model_type != ModelType::FALCON) {
         input_tokens.insert(input_tokens.begin(), bos_token_id);
       }
       std::vector<int32_t> output_tokens =
@@ -755,6 +758,19 @@ void RequestManager::check_batch(BatchConfig const &old_bc,
   }
 }
 
+bool isPrefixAndRemove(const std::vector<int>& prefix, std::vector<int>& vec) {
+  if (prefix.size() > vec.size()) {
+    return false;
+  }
+  
+  if (std::equal(prefix.begin(), prefix.end(), vec.begin())) {
+    vec.erase(vec.begin(), vec.begin() + prefix.size());
+    return true;
+  }
+  
+  return false;
+}
+
 BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
                                                InferenceResult const &result) {
   const std::lock_guard<std::mutex> lock(request_queue_mutex);
@@ -814,7 +830,7 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
+        if (model_type == ModelType::LLAMA && old_llama_tokenizer && request.add_special_tokens &&
             request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
@@ -823,7 +839,11 @@ BatchConfig RequestManager::prepare_next_batch(BatchConfig const &old_bc,
           GenerationResult &gr = request_generation_results[request.guid];
           assert(gr.guid == request.guid);
           gr.output_tokens = request.tokens;
-          gr.output_text = output;
+          assert(isPrefixAndRemove(gr.input_tokens, gr.output_tokens));
+          if (gr.output_tokens.size() > 0 && gr.output_tokens[gr.output_tokens.size() - 1] == eos_token_id && !request.add_special_tokens) {
+            gr.output_tokens.pop_back();
+          }
+          gr.output_text = this->tokenizer_->Decode(gr.output_tokens);
         }
         request.status = Request::COMPLETED;
         trigger_request_completion_future(request.guid);
@@ -1275,7 +1295,7 @@ BeamSearchBatchConfig
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
+        if (model_type == ModelType::LLAMA && old_llama_tokenizer && request.add_special_tokens &&
             request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
@@ -1418,7 +1438,7 @@ BeamSearchBatchConfig
         std::string output = this->tokenizer_->Decode(request.tokens);
         // Unlike Huggingface, the sentencepiece C++ library automatically
         // removes the BOS token
-        if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
+        if (model_type == ModelType::LLAMA && old_llama_tokenizer && request.add_special_tokens &&
             request.tokens.at(0) == bos_token_id) {
           output = "<s> " + output;
         }
@@ -1466,7 +1486,7 @@ BeamSearchBatchConfig
       std::string output = this->tokenizer_->Decode(request.tokens);
       // Unlike Huggingface, the sentencepiece C++ library automatically removes
       // the BOS token
-      if (model_type == ModelType::LLAMA && old_llama_tokenizer &&
+      if (model_type == ModelType::LLAMA && old_llama_tokenizer && request.add_special_tokens &&
           request.tokens.at(0) == bos_token_id) {
         output = "<s> " + output;
       }

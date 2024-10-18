@@ -300,7 +300,7 @@ if(NOT BUILD_LEGION_ONLY)
   include(FetchContent)
   FetchContent_Declare(
     suffix_decoding
-    GIT_REPOSITORY git@github.com:Snowflake-Labs/suffix-tree-decoding.git
+    GIT_REPOSITORY https://github.com/Snowflake-Labs/suffix-tree-decoding.git
     GIT_TAG main  # or a specific tag/commit hash
   )
   FetchContent_MakeAvailable(suffix_decoding)

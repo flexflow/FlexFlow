@@ -47,7 +47,9 @@ void parse_input_args(char **argv,
                       float &topp,
                       int &max_requests_per_batch,
                       int &max_tokens_per_batch,
-                      int &max_sequence_length) {
+                      int &max_sequence_length,
+                      std::string &target_partition,
+                      std::string &output_trace_path) {
   for (int i = 1; i < argc; i++) {
     // llm model type
     if (!strcmp(argv[i], "-llm-model")) {
@@ -105,6 +107,14 @@ void parse_input_args(char **argv,
       max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "-target-partition")) {
+      target_partition = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-output-trace-path")) {
+      output_trace_path = std::string(argv[++i]);
+      continue;
+    }
   }
   if (paths.cache_folder_path.empty()) {
     char const *ff_cache_path = std::getenv("FF_CACHE_PATH");
@@ -136,6 +146,8 @@ void FlexFlow::top_level_task(Task const *task,
   int max_requests_per_batch = 8;
   int max_tokens_per_batch = 128;
   int max_sequence_length = 256;
+  std::string target_partition = "FEATURE_EXTRACTION";
+  std::string output_trace_path = "/home/yak/goliaro/FlexFlow/suffix_decoding/modified_json_file.json";
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
   char **argv = command_args.argv;
@@ -151,7 +163,9 @@ void FlexFlow::top_level_task(Task const *task,
                    topp,
                    max_requests_per_batch,
                    max_tokens_per_batch,
-                   max_sequence_length);
+                   max_sequence_length,
+                   target_partition,
+                   output_trace_path);
 
   assert(ffconfig.data_parallelism_degree * ffconfig.tensor_parallelism_degree *
              ffconfig.pipeline_parallelism_degree ==
@@ -257,25 +271,66 @@ void FlexFlow::top_level_task(Task const *task,
 
   int total_num_requests = 0;
   {
-    using json = nlohmann::json;
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
+    // using json = nlohmann::json;
+    using json = nlohmann::ordered_json;
+    std::ifstream input_file(file_paths.prompt_file_path);
+    assert(input_file.good() && "Prompt file does not exist.");
+    json j;
+    input_file >> j;
+    input_file.close();
 
-    std::vector<Request> requests;
-    for (auto &prompt : prompt_json) {
-      std::string text = prompt.get<std::string>();
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
-      Request inference_req;
-      inference_req.prompt = text;
-      inference_req.max_length = 128;
-      requests.push_back(inference_req);
-      total_num_requests++;
+    // Find the partition with name "FEATURE_EXTRACTION"
+    auto& partitions = j["partitions"];
+    auto it = std::find_if(partitions.begin(), partitions.end(),
+      [target_partition](const json& partition) {
+          return partition["partition_name"] == target_partition;
+      });
+
+    if (it != partitions.end()) {
+      // We found the partition
+      json& feature_extraction_partition = *it;
+      
+      // Iterate through eval_entries
+      std::vector<Request> requests;
+      for (auto& entry : feature_extraction_partition["eval_entries"]) {
+        std::string text = entry["prompt"];
+        int max_new_tokens_ = entry["response_length"];
+        printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+        Request inference_req;
+        inference_req.prompt = text;
+        inference_req.max_new_tokens = max_new_tokens_;
+        inference_req.add_special_tokens = false;
+        requests.push_back(inference_req);
+        total_num_requests++;
+        // break;
+      }
+      std::vector<GenerationResult> result = model.generate(requests);
+      assert(result.size() == requests.size());
+      assert(result.size() == total_num_requests);
+      assert(result.size() == feature_extraction_partition["eval_entries"].size());
+      int i = 0;
+      for (auto& entry : feature_extraction_partition["eval_entries"]) {
+        entry["original_response"] = entry["response"];
+        entry["original_response_length"] = entry["response_length"];
+        std::string ff_out = result[i].output_text;
+        int tot_length = result[i].output_text.length();
+        entry["response"] = ff_out;
+        entry["response_length"] = result[i].output_tokens.size();
+        i++;
+      }
+
+      // Write the modified JSON to a file
+      std::ofstream output_file(output_trace_path);
+      if (output_file.is_open()) {
+        output_file << j.dump(2);
+        output_file.close();
+        std::cout << "Modified JSON has been saved to " << output_trace_path << std::endl;
+      } else {
+        std::cerr << "Unable to open file for writing." << std::endl;
+      }
+    } else {
+      std::cout << target_partition << " partition not found." << std::endl;
     }
-    std::vector<GenerationResult> result = model.generate(requests);
   }
 
   // terminate the request manager by stopping the background thread
