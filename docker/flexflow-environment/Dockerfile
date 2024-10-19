@@ -4,6 +4,8 @@ FROM ${ff_environment_base_image}
 LABEL org.opencontainers.image.source=https://github.com/flexflow/FlexFlow
 LABEL org.opencontainers.image.description="FlexFlow environment container"
 
+SHELL ["/bin/bash", "-c"]
+
 # Install basic dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends wget sudo binutils git zlib1g-dev lsb-release nano gdb libhdf5-dev jq && \
     rm -rf /var/lib/apt/lists/* /etc/apt/sources.list.d/cuda.list /etc/apt/sources.list.d/nvidia-ml.list && \
@@ -53,6 +55,8 @@ ENV CUDA_DIR /usr/local/cuda
 
 # GPU-specific dependencies
 ARG FF_GPU_BACKEND "cuda"
+ARG cuda_version ""
+ARG hip_version "5.6"
 
 # Update NCCL if FF_GPU_BACKEND is cuda
 # RUN /bin/bash -c 'if [ "$FF_GPU_BACKEND" = "cuda" ]; then \
@@ -73,7 +77,6 @@ ARG FF_GPU_BACKEND "cuda"
 # package attempts to re-install cuda even though cuda is already installed
 # in the container. It also attempts to install packages for a graphical install.
 # For our container, we don't need `hip-runtime-nvidia`
-ARG hip_version "5.6"
 RUN  if [ "$FF_GPU_BACKEND" = "hip_cuda" ] || [ "$FF_GPU_BACKEND" = "hip_rocm" ]; then \
         echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing HIP dependencies"; \
         # Check that hip_version is one of 5.3,5.4,5.5,5.6
@@ -106,9 +109,13 @@ RUN rm -rf /var/lib/apt/lists/*
 
 # Install python packages and other dependencies
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing
-# Install CPU-only Pytorch and related dependencies
-RUN conda install pytorch torchvision torchaudio -c pytorch
-RUN conda install -c conda-forge onnx transformers>=4.31.0 sentencepiece einops
+# Install Pytorch
+COPY docker/flexflow-environment/install_pytorch.sh /usr/local/bin/install_pytorch.sh
+RUN chmod +x /usr/local/bin/install_pytorch.sh && \
+    /usr/local/bin/install_pytorch.sh ${cuda_version} && \
+    rm /usr/local/bin/install_pytorch.sh
+# Various dependencies
+RUN pip3 install transformers>=4.31.0 sentencepiece einops
 RUN pip3 install tensorflow notebook
 # PEFT-related
 RUN pip3 install scipy bitsandbytes datasets accelerate loralib triton peft

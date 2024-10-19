@@ -1,5 +1,6 @@
 #! /usr/bin/env bash
 set -euo pipefail
+set -x
 
 # Usage: ./build.sh <docker_image_name>
 # Optional environment variables: FF_GPU_BACKEND, cuda_version, hip_version
@@ -102,7 +103,16 @@ if [[ "$python_version" != @(3.8|3.9|3.10|3.11|latest) ]]; then
   exit 0
 fi
 
-docker build --build-arg "ff_environment_base_image=${ff_environment_base_image}" --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "hip_version=${hip_version}" --build-arg "python_version=${python_version}" -t "flexflow-environment-${FF_GPU_BACKEND}${gpu_backend_version}" -f docker/flexflow-environment/Dockerfile .
+docker build \
+  --build-arg "ff_environment_base_image=${ff_environment_base_image}" \
+  --build-arg "N_BUILD_CORES=${n_build_cores}" \
+  --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" \
+  --build-arg "cuda_version=${cuda_version}" \
+  --build-arg "hip_version=${hip_version}" \
+  --build-arg "python_version=${python_version}" \
+  -t "flexflow-environment-${FF_GPU_BACKEND}${gpu_backend_version}" \
+  -f docker/flexflow-environment/Dockerfile \
+  .
 
 # If the user only wants to build the environment image, we are done
 if [[ "$image" == "flexflow-environment" ]]; then
@@ -162,4 +172,11 @@ fi
 # Set value of BUILD_CONFIGS
 get_build_configs
 
-docker build --build-arg "N_BUILD_CORES=${n_build_cores}" --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" --build-arg "gpu_backend_version=${gpu_backend_version}" -t "flexflow-${FF_GPU_BACKEND}${gpu_backend_version}" -f docker/flexflow/Dockerfile .
+docker build \
+  --build-arg "N_BUILD_CORES=${n_build_cores}" \
+  --build-arg "FF_GPU_BACKEND=${FF_GPU_BACKEND}" \
+  --build-arg "BUILD_CONFIGS=${BUILD_CONFIGS}" \
+  --build-arg "gpu_backend_version=${gpu_backend_version}" \
+  -t "flexflow-${FF_GPU_BACKEND}${gpu_backend_version}" \
+  -f docker/flexflow/Dockerfile \
+  .
