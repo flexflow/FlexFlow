@@ -245,7 +245,9 @@ void ParallelIdentity::backward_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input_grad.data_type == output_grad.data_type);
+  // runtime->concurrent_task_barrier(ctx);
   backward_kernel_wrapper(m, input_grad, output_grad);
+  // runtime->concurrent_task_barrier(ctx);
 }
 
 void ParallelIdentity::init_inference(
@@ -270,7 +272,6 @@ void ParallelIdentity::init_inference(
                          false /*must*/,
                          0 /*mapper_id*/,
                          machine_view_hash);
-  launcher.concurrent = true;
   launcher.add_region_requirement(RegionRequirement(batch_inputs[0]->part,
                                                     0 /*projection id*/,
                                                     READ_ONLY,
@@ -422,7 +423,9 @@ void ParallelIdentity::peft_bwd_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input_grad.data_type == output_grad.data_type);
+  // runtime->concurrent_task_barrier(ctx);
   peft_bwd_kernel_wrapper(m, bc, input_grad, output_grad);
+  // runtime->concurrent_task_barrier(ctx);
   if (m->inference_debugging) {
     assert(task->index_point.get_dim() == 1);
     int shard_id = task->index_point.point_data[0];
