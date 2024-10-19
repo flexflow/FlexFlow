@@ -111,9 +111,15 @@ RUN rm -rf /var/lib/apt/lists/*
 RUN conda install -c conda-forge cmake make pillow cmake-build-extension pybind11 numpy pandas keras-preprocessing
 # Install Pytorch
 COPY docker/flexflow-environment/install_pytorch.sh /usr/local/bin/install_pytorch.sh
-RUN chmod +x /usr/local/bin/install_pytorch.sh && \
-    /usr/local/bin/install_pytorch.sh ${cuda_version} && \
-    rm /usr/local/bin/install_pytorch.sh
+RUN if [ "$FF_GPU_BACKEND" == "cuda" ] ; then \
+        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing PyTorch with CUDA"; \
+        chmod +x /usr/local/bin/install_pytorch.sh && \
+        /usr/local/bin/install_pytorch.sh ${cuda_version} && \
+        rm /usr/local/bin/install_pytorch.sh; \
+    else \
+        echo "FF_GPU_BACKEND: ${FF_GPU_BACKEND}. Installing CPU-only PyTorch"; \
+        pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu; \
+    fi
 # Various dependencies
 RUN pip3 install transformers>=4.31.0 sentencepiece einops
 RUN pip3 install tensorflow notebook
