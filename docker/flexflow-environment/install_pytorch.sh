@@ -19,9 +19,9 @@ install_pytorch() {
   echo "Attempting to install PyTorch with CUDA ${major}.${minor} support..."
 
   # Run dry-run first
-  if pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu${major}${minor} --dry-run; then
+  if pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu"${major}${minor}" --dry-run; then
     echo "Dry-run succeeded, proceeding with actual installation..."
-    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu${major}${minor}
+    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu"${major}${minor}"
     return 0
   else
     echo "Dry-run failed for CUDA ${major}.${minor}."
