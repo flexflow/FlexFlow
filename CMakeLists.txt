@@ -240,7 +240,7 @@ if(NOT BUILD_LEGION_ONLY)
     list(APPEND FF_CC_FLAGS
       -DFF_DEBUG)
     list(APPEND FF_NVCC_FLAGS
-      -DFF_DEBUG)
+      -DFF_DEBUG -lineinfo)
   endif()
 
   message(STATUS "FlexFlow MAX_DIM: ${FF_MAX_DIM}")
