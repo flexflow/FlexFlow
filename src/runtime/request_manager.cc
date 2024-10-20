@@ -28,6 +28,7 @@
 #include <stack>
 #include <stdexcept>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 #include <exception>
 #include <cstdlib>
@@ -108,6 +109,10 @@ double Request::get_slo_ratio() {
   return slo_ratio;
 }
 
+int Request::decode_length() const {
+  return tokens.size() - llm_prefill_len;
+}
+
 RequestManager::RequestManager()
     : background_server_status(INITIALIZED), verbose(false),
       next_available_guid(1000000), num_processed_requests(0),
@@ -124,6 +129,7 @@ RequestManager::RequestManager()
   max_tokens_per_prefilling_batch = -1;
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
+  max_output_length = -1;
   max_tree_depth = -1;
   max_tree_width = -1;
   k = -1;
@@ -195,6 +201,16 @@ int RequestManager::get_max_sequence_length() {
   return max_sequence_length;
 }
 
+void RequestManager::set_max_output_length(int max_output_length) {
+  assert(max_output_length > 0);
+  this->max_output_length = max_output_length;
+}
+
+int RequestManager::get_max_output_length() {
+  assert(max_output_length > 0);
+  return max_output_length;
+}
+
 void RequestManager::set_decoding_mode(DecodingMode mode) {
   assert(mode == INCREMENTAL_DECODING || mode == SPECULATIVE_DECODING);
   decoding_mode = mode;
@@ -229,7 +245,9 @@ void RequestManager::set_max_tree_depth(int max_tree_depth) {
          "Invalid max_tree_depth");
   this->max_tree_depth = max_tree_depth;
   if (max_tree_width > 0) {
-    max_spec_tree_token_num = max_tree_depth * max_tree_width;
+    // 8 is k of topk, if max_tree_width <= k, we will fill the second level
+    max_spec_tree_token_num =
+        max_tree_depth * max_tree_width + (max_tree_width <= 8);
     assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
   }
 }
@@ -247,7 +265,9 @@ void RequestManager::set_max_tree_width(int max_tree_width) {
          "Invalid max_tree_width");
   this->max_tree_width = max_tree_width;
   if (max_tree_depth > 0) {
-    max_spec_tree_token_num = max_tree_depth * max_tree_width;
+    // 8 is k of topk, if max_tree_width <= k, we will fill the second level
+    max_spec_tree_token_num =
+        max_tree_depth * max_tree_width + (max_tree_width <= 8);
     assert(max_spec_tree_token_num <= BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
   }
 }
@@ -309,13 +329,29 @@ void RequestManager::set_spec_infer_old_version(bool spec_infer_old_version_) {
   spec_infer_old_version = spec_infer_old_version_;
 }
 
+void RequestManager::set_greedy_scheduler(bool greedy_scheduler_) {
+  greedy_scheduler = greedy_scheduler_;
+}
+
+void RequestManager::set_equal_schedule(bool equal_schedule_) {
+  equal_schedule = equal_schedule_;
+}
+
 bool RequestManager::get_spec_infer_old_version() {
   return spec_infer_old_version;
 }
 
+bool RequestManager::get_greedy_scheduler() {
+  return greedy_scheduler;
+}
+
+bool RequestManager::get_equal_schedule() {
+  return equal_schedule;
+}
+
 double RequestManager::get_request_expected_latency(Request &request) {
   return request.get_slo_ratio() * baseline_latency_ms *
-         (request.tokens.size() - request.llm_prefill_len);
+         request.decode_length();
 }
 
 Request &RequestManager::get_request_with_guid(RequestGuid guid) {
@@ -565,6 +601,9 @@ BatchConfig
 
 // Return value: true if load a pending request to the batch
 bool RequestManager::load_pending_request_to_batch() {
+  if (num_running_requests >= get_max_requests_per_batch()) {
+    return false;
+  }
   std::unique_lock<std::mutex> lock(request_queue_mutex);
   if (pending_request_queue.empty()) {
     if (num_running_requests > 0) {
@@ -592,6 +631,13 @@ bool RequestManager::load_pending_request_to_batch() {
     RequestGuid guid = pending_request_queue.front().guid;
     pending_request_queue.pop();
     Request *request = &all_requests[guid];
+    if (request->tokens.size() > get_max_sequence_length()) {
+      std::cerr << "Request " << guid
+                << " exceeds the maximum sequence length: "
+                << request->tokens.size() << " > " << get_max_sequence_length()
+                << std::endl;
+      continue;
+    }
 
     request->status = Request::RUNNING;
     // Find an empty slot
@@ -743,8 +789,9 @@ void RequestManager::request_load_onto_batch(int batch_index) {
 }
 
 void RequestManager::update_token_tree_depth() {
-  ssm_tree_depth = min(get_max_tokens_per_batch() / get_num_active_requests(),
-                       get_max_tree_depth());
+  ssm_tree_depth = min(
+      int(std::ceil(get_max_tokens_per_batch() / get_num_active_requests())),
+      get_max_tree_depth());
 }
 
 void RequestManager::update_inference_results(InferenceResult const &result) {
@@ -764,24 +811,20 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
   switch (request_manager_status) {
     case PREFILLING:
       if (decoding_mode == INCREMENTAL_DECODING) {
-        if (update_llm_prefill_results(result)) {
-          // This indicates that the prefilling of the current request
-          // finishes
-
-          // Check if there are more empty slots
-          if (num_running_requests < get_max_requests_per_batch() &&
-              load_pending_request_to_batch()) {
-            // Load the pending request to the batch
-            request_manager_status = PREFILLING;
-          } else {
-            // No more empty slots, start the decoding
-            while (!prefilled_requests.empty()) {
-              Request *request = prefilled_requests.front();
-              request_load_onto_batch(request->batch_index);
-              prefilled_requests.pop();
-            }
-            request_manager_status = DECODING;
+        // This indicates that the prefilling of the requests finishes
+        bool all_prefilled = update_llm_prefill_results(result);
+        // Check if there are more empty slots
+        if (load_pending_request_to_batch() or !all_prefilled) {
+          // Load the pending request to the batch
+          request_manager_status = PREFILLING;
+        } else {
+          // No more empty slots, start the decoding
+          while (!prefilled_requests.empty()) {
+            Request *request = prefilled_requests.front();
+            request_load_onto_batch(request->batch_index);
+            prefilled_requests.pop();
           }
+          request_manager_status = DECODING;
         }
         // Not completed, continue prefilling
       } else if (decoding_mode == SPECULATIVE_DECODING) {
@@ -799,31 +842,23 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
             prefill_model = LLM;
           }
         } else if (prefill_model == LLM) {
-          if (update_llm_prefill_results(result)) {
-            // This indicates that the prefilling phase finishes
-
-            // Check if there are more empty slots
-            if (num_running_requests < get_max_requests_per_batch() &&
-                load_pending_request_to_batch()) {
-              // Load the pending request to the batch
-              prefill_model = SSM;
-              current_ssm_step = 0;
-            } else {
-              // No more empty slots, start the speculation
-              while (!prefilled_requests.empty()) {
-                Request *request = prefilled_requests.front();
-                request_load_onto_batch(request->batch_index);
-                prefilled_requests.pop();
-              }
-              request_manager_status = SSM_SPEC;
-              // Reset the prefill_request
-              current_ssm_step = 0;
-              ssm_completed = false;
-            }
-          } else {
-            // Not completed, start the next iteration of prefilling
+          // This indicates that the prefilling of the requests finishes
+          bool all_prefilled = update_llm_prefill_results(result);
+          if (load_pending_request_to_batch() or !all_prefilled) {
+            request_manager_status = PREFILLING;
             prefill_model = SSM;
             current_ssm_step = 0;
+          } else {
+            // No more empty slots, start the speculation
+            while (!prefilled_requests.empty()) {
+              Request *request = prefilled_requests.front();
+              request_load_onto_batch(request->batch_index);
+              prefilled_requests.pop();
+            }
+            request_manager_status = SSM_SPEC;
+            // Reset the prefill_request
+            current_ssm_step = 0;
+            ssm_completed = false;
           }
         } else {
           assert(false && "Invalid prefill model.");
@@ -832,36 +867,26 @@ void RequestManager::update_inference_results(InferenceResult const &result) {
         assert(false && "Invalid inference mode.");
       }
       break;
-    case DECODING:
-      if (update_llm_decode_results(result)) {
-        // A request completed after the decode
-        if (load_pending_request_to_batch() == false) {
-          // No pending request to process, continue the speculation
-          request_manager_status = DECODING;
-        } else {
-          request_manager_status = PREFILLING;
-        }
+    case DECODING: {
+      bool request_completed = update_llm_decode_results(result);
+      if (load_pending_request_to_batch()) {
+        request_manager_status = PREFILLING;
+      } else {
+        request_manager_status = DECODING;
       }
-      break;
-    case LLM_VERIFY:
-      if (update_llm_verify_results(result)) {
-        // A request completed after the verification
-        if (load_pending_request_to_batch() == false) {
-          // No pending request to process, continue the speculation
-          request_manager_status = SSM_SPEC;
-          current_ssm_step = 0;
-          ssm_completed = false;
-        } else {
-          request_manager_status = PREFILLING;
-          prefill_model = SSM;
-          current_ssm_step = 0;
-        }
+    } break;
+    case LLM_VERIFY: {
+      bool request_completed = update_llm_verify_results(result);
+      if (load_pending_request_to_batch()) {
+        request_manager_status = PREFILLING;
+        prefill_model = SSM;
+        current_ssm_step = 0;
       } else {
         request_manager_status = SSM_SPEC;
         current_ssm_step = 0;
         ssm_completed = false;
       }
-      break;
+    } break;
     case SSM_SPEC:
       // Update current_ssm_step first because when we first call
       // update_ssm_inference_results, there's already a step of small model
@@ -967,6 +992,7 @@ bool RequestManager::update_llm_decode_results(InferenceResult const &result) {
     profiling_requests[guid].llm_decoding_steps++;
     nb_requests_decoded++;
     if (request.tokens.back() == eos_token_id or
+        request.decode_length() >= get_max_output_length() or
         request.tokens.size() >= get_max_sequence_length()) {
       request_update_attainment(request_index, attained);
       request_completed = true;
@@ -1693,6 +1719,10 @@ bool RequestManager::update_llm_verify_results(
         (current_time - profiling_requests[guid].start_decoding_time) * 1e-3;
     bool attained =
         request.decode_latency_ms <= get_request_expected_latency(request);
+    bool current_attained =
+        request.decode_latency_ms <=
+        get_request_expected_latency(request) +
+            get_baseline_latency() * request.get_slo_ratio() * 6;
 
     // Initialize the token tree for the request
     init_token_tree(guid);
@@ -1710,12 +1740,13 @@ bool RequestManager::update_llm_verify_results(
         break;
       }
     }
-    if (eos_token_found or request.tokens.size() >= get_max_sequence_length()) {
+    if (eos_token_found or request.decode_length() >= get_max_output_length() or
+        request.tokens.size() >= get_max_sequence_length()) {
       // Request is completed
       request_update_attainment(request_index, attained);
       request_completed = true;
       request_complete_clean_up(request_index);
-    } else if (!attained and slo_violation_early_termination) {
+    } else if (!current_attained and slo_violation_early_termination) {
       // Early drop that request
       request_update_attainment(request_index, attained);
       request_completed = true;
@@ -2712,7 +2743,7 @@ void RequestManager::terminate_background_server() {
     }
     str += "\n total_time_ms(" + std::to_string(total_time / 1000.0) + ")";
     str += "\n total_requests(" + std::to_string(total_requests) + "/" +
-           std::to_string(profiling_requests.size()) + ")";
+           std::to_string(all_requests.size()) + ")";
     str += "\n total_tokens(" + std::to_string(total_tokens) + ")";
     // throughput
     str += "\n throughput_requests_per_sec(" +
@@ -2749,6 +2780,10 @@ void RequestManager::terminate_background_server() {
     latency_per_request_ms += ")";
     str += latency_per_request_ms;
 
+    average_latency_per_request /= total_requests;
+    str += "\n average_latency_per_request_ms(" +
+           std::to_string(average_latency_per_request) + ")";
+
     std::string ttft_per_request_ms = "\n ttft_per_request_ms( ";
     for (auto const &profiling_info : profiling_requests) {
       double prefilling_time_ms = 0;
@@ -2765,8 +2800,8 @@ void RequestManager::terminate_background_server() {
     ttft_per_request_ms += ")";
     str += ttft_per_request_ms;
 
-    std::string per_token_time_per_request_ms =
-        "\n per_token_time_per_request_ms( ";
+    std::unordered_map<double, std::pair<int, double>> tpots;
+    std::string tpot_per_request_ms = "\n tpot_per_request_ms( ";
     for (auto const &profiling_info : profiling_requests) {
       double per_token_time_ms = 0;
       auto const &request = all_requests[profiling_info.first];
@@ -2774,16 +2809,24 @@ void RequestManager::terminate_background_server() {
       if (profiling.start_decoding_time != 0) {
         per_token_time_ms =
             (profiling.finish_time - profiling.start_decoding_time) / 1000.0 /
-            (request.tokens.size() - request.llm_prefill_len);
+            request.decode_length();
       }
-      per_token_time_per_request_ms += std::to_string(per_token_time_ms) + " ";
+      tpot_per_request_ms += std::to_string(per_token_time_ms) + " ";
+      auto &tpot = tpots[request.slo_ratio];
+      tpot.first++;
+      tpot.second += per_token_time_ms;
     }
-    per_token_time_per_request_ms += ")";
-    str += per_token_time_per_request_ms;
+    tpot_per_request_ms += ")";
+    str += tpot_per_request_ms;
 
-    average_latency_per_request /= total_requests;
-    str += "\n average_latency_per_request_ms(" +
-           std::to_string(average_latency_per_request) + ")";
+    std::string average_tpot_per_slo_ms = "\n average_tpot_per_slo_ms( ";
+    for (auto const &kv : tpots) {
+      double average_tpot = kv.second.second / kv.second.first;
+      average_tpot_per_slo_ms +=
+          std::to_string(kv.first) + ":" + std::to_string(average_tpot) + " ";
+    }
+    average_tpot_per_slo_ms += ")";
+    str += average_tpot_per_slo_ms;
 
     std::string req_per_step = "\n requests_per_step( ";
     for (int nb : profiling.requests_per_step) {
@@ -2846,7 +2889,7 @@ void RequestManager::terminate_background_server() {
       Request &request = request_pair.second;
       if (request.attained) {
         attainment += 1;
-        goodput += request.tokens.size() - request.llm_prefill_len;
+        goodput += request.decode_length();
       }
     }
     attainment /= total_requests;
@@ -3078,6 +3121,12 @@ void RequestManager::add_tokens_to_spec_token_tree_old_version(
 }
 
 void RequestManager::prune_token_tree() {
+  if (get_greedy_schedule()) {
+    return prune_token_tree_greedy();
+  } else if (get_equal_schedule()) {
+    return prune_token_tree_equal();
+  }
+
   // Each reqeust has at least one token
   int budget = get_max_tokens_per_batch() - num_available_requests;
   assert(budget >= 0);
@@ -3123,6 +3172,48 @@ void RequestManager::prune_token_tree() {
   }
 }
 
+void RequestManager::prune_token_tree_equal() {
+  // Each reqeust has at least one token
+  int const equal_budget =
+      get_max_tokens_per_batch() / get_num_active_requests();
+  assert(equal_budget >= 0);
+
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+    int budget = equal_budget;
+    assert(budget >= 0);
+    if (budget > 0) {
+      add_tokens_toward_goodput_per_request(budget, request_index);
+    }
+  }
+}
+
+void RequestManager::prune_token_tree_greedy() {
+  // Each reqeust has at least one token
+  int budget = get_max_tokens_per_batch();
+  assert(budget >= 0);
+
+  for (int request_index = 0; request_index < get_max_requests_per_batch();
+       ++request_index) {
+    if (!request_available[request_index]) {
+      continue;
+    }
+    RequestGuid guid = guid_of_requests[request_index];
+    Request &request = all_requests[guid];
+    assert(request.status == Request::RUNNING);
+  }
+
+  if (budget > 0) {
+    add_tokens_toward_goodput(budget);
+  }
+}
+
 void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
   Request &request = all_requests[guid];
   double num_tokens_to_decode = (ssm_spec_latency_ms + llm_verify_latency_ms) *
@@ -3133,7 +3224,12 @@ void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
   // In function add_root_to_spec_token_tree
   double current_added = 1.0;
 
-  while (budget > 0 and current_added < num_tokens_to_decode) {
+  // The max token that can be added to the token tree when fulfilling the SLO
+  int max_token_toward_slo =
+      int(get_max_tokens_per_batch() / get_num_active_requests());
+
+  while (budget > 0 and max_token_toward_slo > 0 and
+         current_added < num_tokens_to_decode) {
     if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
       break;
     }
@@ -3143,6 +3239,7 @@ void RequestManager::add_tokens_toward_slo(RequestGuid guid, int &budget) {
     node_ptr->included = true;
     current_added += exp(log_acc_prob);
     budget--;
+    max_token_toward_slo--;
   }
 }
 
@@ -3290,6 +3387,36 @@ void RequestManager::add_tokens_toward_goodput(int budget) {
         SharedTokenTreeNodePtrDoubleLess>(SharedTokenTreeNodePtrDoubleLess(),
                                           std::move(_prealloc_vector));
   }
+}
+
+void RequestManager::add_tokens_toward_goodput_per_request(int budget,
+                                                           int request_index) {
+  RequestGuid guid = guid_of_requests[request_index];
+  Request &request = all_requests[guid];
+  assert(request.status == Request::RUNNING);
+  if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
+    continue;
+  }
+
+  auto &pq = request.token_tree_nodes_acc_prob_pair_pq;
+
+  // Perform dequeue and enqueue until the budget is used up
+  while (budget > 0 and !pq.empty()) {
+    auto [node_ptr, acc_log_prob] = pq.top();
+    pq.pop();
+    node_ptr->included = true;
+    budget--;
+  }
+
+  // Clear the priority queue in each requests
+  std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
+      _prealloc_vector;
+  _prealloc_vector.reserve(BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
+  request.token_tree_nodes_acc_prob_pair_pq = std::priority_queue<
+      std::pair<std::shared_ptr<TokenTreeNode>, double>,
+      std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>,
+      SharedTokenTreeNodePtrDoubleLess>(SharedTokenTreeNodePtrDoubleLess(),
+                                        std::move(_prealloc_vector));
 }
 
 std::ostream &operator<<(std::ostream &os, TokenTree const &token_tree) {

@@ -67,6 +67,7 @@ void parse_input_args(char **argv,
                       int &max_tokens_per_ssm_batch,
                       int &max_tokens_per_prefilling_batch,
                       int &max_sequence_length,
+                      int &max_output_length,
                       int &max_tree_width,
                       int &max_tree_depth,
                       int &expansion_degree,
@@ -80,6 +81,8 @@ void parse_input_args(char **argv,
                       int &llm_verify_latency_ms,
                       double &request_per_second,
                       bool &spec_infer_old_version,
+                      bool &greedy_schedule,
+                      bool &equal_schedule,
                       std::string &emission_file_path) {
   for (int i = 1; i < argc; i++) {
     // llm model name
@@ -148,6 +151,10 @@ void parse_input_args(char **argv,
       max_sequence_length = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--max-output-length")) {
+      max_output_length = std::stoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--max-tree-width")) {
       max_tree_width = std::stoi(argv[++i]);
       continue;
@@ -199,6 +206,14 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--spec-infer-old-version")) {
       spec_infer_old_version = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--greedy-schedule")) {
+      greedy_schedule = true;
+      continue;
+    }
+    if (!strcmp(argv[i], "--equal-schedule")) {
+      equal_schedule = true;
       continue;
     }
     if (!strcmp(argv[i], "--emission-file-path")) {
@@ -362,6 +377,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_tokens_per_ssm_batch = -1;
   int max_tokens_per_prefilling_batch = -1;
   int max_sequence_length = 512;
+  int max_output_length = 512;
   int expansion_degree = 3;
   int max_tree_depth = 8;
   int max_tree_width = 16;
@@ -377,6 +393,8 @@ void FlexFlow::top_level_task(Task const *task,
   int llm_verify_latency_ms = 50;
   double request_per_second = 1.0;
   bool spec_infer_old_version = false;
+  bool greedy_schedule = false;
+  bool equal_schedule = false;
   std::string emission_file_path;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -393,6 +411,7 @@ void FlexFlow::top_level_task(Task const *task,
                    max_tokens_per_ssm_batch,
                    max_tokens_per_prefilling_batch,
                    max_sequence_length,
+                   max_output_length,
                    max_tree_width,
                    max_tree_depth,
                    expansion_degree,
@@ -406,6 +425,8 @@ void FlexFlow::top_level_task(Task const *task,
                    llm_verify_latency_ms,
                    request_per_second,
                    spec_infer_old_version,
+                   greedy_schedule,
+                   equal_schedule,
                    emission_file_path);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
@@ -438,6 +459,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
   rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
   rm->set_max_sequence_length(max_sequence_length);
+  rm->set_max_output_length(max_output_length);
   rm->set_max_tree_depth(max_tree_depth);
   rm->set_max_tree_width(max_tree_width);
   rm->set_verbose(verbose);
@@ -452,6 +474,8 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_ssm_spec_latency(ssm_spec_latency_ms);
   rm->set_llm_verify_latency(llm_verify_latency_ms);
   rm->set_spec_infer_old_version(spec_infer_old_version);
+  rm->set_greedy_schedule(greedy_schedule);
+  rm->set_equal_schedule(equal_schedule);
   rm->register_output_filepath(file_paths.output_file_path);
 
   // Create LLM model

@@ -95,9 +95,6 @@ void ArgTopK::forward_kernel(
     bool renormalize,
     /* Reserved: BatchConfig Updated */ BatchConfig const *bc,
     cudaStream_t stream) {
-  if (bc->prompt_phase) {
-    return;
-  }
   assert(bc->num_active_requests() >= 0);
   if (m->device_resources.find(stream) == m->device_resources.end()) {
     m->device_resources[stream] = new raft::device_resources(stream);

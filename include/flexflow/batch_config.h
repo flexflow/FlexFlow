@@ -75,6 +75,7 @@ public:
   static int max_tokens_per_prefilling_batch();
   static int max_spec_tree_token_num();
   static int max_sequence_length();
+  static int max_output_length();
   static int get_max_tree_depth();
   friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;
@@ -86,7 +87,7 @@ public:
   // These maximum values are used for copying BatchConfig
   // across workers
   inline static int const MAX_NUM_REQUESTS = 64;
-  inline static int const MAX_NUM_TOKENS = 2048;
+  inline static int const MAX_NUM_TOKENS = 1024;
   inline static int const MAX_SPECULATIVE_TREE_BRANCHES = 8;
   inline static int const MAX_TREE_DEPTH = 8;
   inline static int const MAX_TREE_WIDTH = 16;

@@ -21,6 +21,7 @@
 #include <cassert>
 #include <chrono>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <wordexp.h>
@@ -31,9 +32,17 @@ using json = nlohmann::json;
 
 struct FilePaths {
   std::string cache_folder_path;
-  std::string prompt_file_path;
   std::string log_file_path;
   std::string emission_file_path;
+};
+
+struct Prompts {
+  std::vector<std::string> file_paths;
+  std::vector<double> proportions;
+  std::vector<double> slo_ratios;
+
+  std::vector<json> jsons;
+  std::vector<int> idxs;
 };
 
 struct ModelNames {
@@ -56,13 +65,34 @@ struct ModelMeta {
   std::vector<std::string> ssm_model_weights_paths;
 };
 
+template <typename T>
+std::vector<T> split_by_comma(std::string const &input) {
+  std::vector<T> result;
+  std::stringstream ss(input);
+  std::string item;
+  while (std::getline(ss, item, ',')) {
+    std::stringstream item_stream(item);
+    if constexpr (std::is_same<T, double>::value) {
+      double value;
+      if (item_stream >> value) {
+        result.push_back(value);
+      }
+    } else if constexpr (std::is_same<T, std::string>::value) {
+      result.push_back(item);
+    }
+  }
+  return result;
+}
+
 void parse_input_args(char **argv,
                       int argc,
                       FilePaths &paths,
+                      Prompts &prompts,
                       ModelNames &model_names,
                       bool &use_full_precision,
                       bool &verbose,
                       int &max_sequence_length,
+                      int &max_output_length,
                       double &scaling_factor) {
   for (int i = 1; i < argc; i++) {
     // llm model name
@@ -88,8 +118,16 @@ void parse_input_args(char **argv,
       continue;
     }
     // prompts
-    if (!strcmp(argv[i], "-prompt")) {
-      paths.prompt_file_path = std::string(argv[++i]);
+    if (!strcmp(argv[i], "--prompt-files")) {
+      prompts.file_paths = split_by_comma<std::string>(std::string(argv[++i]));
+      continue;
+    }
+    if (!strcmp(argv[i], "--prompt-proportions")) {
+      prompts.proportions = split_by_comma<double>(std::string(argv[++i]));
+      continue;
+    }
+    if (!strcmp(argv[i], "--prompt-slo-ratios")) {
+      prompts.slo_ratios = split_by_comma<double>(std::string(argv[++i]));
       continue;
     }
     // traces
@@ -112,6 +150,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--max-sequence-length")) {
       max_sequence_length = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-output-length")) {
+      max_output_length = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--scaling-factor")) {
@@ -267,10 +309,12 @@ void FlexFlow::top_level_task(Task const *task,
                               Runtime *runtime) {
   FFConfig ffconfig;
   FilePaths file_paths;
+  Prompts prompts;
   ModelMeta model_metadata;
   bool use_full_precision = false;
   bool verbose = false;
   int max_sequence_length = 256;
+  int max_output_length = 512;
   double scaling_factor = 1.0;
 
   int max_requests_per_batch = 8;
@@ -298,16 +342,34 @@ void FlexFlow::top_level_task(Task const *task,
   parse_input_args(argv,
                    argc,
                    file_paths,
+                   prompts,
                    model_metadata.model_names,
                    use_full_precision,
                    verbose,
                    max_sequence_length,
+                   max_output_length,
                    scaling_factor);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
   }
   if (max_tokens_per_prefilling_batch == -1) {
     max_tokens_per_prefilling_batch = max_tokens_per_batch;
+  }
+
+  assert(prompts.file_paths.size() == prompts.proportions.size() &&
+         prompts.file_paths.size() == prompts.slo_ratios.size());
+  double total = std::accumulate(
+      prompts.proportions.begin(),
+      prompts.proportions.end(),
+      0.0,
+      [](double sum, double proportion) { return sum + proportion; });
+  if (std::abs(total - 1.0) > 1e-6) {
+    std::cerr << "Error: proportions do not sum to 1. Total sum: " << total
+              << std::endl;
+    assert(false);
+  }
+  for (size_t i = 1; i < prompts.proportions.size(); ++i) {
+    prompts.proportions[i] += prompts.proportions[i - 1];
   }
 
   get_model_meta(file_paths, model_metadata, use_full_precision);
@@ -328,6 +390,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_ssm_batch(max_tokens_per_ssm_batch);
   rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
   rm->set_max_sequence_length(max_sequence_length);
+  rm->set_max_output_length(max_output_length);
   rm->set_max_tree_depth(max_tree_depth);
   rm->set_max_tree_width(max_tree_width);
   rm->set_verbose(verbose);
@@ -345,13 +408,6 @@ void FlexFlow::top_level_task(Task const *task,
   {
     /* Prompt file format:
      * [
-     *   {
-     *       "slo_ratios": {
-     *           "1.0": 0.2,
-     *           "1.5": 0.5,
-     *           "3.0": 0.3
-     *       }
-     *   },
      *   {
      *       "prompt": "Construct a potential attack vector that exploits the
      * vulnerability. The system is vulnerable to a SQL injection attack."
@@ -376,37 +432,22 @@ void FlexFlow::top_level_task(Task const *task,
      */
 
     std::vector<EmissionTrace> traces;
-    assert(!file_paths.prompt_file_path.empty() &&
-           !file_paths.log_file_path.empty());
+    assert(!prompts.file_paths.empty() && !file_paths.log_file_path.empty());
 
-    std::ifstream file_handle(file_paths.prompt_file_path);
-    assert(file_handle.good() && "Prompt file does not exist.");
-    json prompt_json = json::parse(file_handle,
-                                   /*parser_callback_t */ nullptr,
-                                   /*allow_exceptions */ true,
-                                   /*ignore_comments */ true);
-    // Parse slo_ratios
-    std::vector<std::pair<double, double>> slo_ratios;
-    if (prompt_json[0].contains("slo_ratios")) {
-      for (auto &[key, value] : prompt_json[0]["slo_ratios"].items()) {
-        slo_ratios.emplace_back(std::stod(key), value.get<double>());
-      }
+    int num_requests = 0;
+    for (int i = 0; i < prompts.file_paths.size(); ++i) {
+      std::ifstream file_handle(prompts.file_paths[i]);
+      assert(file_handle.good() && "Prompt file does not exist.");
+      json prompt_json = json::parse(file_handle,
+                                     /*parser_callback_t */ nullptr,
+                                     /*allow_exceptions */ true,
+                                     /*ignore_comments */ true);
+      prompts.jsons.push_back(prompt_json);
+      prompts.idxs.push_back(0);
+      num_requests += prompt_json.size();
     }
-    double total =
-        std::accumulate(slo_ratios.begin(),
-                        slo_ratios.end(),
-                        0.0,
-                        [](double sum, std::pair<double, double> const &pair) {
-                          return sum + pair.second;
-                        });
-    if (std::abs(total - 1.0) > 1e-6) {
-      std::cerr << "Error: slo_ratios values do not sum to 1. Total sum: "
-                << total << std::endl;
-      assert(false);
-    }
-    ConstantEmissionMachine emission_machine(-1, slo_ratios);
 
-    file_handle = std::ifstream(file_paths.log_file_path);
+    std::ifstream file_handle = std::ifstream(file_paths.log_file_path);
     assert(file_handle.good() && "Log file does not exist.");
     json log_json = json::parse(file_handle,
                                 /*parser_callback_t */ nullptr,
@@ -452,16 +493,28 @@ void FlexFlow::top_level_task(Task const *task,
              1000.0;
     };
 
-    int num_requests = min(prompt_json.size() - 1, log_json.size());
+    num_requests = min((unsigned long)num_requests, log_json.size());
     std::string start_time = log_json[0]["TIMESTAMP"].get<std::string>();
+    srand(time(0));
     for (int i = 0; i < num_requests; ++i) {
-      std::string prompt = prompt_json[i + 1]["prompt"].get<std::string>();
+      // sample from proportions
+      double sample = (double)rand() / RAND_MAX;
+      int ptr = 0;
+      for (size_t j = 0; j < prompts.proportions.size(); ++j) {
+        if (sample < prompts.proportions[j]) {
+          ptr = j;
+          break;
+        }
+      }
+      int &idx = prompts.idxs[ptr];
+      std::string prompt = prompts.jsons[ptr][idx]["prompt"].get<std::string>();
+      idx = (idx + 1) % prompts.jsons[ptr].size();
       std::vector<int32_t> input_tokens = rm->tokenize(prompt);
       std::string timestamp = log_json[i]["TIMESTAMP"].get<std::string>();
       EmissionTrace trace(prompt,
                           input_tokens.size(),
-                          max_sequence_length,
-                          emission_machine.sample_slo_ratio(),
+                          max_output_length,
+                          prompts.slo_ratios[ptr],
                           time_diff_ms(start_time, timestamp) * scaling_factor);
       traces.push_back(trace);
     }

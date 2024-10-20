@@ -221,6 +221,7 @@ struct Request {
   double get_length_weight();
   void set_slo_ratio(double slo_ratio_);
   double get_slo_ratio();
+  int decode_length() const;
 
   Request() {
     std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
@@ -276,6 +277,8 @@ public:
   int get_max_spec_tree_token_num();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
+  void set_max_output_length(int max_output_length);
+  int get_max_output_length();
   void set_decoding_mode(DecodingMode mode);
   void set_verbose(bool verbose_);
   int get_k();
@@ -299,7 +302,11 @@ public:
   void
       set_slo_violation_early_termination(bool slo_violation_early_termination);
   void set_spec_infer_old_version(bool spec_infer_old_version);
+  void set_greedy_schedule(bool greedy_schedule);
+  void set_equal_schedule(bool equal_schedule);
   bool get_spec_infer_old_version();
+  bool get_greedy_schedule();
+  bool get_equal_schedule();
   double get_request_expected_latency(Request &request);
   Request &get_request_with_guid(RequestGuid guid);
   int register_ssm_model(FFModel *model);
@@ -385,6 +392,7 @@ private:
   int max_tokens_per_prefilling_batch;
   int max_spec_tree_token_num;
   int max_sequence_length;
+  int max_output_length;
   int max_tree_depth;
   int max_tree_width;
   int k;
@@ -404,6 +412,8 @@ private:
   bool memory_occupancy = false;
   bool slo_violation_early_termination = false;
   bool spec_infer_old_version = false;
+  bool greedy_schedule = false;
+  bool equal_schedule = false;
 
   std::unique_ptr<Tokenizer> tokenizer_;
   bool verbose;
@@ -538,9 +548,12 @@ private:
   void add_tokens_to_spec_token_tree_old_version(
       InferenceResult const &ssm_inference_result);
   void prune_token_tree();
+  void prune_token_tree_equal();
+  void prune_token_tree_greedy();
   void add_tokens_toward_slo(RequestGuid guid, int &budget);
   void add_tokens_toward_memory_occupancy(int budget);
   void add_tokens_toward_goodput(int budget);
+  void add_tokens_toward_goodput_per_request(int budget, int request_index);
   void update_token_tree_depth();
 
   /* ---------- Spec Decoding Helper Functions ---------- */

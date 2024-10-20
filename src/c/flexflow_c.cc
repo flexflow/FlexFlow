@@ -2615,6 +2615,13 @@ void flexflow_request_manager_set_max_sequence_length(
   DEBUG_PRINT("[RequestManager] set max_sequence_length %d", max_seq_length);
 }
 
+void flexflow_request_manager_set_max_output_length(
+    flexflow_request_manager_t handle_, int max_output_length) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_output_length(max_output_length);
+  DEBUG_PRINT("[RequestManager] set max_output_length %d", max_output_length);
+}
+
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,
