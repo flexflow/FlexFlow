@@ -4215,6 +4215,10 @@ class RequestManager(object):
     def set_max_output_length(self, max_length):
         return ffc().flexflow_request_manager_set_max_output_length(
             self.handle, max_length)
+    
+    def set_max_kv_cache_size(self, max_size):
+        return ffc().flexflow_request_manager_set_max_kv_cache_size(
+            self.handle, max_size)
 
     def start_server(self, model):
         return ffc().flexflow_request_manager_start_background_server(

@@ -76,6 +76,7 @@ public:
   static int max_spec_tree_token_num();
   static int max_sequence_length();
   static int max_output_length();
+  static int max_kv_cache_size();
   static int get_max_tree_depth();
   friend std::ostream &operator<<(std::ostream &os, BatchConfig const &bc);
   void print() const;
@@ -112,6 +113,9 @@ public:
     int first_token_offset_in_batch = -1;
     int num_tokens_in_batch = 0;
     int padding = 0; // Padding for memory pointer alignment
+    int num_kv_pages; //number of kv pages used
+    int kv_last_page_len; //last page length of kv
+    RequestGuid request_guid;
   };
 
   struct PerTokenInfo {

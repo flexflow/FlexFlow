@@ -108,6 +108,10 @@ int BatchConfig::max_output_length() {
   return RequestManager::get_request_manager()->get_max_output_length();
 }
 
+int BatchConfig::max_kv_cache_size() {
+  return RequestManager::get_request_manager()->get_max_kv_cache_size();
+}
+
 int BatchConfig::max_spec_tree_token_num() {
   return RequestManager::get_request_manager()->get_max_spec_tree_token_num();
 }
@@ -301,6 +305,8 @@ void StreamingCacheInfo::reset_cache() {
   window_back = 0;
   commit_len = 0;
 }
+
+//page attention: TODO: I think we just need to change the index
 
 int StreamingCacheInfo::global_2_cache_index(int global_index) {
   if (global_index < sink_cache_size) {

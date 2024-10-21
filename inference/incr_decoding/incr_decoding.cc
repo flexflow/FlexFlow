@@ -51,6 +51,7 @@ void parse_input_args(char **argv,
                       int &max_tokens_per_prefilling_batch,
                       int &max_sequence_length,
                       int &max_output_length,
+                      int &max_kv_cache_size,
                       int &sampling_seed,
                       bool &streaming_cache,
                       bool &slo_attainment_early_termination,
@@ -133,6 +134,10 @@ void parse_input_args(char **argv,
       max_output_length = std::stoi(argv[++i]);
       continue;
     }
+    if (!strcmp(argv[i], "--max-kv-cache-size")) {
+      max_kv_cache_size = std::stoi(argv[++i]);
+      continue;
+    }
     if (!strcmp(argv[i], "--sampling-seed")) {
       sampling_seed = std::stoi(argv[++i]);
       continue;
@@ -199,6 +204,7 @@ void FlexFlow::top_level_task(Task const *task,
   int max_tokens_per_prefilling_batch = -1;
   int max_sequence_length = 256;
   int max_output_length = 512;
+  int max_kv_cache_size = -1; //if -1, then use the default value
   RequestManager::DecodingMode decoding_mode =
       RequestManager::INCREMENTAL_DECODING;
   int sampling_seed = 0;
@@ -228,6 +234,7 @@ void FlexFlow::top_level_task(Task const *task,
                    max_tokens_per_prefilling_batch,
                    max_sequence_length,
                    max_output_length,
+                   max_kv_cache_size,
                    sampling_seed,
                    streaming_cache,
                    slo_attainment_early_termination,
@@ -305,6 +312,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_max_output_length(max_output_length);
+  rm->set_max_kv_cache_size(max_kv_cache_size);
   rm->set_decoding_mode(decoding_mode);
   rm->set_slo_violation_early_termination(slo_attainment_early_termination);
   rm->set_baseline_latency(baseline_latency_ms);

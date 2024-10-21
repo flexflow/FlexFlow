@@ -19,6 +19,7 @@
 #include "flexflow/inference.h"
 #include "flexflow/model.h"
 #include "flexflow/utils/file_loader.h"
+#include "flexflow/page_manager.h"
 #include <condition_variable>
 #include <future>
 #include <mutex>
@@ -147,6 +148,10 @@ struct Request {
   Status status = PENDING;
   std::vector<BatchConfig::TokenId> tokens;
 
+  //page attention, page_last_committed should be -1 because there are no blocks at the beginning
+  int page_last_committed = -1;
+  std::vector<LogicalTokenBlock> blocks;
+
   // TokenTree speculative_token_tree;
   std::vector<TokenTree> speculative_token_trees;
   // To make request manager stateful, we need to store the causal mask here
@@ -272,8 +277,12 @@ public:
   int get_max_spec_tree_token_num();
   void set_max_sequence_length(int max_seq_length);
   int get_max_sequence_length();
+  void set_max_kv_cache_size(int max_kv_cache_size);
+  int get_max_kv_cache_size();
   void set_max_output_length(int max_output_length);
   int get_max_output_length();
+  void set_max_kv_cache_size(int max_kv_cache_size);
+  int get_max_kv_cache_size();
   void set_decoding_mode(DecodingMode mode);
   void set_verbose(bool verbose_);
   int get_k();
@@ -388,6 +397,7 @@ private:
   int max_spec_tree_token_num;
   int max_sequence_length;
   int max_output_length;
+  int max_kv_cache_size;
   int max_tree_depth;
   int max_tree_width;
   int k;
@@ -522,6 +532,17 @@ private:
   void update_bitmask_prompt(RequestGuid guid, int num_committed_tokens);
   void init_bitmask_spec(RequestGuid guid);
   BatchConfig::BitMask create_llm_bitmask(RequestGuid guid);
+
+  // Page Attention related
+  int get_num_blocks_allocated(Request &request) const;
+  int get_len_last_block(Request &request) const;
+  int get_idx_last_logical_token(Request &request) const;
+  int idx_logical_to_physical(Request &request, int idx_logical);
+  void _append_block_to_request(
+    Request &request, bool is_commit);
+  int append_token_to_block(Request &request, TokenId token, bool is_commit);
+  void reset_block_table(Request &request);
+  void print_num_tokens(Request &request);
 
   // Token tree related
   void init_token_tree(RequestGuid guid);
