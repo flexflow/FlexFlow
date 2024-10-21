@@ -91,8 +91,8 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
   q_indptr_h[0] = 0;
   kv_indptr_h[0] = 0;
   qk_indptr_h[0] = 0;
-  int cnt_1 = 0, q_lens = 0, qk_lens = 0;
-  int indices_offset = 0, indices_lens = 0, kv_len = 0;
+  int q_lens = 0, qk_lens = 0;
+  int indices_offset = 0, indices_lens = 0;
   for (int req_idx = 0, indptr_idx = 0; req_idx < batch_config->max_requests_per_batch(); req_idx++) {
     if (batch_config->request_available[req_idx]) {
       int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
@@ -110,10 +110,6 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       assert(batch_config->requestsInfo[req_idx].num_kv_pages == (kv_len + kPagesize - 1) / kPagesize);
       assert(batch_config->requestsInfo[req_idx].kv_last_page_len <= kPagesize);
       std::vector<int32_t> kv_indices = pm -> get_block_table_indices(batch_config->requestsInfo[req_idx].request_guid);
-      // printf("request_guid: %d\n", batch_config->requestsInfo[req_idx].request_guid);
-      // printf("kv_indices.size() = %d, kv_len = %d\n", kv_indices.size(), kv_len);
-      // printf("kv last page len = %d\n", batch_config->requestsInfo[req_idx].kv_last_page_len);
-      // printf("num_kv_pages = %d\n", batch_config->requestsInfo[req_idx].num_kv_pages);
       assert(kv_indices.size() == (kv_len + kPagesize - 1) / kPagesize);
       for (int i = indices_offset; i < indices_lens; i++) {
         kv_indices_h[i] = kv_indices[i - indices_offset];
@@ -122,14 +118,6 @@ void prepare_inference_params_kernel_h(BatchConfig const *batch_config,
       kv_last_page_len_h[indptr_idx] = batch_config->requestsInfo[req_idx].kv_last_page_len;
       indptr_idx++;
     }
-    // }else{
-    //   q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx];
-    //   q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx];
-    //   kv_indptr_h[indptr_idx + 1] = kv_indptr_h[indptr_idx];
-    //   qk_indptr_h[indptr_idx + 1] = 0;
-    //   kv_last_page_len_h[indptr_idx] = 0;
-    //   indptr_idx++;
-    // }
   }
 
   // do the copy
@@ -405,12 +393,6 @@ void RequestManager::load_batch_config_task(
             handle.incr_attention_metadata->kv_indices,
             handle.incr_attention_metadata->kv_last_page_len,
             handle.incr_attention_metadata->qk_indptr);
-
-            // check on error
-            cudaError_t error = cudaGetLastError();
-            if (error != cudaSuccess) {
-              printf("CUDA error in prepare_inference_params_kernel: %s\n", cudaGetErrorString(error));
-            }
       }
 
       // prepare attention forward handler
@@ -637,8 +619,6 @@ void RequestManager::load_batch_config_task(
     }
   } else if (batch_config->get_mode() == TREE_VERIFY_MODE) {
     PageManager *pm = PageManager::get_page_manager();
-    // hardcode request 
-    // printf("request has allocated %d pages\n", pm -> get_block_table_indices(1000000).size());
     static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1], kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
     static int32_t kv_indices_h[BatchConfig::MAX_NUM_REQUESTS * BatchConfig::MAX_NUM_TOKENS];
     static int32_t qk_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
@@ -666,20 +646,7 @@ void RequestManager::load_batch_config_task(
             round_up_pages(BatchConfig::max_sequence_length() +
                            BatchConfig::max_spec_tree_token_num());
 
-        int parallelism = batch_size;
-        // prepare_inference_params_kernel<<<GET_BLOCKS(parallelism),
-        //                                   min(CUDA_NUM_THREADS, parallelism),
-        //                                   0,
-        //                                   stream>>>(
-        //     batch_size,
-        //     request_infos,
-        //     request_available,
-        //     max_num_pages,
-        //     handle.tree_verify_attention_metadata->q_indptr,
-        //     handle.tree_verify_attention_metadata->kv_indptr,
-        //     handle.tree_verify_attention_metadata->kv_indices,
-        //     handle.tree_verify_attention_metadata->kv_last_page_len,
-        //     handle.tree_verify_attention_metadata->qk_indptr);
+        // int parallelism = batch_size;
         prepare_inference_params_kernel_h(batch_config,
                                           pm,
                                           handle,
@@ -747,26 +714,6 @@ void RequestManager::load_batch_config_task(
                   ->prompt_handler_collections[batch_size]);
         }
 
-        // static int32_t q_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1],
-        //     kv_indptr_h[BatchConfig::MAX_NUM_REQUESTS + 1];
-        // q_indptr_h[0] = 0;
-        // kv_indptr_h[0] = 0;
-        // for (int req_idx = 0, indptr_idx = 0;
-        //      req_idx < batch_config->max_requests_per_batch();
-        //      req_idx++) {
-        //   if (batch_config->request_available[req_idx]) {
-        //     int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
-        //     int kv_len =
-        //         batch_config->requestsInfo[req_idx].num_tokens_in_batch +
-        //         batch_config->requestsInfo[req_idx]
-        //             .first_token_index_in_request;
-        //     q_indptr_h[indptr_idx + 1] = q_indptr_h[indptr_idx] + q_len;
-        //     kv_indptr_h[indptr_idx + 1] =
-        //         kv_indptr_h[indptr_idx] + round_up_pages(kv_len);
-        //     indptr_idx++;
-        //   }
-        // }
-
         handler->SetCUDAStream(stream);
         handler->BeginForward<half, int32_t>(
             static_cast<void *>(
@@ -782,12 +729,6 @@ void RequestManager::load_batch_config_task(
             handle.tree_verify_attention_metadata->num_kv_heads(),
             handle.tree_verify_attention_metadata->head_dim(),
             kPagesize);
-
-            cudaError_t syncErr = cudaDeviceSynchronize();
-            if (syncErr != cudaSuccess) {
-              printf("Kernel execution error: %s\n", cudaGetErrorString(syncErr));
-              assert(false);
-            }
       }
     }
   }

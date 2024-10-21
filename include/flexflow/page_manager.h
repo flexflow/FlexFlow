@@ -1,18 +1,3 @@
-/* Copyright 2023 CMU, Stanford, Facebook, LANL
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 #pragma once
 
 #include "flexflow/batch_config.h"
@@ -31,7 +16,7 @@ using TokenId = BatchConfig::TokenId;
 
 /**
  * @class LogicalTokenBlock
- * @brief A class to represent a logical block of tokens similar to virtual memory address
+ * @brief A class to represent a sequence of tokens for each request
  */
 class LogicalTokenBlock {
 public:
@@ -70,7 +55,6 @@ private:
     int num_tokens; // the number of tokens currently stored in the block
     int num_commit_tokens; // the number of tokens inside this block that are already committed
     int num_spec_tokens; // the number of tokens inside this block that are speculative tokens, which is stored temporarily
-
     std::vector<TokenId> token_ids; //store the token ids in a order that corresponds to the inference sequence
 };
 
@@ -132,9 +116,9 @@ public:
     using RequestGuid = BatchConfig::RequestGuid;
     PageManager(int block_size, int num_total_blocks);
 
-
     int allocate_one_block(const RequestGuid& request_guid);
     void free_request(const RequestGuid& request_guid);
+    //used for the case that we want to free the last num_blocks that stores spec tokens(which are the tokens are not yet committed)
     void free_multiple_blocks(const RequestGuid& request_guid, int num_blocks);
     std::vector<int> get_block_table_indices(const RequestGuid& request_guid) const;
 

@@ -329,8 +329,8 @@ void RequestManager::set_spec_infer_old_version(bool spec_infer_old_version_) {
   spec_infer_old_version = spec_infer_old_version_;
 }
 
-void RequestManager::set_greedy_scheduler(bool greedy_scheduler_) {
-  greedy_scheduler = greedy_scheduler_;
+void RequestManager::set_greedy_schedule(bool greedy_scheduler_) {
+  greedy_schedule = greedy_scheduler_;
 }
 
 void RequestManager::set_equal_schedule(bool equal_schedule_) {
@@ -341,8 +341,8 @@ bool RequestManager::get_spec_infer_old_version() {
   return spec_infer_old_version;
 }
 
-bool RequestManager::get_greedy_scheduler() {
-  return greedy_scheduler;
+bool RequestManager::get_greedy_schedule() {
+  return greedy_schedule;
 }
 
 bool RequestManager::get_equal_schedule() {
@@ -683,7 +683,6 @@ void RequestManager::request_complete_clean_up(int batch_index) {
 
   // page attention: free the pages
   PageManager *page_manager = PageManager::get_page_manager();
-  printf("free request %d\n", guid);
   page_manager->free_request(guid);
 
   // Find the sos and eos in the sequence
@@ -1148,14 +1147,11 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     }
     //update related page info in batch config
     bc.requestsInfo[request_index].num_kv_pages = get_num_blocks_allocated(*request);
-    printf("request: %d has %d kv pages after prefilling\n", request->guid, bc.requestsInfo[request_index].num_kv_pages);
-    // WARNING: it is possible that it has no tokens allocated!! but not allowed for flashinfer
     if (bc.requestsInfo[request_index].num_kv_pages == 0) {
-      // turn this request into not available
+      // turn this request into not available for one round
       bc.request_available[request_index] = false;
     }
     bc.requestsInfo[request_index].kv_last_page_len = get_len_last_block(*request);
-    printf("request: %d has %d kv last page len after prefilling\n", request->guid, bc.requestsInfo[request_index].kv_last_page_len);
     bc.requestsInfo[request_index].request_guid = request->guid;
   }
   bc.num_tokens = num_tokens;
@@ -1164,7 +1160,6 @@ BatchConfig RequestManager::prepare_llm_prefilling_batch() {
     std::cout << "prepare_llm_prefilling_batch NEW batchconfig:" << std::endl;
     bc.print();
   }
-  printf("there are %d requests in the batch in prefilling stage\n", bc.num_available_requests);
   return bc;
 }
 
@@ -1550,7 +1545,7 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
     Request &request = all_requests[guid];
     assert(request.status == Request::RUNNING);
 
-    //page attention: before commit token, reset the pages assigned by cleaning all the tokens
+    //before commit token, reset the pages assigned by cleaning all the tokens
     std::vector<int> block_table_before_commit = page_manager->get_block_table_indices(guid);
     // also need to reset the pages
     reset_block_table(request);
@@ -1576,17 +1571,11 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
       Request::CommittedToken &committed_token =
           committed_tokens.at(committed_token_index);
       
-      // assert(request.page_last_committed < request.blocks.size());
-      printf("in verify: page_last_committed: %d, request->blocks.size(): %d\n", request.page_last_committed, request.blocks.size());
       int idx_to_physical = append_token_to_block(request, committed_token.token_id, true);
       int idx_from_logical = committed_token.from_index;
-      if (idx_from_logical < 0) {
-        printf("idx_from_logical: %d, from_index: %d, first_token_offset_in_batch: %d\n", idx_from_logical, committed_token.from_index, request.first_token_offset_in_batch);
-      }
       assert(idx_from_logical >= 0);
       assert(idx_from_logical / kPagesize < block_table_before_commit.size());
       int idx_from_physical = block_table_before_commit[idx_from_logical / kPagesize] * kPagesize + committed_token.from_index % kPagesize;
-      printf("id to physical: %d, from physical: %d\n", idx_to_physical, idx_from_physical);
 
 
       new_bc.committed_tokens[new_bc.num_tokens_to_commit].request_index =
@@ -1615,15 +1604,11 @@ BatchConfig RequestManager::prepare_verify_batch_config() {
           token_tree_index++;
 
           // Append the token to the block
-          // printf("in verify spec tree: page_last_committed: %d, request->blocks.size(): %d ", request.page_last_committed, request.blocks.size());
-          // printf("in verify spec tree: last page len: %d\n", get_len_last_block(request));
-          // assert(request.page_last_committed < request.blocks.size());
           append_token_to_block(request, tree_node->id, false);
         }
       }
       layer_index++;
     }
-    printf("there are %d tokens in the token tree\n", token_tree_index);
     new_bc.requestsInfo[request_index].num_tokens_in_batch = token_tree_index;
 
     request.first_token_offset_in_batch = new_bc.num_tokens - token_tree_index;
@@ -1973,6 +1958,7 @@ int RequestManager::get_len_last_block(Request &request) const {
   return request.blocks.back().get_num_tokens();
 }
 
+// get the index of the last token in the request
 int RequestManager::get_idx_last_logical_token(Request &request) const {
   if (request.blocks.empty()) {
     printf("Error: request.blocks is empty\n");
@@ -1987,8 +1973,6 @@ int RequestManager::idx_logical_to_physical(Request &request, int idx_logical) {
   PageManager *page_manager = PageManager::get_page_manager();
   std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
   if (request.blocks.size() != block_table_indices.size()) {
-    printf("page manager get block table indices: %d, request.blocks.size(): %d\n", page_manager->get_block_table_indices(request.guid).size(), request.blocks.size());
-    printf("request.blocks.size(): %d, block_table_indices.size(): %d\n", request.blocks.size(), block_table_indices.size());
     assert(request.blocks.size() == block_table_indices.size());
   }
   return block_table_indices[idx_logical / kPagesize] * kPagesize + idx_logical % kPagesize;
@@ -2007,25 +1991,18 @@ void RequestManager::_append_block_to_request(
   request.blocks.push_back(block);
   page_manager->allocate_one_block(request.guid);
   std::vector<int> block_table_indices = page_manager->get_block_table_indices(request.guid);
-  // for (int i = 0; i < block_table_indices.size(); i++) {
-  //   printf("block table indices: %d\n", block_table_indices[i]);
-  // }
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   // update page_id_commit
   if (is_commit) {
     request.page_last_committed++;
     int size_blocks = request.blocks.size();
-    if (request.page_last_committed >= size_blocks) {
-      printf("request page_last_committed: %d, size_blocks) {: %d\n", request.page_last_committed, size_blocks);
-      assert(request.page_last_committed < static_cast<int>(request.blocks.size()));
-    }
+    assert(request.page_last_committed < static_cast<int>(request.blocks.size()));
   }
 }
 
 //this function is used for appending a token to the last logical block and also the last physical block
 //it will return the physical position of this token
 int RequestManager::append_token_to_block(Request &request, TokenId token, bool is_commit) {
-  // assert(request.page_last_committed < request.blocks.size());
   PageManager *page_manager = PageManager::get_page_manager();
   if (request.blocks.empty() ||
       request.blocks.back().is_full()) {
@@ -2058,16 +2035,8 @@ void RequestManager::reset_block_table(Request &request){
     request.blocks.erase(request.blocks.begin() + request.page_last_committed + 1, request.blocks.end());
   }
   request.blocks.back().reset_num_spec_tokens();
-  printf("after reset, block now has %d tokens\n", request.blocks.back().get_num_tokens());
-  printf("number of pages allocated: %d\n", page_manager->get_block_table_indices(request.guid).size());
-  // printf("number of blocks: %d\n", request.blocks.size()); 
-  // printf("num spec tokens: %d\n", request.blocks.back().get_num_spec_tokens());
-  // printf("num committed tokens: %d\n", request.blocks.back().get_num_commit_tokens());
   // the indices of block table should be the same as the number of blocks
   std::vector<int> block_table = page_manager->get_block_table_indices(request.guid);
-  // for (int i = 0; i < request.blocks.size(); i++) {
-  //   printf("block table indices: %d\n", block_table[i]);
-  // }
 
   assert(request.blocks.size() == page_manager->get_block_table_indices(request.guid).size());
   return;
@@ -2469,17 +2438,13 @@ void RequestManager::start_background_server(FFModel *model) {
   background_server_handler = runtime->execute_task(ctx, launcher);
   // Register callbacks for normal exit
   {
-    printf("called exit\n");
     int ret = std::atexit(RequestManager::terminate_background_server_at_exit);
-    printf("return from exit\n");
     assert(ret == 0); // make sure the callback is successfully registered
   }
   // Register callbacks for termination
   {
-    printf("called terminate\n");
     std::set_terminate([]() {
       RequestManager::terminate_background_server_at_exit();
-      printf("return from terminate\n");
       printStackTrace();
       std::abort();
     });
@@ -3395,7 +3360,7 @@ void RequestManager::add_tokens_toward_goodput_per_request(int budget,
   Request &request = all_requests[guid];
   assert(request.status == Request::RUNNING);
   if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
-    continue;
+    return;
   }
 
   auto &pq = request.token_tree_nodes_acc_prob_pair_pq;

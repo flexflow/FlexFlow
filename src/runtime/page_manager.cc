@@ -112,7 +112,7 @@ void BlockAllocator::free(PhysicalTokenBlock& block) {
     }
     block.decr_ref_count();
     if (block.ref_count == 0) {
-        printf("put block number: %d back to free_blocks\n", block.get_block_number());
+        // printf("put block number: %d back to free_blocks\n", block.get_block_number());
         free_blocks.push_back(block);
     }else{
         // in current implementation this should not be the case
@@ -128,7 +128,6 @@ int BlockAllocator::get_num_free_blocks() const {
 PageManager::PageManager(int block_size, int num_total_blocks)
     : block_size(block_size), num_total_blocks(num_total_blocks),
       block_allocator(block_size, num_total_blocks) {
-        printf("page manager init with block_size: %d, num_total_blocks: %d\n", block_size, num_total_blocks);
       }
 
 //return the physical number of this block
@@ -138,7 +137,6 @@ int PageManager::allocate_one_block(const RequestGuid& request_guid) {
     PhysicalTokenBlock block = block_allocator.allocate();
     block_table.push_back(block);
     block_tables[request_guid] = block_table;
-    printf("request_guid: %d, block_number: %d\n", request_guid, block.get_block_number());
     return block.get_block_number();
 }
 
@@ -184,7 +182,6 @@ std::vector<int> PageManager::get_block_table_indices(const RequestGuid& request
     std::vector<int> indices;
     const auto& it = block_tables.find(request_guid);
     if (it == block_tables.end()) {
-        printf("page manager not found request_guid: %d\n", request_guid);
         return indices;
     }
     const auto& block_table = it->second;

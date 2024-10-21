@@ -97,9 +97,6 @@ __global__ void
   if (offset < kv_hidden_size) {
     int start = kv_indptr[req_idx_compact];
     int end = kv_indptr[req_idx_compact + 1] - 1;
-    if (start > end) {
-      printf("Invalid kv_indptr: %d %d\n", start, end);
-    }
     assert(start <= end && "Invalid kv_indptr");
     assert(start + (token_abs_idx / kPagesize) <= end &&
            "Invalid page index");
