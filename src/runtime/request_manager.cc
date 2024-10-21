@@ -320,8 +320,8 @@ void RequestManager::set_spec_infer_old_version(bool spec_infer_old_version_) {
   spec_infer_old_version = spec_infer_old_version_;
 }
 
-void RequestManager::set_greedy_scheduler(bool greedy_scheduler_) {
-  greedy_scheduler = greedy_scheduler_;
+void RequestManager::set_greedy_schedule(bool greedy_schedule_) {
+  greedy_schedule = greedy_schedule_;
 }
 
 void RequestManager::set_equal_schedule(bool equal_schedule_) {
@@ -332,8 +332,8 @@ bool RequestManager::get_spec_infer_old_version() {
   return spec_infer_old_version;
 }
 
-bool RequestManager::get_greedy_scheduler() {
-  return greedy_scheduler;
+bool RequestManager::get_greedy_schedule() {
+  return greedy_schedule;
 }
 
 bool RequestManager::get_equal_schedule() {
@@ -3178,7 +3178,7 @@ void RequestManager::add_tokens_toward_goodput_per_request(int budget,
   Request &request = all_requests[guid];
   assert(request.status == Request::RUNNING);
   if (request.token_tree_nodes_acc_prob_pair_pq.empty()) {
-    continue;
+    return;
   }
 
   auto &pq = request.token_tree_nodes_acc_prob_pair_pq;
@@ -3191,7 +3191,7 @@ void RequestManager::add_tokens_toward_goodput_per_request(int budget,
     budget--;
   }
 
-  // Clear the priority queue in each requests
+  // Clear the priority queue in the request
   std::vector<std::pair<std::shared_ptr<TokenTreeNode>, double>>
       _prealloc_vector;
   _prealloc_vector.reserve(BatchConfig::MAX_SPEC_TREE_TOKEN_NUM);
