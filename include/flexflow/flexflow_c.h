@@ -989,6 +989,9 @@ void flexflow_request_manager_set_max_sequence_length(
 void flexflow_request_manager_set_max_output_length(
     flexflow_request_manager_t handle_, int max_output_length);
 
+void flexflow_request_manager_set_max_kv_cache_size(
+    flexflow_request_manager_t handle_, int max_kv_cache_size);
+
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,

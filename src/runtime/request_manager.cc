@@ -130,6 +130,7 @@ RequestManager::RequestManager()
   max_spec_tree_token_num = -1;
   max_sequence_length = -1;
   max_output_length = -1;
+  max_kv_cache_size = -1;
   max_tree_depth = -1;
   max_tree_width = -1;
   k = -1;
@@ -210,6 +211,15 @@ int RequestManager::get_max_output_length() {
   assert(max_output_length > 0);
   return max_output_length;
 }
+
+void RequestManager::set_max_kv_cache_size(int max_kv_cache_size) {
+  this->max_kv_cache_size = max_kv_cache_size;
+}
+
+int RequestManager::get_max_kv_cache_size() {
+  return max_kv_cache_size;
+}
+
 
 void RequestManager::set_decoding_mode(DecodingMode mode) {
   assert(mode == INCREMENTAL_DECODING || mode == SPECULATIVE_DECODING);

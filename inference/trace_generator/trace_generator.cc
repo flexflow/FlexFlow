@@ -93,6 +93,7 @@ void parse_input_args(char **argv,
                       bool &verbose,
                       int &max_sequence_length,
                       int &max_output_length,
+                      int &max_kv_cache_size,
                       double &scaling_factor) {
   for (int i = 1; i < argc; i++) {
     // llm model name
@@ -154,6 +155,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--max-output-length")) {
       max_output_length = std::stoi(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--max-kv-cache-size")) {
+      max_kv_cache_size = std::stoi(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--scaling-factor")) {
@@ -315,6 +320,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool verbose = false;
   int max_sequence_length = 256;
   int max_output_length = 512;
+  int max_kv_cache_size = -1;
   double scaling_factor = 1.0;
 
   int max_requests_per_batch = 8;
@@ -391,6 +397,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_max_tokens_per_prefilling_batch(max_tokens_per_prefilling_batch);
   rm->set_max_sequence_length(max_sequence_length);
   rm->set_max_output_length(max_output_length);
+  rm->set_max_kv_cache_size(max_kv_cache_size);
   rm->set_max_tree_depth(max_tree_depth);
   rm->set_max_tree_width(max_tree_width);
   rm->set_verbose(verbose);

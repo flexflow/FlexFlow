@@ -2622,6 +2622,13 @@ void flexflow_request_manager_set_max_output_length(
   DEBUG_PRINT("[RequestManager] set max_output_length %d", max_output_length);
 }
 
+void flexflow_request_manager_set_max_kv_cache_size(
+    flexflow_request_manager_t handle_, int max_kv_cache_size) {
+  RequestManager *handle = FFCObjectWrapper::unwrap(handle_);
+  handle->set_max_kv_cache_size(max_kv_cache_size);
+  DEBUG_PRINT("[RequestManager] set max_kv_cache_size %d", max_kv_cache_size);
+}
+
 void flexflow_request_manager_register_tokenizer(
     flexflow_request_manager_t handle_,
     enum ModelType model_type,
