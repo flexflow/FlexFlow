@@ -45,14 +45,16 @@ struct GenerationConfig {
 
 struct GenerationRequest {
   std::string prompt;
+  bool add_special_tokens = true;
   double slo_ratio;
   double emission_time_ms;
 
   GenerationRequest(std::string const &prompt_,
                     double slo_ratio_,
-                    double emission_time_ms_)
+                    double emission_time_ms_,
+                    bool add_special_tokens_ = true)
       : prompt(prompt_), slo_ratio(slo_ratio_),
-        emission_time_ms(emission_time_ms_) {}
+        emission_time_ms(emission_time_ms_), add_special_tokens(add_special_tokens_) {}
 };
 
 struct GenerationResult {

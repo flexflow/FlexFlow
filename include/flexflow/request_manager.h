@@ -140,6 +140,7 @@ struct Request {
   int ssm_prefill_len = 0;
   int llm_prefill_len = 0;
   bool attained = true;
+  bool add_special_tokens = true;
 
   int first_token_offset_in_batch = 0;
   int num_tokens_in_batch = 0;

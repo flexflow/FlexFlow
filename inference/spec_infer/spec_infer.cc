@@ -613,7 +613,7 @@ void FlexFlow::top_level_task(Task const *task,
       std::vector<double> timestamps, ratios;
       for (auto const &json_obj : trace_json) {
         EmissionTrace trace(json_obj);
-        requests.push_back(GenerationRequest(trace.prompt, -1.0, 0));
+        requests.push_back(GenerationRequest(trace.prompt, -1.0, 0, false));
         timestamps.push_back(trace.emission_time_ms);
         ratios.push_back(trace.slo_ratio);
       }
