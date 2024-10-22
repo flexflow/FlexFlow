@@ -329,7 +329,7 @@ void apply_pos_encoding_to_tokens_in_batch(
     DT *output_ptr,
     cudaStream_t stream) {
   // apply rotary embedding if needed
-  if (!*m->apply_rotary_embedding) {
+  if (!m->rotary_embedding_meta->apply_rotary_embedding) {
     return;
   }
   int num_tokens = bc->num_active_tokens();
@@ -338,6 +338,7 @@ void apply_pos_encoding_to_tokens_in_batch(
   }
   int parallelism = num_tokens * m->local_hidden_size;
   size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
+  bool llama3_rope = (m->rotary_embedding_meta->rope_type == "llama3");
   apply_pos_encoding_to_tokens_in_batch_kernel<<<GET_BLOCKS(parallelism),
                                                  min(CUDA_NUM_THREADS,
                                                      parallelism),
@@ -345,6 +346,12 @@ void apply_pos_encoding_to_tokens_in_batch(
                                                  stream>>>(
       output_ptr,
       m->token_infos,
+      m->rotary_embedding_meta->rope_theta,
+      llama3_rope,
+      m->rotary_embedding_meta->factor,
+      m->rotary_embedding_meta->low_freq_factor,
+      m->rotary_embedding_meta->high_freq_factor,
+      m->rotary_embedding_meta->original_max_position_embeddings,
       m->qk_dim,
       num_tokens,
       q_array_size,

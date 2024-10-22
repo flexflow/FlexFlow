@@ -314,7 +314,7 @@ void SpecIncMultiHeadSelfAttention::inference_kernel_wrapper(
     GenericTensorAccessorR const &bias) {
   cudaStream_t stream;
   checkCUDA(get_legion_stream(&stream));
-  // bool use_bias = *m->qkv_bias || *m->final_bias;
+  bool use_bias = *m->qkv_bias || *m->final_bias;
 
   cudaEvent_t t_start, t_end;
   if (m->profiling) {
