@@ -110,10 +110,10 @@ void LLAMA::create_llama_model(FFModel &ff,
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
             llama_config.rotary_embedding_meta,
-            false,   /*scaling query*/
-            1.0f,    /*scaling factor*/
-            true,    /*qk_prod_scaling*/
-            false,   /*position_bias*/
+            false, /*scaling query*/
+            1.0f,  /*scaling factor*/
+            true,  /*qk_prod_scaling*/
+            false, /*position_bias*/
             streaming_cache,
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
@@ -135,10 +135,10 @@ void LLAMA::create_llama_model(FFModel &ff,
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
             llama_config.rotary_embedding_meta,
-            false,   /*scaling query*/
-            1.0f,    /*scaling factor*/
-            true,    /*qk_prod_scaling*/
-            false,   /*position_bias*/
+            false, /*scaling query*/
+            1.0f,  /*scaling factor*/
+            true,  /*qk_prod_scaling*/
+            false, /*position_bias*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
@@ -152,12 +152,12 @@ void LLAMA::create_llama_model(FFModel &ff,
             llama_config.num_key_value_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
             llama_config.hidden_size / llama_config.num_attention_heads,
-            0.0f,            /*dropout*/
-            false,           /*qkv_bias*/
-            false,           /*final_bias*/
-            false,           /*add_zero_attn*/
-            DT_NONE,         /*data_type*/
-            nullptr,         /*kernel_initializer*/
+            0.0f,    /*dropout*/
+            false,   /*qkv_bias*/
+            false,   /*final_bias*/
+            false,   /*add_zero_attn*/
+            DT_NONE, /*data_type*/
+            nullptr, /*kernel_initializer*/
             llama_config.rotary_embedding_meta,
             false,           /*scaling query*/
             1.0f,            /*scaling factor*/

@@ -52,25 +52,25 @@ bool SpecIncMultiHeadSelfAttentionParams::is_valid(
   return is_valid;
 }
 
-Tensor
-    FFModel::spec_inc_multihead_self_attention(Tensor const input,
-                                               int embed_dim,
-                                               int num_heads,
-                                               int kdim,
-                                               int vdim,
-                                               float dropout,
-                                               bool qkv_bias,
-                                               bool final_bias,
-                                               bool add_zero_attn,
-                                               DataType data_type,
-                                               Initializer *kernel_initializer,
-                                               RotaryEmbeddingMeta rotary_embedding_meta,
-                                               bool scaling_query,
-                                               float scaling_factor,
-                                               bool qk_prod_scaling,
-                                               bool position_bias,
-                                               bool streaming_cache,
-                                               char const *name) {
+Tensor FFModel::spec_inc_multihead_self_attention(
+    Tensor const input,
+    int embed_dim,
+    int num_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool qkv_bias,
+    bool final_bias,
+    bool add_zero_attn,
+    DataType data_type,
+    Initializer *kernel_initializer,
+    RotaryEmbeddingMeta rotary_embedding_meta,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
+    bool position_bias,
+    bool streaming_cache,
+    char const *name) {
   return spec_inc_multiquery_self_attention(input,
                                             embed_dim,
                                             num_heads,
@@ -92,26 +92,26 @@ Tensor
                                             name);
 }
 
-Tensor
-    FFModel::spec_inc_multiquery_self_attention(Tensor const input,
-                                                int embed_dim,
-                                                int num_q_heads,
-                                                int num_kv_heads,
-                                                int kdim,
-                                                int vdim,
-                                                float dropout,
-                                                bool qkv_bias,
-                                                bool final_bias,
-                                                bool add_zero_attn,
-                                                DataType data_type,
-                                                Initializer *kernel_initializer,
-                                                RotaryEmbeddingMeta rotary_embedding_meta,
-                                                bool scaling_query,
-                                                float scaling_factor,
-                                                bool qk_prod_scaling,
-                                                bool position_bias,
-                                                bool streaming_cache,
-                                                char const *name) {
+Tensor FFModel::spec_inc_multiquery_self_attention(
+    Tensor const input,
+    int embed_dim,
+    int num_q_heads,
+    int num_kv_heads,
+    int kdim,
+    int vdim,
+    float dropout,
+    bool qkv_bias,
+    bool final_bias,
+    bool add_zero_attn,
+    DataType data_type,
+    Initializer *kernel_initializer,
+    RotaryEmbeddingMeta rotary_embedding_meta,
+    bool scaling_query,
+    float scaling_factor,
+    bool qk_prod_scaling,
+    bool position_bias,
+    bool streaming_cache,
+    char const *name) {
   if (data_type == DT_NONE) {
     data_type = input->data_type;
   }

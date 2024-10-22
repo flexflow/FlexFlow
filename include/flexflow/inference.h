@@ -54,7 +54,8 @@ struct GenerationRequest {
                     double emission_time_ms_,
                     bool add_special_tokens_ = true)
       : prompt(prompt_), slo_ratio(slo_ratio_),
-        emission_time_ms(emission_time_ms_), add_special_tokens(add_special_tokens_) {}
+        emission_time_ms(emission_time_ms_),
+        add_special_tokens(add_special_tokens_) {}
 };
 
 struct GenerationResult {

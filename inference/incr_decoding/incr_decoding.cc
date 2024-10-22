@@ -398,8 +398,11 @@ void FlexFlow::top_level_task(Task const *task,
         assert(false);
       }
       for (size_t i = 1; i < prompt_json.size(); ++i) {
-        requests.push_back(GenerationRequest(
-            prompt_json[i]["prompt"].get<std::string>(), -1.0, 0, add_special_tokens));
+        requests.push_back(
+            GenerationRequest(prompt_json[i]["prompt"].get<std::string>(),
+                              -1.0,
+                              0,
+                              add_special_tokens));
       }
       PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
       // ConstantEmissionMachine emission_machine(-1, slo_ratios);
@@ -414,7 +417,8 @@ void FlexFlow::top_level_task(Task const *task,
       std::vector<double> timestamps, ratios;
       for (auto const &json_obj : trace_json) {
         EmissionTrace trace(json_obj);
-        requests.push_back(GenerationRequest(trace.prompt, -1.0, 0, add_special_tokens));
+        requests.push_back(
+            GenerationRequest(trace.prompt, -1.0, 0, add_special_tokens));
         timestamps.push_back(trace.emission_time_ms);
         ratios.push_back(trace.slo_ratio);
       }

@@ -2835,9 +2835,8 @@ void FFModel::deserialize_graph_optimal_view(
         int embed_dim, num_q_heads, k_dim, v_dim, num_kv_heads,
             tensor_parallelism_degree;
         float dropout, scaling_factor;
-        bool qkv_bias, final_bias, add_zero_attn,
-            scaling_query, qk_prod_scaling, offload, streaming_cache,
-            position_bias;
+        bool qkv_bias, final_bias, add_zero_attn, scaling_query,
+            qk_prod_scaling, offload, streaming_cache, position_bias;
         RotaryEmbeddingMeta rotary_embedding_meta;
         DataType quantization_type;
         size_t id, transformer_layer_id, deserialized_model_id;

@@ -475,7 +475,8 @@ RequestManager::RequestGuid
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
   request.add_special_tokens = req.add_special_tokens;
-  if (bos_token_id >= 0 && request.add_special_tokens && model_type != ModelType::FALCON) {
+  if (bos_token_id >= 0 && request.add_special_tokens &&
+      model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(req.prompt);
