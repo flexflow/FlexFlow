@@ -304,20 +304,8 @@ public:
         assert(false && "Tensor data type not supported");
       }
     }
-
-    // only dump the weights in the forward pass, at the first step
-    // note that we do not save the weight gradients, since we only support
-    // finetuning LoRA weights, which are not FF tensors.
-    // Set FF_DEBG_NO_WEIGHTS=1 or to FF_DEBG_NO_WEIGHTS=true to disable saving
-    // weights
-    bool do_not_save_weights =
-        (std::getenv("FF_DEBG_NO_WEIGHTS") &&
-         (std::string(std::getenv("FF_DEBG_NO_WEIGHTS")) == "1" ||
-          std::string(std::getenv("FF_DEBG_NO_WEIGHTS")) == "true"));
-    if (fwd_pass && m->decoding_step == 0 && !do_not_save_weights) {
-      fs::path dst_filepath_weights =
-          get_dst_folder("weights", m->decoding_step, shard_id, before_kernel) /
-          layername;
+    // only dump the weights once
+    if (m->decoding_step == 0) {
       for (int i = 0; i < weight_tensors.size(); i++) {
         std::string filename = base_filepath + "_weight_" + std::to_string(i);
         if (weight_tensors[i].data_type == DT_FLOAT) {
