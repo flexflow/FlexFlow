@@ -106,7 +106,7 @@ static void check_incoming_tensor_roles(LayerAttrs const &layer,
   }
 }
 
-std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
+LayerAddedResult ComputationGraphBuilder::add_layer_and_get_layer_added_result(
     LayerAttrs const &layer,
     std::vector<tensor_guid_t> const &inputs,
     std::vector<tensor_guid_t> const &weights,
@@ -115,7 +115,17 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
 
   LayerAddedResult added = ::FlexFlow::add_layer(
       this->computation_graph, layer, concat_vectors(inputs, weights), outputs);
-  return added.outputs;
+  return added;
+}
+
+std::vector<tensor_guid_t> ComputationGraphBuilder::add_layer(
+    LayerAttrs const &layer,
+    std::vector<tensor_guid_t> const &inputs,
+    std::vector<tensor_guid_t> const &weights,
+    std::vector<TensorAttrs> const &outputs) {
+  return this
+      ->add_layer_and_get_layer_added_result(layer, inputs, weights, outputs)
+      .outputs;
 }
 
 tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,

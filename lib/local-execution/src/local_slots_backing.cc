@@ -18,39 +18,65 @@ void LocalSlotsBacking::add_per_device_op_state(
   this->per_device_op_states.insert({op_guid, device_state});
 }
 
-void LocalSlotsBacking::allocate_outgoing_tensors(
+void LocalSlotsBacking::insert_into_tensor_mapping(
+    tensor_guid_t const &tensor, GenericTensorAccessorW const &tensor_backing) {
+  if (!contains_key(this->tensor_mapping, tensor)) {
+    this->tensor_mapping.insert({tensor, tensor_backing});
+  }
+}
+
+void LocalSlotsBacking::allocate_layer_tensors(
     layer_guid_t const &layer_guid,
     ComputationGraph const &computation_graph,
     Allocator &allocator) {
-  std::vector<tensor_guid_t> incoming_input_tensors =
-      get_incoming_inputs(computation_graph, layer_guid);
-  std::vector<tensor_guid_t> incoming_weight_tensors =
-      get_incoming_weights(computation_graph, layer_guid);
-  std::vector<tensor_guid_t> outgoing_tensors =
-      get_outgoing_tensors(computation_graph, layer_guid);
-  for (tensor_guid_t const &output_tensor : outgoing_tensors) {
-    TensorAttrs tensor_attrs =
-        get_tensor_attrs(computation_graph, output_tensor);
+  this->allocate_tensors_by_role(
+      TensorRole::INPUT, layer_guid, computation_graph, allocator);
+  this->allocate_tensors_by_role(
+      TensorRole::WEIGHT, layer_guid, computation_graph, allocator);
+  this->allocate_tensors_by_role(
+      TensorRole::OUTPUT, layer_guid, computation_graph, allocator);
+}
+
+void LocalSlotsBacking::allocate_tensors_by_role(
+    TensorRole const &role,
+    layer_guid_t const &layer_guid,
+    ComputationGraph const &computation_graph,
+    Allocator &allocator) {
+  std::vector<tensor_guid_t> tensors;
+  switch (role) {
+    case TensorRole::INPUT:
+      tensors = get_incoming_inputs(computation_graph, layer_guid);
+      this->input_tensor_slots.insert({layer_guid, tensors});
+      break;
+    case TensorRole::WEIGHT:
+      tensors = get_incoming_weights(computation_graph, layer_guid);
+      this->weight_tensor_slots.insert({layer_guid, tensors});
+      break;
+    case TensorRole::OUTPUT:
+      tensors = get_outgoing_tensors(computation_graph, layer_guid);
+      this->output_tensor_slots.insert({layer_guid, tensors});
+      break;
+    default:
+      throw mk_runtime_error("Invalid tensor role, got {}", role);
+  }
+
+  for (tensor_guid_t const &tensor : tensors) {
+    TensorAttrs tensor_attrs = get_tensor_attrs(computation_graph, tensor);
     // tensor allocation
-    if (!is_tensor_allocated(output_tensor)) {
+    if (!is_tensor_allocated(tensor)) {
       GenericTensorAccessorW tensor_backing =
           allocator.allocate_tensor(tensor_attrs.shape);
-      this->tensor_mapping.insert({output_tensor, tensor_backing});
+      this->tensor_mapping.insert({tensor, tensor_backing});
     }
 
     // gradient tensor allocation
     if (tensor_attrs.create_gradients == CreateGrad::YES &&
-        !is_gradient_tensor_allocated(output_tensor)) {
+        !is_gradient_tensor_allocated(tensor)) {
       GenericTensorAccessorW gradient_tensor_backing =
           allocator.allocate_tensor(tensor_attrs.shape);
-      this->gradient_tensor_mapping.insert(
-          {output_tensor, gradient_tensor_backing});
+      this->gradient_tensor_mapping.insert({tensor, gradient_tensor_backing});
     }
   }
-
-  this->input_tensor_slots.insert({layer_guid, incoming_input_tensors});
-  this->weight_tensor_slots.insert({layer_guid, incoming_weight_tensors});
-  this->output_tensor_slots.insert({layer_guid, outgoing_tensors});
 }
 
 void LocalSlotsBacking::allocate_optimizer_tensors(

@@ -81,7 +81,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     LocalSlotsBacking local_slots_backing = {tensor_backing_map,
                                              runtime_arg_config};
 
-    SUBCASE("LocalSlotsBacking::allocate_outgoing_tensors") {
+    SUBCASE("LocalSlotsBacking::allocate_tensors_by_role") {
       auto get_result_shape_and_dtype_for_tensor_guid_and_map =
           [&](tensor_guid_t t,
               TensorBackingMap m) -> std::pair<ArrayShape, DataType> {
@@ -92,14 +92,11 @@ TEST_SUITE(FF_TEST_SUITE) {
       SUBCASE("Input (QKV) and gradient tensors allocation") {
 
         // allocate all tensors from input nodes
-        for (layer_guid_t const &node :
-             topological_ordering(cg_builder.computation_graph)) {
-          if (node == layer_guid) {
-            break;
-          }
-          local_slots_backing.allocate_outgoing_tensors(
-              node, cg_builder.computation_graph, allocator);
-        }
+        local_slots_backing.allocate_tensors_by_role(
+            TensorRole::INPUT,
+            layer_guid,
+            cg_builder.computation_graph,
+            allocator);
 
         SUBCASE("Query grad") {
           std::pair<ArrayShape, DataType> result =
@@ -127,8 +124,11 @@ TEST_SUITE(FF_TEST_SUITE) {
         }
       }
       SUBCASE("Output and gradient tensors allocation") {
-        local_slots_backing.allocate_outgoing_tensors(
-            layer_guid, cg_builder.computation_graph, allocator);
+        local_slots_backing.allocate_tensors_by_role(
+            TensorRole::OUTPUT,
+            layer_guid,
+            cg_builder.computation_graph,
+            allocator);
         SUBCASE("Output") {
           std::pair<ArrayShape, DataType> result =
               get_result_shape_and_dtype_for_tensor_guid_and_map(
@@ -154,7 +154,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       }
 
       SUBCASE("Tensor slots") {
-        local_slots_backing.allocate_outgoing_tensors(
+        local_slots_backing.allocate_layer_tensors(
             layer_guid, cg_builder.computation_graph, allocator);
         SUBCASE("Input tensor slots") {
           std::vector<tensor_guid_t> correct_incoming_input_tensors =
@@ -211,12 +211,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         return b;
       }();
 
-      // allocate all incoming and outgoing tensors for graph
-      for (layer_guid_t const &node :
-           topological_ordering(cg_builder.computation_graph)) {
-        local_slots_backing.allocate_outgoing_tensors(
-            node, cg_builder.computation_graph, allocator);
-      }
+      local_slots_backing.allocate_layer_tensors(
+          layer_guid, cg_builder.computation_graph, allocator);
 
       SUBCASE("LocalSlotsBacking::construct_tensor_slots_backing") {
         TensorSlotsBackingWithoutAddresses result =

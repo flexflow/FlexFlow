@@ -3,6 +3,7 @@
 #include "kernels/managed_ff_stream.h"
 #include "kernels/managed_per_device_ff_handle.h"
 #include "local-execution/local_training_backing.h"
+#include "pcg/computation_graph.h"
 #include "pcg/computation_graph_builder.h"
 #include "pcg/optimizer_attrs.dtg.h"
 #include "test_utils.h"
@@ -30,8 +31,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         cg_builder.create_input(input_shape, CreateGrad::YES);
 
     float scalar = 4.0;
+    std::string layer_name = "scalar_multiply";
     tensor_guid_t logit_tensor =
-        cg_builder.scalar_multiply(input_tensor, scalar);
+        cg_builder.scalar_multiply(input_tensor, scalar, layer_name);
 
     // allocate memory
     Allocator allocator = create_local_cuda_memory_allocator();
@@ -40,11 +42,17 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         allocator.allocate_tensor(input_shape);
     tensor_backing_map.insert({input_tensor, input_backing});
 
-    tensor_guid_t label_tensor =
-        cg_builder.create_input(input_shape, CreateGrad::NO);
-    GenericTensorAccessorW label_backing =
-        allocator.allocate_tensor(input_shape);
-    tensor_backing_map.insert({label_tensor, label_backing});
+    LocalTrainingBacking local_backing(allocator,
+                                       cg_builder.computation_graph,
+                                       tensor_backing_map,
+                                       runtime_arg_config);
+    // for (layer_guid_t const & node:
+    // topological_ordering(cg_builder.computation_graph)) {
+    //   local_backing.register_and_allocate_layer(node);
+    // }
+    layer_guid_t layer_guid =
+        get_layer_by_name(cg_builder.computation_graph, layer_name);
+    local_backing.register_and_allocate_layer(layer_guid);
 
     SUBCASE("SGDOptimizerAttrs") {
       SUBCASE("momentum=0") {
@@ -53,22 +61,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                                              /*momentum=*/0.0f,
                                              /*nesterov=*/false,
                                              /*weight_decay=*/0.001}};
-        std::optional<ModelTrainingInstance> model_training_instance =
-            ModelTrainingInstance{
-                LossAttrs{NonconfigurableLossAttrs{
-                    LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
-                label_tensor,
-                logit_tensor};
-        LocalTrainingBacking local_backing(allocator,
-                                           cg_builder.computation_graph,
-                                           tensor_backing_map,
-                                           runtime_arg_config,
-                                           model_training_instance,
-                                           optimizer_attrs);
-        local_backing.execute_init();
-        local_backing.execute_forward();
-        local_backing.execute_backward();
-        local_backing.execute_update();
+        local_backing.allocate_layer_optimizer_tensors(layer_guid,
+                                                       optimizer_attrs);
+        local_backing.execute_update(layer_guid, optimizer_attrs);
       }
       SUBCASE("momentum=0.9") {
         OptimizerAttrs optimizer_attrs =
@@ -76,22 +71,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                                              /*momentum=*/0.9,
                                              /*nesterov=*/false,
                                              /*weight_decay=*/0.001}};
-        std::optional<ModelTrainingInstance> model_training_instance =
-            ModelTrainingInstance{
-                LossAttrs{NonconfigurableLossAttrs{
-                    LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
-                label_tensor,
-                logit_tensor};
-        LocalTrainingBacking local_backing(allocator,
-                                           cg_builder.computation_graph,
-                                           tensor_backing_map,
-                                           runtime_arg_config,
-                                           model_training_instance,
-                                           optimizer_attrs);
-        local_backing.execute_init();
-        local_backing.execute_forward();
-        local_backing.execute_backward();
-        local_backing.execute_update();
+        local_backing.allocate_layer_optimizer_tensors(layer_guid,
+                                                       optimizer_attrs);
+        local_backing.execute_update(layer_guid, optimizer_attrs);
       }
     }
     SUBCASE("AdamOptimizerAttrs") {
@@ -104,22 +86,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                                             /*beta_t=*/0.9,
                                             /*beta2_t=*/0.999,
                                             /*epsilon=*/1e-8}};
-      std::optional<ModelTrainingInstance> model_training_instance =
-          ModelTrainingInstance{
-              LossAttrs{NonconfigurableLossAttrs{
-                  LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
-              label_tensor,
-              logit_tensor};
-      LocalTrainingBacking local_backing(allocator,
-                                         cg_builder.computation_graph,
-                                         tensor_backing_map,
-                                         runtime_arg_config,
-                                         model_training_instance,
-                                         optimizer_attrs);
-      local_backing.execute_init();
-      local_backing.execute_forward();
-      local_backing.execute_backward();
-      local_backing.execute_update();
+      local_backing.allocate_layer_optimizer_tensors(layer_guid,
+                                                     optimizer_attrs);
+      local_backing.execute_update(layer_guid, optimizer_attrs);
     }
   }
 }

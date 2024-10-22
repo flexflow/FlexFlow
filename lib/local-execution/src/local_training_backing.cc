@@ -8,7 +8,6 @@
 #include "utils/containers/contains.h"
 #include "utils/containers/contains_key.h"
 #include "utils/containers/get_only.h"
-#include "utils/containers/reversed.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
@@ -17,42 +16,30 @@ LocalTrainingBacking::LocalTrainingBacking(
     Allocator const &allocator,
     ComputationGraph const &computation_graph,
     TensorBackingMap const &tensor_backing_mapping,
-    RuntimeArgConfig const &runtime_arg_config,
-    std::optional<ModelTrainingInstance> const &training_instance,
-    std::optional<OptimizerAttrs> const &optimizer_attrs)
+    RuntimeArgConfig const &runtime_arg_config)
     : allocator(allocator), computation_graph(computation_graph),
       local_slots_backing(tensor_backing_mapping, runtime_arg_config),
-      task_registry(empty_task_registry()),
-      training_instance(training_instance), optimizer_attrs(optimizer_attrs) {
+      task_registry(empty_task_registry()) {}
 
-  for (layer_guid_t const &node :
-       topological_ordering(this->computation_graph)) {
-    ComputationGraphOpAttrs attrs =
-        get_layer_attrs(this->computation_graph, node).attrs;
+void LocalTrainingBacking::register_and_allocate_layer(
+    layer_guid_t const &node) {
+  ComputationGraphOpAttrs attrs =
+      get_layer_attrs(this->computation_graph, node).attrs;
+  this->local_slots_backing.allocate_layer_tensors(
+      node, this->computation_graph, this->allocator);
+  register_tasks_for_layer(this->task_registry, node, attrs);
+}
 
-    // allocate outgoing tensors
-    this->local_slots_backing.allocate_outgoing_tensors(
-        node, this->computation_graph, this->allocator);
-
-    // register tasks
-    register_tasks_for_layer(this->task_registry, node, attrs);
-
-    // allocate optimizer buffers
-    if (attrs.has<WeightAttrs>() && this->training_instance.has_value()) {
-      TaskSignature sig = get_update_signature(this->optimizer_attrs.value());
-      tensor_guid_t weight_tensor =
-          get_only(get_outgoing_tensors(this->computation_graph, node));
-      this->local_slots_backing.allocate_optimizer_tensors(
-          node, weight_tensor, this->computation_graph, this->allocator, sig);
-    }
-  }
-
-  if (this->training_instance.has_value()) {
-    // label and logit tensor should be allocated
-    assert(this->local_slots_backing.is_tensor_allocated(
-        this->training_instance.value().label_tensor));
-    assert(this->local_slots_backing.is_tensor_allocated(
-        this->training_instance.value().logit_tensor));
+void LocalTrainingBacking::allocate_layer_optimizer_tensors(
+    layer_guid_t const &node, OptimizerAttrs const &optimizer_attrs) {
+  ComputationGraphOpAttrs attrs =
+      get_layer_attrs(this->computation_graph, node).attrs;
+  if (attrs.has<WeightAttrs>()) {
+    TaskSignature sig = get_update_signature(optimizer_attrs);
+    tensor_guid_t weight_tensor =
+        get_only(get_outgoing_tensors(this->computation_graph, node));
+    this->local_slots_backing.allocate_optimizer_tensors(
+        node, weight_tensor, this->computation_graph, this->allocator, sig);
   }
 }
 
@@ -76,110 +63,88 @@ std::optional<float>
   return fn(acc);
 }
 
-void LocalTrainingBacking::execute_init() {
-  for (layer_guid_t const &operator_node :
-       topological_ordering(this->computation_graph)) {
-    if (this->task_registry.init_task_ids.at(operator_node).has_value()) {
-      ComputationGraphOpAttrs attrs =
-          get_layer_attrs(this->computation_graph, operator_node).attrs;
+void LocalTrainingBacking::execute_init(layer_guid_t const &operator_node) {
+  if (registry_contains_op_task(
+          this->task_registry, operator_node, OpTaskType::INIT)) {
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(this->computation_graph, operator_node).attrs;
 
-      OpTaskInvocation invocation = init(attrs);
-      TaskArgumentAccessor accessor =
-          this->get_op_task_arg_accessor(invocation, operator_node);
-      DeviceSpecificDeviceStates device_state =
-          this->call_init_task_impl(invocation.task_id, accessor);
-      this->local_slots_backing.add_per_device_op_state(operator_node,
-                                                        device_state);
-    }
+    OpTaskInvocation invocation = init(attrs);
+    TaskArgumentAccessor accessor =
+        this->get_op_task_arg_accessor(invocation, operator_node);
+    DeviceSpecificDeviceStates device_state =
+        this->call_init_task_impl(invocation.task_id, accessor);
+    this->local_slots_backing.add_per_device_op_state(operator_node,
+                                                      device_state);
   }
 }
 
-PerLayerElapsedTime LocalTrainingBacking::execute_forward() {
-  PerLayerElapsedTime per_op_elapsed_time;
+std::optional<float>
+    LocalTrainingBacking::execute_forward(layer_guid_t const &operator_node) {
+  if (registry_contains_op_task(
+          this->task_registry, operator_node, OpTaskType::FWD)) {
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(this->computation_graph, operator_node).attrs;
 
-  for (layer_guid_t const &operator_node :
-       topological_ordering(this->computation_graph)) {
-    if (this->task_registry.forward_task_ids.at(operator_node).has_value()) {
-      ComputationGraphOpAttrs attrs =
-          get_layer_attrs(this->computation_graph, operator_node).attrs;
-
-      OpTaskInvocation invocation = forward(attrs);
-      TaskArgumentAccessor accessor =
-          this->get_op_task_arg_accessor(invocation, operator_node);
-      std::optional<float> elapsed_time =
-          this->call_task_impl(invocation.task_id, accessor);
-      per_op_elapsed_time.insert({operator_node, elapsed_time});
-    }
+    OpTaskInvocation invocation = forward(attrs);
+    TaskArgumentAccessor accessor =
+        this->get_op_task_arg_accessor(invocation, operator_node);
+    return this->call_task_impl(invocation.task_id, accessor);
+  } else {
+    return std::nullopt;
   }
-
-  return per_op_elapsed_time;
 }
 
-PerLayerElapsedTime LocalTrainingBacking::execute_backward() {
-  PerLayerElapsedTime per_op_elapsed_time;
-
-  // compute loss
-  if (this->training_instance.has_value()) {
-    ModelTrainingInstance unwrapped_training_instance =
-        training_instance.value();
-    TaskInvocation loss_invocation =
-        backward(unwrapped_training_instance.loss_attrs,
-                 unwrapped_training_instance.logit_tensor,
-                 unwrapped_training_instance.label_tensor);
-    // assert(is_invocation_valid(get_loss_bwd_signature(), loss_invocation));
-    TaskArgumentAccessor loss_accessor =
-        this->get_task_arg_accessor(loss_invocation);
-    TaskImplFunction loss_impl_fn = get_loss_bwd_task_impl();
-    loss_impl_fn.get<GenericTaskImplFunction>().function_ptr(loss_accessor);
-  }
-
-  // backward through computation graph
-  for (layer_guid_t const &operator_node :
-       reversed(topological_ordering(this->computation_graph))) {
-    if (this->task_registry.backward_task_ids.at(operator_node).has_value()) {
-      ComputationGraphOpAttrs attrs =
-          get_layer_attrs(this->computation_graph, operator_node).attrs;
-
-      OpTaskInvocation invocation = backward(attrs);
-      TaskArgumentAccessor accessor =
-          this->get_op_task_arg_accessor(invocation, operator_node);
-      std::optional<float> elapsed_time =
-          this->call_task_impl(invocation.task_id, accessor);
-      per_op_elapsed_time.insert({operator_node, elapsed_time});
-    }
-  }
-  return per_op_elapsed_time;
+void LocalTrainingBacking::compute_loss(LossAttrs const &loss_attrs,
+                                        tensor_guid_t const &logit_tensor,
+                                        tensor_guid_t const &label_tensor) {
+  assert(this->local_slots_backing.is_tensor_allocated(logit_tensor) &&
+         this->local_slots_backing.is_tensor_allocated(label_tensor));
+  TaskInvocation loss_invocation =
+      backward(loss_attrs, logit_tensor, label_tensor);
+  // assert(is_invocation_valid(get_loss_bwd_signature(), loss_invocation));
+  TaskArgumentAccessor loss_accessor =
+      this->get_task_arg_accessor(loss_invocation);
+  TaskImplFunction loss_impl_fn = get_loss_bwd_task_impl();
+  loss_impl_fn.get<GenericTaskImplFunction>().function_ptr(loss_accessor);
 }
 
-void LocalTrainingBacking::execute_update() {
-  assert(this->training_instance.has_value());
-  assert(this->optimizer_attrs.has_value());
+std::optional<float>
+    LocalTrainingBacking::execute_backward(layer_guid_t const &operator_node) {
+  if (registry_contains_op_task(
+          this->task_registry, operator_node, OpTaskType::BWD)) {
+    ComputationGraphOpAttrs attrs =
+        get_layer_attrs(this->computation_graph, operator_node).attrs;
 
-  for (layer_guid_t const &node :
-       topological_ordering(this->computation_graph)) {
-    LayerAttrs layer_attrs = get_layer_attrs(this->computation_graph, node);
-    if (layer_attrs.attrs.has<WeightAttrs>()) {
-      // get tensors
-      tensor_guid_t weight_tensor =
-          get_only(get_outgoing_tensors(this->computation_graph, node));
-      std::vector<non_graph_tensor_guid_t> grad_buffer_tensors =
-          this->local_slots_backing.weight_optimizer_tensor_guids.at(node);
-
-      // get invocation
-      TaskInvocation invocation = get_update_invocation(
-          this->optimizer_attrs.value(), weight_tensor, grad_buffer_tensors);
-      // assert(is_invocation_valid(get_update_signature(attrs), invocation));
-
-      // execute update
-      TaskArgumentAccessor accessor = this->get_task_arg_accessor(invocation);
-      TaskImplFunction update_impl_fn =
-          get_update_task_impl(this->optimizer_attrs.value());
-      update_impl_fn.get<GenericTaskImplFunction>().function_ptr(accessor);
-    }
+    OpTaskInvocation invocation = backward(attrs);
+    TaskArgumentAccessor accessor =
+        this->get_op_task_arg_accessor(invocation, operator_node);
+    return this->call_task_impl(invocation.task_id, accessor);
+  } else {
+    return std::nullopt;
   }
+}
 
-  this->optimizer_attrs =
-      get_next_iteration_optimizer_attrs(this->optimizer_attrs.value());
+void LocalTrainingBacking::execute_update(
+    layer_guid_t const &node, OptimizerAttrs const &optimizer_attrs) {
+  LayerAttrs layer_attrs = get_layer_attrs(this->computation_graph, node);
+  if (layer_attrs.attrs.has<WeightAttrs>()) {
+    // get tensors
+    tensor_guid_t weight_tensor =
+        get_only(get_outgoing_tensors(this->computation_graph, node));
+    std::vector<non_graph_tensor_guid_t> grad_buffer_tensors =
+        this->local_slots_backing.weight_optimizer_tensor_guids.at(node);
+
+    // get invocation
+    TaskInvocation invocation = get_update_invocation(
+        optimizer_attrs, weight_tensor, grad_buffer_tensors);
+    // assert(is_invocation_valid(get_update_signature(attrs), invocation));
+
+    // execute update
+    TaskArgumentAccessor accessor = this->get_task_arg_accessor(invocation);
+    TaskImplFunction update_impl_fn = get_update_task_impl(optimizer_attrs);
+    update_impl_fn.get<GenericTaskImplFunction>().function_ptr(accessor);
+  }
 }
 
 TaskArgumentAccessor LocalTrainingBacking::get_task_arg_accessor(
@@ -204,6 +169,11 @@ TaskArgumentAccessor LocalTrainingBacking::get_op_task_arg_accessor(
 
   return TaskArgumentAccessor::create<LocalTaskArgumentAccessor>(
       this->allocator, tensor_slots_backing, arg_slots_backing);
+}
+
+void LocalTrainingBacking::insert_tensor(
+    tensor_guid_t const &tensor, GenericTensorAccessorW const &tensor_backing) {
+  this->local_slots_backing.insert_into_tensor_mapping(tensor, tensor_backing);
 }
 
 } // namespace FlexFlow

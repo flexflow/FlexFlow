@@ -4,6 +4,7 @@
 #include "local-execution/tracked_allocator.h"
 #include "op-attrs/computation_graph_op_attrs.h"
 #include "op-attrs/pcg_operator_attrs.h"
+#include "pcg/computation_graph/layer_added_result.dtg.h"
 #include "pcg/computation_graph_builder.h"
 #include "pcg/parallel_tensor_attrs.h"
 #include "utils/containers/transform.h"
@@ -66,29 +67,27 @@ CostDetails LocalCostEstimator::estimate_cost(
       };
 
   // add operator to graph
-  std::vector<tensor_guid_t> output_tensor_ids =
-      cg_builder.add_layer(layer_attrs,
-                           input_tensor_ids,
-                           transform(get_vector_piece_attrs(weights),
-                                     [&](TensorAttrs const &a) {
-                                       return cg_builder.create_weight(a);
-                                     }),
-                           get_vector_piece_attrs(outputs));
+  LayerAddedResult layer_added_result =
+      cg_builder.add_layer_and_get_layer_added_result(
+          layer_attrs,
+          input_tensor_ids,
+          transform(get_vector_piece_attrs(weights),
+                    [&](TensorAttrs const &a) {
+                      return cg_builder.create_weight(a);
+                    }),
+          get_vector_piece_attrs(outputs));
 
-  std::optional<ModelTrainingInstance> model_training_instance = std::nullopt;
-  std::optional<OptimizerAttrs> optimizer_attrs = std::nullopt;
   LocalTrainingBacking local_backing(allocator,
                                      cg_builder.computation_graph,
                                      tensor_backing_map,
-                                     this->runtime_arg_config,
-                                     model_training_instance,
-                                     optimizer_attrs);
+                                     this->runtime_arg_config);
+  local_backing.register_and_allocate_layer(layer_added_result.layer);
+  local_backing.execute_init(layer_added_result.layer);
+  float fwd = local_backing.execute_forward(layer_added_result.layer).value();
+  float bwd = local_backing.execute_backward(layer_added_result.layer).value();
+  float total_execution_time = fwd + bwd;
 
-  local_backing.execute_init();
-  PerLayerElapsedTime fwd = local_backing.execute_forward();
-  PerLayerElapsedTime bwd = local_backing.execute_backward();
-
-  return CostDetails{get_total_elapsed_time(fwd, bwd),
+  return CostDetails{total_execution_time,
                      tracked_allocator_ptr->get_current_mem_usage()};
 }
 

@@ -9,6 +9,7 @@
 #include "local-execution/per_device_op_state.h"
 #include "local-execution/runtime_arg_config.h"
 #include "local-execution/task_invocation.dtg.h"
+#include "local-execution/tensor_role.dtg.h"
 #include "local-execution/unified_tensor_guid.dtg.h"
 #include "pcg/computation_graph.dtg.h"
 #include "pcg/layer_guid_t.dtg.h"
@@ -27,9 +28,15 @@ struct LocalSlotsBacking {
 public:
   void add_per_device_op_state(layer_guid_t const &,
                                DeviceSpecificDeviceStates const &);
-  void allocate_outgoing_tensors(layer_guid_t const &,
-                                 ComputationGraph const &,
-                                 Allocator &);
+  void insert_into_tensor_mapping(tensor_guid_t const &,
+                                  GenericTensorAccessorW const &);
+  void allocate_layer_tensors(layer_guid_t const &,
+                              ComputationGraph const &,
+                              Allocator &);
+  void allocate_tensors_by_role(TensorRole const &,
+                                layer_guid_t const &,
+                                ComputationGraph const &,
+                                Allocator &);
   void allocate_optimizer_tensors(layer_guid_t const &weight_layer,
                                   tensor_guid_t const &,
                                   ComputationGraph const &,

@@ -35,10 +35,32 @@ void register_tasks_for_layer(TaskRegistry &task_registry,
         task_registry.backward_task_ids[op_id] = task_id;
         break;
       default:
-        throw mk_runtime_error("Invalid OpTaskType");
+        throw mk_runtime_error("Invalid OpTaskType, got {}",
+                               task_signature_impl.task_signature.type);
     }
     task_registry.task_mapping.insert({task_id, task_signature_impl});
   }
+}
+
+bool registry_contains_op_task(TaskRegistry const &task_registry,
+                               layer_guid_t const &op,
+                               OpTaskType const &op_task_type) {
+  std::unordered_map<layer_guid_t, std::optional<task_id_t>> task_ids;
+  switch (op_task_type) {
+    case OpTaskType::INIT:
+      task_ids = task_registry.init_task_ids;
+      break;
+    case OpTaskType::FWD:
+      task_ids = task_registry.forward_task_ids;
+      break;
+    case OpTaskType::BWD:
+      task_ids = task_registry.backward_task_ids;
+      break;
+    default:
+      throw mk_runtime_error("Invalid OpTaskType, got {}", op_task_type);
+  }
+
+  return task_ids.at(op).has_value();
 }
 
 } // namespace FlexFlow

@@ -3,6 +3,8 @@
 #include "kernels/managed_ff_stream.h"
 #include "kernels/managed_per_device_ff_handle.h"
 #include "local-execution/local_training_backing.h"
+#include "op-attrs/ops/loss_functions/loss_attrs.dtg.h"
+#include "pcg/computation_graph.h"
 #include "pcg/computation_graph_builder.h"
 #include "pcg/optimizer_attrs.dtg.h"
 #include "test_utils.h"
@@ -19,12 +21,6 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         EnableProfiling::YES,
         ProfilingSettings{/*warmup_iters=*/0, /*measure_iters=*/1}};
 
-    OptimizerAttrs optimizer_attrs =
-        OptimizerAttrs{SGDOptimizerAttrs{/*lr=*/0.0,
-                                         /*momentum=*/0.0,
-                                         /*nesterov=*/false,
-                                         /*weight_decay=*/0.0}};
-
     // construct graph
     ComputationGraphBuilder cg_builder;
 
@@ -36,8 +32,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         cg_builder.create_input(input_shape, CreateGrad::YES);
 
     float scalar = 4.0;
+    std::string layer_name = "scalar multiply";
     tensor_guid_t logit_tensor =
-        cg_builder.scalar_multiply(input_tensor, scalar);
+        cg_builder.scalar_multiply(input_tensor, scalar, layer_name);
 
     // allocate memory
     Allocator allocator = create_local_cuda_memory_allocator();
@@ -46,6 +43,17 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         allocator.allocate_tensor(input_shape);
     tensor_backing_map.insert({input_tensor, input_backing});
 
+    LocalTrainingBacking local_backing(allocator,
+                                       cg_builder.computation_graph,
+                                       tensor_backing_map,
+                                       runtime_arg_config);
+    // for (layer_guid_t const & node:
+    // topological_ordering(cg_builder.computation_graph)) {
+    //   local_backing.register_and_allocate_layer(node);
+    // }
+    local_backing.register_and_allocate_layer(
+        get_layer_by_name(cg_builder.computation_graph, layer_name));
+
     SUBCASE("SparseCategoricalCrossEntropyLossAttrs") {
       TensorShape label_shape = TensorShape{
           TensorDims{FFOrdered<size_t>{batch_size, 1}}, DataType::FLOAT};
@@ -53,22 +61,10 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
           cg_builder.create_input(label_shape, CreateGrad::NO);
       GenericTensorAccessorW label_backing =
           allocator.allocate_tensor(label_shape);
-      tensor_backing_map.insert({label_tensor, label_backing});
-      std::optional<ModelTrainingInstance> model_training_instance =
-          ModelTrainingInstance{
-              LossAttrs{SparseCategoricalCrossEntropyLossAttrs{
-                  /*replace_labels=*/false}},
-              label_tensor,
-              logit_tensor};
-      LocalTrainingBacking local_backing(allocator,
-                                         cg_builder.computation_graph,
-                                         tensor_backing_map,
-                                         runtime_arg_config,
-                                         model_training_instance,
-                                         optimizer_attrs);
-      local_backing.execute_init();
-      local_backing.execute_forward();
-      local_backing.execute_backward();
+      local_backing.insert_tensor(label_tensor, label_backing);
+      LossAttrs loss_attrs = LossAttrs{
+          SparseCategoricalCrossEntropyLossAttrs{/*replace_labels=*/false}};
+      local_backing.compute_loss(loss_attrs, logit_tensor, label_tensor);
     }
 
     SUBCASE("NonconfigurableLossAttrs") {
@@ -76,58 +72,24 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
           cg_builder.create_input(input_shape, CreateGrad::NO);
       GenericTensorAccessorW label_backing =
           allocator.allocate_tensor(input_shape);
-      tensor_backing_map.insert({label_tensor, label_backing});
+      local_backing.insert_tensor(label_tensor, label_backing);
 
       SUBCASE("LossFunction::CATEGORICAL_CROSSENTROPY") {
-        std::optional<ModelTrainingInstance> model_training_instance =
-            ModelTrainingInstance{LossAttrs{NonconfigurableLossAttrs{
-                                      LossFunction::CATEGORICAL_CROSSENTROPY}},
-                                  label_tensor,
-                                  logit_tensor};
-        LocalTrainingBacking local_backing(allocator,
-                                           cg_builder.computation_graph,
-                                           tensor_backing_map,
-                                           runtime_arg_config,
-                                           model_training_instance,
-                                           optimizer_attrs);
-        local_backing.execute_init();
-        local_backing.execute_forward();
-        local_backing.execute_backward();
+        LossAttrs loss_attrs = LossAttrs{
+            NonconfigurableLossAttrs{LossFunction::CATEGORICAL_CROSSENTROPY}};
+        local_backing.compute_loss(loss_attrs, logit_tensor, label_tensor);
       }
 
       SUBCASE("LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE") {
-        std::optional<ModelTrainingInstance> model_training_instance =
-            ModelTrainingInstance{
-                LossAttrs{NonconfigurableLossAttrs{
-                    LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}},
-                label_tensor,
-                logit_tensor};
-        LocalTrainingBacking local_backing(allocator,
-                                           cg_builder.computation_graph,
-                                           tensor_backing_map,
-                                           runtime_arg_config,
-                                           model_training_instance,
-                                           optimizer_attrs);
-        local_backing.execute_init();
-        local_backing.execute_forward();
-        local_backing.execute_backward();
+        LossAttrs loss_attrs = LossAttrs{NonconfigurableLossAttrs{
+            LossFunction::MEAN_SQUARED_ERROR_AVG_REDUCE}};
+        local_backing.compute_loss(loss_attrs, logit_tensor, label_tensor);
       }
 
       SUBCASE("LossFunction::IDENTITY") {
-        std::optional<ModelTrainingInstance> model_training_instance =
-            ModelTrainingInstance{
-                LossAttrs{NonconfigurableLossAttrs{LossFunction::IDENTITY}},
-                label_tensor,
-                logit_tensor};
-        LocalTrainingBacking local_backing(allocator,
-                                           cg_builder.computation_graph,
-                                           tensor_backing_map,
-                                           runtime_arg_config,
-                                           model_training_instance,
-                                           optimizer_attrs);
-        local_backing.execute_init();
-        local_backing.execute_forward();
-        local_backing.execute_backward();
+        LossAttrs loss_attrs =
+            LossAttrs{NonconfigurableLossAttrs{LossFunction::IDENTITY}};
+        local_backing.compute_loss(loss_attrs, logit_tensor, label_tensor);
       }
     }
   }
