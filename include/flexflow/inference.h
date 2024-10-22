@@ -45,14 +45,17 @@ struct GenerationConfig {
 
 struct GenerationRequest {
   std::string prompt;
+  bool add_special_tokens = true;
   double slo_ratio;
   double emission_time_ms;
 
   GenerationRequest(std::string const &prompt_,
                     double slo_ratio_,
-                    double emission_time_ms_)
+                    double emission_time_ms_,
+                    bool add_special_tokens_ = true)
       : prompt(prompt_), slo_ratio(slo_ratio_),
-        emission_time_ms(emission_time_ms_) {}
+        emission_time_ms(emission_time_ms_),
+        add_special_tokens(add_special_tokens_) {}
 };
 
 struct GenerationResult {
@@ -158,8 +161,43 @@ public:
   double sample_slo_ratio() override;
 };
 
-#include <string>
-#include <vector>
+struct RotaryEmbeddingMeta {
+  bool apply_rotary_embedding = false;
+  float rope_theta = 10000.0f;
+  std::string rope_type = "default";
+  float factor = 8.0f;
+  float low_freq_factor = 1.0f;
+  float high_freq_factor = 4.0f;
+  int original_max_position_embeddings = 8192;
+
+  RotaryEmbeddingMeta(bool apply_rotary_embedding_ = false,
+                      float rope_theta_ = 10000.0f,
+                      std::string rope_type_ = "default",
+                      float factor_ = 8.0f,
+                      float low_freq_factor_ = 1.0f,
+                      float high_freq_factor_ = 4.0f,
+                      int original_max_position_embeddings_ = 8192)
+      : apply_rotary_embedding(apply_rotary_embedding_),
+        rope_theta(rope_theta_), rope_type(rope_type_), factor(factor_),
+        low_freq_factor(low_freq_factor_), high_freq_factor(high_freq_factor_),
+        original_max_position_embeddings(original_max_position_embeddings_) {}
+
+  friend std::ostream &operator<<(std::ostream &os,
+                                  RotaryEmbeddingMeta const &meta) {
+    os << std::boolalpha // To print bool as true/false instead of 1/0
+       << "RotaryEmbeddingMeta {\n"
+       << "  apply_rotary_embedding: " << meta.apply_rotary_embedding << ",\n"
+       << "  rope_theta: " << meta.rope_theta << ",\n"
+       << "  rope_type: \"" << meta.rope_type << "\",\n"
+       << "  factor: " << meta.factor << ",\n"
+       << "  low_freq_factor: " << meta.low_freq_factor << ",\n"
+       << "  high_freq_factor: " << meta.high_freq_factor << ",\n"
+       << "  original_max_position_embeddings: "
+       << meta.original_max_position_embeddings << "\n"
+       << "}";
+    return os;
+  }
+};
 
 std::string join_path(std::vector<std::string> const &paths);
 

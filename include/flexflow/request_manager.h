@@ -140,6 +140,7 @@ struct Request {
   int ssm_prefill_len = 0;
   int llm_prefill_len = 0;
   bool attained = true;
+  bool add_special_tokens = true;
 
   int first_token_offset_in_batch = 0;
   int num_tokens_in_batch = 0;
@@ -415,6 +416,7 @@ private:
   ModelType model_type;
   int bos_token_id;
   int eos_token_id;
+  bool old_llama_tokenizer = false;
   std::string output_filepath;
   std::queue<Request> pending_request_queue;
   std::unordered_map<RequestGuid, Request> all_requests;

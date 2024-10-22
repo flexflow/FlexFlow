@@ -44,6 +44,26 @@ public:
           hidden_size = model_config["hidden_size"];
           rms_norm_eps = model_config["rms_norm_eps"];
           intermediate_size = model_config["intermediate_size"];
+          rotary_embedding_meta.apply_rotary_embedding = true;
+          if (model_config.find("rope_theta") != model_config.end()) {
+            rotary_embedding_meta.rope_theta = model_config["rope_theta"];
+          } else {
+            rotary_embedding_meta.rope_theta = 10000.0f;
+          }
+          if (model_config.find("scaling_factor") != model_config.end() &&
+              !model_config["scaling_factor"].is_null()) {
+            rotary_embedding_meta.rope_type =
+                model_config["scaling_factor"]["rope_type"];
+            rotary_embedding_meta.factor =
+                model_config["scaling_factor"]["factor"];
+            rotary_embedding_meta.low_freq_factor =
+                model_config["scaling_factor"]["low_freq_factor"];
+            rotary_embedding_meta.high_freq_factor =
+                model_config["scaling_factor"]["high_freq_factor"];
+            rotary_embedding_meta.original_max_position_embeddings =
+                model_config["scaling_factor"]
+                            ["original_max_position_embeddings"];
+          }
         } catch (json::exception const &e) {
           std::cerr << "Error parsing LLAMA config from JSON file: " << e.what()
                     << std::endl;
@@ -68,7 +88,8 @@ public:
       std::cout << "\thidden_size: " << hidden_size << std::endl;
       std::cout << "\trms_norm_eps: " << rms_norm_eps << std::endl;
       std::cout << "\tintermediate_size: " << intermediate_size << std::endl;
-
+      std::cout << "\trotary_embedding_meta: " << rotary_embedding_meta
+                << std::endl;
       // std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
       // std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
       std::cout << "\tk_of_arg_topk : " << k_of_arg_topk << std::endl;
@@ -79,6 +100,7 @@ public:
     int num_hidden_layers, vocab_size, num_attention_heads, num_key_value_heads,
         hidden_size, intermediate_size;
     float rms_norm_eps;
+    RotaryEmbeddingMeta rotary_embedding_meta;
   };
 
   static void create_llama_model(FFModel &ff,

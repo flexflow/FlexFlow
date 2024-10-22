@@ -45,6 +45,7 @@ public:
           num_hidden_layers = model_config["num_hidden_layers"];
           vocab_size = model_config["vocab_size"];
           word_embed_proj_dim = model_config["word_embed_proj_dim"];
+          rotary_embedding_meta.apply_rotary_embedding = false;
         } catch (json::exception const &e) {
           std::cerr << "Error parsing JSON file: " << e.what() << std::endl;
           assert(false);
@@ -77,7 +78,8 @@ public:
       std::cout << "\tvocab_size: " << vocab_size << std::endl;
       std::cout << "\tword_embed_proj_dim: " << word_embed_proj_dim
                 << std::endl;
-
+      std::cout << "\trotary_embedding_meta: " << rotary_embedding_meta
+                << std::endl;
       // std::cout << "\tmax_seq_len: " << max_seq_len << std::endl;
       // std::cout << "\tmax_num_tokens: " << max_num_tokens << std::endl;
       std::cout << "\tk_of_arg_topk : " << k_of_arg_topk << std::endl;
@@ -89,6 +91,7 @@ public:
     float dropout;
     int ffn_dim, hidden_size, max_position_embeddings, num_attention_heads,
         num_hidden_layers, vocab_size, word_embed_proj_dim;
+    RotaryEmbeddingMeta rotary_embedding_meta;
   };
 
   static void create_opt_model(FFModel &ff,

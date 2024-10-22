@@ -385,33 +385,52 @@ void RequestManager::register_tokenizer(ModelType type,
   this->model_type = type;
   this->bos_token_id = bos_token_id;
   this->eos_token_id = eos_token_id;
-  std::string tokenizer_folder =
-      (!path.empty() && path.back() != '/') ? path + '/' : path;
+  std::filesystem::path tokenizer_folder(path);
+
   if (model_type == ModelType::LLAMA) {
-    bool path_to_file = !path.empty() &&
-                        (path.size() >= strlen("tokenizer.model")) &&
-                        path.find("tokenizer.model") ==
-                            (path.size() - strlen("tokenizer.model"));
-    std::string tokenizer_filepath =
-        path_to_file ? path : tokenizer_folder + "tokenizer.model";
-    this->tokenizer_ =
-        Tokenizer::FromBlobSentencePiece(LoadBytesFromFile(tokenizer_filepath));
+    // try with tokenizer.json first
+    std::filesystem::path tokenizer_json_path;
+    if (std::filesystem::is_directory(tokenizer_folder)) {
+      tokenizer_json_path =
+          std::filesystem::path(tokenizer_folder) / "tokenizer.json";
+    } else {
+      tokenizer_json_path = tokenizer_folder;
+    }
+    if (std::filesystem::exists(tokenizer_json_path)) {
+      // load from tokenizer.json
+      this->tokenizer_ = Tokenizer::FromBlobJSON(
+          LoadBytesFromFile(tokenizer_json_path.string()));
+    } else {
+      // load from tokenizer.model
+      std::filesystem::path tokenizer_model_path;
+      if (std::filesystem::is_directory(tokenizer_folder)) {
+        tokenizer_model_path =
+            std::filesystem::path(tokenizer_folder) / "tokenizer.model";
+      } else {
+        tokenizer_model_path = tokenizer_folder;
+      }
+      if (!std::filesystem::exists(tokenizer_model_path)) {
+        std::cerr << "Failed to open file: " << tokenizer_model_path
+                  << std::endl;
+        assert(false);
+      }
+      old_llama_tokenizer = true;
+      this->tokenizer_ = Tokenizer::FromBlobSentencePiece(
+          LoadBytesFromFile(tokenizer_model_path.string()));
+    }
   } else if (model_type == ModelType::OPT) {
-    std::string vocab_file = tokenizer_folder + "vocab.json";
-    std::string merges_file = tokenizer_folder + "merges.txt";
-    std::string added_tokens_file =
-        tokenizer_folder + "special_tokens_map.json";
-    std::filesystem::path path1(vocab_file);
-    std::filesystem::path path2(merges_file);
-    std::filesystem::path path3(added_tokens_file);
-    assert(std::filesystem::exists(path1) &&
+    std::filesystem::path vocab_file = tokenizer_folder / "vocab.json";
+    std::filesystem::path merges_file = tokenizer_folder / "merges.txt";
+    std::filesystem::path added_tokens_file =
+        tokenizer_folder / "special_tokens_map.json";
+    assert(std::filesystem::exists(vocab_file) &&
            "Vocab file vocab.json does not exist at the specified path");
-    assert(std::filesystem::exists(path2) &&
+    assert(std::filesystem::exists(merges_file) &&
            "Merge file merges.txt does not exist at the specified path");
     // opt_tokenizer = new OptTokenizer(vocab_file, merges_file);
-    std::string vocab = LoadBytesFromFile(path1.string());
-    std::string merges = LoadBytesFromFile(path2.string());
-    std::string added_tokens = LoadBytesFromFile(path3.string());
+    std::string vocab = LoadBytesFromFile(vocab_file.string());
+    std::string merges = LoadBytesFromFile(merges_file.string());
+    std::string added_tokens = LoadBytesFromFile(added_tokens_file.string());
 
     this->tokenizer_ =
         Tokenizer::FromBlobByteLevelBPE(vocab, merges, added_tokens);
@@ -455,7 +474,9 @@ RequestManager::RequestGuid
   Request request;
   request.status = Request::PENDING;
   request.guid = next_available_guid++;
-  if (bos_token_id >= 0 && model_type != ModelType::FALCON) {
+  request.add_special_tokens = req.add_special_tokens;
+  if (bos_token_id >= 0 && request.add_special_tokens &&
+      model_type != ModelType::FALCON) {
     request.tokens.push_back(bos_token_id);
   }
   std::vector<int32_t> tokens = this->tokenizer_->Encode(req.prompt);
@@ -679,8 +700,9 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   } else {
     eos_it = request.tokens.end();
   }
-  std::string output =
-      this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
+  // std::string output =
+  //     this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
+  std::string output = this->tokenizer_->Decode(request.tokens);
 
   {
     std::lock_guard<std::mutex> const lock(request_result_mutex);
@@ -730,7 +752,7 @@ void RequestManager::request_complete_clean_up(int batch_index) {
       *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
           << std::endl;
     }
-    *os << "<boq>" << output << "<eoq>" << std::endl << std::endl;
+    *os << output << std::endl << std::endl;
 
     if (!output_filepath.empty()) {
       output_file.close();

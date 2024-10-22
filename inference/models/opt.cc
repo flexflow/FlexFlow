@@ -116,8 +116,8 @@ void OPT::create_opt_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
-            false,   /*apply_rotary_embedding*/
-            true,    /*scaling query*/
+            opt_config.rotary_embedding_meta,
+            true, /*scaling query*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5), /*scaling factor*/
             false,     /*qk_prod_scaling*/
@@ -140,8 +140,8 @@ void OPT::create_opt_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
-            false,   /*apply_rotary_embedding*/
-            true,    /*scaling query*/
+            opt_config.rotary_embedding_meta,
+            true, /*scaling query*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5), /*scaling factor*/
             false,     /*qk_prod_scaling*/
@@ -164,8 +164,8 @@ void OPT::create_opt_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
-            false,   /*apply_rotary_embedding*/
-            true,    /*scaling query*/
+            opt_config.rotary_embedding_meta,
+            true, /*scaling query*/
             pow((opt_config.hidden_size / opt_config.num_attention_heads),
                 -0.5), /*scaling factor*/
             false,     /*qk_prod_scaling*/

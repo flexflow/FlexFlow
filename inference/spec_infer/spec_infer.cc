@@ -83,7 +83,8 @@ void parse_input_args(char **argv,
                       bool &spec_infer_old_version,
                       bool &greedy_schedule,
                       bool &equal_schedule,
-                      std::string &emission_file_path) {
+                      std::string &emission_file_path,
+                      bool &add_special_tokens) {
   for (int i = 1; i < argc; i++) {
     // llm model name
     if (!strcmp(argv[i], "-llm-model")) {
@@ -218,6 +219,10 @@ void parse_input_args(char **argv,
     }
     if (!strcmp(argv[i], "--emission-file-path")) {
       emission_file_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "--no-special-tokens")) {
+      add_special_tokens = false;
       continue;
     }
   }
@@ -395,6 +400,7 @@ void FlexFlow::top_level_task(Task const *task,
   bool spec_infer_old_version = false;
   bool greedy_schedule = false;
   bool equal_schedule = false;
+  bool add_special_tokens = true;
   std::string emission_file_path;
 
   InputArgs const &command_args = HighLevelRuntime::get_input_args();
@@ -427,7 +433,8 @@ void FlexFlow::top_level_task(Task const *task,
                    spec_infer_old_version,
                    greedy_schedule,
                    equal_schedule,
-                   emission_file_path);
+                   emission_file_path,
+                   add_special_tokens);
   if (max_tokens_per_ssm_batch == -1) {
     max_tokens_per_ssm_batch = max_tokens_per_batch;
   }
@@ -597,8 +604,11 @@ void FlexFlow::top_level_task(Task const *task,
         assert(false);
       }
       for (size_t i = 1; i < prompt_json.size(); ++i) {
-        requests.push_back(GenerationRequest(
-            prompt_json[i]["prompt"].get<std::string>(), -1.0, 0));
+        requests.push_back(
+            GenerationRequest(prompt_json[i]["prompt"].get<std::string>(),
+                              -1.0,
+                              0,
+                              add_special_tokens));
       }
       PoissonEmissionMachine emission_machine(request_per_second, slo_ratios);
       //   ConstantEmissionMachine emission_machine(-1, slo_ratios);
@@ -613,7 +623,8 @@ void FlexFlow::top_level_task(Task const *task,
       std::vector<double> timestamps, ratios;
       for (auto const &json_obj : trace_json) {
         EmissionTrace trace(json_obj);
-        requests.push_back(GenerationRequest(trace.prompt, -1.0, 0));
+        requests.push_back(
+            GenerationRequest(trace.prompt, -1.0, 0, add_special_tokens));
         timestamps.push_back(trace.emission_time_ms);
         ratios.push_back(trace.slo_ratio);
       }

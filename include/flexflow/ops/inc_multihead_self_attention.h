@@ -40,7 +40,7 @@ public:
                             bool _qkv_bias,
                             bool _final_bias,
                             bool _add_zero_attn,
-                            bool _apply_rotary_embedding,
+                            RotaryEmbeddingMeta _rotary_embedding_meta,
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
@@ -63,7 +63,7 @@ public:
                             bool _qkv_bias,
                             bool _final_bias,
                             bool _add_zero_attn,
-                            bool _apply_rotary_embedding,
+                            RotaryEmbeddingMeta _rotary_embedding_meta,
                             bool _scaling_query,
                             float _scaling_factor,
                             bool _qk_prod_scaling,
@@ -129,8 +129,8 @@ public:
   int num_q_heads, num_kv_heads, tensor_parallelism_degree;
   float dropout, scaling_factor;
   bool qkv_bias;
-  bool final_bias, add_zero_attn, apply_rotary_embedding, scaling_query,
-      qk_prod_scaling, position_bias;
+  bool final_bias, add_zero_attn, scaling_query, qk_prod_scaling, position_bias;
+  RotaryEmbeddingMeta rotary_embedding_meta;
   int hidden_size, qk_dim, v_dim, o_dim;
   int qoSeqLength, kvSeqLength;
   DataType quantization_type;
@@ -153,7 +153,7 @@ public:
                                 int _qk_dim,
                                 int _v_dim,
                                 int _o_dim,
-                                bool _apply_rotary_embedding,
+                                RotaryEmbeddingMeta _rotary_embedding_meta,
                                 bool _qkv_bias,
                                 bool _scaling_query,
                                 bool _qk_prod_scaling,
@@ -180,7 +180,7 @@ public:
   int global_num_q_heads, global_num_kv_heads, num_q_heads, num_kv_heads,
       local_hidden_size;
   bool *has_load_weights;
-  bool *apply_rotary_embedding;
+  RotaryEmbeddingMeta *rotary_embedding_meta;
   bool *qkv_bias;
   bool *final_bias;
   bool *scaling_query;

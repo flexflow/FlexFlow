@@ -25,6 +25,7 @@
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
 #include "flexflow/utils/cuda_helper.h"
+#include <math_constants.h>
 
 namespace FlexFlow {
 
@@ -132,53 +133,6 @@ __global__ void scaling_query_kernel(DT *input_ptr,
     int token_idx = i / hidden_size;
     input_ptr[i % hidden_size + token_idx * hidden_size * QKV_WEIGHT_NUM] *=
         scaling_factor;
-  }
-}
-
-template <typename DT>
-__global__ void
-    apply_rotary_embedding_native(DT *input_ptr,
-                                  cuFloatComplex *complex_input,
-                                  BatchConfig::PerTokenInfo const *tokenInfos,
-                                  int qk_dim,
-                                  int num_q_heads,
-                                  int num_tokens,
-                                  int num_kv_heads,
-                                  int q_block_size,
-                                  int k_block_size,
-                                  int q_array_size) {
-  CUDA_KERNEL_LOOP(
-      i, num_tokens * (qk_dim * num_q_heads + qk_dim * num_kv_heads) / 2) {
-    // create complex number
-    bool q_tensor = i < (q_array_size / 2);
-    int proj_size = q_tensor ? qk_dim : qk_dim;
-    int real_i = q_tensor ? i : i - q_array_size / 2;
-
-    int head_idx = real_i / (num_tokens * proj_size / 2);
-    int idx = real_i % (num_tokens * proj_size / 2);
-    int real_part_index = idx * 2 +
-                          head_idx * (q_tensor ? q_block_size : k_block_size) +
-                          (q_tensor ? 0 : q_array_size);
-
-    int complex_part_index = real_part_index + 1;
-
-    complex_input[i] = {input_ptr[real_part_index],
-                        input_ptr[complex_part_index]};
-
-    int token_idx =
-        (real_i - head_idx * (num_tokens * proj_size / 2)) / (proj_size / 2);
-    size_t pos = tokenInfos[token_idx].abs_depth_in_request;
-
-    // float before_real = complex_input[i].x, before_complex =
-    // complex_input[i].y;
-
-    int pos_i = real_i % (proj_size / 2);
-    float freq = pos * (1.0 / pow(10000.0, (float)2 * pos_i / proj_size));
-    cuFloatComplex complex_pos = {cos(freq), sin(freq)};
-
-    complex_input[i] = cuCmulf(complex_input[i], complex_pos);
-    input_ptr[real_part_index] = complex_input[i].x;
-    input_ptr[complex_part_index] = complex_input[i].y;
   }
 }
 
@@ -303,6 +257,12 @@ template <typename DT>
 __global__ void apply_pos_encoding_to_tokens_in_batch_kernel(
     DT *input_ptr,
     BatchConfig::PerTokenInfo const *tokenInfos,
+    float rope_theta,
+    bool llama3_rope,
+    float factor,
+    float low_freq_factor,
+    float high_freq_factor,
+    int original_max_position_embeddings,
     int qk_dim,
     int num_tokens,
     size_t q_array_size,
@@ -333,7 +293,27 @@ __global__ void apply_pos_encoding_to_tokens_in_batch_kernel(
 
     size_t pos = tokenInfos[token_idx].abs_depth_in_request;
 
-    float freq = pos * (1.0 / pow(10000.0, (float)2 * idx / proj_size));
+    float freq = pos * (1.0 / pow(rope_theta, (float)2 * idx / proj_size));
+
+    if (llama3_rope) {
+      float pi = CUDART_PI_F;
+      float wavelen = 2 * pi / freq;
+      float low_freq_wavelen =
+          original_max_position_embeddings / low_freq_factor;
+      float high_freq_wavelen =
+          original_max_position_embeddings / high_freq_factor;
+      if (wavelen < high_freq_wavelen) {
+      } else if (wavelen > low_freq_wavelen) {
+        freq = freq / factor;
+      } else {
+        assert(low_freq_wavelen != high_freq_wavelen);
+        float smooth =
+            (original_max_position_embeddings / wavelen - low_freq_factor) /
+            (high_freq_factor - low_freq_factor);
+        freq = ((1 - smooth) * freq / factor + smooth * freq);
+      }
+    }
+
     cuFloatComplex complex_pos = {cos(freq), sin(freq)};
 
     cii = cuCmulf(cii, complex_pos);
@@ -349,7 +329,7 @@ void apply_pos_encoding_to_tokens_in_batch(
     DT *output_ptr,
     cudaStream_t stream) {
   // apply rotary embedding if needed
-  if (!*m->apply_rotary_embedding) {
+  if (!m->rotary_embedding_meta->apply_rotary_embedding) {
     return;
   }
   int num_tokens = bc->num_active_tokens();
@@ -358,6 +338,7 @@ void apply_pos_encoding_to_tokens_in_batch(
   }
   int parallelism = num_tokens * m->local_hidden_size;
   size_t q_array_size = m->qk_dim * num_tokens * m->num_q_heads;
+  bool llama3_rope = (m->rotary_embedding_meta->rope_type == "llama3");
   apply_pos_encoding_to_tokens_in_batch_kernel<<<GET_BLOCKS(parallelism),
                                                  min(CUDA_NUM_THREADS,
                                                      parallelism),
@@ -365,6 +346,12 @@ void apply_pos_encoding_to_tokens_in_batch(
                                                  stream>>>(
       output_ptr,
       m->token_infos,
+      m->rotary_embedding_meta->rope_theta,
+      llama3_rope,
+      m->rotary_embedding_meta->factor,
+      m->rotary_embedding_meta->low_freq_factor,
+      m->rotary_embedding_meta->high_freq_factor,
+      m->rotary_embedding_meta->original_max_position_embeddings,
       m->qk_dim,
       num_tokens,
       q_array_size,
