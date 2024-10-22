@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+from dataclasses import dataclass
 import warnings
 import numpy as np
 from .flexflow_logger import fflogger
@@ -1240,31 +1241,6 @@ class Parameter(Tensor):
         )
         assert ret_val == True
         return np_array
-
-# -----------------------------------------------------------------------
-# Request
-# -----------------------------------------------------------------------
-
-
-class Request:
-    """A class to record the metadata of an inference or finetuning request."""
-
-    def __init__(
-        self,
-        req_type: RequestType,
-        prompt: str = None,
-        max_sequence_length: int = 128,
-        peft_model_id: PEFTModelID = None,
-        dataset_filepath: str = None,
-        max_training_steps: int = 1,
-    ):
-        self.req_type = req_type
-        self.prompt = prompt
-        self.max_sequence_length = max_sequence_length
-        self.peft_model_id = peft_model_id
-        self.dataset_filepath = dataset_filepath
-        self.max_training_steps = max_training_steps
-
 
 # -----------------------------------------------------------------------
 # RotaryEmbeddingMeta
