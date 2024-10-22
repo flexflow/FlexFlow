@@ -209,6 +209,7 @@ Tensor FFModel::inc_multiquery_self_attention_verify(
   li->add_int_property("original_max_position_embeddings",
                        rotary_embedding_meta.original_max_position_embeddings);
   li->add_int_property("scaling_query", scaling_query);
+  li->add_int_property("qk_prod_scaling", qk_prod_scaling);
   li->add_float_property("scaling_factor", scaling_factor);
   li->add_int_property("position_bias", position_bias);
   li->add_int_property("quantization_type", quantization_type);
