@@ -211,29 +211,25 @@ void update_custom_mask(BatchConfig const *batch_config,
   InferenceMode mode = batch_config->get_mode();
   assert(mode == TREE_SEARCH_MODE || mode == TREE_VERIFY_MODE);
   int parallelism = 0;
-  for (int req_idx = 0;
-        req_idx < batch_config->max_requests_per_batch();
-        req_idx++) {
+  for (int req_idx = 0; req_idx < batch_config->max_requests_per_batch();
+       req_idx++) {
     if (batch_config->request_available[req_idx]) {
-      int q_len =
-          batch_config->requestsInfo[req_idx].num_tokens_in_batch;
+      int q_len = batch_config->requestsInfo[req_idx].num_tokens_in_batch;
       int kv_len =
           batch_config->requestsInfo[req_idx].num_tokens_in_batch +
-          batch_config->requestsInfo[req_idx]
-              .first_token_index_in_request;
+          batch_config->requestsInfo[req_idx].first_token_index_in_request;
       parallelism += (q_len * kv_len + 7) / 8;
     }
   }
   update_custom_mask_kernel<<<GET_BLOCKS(parallelism),
                               min(CUDA_NUM_THREADS, parallelism),
                               0,
-                              stream>>>(
-      metadata->custom_mask,
-      metadata->qk_indptr,
-      causalMask,
-      request_infos,
-      request_available,
-      batch_size);
+                              stream>>>(metadata->custom_mask,
+                                        metadata->qk_indptr,
+                                        causalMask,
+                                        request_infos,
+                                        request_available,
+                                        batch_size);
 }
 
 void RequestManager::load_batch_config_task(

@@ -603,7 +603,8 @@ void AdamOptimizer::nccl_update_task(Task const *task,
     }
   }
 
-  nccl_update_task_gpu(ctx, runtime, op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
+  nccl_update_task_gpu(
+      ctx, runtime, op, meta, w_grad_ptr, size, w_ptr, v_ptr, m_ptr);
 }
 #endif
 
