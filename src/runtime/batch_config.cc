@@ -108,6 +108,10 @@ int BatchConfig::max_output_length() {
   return RequestManager::get_request_manager()->get_max_output_length();
 }
 
+bool BatchConfig::streaming_cache() {
+  return RequestManager::get_request_manager()->get_streaming_cache();
+}
+
 int BatchConfig::max_spec_tree_token_num() {
   return RequestManager::get_request_manager()->get_max_spec_tree_token_num();
 }

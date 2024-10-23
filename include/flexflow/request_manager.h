@@ -292,6 +292,7 @@ public:
   void set_correction_factor(double correction_factor);
   double get_correction_factor();
   void set_streaming_cache(bool streaming_cache);
+  bool get_streaming_cache();
   bool get_memory_occupancy();
   void set_memory_occupancy(bool memory_occupancy);
   void

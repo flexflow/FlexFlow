@@ -303,6 +303,10 @@ void RequestManager::set_streaming_cache(bool streaming_cache_) {
   streaming_cache = streaming_cache_;
 }
 
+bool RequestManager::get_streaming_cache() {
+  return streaming_cache;
+}
+
 bool RequestManager::get_memory_occupancy() {
   return memory_occupancy;
 }
