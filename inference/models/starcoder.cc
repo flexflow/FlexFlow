@@ -114,18 +114,18 @@ void STARCODER::create_starcoder_model(
                 startcoder_config.num_attention_heads,
             startcoder_config.hidden_size /
                 startcoder_config.num_attention_heads,
-            startcoder_config.dropout_p, /*dropout*/
-            true,                        /*bias*/
-            false,                       /*add_bias_kv*/
-            false,                       /*add_zero_attn*/
-            DT_NONE,                     /*data_type*/
-            nullptr,                     /*kernel_initializer*/
-            false,                       /*apply_rotary_embedding*/
-            false,                       /*scaling query*/
-            1.0f,                        /*scaling factor*/
-            true,                        /*qk_prod_scaling*/
-            false,                       /*position_bias*/
-            false,                       /*streaming_cache*/
+            startcoder_config.dropout_p,             /*dropout*/
+            true,                                    /*bias*/
+            false,                                   /*add_bias_kv*/
+            false,                                   /*add_zero_attn*/
+            DT_NONE,                                 /*data_type*/
+            nullptr,                                 /*kernel_initializer*/
+            startcoder_config.rotary_embedding_meta, /*apply_rotary_embedding*/
+            false,                                   /*scaling query*/
+            1.0f,                                    /*scaling factor*/
+            true,                                    /*qk_prod_scaling*/
+            false,                                   /*position_bias*/
+            false,                                   /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );

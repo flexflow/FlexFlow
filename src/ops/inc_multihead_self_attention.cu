@@ -23,6 +23,7 @@
 #include "flexflow/ops/kernels/inc_multihead_self_attention_kernels.h"
 #include "flexflow/ops/kernels/inc_multihead_self_attention_utils.cuh"
 #include "flexflow/utils/cuda_helper.h"
+#include <math_constants.h>
 
 namespace FlexFlow {
 
@@ -373,7 +374,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
                                     attn->qk_dim,
                                     attn->v_dim,
                                     attn->o_dim,
-                                    attn->apply_rotary_embedding,
+                                    attn->rotary_embedding_meta,
                                     attn->qkv_bias,
                                     attn->scaling_query,
                                     attn->qk_prod_scaling,
@@ -399,7 +400,7 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
     int _qk_dim,
     int _v_dim,
     int _o_dim,
-    bool _apply_rotary_embedding,
+    RotaryEmbeddingMeta _rotary_embedding_meta,
     bool _qkv_bias,
     bool _scaling_query,
     bool _qk_prod_scaling,
@@ -454,8 +455,9 @@ IncMultiHeadSelfAttentionMeta::IncMultiHeadSelfAttentionMeta(
 
   // has_load_weights = (bool *)calloc(1, sizeof(bool));
   //*has_load_weights = false;
-  apply_rotary_embedding = (bool *)calloc(1, sizeof(bool));
-  *apply_rotary_embedding = _apply_rotary_embedding;
+  rotary_embedding_meta =
+      (RotaryEmbeddingMeta *)calloc(1, sizeof(RotaryEmbeddingMeta));
+  *rotary_embedding_meta = _rotary_embedding_meta;
   qkv_bias = (bool *)calloc(1, sizeof(bool));
   *qkv_bias = _qkv_bias;
   scaling_query = (bool *)calloc(1, sizeof(bool));

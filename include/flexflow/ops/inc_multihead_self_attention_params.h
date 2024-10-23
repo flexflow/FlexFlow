@@ -3,6 +3,7 @@
 
 #include "flexflow/ffconst.h"
 #include "flexflow/fftype.h"
+#include "flexflow/inference.h"
 #include "flexflow/parallel_tensor.h"
 
 namespace FlexFlow {
@@ -12,8 +13,9 @@ struct IncMultiHeadSelfAttentionParams {
   int embed_dim, num_q_heads, kdim, vdim, num_kv_heads,
       tensor_parallelism_degree;
   float dropout, scaling_factor;
-  bool qkv_bias, final_bias, add_zero_attn, apply_rotary_embedding,
-      scaling_query, qk_prod_scaling, position_bias;
+  bool qkv_bias, final_bias, add_zero_attn, scaling_query, qk_prod_scaling,
+      position_bias;
+  RotaryEmbeddingMeta rotary_embedding_meta;
   DataType quantization_type;
   bool offload, streaming_cache;
   char name[MAX_OPNAME];

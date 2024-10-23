@@ -41,6 +41,17 @@ class FalconConfig:
         )
         self.parallel_attn = hf_config.parallel_attn
         self.vocab_size = hf_config.vocab_size
+        self.rotary_embedding_meta = RotaryEmbeddingMeta(
+            apply_rotary_embedding=True,
+            rope_theta=hf_config.rope_theta if "rope_theta" in hf_config.__dict__ else 10000.0,
+        )
+        if "rope_scaling" in hf_config.__dict__:
+            if hf_config.rope_scaling is not None:
+                self.rotary_embedding_meta.rope_type = hf_config.rope_scaling["rope_type"]
+                self.rotary_embedding_meta.factor = hf_config.rope_scaling["factor"]
+                self.rotary_embedding_meta.low_freq_factor = hf_config.rope_scaling["low_freq_factor"]
+                self.rotary_embedding_meta.high_freq_factor = hf_config.rope_scaling["high_freq_factor"]
+                self.rotary_embedding_meta.original_max_position_embeddings = hf_config.rope_scaling["original_max_position_embeddings"]
         # Standardized FlexFlow num heads fields below
         self.num_attention_heads = self.n_head
         self.num_key_value_heads = self.n_head_kv
@@ -54,8 +65,6 @@ class FlexFlowFalcon(FlexFlowModel):
         ffconfig,
         hf_config,
         data_type,
-        # max_batch_size=1,
-        # max_seq_length=256,
         max_tokens_per_batch,
         weights_filepath="",
         tokenizer_filepath="",
@@ -63,11 +72,8 @@ class FlexFlowFalcon(FlexFlowModel):
         self.mode = mode
         self.generation_config = generation_config
         self.ffconfig = ffconfig
-        # self.max_batch_size = max_batch_size
         self.data_type = data_type
         self.falcon_config = FalconConfig(hf_config)
-        # self.falcon_config.max_seq_length = max_seq_length
-        # self.falcon_config.max_num_tokens = max_tokens_per_batch
         self.weights_filepath = weights_filepath
         self.tokenizer_filepath = tokenizer_filepath
         self.maxint = 2**31 - 1
@@ -152,7 +158,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    True,  # apply_rotary_embedding
+                    self.falcon_config.rotary_embedding_meta,
                     name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.TREE_VERIFY_MODE:
@@ -169,7 +175,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    True,  # apply_rotary_embedding
+                    self.falcon_config.rotary_embedding_meta,
                     name=f"layers_{i}_attention",
                 )
             elif self.mode == InferenceMode.INC_DECODING_MODE:
@@ -186,7 +192,7 @@ class FlexFlowFalcon(FlexFlowModel):
                     False,  # add_zero_attn
                     DataType.DT_NONE,  # data_type
                     None,  # kernel initializer
-                    True,  # apply_rotary_embedding
+                    self.falcon_config.rotary_embedding_meta,
                     name=f"layers_{i}_attention",
                 )
             else:

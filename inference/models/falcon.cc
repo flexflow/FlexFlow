@@ -112,12 +112,12 @@ void FALCON::create_falcon_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             NULL,    /*kernel_initializer*/
-            true,    /*apply_rotary_embedding*/
-            false,   /*scaling query*/
-            1.0f,    /*scaling factor*/
-            true,    /*qk_prod_scaling*/
-            false,   /*position_bias*/
-            false,   /*streaming_cache*/
+            falcon_config.rotary_embedding_meta,
+            false, /*scaling query*/
+            1.0f,  /*scaling factor*/
+            true,  /*qk_prod_scaling*/
+            false, /*position_bias*/
+            false, /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
@@ -138,11 +138,11 @@ void FALCON::create_falcon_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
-            true,    /*apply_rotary_embedding*/
-            false,   /*scaling query*/
-            1.0f,    /*scaling factor*/
-            true,    /*qk_prod_scaling*/
-            false,   /*position_bias*/
+            falcon_config.rotary_embedding_meta,
+            false, /*scaling query*/
+            1.0f,  /*scaling factor*/
+            true,  /*qk_prod_scaling*/
+            false, /*position_bias*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
@@ -163,12 +163,12 @@ void FALCON::create_falcon_model(FFModel &ff,
             false,   /*add_zero_attn*/
             DT_NONE, /*data_type*/
             nullptr, /*kernel_initializer*/
-            true,    /*apply_rotary_embedding*/
-            false,   /*scaling query*/
-            1.0f,    /*scaling factor*/
-            true,    /*qk_prod_scaling*/
-            false,   /*position_bias*/
-            false,   /*streaming_cache*/
+            falcon_config.rotary_embedding_meta,
+            false, /*scaling query*/
+            1.0f,  /*scaling factor*/
+            true,  /*qk_prod_scaling*/
+            false, /*position_bias*/
+            false, /*streaming_cache*/
             std::string("layers_" + std::to_string(i) + "_attention")
                 .c_str() /*name*/
         );
