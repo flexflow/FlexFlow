@@ -96,6 +96,7 @@ class LLM:
         self.supported_models = {
             "LlamaForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
             "LLaMAForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
+            "MistralForCausalLM": (ModelType.LLAMA, FlexFlowLLAMA, LLAMAConfig),
             "OPTForCausalLM": (ModelType.OPT, FlexFlowOPT, OPTConfig),
             "RWForCausalLM": (ModelType.FALCON, FlexFlowFalcon, FalconConfig),
             "FalconForCausalLM": (ModelType.FALCON, FlexFlowFalcon, FalconConfig),

@@ -87,7 +87,7 @@ def main():
     # Get Tokenizer
     hf_config = AutoConfig.from_pretrained(args.model_name, trust_remote_code=True)
     hf_arch = getattr(hf_config, "architectures")[0]
-    if hf_arch == "LLaMAForCausalLM" or hf_arch == "LlamaForCausalLM":
+    if hf_arch == "LLaMAForCausalLM" or hf_arch == "LlamaForCausalLM" or hf_arch == "MistralForCausalLM":
         tokenizer = LlamaTokenizer.from_pretrained(args.model_name, use_fast=True)
     else:
         tokenizer = AutoTokenizer.from_pretrained(args.model_name)
