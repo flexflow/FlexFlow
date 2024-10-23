@@ -68,6 +68,7 @@ struct GenerationResult {
   std::vector<TokenId> output_tokens;
   double slo_ratio;
   double emission_time_ms;
+  int decoding_steps;
 };
 
 // Contains the configuration for how to emit requests to the server,

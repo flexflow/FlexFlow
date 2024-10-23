@@ -678,6 +678,19 @@ void RequestManager::request_update_attainment(int batch_index, bool attained) {
   request.attained &= attained;
 }
 
+bool isPrefixAndRemove(std::vector<int> const &prefix, std::vector<int> &vec) {
+  if (prefix.size() > vec.size()) {
+    return false;
+  }
+
+  if (std::equal(prefix.begin(), prefix.end(), vec.begin())) {
+    vec.erase(vec.begin(), vec.begin() + prefix.size());
+    return true;
+  }
+
+  return false;
+}
+
 void RequestManager::request_complete_clean_up(int batch_index) {
   RequestGuid guid = guid_of_requests[batch_index];
   profiling_requests[guid].finish_time =
@@ -690,35 +703,47 @@ void RequestManager::request_complete_clean_up(int batch_index) {
   request.status = Request::COMPLETED;
 
   // Find the sos and eos in the sequence
-  auto bos_it = std::find(
-      request.tokens.begin(), request.tokens.end(), this->bos_token_id);
-  auto eos_rit = std::find(
-      request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
-  std::vector<int>::iterator eos_it;
-  if (eos_rit != request.tokens.rend()) {
-    eos_it = eos_rit.base();
-  } else {
-    eos_it = request.tokens.end();
-  }
+  // auto bos_it = std::find(
+  //     request.tokens.begin(), request.tokens.end(), this->bos_token_id);
+  // auto eos_rit = std::find(
+  //     request.tokens.rbegin(), request.tokens.rend(), this->eos_token_id);
+  // std::vector<int>::iterator eos_it;
+  // if (eos_rit != request.tokens.rend()) {
+  //   eos_it = eos_rit.base();
+  // } else {
+  //   eos_it = request.tokens.end();
+  // }
   // std::string output =
   //     this->tokenizer_->Decode(std::vector<int>(bos_it, eos_it));
   std::string output = this->tokenizer_->Decode(request.tokens);
 
   {
     std::lock_guard<std::mutex> const lock(request_result_mutex);
-    request_generation_results[guid].output_text = output;
-    request_generation_results[guid].output_tokens =
-        std::vector<int>(bos_it, eos_it);
+    request_generation_results[guid].output_tokens = request.tokens;
+    assert(isPrefixAndRemove(request_generation_results[guid].input_tokens,
+                             request_generation_results[guid].output_tokens));
+    if (request_generation_results[guid].output_tokens.size() > 0 &&
+        request_generation_results[guid].output_tokens
+                [request_generation_results[guid].output_tokens.size() - 1] ==
+            this->eos_token_id &&
+        !request.add_special_tokens) {
+      request_generation_results[guid].output_tokens.pop_back();
+    }
+    request_generation_results[guid].output_text = this->tokenizer_->Decode(
+        request_generation_results[guid].output_tokens);
+    request_generation_results[guid].decoding_steps = profiling_requests[guid].llm_decoding_steps;
+    // request_generation_results[guid].output_tokens =
+    //     std::vector<int>(bos_it, eos_it);
   }
 
   trigger_request_completion_future(guid);
 
   std::cout << "Request " << guid << " completed: " << std::endl << std::endl;
-  std::cout << "<bos>" << output;
-  if (eos_rit != request.tokens.rend()) {
-    std::cout << "<eos>";
-  }
-  std::cout << std::endl << std::endl;
+  // std::cout << "<bos>" << output;
+  // if (eos_rit != request.tokens.rend()) {
+  //   std::cout << "<eos>";
+  // }
+  // std::cout << std::endl << std::endl;
   {
     RequestProfileInfo profile_info = profiling_requests[guid];
 
@@ -2708,6 +2733,20 @@ void RequestManager::terminate_background_server() {
     goodput_str += std::to_string(goodput);
     goodput_str += ")";
     str += goodput_str;
+
+    assert(profiling_requests.size() == all_requests.size());
+    str += "\nDecoding Steps: ";
+    for (auto const &profiling_info : profiling_requests) {
+      int request_id = profiling_info.first;
+      Request &request = all_requests[request_id];
+      str += "Request " + std::to_string(request_id) + ": ";
+      str += std::to_string(profiling_info.second.llm_decoding_steps);
+      str += "/";
+      str += std::to_string(request.decode_length());
+      float speedup = (float)request.decode_length() /
+                      profiling_info.second.llm_decoding_steps;
+      str += " " + std::to_string(speedup) + "\n";
+    }
 
     write_to_output_file("", str);
     background_server_status = TERMINATED;

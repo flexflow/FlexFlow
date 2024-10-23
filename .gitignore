@@ -192,3 +192,4 @@ inference_tensors
 tests/inference/python_test_configs/*.json
 
 core.*
+*.out
