@@ -292,6 +292,7 @@ StreamingCacheInfo &
 // commit the verified result from target model;
 // For incremental decoding, we update the cache both in prefill and decoding
 void StreamingCacheInfo::commit_cache(int len) {
+  total_len += len;
   commit_len += len;
   if (commit_len <= sink_cache_size + window_cache_size) {
     window_back = std::max(0, commit_len - sink_cache_size);
@@ -304,6 +305,7 @@ void StreamingCacheInfo::commit_cache(int len) {
 void StreamingCacheInfo::reset_cache() {
   window_back = 0;
   commit_len = 0;
+  total_len = 0;
 }
 
 int StreamingCacheInfo::global_2_cache_index(int global_index) {
@@ -311,6 +313,17 @@ int StreamingCacheInfo::global_2_cache_index(int global_index) {
     return global_index;
   }
   return (global_index - sink_cache_size) % window_cache_size + sink_cache_size;
+}
+
+int StreamingCacheInfo::cache_2_global_index(int cache_index) {
+  if (cache_index < sink_cache_size) {
+    return cache_index;
+  }
+  // cache = (global-sink) % window + sink
+  cache_index -= sink_cache_size;
+  int num_window = (total_len - sink_cache_size) / window_cache_size -
+                   (window_back <= cache_index);
+  return sink_cache_size + cache_index + num_window * window_cache_size;
 }
 
 }; // namespace FlexFlow

@@ -52,12 +52,13 @@ public:
   void commit_cache(int len);
   void reset_cache();
   int global_2_cache_index(int global_index);
+  int cache_2_global_index(int cache_index);
 
 public:
   int sink_cache_size, window_cache_size;
   // the meta info of the window cache, commit_len helps to determine if we fill
   // up the window.
-  int window_back, commit_len;
+  int window_back, commit_len, total_len;
 };
 
 class BatchConfig {
