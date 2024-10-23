@@ -357,7 +357,6 @@ void FlexFlow::top_level_task(Task const *task,
              ffconfig.pipeline_parallelism_degree ==
          ffconfig.numNodes * ffconfig.workersPerNode);
 
-  
   // using json = nlohmann::json;
   using json = nlohmann::ordered_json;
   std::ifstream input_file(file_paths.trace_file_path);
@@ -367,37 +366,50 @@ void FlexFlow::top_level_task(Task const *task,
   input_file.close();
 
   // Find the partition with name "FEATURE_EXTRACTION"
-  auto& partitions = j["partitions"];
-  auto it = std::find_if(partitions.begin(), partitions.end(),
-    [target_partition](const json& partition) {
-        return partition["partition_name"] == target_partition;
-    });
-  json& partition = *it;
+  auto &partitions = j["partitions"];
+  auto it =
+      std::find_if(partitions.begin(),
+                   partitions.end(),
+                   [target_partition](json const &partition) {
+                     return partition["partition_name"] == target_partition;
+                   });
+  json &partition = *it;
   if (it == partitions.end()) {
-    std::cerr << "Partition " << target_partition << " not found in the trace file." << std::endl;
+    std::cerr << "Partition " << target_partition
+              << " not found in the trace file." << std::endl;
     assert(false);
   }
-  // check that the max prompt + response length sum in the eval_entries in the partition does not exceed the max_sequence_length
+  // check that the max prompt + response length sum in the eval_entries in the
+  // partition does not exceed the max_sequence_length
   int max_prompt_response_length = 0;
-  for (auto& eval_entry : partition["eval_entries"]) {
+  for (auto &eval_entry : partition["eval_entries"]) {
     int prompt_length = eval_entry["prompt_length"];
     int response_length = eval_entry["response_length"];
     if (response_length >= max_output_length) {
-      std::cerr << "Error: A response length from the targt partition in the dataset (=" << response_length << ") exceeds the max_output_length(=" << max_output_length << ")." << std::endl;
+      std::cerr << "Error: A response length from the targt partition in the "
+                   "dataset (="
+                << response_length
+                << ") exceeds the max_output_length(=" << max_output_length
+                << ")." << std::endl;
       assert(false);
     }
-    max_prompt_response_length = std::max(max_prompt_response_length, prompt_length + response_length);
+    max_prompt_response_length =
+        std::max(max_prompt_response_length, prompt_length + response_length);
   }
   if (max_prompt_response_length >= max_sequence_length) {
-    std::cerr << "Error: max prompt + response length sum (=" << max_prompt_response_length << ") in the eval_entries in the partition exceeds the max_sequence_length(=" << max_sequence_length << ")." << std::endl;
+    std::cerr << "Error: max prompt + response length sum (="
+              << max_prompt_response_length
+              << ") in the eval_entries in the partition exceeds the "
+                 "max_sequence_length(="
+              << max_sequence_length << ")." << std::endl;
     assert(false);
   }
 
   // Sanity check for SpecInfer old version
-    assert(max_tree_depth = 8);
-    assert(max_tree_width >= 3);
-    // Total verified tokens
-    assert(max_tokens_per_batch >= max_requests_per_batch * 21);
+  assert(max_tree_depth = 8);
+  assert(max_tree_width >= 3);
+  // Total verified tokens
+  assert(max_tokens_per_batch >= max_requests_per_batch * 21);
 
   // Create SentencePiece tokenizer or OPT tokenizer
   srand(sampling_seed);
@@ -520,10 +532,10 @@ void FlexFlow::top_level_task(Task const *task,
     // Iterate through eval_entries
     std::vector<GenerationRequest> requests;
     std::vector<double> timestamps, ratios;
-    for (auto& entry : partition["eval_entries"]) {
+    for (auto &entry : partition["eval_entries"]) {
       std::string text = entry["prompt"];
       int max_new_tokens_ = entry["response_length"];
-      printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
+      // printf("Prompt[%d]: %s\n", total_num_requests, text.c_str());
       GenerationRequest inference_req(text, -1.0, 0, add_special_tokens);
       // inference_req.prompt = text;
       // inference_req.slo_ratio = -1.0;
@@ -537,12 +549,13 @@ void FlexFlow::top_level_task(Task const *task,
       // break;
     }
     TraceEmissionMachine emission_machine(timestamps, ratios);
-    std::vector<GenerationResult> result = tree_model.generate(requests, emission_machine);
+    std::vector<GenerationResult> result =
+        tree_model.generate(requests, emission_machine);
     assert(result.size() == requests.size());
     assert(result.size() == total_num_requests);
     assert(result.size() == partition["eval_entries"].size());
     int i = 0;
-    for (auto& entry : partition["eval_entries"]) {
+    for (auto &entry : partition["eval_entries"]) {
       entry["original_response"] = entry["response"];
       entry["original_response_length"] = entry["response_length"];
       std::string ff_out = result[i].output_text;
@@ -558,12 +571,13 @@ void FlexFlow::top_level_task(Task const *task,
     if (output_file.is_open()) {
       output_file << j.dump(2);
       output_file.close();
-      std::cout << "Modified JSON has been saved to " << file_paths.trace_output_path << std::endl;
+      std::cout << "Modified JSON has been saved to "
+                << file_paths.trace_output_path << std::endl;
     } else {
       std::cerr << "Unable to open file for writing." << std::endl;
     }
   }
-  
+
   // terminate the request manager by stopping the background thread
   rm->terminate_background_server();
 
