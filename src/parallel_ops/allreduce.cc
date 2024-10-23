@@ -345,7 +345,7 @@ void AllReduce::inference_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input.data_type == output.data_type);
-  inference_kernel_wrapper(m, bc, input, output);
+  inference_kernel_wrapper(ctx, runtime, m, bc, input, output);
 }
 
 /*static*/
@@ -364,7 +364,7 @@ void AllReduce::forward_task(Task const *task,
       m->output_type[0], regions[1], task->regions[1], FID_DATA, ctx, runtime);
 
   assert(input.data_type == output.data_type);
-  forward_kernel_wrapper(m, input, output);
+  forward_kernel_wrapper(ctx, runtime, m, input, output);
 }
 
 void AllReduce::backward_task(Task const *task,

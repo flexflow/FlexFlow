@@ -118,7 +118,9 @@ inline bool CanApplyTwoShotAllReduce(int64_t num_elements,
 }
 
 // Customized all-reduce kernel backed by CUDA Peer memory.
-void inference_kernel_wrapper(AllReduceMeta *m,
+void inference_kernel_wrapper(Context ctx,
+                              Runtime *runtime,
+                              AllReduceMeta *m,
                               BatchConfig const *bc,
                               GenericTensorAccessorR const &input,
                               GenericTensorAccessorW const &output) {
@@ -144,6 +146,7 @@ void inference_kernel_wrapper(AllReduceMeta *m,
       !CanApplyCustomAllReduce(num_elements, dtype)) {
     // Dispatch to nccl AllReduce if the customized all-reduce cannot apply.
     ncclDataType_t nccl_data_type = ff_to_nccl_datatype(dtype);
+    runtime->concurrent_task_barrier(ctx);
     checkNCCL(ncclAllReduce(input.ptr,
                             output.ptr,
                             num_elements,
@@ -151,6 +154,7 @@ void inference_kernel_wrapper(AllReduceMeta *m,
                             ncclSum,
                             ncclComm,
                             stream));
+    runtime->concurrent_task_barrier(ctx);
     return;
   }
 
@@ -189,7 +193,9 @@ void inference_kernel_wrapper(AllReduceMeta *m,
       params, output.ptr, num_elements, dtype, strategy, stream);
 }
 
-void forward_kernel_wrapper(AllReduceMeta const *m,
+void forward_kernel_wrapper(Context ctx,
+                            Runtime *runtime,
+                            AllReduceMeta const *m,
                             GenericTensorAccessorR const &input,
                             GenericTensorAccessorW const &output) {
   cudaStream_t stream;
@@ -198,6 +204,7 @@ void forward_kernel_wrapper(AllReduceMeta const *m,
   assert(input.domain == output.domain);
 #ifdef FF_USE_NCCL
   ncclDataType_t nccl_data_type = ff_to_nccl_datatype(input.data_type);
+  runtime->concurrent_task_barrier(ctx);
   checkNCCL(ncclAllReduce(input.ptr,
                           output.ptr,
                           input.domain.get_volume(),
@@ -205,6 +212,7 @@ void forward_kernel_wrapper(AllReduceMeta const *m,
                           ncclSum,
                           m->handle.ncclComm,
                           stream));
+  runtime->concurrent_task_barrier(ctx);
 #else
   assert(false && "Must enable FF_USE_NCCL to use AllReduce operators");
 #endif

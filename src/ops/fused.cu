@@ -1114,7 +1114,7 @@ __host__ void
             assert(fused->op_num_outputs[op] == 1);
             AllReduceMeta *m = (AllReduceMeta *)metas->meta[op];
             Kernels::AllReduce::inference_kernel_wrapper(
-                m, bc, my_input_accessor[0], my_output_accessor[0]);
+                ctx, runtime, m, bc, my_input_accessor[0], my_output_accessor[0]);
             break;
           }
           default: {

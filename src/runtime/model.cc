@@ -6462,6 +6462,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<FusedOp::inference_task>(
           registrar, "FusedOp Inference Task");
@@ -6686,6 +6687,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::inference_task>(
           registrar, "AllReduce Inference Task");
@@ -6703,6 +6705,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     // AllReduce forward and backward must run concurrentluy since they
     // use ncclAllReduce internally
     registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<AllReduce::forward_task>(
           registrar, "AllReduce Forward Task");
@@ -6798,6 +6801,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<SGDOptimizer::nccl_update_task>(
           registrar, "SGD NCCL Update Task");
@@ -6812,6 +6816,8 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     TaskVariantRegistrar registrar(ADAM_UPD_NCCL_TASK_ID, "Adam NCCL Update");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<AdamOptimizer::nccl_update_task>(
           registrar, "Adam NCCL Update Task");
@@ -6949,6 +6955,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<ncclComm_t, Op::init_nccl_comms_task>(
           registrar, "NCCL Init Communicators Task");
@@ -6965,6 +6972,8 @@ void register_flexflow_internal_tasks(Runtime *runtime,
                                    "NCCL Finish Communicators");
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
+    registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<Op::finish_nccl_comms_task>(
           registrar, "NCCL Finish Communicators Task");
