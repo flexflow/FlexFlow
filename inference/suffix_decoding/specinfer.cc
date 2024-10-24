@@ -22,10 +22,12 @@
 #include <filesystem>
 #include <string>
 #include <wordexp.h>
+#include "flexflow/request_manager.h"
 
 using namespace FlexFlow;
 using namespace Legion;
 using json = nlohmann::json;
+using RequestGuid = BatchConfig::RequestGuid;
 
 Legion::Logger log_app("llama");
 
@@ -33,7 +35,8 @@ struct FilePaths {
   std::string cache_folder_path;
   std::string trace_file_path;
   std::string trace_output_path;
-  std::string output_file_path;
+  std::string log_file_path;
+  std::string csv_file_path;
 };
 
 struct ModelNames {
@@ -110,8 +113,12 @@ void parse_input_args(char **argv,
       continue;
     }
     // output file
-    if (!strcmp(argv[i], "-output-file")) {
-      paths.output_file_path = std::string(argv[++i]);
+    if (!strcmp(argv[i], "-log-output-path")) {
+      paths.log_file_path = std::string(argv[++i]);
+      continue;
+    }
+    if (!strcmp(argv[i], "-csv-output-path")) {
+      paths.csv_file_path = std::string(argv[++i]);
       continue;
     }
     if (!strcmp(argv[i], "--use-full-precision")) {
@@ -406,7 +413,7 @@ void FlexFlow::top_level_task(Task const *task,
   }
 
   // Sanity check for SpecInfer old version
-  assert(max_tree_depth = 8);
+  assert(max_tree_depth <= 8);
   assert(max_tree_width >= 3);
   // Total verified tokens
   assert(max_tokens_per_batch >= max_requests_per_batch * 21);
@@ -438,7 +445,7 @@ void FlexFlow::top_level_task(Task const *task,
   rm->set_spec_infer_old_version(true);
   rm->set_greedy_schedule(false);
   rm->set_equal_schedule(false);
-  rm->register_output_filepath(file_paths.output_file_path);
+  rm->register_output_filepath(file_paths.log_file_path);
 
   // Create LLM model
   FFModel tree_model(ffconfig, ffconfig.cpu_offload);
@@ -580,6 +587,95 @@ void FlexFlow::top_level_task(Task const *task,
 
   // terminate the request manager by stopping the background thread
   rm->terminate_background_server();
+
+  // get profliling results
+  std::unordered_map<RequestGuid, RequestProfileInfo> profiling_results = rm->get_requests_profiling();
+  std::unordered_map<RequestGuid, GenerationResult> request_generation_results = rm->get_request_generation_results();
+  // save profiling results to csv file
+  std::string header = "llm,ssm,batch_size,tokens_per_batch,mean_decoding_steps,mean_output_length,mean_e2e_latency,mean_llm_ttft,mean_llm_tpot,mean_ssm_step_time,mean_candidate_size";
+  std::string row = "";
+  row += model_metadata.model_names.llm_model_name + ",";
+  // first ssm
+  assert(model_metadata.model_names.ssm_model_names.size() == 1);
+  row += model_metadata.model_names.ssm_model_names[0] + ",";
+  row += std::to_string(max_requests_per_batch) + ",";
+  row += std::to_string(max_tokens_per_batch) + ",";
+  double mean_decoding_steps = 0;
+  double mean_output_length = 0;
+  double mean_e2e_latency = 0;
+  double mean_llm_ttft = 0;
+  double mean_llm_tpot = 0;
+  double mean_ssm_step_time = 0;
+  double mean_candidate_size = 0;
+
+  for (auto &profiling_result : profiling_results) {
+    RequestGuid guid = profiling_result.first;
+    RequestProfileInfo &profile_info = profiling_result.second;
+    GenerationResult &result = request_generation_results[guid];
+    mean_decoding_steps += profile_info.llm_decoding_steps;
+    mean_output_length += result.output_tokens.size();
+    mean_e2e_latency += profile_info.finish_time - profile_info.start_time;
+    // LLM ttft
+    double prefilling_time_ms = 0.0;
+    if (profile_info.start_decoding_time != 0) {
+      prefilling_time_ms = (profile_info.start_decoding_time - profile_info.start_time) / 1000.0;
+    } else {
+      prefilling_time_ms = (profile_info.finish_time - profile_info.start_time) / 1000.0;
+    }
+    mean_llm_ttft += prefilling_time_ms;
+    // LLM tpot
+    double per_token_time_ms = 0;
+    if (profile_info.start_decoding_time != 0) {
+      per_token_time_ms = (profile_info.finish_time - profile_info.start_decoding_time) / 1000.0 / result.output_tokens.size();
+    }
+    mean_llm_tpot += per_token_time_ms;
+  }
+  mean_decoding_steps /= profiling_results.size();
+  mean_output_length /= profiling_results.size();
+  mean_e2e_latency /= profiling_results.size();
+  mean_llm_ttft /= profiling_results.size();
+  mean_llm_tpot /= profiling_results.size();
+  row += std::to_string(mean_decoding_steps) + ",";
+  row += std::to_string(mean_output_length) + ",";
+  row += std::to_string(mean_e2e_latency) + ",";
+  row += std::to_string(mean_llm_ttft) + ",";
+  row += std::to_string(mean_llm_tpot) + ",";
+  
+  ProfileInfo profile_info = rm->get_profiling_info();
+  // SSM tpots
+  for (double time : profile_info.ssm_step_times) {
+    mean_ssm_step_time += time;
+  }
+  mean_ssm_step_time /= profile_info.ssm_step_times.size();
+  // SSM number of steps (= candidate length)
+  for (int nb : profile_info.ssm_steps) {
+    mean_candidate_size += nb;
+  }
+  mean_candidate_size /= profile_info.ssm_steps.size();
+  row += std::to_string(mean_ssm_step_time) + ",";
+  row += std::to_string(mean_candidate_size);
+
+  // csv filepath
+  // create csv filepath and add header if it doesn't exist
+  bool csv_file_exists = std::filesystem::exists(file_paths.csv_file_path);
+  if (!csv_file_exists) {
+    // Create new file and write header
+    std::ofstream file(file_paths.csv_file_path);
+    if (!file.is_open()) {
+      std::cerr << "Failed to open file: " << file_paths.csv_file_path << std::endl;
+      assert(false);
+    }
+    file << header << "\n";
+    file.close();
+  }
+  
+  // Append the new row
+  std::ofstream file(file_paths.csv_file_path, std::ios::app);
+  if (!file.is_open()) {
+    std::cerr << "Failed to open file: " << file_paths.csv_file_path << std::endl;
+  }
+  file << row << "\n";
+  file.close();
 
   // Execution fence
   {

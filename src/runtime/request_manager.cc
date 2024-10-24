@@ -35,6 +35,7 @@ namespace FlexFlow {
 
 using namespace Legion;
 using tokenizers::Tokenizer;
+using RequestGuid = BatchConfig::RequestGuid;
 
 Legion::Logger log_req_mgr("RequestManager");
 
@@ -576,6 +577,18 @@ int RequestManager::get_empty_request_index() {
   return -1;
 }
 
+std::unordered_map<RequestGuid, RequestProfileInfo> RequestManager::get_requests_profiling() {
+  return profiling_requests;
+}
+
+std::unordered_map<RequestGuid, GenerationResult> RequestManager::get_request_generation_results() {
+  return request_generation_results;
+}
+
+ProfileInfo RequestManager::get_profiling_info(){
+  return profiling;
+}
+
 BatchConfigFuture RequestManager::get_next_batch_config(
     InferenceResultFuture const &result, Context ctx, Runtime *runtime) {
   RequestManager *rm = this;
@@ -778,7 +791,8 @@ void RequestManager::request_complete_clean_up(int batch_index) {
       *os << "SSM decoding steps: " << profile_info.ssm_decoding_steps
           << std::endl;
     }
-    *os << output << std::endl << std::endl;
+    *os << std::endl;
+    // *os << output << std::endl << std::endl;
 
     if (!output_filepath.empty()) {
       output_file.close();

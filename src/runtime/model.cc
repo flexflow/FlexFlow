@@ -6462,6 +6462,7 @@ void register_flexflow_internal_tasks(Runtime *runtime,
     registrar.add_constraint(ProcessorConstraint(Processor::TOC_PROC));
     registrar.set_leaf();
     registrar.set_concurrent();
+    registrar.set_concurrent_barrier();
     if (pre_register) {
       Runtime::preregister_task_variant<FusedOp::inference_task>(
           registrar, "FusedOp Inference Task");

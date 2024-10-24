@@ -1113,8 +1113,10 @@ __host__ void
             assert(fused->op_num_inputs[op] == 1);
             assert(fused->op_num_outputs[op] == 1);
             AllReduceMeta *m = (AllReduceMeta *)metas->meta[op];
+            runtime->concurrent_task_barrier(ctx);
             Kernels::AllReduce::inference_kernel_wrapper(
                 m, bc, my_input_accessor[0], my_output_accessor[0]);
+            runtime->concurrent_task_barrier(ctx);
             break;
           }
           default: {
