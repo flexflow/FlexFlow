@@ -14,6 +14,7 @@
  */
 
 #include "flexflow/inference.h"
+#include "flexflow/request_manager.h"
 #include "models/falcon.h"
 #include "models/llama.h"
 #include "models/mpt.h"
@@ -22,7 +23,6 @@
 #include <filesystem>
 #include <string>
 #include <wordexp.h>
-#include "flexflow/request_manager.h"
 
 using namespace FlexFlow;
 using namespace Legion;
@@ -221,7 +221,8 @@ void get_model_meta(FilePaths &file_paths,
   model_metadata.llm_model_type = ModelType::UNKNOWN;
   auto architectures = llm_model_config["architectures"];
   for (auto const &str : architectures) {
-    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" || str == "MistralForCausalLM") {
+    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" ||
+        str == "MistralForCausalLM") {
       model_metadata.llm_model_type = ModelType::LLAMA;
       break;
     } else if (str == "OPTForCausalLM") {
@@ -271,7 +272,8 @@ void get_model_meta(FilePaths &file_paths,
     ModelType ssm_model_type = ModelType::UNKNOWN;
     auto architectures = ssm_model_config["architectures"];
     for (auto const &str : architectures) {
-      if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" || str == "MistralForCausalLM") {
+      if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" ||
+          str == "MistralForCausalLM") {
         ssm_model_type = ModelType::LLAMA;
         break;
       } else if (str == "OPTForCausalLM") {
@@ -589,17 +591,20 @@ void FlexFlow::top_level_task(Task const *task,
   rm->terminate_background_server();
 
   // get profliling results
-  std::unordered_map<RequestGuid, RequestProfileInfo> profiling_results = rm->get_requests_profiling();
-  std::unordered_map<RequestGuid, GenerationResult> request_generation_results = rm->get_request_generation_results();
+  std::unordered_map<RequestGuid, RequestProfileInfo> profiling_results =
+      rm->get_requests_profiling();
+  std::unordered_map<RequestGuid, GenerationResult> request_generation_results =
+      rm->get_request_generation_results();
   // save profiling results to csv file
-  std::string header = "llm,ssm,batch_size,tokens_per_batch,mean_decoding_steps,mean_output_length,mean_e2e_latency,mean_llm_ttft,mean_llm_tpot,mean_ssm_step_time,mean_candidate_size";
+  std::string header =
+      "llm,ssm,batch_size,tokens_per_batch,total_time_ms,throughput_tokens_per_"
+      "sec,mean_generated_tokens_per_step,mean_decoding_steps,mean_output_"
+      "length,mean_e2e_latency,mean_llm_ttft,mean_llm_tpot,mean_ssm_step_time,"
+      "mean_candidate_size";
   std::string row = "";
-  row += model_metadata.model_names.llm_model_name + ",";
   // first ssm
   assert(model_metadata.model_names.ssm_model_names.size() == 1);
-  row += model_metadata.model_names.ssm_model_names[0] + ",";
-  row += std::to_string(max_requests_per_batch) + ",";
-  row += std::to_string(max_tokens_per_batch) + ",";
+
   double mean_decoding_steps = 0;
   double mean_output_length = 0;
   double mean_e2e_latency = 0;
@@ -618,15 +623,19 @@ void FlexFlow::top_level_task(Task const *task,
     // LLM ttft
     double prefilling_time_ms = 0.0;
     if (profile_info.start_decoding_time != 0) {
-      prefilling_time_ms = (profile_info.start_decoding_time - profile_info.start_time) / 1000.0;
+      prefilling_time_ms =
+          (profile_info.start_decoding_time - profile_info.start_time) / 1000.0;
     } else {
-      prefilling_time_ms = (profile_info.finish_time - profile_info.start_time) / 1000.0;
+      prefilling_time_ms =
+          (profile_info.finish_time - profile_info.start_time) / 1000.0;
     }
     mean_llm_ttft += prefilling_time_ms;
     // LLM tpot
     double per_token_time_ms = 0;
     if (profile_info.start_decoding_time != 0) {
-      per_token_time_ms = (profile_info.finish_time - profile_info.start_decoding_time) / 1000.0 / result.output_tokens.size();
+      per_token_time_ms =
+          (profile_info.finish_time - profile_info.start_decoding_time) /
+          1000.0 / result.output_tokens.size();
     }
     mean_llm_tpot += per_token_time_ms;
   }
@@ -635,13 +644,28 @@ void FlexFlow::top_level_task(Task const *task,
   mean_e2e_latency /= profiling_results.size();
   mean_llm_ttft /= profiling_results.size();
   mean_llm_tpot /= profiling_results.size();
-  row += std::to_string(mean_decoding_steps) + ",";
-  row += std::to_string(mean_output_length) + ",";
-  row += std::to_string(mean_e2e_latency) + ",";
-  row += std::to_string(mean_llm_ttft) + ",";
-  row += std::to_string(mean_llm_tpot) + ",";
-  
+
   ProfileInfo profile_info = rm->get_profiling_info();
+  // total time
+  long long total_time =
+      profile_info.server_end_time - profile_info.server_start_time;
+  // throughput tokens per sec
+  int total_tokens = 0;
+  for (int num_tokens : profile_info.generated_tokens_per_step) {
+    total_tokens += num_tokens;
+  }
+  double throughput_tokens_per_sec = (double)total_tokens / (total_time / 1e6);
+  // mean generated tokens per step
+  double mean_generated_tokens_per_step =
+      (double)std::accumulate(profile_info.generated_tokens_per_step.begin(),
+                              profile_info.generated_tokens_per_step.end(),
+                              0);
+  double total_request_steps =
+      (double)std::accumulate(profile_info.requests_per_step.begin(),
+                              profile_info.requests_per_step.end(),
+                              0);
+  mean_generated_tokens_per_step /= total_request_steps;
+
   // SSM tpots
   for (double time : profile_info.ssm_step_times) {
     mean_ssm_step_time += time;
@@ -652,6 +676,20 @@ void FlexFlow::top_level_task(Task const *task,
     mean_candidate_size += nb;
   }
   mean_candidate_size /= profile_info.ssm_steps.size();
+
+  // add all metrics to csv
+  row += model_metadata.model_names.llm_model_name + ",";
+  row += model_metadata.model_names.ssm_model_names[0] + ",";
+  row += std::to_string(max_requests_per_batch) + ",";
+  row += std::to_string(max_tokens_per_batch) + ",";
+  row += std::to_string((double)total_time / 1000.0) + ",";
+  row += std::to_string(throughput_tokens_per_sec) + ",";
+  row += std::to_string(mean_generated_tokens_per_step) + ",";
+  row += std::to_string(mean_decoding_steps) + ",";
+  row += std::to_string(mean_output_length) + ",";
+  row += std::to_string(mean_e2e_latency) + ",";
+  row += std::to_string(mean_llm_ttft) + ",";
+  row += std::to_string(mean_llm_tpot) + ",";
   row += std::to_string(mean_ssm_step_time) + ",";
   row += std::to_string(mean_candidate_size);
 
@@ -662,17 +700,19 @@ void FlexFlow::top_level_task(Task const *task,
     // Create new file and write header
     std::ofstream file(file_paths.csv_file_path);
     if (!file.is_open()) {
-      std::cerr << "Failed to open file: " << file_paths.csv_file_path << std::endl;
+      std::cerr << "Failed to open file: " << file_paths.csv_file_path
+                << std::endl;
       assert(false);
     }
     file << header << "\n";
     file.close();
   }
-  
+
   // Append the new row
   std::ofstream file(file_paths.csv_file_path, std::ios::app);
   if (!file.is_open()) {
-    std::cerr << "Failed to open file: " << file_paths.csv_file_path << std::endl;
+    std::cerr << "Failed to open file: " << file_paths.csv_file_path
+              << std::endl;
   }
   file << row << "\n";
   file.close();

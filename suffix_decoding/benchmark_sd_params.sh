@@ -29,7 +29,7 @@ tokens_per_batchs=(
 )
 
 # download all models and small models
-# python ../inference/utils/download_hf_model.py --half-precision-only  ${model_names[@]} ${small_model_names[@]}
+python ../inference/utils/download_hf_model.py --half-precision-only  ${model_names[@]} ${small_model_names[@]}
 
 export LEGION_BACKTRACE=1
 

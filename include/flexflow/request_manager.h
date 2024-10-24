@@ -232,31 +232,32 @@ struct Request {
 };
 
 struct RequestProfileInfo {
-    int llm_prefilling_steps = 0;
-    int ssm_prefilling_steps = 0;
-    int llm_decoding_steps = 0;
-    int ssm_decoding_steps = 0;
-    long long start_time = 0, start_decoding_time = 0, finish_time = 0;
-  };
-  struct ProfileInfo {
-    // For SpecInfer: One step is comprised of one ssm speculation phase + a
-    // single llm verification phase (forward pass + verification) For Incr
-    // Decoding: One step is one LLM decoding phase
-    long long llm_step_start = 0, ssm_step_start = 0;
-    // Times for each LLM verification phase (in ms)
-    std::vector<double> llm_step_times;
-    // Number of requests in batch at each step
-    std::vector<int> requests_per_step;
-    // Times for each SSM speculation phase (in ms)
-    std::vector<double> ssm_step_times;
-    // Number of requests getting decoded at each step
-    std::vector<int> ssm_steps;
-    // Number of generated tokens at each step
-    std::vector<int> generated_tokens_per_step;
-    // To calculate the E2E time of serving
-    long long server_start_time = 0;
-  };
-  
+  int llm_prefilling_steps = 0;
+  int ssm_prefilling_steps = 0;
+  int llm_decoding_steps = 0;
+  int ssm_decoding_steps = 0;
+  long long start_time = 0, start_decoding_time = 0, finish_time = 0;
+};
+struct ProfileInfo {
+  // For SpecInfer: One step is comprised of one ssm speculation phase + a
+  // single llm verification phase (forward pass + verification) For Incr
+  // Decoding: One step is one LLM decoding phase
+  long long llm_step_start = 0, ssm_step_start = 0;
+  // Times for each LLM verification phase (in ms)
+  std::vector<double> llm_step_times;
+  // Number of requests in batch at each step
+  std::vector<int> requests_per_step;
+  // Times for each SSM speculation phase (in ms)
+  std::vector<double> ssm_step_times;
+  // Number of requests getting decoded at each step
+  std::vector<int> ssm_steps;
+  // Number of generated tokens at each step
+  std::vector<int> generated_tokens_per_step;
+  // To calculate the E2E time of serving
+  long long server_start_time = 0;
+  long long server_end_time = 0;
+};
+
 class RequestManager {
 public:
   enum State {
@@ -392,7 +393,8 @@ public:
   int get_empty_request_index();
 
   std::unordered_map<RequestGuid, RequestProfileInfo> get_requests_profiling();
-  std::unordered_map<RequestGuid, GenerationResult> get_request_generation_results();
+  std::unordered_map<RequestGuid, GenerationResult>
+      get_request_generation_results();
   ProfileInfo get_profiling_info();
 
   // Comparters

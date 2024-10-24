@@ -276,7 +276,8 @@ void FlexFlow::top_level_task(Task const *task,
   ModelType model_type = ModelType::UNKNOWN;
   auto architectures = model_config["architectures"];
   for (auto const &str : architectures) {
-    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" || str == "MistralForCausalLM") {
+    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" ||
+        str == "MistralForCausalLM") {
       model_type = ModelType::LLAMA;
       break;
     } else if (str == "OPTForCausalLM") {

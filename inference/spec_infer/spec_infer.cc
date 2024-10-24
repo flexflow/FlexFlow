@@ -276,7 +276,8 @@ void get_model_meta(FilePaths &file_paths,
   model_metadata.llm_model_type = ModelType::UNKNOWN;
   auto architectures = llm_model_config["architectures"];
   for (auto const &str : architectures) {
-    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" || str == "MistralForCausalLM") {
+    if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" ||
+        str == "MistralForCausalLM") {
       model_metadata.llm_model_type = ModelType::LLAMA;
       break;
     } else if (str == "OPTForCausalLM") {
@@ -326,7 +327,8 @@ void get_model_meta(FilePaths &file_paths,
     ModelType ssm_model_type = ModelType::UNKNOWN;
     auto architectures = ssm_model_config["architectures"];
     for (auto const &str : architectures) {
-      if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" || str == "MistralForCausalLM") {
+      if (str == "LlamaForCausalLM" || str == "LLaMAForCausalLM" ||
+          str == "MistralForCausalLM") {
         ssm_model_type = ModelType::LLAMA;
         break;
       } else if (str == "OPTForCausalLM") {

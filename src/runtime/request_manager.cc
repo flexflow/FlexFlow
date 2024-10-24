@@ -577,15 +577,17 @@ int RequestManager::get_empty_request_index() {
   return -1;
 }
 
-std::unordered_map<RequestGuid, RequestProfileInfo> RequestManager::get_requests_profiling() {
+std::unordered_map<RequestGuid, RequestProfileInfo>
+    RequestManager::get_requests_profiling() {
   return profiling_requests;
 }
 
-std::unordered_map<RequestGuid, GenerationResult> RequestManager::get_request_generation_results() {
+std::unordered_map<RequestGuid, GenerationResult>
+    RequestManager::get_request_generation_results() {
   return request_generation_results;
 }
 
-ProfileInfo RequestManager::get_profiling_info(){
+ProfileInfo RequestManager::get_profiling_info() {
   return profiling;
 }
 
@@ -2585,8 +2587,9 @@ void RequestManager::terminate_background_server() {
     // Write the last profiling statistics to output file
     std::string str = "[Profiling Statistics]";
 
-    long long total_time = Realm::Clock::current_time_in_microseconds() -
-                           profiling.server_start_time;
+    profiling.server_end_time = Realm::Clock::current_time_in_microseconds();
+    long long total_time =
+        profiling.server_end_time - profiling.server_start_time;
     int total_requests = 0;
     for (auto const &profiling_info : profiling_requests) {
       int request_id = profiling_info.first;
