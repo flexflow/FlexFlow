@@ -9,34 +9,37 @@ cd "${BASH_SOURCE[0]%/*}/../build"
 source set_python_envs.sh
 
 model_names=(
-    meta-llama/Meta-Llama-3-70B-Instruct
-    meta-llama/Meta-Llama-3-70B-Instruct
-    meta-llama/Meta-Llama-3-8B-Instruct
-    meta-llama/Meta-Llama-3-70B-Instruct
-    meta-llama/CodeLlama-34b-Instruct-hf
+    # meta-llama/Meta-Llama-3-70B-Instruct
+    # meta-llama/Meta-Llama-3-70B-Instruct
+    # meta-llama/Meta-Llama-3-8B-Instruct
+    # meta-llama/Meta-Llama-3-70B-Instruct
+    # meta-llama/CodeLlama-34b-Instruct-hf
     mistralai/Mistral-Large-Instruct-2407
     mistralai/Mistral-Large-Instruct-2407
 )
 small_model_names=(
-    Felladrin/Llama-160M-Chat-v1
-    Felladrin/Llama-160M-Chat-v1
-    Felladrin/Llama-160M-Chat-v1
-    Felladrin/Llama-160M-Chat-v1
-    Felladrin/Llama-160M-Chat-v1 #meta-llama/Llama-3.2-1B-Instruct
+    # Felladrin/Llama-160M-Chat-v1
+    # Felladrin/Llama-160M-Chat-v1
+    # Felladrin/Llama-160M-Chat-v1
+    # Felladrin/Llama-160M-Chat-v1
+    # Felladrin/Llama-160M-Chat-v1 #meta-llama/Llama-3.2-1B-Instruct
     mistralai/Mistral-7B-Instruct-v0.2
     mistralai/Mistral-7B-Instruct-v0.2
 )
 partitions=(
-    "QUESTION_SUGGESTION"
-    "CATEGORIZATION"
-    "FEATURE_EXTRACTION"
-    "SQL_FANOUT1"
-    "SQL_FANOUT2"
+    # "QUESTION_SUGGESTION"
+    # "CATEGORIZATION"
+    # "FEATURE_EXTRACTION"
+    # "SQL_FANOUT1"
+    # "SQL_FANOUT2"
     "SQL_FANOUT3"
     "SQL_COMBINE"
 )
 
 export LEGION_BACKTRACE=1
+FSIZE=74000
+ZSIZE=400000
+CSIZE=200000
 
 for i in "${!partitions[@]}"; do
     model_name=${model_names[$i]}
@@ -50,17 +53,19 @@ for i in "${!partitions[@]}"; do
     ./inference/suffix_decoding/specinfer \
         -ll:gpu 8 -ll:cpu 4 -ll:util 4 \
         -tensor-parallelism-degree 8 \
-        -ll:fsize 70000 -ll:zsize 300000 -ll:csize 200000 \
+        -ll:fsize $FSIZE -ll:zsize $ZSIZE -ll:csize $CSIZE \
         --fusion \
         --max-sequence-length 7000 \
-        --max-requests-per-batch 16 \
-        --max-tokens-per-batch 1200 \
+        --max-requests-per-batch 8 \
+        --max-tokens-per-batch 1024 \
         --max-output-length 900 \
+        --max-tree-depth 4 \
         --expansion-degree 1 \
         -llm-model $model_name \
         -ssm-model $small_model_name \
         -trace /home/yak/goliaro/suffix-tree-decoding/trace/cortex.json \
         -trace-output-path /home/yak/goliaro/suffix-tree-decoding/trace/flexflow/cortex_ff_${partition_name}.json \
         -output-file /home/yak/goliaro/FlexFlow/inference/output/cortex_${partition_name}.out \
+        -csv-output-path /home/yak/goliaro/FlexFlow/inference/output/cortex_${partition_name}.csv \
         -target-partition ${partition_name}
 done

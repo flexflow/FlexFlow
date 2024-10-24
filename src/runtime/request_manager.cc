@@ -2752,6 +2752,9 @@ void RequestManager::terminate_background_server() {
     goodput_str += ")";
     str += goodput_str;
 
+    if (profiling_requests.size() != all_requests.size()) {
+      std::cerr << "profiling_requests.size()=" << profiling_requests.size() << " != all_requests.size()=" << all_requests.size() << std::endl;
+    }
     assert(profiling_requests.size() == all_requests.size());
     str += "\nDecoding Steps: ";
     for (auto const &profiling_info : profiling_requests) {

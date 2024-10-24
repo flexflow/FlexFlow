@@ -16,7 +16,8 @@ small_model_names=(
     meta-llama/Meta-Llama-3-8B-Instruct
 )
 partitions=(
-    "SQL_FANOUT1"
+    CATEGORIZATION
+    QUESTION_SUGGESTION
 )
 batch_sizes=(
     8

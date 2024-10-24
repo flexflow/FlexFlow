@@ -267,7 +267,7 @@ class LLM:
                 f"'{self.model_name}' tokenizer needs updating! Downloading tokenizer now..."
             )
             # Load/download the tokenizer files
-            target_tokenizer_files = ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "vocab.json", "merges.txt"]
+            target_tokenizer_files = ["tokenizer.json", "tokenizer_config.json", "special_tokens_map.json", "vocab.json", "merges.txt", "tokenizer.model"]
             if os.path.exists(self.model_name):
                 hf_tokenizer_path = self.model_name
             else:
