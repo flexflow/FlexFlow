@@ -1333,11 +1333,9 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
       new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
       if (streaming_cache) {
         new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
-            request.streaming_cache_info.global_2_cache_index(
-                committed_tokens[0].to_index);
+            request.ssm_cache_size;
         new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
-            request.streaming_cache_info.global_2_cache_index(
-                committed_tokens[0].to_index);
+            request.ssm_cache_size;
       } else {
         new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
             committed_tokens[0].to_index;
@@ -1354,11 +1352,9 @@ BatchConfig RequestManager::prepare_first_spec_batch_config() {
         new_bc.tokensInfo[new_bc.num_tokens].request_index = request_index;
         if (streaming_cache) {
           new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
-              request.streaming_cache_info.global_2_cache_index(
-                  committed_tokens[committed_token_index].to_index);
+              request.ssm_cache_size + committed_token_index - 1;
           new_bc.tokensInfo[new_bc.num_tokens].abs_depth_in_request =
-              request.streaming_cache_info.global_2_cache_index(
-                  committed_tokens[committed_token_index].to_index);
+              request.ssm_cache_size + committed_token_index - 1;
         } else {
           new_bc.tokensInfo[new_bc.num_tokens].abs_index_in_request =
               committed_tokens[committed_token_index].to_index;
@@ -1905,9 +1901,9 @@ BatchConfig::BitMask RequestManager::create_llm_bitmask(RequestGuid guid) {
 
   // Maintain other fields of llm_bitmask
   llm_bitmask.non_tree_cache_size = request.causal_mask.non_tree_cache_size;
-  // We don't need to set llm_bitmask.current_layer_size and
-  // llm_bitmask.tree_or_prompt_size here because they are not used in LLM
-  // verification.
+  llm_bitmask.tree_or_prompt_size = request.causal_mask.tree_or_prompt_size;
+  // We don't need to set llm_bitmask.current_layer_size here because they are
+  // not used in LLM verification.
   return llm_bitmask;
 }
 

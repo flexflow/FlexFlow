@@ -358,6 +358,7 @@ void apply_pos_encoding_to_tokens_in_batch(
       m->local_hidden_size);
 }
 
+// TODO: upgrade to llama3 rope, same as apply_pos_encoding_to_tokens_in_batch
 __global__ void apply_pos_encoding_to_streaming_proj_kernel(
     half *kv_cache,
     BatchConfig::PerRequestInfo const *requestInfos,
