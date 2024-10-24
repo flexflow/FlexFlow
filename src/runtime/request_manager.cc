@@ -2790,8 +2790,11 @@ void RequestManager::add_tokens_to_spec_token_tree(
       continue;
     }
 
-    int result_offset = request.first_token_offset_in_batch *
-                        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
+    // ssm_first_step only decode the last token (the root of the tree)
+    int result_offset =
+        (request.first_token_offset_in_batch +
+         (current_ssm_step == 1 ? (request.num_tokens_in_batch - 1) : 0)) *
+        BatchConfig::MAX_SPECULATIVE_TREE_BRANCHES;
     TokenTree &spec_token_tree = request.speculative_token_trees[0];
     std::vector<std::shared_ptr<TokenTreeNode>> &last_layer =
         spec_token_tree.tree_layers.back();
