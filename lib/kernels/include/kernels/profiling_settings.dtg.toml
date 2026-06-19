@@ -10,10 +10,16 @@ features = [
   "fmt",
 ]
 
+includes = [
+  "utils/nonnegative_int/nonnegative_int.h",
+  "utils/positive_int/positive_int.h",
+]
+
 [[fields]]
 name = "warmup_iters"
-type = "int"
+type = "::FlexFlow::nonnegative_int"
+
 
 [[fields]]
 name = "measure_iters"
-type = "int"
+type = "::FlexFlow::positive_int"

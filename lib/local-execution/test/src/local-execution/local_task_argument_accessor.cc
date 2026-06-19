@@ -62,7 +62,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     LocalTaskArgumentAccessor acc = LocalTaskArgumentAccessor{
         /*allocator=*/allocator,
         /*tensor_slots_backing=*/tensor_slots_backing,
-        /*profiling_settings=*/ProfilingSettings{0, 0},
+        /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
         /*ff_handle=*/cpu_make_device_handle_t(),
         /*op_attrs=*/PCGOperatorAttrs{InputAttrs{input_tensor_shape}},
         /*loss_attrs=*/std::nullopt,

@@ -161,7 +161,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             },
             /*input_tensors=*/input_tensors,
             /*allocator=*/allocator,
-            /*profiling_settings=*/ProfilingSettings{0, 0},
+            /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
             /*device_handle=*/ff_handle,
             /*global_device_id=*/global_device_id);
 
@@ -172,7 +172,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     for (int i = 0; i < num_epochs; i++) {
       perform_all_passes_for_computation_graph_instance(
           /*instance=*/computation_graph_instance,
-          /*profiling_settings=*/ProfilingSettings{0, 0},
+          /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
           /*ff_handle=*/ff_handle,
           /*global_device_id=*/global_device_id);
       loss_values.push_back(copy_tensor_accessor_r(
@@ -335,7 +335,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
             },
             /*input_tensors=*/input_tensors,
             /*allocator=*/allocator,
-            /*profiling_settings=*/ProfilingSettings{0, 0},
+            /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
             /*device_handle=*/ff_handle,
             /*device_idx=*/device_idx);
 
@@ -348,7 +348,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     for (int i = 0; i < num_epochs; i++) {
       perform_all_passes_for_computation_graph_instance(
           /*instance=*/computation_graph_instance,
-          /*profiling_settings=*/ProfilingSettings{0, 0},
+          /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
           /*ff_handle=*/ff_handle,
           /*device_idx=*/device_idx);
       loss_values.push_back(copy_tensor_accessor_r(
@@ -459,13 +459,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
               },
               /*input_tensors=*/input_tensors,
               /*allocator=*/allocator,
-              /*profiling_settings=*/ProfilingSettings{0, 1},
+              /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
               /*device_handle=*/ff_handle,
               /*device_idx=*/device_idx);
 
       perform_all_passes_for_computation_graph_instance(
           /*instance=*/computation_graph_instance,
-          /*profiling_settings=*/ProfilingSettings{0, 0},
+          /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
           /*ff_handle=*/ff_handle,
           /*device_idx=*/device_idx);
       assert_unwrap(computation_graph_instance.get_loss_tensor_accessor());

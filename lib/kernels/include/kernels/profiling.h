@@ -17,8 +17,8 @@ std::optional<milliseconds_t> profiling_wrapper(F const &f,
                                                 Ts &&...ts) {
   if (enable_profiling) {
     ProfilingSettings settings = ProfilingSettings{
-        /*warmup_iters=*/0,
-        /*measure_iters=*/1,
+        /*warmup_iters=*/0_n,
+        /*measure_iters=*/1_p,
     };
     return profiling_wrapper<F, Ts...>(f, settings, std::forward<Ts>(ts)...);
   } else {
@@ -33,7 +33,7 @@ std::optional<milliseconds_t>
                       ProfilingSettings const &settings,
                       DeviceType device_type,
                       Ts &&...ts) {
-  if (settings.measure_iters <= 0) {
+  if (settings.measure_iters.int_from_positive_int() <= 0) {
     return std::nullopt;
   }
 
@@ -49,7 +49,7 @@ template <typename F, typename... Ts>
 milliseconds_t cpu_profiling_wrapper(F const &f,
                                      ProfilingSettings const &settings,
                                      Ts &&...ts) {
-  ASSERT(settings.measure_iters > 0);
+  ASSERT(settings.measure_iters.int_from_positive_int() > 0);
 
   device_stream_t stream = get_cpu_device_stream();
 
@@ -58,8 +58,10 @@ milliseconds_t cpu_profiling_wrapper(F const &f,
   std::optional<TimePoint> start = std::nullopt;
   std::optional<TimePoint> end = std::nullopt;
 
-  for (int i = 0; i < settings.warmup_iters + settings.measure_iters; i++) {
-    if (i == settings.warmup_iters) {
+  for (int i = 0; i < settings.warmup_iters.int_from_nonnegative_int() +
+                          settings.measure_iters.int_from_positive_int();
+       i++) {
+    if (i == settings.warmup_iters.int_from_nonnegative_int()) {
       start = std::chrono::steady_clock::now();
     }
     f(stream, std::forward<Ts>(ts)...);
@@ -67,7 +69,8 @@ milliseconds_t cpu_profiling_wrapper(F const &f,
   end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double, std::milli> avg_duration =
-      (end.value() - start.value()) / settings.measure_iters;
+      (end.value() - start.value()) /
+      settings.measure_iters.int_from_positive_int();
 
   return milliseconds_t{
       static_cast<float>(avg_duration.count()),
@@ -78,7 +81,7 @@ template <typename F, typename... Ts>
 milliseconds_t gpu_profiling_wrapper(F const &f,
                                      ProfilingSettings const &settings,
                                      Ts &&...ts) {
-  ASSERT(settings.measure_iters > 0);
+  ASSERT(settings.measure_iters.int_from_positive_int() > 0);
 
   device_stream_t stream = get_gpu_device_stream();
 
@@ -86,8 +89,10 @@ milliseconds_t gpu_profiling_wrapper(F const &f,
   checkCUDA(ffEventCreate(&t_start));
   checkCUDA(ffEventCreate(&t_end));
 
-  for (int i = 0; i < settings.warmup_iters + settings.measure_iters; i++) {
-    if (i == settings.warmup_iters) {
+  for (int i = 0; i < settings.warmup_iters.int_from_nonnegative_int() +
+                          settings.measure_iters.int_from_positive_int();
+       i++) {
+    if (i == settings.warmup_iters.int_from_nonnegative_int()) {
       checkCUDA(ffEventRecord(t_start, stream.require_gpu()));
     }
     f(stream, std::forward<Ts>(ts)...);
@@ -100,7 +105,7 @@ milliseconds_t gpu_profiling_wrapper(F const &f,
   checkCUDA(ffEventDestroy(t_start));
   checkCUDA(ffEventDestroy(t_end));
   return milliseconds_t{
-      elapsed / settings.measure_iters,
+      elapsed / settings.measure_iters.int_from_positive_int(),
   };
 }
 
