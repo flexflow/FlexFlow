@@ -33,10 +33,6 @@ std::optional<milliseconds_t>
                       ProfilingSettings const &settings,
                       DeviceType device_type,
                       Ts &&...ts) {
-  if (settings.measure_iters.int_from_positive_int() <= 0) {
-    return std::nullopt;
-  }
-
   if (device_type == DeviceType::GPU) {
     return gpu_profiling_wrapper(f, settings, std::forward<Ts>(ts)...);
   } else {
@@ -49,8 +45,6 @@ template <typename F, typename... Ts>
 milliseconds_t cpu_profiling_wrapper(F const &f,
                                      ProfilingSettings const &settings,
                                      Ts &&...ts) {
-  ASSERT(settings.measure_iters.int_from_positive_int() > 0);
-
   device_stream_t stream = get_cpu_device_stream();
 
   using TimePoint = std::chrono::time_point<std::chrono::steady_clock>;
@@ -81,8 +75,6 @@ template <typename F, typename... Ts>
 milliseconds_t gpu_profiling_wrapper(F const &f,
                                      ProfilingSettings const &settings,
                                      Ts &&...ts) {
-  ASSERT(settings.measure_iters.int_from_positive_int() > 0);
-
   device_stream_t stream = get_gpu_device_stream();
 
   ffEvent_t t_start, t_end;
