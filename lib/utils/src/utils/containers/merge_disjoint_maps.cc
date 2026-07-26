@@ -6,8 +6,8 @@ namespace FlexFlow {
 
 using K = ordered_value_type<0>;
 using V = value_type<1>;
-using C = std::vector<std::map<K, V>>;
 
-template std::map<K, V> merge_disjoint_maps(C const &);
+template std::map<K, V>
+    merge_disjoint_maps(std::vector<std::map<K, V>> const &);
 
 } // namespace FlexFlow

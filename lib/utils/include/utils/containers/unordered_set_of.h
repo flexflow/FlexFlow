@@ -9,7 +9,7 @@ namespace FlexFlow {
 
 template <typename C, typename T = typename C::value_type>
 std::unordered_set<T> unordered_set_of(C const &c) {
-  return std::unordered_set{c.cbegin(), c.cend()};
+  return std::unordered_set<T>{c.cbegin(), c.cend()};
 }
 
 template <typename K, typename V>

@@ -18,7 +18,7 @@
     flake-utils.url = "github:numtide/flake-utils";
 
     proj-repo = {
-      url = "git+https://github.com/elliottslaughter/proj.git?ref=refs/heads/update-nix&rev=095474d22a73d8f1dc246a999f848d053e788c1d";
+      url = "git+https://github.com/elliottslaughter/proj.git?ref=refs/heads/update-nix&rev=6221d815035398e8fce12a55b79fd7bd7d077965";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -58,7 +58,8 @@
         realm = pkgs.callPackage ./.flake/pkgs/realm.nix { };
         bencher-cli = pkgs.callPackage ./.flake/pkgs/bencher-cli.nix { };
         ffdb = pkgs.callPackage ./.flake/pkgs/ffdb { inherit proj; };
-        hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { };
+        robotpy-cppheaderparser = pkgs.python3Packages.callPackage ./.flake/pkgs/robotpy-cppheaderparser.nix { };
+        hpp2plantuml = pkgs.python3Packages.callPackage ./.flake/pkgs/hpp2plantuml.nix { inherit robotpy-cppheaderparser; };
         fccf = pkgs.callPackage ./.flake/pkgs/fccf { };
         rapidcheckFull = pkgs.symlinkJoin {
           name = "rapidcheckFull";
@@ -70,6 +71,41 @@
         ci = mkShell {
           shellHook = ''
             export RC_PARAMS="max_discard_ratio=100"
+
+            # nix passes dependency include paths through NIX_CFLAGS_COMPILE
+            # rather than on the compiler command line, so ccache cannot see
+            # them change. its manifests reference store paths that are still
+            # present and unmodified, so bumping a dependency (e.g. fmt) yields
+            # false cache hits that return objects built against the old
+            # headers. folding the flags into the hash invalidates those.
+            # -frandom-seed is a per-derivation nonce, so it is dropped to keep
+            # unrelated devshell edits from invalidating the whole cache.
+            # the flags are reduced to a digest and combined with "%compiler% -v"
+            # so that the compiler's own identity keeps being hashed too --
+            # setting a plain "string:" check would drop it, and a gcc bump that
+            # left the include paths untouched would then go unnoticed.
+            ccache_flag_id="$(
+              printf '%s' "$NIX_CFLAGS_COMPILE" \
+                | tr ' ' '\n' \
+                | grep -v '^-frandom-seed=' \
+                | sha256sum \
+                | cut -d' ' -f1
+            )"
+            export CCACHE_COMPILERCHECK="%compiler% -v; echo $ccache_flag_id"
+            unset ccache_flag_id
+
+            # cudaPackages.backendStdenv pins gcc to a version cuda accepts,
+            # but the wrapper still puts the default stdenv gcc's library
+            # directory ahead of it, so -lgcov resolves to a libgcov whose
+            # format does not match the instrumentation the pinned gcc emits
+            # and every coverage run dies with "Version mismatch". this
+            # directory holds only static archives (libgcc, libgcov) and crt
+            # objects, so preferring it does not affect libstdc++ resolution.
+            gcc_static_lib_dir="$(dirname "$(''${CXX:-g++} -print-file-name=libgcov.a)")"
+            case "$gcc_static_lib_dir" in
+              /*) export NIX_CFLAGS_LINK="-L$gcc_static_lib_dir $NIX_CFLAGS_LINK" ;;
+            esac
+            unset gcc_static_lib_dir
           '';
 
           buildInputs = builtins.concatLists [
@@ -77,9 +113,13 @@
               zlib
               boost
               nlohmann_json
-              spdlog
+              # nixpkgs' spdlog is built against the default fmt, so it has to
+              # be rebuilt to match the fmt we actually use.
+              (spdlog.override { fmt = fmt_10; })
               range-v3
-              fmt
+              # fmt 11 removed fmt::detail::has_format_as, which lib/utils/fmt/*
+              # relies on to avoid ambiguity with fmt's own formatters.
+              fmt_10
               cmakeCurses
               ccache
               pkg-config
