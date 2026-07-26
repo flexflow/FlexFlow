@@ -14,11 +14,11 @@
   };
 
   inputs = {
-    nixpkgs.url = "nixpkgs/nixos-23.11";
+    nixpkgs.url = "nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
 
     proj-repo = {
-      url = "git+https://git.sr.ht/~lockshaw/proj";
+      url = "git+https://github.com/elliottslaughter/proj.git?ref=refs/heads/update-nix&rev=095474d22a73d8f1dc246a999f848d053e788c1d";
       inputs.nixpkgs.follows = "nixpkgs";
       inputs.flake-utils.follows = "flake-utils";
     };
@@ -64,18 +64,6 @@
           name = "rapidcheckFull";
           paths = (with pkgs; [ rapidcheck.out rapidcheck.dev ]);
         };
-        doctest = pkgs.doctest.overrideAttrs ( old: rec {
-          version = "2.4.9";
-          src = pkgs.fetchFromGitHub {
-            owner = "doctest";
-            repo = "doctest";
-            rev = "v${version}";
-            sha256 = "sha256-ugmkeX2PN4xzxAZpWgswl4zd2u125Q/ADSKzqTfnd94=";
-          };
-          patches = [
-            ./.flake/patches/doctest-template-test.patch
-          ];
-        });
       };
 
       devShells = rec {
@@ -102,6 +90,7 @@
               cudaPackages.nccl
               cudaPackages.libcublas
               cudaPackages.cuda_cudart
+              doctest
               tl-expected
               doxygen
               lcov # for code coverage
@@ -118,7 +107,6 @@
               libassert
               realm
               rapidcheckFull
-              doctest
             ])
           ];
         };

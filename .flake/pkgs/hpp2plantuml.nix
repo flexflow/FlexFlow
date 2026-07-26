@@ -1,4 +1,10 @@
-{buildPythonPackage, fetchPypi}:
+{ buildPythonPackage
+, fetchPypi
+, argparse
+, jinja2
+#, robotpy-cppheaderparser
+, sphinx
+}:
 
 buildPythonPackage rec {
   pname = "hpp2plantuml";
