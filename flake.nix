@@ -50,16 +50,7 @@
 
       proj = proj-repo.packages.${system}.proj;
 
-      # nixGL's own flake output cannot be used as-is: it overrides nvidia_x11
-      # with an argument nixpkgs no longer accepts. its default.nix takes the
-      # package set to build against, so instantiate it from patched sources.
-      nixgl = import (pkgs.applyPatches {
-        name = "nixGL-patched-source";
-        src = nixGL;
-        patches = [ ./.flake/patches/nixgl-drop-kernel-override.patch ];
-      }) {
-        inherit pkgs;
-      };
+      nixgl = pkgs.callPackage ./.flake/pkgs/nixgl { inherit pkgs; src = nixGL; };
     in
     {
       packages = rec {
@@ -67,20 +58,7 @@
         cpptrace = pkgs.callPackage ./.flake/pkgs/cpptrace.nix { inherit libdwarf-lite; };
         libassert = pkgs.callPackage ./.flake/pkgs/libassert.nix { inherit cpptrace; };
         realm = pkgs.callPackage ./.flake/pkgs/realm.nix { };
-
-        # cuDNN 9.11 dropped every compute capability below 7.5, which excludes
-        # the pascal (sm_60) cards we develop on -- the ops/adv/cnn sublibraries
-        # simply carry no sm_60 kernels, so calls fail at runtime with
-        # CUDNN_STATUS_EXECUTION_FAILED_CUDART. 9.10.2 is the last release that
-        # still ships them, and its sm_70 cubins remain binary compatible with
-        # the turing cards CI runs on.
-        cudnn = pkgs.cudaPackages.cudnn.overrideAttrs (finalAttrs: _: {
-          version = "9.10.2.21";
-          src = pkgs.fetchurl {
-            url = "https://developer.download.nvidia.com/compute/cudnn/redist/cudnn/linux-x86_64/cudnn-linux-x86_64-${finalAttrs.version}_cuda12-archive.tar.xz";
-            hash = "sha256-0N78vExtrXEf9Mtm0lQDajAMkHGwfHtkGZqsq1NDE8E=";
-          };
-        });
+        cudnn = pkgs.callPackage ./.flake/pkgs/cudnn.nix { };
         bencher-cli = pkgs.callPackage ./.flake/pkgs/bencher-cli.nix { };
         ffdb = pkgs.callPackage ./.flake/pkgs/ffdb { inherit proj; };
         robotpy-cppheaderparser = pkgs.python3Packages.callPackage ./.flake/pkgs/robotpy-cppheaderparser.nix { };
