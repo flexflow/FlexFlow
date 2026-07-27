@@ -545,7 +545,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
 
     //! [realm-execution example]
     std::vector<char *> fake_args =
-        make_fake_realm_args(/*num_cpus=*/1_p, /*num_gpus=*/1_n);
+        make_fake_realm_args(/*num_cpus=*/1_p, /*num_gpus=*/2_n);
     int fake_argc = fake_args.size();
     char **fake_argv = fake_args.data();
 
