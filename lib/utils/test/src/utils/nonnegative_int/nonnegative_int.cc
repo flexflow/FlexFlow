@@ -19,12 +19,10 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int == comparisons") {
-    nonnegative_int nn_int_1a = nonnegative_int{1};
-    nonnegative_int nn_int_1b = nonnegative_int{1};
-    nonnegative_int nn_int_2 = nonnegative_int{2};
-    SUBCASE("LHS: nonnegative_int, RHS: nonnegative_int, equal") {
-      CHECK(nn_int_1a == nn_int_1b);
-    }
+    nonnegative_int nn_int_1a = 1_n;
+    nonnegative_int nn_int_1b = 1_n;
+    nonnegative_int nn_int_2 = 2_n;
+CHECK(1_n == 1_n);
     SUBCASE("LHS: nonnegative_int, RHS: nonnegative_int, not equal") {
       CHECK_FALSE(nn_int_1a == nn_int_2);
     }
@@ -43,9 +41,9 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int != comparisons") {
-    nonnegative_int nn_int_1a = nonnegative_int{1};
-    nonnegative_int nn_int_1b = nonnegative_int{1};
-    nonnegative_int nn_int_2 = nonnegative_int{2};
+    nonnegative_int nn_int_1a = 1_n;
+    nonnegative_int nn_int_1b = 1_n;
+    nonnegative_int nn_int_2 = 2_n;
     SUBCASE("LHS: nonnegative_int, RHS: nonnegative_int, equal") {
       CHECK_FALSE(nn_int_1a != nn_int_1b);
     }
@@ -67,9 +65,9 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int < comparisons") {
-    nonnegative_int nn_int_1a = nonnegative_int{1};
-    nonnegative_int nn_int_1b = nonnegative_int{1};
-    nonnegative_int nn_int_2 = nonnegative_int{2};
+    nonnegative_int nn_int_1a = 1_n;
+    nonnegative_int nn_int_1b = 1_n;
+    nonnegative_int nn_int_2 = 2_n;
     SUBCASE("LHS: nonnegative_int, RHS: nonnegative_int, less than") {
       CHECK(nn_int_1a < nn_int_2);
     }
@@ -100,9 +98,9 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int <= comparisons") {
-    nonnegative_int nn_int_1a = nonnegative_int{1};
-    nonnegative_int nn_int_1b = nonnegative_int{1};
-    nonnegative_int nn_int_2 = nonnegative_int{2};
+    nonnegative_int nn_int_1a = 1_n;
+    nonnegative_int nn_int_1b = 1_n;
+    nonnegative_int nn_int_2 = 2_n;
     SUBCASE("LHS: nonnegative_int, RHS: nonnegative_int, less than") {
       CHECK(nn_int_1a <= nn_int_2);
     }
@@ -133,9 +131,9 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int > comparisons") {
-    nonnegative_int nn_int_1a = nonnegative_int{1};
-    nonnegative_int nn_int_1b = nonnegative_int{1};
-    nonnegative_int nn_int_2 = nonnegative_int{2};
+    nonnegative_int nn_int_1a = 1_n;
+    nonnegative_int nn_int_1b = 1_n;
+    nonnegative_int nn_int_2 = 2_n;
     SUBCASE("LHS: nonnegative_int, RHS: nonnegative_int, less than") {
       CHECK_FALSE(nn_int_1a > nn_int_2);
     }
@@ -166,9 +164,9 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int >= comparisons") {
-    nonnegative_int nn_int_1a = nonnegative_int{1};
-    nonnegative_int nn_int_1b = nonnegative_int{1};
-    nonnegative_int nn_int_2 = nonnegative_int{2};
+    nonnegative_int nn_int_1a = 1_n;
+    nonnegative_int nn_int_1b = 1_n;
+    nonnegative_int nn_int_2 = 2_n;
     SUBCASE("LHS: nonnegative_int, RHS: nonnegative_int, less than") {
       CHECK_FALSE(nn_int_1a >= nn_int_2);
     }
@@ -199,76 +197,76 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int::operator+(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{1} + nonnegative_int{2};
-    nonnegative_int correct = nonnegative_int{3};
+    nonnegative_int result = 1_n + 2_n;
+    nonnegative_int correct = 3_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator++() (pre-increment)") {
-    nonnegative_int input = nonnegative_int{1};
+    nonnegative_int input = 1_n;
 
     nonnegative_int result = ++input;
-    nonnegative_int correct = nonnegative_int{2};
+    nonnegative_int correct = 2_n;
 
     CHECK(result == correct);
     CHECK(input == correct);
   }
 
   TEST_CASE("nonnegative_int::operator++(int) (post-increment)") {
-    nonnegative_int input = nonnegative_int{1};
+    nonnegative_int input = 1_n;
 
     nonnegative_int result = input++;
-    nonnegative_int correct_input = nonnegative_int{2};
-    nonnegative_int correct_result = nonnegative_int{1};
+    nonnegative_int correct_input = 2_n;
+    nonnegative_int correct_result = 1_n;
 
     CHECK(result == correct_result);
     CHECK(input == correct_input);
   }
 
   TEST_CASE("nonnegative_int::operator+=(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{1};
-    result += nonnegative_int{3};
+    nonnegative_int result = 1_n;
+    result += 3_n;
 
-    nonnegative_int correct = nonnegative_int{4};
+    nonnegative_int correct = 4_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator*(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{2} * nonnegative_int{3};
-    nonnegative_int correct = nonnegative_int{6};
+    nonnegative_int result = 2_n * 3_n;
+    nonnegative_int correct = 6_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator*=(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{3};
-    result *= nonnegative_int{6};
+    nonnegative_int result = 3_n;
+    result *= 6_n;
 
-    nonnegative_int correct = nonnegative_int{18};
+    nonnegative_int correct = 18_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator/(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{5} / nonnegative_int{2};
-    nonnegative_int correct = nonnegative_int{2};
+    nonnegative_int result = 5_n / 2_n;
+    nonnegative_int correct = 2_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator/=(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{13};
-    result /= nonnegative_int{3};
+    nonnegative_int result = 13_n;
+    result /= 3_n;
 
-    nonnegative_int correct = nonnegative_int{4};
+    nonnegative_int correct = 4_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("operator/(float, nonnegative_int)") {
-    float result = 5.0 / nonnegative_int{2};
+    float result = 5.0 / 2_n;
     float correct = 5.0 / 2;
 
     CHECK(result == correct);
@@ -276,7 +274,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("operator/=(float, nonnegative_int)") {
     float result = 13.0;
-    result /= nonnegative_int{3};
+    result /= 3_n;
 
     float correct = 13.0 / 3;
 
@@ -284,39 +282,39 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int::operator/(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{5} / nonnegative_int{2};
-    nonnegative_int correct = nonnegative_int{2};
+    nonnegative_int result = 5_n / 2_n;
+    nonnegative_int correct = 2_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator/=(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{13};
-    result /= nonnegative_int{3};
+    nonnegative_int result = 13_n;
+    result /= 3_n;
 
-    nonnegative_int correct = nonnegative_int{4};
+    nonnegative_int correct = 4_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator%(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{5} % nonnegative_int{2};
-    nonnegative_int correct = nonnegative_int{1};
+    nonnegative_int result = 5_n % 2_n;
+    nonnegative_int correct = 1_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::operator%=(nonnegative_int)") {
-    nonnegative_int result = nonnegative_int{15};
-    result %= nonnegative_int{4};
+    nonnegative_int result = 15_n;
+    result %= 4_n;
 
-    nonnegative_int correct = nonnegative_int{3};
+    nonnegative_int correct = 3_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative_int::int_from_nonnegative_int()") {
-    nonnegative_int input = nonnegative_int{3};
+    nonnegative_int input = 3_n;
 
     int result = input.int_from_nonnegative_int();
     int correct = 3;
@@ -325,7 +323,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("nonnegative_int::size_t_from_nonnegative_int()") {
-    nonnegative_int input = nonnegative_int{3};
+    nonnegative_int input = 3_n;
 
     size_t result = input.size_t_from_nonnegative_int();
     size_t correct = 3;
@@ -335,7 +333,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("adl_serializer<nonnegative_int>") {
     SUBCASE("to_json") {
-      nonnegative_int input = nonnegative_int{5};
+      nonnegative_int input = 5_n;
 
       nlohmann::json result = input;
       nlohmann::json correct = 5;
@@ -347,16 +345,16 @@ TEST_SUITE(FF_TEST_SUITE) {
       nlohmann::json input = 5;
 
       nonnegative_int result = input.template get<nonnegative_int>();
-      nonnegative_int correct = nonnegative_int{5};
+      nonnegative_int correct = 5_n;
 
       CHECK(result == correct);
     }
   }
 
   TEST_CASE("std::hash<nonnegative_int>") {
-    nonnegative_int nn_int_1a = nonnegative_int{1};
-    nonnegative_int nn_int_1b = nonnegative_int{1};
-    nonnegative_int nn_int_2 = nonnegative_int{2};
+    nonnegative_int nn_int_1a = 1_n;
+    nonnegative_int nn_int_1b = 1_n;
+    nonnegative_int nn_int_2 = 2_n;
     std::hash<nonnegative_int> hash_fn;
     SUBCASE("Identical values have the same hash") {
       CHECK(hash_fn(nn_int_1a) == hash_fn(nn_int_1b));
@@ -376,13 +374,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("_n suffix") {
     nonnegative_int result = 5_n;
-    nonnegative_int correct = nonnegative_int{5};
+    nonnegative_int correct = 5_n;
 
     CHECK(result == correct);
   }
 
   TEST_CASE("nonnegative int >> operator") {
-    nonnegative_int nn_int_1 = nonnegative_int{1};
+    nonnegative_int nn_int_1 = 1_n;
     std::ostringstream oss;
     oss << nn_int_1;
 
@@ -390,7 +388,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("fmt::to_string(nonnegative_int)") {
-    nonnegative_int nn_int_1 = nonnegative_int{1};
+    nonnegative_int nn_int_1 = 1_n;
     CHECK(fmt::to_string(nn_int_1) == "1");
   }
 }
