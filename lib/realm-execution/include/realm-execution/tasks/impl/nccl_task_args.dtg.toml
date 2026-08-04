@@ -1,0 +1,12 @@
+namespace = "FlexFlow"
+name = "NcclTaskArgs"
+type = "struct"
+features = []
+
+includes = [
+  "string",
+]
+
+[[fields]]
+name = "message"
+type = "std::string"

@@ -7,6 +7,7 @@
 #include "realm-execution/tasks/impl/per_device_op_state_init_task.h"
 #include "realm-execution/tasks/task_id_t.h"
 #include "utils/exception.h"
+#include "realm-execution/tasks/impl/nccl_task.h"
 
 namespace FlexFlow {
 
@@ -132,6 +133,11 @@ Realm::Event register_all_tasks() {
     pending_registrations.push_back(
         register_task(Realm::Processor::TOC_PROC, task_id, op_task_body));
   }
+
+  pending_registrations.push_back(
+      register_task(Realm::Processor::TOC_PROC,
+                    task_id_t::NCCL_HELLO_WORLD_TASK_ID,
+                    nccl_task_body));
 
   pending_registrations.push_back(register_task(Realm::Processor::LOC_PROC,
                                                 task_id_t::CONTROLLER_TASK_ID,
