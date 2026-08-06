@@ -6,6 +6,7 @@ codecov:
 ignore:
   - "**/*.dtg.h" 
   - "**/*.dtg.cc"
+  - "lib/**/test/*"
 
 
 coverage:
