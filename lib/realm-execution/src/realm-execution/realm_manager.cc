@@ -12,7 +12,7 @@ RealmManager::RealmManager(int *argc, char ***argv)
 
   // Register all tasks and redops at initialization time so we don't need to later
   register_all_tasks().wait();
-  register_all_redops(this->get_runtime());
+  register_all_redops();
 }
 
 RealmManager::~RealmManager() {

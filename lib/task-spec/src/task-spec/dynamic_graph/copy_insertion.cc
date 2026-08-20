@@ -3,6 +3,7 @@
 #include "op-attrs/tensor_slot_name.dtg.h"
 #include "pcg/machine_space_coordinate.dtg.h"
 #include "pcg/mapped_parallel_computation_graph/mapped_operator_task_group.h"
+#include "pcg/mapped_parallel_computation_graph/operator_atomic_task_shard_binding.h"
 #include "task-spec/dynamic_graph/copy_insertion.h"
 #include "task-spec/dynamic_graph/dynamic_node_attrs.dtg.h"
 #include "task-spec/dynamic_graph/dynamic_node_invocation.dtg.h"
@@ -14,6 +15,7 @@
 #include "task-spec/dynamic_graph/dynamic_tensor_slot.dtg.h"
 #include "task-spec/dynamic_graph/dynamic_value_attrs.dtg.h"
 #include "task-spec/dynamic_graph/dynamic_value_attrs.h"
+#include "task-spec/dynamic_graph/parallel_op_data_movement.h"
 #include "task-spec/dynamic_graph/parallel_tensor_mapping.dtg.h"
 #include "task-spec/dynamic_graph/training_operation_attrs.h"
 #include "utils/bidict/algorithms/bidict_from_unstructured_relation.h"
@@ -75,6 +77,25 @@ void require_graph_is_ready_for_copy_insertion(
 
 void require_value_is_copy_inserted(DynamicValueAttrs const &v) {
   ASSERT(v.mapping.has_value());
+}
+
+// Returns true if the given slot name maps to duplicate coords across shard
+// bindings (i.e. cannot form a valid bidict).
+static bool slot_name_has_dup_coords(DynamicNodeInvocation const &invocation,
+                                     TensorSlotName const &slot_name) {
+  DynamicNodeMapping const &nm = assert_unwrap(invocation.node_attrs.mapping);
+  bidict<global_device_id_t, OperatorAtomicTaskShardBinding> const
+      shard_bindings = dynamic_node_mapping_get_shard_bindings(nm);
+  std::set<ParallelTensorSpaceCoordinate> seen;
+  for (global_device_id_t const &dev : shard_bindings.left_values()) {
+    ParallelTensorSpaceCoordinate const c =
+        ptensor_space_coord_for_slot_name(shard_bindings.at_l(dev), slot_name);
+    if (contains(seen, c)) {
+      return true;
+    }
+    seen.insert(c);
+  }
+  return false;
 }
 
 void require_invocation_is_fully_copy_inserted(DynamicNodeInvocation const &i) {
@@ -272,44 +293,97 @@ std::map<InternalDynamicSlotSite, ParallelTensorMapping>
 
   require_graph_is_ready_for_copy_insertion(g);
 
-  auto slots_to_map_for_replicate =
-      [](dynamic_invocation_id_t const &invocation_id,
-         DynamicNodeInvocation const &invocation)
+  auto slots_to_map_for_parallel_op =
+      [&](dynamic_invocation_id_t const &invocation_id,
+          DynamicNodeInvocation const &invocation,
+          ParallelOpMovementKind const kind)
       -> std::set<InternalDynamicSlotSite> {
-    TrainingOpType op_type = dynamic_node_invocation_get_op_type(invocation);
-
-    ASSERT(op_type == TrainingOpType{OperatorType::REPLICATE});
-
-    std::set<InternalDynamicSlotSite> slot_sites =
-        (invocation.node_attrs.task_type == DynamicTaskType::BWD)
-            ? get_incoming_dynamic_slot_sites_for_invocation(invocation_id,
-                                                             invocation)
-            : get_output_dynamic_slot_sites_for_invocation(invocation_id,
-                                                           invocation);
-
-    {
-      InternalDynamicSlotSite slot_site = get_only(slot_sites);
-      ASSERT(slot_site.slot_name.slot_name == TensorSlotName::OUTPUT);
+    auto output_slot_has_dup_coords =
+        [&](DynamicNodeInvocation const &inv) -> bool {
+      TensorSlotName const sn = get_only(keys(inv.outputs)).slot_name;
+      return slot_name_has_dup_coords(inv, sn);
     };
 
-    return slot_sites;
+    switch (kind) {
+      case ParallelOpMovementKind::BROADCAST:
+        return get_output_dynamic_slot_sites_for_invocation(invocation_id,
+                                                            invocation);
+      case ParallelOpMovementKind::GATHER:
+      case ParallelOpMovementKind::SUM_REDUCE:
+        return get_incoming_dynamic_slot_sites_for_invocation(invocation_id,
+                                                              invocation);
+      case ParallelOpMovementKind::RESHUFFLE: {
+        if (!output_slot_has_dup_coords(invocation)) {
+          return get_output_dynamic_slot_sites_for_invocation(invocation_id,
+                                                              invocation);
+        } else {
+          return get_incoming_dynamic_slot_sites_for_invocation(invocation_id,
+                                                                invocation);
+        }
+      }
+      default:
+        PANIC("Unhandled ParallelOpMovementKind", kind);
+    }
   };
 
   auto get_mappings_for_invocation =
       [&](DynamicNodeInvocation const &invocation)
       -> std::map<InternalDynamicSlotSite, ParallelTensorMapping> {
-    TrainingOpType op_type = dynamic_node_invocation_get_op_type(invocation);
-    dynamic_invocation_id_t invocation_id =
+    dynamic_invocation_id_t const invocation_id =
         dynamic_graph_get_id_for_invocation(g, invocation);
 
-    std::set<InternalDynamicSlotSite> slot_sites_to_resolve = [&] {
-      if (op_type == TrainingOpType{OperatorType::REPLICATE}) {
-        return slots_to_map_for_replicate(invocation_id, invocation);
+    TrainingOperationAttrs const op_attrs =
+        assert_unwrap(invocation.node_attrs.op_attrs);
+
+    std::optional<ParallelOpMovementKind> const kind_opt = [&]() {
+      if (!is_parallel_training_op(op_attrs)) {
+        return std::optional<ParallelOpMovementKind>{std::nullopt};
+      }
+      DynamicTaskType const task_type =
+          invocation.node_attrs.task_type.value_or(DynamicTaskType::FWD);
+      return get_parallel_op_movement_kind_for_training_op(op_attrs, task_type);
+    }();
+
+    std::set<InternalDynamicSlotSite> const slot_sites_to_resolve = [&]() {
+      if (kind_opt.has_value()) {
+        return slots_to_map_for_parallel_op(
+            invocation_id, invocation, kind_opt.value());
       } else {
         return get_dynamic_slot_sites_for_invocation(invocation_id, invocation);
       }
     }();
 
+    // For RESHUFFLE, the invocation output slot may have a different
+    // TensorSlotName than the unique side of the node mapping (swapped in BWD).
+    // Find the unique slot name dynamically by checking coord uniqueness.
+    if (kind_opt.has_value() &&
+        kind_opt.value() == ParallelOpMovementKind::RESHUFFLE) {
+      DynamicNodeMapping const &nm =
+          assert_unwrap(invocation.node_attrs.mapping);
+
+      TensorSlotName const out_slot_name =
+          get_only(keys(invocation.outputs)).slot_name;
+
+      TensorSlotName const unique_slot_name = [&]() {
+        if (!slot_name_has_dup_coords(invocation, out_slot_name)) {
+          return out_slot_name;
+        }
+        TensorSlotName const in_slot_name =
+            get_only(keys(invocation.inputs)).slot_name;
+        ASSERT(!slot_name_has_dup_coords(invocation, in_slot_name),
+               "Neither slot name has unique coords in RESHUFFLE node mapping");
+        return in_slot_name;
+      }();
+
+      ParallelTensorMapping const unique_mapping{
+          dynamic_node_mapping_bindings_for_slot_name(nm, unique_slot_name)};
+
+      return generate_map(
+          slot_sites_to_resolve,
+          [&](InternalDynamicSlotSite const &) -> ParallelTensorMapping {
+            return unique_mapping;
+          });
+    }
     return generate_map(
         slot_sites_to_resolve,
         [&](InternalDynamicSlotSite const &s) -> ParallelTensorMapping {
@@ -335,45 +409,109 @@ std::map<InternalDynamicSlotSite, ParallelTensorMapping>
             &resolved_mappings) {
   require_graph_is_ready_for_copy_insertion(g);
 
-  std::set<InternalDynamicSlotSite> all_internal_slot_sites =
+  std::set<InternalDynamicSlotSite> const all_internal_slot_sites =
       get_internal_dynamic_slot_sites(g);
 
-  std::set<InternalDynamicSlotSite> missing_mappings =
+  std::set<InternalDynamicSlotSite> const missing_mappings =
       set_minus(all_internal_slot_sites, keys(resolved_mappings));
 
   auto get_mapping_for_slot_site_from_adjacent_values =
       [&](InternalDynamicSlotSite const &slot_site) -> ParallelTensorMapping {
-    DynamicNodeInvocation invocation =
+    DynamicNodeInvocation const invocation =
         dynamic_graph_get_invocation_for_id(g, slot_site.invocation_id);
 
-    TrainingOpType op_type = dynamic_node_invocation_get_op_type(invocation);
-    std::optional<DynamicTaskType> task_type = invocation.node_attrs.task_type;
+    TrainingOperationAttrs const op_attrs =
+        assert_unwrap(invocation.node_attrs.op_attrs);
+    DynamicTaskType const task_type =
+        invocation.node_attrs.task_type.value_or(DynamicTaskType::FWD);
 
-    TrainingOpType replicate_op_type = TrainingOpType{OperatorType::REPLICATE};
+    std::optional<ParallelOpMovementKind> const kind_opt =
+        get_parallel_op_movement_kind_for_training_op(op_attrs, task_type);
 
-    if (op_type == replicate_op_type && task_type == DynamicTaskType::BWD) {
-      ASSERT(slot_site.direction == TensorDirection::OUTPUT);
+    ASSERT(kind_opt.has_value(),
+           "Only parallel ops should have missing mappings");
+    ParallelOpMovementKind const kind = kind_opt.value();
 
-      InternalDynamicSlotSite slot_site_sink =
-          get_only(dynamic_graph_find_sinks_of_slot_site(g, slot_site));
+    auto find_fwd_sink =
+        [&](InternalDynamicSlotSite const &s) -> InternalDynamicSlotSite {
+      std::set<InternalDynamicSlotSite> const sinks =
+          dynamic_graph_find_sinks_of_slot_site(g, s);
+      for (InternalDynamicSlotSite const &sink : sinks) {
+        DynamicNodeInvocation const sink_invocation =
+            dynamic_graph_get_invocation_for_id(g, sink.invocation_id);
+        std::optional<DynamicTaskType> const task_type =
+            sink_invocation.node_attrs.task_type;
+        // Accept FWD, UPD, LOSS, or pre-pass-expansion (nullopt) sinks. LOSS
+        // is included because a parallel op's FWD output may feed directly
+        // into the loss (e.g. it is the model's terminal output), in which
+        // case the loss node is the only non-BWD sink.
+        if (!task_type.has_value() ||
+            task_type.value() == DynamicTaskType::FWD ||
+            task_type.value() == DynamicTaskType::UPD ||
+            task_type.value() == DynamicTaskType::LOSS) {
+          return sink;
+        }
+      }
+      PANIC("No non-BWD sink found for parallel op missing mapping resolution");
+    };
 
-      ASSERT(contains_key(resolved_mappings, slot_site_sink));
-
-      return resolved_mappings.at(slot_site_sink);
-    } else if (op_type == replicate_op_type &&
-               (task_type == std::nullopt ||
-                task_type == DynamicTaskType::FWD)) {
-      ASSERT(slot_site.direction == TensorDirection::INCOMING);
-
-      InternalDynamicSlotSite slot_site_src =
-          dynamic_graph_find_source_of_slot_site(g, slot_site)
-              .require_internal();
-
-      ASSERT(contains_key(resolved_mappings, slot_site_src));
-
-      return resolved_mappings.at(slot_site_src);
-    } else {
-      PANIC("Unhandled case");
+    switch (kind) {
+      case ParallelOpMovementKind::BROADCAST: {
+        if (slot_site.direction == TensorDirection::INCOMING) {
+          // FWD: missing INPUT (1-side) — resolve from source
+          InternalDynamicSlotSite const slot_site_src =
+              dynamic_graph_find_source_of_slot_site(g, slot_site)
+                  .require_internal();
+          ASSERT(contains_key(resolved_mappings, slot_site_src));
+          return resolved_mappings.at(slot_site_src);
+        } else {
+          // BWD: missing OUTPUT (N-side = INPUT grad) — resolve from FWD sink
+          // Multiple sinks may exist if BWD also uses this value as activation
+          ASSERT(slot_site.direction == TensorDirection::OUTPUT);
+          InternalDynamicSlotSite const slot_site_sink =
+              find_fwd_sink(slot_site);
+          ASSERT(contains_key(resolved_mappings, slot_site_sink));
+          return resolved_mappings.at(slot_site_sink);
+        }
+      }
+      case ParallelOpMovementKind::GATHER:
+      case ParallelOpMovementKind::SUM_REDUCE: {
+        if (slot_site.direction == TensorDirection::OUTPUT) {
+          // FWD: missing OUTPUT (1-side) — resolve from FWD sink
+          // Multiple sinks may exist if BWD also uses this value as activation
+          InternalDynamicSlotSite const slot_site_sink =
+              find_fwd_sink(slot_site);
+          ASSERT(contains_key(resolved_mappings, slot_site_sink));
+          return resolved_mappings.at(slot_site_sink);
+        } else {
+          // BWD: missing INPUT (N-side = OUTPUT grad) — resolve from source
+          ASSERT(slot_site.direction == TensorDirection::INCOMING);
+          InternalDynamicSlotSite const slot_site_src =
+              dynamic_graph_find_source_of_slot_site(g, slot_site)
+                  .require_internal();
+          ASSERT(contains_key(resolved_mappings, slot_site_src));
+          return resolved_mappings.at(slot_site_src);
+        }
+      }
+      case ParallelOpMovementKind::RESHUFFLE: {
+        if (slot_site.direction == TensorDirection::INCOMING) {
+          // Normal RESHUFFLE: missing INPUT — resolve from source
+          InternalDynamicSlotSite const slot_site_src =
+              dynamic_graph_find_source_of_slot_site(g, slot_site)
+                  .require_internal();
+          ASSERT(contains_key(resolved_mappings, slot_site_src));
+          return resolved_mappings.at(slot_site_src);
+        } else {
+          // Scatter BWD: missing OUTPUT — resolve from FWD/UPD sink
+          ASSERT(slot_site.direction == TensorDirection::OUTPUT);
+          InternalDynamicSlotSite const slot_site_sink =
+              find_fwd_sink(slot_site);
+          ASSERT(contains_key(resolved_mappings, slot_site_sink));
+          return resolved_mappings.at(slot_site_sink);
+        }
+      }
+      default:
+        PANIC("Unhandled ParallelOpMovementKind", kind);
     }
   };
 

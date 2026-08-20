@@ -16,6 +16,7 @@
 #include "task-spec/dynamic_graph/dynamic_value_attrs.dtg.h"
 #include "task-spec/dynamic_graph/loss_insertion.h"
 #include "task-spec/dynamic_graph/make_dynamic_open_dataflow_graph_from_mapped_pcg.h"
+#include "task-spec/dynamic_graph/parallel_op_data_movement.h"
 #include "task-spec/dynamic_graph/pass_expansion.h"
 #include "task-spec/dynamic_graph/shard_expansion.h"
 #include "task-spec/dynamic_graph/training_operation_attrs.dtg.h"
@@ -270,16 +271,16 @@ static Realm::Event spawn_dynamic_node_invocation(
     OptimizerAttrs const &optimizer_attrs,
     ProfilingSettings const &profiling_settings,
     DistributedFfHandle const &device_handle) {
-  Realm::Event precondition = Realm::Event::merge_events(
+  Realm::Event const precondition = Realm::Event::merge_events(
       Realm::Event::merge_events(input_dependencies),
       Realm::Event::merge_events(output_dependencies));
 
-  TensorInstanceBacking tensor_backing =
+  TensorInstanceBacking const tensor_backing =
       subset_tensor_instance_backing_for_invocation(tensor_instance_backing,
                                                     invocation);
 
   auto spawn_task = [&]() {
-    Realm::Processor target_proc = ctx.processor_from_global_device_id(
+    Realm::Processor const target_proc = ctx.processor_from_global_device_id(
         get_only(assert_unwrap(invocation.node_attrs.device_ids)));
     return spawn_op_task(ctx,
                          target_proc,
@@ -299,48 +300,71 @@ static Realm::Event spawn_dynamic_node_invocation(
         ctx, input, output, tensor_instance_backing, precondition);
   };
 
-  auto issue_replicate = [&]() {
+  // N inputs → 1 output (copy semantics). Each of the N copies targets the
+  // same destination instance, so they are chained (each waiting on the
+  // previous one's completion) rather than fired concurrently — issuing them
+  // all against the same precondition would race N unsynchronized writes to
+  // overlapping destination memory.
+  auto issue_gather = [&]() {
+    DynamicValueAttrs const &output = get_only(invocation.outputs).second;
+    Realm::Event last = precondition;
+    for (auto const &[slot, input] : invocation.inputs) {
+      last = issue_p2p_copy(ctx, input, output, tensor_instance_backing, last);
+    }
+    return last;
+  };
+
+  auto issue_broadcast = [&]() {
     DynamicValueAttrs const &input = get_only(invocation.inputs).second;
-    std::vector<DynamicValueAttrs> outputs =
+    std::vector<DynamicValueAttrs> const outputs =
         vector_of(values(invocation.outputs));
     return issue_collective_broadcast(
         ctx, input, outputs, tensor_instance_backing, precondition);
   };
 
-  auto issue_reduction = [&]() {
-    std::vector<DynamicValueAttrs> inputs =
+  auto issue_sum_reduce = [&]() {
+    std::vector<DynamicValueAttrs> const inputs =
         vector_of(values(invocation.inputs));
     DynamicValueAttrs const &output = get_only(invocation.outputs).second;
-    redop_id_t redop_id = get_sum_redop_id_for_data_type(
+    redop_id_t const redop_id = get_sum_redop_id_for_data_type(
         assert_unwrap(output.parallel_tensor_shape).data_type);
     return issue_collective_reduction(
         ctx, inputs, output, tensor_instance_backing, redop_id, precondition);
   };
 
-  TrainingOperationAttrs op_attrs =
+  TrainingOperationAttrs const op_attrs =
       assert_unwrap(invocation.node_attrs.op_attrs);
+
   return op_attrs.visit<Realm::Event>(overload{
-      [&](PCGOperatorAttrs const &pcg_op_attrs) {
+      [&](PCGOperatorAttrs const &pcg_op_attrs) -> Realm::Event {
+        std::optional<ParallelOpMovementKind> const movement_kind =
+            get_parallel_op_movement_kind_for_training_op(
+                op_attrs, assert_unwrap(invocation.node_attrs.task_type));
+        if (movement_kind.has_value()) {
+          switch (movement_kind.value()) {
+            case ParallelOpMovementKind::BROADCAST:
+              return issue_broadcast();
+            case ParallelOpMovementKind::GATHER:
+              return issue_gather();
+            case ParallelOpMovementKind::SUM_REDUCE:
+              return issue_sum_reduce();
+            case ParallelOpMovementKind::RESHUFFLE:
+              return issue_copy();
+          }
+        }
+
         return pcg_op_attrs.visit<Realm::Event>(overload{
-            [&](InputAttrs const &) { return Realm::Event::NO_EVENT; },
-            [&](WeightAttrs const &) { return Realm::Event::NO_EVENT; },
-            [&](ReplicateAttrs const &) {
-              DynamicTaskType task_type =
-                  assert_unwrap(invocation.node_attrs.task_type);
-              switch (task_type) {
-                case DynamicTaskType::FWD:
-                  return issue_replicate();
-                case DynamicTaskType::BWD:
-                  return issue_reduction();
-                default:
-                  PANIC("Unhandled replicate task type ", task_type);
-              }
+            [&](InputAttrs const &) -> Realm::Event {
+              return Realm::Event::NO_EVENT;
             },
-            [&](auto const &) { return spawn_task(); },
+            [&](WeightAttrs const &) -> Realm::Event {
+              return Realm::Event::NO_EVENT;
+            },
+            [&](auto const &) -> Realm::Event { return spawn_task(); },
         });
       },
-      [&](LossAttrs const &) { return spawn_task(); },
-      [&](CopyAttrs const &) { return issue_copy(); },
+      [&](LossAttrs const &) -> Realm::Event { return spawn_task(); },
+      [&](CopyAttrs const &) -> Realm::Event { return issue_copy(); },
   });
 }
 

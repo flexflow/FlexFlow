@@ -36,7 +36,7 @@ std::optional<task_id_t>
       [](BatchNormAttrs const &) { return task_id_t::BATCHNORM_INIT_TASK_ID; },
       [](BroadcastAttrs const &) { return std::nullopt; },
       [](CastAttrs const &) { return std::nullopt; },
-      [](CombineAttrs const &attrs) { return task_id_t::COMBINE_INIT_TASK_ID; },
+      [](CombineAttrs const &) { return std::nullopt; },
       [](ConcatAttrs const &) { return std::nullopt; },
       [](Conv2DAttrs const &) { return task_id_t::CONV2D_INIT_TASK_ID; },
       [](DropoutAttrs const &) { return task_id_t::DROPOUT_INIT_TASK_ID; },
@@ -58,13 +58,9 @@ std::optional<task_id_t>
       [](NoopAttrs const &) { return std::nullopt; },
       [](Pool2DAttrs const &) { return task_id_t::POOL2D_INIT_TASK_ID; },
       [](ReduceAttrs const &) { return task_id_t::REDUCE_INIT_TASK_ID; },
-      [](ReductionAttrs const &attrs) {
-        return task_id_t::REDUCTION_INIT_TASK_ID;
-      },
-      [](RepartitionAttrs const &attrs) {
-        return task_id_t::REPARTITION_INIT_TASK_ID;
-      },
-      [](ReplicateAttrs const &attrs) { return std::nullopt; },
+      [](ReductionAttrs const &) { return std::nullopt; },
+      [](RepartitionAttrs const &) { return std::nullopt; },
+      [](ReplicateAttrs const &) { return std::nullopt; },
       [](ReshapeAttrs const &) { return std::nullopt; },
       [](ReverseAttrs const &) { return std::nullopt; },
       [](SoftmaxAttrs const &) { return task_id_t::SOFTMAX_INIT_TASK_ID; },
@@ -86,7 +82,7 @@ std::optional<task_id_t>
       [](BatchNormAttrs const &) { return task_id_t::BATCHNORM_FWD_TASK_ID; },
       [](BroadcastAttrs const &) { return task_id_t::BROADCAST_FWD_TASK_ID; },
       [](CastAttrs const &) { return task_id_t::CAST_FWD_TASK_ID; },
-      [](CombineAttrs const &attrs) { return task_id_t::COMBINE_FWD_TASK_ID; },
+      [](CombineAttrs const &) { return std::nullopt; },
       [](ConcatAttrs const &) { return task_id_t::CONCAT_FWD_TASK_ID; },
       [](Conv2DAttrs const &) { return task_id_t::CONV2D_FWD_TASK_ID; },
       [](DropoutAttrs const &) { return task_id_t::DROPOUT_FWD_TASK_ID; },
@@ -108,13 +104,9 @@ std::optional<task_id_t>
       [](NoopAttrs const &) { return std::nullopt; },
       [](Pool2DAttrs const &) { return task_id_t::POOL2D_FWD_TASK_ID; },
       [](ReduceAttrs const &) { return task_id_t::REDUCE_FWD_TASK_ID; },
-      [](ReductionAttrs const &attrs) {
-        return task_id_t::REDUCTION_FWD_TASK_ID;
-      },
-      [](RepartitionAttrs const &attrs) {
-        return task_id_t::REPARTITION_FWD_TASK_ID;
-      },
-      [](ReplicateAttrs const &attrs) { return std::nullopt; },
+      [](ReductionAttrs const &) { return std::nullopt; },
+      [](RepartitionAttrs const &) { return std::nullopt; },
+      [](ReplicateAttrs const &) { return std::nullopt; },
       [](ReshapeAttrs const &) { return task_id_t::RESHAPE_FWD_TASK_ID; },
       [](ReverseAttrs const &) { return task_id_t::REVERSE_FWD_TASK_ID; },
       [](SoftmaxAttrs const &) { return task_id_t::SOFTMAX_FWD_TASK_ID; },
@@ -136,7 +128,7 @@ std::optional<task_id_t>
       [](BatchNormAttrs const &) { return task_id_t::BATCHNORM_BWD_TASK_ID; },
       [](BroadcastAttrs const &) { return task_id_t::BROADCAST_BWD_TASK_ID; },
       [](CastAttrs const &) { return task_id_t::CAST_BWD_TASK_ID; },
-      [](CombineAttrs const &attrs) { return task_id_t::COMBINE_BWD_TASK_ID; },
+      [](CombineAttrs const &) { return std::nullopt; },
       [](ConcatAttrs const &) { return task_id_t::CONCAT_BWD_TASK_ID; },
       [](Conv2DAttrs const &) { return task_id_t::CONV2D_BWD_TASK_ID; },
       [](DropoutAttrs const &) { return task_id_t::DROPOUT_BWD_TASK_ID; },
@@ -158,13 +150,9 @@ std::optional<task_id_t>
       [](NoopAttrs const &) { return std::nullopt; },
       [](Pool2DAttrs const &) { return task_id_t::POOL2D_BWD_TASK_ID; },
       [](ReduceAttrs const &) { return task_id_t::REDUCE_BWD_TASK_ID; },
-      [](ReductionAttrs const &attrs) {
-        return task_id_t::REDUCTION_BWD_TASK_ID;
-      },
-      [](RepartitionAttrs const &attrs) {
-        return task_id_t::REPARTITION_BWD_TASK_ID;
-      },
-      [](ReplicateAttrs const &attrs) { return std::nullopt; },
+      [](ReductionAttrs const &) { return std::nullopt; },
+      [](RepartitionAttrs const &) { return std::nullopt; },
+      [](ReplicateAttrs const &) { return std::nullopt; },
       [](ReshapeAttrs const &) { return task_id_t::RESHAPE_BWD_TASK_ID; },
       [](ReverseAttrs const &) { return task_id_t::REVERSE_BWD_TASK_ID; },
       [](SoftmaxAttrs const &) { return task_id_t::SOFTMAX_BWD_TASK_ID; },

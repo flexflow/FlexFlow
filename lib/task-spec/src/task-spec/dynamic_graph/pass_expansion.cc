@@ -2,6 +2,7 @@
 #include "task-spec/dynamic_graph/dynamic_node_invocation.h"
 #include "task-spec/dynamic_graph/dynamic_open_dataflow_graph.h"
 #include "task-spec/dynamic_graph/dynamic_tensor_role.h"
+#include "task-spec/dynamic_graph/parallel_op_data_movement.h"
 #include "task-spec/dynamic_graph/training_operation_attrs.h"
 #include "utils/containers/are_all_same.h"
 #include "utils/containers/flatmap.h"
@@ -290,8 +291,9 @@ DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
           /*node_attrs=*/invocation.node_attrs,
           /*outputs=*/map_values(invocation.inputs, to_grad_value),
       };
-    } else if (training_op_attrs_has_op_type(op_attrs,
-                                             OperatorType::REPLICATE)) {
+    } else if (is_parallel_training_op(op_attrs)) {
+      // All parallel ops: BWD is purely gradient data movement.
+      // No fwd activations are needed — just swap input/output grad roles.
       return DynamicNodeInvocation{
           /*inputs=*/{
               transform(invocation.outputs, to_grad),

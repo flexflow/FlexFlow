@@ -1,5 +1,10 @@
 #include "realm-execution/redops/realm_redop_registry.h"
-#include "realm-execution/redops/redop_id_t.h"
+#include "realm-execution/redops/redop_id_t.dtg.h"
+#include <cassert>
+#include <realm.h>
+#if defined(__CUDACC__) || defined(__HIPCC__)
+#include <realm/cuda/cuda_redop.h>
+#endif
 
 namespace FlexFlow {
 
@@ -8,16 +13,7 @@ namespace FlexFlow {
 // existing code, despite not otherwise relying or using Legion in any way.
 // https://gitlab.com/StanfordLegion/legion/-/blob/5263aeff477fb94239c50d9306d58c4244e9fc38/runtime/legion/api/redop.inl#L31
 #if !defined(__cpp_lib_atomic_ref) || (__cpp_lib_atomic_ref < 201806L)
-// We only need this crap if we're using a version of c++ < 20
-// Starting with c++20 we can do all this the right way with atomic_ref
 namespace TypePunning {
-// The tenth circle of hell is reserved for members of the C++ committee
-// that decided to deviate from C's support for type punning unions.
-// Add on to it the fact that it took them 9 fucking years to realize
-// that they needed std::atomic_ref and it's plain to see they are all
-// just a bunch of idiots that should never be allowed near a programming
-// language standard ever again. They've clearly never written lock-free
-// code in their lives.
 template <typename T>
 class Pointer {
 public:
@@ -121,6 +117,56 @@ private:
 #define __LEGION_CUDA_HD__
 #endif
 
+#if defined(__CUDACC__) || defined(__HIPCC__)
+// Legion's non-exclusive bool/int64 reduction paths (borrowed below) assume
+// these helpers exist, but they aren't real CUDA/HIP builtins, so we provide
+// them ourselves.
+//
+// __longlong_as_ulonglong/__ulonglong_as_longlong: signed<->unsigned 64-bit
+// reinterpretation (needed because atomicCAS only takes unsigned long long).
+__device__ __forceinline__ unsigned long long int
+    __longlong_as_ulonglong(long long int v) {
+  return static_cast<unsigned long long int>(v);
+}
+__device__ __forceinline__ long long int
+    __ulonglong_as_longlong(unsigned long long int v) {
+  return static_cast<long long int>(v);
+}
+
+// __uint2bool/__bool2uint: read/write a single bool packed into one byte of
+// a 4-byte-aligned word, at byte `offset` within that word (needed because
+// GPU atomicCAS requires 4-byte alignment, but a lone bool doesn't have
+// one).
+__device__ __forceinline__ bool __uint2bool(unsigned int word,
+                                            unsigned int offset) {
+  return static_cast<bool>((word >> (offset * 8)) & 0xFFu);
+}
+__device__ __forceinline__ unsigned int
+    __bool2uint(unsigned int word, bool value, unsigned int offset) {
+  unsigned int const shift = offset * 8;
+  unsigned int const mask = 0xFFu << shift;
+  unsigned int const byte_val = (static_cast<unsigned int>(value) & 0xFFu)
+                                << shift;
+  return (word & ~mask) | byte_val;
+}
+
+// apply_cuda/fold_cuda are identical (just delegate to apply/fold) for every
+// SumReduction<T> specialization, so factored into a macro rather than
+// repeated per type. Required by Realm::Cuda::add_cuda_redop_kernels to
+// build a GPU-resident reduction kernel for this redop.
+#define __LEGION_CUDA_REDOP_METHODS__                                          \
+  template <bool EXCLUSIVE>                                                    \
+  __device__ static void apply_cuda(LHS &lhs, RHS rhs) {                       \
+    apply<EXCLUSIVE>(lhs, rhs);                                                \
+  }                                                                            \
+  template <bool EXCLUSIVE>                                                    \
+  __device__ static void fold_cuda(RHS &rhs1, RHS rhs2) {                      \
+    fold<EXCLUSIVE>(rhs1, rhs2);                                               \
+  }
+#else
+#define __LEGION_CUDA_REDOP_METHODS__
+#endif
+
 template <typename T>
 class SumReduction {
   // Empty definition
@@ -139,6 +185,7 @@ public:
   __LEGION_CUDA_HD__ static void apply(LHS &lhs, RHS rhs);
   template <bool EXCLUSIVE>
   __LEGION_CUDA_HD__ static void fold(RHS &rhs1, RHS rhs2);
+  __LEGION_CUDA_REDOP_METHODS__
 };
 
 template <>
@@ -153,6 +200,7 @@ public:
   __LEGION_CUDA_HD__ static void apply(LHS &lhs, RHS rhs);
   template <bool EXCLUSIVE>
   __LEGION_CUDA_HD__ static void fold(RHS &rhs1, RHS rhs2);
+  __LEGION_CUDA_REDOP_METHODS__
 };
 
 template <>
@@ -167,6 +215,7 @@ public:
   __LEGION_CUDA_HD__ static void apply(LHS &lhs, RHS rhs);
   template <bool EXCLUSIVE>
   __LEGION_CUDA_HD__ static void fold(RHS &rhs1, RHS rhs2);
+  __LEGION_CUDA_REDOP_METHODS__
 };
 
 template <>
@@ -181,6 +230,7 @@ public:
   __LEGION_CUDA_HD__ static void apply(LHS &lhs, RHS rhs);
   template <bool EXCLUSIVE>
   __LEGION_CUDA_HD__ static void fold(RHS &rhs1, RHS rhs2);
+  __LEGION_CUDA_REDOP_METHODS__
 };
 
 template <>
@@ -195,6 +245,7 @@ public:
   __LEGION_CUDA_HD__ static void apply(LHS &lhs, RHS rhs);
   template <bool EXCLUSIVE>
   __LEGION_CUDA_HD__ static void fold(RHS &rhs1, RHS rhs2);
+  __LEGION_CUDA_REDOP_METHODS__
 };
 
 template <>
@@ -523,18 +574,33 @@ __LEGION_CUDA_HD__ inline void SumReduction<double>::fold<false>(RHS &rhs1,
 #endif
 }
 
-void register_all_redops(Realm::Runtime rt) {
+namespace {
+template <typename REDOP>
+void register_sum_redop(::Realm::Runtime &rt, ::Realm::ReductionOpID id) {
+  ::Realm::ReductionOpUntyped *redop =
+      ::Realm::ReductionOpUntyped::create_reduction_op<REDOP>();
+#if defined(__CUDACC__) || defined(__HIPCC__)
+  ::Realm::Cuda::add_cuda_redop_kernels<REDOP>(redop);
+#endif
+  bool ok = rt.register_reduction(id, redop);
+  assert(ok);
+}
+
+} // namespace
+
+void register_all_redops() {
+  ::Realm::Runtime rt = ::Realm::Runtime::get_runtime();
   // Registration is synchronous, so no need to capture events here
-  rt.register_reduction<SumReduction<bool>>(
-      get_realm_reduction_op_id_for_redop_id(redop_id_t::SUM_BOOL_REDOP_ID));
-  rt.register_reduction<SumReduction<int32_t>>(
-      get_realm_reduction_op_id_for_redop_id(redop_id_t::SUM_INT32_REDOP_ID));
-  rt.register_reduction<SumReduction<int64_t>>(
-      get_realm_reduction_op_id_for_redop_id(redop_id_t::SUM_INT64_REDOP_ID));
-  rt.register_reduction<SumReduction<float>>(
-      get_realm_reduction_op_id_for_redop_id(redop_id_t::SUM_FLOAT_REDOP_ID));
-  rt.register_reduction<SumReduction<double>>(
-      get_realm_reduction_op_id_for_redop_id(redop_id_t::SUM_DOUBLE_REDOP_ID));
+  register_sum_redop<SumReduction<bool>>(
+      rt, static_cast<::Realm::ReductionOpID>(redop_id_t::SUM_BOOL_REDOP_ID));
+  register_sum_redop<SumReduction<int32_t>>(
+      rt, static_cast<::Realm::ReductionOpID>(redop_id_t::SUM_INT32_REDOP_ID));
+  register_sum_redop<SumReduction<int64_t>>(
+      rt, static_cast<::Realm::ReductionOpID>(redop_id_t::SUM_INT64_REDOP_ID));
+  register_sum_redop<SumReduction<float>>(
+      rt, static_cast<::Realm::ReductionOpID>(redop_id_t::SUM_FLOAT_REDOP_ID));
+  register_sum_redop<SumReduction<double>>(
+      rt, static_cast<::Realm::ReductionOpID>(redop_id_t::SUM_DOUBLE_REDOP_ID));
 }
 
 } // namespace FlexFlow
