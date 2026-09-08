@@ -14,6 +14,7 @@ template_params = [
 ]
 
 includes = [
+  "utils/fmt/optional.h",
   "utils/graph/node/node.dtg.h",
 ]
 

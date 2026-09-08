@@ -3,8 +3,8 @@
 
 namespace FlexFlow {
 
-int get_degree(ParallelDim const &dim) {
-  return dim.visit<int>(overload{
+positive_int get_degree(ParallelDim const &dim) {
+  return dim.visit<positive_int>(overload{
       [](ShardParallelDim const &shard_dim) { return shard_dim.degree; },
       [](ReplicaParallelDim const &replica_dim) {
         return replica_dim.degree;

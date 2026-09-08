@@ -1,0 +1,16 @@
+`kernel` parameter is gone as of https://github.com/NixOS/nixpkgs/pull/498612
+
+Matching PR for nixGL in https://github.com/nix-community/nixGL/pull/223
+(among other things, not relevant to our use case)
+and has not been merged as of 2026-07-27.
+
+--- a/nixGL.nix
++++ b/nixGL.nix
+@@ -86,7 +86,6 @@
+
+       nvidiaLibsOnly = nvidiaDrivers.override {
+         libsOnly = true;
+-        kernel = null;
+       };
+
+       nixGLNvidiaBumblebee = writeExecutable {

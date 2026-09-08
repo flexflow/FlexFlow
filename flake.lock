@@ -43,16 +43,15 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1710162809,
-        "narHash": "sha256-i2R2bcnQp+85de67yjgZVvJhd6rRnJbSYNpGmB6Leb8=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "ddcd7598b2184008c97e6c9c6a21c5f37590b8d2",
-        "type": "github"
+        "lastModified": 315532800,
+        "narHash": "sha256-DUedXhD2Rg8q4Xyd07Sb90eZGy4gg6W+Vl/WbLNwAZo=",
+        "rev": "b3fe9581c9061c749abef42b6d4ee7b7c05c33fa",
+        "type": "tarball",
+        "url": "https://releases.nixos.org/nixos/26.05/nixos-26.05.5845.b3fe9581c906/nixexprs.tar.xz?lastModified=1784707089"
       },
       "original": {
         "id": "nixpkgs",
-        "ref": "nixos-23.11",
+        "ref": "nixos-26.05",
         "type": "indirect"
       }
     },
@@ -63,37 +62,22 @@
         ],
         "nixpkgs": [
           "nixpkgs"
-        ],
-        "python38-nixpkgs": "python38-nixpkgs"
+        ]
       },
       "locked": {
-        "lastModified": 1785456566,
-        "narHash": "sha256-ERJXJjjMyvI0mVN8xzILh7tuc4uLUyd6itlHMS2sTHA=",
-        "ref": "refs/heads/master",
-        "rev": "5ff5dbad9d471ba6b47d4fa55a8f3bcee9f00dfd",
-        "revCount": 163,
+        "lastModified": 1787873396,
+        "narHash": "sha256-4+QTmAIebcRiiSRFTslHDl8KifIYzQNBmacSqIXaCbc=",
+        "ref": "refs/heads/update-nix",
+        "rev": "268056035befca5f811f21fc86811498694d6254",
+        "revCount": 166,
         "type": "git",
-        "url": "https://git.sr.ht/~lockshaw/proj"
+        "url": "https://github.com/elliottslaughter/proj.git"
       },
       "original": {
+        "ref": "refs/heads/update-nix",
+        "rev": "268056035befca5f811f21fc86811498694d6254",
         "type": "git",
-        "url": "https://git.sr.ht/~lockshaw/proj"
-      }
-    },
-    "python38-nixpkgs": {
-      "locked": {
-        "lastModified": 1645131486,
-        "narHash": "sha256-AuWJe0TiqHD6L7Vzcar4QOblMGubKHsuVs3YFMCRYl0=",
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "7592790b9e02f7f99ddcb1bd33fd44ff8df6a9a7",
-        "type": "github"
-      },
-      "original": {
-        "owner": "nixos",
-        "repo": "nixpkgs",
-        "rev": "7592790b9e02f7f99ddcb1bd33fd44ff8df6a9a7",
-        "type": "github"
+        "url": "https://github.com/elliottslaughter/proj.git"
       }
     },
     "root": {

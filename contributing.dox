@@ -189,7 +189,7 @@ We actively welcome your pull requests. Note that we may already be working on t
 The steps for getting changes merged into %FlexFlow are relatively standard:
 
 1. [Fork the repo](https://github.com/flexflow/flexflow-train/fork) and either create a new branch based on `master`, or just modify `master` directly.
-2. If you've added code that should be tested, add tests. The process for adding tests for code under `lib` is documented [here](./lib/README.md#tests). Adding tests for other parts of the code is currently undocumented, so you will \ref contributing-contact-us "contact us" for information on how to do it.
+2. If you've added code that should be tested, add tests. The process for adding tests is currently undocumented, so you will \ref contributing-contact-us "contact us" for information on how to do it.
 3. Ensure the code builds (i.e., run `proj build`).
 4. Ensure the test suite passes (i.e., run `proj test`).
 5. Format the code (i.e., run `proj format`).

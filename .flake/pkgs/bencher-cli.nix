@@ -1,7 +1,7 @@
 { stdenv
 , lib
 , fetchurl
-, alsaLib
+, alsa-lib
 , openssl
 , zlib
 , pulseaudio

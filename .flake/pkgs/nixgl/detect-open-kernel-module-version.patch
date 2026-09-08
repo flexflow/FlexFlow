@@ -1,0 +1,26 @@
+nixGL auto-detects the driver version by scraping /proc/driver/nvidia/version,
+but its regex only matches the proprietary kernel module's banner:
+
+    NVIDIA UNIX x86_64 Kernel Module  580.65.06  Wed Aug 13 ...
+
+The open kernel module names the architecture after "Kernel Module" instead:
+
+    NVIDIA UNIX Open Kernel Module for x86_64  610.43.02  Release Build ...
+
+so the match fails and `auto.nixGLDefault` silently falls back to the
+Intel/Mesa wrapper, leaving nothing in the shell able to find libcuda.so.1.
+
+--- a/nixGL.nix
++++ b/nixGL.nix
+@@ -234,8 +234,9 @@
+       # Get if from the nvidiaVersionFile
+         let
+           data = builtins.readFile _nvidiaVersionFile;
+-          versionMatch = builtins.match ".*Module  ([0-9.]+)  .*" data;
+-        in if versionMatch != null then builtins.head versionMatch else null;
++          versionMatch =
++            builtins.match ".*Kernel Module( for [^ ]+)?  ([0-9.]+)  .*" data;
++        in if versionMatch != null then builtins.elemAt versionMatch 1 else null;
+ 
+       autoNvidia = nvidiaPackages {version = nvidiaVersionAuto; };
+     in rec {

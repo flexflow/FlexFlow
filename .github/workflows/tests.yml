@@ -43,11 +43,40 @@ jobs:
         run: |
           proj check cpu-ci
 
+      - name: Generate code coverage
+        run: |
+          # A toolchain mismatch between the instrumentation and libgcov makes
+          # every test abort profiling without writing anything, which would
+          # otherwise surface as a silent 0% report rather than a failure.
+          gcda_count="$(find build/coverage -name '*.gcda' | wc -l)"
+          echo "found $gcda_count .gcda files"
+          if [ "$gcda_count" -eq 0 ]; then
+            echo "::error::no coverage data was produced by the test run" >&2
+            exit 1
+          fi
+          # lcov 2.x treats several classes of gcov disagreement as hard
+          # errors; gcc emits them routinely for templates, so downgrade them.
+          lcov_opts=(
+            --rc geninfo_unexecuted_blocks=1
+            --ignore-errors "inconsistent,mismatch,unused,negative,source,empty"
+            -j "$(nproc)"
+          )
+          lcov "${lcov_opts[@]}" --capture --directory build/coverage --output-file coverage-all.info
+          # Paths recorded by geninfo are absolute, so anchor on $PWD rather
+          # than a bare 'lib/*'.
+          lcov "${lcov_opts[@]}" --extract coverage-all.info "$PWD/lib/*" --output-file coverage-lib.info
+          lcov "${lcov_opts[@]}" --remove coverage-lib.info '*.dtg.h' '*.dtg.cc' --output-file main_coverage.info
+          lcov "${lcov_opts[@]}" --list main_coverage.info
+
       - name: Upload code coverage
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          file: main_coverage.info
+          files: main_coverage.info
+          # We hand codecov the one report we generated above; without these it
+          # searches the tree and runs its gcov plugin over the whole build.
+          disable_search: true
+          plugins: noop
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false

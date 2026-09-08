@@ -39,6 +39,7 @@ stdenv.mkDerivation rec {
   patches = [
     ./json-package-name.patch
     ./fix-argparse-include.patch
+    ./fix-cstdint-include.patch
   ];
 
   cmakeFlags = [
