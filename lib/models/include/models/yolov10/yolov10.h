@@ -143,10 +143,10 @@ tensor_guid_t create_yolov10_c2fcib_module(
 
 /**
  * \brief Creates layers matching a single iteration of
- * <a href="https://github.com/ultralytics/ultralytics/blob/f8ad132a15b5f6818c2ce0647b40dc57e993bf0c/ultralytics/nn/modules/head.py#L1799-L1804">
+ * <a href="https://github.com/ultralytics/ultralytics/blob/f8ad132a15b5f6818c2ce0647b40dc57e993bf0c/ultralytics/nn/modules/head.py#L105-L107">
  *   the loop
  * </a>
- * that creates the box head (aka <tt>cv3</tt>) for
+ * that creates the box head (aka <tt>cv2</tt>) for
  * <a href="https://github.com/ultralytics/ultralytics/blob/f8ad132a15b5f6818c2ce0647b40dc57e993bf0c/ultralytics/nn/modules/head.py#L1761-L1810">
  * ultralytics' <tt>v10Detect</tt> module.
  * </a>
@@ -159,10 +159,10 @@ tensor_guid_t
 
 /**
  * \brief Creates layers matching a single iteration of
- * <a href="https://github.com/ultralytics/ultralytics/blob/f8ad132a15b5f6818c2ce0647b40dc57e993bf0c/ultralytics/nn/modules/head.py#L106">
+ * <a href="https://github.com/ultralytics/ultralytics/blob/f8ad132a15b5f6818c2ce0647b40dc57e993bf0c/ultralytics/nn/modules/head.py#L1798-L1805">
  *   the loop
  * </a>
- * that creates the class head (aka <tt>cls_head</tt>, or <tt>cv2</tt>) for
+ * that creates the class head (aka <tt>cls_head</tt>, or <tt>cv3</tt>) for
  * <a href="https://github.com/ultralytics/ultralytics/blob/f8ad132a15b5f6818c2ce0647b40dc57e993bf0c/ultralytics/nn/modules/head.py#L1761-L1810">
  * ultralytics' <tt>v10Detect</tt> module.
  * </a>
