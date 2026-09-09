@@ -10,13 +10,13 @@ includes = [
 ]
 
 [[fields]]
-name = "handle"
-type = "::FlexFlow::PerDeviceFFHandle"
-
-[[fields]]
 name = "inputTensor"
 type = "ffTensorDescriptor_t"
 
 [[fields]]
-name = "dim"
-type = "::FlexFlow::ff_dim_t"
+name = "outputTensor"
+type = "ffTensorDescriptor_t"
+
+[[fields]]
+name = "outputGradTensor"
+type = "ffTensorDescriptor_t"

@@ -1,16 +1,21 @@
 #ifndef _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_SOFTMAX_KERNELS_CPU_H
 #define _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_SOFTMAX_KERNELS_CPU_H
 
-#include <cstddef>
+#include "kernels/accessor.h"
+#include "op-attrs/ops/softmax_attrs.dtg.h"
 
-namespace FlexFlow::Kernels::Softmax {
+namespace FlexFlow {
 
-void cpu_forward_kernel(float const *input_ptr, float *output_ptr);
+void softmax_cpu_forward_kernel(SoftmaxAttrs const &attrs,
+                                GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output);
 
-void cpu_backward_kernel(float const *output_grad_ptr,
-                         float *input_grad_ptr,
-                         size_t num_elements);
+void softmax_cpu_backward_kernel(SoftmaxAttrs const &attrs,
+                                 GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorR const &output_grad,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &input_grad);
 
-} // namespace FlexFlow::Kernels::Softmax
+} // namespace FlexFlow
 
 #endif

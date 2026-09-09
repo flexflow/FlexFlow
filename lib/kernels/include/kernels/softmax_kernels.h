@@ -1,36 +1,44 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_SOFTMAX_KERNELS_H
 
+#include "kernels/accessor.h"
 #include "kernels/device_handle_t.dtg.h"
 #include "kernels/device_stream_t.dtg.h"
-#include "kernels/ff_handle.h"
 #include "kernels/softmax_per_device_state.dtg.h"
+#include "op-attrs/ops/softmax_attrs.dtg.h"
+#include "op-attrs/tensor_shape.dtg.h"
 #include "pcg/device_type.dtg.h"
 
-namespace FlexFlow::Kernels::Softmax {
+namespace FlexFlow {
 
-std::optional<SoftmaxPerDeviceState> init_kernel(DeviceType device_type,
-                                                 device_handle_t const &handle,
-                                                 ff_dim_t dim,
-                                                 int input_n,
-                                                 int input_c,
-                                                 int input_h,
-                                                 int input_w);
+std::optional<SoftmaxPerDeviceState>
+    softmax_init_kernel(DeviceType device_type,
+                        SoftmaxAttrs const &attrs,
+                        TensorShape const &input_shape,
+                        TensorShape const &output_shape);
 
-void forward_kernel(
+void softmax_forward_kernel(
     device_stream_t const &stream,
+    device_handle_t const &handle,
     std::optional<SoftmaxPerDeviceState> const &per_device_state,
-    float const *input_ptr,
-    float *output_ptr);
+    SoftmaxAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &output);
 
-void backward_kernel(device_stream_t const &stream,
-                     float const *output_grad_ptr,
-                     float *input_grad_ptr,
-                     size_t num_elements);
+void softmax_backward_kernel(
+    device_stream_t const &stream,
+    device_handle_t const &handle,
+    std::optional<SoftmaxPerDeviceState> const &per_device_state,
+    SoftmaxAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad);
 
-void cleanup_kernel(DeviceType device_type,
-                    std::optional<SoftmaxPerDeviceState> &per_device_state);
+void softmax_cleanup_kernel(
+    DeviceType device_type,
+    std::optional<SoftmaxPerDeviceState> &per_device_state);
 
-} // namespace FlexFlow::Kernels::Softmax
+} // namespace FlexFlow
 
 #endif

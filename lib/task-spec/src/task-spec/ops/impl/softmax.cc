@@ -22,29 +22,16 @@
 
 namespace FlexFlow {
 
-using namespace FlexFlow::Kernels::Softmax;
-
 static DeviceSpecificPerDeviceOpState
     init_task_impl(TaskArgumentAccessor const &acc) {
-  device_handle_t handle = acc.get_ff_handle();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   SoftmaxAttrs attrs = acc.get_op_attrs().require_softmax();
 
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
-
-  positive_int output_w = dim_at_idx(output.shape.dims, legion_dim_t{0_n});
-  positive_int output_h = dim_at_idx(output.shape.dims, legion_dim_t{1_n});
-  positive_int output_c = dim_at_idx(output.shape.dims, legion_dim_t{2_n});
-  positive_int output_n = dim_at_idx(output.shape.dims, legion_dim_t{3_n});
+  TensorShape input_shape = acc.get_tensor_shape(TensorSlotName::INPUT);
+  TensorShape output_shape = acc.get_tensor_shape(TensorSlotName::OUTPUT);
 
   std::optional<SoftmaxPerDeviceState> per_device_state =
-      init_kernel(kernel_device_type,
-                  handle,
-                  attrs.dim,
-                  output_n.int_from_positive_int(),
-                  output_c.int_from_positive_int(),
-                  output_h.int_from_positive_int(),
-                  output_w.int_from_positive_int());
+      softmax_init_kernel(kernel_device_type, attrs, input_shape, output_shape);
 
   return DeviceSpecificPerDeviceOpState{
       acc.make_device_specific(per_device_state),
@@ -53,48 +40,60 @@ static DeviceSpecificPerDeviceOpState
 
 static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorW output =
+      acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
+  SoftmaxAttrs attrs = acc.get_op_attrs().require_softmax();
+
+  device_handle_t handle = acc.get_ff_handle();
+
   ProfilingSettings profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
-  SoftmaxPerDeviceState per_device_state =
-      acc.get_per_device_op_state().require_softmax().value();
+  std::optional<SoftmaxPerDeviceState> per_device_state =
+      acc.get_per_device_op_state().require_softmax();
 
-  auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
-
-  return profile(forward_kernel,
+  return profile(softmax_forward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Softmax] forward_time = {:.2lf}ms\n",
+                 handle,
                  per_device_state,
-                 input.get_float_ptr(),
-                 output.get_float_ptr());
+                 attrs,
+                 input,
+                 output);
 }
 
 static std::optional<milliseconds_t>
     backward_task_impl(TaskArgumentAccessor const &acc) {
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorW input_grad =
+      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
+  GenericTensorAccessorR output =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR output_grad =
+      acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
+
+  SoftmaxAttrs attrs = acc.get_op_attrs().require_softmax();
+  device_handle_t handle = acc.get_ff_handle();
+
   ProfilingSettings profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
-  SoftmaxPerDeviceState per_device_state =
-      acc.get_per_device_op_state().require_softmax().value();
+  std::optional<SoftmaxPerDeviceState> per_device_state =
+      acc.get_per_device_op_state().require_softmax();
 
-  auto input_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
-  auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  assert(input_grad.shape == input.shape);
-
-  auto output_grad =
-      acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
-  auto output = acc.get_tensor<Permissions::RO>(TensorSlotName::OUTPUT);
-
-  assert(output_grad.shape == output.shape);
-
-  return profile(
-      backward_kernel,
-      profiling,
-      kernel_device_type,
-      "[Softmax] backward_time = {:.2lf}ms\n",
-      output_grad.get_float_ptr(),
-      input_grad.get_float_ptr(),
-      get_num_elements(output_grad.shape.dims).int_from_positive_int());
+  return profile(softmax_backward_kernel,
+                 profiling,
+                 kernel_device_type,
+                 "[Softmax] backward_time = {:.2lf}ms\n",
+                 handle,
+                 per_device_state,
+                 attrs,
+                 output,
+                 output_grad,
+                 input,
+                 input_grad);
 }
 
 TaskImplFunction get_softmax_init_task_impl() {
@@ -109,4 +108,4 @@ TaskImplFunction get_softmax_bwd_task_impl() {
   return TaskImplFunction{FwdBwdOpTaskImplFunction{backward_task_impl}};
 }
 
-}; // namespace FlexFlow
+} // namespace FlexFlow

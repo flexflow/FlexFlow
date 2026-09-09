@@ -1,79 +1,93 @@
 #include "kernels/softmax_kernels.h"
 #include "kernels/softmax_kernels_cpu.h"
 #include "kernels/softmax_kernels_gpu.h"
-#include <libassert/assert.hpp>
+#include "utils/optional.h"
 
-namespace FlexFlow::Kernels::Softmax {
+namespace FlexFlow {
 
-std::optional<SoftmaxPerDeviceState> init_kernel(DeviceType device_type,
-                                                 device_handle_t const &handle,
-                                                 ff_dim_t dim,
-                                                 int input_n,
-                                                 int input_c,
-                                                 int input_h,
-                                                 int input_w) {
+std::optional<SoftmaxPerDeviceState>
+    softmax_init_kernel(DeviceType device_type,
+                        SoftmaxAttrs const &attrs,
+                        TensorShape const &input_shape,
+                        TensorShape const &output_shape) {
   if (device_type == DeviceType::GPU) {
-    return gpu_init_kernel(
-        /*handle=*/handle.require_for_gpu(),
-        /*dim=*/dim,
-        /*input_n=*/input_n,
-        /*input_c=*/input_c,
-        /*input_h=*/input_h,
-        /*input_w=*/input_w);
+    return softmax_gpu_init_kernel(
+        /*attrs=*/attrs,
+        /*input_shape=*/input_shape,
+        /*output_shape=*/output_shape);
   } else {
     ASSERT(device_type == DeviceType::CPU);
-    ASSERT(handle.is_for_cpu());
     return std::nullopt;
   }
 }
 
-void forward_kernel(
+void softmax_forward_kernel(
     device_stream_t const &stream,
+    device_handle_t const &handle,
     std::optional<SoftmaxPerDeviceState> const &per_device_state,
-    float const *input_ptr,
-    float *output_ptr) {
+    SoftmaxAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &output) {
   if (stream.is_gpu()) {
-    gpu_forward_kernel(
+    softmax_gpu_forward_kernel(
         /*stream=*/stream.require_gpu(),
-        /*per_device_state=*/per_device_state.value(),
-        /*input_ptr=*/input_ptr,
-        /*output_ptr=*/output_ptr);
+        /*handle=*/handle.require_for_gpu(),
+        /*per_device_state=*/assert_unwrap(per_device_state),
+        /*attrs=*/attrs,
+        /*input=*/input,
+        /*output=*/output);
   } else {
     ASSERT(stream.is_cpu());
-    ASSERT(per_device_state == std::nullopt);
-    cpu_forward_kernel(
-        /*input_ptr=*/input_ptr,
-        /*output_ptr=*/output_ptr);
+    ASSERT(handle.is_for_cpu());
+    ASSERT(!per_device_state.has_value());
+    softmax_cpu_forward_kernel(
+        /*attrs=*/attrs,
+        /*input=*/input,
+        /*output=*/output);
   }
 }
 
-void backward_kernel(device_stream_t const &stream,
-                     float const *output_grad_ptr,
-                     float *input_grad_ptr,
-                     size_t num_elements) {
+void softmax_backward_kernel(
+    device_stream_t const &stream,
+    device_handle_t const &handle,
+    std::optional<SoftmaxPerDeviceState> const &per_device_state,
+    SoftmaxAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad) {
   if (stream.is_gpu()) {
-    gpu_backward_kernel(
+    softmax_gpu_backward_kernel(
         /*stream=*/stream.require_gpu(),
-        /*output_grad_ptr=*/output_grad_ptr,
-        /*input_grad_ptr=*/input_grad_ptr,
-        /*num_elements=*/num_elements);
+        /*handle=*/handle.require_for_gpu(),
+        /*per_device_state=*/assert_unwrap(per_device_state),
+        /*attrs=*/attrs,
+        /*output=*/output,
+        /*output_grad=*/output_grad,
+        /*input=*/input,
+        /*input_grad=*/input_grad);
   } else {
     ASSERT(stream.is_cpu());
-    cpu_backward_kernel(
-        /*output_grad_ptr=*/output_grad_ptr,
-        /*input_grad_ptr=*/input_grad_ptr,
-        /*num_elements=*/num_elements);
+    ASSERT(handle.is_for_cpu());
+    ASSERT(!per_device_state.has_value());
+    softmax_cpu_backward_kernel(
+        /*attrs=*/attrs,
+        /*output=*/output,
+        /*output_grad=*/output_grad,
+        /*input=*/input,
+        /*input_grad=*/input_grad);
   }
 }
 
-void cleanup_kernel(DeviceType device_type,
-                    std::optional<SoftmaxPerDeviceState> &per_device_state) {
+void softmax_cleanup_kernel(
+    DeviceType device_type,
+    std::optional<SoftmaxPerDeviceState> &per_device_state) {
   if (device_type == DeviceType::GPU) {
-    gpu_cleanup_kernel(per_device_state.value());
+    softmax_gpu_cleanup_kernel(per_device_state.value());
   } else {
     ASSERT(device_type == DeviceType::CPU);
-    ASSERT(per_device_state == std::nullopt);
+    ASSERT(!per_device_state.has_value());
   }
 }
 
-} // namespace FlexFlow::Kernels::Softmax
+} // namespace FlexFlow

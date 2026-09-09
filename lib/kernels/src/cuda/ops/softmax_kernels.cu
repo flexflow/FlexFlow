@@ -15,72 +15,111 @@
 
 #include "internal/device.h"
 #include "kernels/softmax_kernels_gpu.h"
+#include "op-attrs/ff_dim_t.h"
+#include "op-attrs/tensor_dims.h"
+#include "op-attrs/tensor_shape.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
 
-namespace Kernels {
-namespace Softmax {
-
-SoftmaxPerDeviceState gpu_init_kernel(PerDeviceFFHandle const &handle,
-                                      ff_dim_t dim,
-                                      int input_n,
-                                      int input_c,
-                                      int input_h,
-                                      int input_w) {
+SoftmaxPerDeviceState softmax_gpu_init_kernel(SoftmaxAttrs const &attrs,
+                                              TensorShape const &input_shape,
+                                              TensorShape const &output_shape) {
   ffTensorDescriptor_t inputTensor;
+  ffTensorDescriptor_t outputTensor;
+  ffTensorDescriptor_t outputGradTensor;
+
+  TensorShape shape = require_same(input_shape, output_shape);
+
+  positive_int num_outer_elements =
+      get_num_elements(slice_tensor_dims(shape.dims, ff_dim_t{0_n}, attrs.dim));
+  positive_int softmax_dim_size = dim_at_idx(shape.dims, attrs.dim);
+  positive_int num_inner_elements = get_num_elements(
+      slice_tensor_dims(shape.dims, add_to_ff_dim(attrs.dim, 1), std::nullopt));
 
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        input_n,
-                                        input_c,
-                                        input_h,
-                                        input_w));
+  checkCUDNN(cudnnSetTensor4dDescriptor(
+      inputTensor,
+      CUDNN_TENSOR_NCHW,
+      ff_to_cudnn_datatype(shape.data_type),
+      /*n=*/num_outer_elements.int_from_positive_int(),
+      /*c=*/softmax_dim_size.int_from_positive_int(),
+      /*h=*/num_inner_elements.int_from_positive_int(),
+      /*w=*/1));
 
-  SoftmaxPerDeviceState per_device_state = SoftmaxPerDeviceState{
-      /*handle=*/handle,
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
+  checkCUDNN(cudnnSetTensor4dDescriptor(
+      outputTensor,
+      CUDNN_TENSOR_NCHW,
+      ff_to_cudnn_datatype(shape.data_type),
+      /*n=*/num_outer_elements.int_from_positive_int(),
+      /*c=*/softmax_dim_size.int_from_positive_int(),
+      /*h=*/num_inner_elements.int_from_positive_int(),
+      /*w=*/1));
+
+  checkCUDNN(cudnnCreateTensorDescriptor(&outputGradTensor));
+  checkCUDNN(cudnnSetTensor4dDescriptor(
+      outputGradTensor,
+      CUDNN_TENSOR_NCHW,
+      ff_to_cudnn_datatype(shape.data_type),
+      /*n=*/num_outer_elements.int_from_positive_int(),
+      /*c=*/softmax_dim_size.int_from_positive_int(),
+      /*h=*/num_inner_elements.int_from_positive_int(),
+      /*w=*/1));
+
+  return SoftmaxPerDeviceState{
       /*inputTensor=*/inputTensor,
-      /*dim=*/dim,
+      /*outputTensor=*/outputTensor,
+      /*outputGradTensor=*/outputGradTensor,
   };
-  return per_device_state;
 }
 
-void gpu_forward_kernel(cudaStream_t stream,
-                        SoftmaxPerDeviceState const &m,
-                        float const *input_ptr,
-                        float *output_ptr) {
-  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
+void softmax_gpu_forward_kernel(ffStream_t stream,
+                                PerDeviceFFHandle const &handle,
+                                SoftmaxPerDeviceState const &per_device_state,
+                                SoftmaxAttrs const &attrs,
+                                GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output) {
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnSoftmaxForward(m.handle.dnn,
+  checkCUDNN(cudnnSoftmaxForward(handle.dnn,
                                  CUDNN_SOFTMAX_ACCURATE,
                                  CUDNN_SOFTMAX_MODE_CHANNEL,
                                  &alpha,
-                                 m.inputTensor,
-                                 input_ptr,
+                                 per_device_state.inputTensor,
+                                 input.get_float_ptr(),
                                  &beta,
-                                 m.inputTensor,
-                                 output_ptr));
+                                 per_device_state.inputTensor,
+                                 output.get_float_ptr()));
 }
 
-void gpu_backward_kernel(cudaStream_t stream,
-                         float const *output_grad_ptr,
-                         float *input_grad_ptr,
-                         size_t num_elements) {
+void softmax_gpu_backward_kernel(ffStream_t stream,
+                                 PerDeviceFFHandle const &handle,
+                                 SoftmaxPerDeviceState const &per_device_state,
+                                 SoftmaxAttrs const &attrs,
+                                 GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorR const &output_grad,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &input_grad) {
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
-  checkCUDA(cudaMemcpyAsync(input_grad_ptr,
-                            output_grad_ptr,
-                            num_elements * sizeof(float),
-                            cudaMemcpyDeviceToDevice,
-                            stream));
+  float alpha = 1.0f, beta = 0.0f;
+  checkCUDNN(cudnnSoftmaxBackward(handle.dnn,
+                                  CUDNN_SOFTMAX_ACCURATE,
+                                  CUDNN_SOFTMAX_MODE_CHANNEL,
+                                  &alpha,
+                                  per_device_state.inputTensor,
+                                  output.get_float_ptr(),
+                                  per_device_state.inputTensor,
+                                  output_grad.get_float_ptr(),
+                                  &beta,
+                                  per_device_state.inputTensor,
+                                  input_grad.get_float_ptr()));
 }
 
-void gpu_cleanup_kernel(SoftmaxPerDeviceState &) {
+void softmax_gpu_cleanup_kernel(SoftmaxPerDeviceState &per_device_state) {
   NOT_IMPLEMENTED();
 }
 
-} // namespace Softmax
-} // namespace Kernels
 } // namespace FlexFlow

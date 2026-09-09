@@ -1,32 +1,35 @@
 #ifndef _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_SOFTMAX_KERNELS_GPU_H
 #define _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_SOFTMAX_KERNELS_GPU_H
 
+#include "kernels/accessor.h"
 #include "kernels/device.h"
-#include "kernels/ff_handle.h"
 #include "kernels/softmax_per_device_state.dtg.h"
-#include "op-attrs/ff_dim_t.dtg.h"
+#include "op-attrs/ops/softmax_attrs.dtg.h"
 
-namespace FlexFlow::Kernels::Softmax {
+namespace FlexFlow {
 
-SoftmaxPerDeviceState gpu_init_kernel(PerDeviceFFHandle const &handle,
-                                      ff_dim_t dim,
-                                      int input_n,
-                                      int input_c,
-                                      int input_h,
-                                      int input_w);
+SoftmaxPerDeviceState softmax_gpu_init_kernel(SoftmaxAttrs const &attrs,
+                                              TensorShape const &input_shape,
+                                              TensorShape const &output_shape);
 
-void gpu_forward_kernel(ffStream_t stream,
-                        SoftmaxPerDeviceState const &per_device_state,
-                        float const *input_ptr,
-                        float *output_ptr);
+void softmax_gpu_forward_kernel(ffStream_t stream,
+                                PerDeviceFFHandle const &handle,
+                                SoftmaxPerDeviceState const &per_device_state,
+                                SoftmaxAttrs const &attrs,
+                                GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output);
 
-void gpu_backward_kernel(ffStream_t stream,
-                         float const *output_grad_ptr,
-                         float *input_grad_ptr,
-                         size_t num_elements);
+void softmax_gpu_backward_kernel(ffStream_t stream,
+                                 PerDeviceFFHandle const &handle,
+                                 SoftmaxPerDeviceState const &per_device_state,
+                                 SoftmaxAttrs const &attrs,
+                                 GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorR const &output_grad,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &input_grad);
 
-void gpu_cleanup_kernel(SoftmaxPerDeviceState &per_device_state);
+void softmax_gpu_cleanup_kernel(SoftmaxPerDeviceState &per_device_state);
 
-} // namespace FlexFlow::Kernels::Softmax
+} // namespace FlexFlow
 
 #endif
