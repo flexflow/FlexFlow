@@ -1,17 +1,20 @@
 #include "kernels/pool_2d_kernels_cpu.h"
 #include "utils/exception.h"
 
-namespace FlexFlow::Kernels::Pool2D {
+namespace FlexFlow {
 
-void cpu_forward_kernel(void const *input_ptr, void *output_ptr) {
+void pool_2d_cpu_forward_kernel(Pool2DAttrs const &attrs,
+                                GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output) {
   NOT_IMPLEMENTED();
 }
 
-void cpu_backward_kernel(void const *output_ptr,
-                         void const *output_grad_ptr,
-                         void const *input_ptr,
-                         void *input_grad_ptr) {
+void pool_2d_cpu_backward_kernel(Pool2DAttrs const &attrs,
+                                 GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorR const &output_grad,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &input_grad) {
   NOT_IMPLEMENTED();
 }
 
-} // namespace FlexFlow::Kernels::Pool2D
+} // namespace FlexFlow

@@ -70,13 +70,15 @@ struct UpsampleCPUBackwardKernel {
          get_tensor_dims_coord_set(output_grad.shape.dims)) {
       TensorDimsCoord input_coord = input_coord_from_output_coord(output_coord);
 
-      input_grad.at<DT>(output_coord) += output_grad.at<DT>(input_coord);
+      input_grad.at<DT>(input_coord) += output_grad.at<DT>(output_coord);
     }
   }
 };
 
 void upsample_cpu_backward_kernel(UpsampleAttrs const &attrs,
+                                  GenericTensorAccessorR const &output,
                                   GenericTensorAccessorR const &output_grad,
+                                  GenericTensorAccessorR const &input,
                                   GenericTensorAccessorW const &input_grad) {
   ASSERT(get_num_dims(input_grad.shape.dims) == num_tensor_dims_t{4_n},
          "Currently Upsample only supports 4-dimensional input tensors (i.e., "

@@ -5,12 +5,7 @@ features = []
 
 includes = [
   "kernels/device.h",
-  "kernels/ff_handle.h",
 ]
-
-[[fields]]
-name = "handle"
-type = "::FlexFlow::PerDeviceFFHandle"
 
 [[fields]]
 name = "inputTensor"
@@ -23,10 +18,6 @@ type = "ffTensorDescriptor_t"
 [[fields]]
 name = "biasTensor"
 type = "ffTensorDescriptor_t"
-
-[[fields]]
-name = "actiDesc"
-type = "ffActivationDescriptor_t"
 
 [[fields]]
 name = "mode"
@@ -47,23 +38,3 @@ type = "float *"
 [[fields]]
 name = "saveVar"
 type = "float *"
-
-[[fields]]
-name = "output_n"
-type = "int"
-
-[[fields]]
-name = "output_c"
-type = "int"
-
-[[fields]]
-name = "output_h"
-type = "int"
-
-[[fields]]
-name = "output_w"
-type = "int"
-
-[[fields]]
-name = "relu"
-type = "bool"

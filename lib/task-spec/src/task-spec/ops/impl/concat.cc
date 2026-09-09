@@ -23,12 +23,19 @@
 
 namespace FlexFlow {
 
-using namespace FlexFlow::Kernels::Concat;
-
 static std::vector<TensorSlotName> get_input_slots(ConcatAttrs const &attrs) {
   return slice(get_variadic_inputs_slot_name_sequence(),
                0,
                attrs.num_inputs.int_from_int_ge_two());
+}
+
+static std::vector<GenericTensorAccessorR>
+    get_inputs(TaskArgumentAccessor const &acc, ConcatAttrs const &attrs) {
+  return transform(
+      get_input_slots(attrs),
+      [&](TensorSlotName input_slot_name) -> GenericTensorAccessorR {
+        return acc.get_tensor<Permissions::RO>(input_slot_name);
+      });
 }
 
 static std::optional<milliseconds_t>
@@ -37,25 +44,17 @@ static std::optional<milliseconds_t>
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   ConcatAttrs attrs = acc.get_op_attrs().require_concat();
 
-  std::vector<TensorSlotName> input_slots = get_input_slots(attrs);
+  std::vector<GenericTensorAccessorR> inputs = get_inputs(acc, attrs);
+  GenericTensorAccessorW output =
+      acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  std::vector<GenericTensorAccessorR> inputs =
-      transform(input_slots,
-                [&](TensorSlotName input_slot_name) -> GenericTensorAccessorR {
-                  return acc.get_tensor<Permissions::RO>(input_slot_name);
-                });
-
-  ASSERT(inputs.size() <= MAX_NUM_INPUTS);
-
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
-
-  return profile(forward_kernel,
+  return profile(concat_forward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Concat] forward_time = {:.2lf}ms\n",
-                 output,
+                 attrs,
                  inputs,
-                 attrs.axis);
+                 output);
 }
 
 static std::optional<milliseconds_t>
@@ -64,26 +63,28 @@ static std::optional<milliseconds_t>
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   ConcatAttrs attrs = acc.get_op_attrs().require_concat();
 
-  std::vector<TensorSlotName> input_slots = get_input_slots(attrs);
+  std::vector<GenericTensorAccessorR> inputs = get_inputs(acc, attrs);
 
   std::vector<GenericTensorAccessorW> input_grads =
-      transform(input_slots,
+      transform(get_input_slots(attrs),
                 [&](TensorSlotName input_slot_name) -> GenericTensorAccessorW {
                   return acc.get_tensor_grad<Permissions::RW>(input_slot_name);
                 });
 
-  ASSERT(input_grads.size() <= MAX_NUM_INPUTS);
-
-  auto output_grad =
+  GenericTensorAccessorR output =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR output_grad =
       acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
 
-  return profile(backward_kernel,
+  return profile(concat_backward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Concat] backward_time = {:.2lf}ms\n",
+                 attrs,
+                 output,
                  output_grad,
-                 input_grads,
-                 attrs.axis);
+                 inputs,
+                 input_grads);
 }
 
 TaskImplFunction get_concat_fwd_task_impl() {

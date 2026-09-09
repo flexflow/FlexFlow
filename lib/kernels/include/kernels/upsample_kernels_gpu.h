@@ -3,7 +3,6 @@
 
 #include "kernels/accessor.h"
 #include "kernels/device.h"
-#include "kernels/ff_handle.h"
 #include "op-attrs/ops/upsample_attrs.dtg.h"
 
 namespace FlexFlow {

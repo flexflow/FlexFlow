@@ -4,16 +4,18 @@
 #include "kernels/accessor.h"
 #include "kernels/device.h"
 
-namespace FlexFlow::Kernels::Reshape {
+namespace FlexFlow {
 
-void gpu_forward_kernel(ffStream_t stream,
-                        GenericTensorAccessorR const &input,
-                        GenericTensorAccessorW const &output);
+void reshape_gpu_forward_kernel(ffStream_t stream,
+                                GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output);
 
-void gpu_backward_kernel(ffStream_t stream,
-                         GenericTensorAccessorR const &output,
-                         GenericTensorAccessorW const &input);
+void reshape_gpu_backward_kernel(ffStream_t stream,
+                                 GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorR const &output_grad,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &input_grad);
 
-} // namespace FlexFlow::Kernels::Reshape
+} // namespace FlexFlow
 
 #endif

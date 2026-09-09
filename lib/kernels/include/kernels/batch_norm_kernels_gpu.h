@@ -1,43 +1,46 @@
 #ifndef _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_BATCH_NORM_KERNELS_GPU_H
 #define _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_BATCH_NORM_KERNELS_GPU_H
 
+#include "kernels/accessor.h"
 #include "kernels/allocation.h"
 #include "kernels/batch_norm_per_device_state.dtg.h"
 #include "kernels/device.h"
-#include "kernels/ff_handle.h"
+#include "op-attrs/ops/batch_norm_attrs.dtg.h"
 
-namespace FlexFlow::Kernels::BatchNorm {
+namespace FlexFlow {
 
-BatchNormPerDeviceState gpu_init_kernel(PerDeviceFFHandle const &handle,
-                                        Allocator &allocator,
-                                        float *runningMean,
-                                        int output_n,
-                                        int output_c,
-                                        int output_h,
-                                        int output_w,
-                                        bool relu);
+BatchNormPerDeviceState
+    batch_norm_gpu_init_kernel(Allocator &allocator,
+                               BatchNormAttrs const &attrs,
+                               TensorShape const &input_shape,
+                               TensorShape const &output_shape);
 
-void gpu_forward_kernel(ffStream_t stream,
-                        BatchNormPerDeviceState const &per_device_statem,
-                        float const *input_ptr,
-                        float *output_ptr,
-                        float const *scale_ptr,
-                        float const *bias_ptr);
+void batch_norm_gpu_forward_kernel(
+    ffStream_t stream,
+    PerDeviceFFHandle const &handle,
+    BatchNormPerDeviceState const &per_device_state,
+    BatchNormAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorR const &beta,
+    GenericTensorAccessorW const &output);
 
-void gpu_backward_kernel(ffStream_t stream,
-                         BatchNormPerDeviceState const &per_device_state,
-                         float const *output_ptr,
-                         float *output_grad_ptr,
-                         float const *input_ptr,
-                         float *input_grad_ptr,
-                         float const *scale_ptr,
-                         float *scale_grad_ptr,
-                         float *bias_grad_ptr,
-                         size_t numElements);
+void batch_norm_gpu_backward_kernel(
+    ffStream_t stream,
+    PerDeviceFFHandle const &handle,
+    BatchNormPerDeviceState const &per_device_state,
+    BatchNormAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorW const &gamma_grad,
+    GenericTensorAccessorW const &beta_grad);
 
-void gpu_cleanup_kernel(Allocator &allocator,
-                        BatchNormPerDeviceState &per_device_state);
+void batch_norm_gpu_cleanup_kernel(Allocator &allocator,
+                                   BatchNormPerDeviceState &per_device_state);
 
-} // namespace FlexFlow::Kernels::BatchNorm
+} // namespace FlexFlow
 
 #endif

@@ -46,9 +46,10 @@ void tensor_accessor_matmul_to(GenericTensorAccessorR const &lhs,
                                GenericTensorAccessorR const &rhs,
                                GenericTensorAccessorW const &output);
 
-void tensor_accessor_batch_matmul(GenericTensorAccessorR const &lhs,
-                                  GenericTensorAccessorR const &rhs,
-                                  GenericTensorAccessorW const &output);
+GenericTensorAccessorW
+    tensor_accessor_batch_matmul(GenericTensorAccessorR const &lhs,
+                                 GenericTensorAccessorR const &rhs,
+                                 Allocator &output_allocator);
 
 void tensor_accessor_batch_matmul_to(GenericTensorAccessorR const &lhs,
                                      GenericTensorAccessorR const &rhs,

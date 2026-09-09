@@ -1,44 +1,43 @@
 #ifndef _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_CONV_2D_KERNELS_GPU_H
 #define _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_CONV_2D_KERNELS_GPU_H
 
-namespace FlexFlow::Kernels::Conv2D {
+#include "kernels/accessor.h"
+#include "kernels/conv_2d_per_device_state.dtg.h"
+#include "kernels/device.h"
+#include "op-attrs/ops/conv_2d_attrs.dtg.h"
 
-Conv2DPerDeviceState
-    gpu_init_kernel(PerDeviceFFHandle const &handle,
-                    std::optional<Activation> const &activation,
-                    int kernel_h,
-                    int kernel_w,
-                    int groups,
-                    int padding_h,
-                    int padding_w,
-                    int stride_h,
-                    int stride_w,
-                    GenericTensorAccessorW const &input,
-                    GenericTensorAccessorW const &output,
-                    float const *filter_ptr,
-                    float *filter_grad_ptr);
+namespace FlexFlow {
 
-void gpu_forward_kernel(ffStream_t stream,
-                        Conv2DPerDeviceState const &m,
-                        float const *input_ptr,
-                        float *output_ptr,
-                        float const *filter_ptr,
-                        float const *bias_ptr,
-                        std::optional<Activation> activation);
+Conv2DPerDeviceState conv_2d_gpu_init_kernel(PerDeviceFFHandle const &handle,
+                                             Conv2DAttrs const &attrs,
+                                             TensorShape const &input_shape,
+                                             TensorShape const &output_shape);
 
-void gpu_backward_kernel(ffStream_t stream,
-                         Conv2DPerDeviceState const &m,
-                         float const *output_ptr,
-                         float *output_grad_ptr,
-                         float const *input_ptr,
-                         float *input_grad_ptr,
-                         float const *filter_ptr,
-                         float *filter_grad_ptr,
-                         float *bias_grad_ptr,
-                         std::optional<Activation> activation);
+void conv_2d_gpu_forward_kernel(
+    ffStream_t stream,
+    PerDeviceFFHandle const &handle,
+    Conv2DPerDeviceState const &per_device_state,
+    Conv2DAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &filter,
+    std::optional<GenericTensorAccessorR> const &bias,
+    GenericTensorAccessorW const &output);
 
-void gpu_cleanup_kernel(Conv2DPerDeviceState &per_device_state);
+void conv_2d_gpu_backward_kernel(
+    ffStream_t stream,
+    PerDeviceFFHandle const &handle,
+    Conv2DPerDeviceState const &per_device_state,
+    Conv2DAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &filter,
+    GenericTensorAccessorW const &filter_grad,
+    std::optional<GenericTensorAccessorW> const &bias_grad);
 
-} // namespace FlexFlow::Kernels::Conv2D
+void conv_2d_gpu_cleanup_kernel(Conv2DPerDeviceState &per_device_state);
+
+} // namespace FlexFlow
 
 #endif

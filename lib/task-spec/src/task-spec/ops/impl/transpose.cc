@@ -17,9 +17,6 @@
 #include "kernels/transpose_kernels.h"
 #include "op-attrs/ops/transpose.h"
 #include "task-spec/profiling.h"
-#include "utils/integer_conversions.h"
-
-using namespace FlexFlow::Kernels::Transpose;
 
 namespace FlexFlow {
 
@@ -29,13 +26,15 @@ static std::optional<milliseconds_t>
   TransposeAttrs attrs = acc.get_op_attrs().require_transpose();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
-  auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorW output =
+      acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  return profile(forward_kernel,
+  return profile(transpose_forward_kernel,
                  profiling,
                  kernel_device_type,
-                 "[Transpose] Forward_time = {:.2lf} [ms]",
+                 "[Transpose] forward_time = {:.2lf}ms\n",
                  attrs,
                  input,
                  output);
@@ -47,16 +46,23 @@ static std::optional<milliseconds_t>
   TransposeAttrs attrs = acc.get_op_attrs().require_transpose();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
-  auto input_grad = acc.get_tensor_grad<Permissions::WO>(TensorSlotName::INPUT);
-  auto output_grad =
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorW input_grad =
+      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
+  GenericTensorAccessorR output =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR output_grad =
       acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
 
-  return profile(backward_kernel,
+  return profile(transpose_backward_kernel,
                  profiling,
                  kernel_device_type,
-                 "[Transpose] Backward_time = {:.2lf} [ms]",
+                 "[Transpose] backward_time = {:.2lf}ms\n",
                  attrs,
+                 output,
                  output_grad,
+                 input,
                  input_grad);
 }
 

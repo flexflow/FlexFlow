@@ -43,7 +43,9 @@ void upsample_backward_kernel(device_stream_t const &stream,
 
     upsample_cpu_backward_kernel(
         /*attrs=*/attrs,
+        /*output=*/output,
         /*output_grad=*/output_grad,
+        /*input=*/input,
         /*input_grad=*/input_grad);
   }
 }

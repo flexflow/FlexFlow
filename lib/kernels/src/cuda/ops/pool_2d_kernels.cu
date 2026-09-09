@@ -15,136 +15,125 @@
 
 #include "internal/device.h"
 #include "kernels/pool_2d_kernels_gpu.h"
+#include "op-attrs/tensor_dims.h"
 #include "utils/exception.h"
 
 namespace FlexFlow {
 
-namespace Kernels {
-namespace Pool2D {
+static cudnnPoolingMode_t cudnn_pooling_mode_from_pool_op(PoolOp pool_type) {
+  switch (pool_type) {
+    case PoolOp::MAX:
+      return CUDNN_POOLING_MAX;
+    case PoolOp::AVG:
+      return CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
+    default:
+      NOT_IMPLEMENTED();
+  }
+}
 
-Pool2DPerDeviceState gpu_init_kernel(PerDeviceFFHandle handle,
-                                     std::optional<Activation> activation,
-                                     int input_w,
-                                     int input_h,
-                                     int input_c,
-                                     int input_n,
-                                     int output_w,
-                                     int output_h,
-                                     int output_c,
-                                     int output_n,
-                                     int pad_h,
-                                     int pad_w,
-                                     int kernel_h,
-                                     int kernel_w,
-                                     int stride_h,
-                                     int stride_w,
-                                     PoolOp pool_type) {
+Pool2DPerDeviceState pool_2d_gpu_init_kernel(Pool2DAttrs const &attrs,
+                                             TensorShape const &input_shape,
+                                             TensorShape const &output_shape) {
+  // Applying an activation as part of Pool2D is not currently implemented (it
+  // used to be silently ignored). If you need it, please create an issue.
+  ASSERT(!attrs.activation.has_value(),
+         "Pool2D does not currently support fused activations",
+         attrs.activation);
+
+  ASSERT(get_num_dims(input_shape.dims) == num_tensor_dims_t{4_n},
+         "Pool2D expects 4-dimensional (i.e., NCHW) input tensors",
+         input_shape);
+  ASSERT(get_num_dims(output_shape.dims) == num_tensor_dims_t{4_n},
+         "Pool2D expects 4-dimensional (i.e., NCHW) output tensors",
+         output_shape);
+
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
-  ffActivationDescriptor_t actiDesc;
   ffPoolingDescriptor_t poolDesc;
 
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
   checkCUDNN(cudnnCreatePoolingDescriptor(&poolDesc));
 
-  checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        input_n,
-                                        input_c,
-                                        input_h,
-                                        input_w));
-  cudnnPoolingMode_t mode;
-  if (pool_type == PoolOp::MAX) {
-    mode = CUDNN_POOLING_MAX;
-  } else {
-    assert(pool_type == PoolOp::AVG);
-    mode = CUDNN_POOLING_AVERAGE_COUNT_EXCLUDE_PADDING;
-  }
+  checkCUDNN(cudnnSetTensorDescriptorFromTensorShape(inputTensor, input_shape));
 
-  checkCUDNN(cudnnSetPooling2dDescriptor(poolDesc,
-                                         mode,
-                                         CUDNN_PROPAGATE_NAN,
-                                         kernel_h,
-                                         kernel_w,
-                                         pad_h,
-                                         pad_w,
-                                         stride_h,
-                                         stride_w));
+  checkCUDNN(cudnnSetPooling2dDescriptor(
+      poolDesc,
+      cudnn_pooling_mode_from_pool_op(attrs.pool_type),
+      CUDNN_PROPAGATE_NAN,
+      attrs.kernel_h.int_from_positive_int(),
+      attrs.kernel_w.int_from_positive_int(),
+      attrs.padding_h.unwrap_nonnegative(),
+      attrs.padding_w.unwrap_nonnegative(),
+      attrs.stride_h.int_from_positive_int(),
+      attrs.stride_w.int_from_positive_int()));
 
   int n, c, h, w;
   checkCUDNN(
       cudnnGetPooling2dForwardOutputDim(poolDesc, inputTensor, &n, &c, &h, &w));
-  assert(n == output_n);
-  assert(c == output_c);
-  assert(h == output_h);
-  assert(w == output_w);
 
-  checkCUDNN(cudnnSetTensor4dDescriptor(
-      outputTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, n, c, h, w));
-  bool relu = false;
-  if (activation == Activation::RELU) {
-    relu = true;
-  }
-  Pool2DPerDeviceState state = Pool2DPerDeviceState{
-      /*handle=*/handle,
+  ASSERT(dim_at_idx(output_shape.dims, ff_dim_t{0_n}) == positive_int{n});
+  ASSERT(dim_at_idx(output_shape.dims, ff_dim_t{1_n}) == positive_int{c});
+  ASSERT(dim_at_idx(output_shape.dims, ff_dim_t{2_n}) == positive_int{h});
+  ASSERT(dim_at_idx(output_shape.dims, ff_dim_t{3_n}) == positive_int{w});
+
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromTensorShape(outputTensor, output_shape));
+
+  return Pool2DPerDeviceState{
       /*inputTensor=*/inputTensor,
       /*outputTensor=*/outputTensor,
-      /*actiDesc=*/actiDesc,
       /*poolDesc=*/poolDesc,
-      /*relu=*/relu,
   };
-  return state;
 }
 
-void gpu_forward_kernel(cudaStream_t stream,
-                        Pool2DPerDeviceState const &m,
-                        void const *input_ptr,
-                        void *output_ptr) {
-
-  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
+void pool_2d_gpu_forward_kernel(cudaStream_t stream,
+                                PerDeviceFFHandle const &handle,
+                                Pool2DPerDeviceState const &per_device_state,
+                                Pool2DAttrs const &attrs,
+                                GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output) {
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnPoolingForward(m.handle.dnn,
-                                 m.poolDesc,
+  checkCUDNN(cudnnPoolingForward(handle.dnn,
+                                 per_device_state.poolDesc,
                                  &alpha,
-                                 m.inputTensor,
-                                 input_ptr,
+                                 per_device_state.inputTensor,
+                                 input.ptr,
                                  &beta,
-                                 m.outputTensor,
-                                 output_ptr));
+                                 per_device_state.outputTensor,
+                                 output.ptr));
 }
 
-void gpu_backward_kernel(cudaStream_t stream,
-                         Pool2DPerDeviceState const &m,
-                         void const *output_ptr,
-                         void const *output_grad_ptr,
-                         void const *input_ptr,
-                         void *input_grad_ptr) {
+void pool_2d_gpu_backward_kernel(cudaStream_t stream,
+                                 PerDeviceFFHandle const &handle,
+                                 Pool2DPerDeviceState const &per_device_state,
+                                 Pool2DAttrs const &attrs,
+                                 GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorR const &output_grad,
+                                 GenericTensorAccessorR const &input,
+                                 GenericTensorAccessorW const &input_grad) {
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
 
-  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
-
-  float alpha = 1.0f;
-  checkCUDNN(cudnnPoolingBackward(m.handle.dnn,
-                                  m.poolDesc,
+  // NOTE: beta is 1.0 so that input_grad is accumulated into
+  float alpha = 1.0f, beta = 1.0f;
+  checkCUDNN(cudnnPoolingBackward(handle.dnn,
+                                  per_device_state.poolDesc,
                                   &alpha,
-                                  m.outputTensor,
-                                  output_ptr,
-                                  m.outputTensor,
-                                  output_grad_ptr,
-                                  m.inputTensor,
-                                  input_ptr,
-                                  &alpha,
-                                  m.inputTensor,
-                                  input_grad_ptr));
+                                  per_device_state.outputTensor,
+                                  output.ptr,
+                                  per_device_state.outputTensor,
+                                  output_grad.ptr,
+                                  per_device_state.inputTensor,
+                                  input.ptr,
+                                  &beta,
+                                  per_device_state.inputTensor,
+                                  input_grad.ptr));
 }
 
-void gpu_cleanup_kernel(Pool2DPerDeviceState &per_device_state) {
+void pool_2d_gpu_cleanup_kernel(Pool2DPerDeviceState &per_device_state) {
   NOT_IMPLEMENTED();
 }
 
-} // namespace Pool2D
-} // namespace Kernels
 } // namespace FlexFlow

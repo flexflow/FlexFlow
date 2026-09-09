@@ -11,7 +11,9 @@ void upsample_cpu_forward_kernel(UpsampleAttrs const &attrs,
                                  GenericTensorAccessorW const &output);
 
 void upsample_cpu_backward_kernel(UpsampleAttrs const &attrs,
+                                  GenericTensorAccessorR const &output,
                                   GenericTensorAccessorR const &output_grad,
+                                  GenericTensorAccessorR const &input,
                                   GenericTensorAccessorW const &input_grad);
 
 } // namespace FlexFlow

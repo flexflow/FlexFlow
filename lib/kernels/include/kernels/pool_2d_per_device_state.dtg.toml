@@ -4,13 +4,8 @@ type = "struct"
 features = []
 
 includes = [
-  "kernels/ff_handle.h",
   "kernels/device.h",
 ]
-
-[[fields]]
-name = "handle"
-type = "::FlexFlow::PerDeviceFFHandle"
 
 [[fields]]
 name = "inputTensor"
@@ -21,13 +16,5 @@ name = "outputTensor"
 type = "ffTensorDescriptor_t"
 
 [[fields]]
-name = "actiDesc"
-type = "ffActivationDescriptor_t"
-
-[[fields]]
 name = "poolDesc"
 type = "ffPoolingDescriptor_t"
-
-[[fields]]
-name = "relu"
-type = "bool"

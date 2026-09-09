@@ -1,26 +1,26 @@
 #ifndef _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_SPLIT_KERNELS_GPU_H
 #define _FLEXFLOW_LIB_KERNELS_INCLUDE_KERNELS_SPLIT_KERNELS_GPU_H
 
+#include "kernels/accessor.h"
 #include "kernels/device.h"
+#include "op-attrs/ops/split_attrs.dtg.h"
 
-namespace FlexFlow::Kernels::Split {
+namespace FlexFlow {
 
-void gpu_forward_kernel(ffStream_t stream,
-                        float **out_ptrs,
-                        float const *in_ptr,
-                        int const *out_blk_sizes,
-                        int in_blk_size,
-                        int num_blks,
-                        int numOutputs);
+void split_gpu_forward_kernel(
+    ffStream_t stream,
+    SplitAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    std::vector<GenericTensorAccessorW> const &outputs);
 
-void gpu_backward_kernel(ffStream_t stream,
-                         float *in_grad_ptr,
-                         float const **out_grad_ptr,
-                         int const *out_blk_sizes,
-                         int in_blk_size,
-                         int num_blks,
-                         int numOutputs);
+void split_gpu_backward_kernel(
+    ffStream_t stream,
+    SplitAttrs const &attrs,
+    std::vector<GenericTensorAccessorR> const &outputs,
+    std::vector<GenericTensorAccessorR> const &output_grads,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad);
 
-} // namespace FlexFlow::Kernels::Split
+} // namespace FlexFlow
 
 #endif

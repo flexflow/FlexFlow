@@ -19,35 +19,18 @@
 
 namespace FlexFlow {
 
-using namespace FlexFlow::Kernels::BatchNorm;
-
 static DeviceSpecificPerDeviceOpState
     init_task_impl(TaskArgumentAccessor const &acc) {
   Allocator allocator = acc.get_allocator();
-  device_handle_t handle = acc.get_ff_handle();
-  ProfilingSettings profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
-
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
   BatchNormAttrs attrs = acc.get_op_attrs().require_batch_norm();
 
-  positive_int output_w = dim_at_idx(output.shape.dims, legion_dim_t{0_n});
-  positive_int output_h = dim_at_idx(output.shape.dims, legion_dim_t{1_n});
-  positive_int output_c = dim_at_idx(output.shape.dims, legion_dim_t{2_n});
-  positive_int output_n = dim_at_idx(output.shape.dims, legion_dim_t{3_n});
+  TensorShape input_shape = acc.get_tensor_shape(TensorSlotName::INPUT);
+  TensorShape output_shape = acc.get_tensor_shape(TensorSlotName::OUTPUT);
 
-  float *runningMean;
-
-  std::optional<BatchNormPerDeviceState> per_device_state = init_kernel(
-      /*device_type=*/kernel_device_type,
-      /*handle=*/handle,
-      /*allocator=*/allocator,
-      /*runningMean=*/runningMean,
-      /*output_n=*/output_n.int_from_positive_int(),
-      /*output_c=*/output_c.int_from_positive_int(),
-      /*output_h=*/output_h.int_from_positive_int(),
-      /*output_w=*/output_w.int_from_positive_int(),
-      /*relu=*/attrs.relu);
+  std::optional<BatchNormPerDeviceState> per_device_state =
+      batch_norm_init_kernel(
+          kernel_device_type, allocator, attrs, input_shape, output_shape);
 
   return DeviceSpecificPerDeviceOpState{
       acc.make_device_specific(per_device_state),
@@ -56,56 +39,73 @@ static DeviceSpecificPerDeviceOpState
 
 static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
-  auto per_device_state =
-      acc.get_per_device_op_state().require_batch_norm().value();
   ProfilingSettings profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
+  device_handle_t handle = acc.get_ff_handle();
+  std::optional<BatchNormPerDeviceState> per_device_state =
+      acc.get_per_device_op_state().require_batch_norm();
+  BatchNormAttrs attrs = acc.get_op_attrs().require_batch_norm();
 
-  auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
-  auto scale = acc.get_tensor<Permissions::RO>(TensorSlotName::SCALE);
-  auto bias = acc.get_tensor<Permissions::RO>(TensorSlotName::BIAS);
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorR gamma =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::GAMMA);
+  GenericTensorAccessorR beta =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::BETA);
+  GenericTensorAccessorW output =
+      acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  return profile(forward_kernel,
+  return profile(batch_norm_forward_kernel,
                  profiling,
                  kernel_device_type,
                  "[BatchNorm] forward_time = {:.2lf}ms\n",
+                 handle,
                  per_device_state,
-                 input.get_float_ptr(),
-                 output.get_float_ptr(),
-                 scale.get_float_ptr(),
-                 bias.get_float_ptr());
+                 attrs,
+                 input,
+                 gamma,
+                 beta,
+                 output);
 }
 
 static std::optional<milliseconds_t>
     backward_task_impl(TaskArgumentAccessor const &acc) {
-  BatchNormPerDeviceState per_device_state =
-      acc.get_per_device_op_state().require_batch_norm().value();
   ProfilingSettings profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
+  device_handle_t handle = acc.get_ff_handle();
+  std::optional<BatchNormPerDeviceState> per_device_state =
+      acc.get_per_device_op_state().require_batch_norm();
+  BatchNormAttrs attrs = acc.get_op_attrs().require_batch_norm();
 
-  auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  auto input_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
-  auto output = acc.get_tensor<Permissions::RO>(TensorSlotName::OUTPUT);
-  auto output_grad =
-      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::OUTPUT);
-  auto scale = acc.get_tensor<Permissions::RO>(TensorSlotName::SCALE);
-  auto scale_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::SCALE);
-  auto bias_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::BIAS);
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorW input_grad =
+      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
+  GenericTensorAccessorR output =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR output_grad =
+      acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR gamma =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::GAMMA);
+  GenericTensorAccessorW gamma_grad =
+      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::GAMMA);
+  GenericTensorAccessorW beta_grad =
+      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::BETA);
 
-  return profile(backward_kernel,
+  return profile(batch_norm_backward_kernel,
                  profiling,
                  kernel_device_type,
                  "[BatchNorm] backward_time = {:.2lf}ms\n",
+                 handle,
                  per_device_state,
-                 output.get_float_ptr(),
-                 output_grad.get_float_ptr(),
-                 input.get_float_ptr(),
-                 input_grad.get_float_ptr(),
-                 scale.get_float_ptr(),
-                 scale_grad.get_float_ptr(),
-                 bias_grad.get_float_ptr(),
-                 get_num_elements(output.shape.dims).int_from_positive_int());
+                 attrs,
+                 output,
+                 output_grad,
+                 input,
+                 input_grad,
+                 gamma,
+                 gamma_grad,
+                 beta_grad);
 }
 
 TaskImplFunction get_batch_norm_init_task_impl() {

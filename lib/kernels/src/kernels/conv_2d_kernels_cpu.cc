@@ -1,25 +1,27 @@
 #include "kernels/conv_2d_kernels_cpu.h"
 #include "utils/exception.h"
 
-namespace FlexFlow::Kernels::Conv2D {
+namespace FlexFlow {
 
-void cpu_forward_kernel(float const *input_ptr,
-                        float *output_ptr,
-                        float const *filter_ptr,
-                        float const *bias_ptr,
-                        std::optional<Activation> const &activation) {
+void conv_2d_cpu_forward_kernel(
+    Conv2DAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &filter,
+    std::optional<GenericTensorAccessorR> const &bias,
+    GenericTensorAccessorW const &output) {
   NOT_IMPLEMENTED();
 }
 
-void cpu_backward_kernel(float const *output_ptr,
-                         float *output_grad_ptr,
-                         float const *input_ptr,
-                         float *input_grad_ptr,
-                         float const *filter_ptr,
-                         float *filter_grad_ptr,
-                         float *bias_grad_ptr,
-                         std::optional<Activation> const &activation) {
+void conv_2d_cpu_backward_kernel(
+    Conv2DAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &filter,
+    GenericTensorAccessorW const &filter_grad,
+    std::optional<GenericTensorAccessorW> const &bias_grad) {
   NOT_IMPLEMENTED();
 }
 
-} // namespace FlexFlow::Kernels::Conv2D
+} // namespace FlexFlow

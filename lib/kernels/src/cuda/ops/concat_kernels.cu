@@ -15,83 +15,84 @@
 
 #include "internal/device.h"
 #include "kernels/concat_kernels_gpu.h"
-#include <cassert>
+#include "op-attrs/tensor_dims.h"
 
-namespace FlexFlow::Kernels::Concat {
+namespace FlexFlow {
 
-static void calc_blk_size(size_t &num_blocks,
-                          size_t &blk_size,
-                          TensorShape const &shape,
-                          ff_dim_t axis) {
-  blk_size = get_num_elements(slice_tensor_dims(shape.dims, axis, std::nullopt))
-                 .int_from_positive_int();
-  num_blocks =
-      get_num_elements(slice_tensor_dims(shape.dims, ff_dim_t{0_n}, axis))
-          .int_from_positive_int();
+// The number of contiguous elements spanned by `axis` and everything after it.
+static int get_blk_size(TensorShape const &shape, ff_dim_t axis) {
+  return get_num_elements(slice_tensor_dims(shape.dims, axis, std::nullopt))
+      .int_from_positive_int();
 }
 
-void gpu_forward_kernel(cudaStream_t stream,
-                        GenericTensorAccessorW const &output,
-                        std::vector<GenericTensorAccessorR> const &inputs,
-                        ff_dim_t axis) {
-  assert(inputs.size() <= MAX_NUM_INPUTS);
-  size_t num_blocks = 1, output_blk_size = 1;
-  calc_blk_size(num_blocks, output_blk_size, output.shape, axis);
-  off_t offset = 0;
+// The number of such blocks, i.e. the product of the dims before `axis`.
+static int get_num_blks(TensorShape const &shape, ff_dim_t axis) {
+  return get_num_elements(slice_tensor_dims(shape.dims, ff_dim_t{0_n}, axis))
+      .int_from_positive_int();
+}
 
+void concat_gpu_forward_kernel(
+    cudaStream_t stream,
+    ConcatAttrs const &attrs,
+    std::vector<GenericTensorAccessorR> const &inputs,
+    GenericTensorAccessorW const &output) {
+  ASSERT(inputs.size() == attrs.num_inputs.int_from_int_ge_two());
+  ASSERT(inputs.size() <= MAX_NUM_INPUTS);
+
+  int num_blks = get_num_blks(output.shape, attrs.axis);
+  int output_blk_size = get_blk_size(output.shape, attrs.axis);
+
+  int offset = 0;
   for (GenericTensorAccessorR const &input : inputs) {
-    size_t input_num_blocks = 1, input_blk_size = 1;
-    calc_blk_size(input_num_blocks, input_blk_size, input.shape, axis);
-    assert(input_num_blocks == num_blocks || output_blk_size == input_blk_size);
+    ASSERT(get_num_blks(input.shape, attrs.axis) == num_blks);
+    int input_blk_size = get_blk_size(input.shape, attrs.axis);
 
-    int blocks_to_copy =
-        (output_blk_size == input_blk_size) ? input_num_blocks : num_blocks;
-
-    copy_with_stride<<<GET_BLOCKS(input_blk_size * num_blocks),
+    copy_with_stride<<<GET_BLOCKS(input_blk_size * num_blks),
                        CUDA_NUM_THREADS,
                        0,
                        stream>>>(output.get_float_ptr() + offset,
                                  input.get_float_ptr(),
-                                 blocks_to_copy,
+                                 num_blks,
                                  output_blk_size,
                                  input_blk_size);
 
-    offset += (output_blk_size == input_blk_size)
-                  ? input_blk_size * input_num_blocks
-                  : input_blk_size;
+    offset += input_blk_size;
   }
+
+  ASSERT(offset == output_blk_size);
 }
 
-void gpu_backward_kernel(cudaStream_t stream,
-                         GenericTensorAccessorR const &output_grad,
-                         std::vector<GenericTensorAccessorW> const &input_grads,
-                         ff_dim_t axis) {
-  assert(input_grads.size() <= MAX_NUM_INPUTS);
-  size_t num_blocks = 1, output_blk_size = 1;
-  calc_blk_size(num_blocks, output_blk_size, output_grad.shape, axis);
-  off_t offset = 0;
+void concat_gpu_backward_kernel(
+    cudaStream_t stream,
+    ConcatAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    std::vector<GenericTensorAccessorR> const &inputs,
+    std::vector<GenericTensorAccessorW> const &input_grads) {
+  ASSERT(input_grads.size() == attrs.num_inputs.int_from_int_ge_two());
+  ASSERT(input_grads.size() <= MAX_NUM_INPUTS);
 
-  for (auto &input_grad : input_grads) {
-    size_t input_num_blocks = 1, input_blk_size = 1;
-    calc_blk_size(input_num_blocks, input_blk_size, input_grad.shape, axis);
-    assert(input_num_blocks == num_blocks || output_blk_size == input_blk_size);
+  int num_blks = get_num_blks(output_grad.shape, attrs.axis);
+  int output_blk_size = get_blk_size(output_grad.shape, attrs.axis);
 
-    int blocks_to_add =
-        (output_blk_size == input_blk_size) ? input_num_blocks : num_blocks;
+  int offset = 0;
+  for (GenericTensorAccessorW const &input_grad : input_grads) {
+    ASSERT(get_num_blks(input_grad.shape, attrs.axis) == num_blks);
+    int input_blk_size = get_blk_size(input_grad.shape, attrs.axis);
 
-    add_with_stride<<<GET_BLOCKS(input_blk_size * num_blocks),
+    add_with_stride<<<GET_BLOCKS(input_blk_size * num_blks),
                       CUDA_NUM_THREADS,
                       0,
                       stream>>>(input_grad.get_float_ptr(),
                                 output_grad.get_float_ptr() + offset,
-                                blocks_to_add,
+                                num_blks,
                                 input_blk_size,
                                 output_blk_size);
 
-    offset += (output_blk_size == input_blk_size)
-                  ? input_blk_size * input_num_blocks
-                  : input_blk_size;
+    offset += input_blk_size;
   }
+
+  ASSERT(offset == output_blk_size);
 }
 
-} // namespace FlexFlow::Kernels::Concat
+} // namespace FlexFlow

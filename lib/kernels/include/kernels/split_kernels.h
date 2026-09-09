@@ -1,26 +1,25 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_SPLIT_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_SPLIT_KERNELS_H
 
+#include "kernels/accessor.h"
 #include "kernels/device_stream_t.dtg.h"
+#include "op-attrs/ops/split_attrs.dtg.h"
 
-namespace FlexFlow::Kernels::Split {
+namespace FlexFlow {
 
-void forward_kernel(device_stream_t const &stream,
-                    float **out_ptrs,
-                    float const *in_ptr,
-                    int const *out_blk_sizes,
-                    int in_blk_size,
-                    int num_blks,
-                    int numOutputs);
+void split_forward_kernel(device_stream_t const &stream,
+                          SplitAttrs const &attrs,
+                          GenericTensorAccessorR const &input,
+                          std::vector<GenericTensorAccessorW> const &outputs);
 
-void backward_kernel(device_stream_t const &stream,
-                     float *in_grad_ptr,
-                     float const **out_grad_ptr,
-                     int const *out_blk_sizes,
-                     int in_blk_size,
-                     int num_blks,
-                     int numOutputs);
+void split_backward_kernel(
+    device_stream_t const &stream,
+    SplitAttrs const &attrs,
+    std::vector<GenericTensorAccessorR> const &outputs,
+    std::vector<GenericTensorAccessorR> const &output_grads,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad);
 
-} // namespace FlexFlow::Kernels::Split
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_SPLIT_KERNELS_H

@@ -14,170 +14,186 @@
  */
 
 #include "internal/device.h"
-#include "kernels/allocation.h"
-#include "kernels/batch_norm_kernels.h"
-#include "kernels/ff_handle.h"
-#include "utils/integer_conversions.h"
+#include "kernels/batch_norm_kernels_gpu.h"
+#include "op-attrs/tensor_dims.h"
+#include "utils/containers/require_same.h"
+#include <vector>
 
 namespace FlexFlow {
-namespace Kernels {
-namespace BatchNorm {
 
-void gpu_forward_kernel(cudaStream_t stream,
-                        BatchNormPerDeviceState const &m,
-                        float const *input_ptr,
-                        float *output_ptr,
-                        float const *scale_ptr,
-                        float const *bias_ptr) {
-  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
-
-  float alpha = 1.0f, beta = 0.0f;
-  checkCUDNN(cudnnBatchNormalizationForwardTraining(m.handle.dnn,
-                                                    m.mode,
-                                                    &alpha,
-                                                    &beta,
-                                                    m.inputTensor,
-                                                    input_ptr,
-                                                    m.outputTensor,
-                                                    output_ptr,
-                                                    m.biasTensor,
-                                                    scale_ptr,
-                                                    bias_ptr,
-                                                    1.0,
-                                                    m.runningMean,
-                                                    m.runningVar,
-                                                    CUDNN_BN_MIN_EPSILON,
-                                                    m.saveMean,
-                                                    m.saveVar));
+static positive_int get_num_channels(TensorShape const &shape) {
+  return dim_at_idx(shape.dims, ff_dim_t{1_n});
 }
 
-void gpu_backward_kernel(cudaStream_t stream,
-                         BatchNormPerDeviceState const &m,
-                         float const *output_ptr,
-                         float *output_grad_ptr,
-                         float const *input_ptr,
-                         float *input_grad_ptr,
-                         float const *scale_ptr,
-                         float *scale_grad_ptr,
-                         float *bias_grad_ptr,
-                         size_t numElements) {
-  checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
+BatchNormPerDeviceState
+    batch_norm_gpu_init_kernel(Allocator &allocator,
+                               BatchNormAttrs const &attrs,
+                               TensorShape const &input_shape,
+                               TensorShape const &output_shape) {
+  // Applying an activation as part of BatchNorm is not currently implemented
+  // (the forward kernel used to silently ignore it while the backward kernel
+  // applied it). If you need it, please create an issue.
+  ASSERT(!attrs.relu,
+         "BatchNorm does not currently support a fused relu activation");
 
-  float alpha = 1.0f;
-  if (m.relu) {
-    reluBackward<<<GET_BLOCKS(numElements), CUDA_NUM_THREADS, 0, stream>>>(
-        output_grad_ptr, output_ptr, numElements);
-  }
-  checkCUDNN(cudnnBatchNormalizationBackward(m.handle.dnn,
-                                             m.mode,
-                                             &alpha,
-                                             &alpha,
-                                             &alpha,
-                                             &alpha,
-                                             m.inputTensor,
-                                             input_ptr,
-                                             m.outputTensor,
-                                             output_grad_ptr,
-                                             m.inputTensor,
-                                             input_grad_ptr,
-                                             m.biasTensor,
-                                             scale_ptr,
-                                             scale_grad_ptr,
-                                             bias_grad_ptr,
-                                             CUDNN_BN_MIN_EPSILON,
-                                             m.saveMean,
-                                             m.saveVar));
-}
+  ASSERT(attrs.affine,
+         "BatchNorm currently only supports attrs.affine = true. "
+         "If you need this feature, please create an issue.");
 
-BatchNormPerDeviceState gpu_init_kernel(PerDeviceFFHandle const &handle,
-                                        Allocator &allocator,
-                                        float *runningMean,
-                                        int output_n,
-                                        int output_c,
-                                        int output_h,
-                                        int output_w,
-                                        bool relu) {
+  TensorShape shape = require_same(input_shape, output_shape);
+
+  ASSERT(get_num_dims(shape.dims) == num_tensor_dims_t{4_n},
+         "BatchNorm currently only supports 4-dimensional (i.e., NCHW) "
+         "tensors. If you need this feature, please create an issue.",
+         shape);
+
+  ASSERT(attrs.eps >= CUDNN_BN_MIN_EPSILON,
+         "cuDNN requires BatchNorm eps to be at least CUDNN_BN_MIN_EPSILON",
+         attrs.eps,
+         CUDNN_BN_MIN_EPSILON);
+
+  int num_channels = get_num_channels(shape).int_from_positive_int();
+
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t outputTensor;
   ffTensorDescriptor_t biasTensor;
-  ffActivationDescriptor_t actiDesc;
-  ffBatchNormMode_t mode;
+
   checkCUDNN(cudnnCreateTensorDescriptor(&inputTensor));
-  checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
   checkCUDNN(cudnnCreateTensorDescriptor(&outputTensor));
-  mode = CUDNN_BATCHNORM_SPATIAL;
+  checkCUDNN(cudnnCreateTensorDescriptor(&biasTensor));
+
+  ffBatchNormMode_t mode = CUDNN_BATCHNORM_SPATIAL;
 #if CUDNN_VERSION >= 7000
   mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
 #endif
-  checkCUDNN(cudnnSetTensor4dDescriptor(inputTensor,
+
+  checkCUDNN(cudnnSetTensorDescriptorFromTensorShape(inputTensor, input_shape));
+  checkCUDNN(
+      cudnnSetTensorDescriptorFromTensorShape(outputTensor, output_shape));
+  checkCUDNN(cudnnSetTensor4dDescriptor(biasTensor,
                                         CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        output_n,
-                                        output_c,
-                                        output_h,
-                                        output_w));
-  checkCUDNN(cudnnSetTensor4dDescriptor(outputTensor,
-                                        CUDNN_TENSOR_NCHW,
-                                        CUDNN_DATA_FLOAT,
-                                        output_n,
-                                        output_c,
-                                        output_h,
-                                        output_w));
-  checkCUDNN(cudnnSetTensor4dDescriptor(
-      biasTensor, CUDNN_TENSOR_NCHW, CUDNN_DATA_FLOAT, 1, output_c, 1, 1));
-  // allocate memory for runningMean, runningVar, saveMean, saveVar
-  size_t totalSize = sizeof(float) * output_c * 4;
-  runningMean = (float *)allocator.allocate(totalSize);
-  float *runningVar = (float *)runningMean + output_c;
-  float *saveMean = (float *)runningVar + output_c;
-  float *saveVar = (float *)saveMean + output_c;
-  cudaStream_t stream;
-  checkCUDA(get_legion_stream(&stream));
+                                        ff_to_cudnn_datatype(shape.data_type),
+                                        /*n=*/1,
+                                        /*c=*/num_channels,
+                                        /*h=*/1,
+                                        /*w=*/1));
 
-  assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-      runningMean, size_t_from_int(output_c), 0.0f);
-  assign_kernel<<<GET_BLOCKS(output_c), CUDA_NUM_THREADS, 0, stream>>>(
-      runningVar, size_t_from_int(output_c), 0.0f);
+  // Allocate memory for runningMean, runningVar, saveMean and saveVar as a
+  // single contiguous block (deallocated by batch_norm_gpu_cleanup_kernel).
+  float *runningMean = static_cast<float *>(
+      allocator.allocate(sizeof(float) * num_channels * 4));
+  float *runningVar = runningMean + num_channels;
+  float *saveMean = runningVar + num_channels;
+  float *saveVar = saveMean + num_channels;
 
-  if (relu) {
-    checkCUDNN(cudnnCreateActivationDescriptor(&actiDesc));
-    checkCUDNN(cudnnSetActivationDescriptor(
-        actiDesc, CUDNN_ACTIVATION_RELU, CUDNN_PROPAGATE_NAN, 0.0));
-  }
+  // Match the PyTorch initialization of running_mean = 0 and running_var = 1.
+  std::vector<float> initial_running_stats(num_channels * 2);
+  std::fill(initial_running_stats.begin(),
+            initial_running_stats.begin() + num_channels,
+            0.0f);
+  std::fill(initial_running_stats.begin() + num_channels,
+            initial_running_stats.end(),
+            1.0f);
+  checkCUDA(cudaMemcpy(runningMean,
+                       initial_running_stats.data(),
+                       sizeof(float) * num_channels * 2,
+                       cudaMemcpyHostToDevice));
 
-  BatchNormPerDeviceState per_device_state = BatchNormPerDeviceState{
-      handle,
-      inputTensor,
-      outputTensor,
-      biasTensor,
-      actiDesc,
-      mode,
-      runningMean,
-      runningVar,
-      saveMean,
-      saveVar,
-      output_n,
-      output_c,
-      output_h,
-      output_w,
-      relu,
+  return BatchNormPerDeviceState{
+      /*inputTensor=*/inputTensor,
+      /*outputTensor=*/outputTensor,
+      /*biasTensor=*/biasTensor,
+      /*mode=*/mode,
+      /*runningMean=*/runningMean,
+      /*runningVar=*/runningVar,
+      /*saveMean=*/saveMean,
+      /*saveVar=*/saveVar,
   };
-
-  checkCUDA(cudaStreamDestroy(stream));
-  return per_device_state;
 }
 
-void gpu_cleanup_kernel(Allocator &allocator,
-                        BatchNormPerDeviceState &per_device_state) {
+void batch_norm_gpu_forward_kernel(
+    cudaStream_t stream,
+    PerDeviceFFHandle const &handle,
+    BatchNormPerDeviceState const &per_device_state,
+    BatchNormAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorR const &beta,
+    GenericTensorAccessorW const &output) {
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
+
+  // NOTE: attrs.momentum = std::nullopt means "use a cumulative moving
+  // average", which cuDNN cannot express, so we fall back to fully replacing
+  // the running statistics on each call. The running statistics are currently
+  // never read back, so this only matters once inference mode is supported.
+  double exponential_average_factor = attrs.momentum.value_or(1.0);
+
+  float alpha = 1.0f, beta_coeff = 0.0f;
+  checkCUDNN(
+      cudnnBatchNormalizationForwardTraining(handle.dnn,
+                                             per_device_state.mode,
+                                             &alpha,
+                                             &beta_coeff,
+                                             per_device_state.inputTensor,
+                                             input.ptr,
+                                             per_device_state.outputTensor,
+                                             output.ptr,
+                                             per_device_state.biasTensor,
+                                             gamma.ptr,
+                                             beta.ptr,
+                                             exponential_average_factor,
+                                             per_device_state.runningMean,
+                                             per_device_state.runningVar,
+                                             attrs.eps,
+                                             per_device_state.saveMean,
+                                             per_device_state.saveVar));
+}
+
+void batch_norm_gpu_backward_kernel(
+    cudaStream_t stream,
+    PerDeviceFFHandle const &handle,
+    BatchNormPerDeviceState const &per_device_state,
+    BatchNormAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorW const &gamma_grad,
+    GenericTensorAccessorW const &beta_grad) {
+  checkCUDNN(cudnnSetStream(handle.dnn, stream));
+
+  // NOTE: the beta coefficients are 1.0 so that the gradients are accumulated
+  // into rather than overwritten
+  float alpha_data = 1.0f, beta_data = 1.0f;
+  float alpha_param = 1.0f, beta_param = 1.0f;
+  checkCUDNN(cudnnBatchNormalizationBackward(handle.dnn,
+                                             per_device_state.mode,
+                                             &alpha_data,
+                                             &beta_data,
+                                             &alpha_param,
+                                             &beta_param,
+                                             per_device_state.inputTensor,
+                                             input.ptr,
+                                             per_device_state.outputTensor,
+                                             output_grad.ptr,
+                                             per_device_state.inputTensor,
+                                             input_grad.ptr,
+                                             per_device_state.biasTensor,
+                                             gamma.ptr,
+                                             gamma_grad.ptr,
+                                             beta_grad.ptr,
+                                             attrs.eps,
+                                             per_device_state.saveMean,
+                                             per_device_state.saveVar));
+}
+
+void batch_norm_gpu_cleanup_kernel(Allocator &allocator,
+                                   BatchNormPerDeviceState &per_device_state) {
   allocator.deallocate(per_device_state.runningMean);
   checkCUDNN(cudnnDestroyTensorDescriptor(per_device_state.inputTensor));
-  checkCUDNN(cudnnDestroyTensorDescriptor(per_device_state.biasTensor));
   checkCUDNN(cudnnDestroyTensorDescriptor(per_device_state.outputTensor));
-  if (per_device_state.relu) {
-    checkCUDNN(cudnnDestroyActivationDescriptor(per_device_state.actiDesc));
-  }
+  checkCUDNN(cudnnDestroyTensorDescriptor(per_device_state.biasTensor));
 }
 
-} // namespace BatchNorm
-} // namespace Kernels
 } // namespace FlexFlow

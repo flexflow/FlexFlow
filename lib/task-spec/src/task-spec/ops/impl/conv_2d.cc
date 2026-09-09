@@ -4,35 +4,21 @@
 
 namespace FlexFlow {
 
-using namespace FlexFlow::Kernels::Conv2D;
-
 static DeviceSpecificPerDeviceOpState
     init_task_impl(TaskArgumentAccessor const &acc) {
-
   device_handle_t handle = acc.get_ff_handle();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   Conv2DAttrs attrs = acc.get_op_attrs().require_conv2d();
-  auto input = acc.get_tensor<Permissions::WO>(TensorSlotName::INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
-  auto filter = acc.get_tensor<Permissions::RO>(TensorSlotName::FILTER);
-  auto filter_grad =
-      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::FILTER);
 
-  std::optional<Conv2DPerDeviceState> per_device_state = init_kernel(
+  TensorShape input_shape = acc.get_tensor_shape(TensorSlotName::INPUT);
+  TensorShape output_shape = acc.get_tensor_shape(TensorSlotName::OUTPUT);
+
+  std::optional<Conv2DPerDeviceState> per_device_state = conv_2d_init_kernel(
       /*device_type=*/kernel_device_type,
       /*handle=*/handle,
-      /*activation=*/attrs.activation,
-      /*kernel_h=*/attrs.kernel_h.int_from_positive_int(),
-      /*kernel_w=*/attrs.kernel_w.int_from_positive_int(),
-      /*groups=*/attrs.groups.int_from_positive_int(),
-      /*padding_h=*/attrs.padding_h.unwrap_nonnegative(),
-      /*padding_w=*/attrs.padding_w.unwrap_nonnegative(),
-      /*stride_h=*/attrs.stride_h.int_from_positive_int(),
-      /*stride_w=*/attrs.stride_w.int_from_positive_int(),
-      /*input=*/input,
-      /*output=*/output,
-      /*filter_ptr=*/filter.get_float_ptr(),
-      /*filter_grad_ptr=*/filter_grad.get_float_ptr());
+      /*attrs=*/attrs,
+      /*input_shape=*/input_shape,
+      /*output_shape=*/output_shape);
 
   return DeviceSpecificPerDeviceOpState{
       acc.make_device_specific(per_device_state),
@@ -43,59 +29,76 @@ static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
-  Conv2DPerDeviceState per_device_state =
-      acc.get_per_device_op_state().require_conv2d().value();
+  device_handle_t handle = acc.get_ff_handle();
+  std::optional<Conv2DPerDeviceState> per_device_state =
+      acc.get_per_device_op_state().require_conv2d();
   Conv2DAttrs attrs = acc.get_op_attrs().require_conv2d();
 
-  auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  auto filter = acc.get_tensor<Permissions::RO>(TensorSlotName::FILTER);
-  auto bias = acc.get_tensor<Permissions::RO>(TensorSlotName::BIAS);
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorR filter =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::FILTER);
+  std::optional<GenericTensorAccessorR> bias =
+      attrs.use_bias ? std::optional<GenericTensorAccessorR>{acc.get_tensor<
+                           Permissions::RO>(TensorSlotName::BIAS)}
+                     : std::nullopt;
+  GenericTensorAccessorW output =
+      acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  return profile(forward_kernel,
+  return profile(conv_2d_forward_kernel,
                  profiling,
                  kernel_device_type,
-                 "[Conv2d] forward_time = {:.2lf}ms\n",
+                 "[Conv2D] forward_time = {:.2lf}ms\n",
+                 handle,
                  per_device_state,
-                 input.get_float_ptr(),
-                 output.get_float_ptr(),
-                 filter.get_float_ptr(),
-                 bias.get_float_ptr(),
-                 attrs.activation);
+                 attrs,
+                 input,
+                 filter,
+                 bias,
+                 output);
 }
 
 static std::optional<milliseconds_t>
     backward_task_impl(TaskArgumentAccessor const &acc) {
   ProfilingSettings profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
-  Conv2DPerDeviceState per_device_state =
-      acc.get_per_device_op_state().require_conv2d().value();
+  device_handle_t handle = acc.get_ff_handle();
+  std::optional<Conv2DPerDeviceState> per_device_state =
+      acc.get_per_device_op_state().require_conv2d();
   Conv2DAttrs attrs = acc.get_op_attrs().require_conv2d();
 
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
-  auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  auto filter = acc.get_tensor<Permissions::RO>(TensorSlotName::FILTER);
-
-  auto input_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
-  auto output_grad =
-      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::OUTPUT);
-  auto filter_grad =
+  GenericTensorAccessorR input =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
+  GenericTensorAccessorW input_grad =
+      acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
+  GenericTensorAccessorR output =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR output_grad =
+      acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
+  GenericTensorAccessorR filter =
+      acc.get_tensor<Permissions::RO>(TensorSlotName::FILTER);
+  GenericTensorAccessorW filter_grad =
       acc.get_tensor_grad<Permissions::RW>(TensorSlotName::FILTER);
-  auto bias_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::BIAS);
+  std::optional<GenericTensorAccessorW> bias_grad =
+      attrs.use_bias
+          ? std::optional<GenericTensorAccessorW>{acc.get_tensor_grad<
+                Permissions::RW>(TensorSlotName::BIAS)}
+          : std::nullopt;
 
-  return profile(backward_kernel,
+  return profile(conv_2d_backward_kernel,
                  profiling,
                  kernel_device_type,
-                 "[Conv2d] backward_time = {:.2lf}ms\n",
+                 "[Conv2D] backward_time = {:.2lf}ms\n",
+                 handle,
                  per_device_state,
-                 output.get_float_ptr(),
-                 output_grad.get_float_ptr(),
-                 input.get_float_ptr(),
-                 input_grad.get_float_ptr(),
-                 filter.get_float_ptr(),
-                 filter_grad.get_float_ptr(),
-                 bias_grad.get_float_ptr(),
-                 attrs.activation);
+                 attrs,
+                 output,
+                 output_grad,
+                 input,
+                 input_grad,
+                 filter,
+                 filter_grad,
+                 bias_grad);
 }
 
 TaskImplFunction get_conv_2d_init_task_impl() {

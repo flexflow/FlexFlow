@@ -1,107 +1,111 @@
 #include "kernels/batch_norm_kernels.h"
 #include "kernels/batch_norm_kernels_cpu.h"
 #include "kernels/batch_norm_kernels_gpu.h"
+#include "utils/optional.h"
 
-namespace FlexFlow::Kernels::BatchNorm {
+namespace FlexFlow {
 
 std::optional<BatchNormPerDeviceState>
-    init_kernel(DeviceType device_type,
-                device_handle_t const &handle,
-                Allocator &allocator,
-                float *runningMean,
-                int output_n,
-                int output_c,
-                int output_h,
-                int output_w,
-                bool relu) {
+    batch_norm_init_kernel(DeviceType device_type,
+                           Allocator &allocator,
+                           BatchNormAttrs const &attrs,
+                           TensorShape const &input_shape,
+                           TensorShape const &output_shape) {
   if (device_type == DeviceType::GPU) {
-    return gpu_init_kernel(
-        /*handle=*/handle.require_for_gpu(),
+    return batch_norm_gpu_init_kernel(
         /*allocator=*/allocator,
-        /*runningMean=*/runningMean,
-        /*output_n=*/output_n,
-        /*output_c=*/output_c,
-        /*output_h=*/output_h,
-        /*output_w=*/output_w,
-        /*relu=*/relu);
+        /*attrs=*/attrs,
+        /*input_shape=*/input_shape,
+        /*output_shape=*/output_shape);
   } else {
     ASSERT(device_type == DeviceType::CPU);
-    ASSERT(handle.is_for_cpu());
     return std::nullopt;
   }
 }
 
-void forward_kernel(device_stream_t const &stream,
-                    BatchNormPerDeviceState const &per_device_state,
-                    float const *input_ptr,
-                    float *output_ptr,
-                    float const *scale_ptr,
-                    float const *bias_ptr) {
+void batch_norm_forward_kernel(
+    device_stream_t const &stream,
+    device_handle_t const &handle,
+    std::optional<BatchNormPerDeviceState> const &per_device_state,
+    BatchNormAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorR const &beta,
+    GenericTensorAccessorW const &output) {
   if (stream.is_gpu()) {
-    gpu_forward_kernel(
+    batch_norm_gpu_forward_kernel(
         /*stream=*/stream.require_gpu(),
-        /*per_device_state=*/per_device_state,
-        /*input_ptr=*/input_ptr,
-        /*output_ptr=*/output_ptr,
-        /*scale_ptr=*/scale_ptr,
-        /*bias_ptr=*/bias_ptr);
+        /*handle=*/handle.require_for_gpu(),
+        /*per_device_state=*/assert_unwrap(per_device_state),
+        /*attrs=*/attrs,
+        /*input=*/input,
+        /*gamma=*/gamma,
+        /*beta=*/beta,
+        /*output=*/output);
   } else {
     ASSERT(stream.is_cpu());
-    cpu_forward_kernel(
-        /*per_device_state=*/per_device_state,
-        /*input_ptr=*/input_ptr,
-        /*output_ptr=*/output_ptr,
-        /*scale_ptr=*/scale_ptr,
-        /*bias_ptr=*/bias_ptr);
+    ASSERT(handle.is_for_cpu());
+    ASSERT(!per_device_state.has_value());
+    batch_norm_cpu_forward_kernel(
+        /*attrs=*/attrs,
+        /*input=*/input,
+        /*gamma=*/gamma,
+        /*beta=*/beta,
+        /*output=*/output);
   }
 }
 
-void backward_kernel(device_stream_t const &stream,
-                     BatchNormPerDeviceState const &per_device_state,
-                     float const *output_ptr,
-                     float *output_grad_ptr,
-                     float const *input_ptr,
-                     float *input_grad_ptr,
-                     float const *scale_ptr,
-                     float *scale_grad_ptr,
-                     float *bias_grad_ptr,
-                     size_t numElements) {
+void batch_norm_backward_kernel(
+    device_stream_t const &stream,
+    device_handle_t const &handle,
+    std::optional<BatchNormPerDeviceState> const &per_device_state,
+    BatchNormAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad,
+    GenericTensorAccessorR const &gamma,
+    GenericTensorAccessorW const &gamma_grad,
+    GenericTensorAccessorW const &beta_grad) {
   if (stream.is_gpu()) {
-    gpu_backward_kernel(
+    batch_norm_gpu_backward_kernel(
         /*stream=*/stream.require_gpu(),
-        /*per_device_state=*/per_device_state,
-        /*output_ptr=*/output_ptr,
-        /*output_grad_ptr=*/output_grad_ptr,
-        /*input_ptr=*/input_ptr,
-        /*input_grad_ptr=*/input_grad_ptr,
-        /*scale_ptr=*/scale_ptr,
-        /*scale_grad_ptr=*/scale_grad_ptr,
-        /*bias_grad_ptr=*/bias_grad_ptr,
-        /*numElements=*/numElements);
+        /*handle=*/handle.require_for_gpu(),
+        /*per_device_state=*/assert_unwrap(per_device_state),
+        /*attrs=*/attrs,
+        /*output=*/output,
+        /*output_grad=*/output_grad,
+        /*input=*/input,
+        /*input_grad=*/input_grad,
+        /*gamma=*/gamma,
+        /*gamma_grad=*/gamma_grad,
+        /*beta_grad=*/beta_grad);
   } else {
     ASSERT(stream.is_cpu());
-    cpu_backward_kernel(
-        /*per_device_state=*/per_device_state,
-        /*output_ptr=*/output_ptr,
-        /*output_grad_ptr=*/output_grad_ptr,
-        /*input_ptr=*/input_ptr,
-        /*input_grad_ptr=*/input_grad_ptr,
-        /*scale_ptr=*/scale_ptr,
-        /*scale_grad_ptr=*/scale_grad_ptr,
-        /*bias_grad_ptr=*/bias_grad_ptr,
-        /*numElements=*/numElements);
+    ASSERT(handle.is_for_cpu());
+    ASSERT(!per_device_state.has_value());
+    batch_norm_cpu_backward_kernel(
+        /*attrs=*/attrs,
+        /*output=*/output,
+        /*output_grad=*/output_grad,
+        /*input=*/input,
+        /*input_grad=*/input_grad,
+        /*gamma=*/gamma,
+        /*gamma_grad=*/gamma_grad,
+        /*beta_grad=*/beta_grad);
   }
 }
 
-void cleanup_kernel(DeviceType device_type,
-                    Allocator &allocator,
-                    std::optional<BatchNormPerDeviceState> &per_device_state) {
+void batch_norm_cleanup_kernel(
+    DeviceType device_type,
+    Allocator &allocator,
+    std::optional<BatchNormPerDeviceState> &per_device_state) {
   if (device_type == DeviceType::GPU) {
-    gpu_cleanup_kernel(allocator, per_device_state.value());
+    batch_norm_gpu_cleanup_kernel(allocator, per_device_state.value());
   } else {
     ASSERT(device_type == DeviceType::CPU);
-    ASSERT(per_device_state == std::nullopt);
+    ASSERT(!per_device_state.has_value());
   }
 }
 
-} // namespace FlexFlow::Kernels::BatchNorm
+} // namespace FlexFlow

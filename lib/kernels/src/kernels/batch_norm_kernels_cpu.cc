@@ -1,25 +1,25 @@
 #include "kernels/batch_norm_kernels_cpu.h"
+#include "utils/exception.h"
 
-namespace FlexFlow::Kernels::BatchNorm {
+namespace FlexFlow {
 
-void cpu_forward_kernel(BatchNormPerDeviceState const &per_device_state,
-                        float const *input_ptr,
-                        float *output_ptr,
-                        float const *scale_ptr,
-                        float const *bias_ptr) {
+void batch_norm_cpu_forward_kernel(BatchNormAttrs const &attrs,
+                                   GenericTensorAccessorR const &input,
+                                   GenericTensorAccessorR const &gamma,
+                                   GenericTensorAccessorR const &beta,
+                                   GenericTensorAccessorW const &output) {
   NOT_IMPLEMENTED();
 }
 
-void cpu_backward_kernel(BatchNormPerDeviceState const &per_device_state,
-                         float const *output_ptr,
-                         float *output_grad_ptr,
-                         float const *input_ptr,
-                         float *input_grad_ptr,
-                         float const *scale_ptr,
-                         float *scale_grad_ptr,
-                         float *bias_grad_ptr,
-                         size_t numElements) {
+void batch_norm_cpu_backward_kernel(BatchNormAttrs const &attrs,
+                                    GenericTensorAccessorR const &output,
+                                    GenericTensorAccessorR const &output_grad,
+                                    GenericTensorAccessorR const &input,
+                                    GenericTensorAccessorW const &input_grad,
+                                    GenericTensorAccessorR const &gamma,
+                                    GenericTensorAccessorW const &gamma_grad,
+                                    GenericTensorAccessorW const &beta_grad) {
   NOT_IMPLEMENTED();
 }
 
-} // namespace FlexFlow::Kernels::BatchNorm
+} // namespace FlexFlow
