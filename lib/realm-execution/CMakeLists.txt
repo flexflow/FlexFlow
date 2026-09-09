@@ -1,8 +1,12 @@
 ff_add_library(
   NAME
     realm-execution
+  LANGUAGES
+    CXX
+    CUDA
   SRC_PATTERNS
     src/*.cc
+    src/*.cu
   PUBLIC_INCLUDE
     include/
   PRIVATE_INCLUDE

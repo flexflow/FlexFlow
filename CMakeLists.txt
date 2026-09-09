@@ -52,14 +52,16 @@ option(FF_BUILD_BIN_COMPILE_MODEL "build compile-model binary" ON)
 option(FF_BUILD_BIN_EXPORT_MODEL_ARCH "build export-model-arch utility" ON)
 option(FF_BUILD_BIN_RUN_MODEL "build run-model binary" ON)
 
-include(cuda)
-include(cudnn)
-include(nccl)
 if (FF_USE_CODE_COVERAGE)
   include(CodeCoverage)
   append_coverage_compiler_flags()
 endif()
 # set_property(CACHE FF_GPU_BACKEND PROPERTY STRINGS ${FF_GPU_BACKENDS})
+
+# Load after CodeCoverage because CodeCoverage blows up on NVCC compiler
+include(cuda)
+include(cudnn)
+include(nccl)
 
 include(json)
 include(expected)

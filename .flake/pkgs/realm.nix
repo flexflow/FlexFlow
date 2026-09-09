@@ -13,13 +13,13 @@ in
 
 stdenv.mkDerivation rec {
   pname = "realm";
-  version = "2026-07-01";
+  version = "2026-08-28";
 
   src = fetchFromGitHub {
     owner = "StanfordLegion";
     repo = "realm";
-    rev = "dba83452d4a211e3a0c0e5d4849c26ce7b56bba3";
-    sha256 = "sha256-dLGmUgupDX0dDErZbuP5ipj2Cwf+rOhVGC/+angRyBY=";
+    rev = "15b3e9b68b65d698d237766d37bc36522b8ecf0b";
+    sha256 = "sha256-HXNRKzOIUok8FAuhJF1sOW0+Hv7rRfRDoQNt+wAvOnc=";
   };
 
   nativeBuildInputs = [

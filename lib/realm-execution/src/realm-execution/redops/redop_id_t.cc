@@ -22,7 +22,7 @@ redop_id_t get_sum_redop_id_for_data_type(DataType dtype) {
 
 Realm::ReductionOpID
     get_realm_reduction_op_id_for_redop_id(redop_id_t redop_id) {
-  return static_cast<Realm::ReductionOpID>(redop_id);
+  return static_cast<Realm::ReductionOpID>(redop_id) + 1;
 }
 
 } // namespace FlexFlow

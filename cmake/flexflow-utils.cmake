@@ -56,6 +56,14 @@ function(ff_set_cxx_properties target)
   )
 endfunction()
 
+function(ff_set_cuda_properties target)
+  set_target_properties(${target}
+    PROPERTIES
+      CUDA_STANDARD 17
+      CUDA_STANDARD_REQUIRED YES
+  )
+endfunction()
+
 function(ff_add_library)
   ff_parse_args(
     PREFIX
@@ -63,6 +71,7 @@ function(ff_add_library)
     ARGS
       NAME
     VARIADIC_ARGS
+      LANGUAGES
       SRC_PATTERNS
       PUBLIC_INCLUDE
       PRIVATE_INCLUDE
@@ -72,7 +81,11 @@ function(ff_add_library)
       ${ARGN}
   )
 
-  project(${FF_LIBRARY_NAME})
+  if(NOT FF_LIBRARY_LANGUAGES)
+    project(${FF_LIBRARY_NAME})
+  else()
+    project(${FF_LIBRARY_NAME} LANGUAGES ${FF_LIBRARY_LANGUAGES})
+  endif()
   file(GLOB_RECURSE SRC
        CONFIGURE_DEPENDS
        LIST_DIRECTORIES False
@@ -99,6 +112,9 @@ function(ff_add_library)
   )
   define_ff_vars(${FF_LIBRARY_NAME})
   ff_set_cxx_properties(${FF_LIBRARY_NAME})
+  if(CUDA IN_LIST FF_LIBRARY_LANGUAGES)
+    ff_set_cuda_properties(${FF_LIBRARY_NAME})
+  endif()
 endfunction()
 
 function(ff_add_test_executable)
