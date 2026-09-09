@@ -78,7 +78,10 @@ DynamicOpenDataflowGraph
     result.invocations.emplace(result_inputs, result_attrs, result_outputs);
   }
 
-  return result;
+  // note: invocation ids must be computed before value ids, as computing
+  // value ids requires looking up invocation ids
+  return compute_value_ids_for_dynamic_open_dataflow_graph(
+      compute_invocation_ids_for_dynamic_open_dataflow_graph(result));
 }
 
 } // namespace FlexFlow

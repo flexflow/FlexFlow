@@ -16,6 +16,12 @@ DynamicOpenDataflowGraph make_empty_dynamic_open_dataflow_graph();
 void check_dynamic_open_dataflow_graph_is_valid(
     DynamicOpenDataflowGraph const &);
 
+DynamicOpenDataflowGraph compute_invocation_ids_for_dynamic_open_dataflow_graph(
+    DynamicOpenDataflowGraph const &);
+
+DynamicOpenDataflowGraph compute_value_ids_for_dynamic_open_dataflow_graph(
+    DynamicOpenDataflowGraph const &);
+
 nonnegative_int dynamic_graph_num_nodes(DynamicOpenDataflowGraph const &);
 
 bool full_dynamic_graph_satisfies(
