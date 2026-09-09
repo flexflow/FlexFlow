@@ -65,6 +65,7 @@ Realm::Event register_all_tasks() {
 
   std::vector<task_id_t> task_ids = {
       // Forward tasks
+      task_id_t::BATCHMATMUL_FWD_TASK_ID,
       task_id_t::BATCHNORM_FWD_TASK_ID,
       task_id_t::BROADCAST_FWD_TASK_ID,
       task_id_t::CAST_FWD_TASK_ID,
@@ -90,8 +91,10 @@ Realm::Event register_all_tasks() {
       task_id_t::SPLIT_FWD_TASK_ID,
       task_id_t::TOPK_FWD_TASK_ID,
       task_id_t::TRANSPOSE_FWD_TASK_ID,
+      task_id_t::UPSAMPLE_FWD_TASK_ID,
 
       // Backward tasks
+      task_id_t::BATCHMATMUL_BWD_TASK_ID,
       task_id_t::BATCHNORM_BWD_TASK_ID,
       task_id_t::BROADCAST_BWD_TASK_ID,
       task_id_t::CAST_BWD_TASK_ID,
@@ -117,6 +120,7 @@ Realm::Event register_all_tasks() {
       task_id_t::SPLIT_BWD_TASK_ID,
       task_id_t::TOPK_BWD_TASK_ID,
       task_id_t::TRANSPOSE_BWD_TASK_ID,
+      task_id_t::UPSAMPLE_BWD_TASK_ID,
 
       // Update tasks
       task_id_t::SGD_UPD_NCCL_TASK_ID,
