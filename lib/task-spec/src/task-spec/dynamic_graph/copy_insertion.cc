@@ -269,7 +269,6 @@ std::map<InternalDynamicSlotSite, ParallelTensorMapping>
 std::map<InternalDynamicSlotSite, ParallelTensorMapping>
     resolve_partial_tensor_mappings_from_node_mappings(
         DynamicOpenDataflowGraph const &g) {
-
   require_graph_is_ready_for_copy_insertion(g);
 
   auto slots_to_map_for_replicate =
@@ -290,7 +289,7 @@ std::map<InternalDynamicSlotSite, ParallelTensorMapping>
     {
       InternalDynamicSlotSite slot_site = get_only(slot_sites);
       ASSERT(slot_site.slot_name.slot_name == TensorSlotName::OUTPUT);
-    };
+    }
 
     return slot_sites;
   };

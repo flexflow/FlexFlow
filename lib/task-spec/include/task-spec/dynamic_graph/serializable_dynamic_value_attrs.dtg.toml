@@ -13,6 +13,7 @@ includes = [
   "<optional>",
   "task-spec/dynamic_graph/dynamic_tensor_guid_t.dtg.h",
   "op-attrs/parallel_tensor_shape.dtg.h",
+  "task-spec/dynamic_graph/subgradient_id_t.dtg.h",
   "op-attrs/parallel_tensor_space_coordinate.dtg.h",
   "pcg/machine_space_coordinate.dtg.h",
   "utils/bidict/bidict.h",
@@ -36,6 +37,10 @@ type = "std::optional<::FlexFlow::ParallelTensorShape>"
 [[fields]]
 name = "create_grad"
 type = "std::optional<bool>"
+
+[[fields]]
+name = "subgradient_id"
+type = "std::optional<::FlexFlow::subgradient_id_t>"
 
 [[fields]]
 name = "shard_coord"

@@ -21,10 +21,13 @@ LossInsertionResult perform_loss_insertion(
   DynamicValueAttrs logit_value = assert_unwrap(
       find_output_value_attrs(dg, logit_tensor, mk_dynamic_tensor_role_fwd()));
 
+  ASSERT(!logit_value.subgradient_id.has_value());
+
   DynamicValueAttrs label_value{
       /*tensor_guid=*/mk_dynamic_tensor_guid_for_loss(),
       /*parallel_tensor_shape=*/logit_value.parallel_tensor_shape,
       /*create_grad=*/false,
+      /*subgradient_id=*/std::nullopt,
       /*shard_coord=*/logit_value.shard_coord,
       /*mapping=*/std::nullopt,
       /*accessor=*/std::nullopt,
@@ -35,6 +38,7 @@ LossInsertionResult perform_loss_insertion(
       /*tensor_guid=*/logit_value.tensor_guid,
       /*parallel_tensor_shape=*/logit_value.parallel_tensor_shape,
       /*create_grad=*/logit_value.create_grad,
+      /*subgradient_id=*/std::nullopt,
       /*shard_coord=*/logit_value.shard_coord,
       /*mapping=*/std::nullopt,
       /*accessor=*/std::nullopt,

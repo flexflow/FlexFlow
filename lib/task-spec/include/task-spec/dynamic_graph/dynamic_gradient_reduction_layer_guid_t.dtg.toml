@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "dynamic_gradient_reduction_layer_guid_t"
+type = "struct"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+  "rapidcheck",
+]
+
+fields = []

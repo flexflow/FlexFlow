@@ -1,15 +1,28 @@
 #include "task-spec/dynamic_graph/pass_expansion.h"
+#include "op-attrs/tensor_slot_name.h"
 #include "task-spec/dynamic_graph/dynamic_node_invocation.h"
 #include "task-spec/dynamic_graph/dynamic_open_dataflow_graph.h"
 #include "task-spec/dynamic_graph/dynamic_tensor_role.h"
+#include "task-spec/dynamic_graph/dynamic_value_attrs.h"
 #include "task-spec/dynamic_graph/training_operation_attrs.h"
-#include "utils/containers/are_all_same.h"
+#include "utils/containers/any_of.h"
+#include "utils/containers/binary_merge_disjoint_maps.h"
+#include "utils/containers/filter.h"
 #include "utils/containers/flatmap.h"
+#include "utils/containers/generate_map.h"
 #include "utils/containers/get_only.h"
+#include "utils/containers/invert_map.h"
+#include "utils/containers/map_from_keys_and_values.h"
+#include "utils/containers/map_from_pairs.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/merge_disjoint_maps.h"
+#include "utils/containers/range.h"
 #include "utils/containers/repeat_until_converged.h"
+#include "utils/containers/set_intersection.h"
+#include "utils/containers/set_of.h"
+#include "utils/containers/slice.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/try_at.h"
 
 namespace FlexFlow {
 
@@ -27,6 +40,7 @@ void require_node_might_not_be_pass_expanded(DynamicNodeAttrs const &n) {
   }
 
   ASSERT(!n.task_type.has_value(), n);
+  ASSERT(!assert_unwrap(n.op_attrs).is_gradient_reduction());
 }
 
 void require_slot_is_not_pass_expanded(DynamicTensorSlot const &s) {
@@ -39,6 +53,7 @@ void require_value_is_pass_expanded(DynamicValueAttrs const &v) {
 
 void require_value_is_not_pass_expanded(DynamicValueAttrs const &v) {
   ASSERT(!v.role.has_value(), v);
+  ASSERT(!v.subgradient_id.has_value(), v);
 }
 
 void require_invocation_is_fully_pass_expanded(
@@ -175,6 +190,51 @@ std::set<dynamic_invocation_id_t>
   return flatmap(required_values, get_sink_invocations_for_value);
 }
 
+std::set<DynamicValueAttrs> determine_values_requiring_gradient_reduction(
+    DynamicOpenDataflowGraph const &g,
+    std::set<dynamic_invocation_id_t> const &in_bwd_pass) {
+  std::set<DynamicValueAttrs> internal_values =
+      dynamic_graph_get_internal_values(g);
+  return filter(internal_values, [&](DynamicValueAttrs const &v) {
+    std::set<InternalDynamicSlotSite> sinks =
+        dynamic_graph_find_sinks_of_value(g, v);
+    if (sinks.size() <= 1) {
+      return false;
+    }
+    return any_of(sinks, [&](InternalDynamicSlotSite const &sink_site) {
+      return in_bwd_pass.count(sink_site.invocation_id);
+    });
+  });
+}
+
+static std::map<dynamic_invocation_id_t, subgradient_id_t>
+    assign_subgradient_ids(
+        std::set<dynamic_invocation_id_t> const &invocations) {
+  const std::vector<TensorSlotName> slot_names =
+      get_variadic_inputs_slot_name_sequence();
+  ASSERT(invocations.size() <= slot_names.size());
+  return map_from_keys_and_values(
+      vector_of(invocations),
+      transform(slice(slot_names, 0, invocations.size()),
+                [](TensorSlotName const &slot_name) {
+                  return subgradient_id_t{slot_name};
+                }));
+}
+
+std::map<DynamicValueAttrs, std::map<dynamic_invocation_id_t, subgradient_id_t>>
+    compute_subgradient_ids(DynamicOpenDataflowGraph const &g,
+                            std::set<DynamicValueAttrs> const
+                                &values_requiring_gradient_reduction) {
+  return generate_map(
+      values_requiring_gradient_reduction, [&](DynamicValueAttrs const &v) {
+        return assign_subgradient_ids(
+            transform(dynamic_graph_find_sinks_of_value(g, v),
+                      [](InternalDynamicSlotSite const &sink_site) {
+                        return sink_site.invocation_id;
+                      }));
+      });
+}
+
 DynamicTensorSlot pass_expand_slot(DynamicTensorSlot const &s,
                                    FwbTensorType tensor_type) {
   require_slot_is_not_pass_expanded(s);
@@ -258,12 +318,36 @@ DynamicNodeInvocation perform_fwd_pass_expansion_for_invocation(
 }
 
 DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
-    DynamicNodeInvocation const &invocation) {
+    dynamic_invocation_id_t const &invocation_id,
+    DynamicNodeInvocation const &invocation,
+    std::map<DynamicValueAttrs,
+             std::map<dynamic_invocation_id_t, subgradient_id_t>> const
+        &subgradient_ids_by_value) {
 
   require_invocation_is_ready_for_pass_expansion(invocation);
 
   TrainingOperationAttrs op_attrs =
       assert_unwrap(invocation.node_attrs.op_attrs);
+
+  auto subgradient_id_for_value = [&](DynamicValueAttrs const &v) {
+    return transform(
+        try_at(subgradient_ids_by_value, v),
+        [&](std::map<dynamic_invocation_id_t, subgradient_id_t> const &s) {
+          return s.at(invocation_id);
+        });
+  };
+
+  auto pass_expand_value_with_subgradient = [&](DynamicValueAttrs const &v,
+                                                FwbTensorType tensor_type) {
+    std::optional<subgradient_id_t> subgradient_id =
+        subgradient_id_for_value(v);
+    DynamicValueAttrs result = pass_expand_value(v, tensor_type);
+    if (subgradient_id.has_value()) {
+      result = decide_dynamic_value_attrs_subgradient_id(
+          result, assert_unwrap(subgradient_id));
+    }
+    return result;
+  };
 
   auto to_fwd = [](DynamicTensorSlot const &k, DynamicValueAttrs const &v) {
     return std::pair{
@@ -276,10 +360,22 @@ DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
     return pass_expand_value(v, FwbTensorType::GRADIENT);
   };
 
+  auto to_grad_value_output = [&](DynamicValueAttrs const &v) {
+    return pass_expand_value_with_subgradient(v, FwbTensorType::GRADIENT);
+  };
+
   auto to_grad = [](DynamicTensorSlot const &k, DynamicValueAttrs const &v) {
     return std::pair{
         pass_expand_slot(k, FwbTensorType::GRADIENT),
         pass_expand_value(v, FwbTensorType::GRADIENT),
+    };
+  };
+
+  auto to_grad_output = [&](DynamicTensorSlot const &k,
+                            DynamicValueAttrs const &v) {
+    return std::pair{
+        pass_expand_slot(k, FwbTensorType::GRADIENT),
+        pass_expand_value_with_subgradient(v, FwbTensorType::GRADIENT),
     };
   };
 
@@ -288,7 +384,7 @@ DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
       return DynamicNodeInvocation{
           /*inputs=*/map_values(invocation.outputs, to_grad_value),
           /*node_attrs=*/invocation.node_attrs,
-          /*outputs=*/map_values(invocation.inputs, to_grad_value),
+          /*outputs=*/map_values(invocation.inputs, to_grad_value_output),
       };
     } else if (training_op_attrs_has_op_type(op_attrs,
                                              OperatorType::REPLICATE)) {
@@ -300,7 +396,7 @@ DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
           pass_expand_node(invocation.node_attrs, DynamicTaskType::BWD),
           /*outputs=*/
           {
-              transform(invocation.inputs, to_grad),
+              transform(invocation.inputs, to_grad_output),
           },
       };
     } else {
@@ -314,7 +410,7 @@ DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
           /*node_attrs=*/
           pass_expand_node(invocation.node_attrs, DynamicTaskType::BWD),
           /*outputs=*/
-          transform(invocation.inputs, to_grad),
+          transform(invocation.inputs, to_grad_output),
       };
     };
   }();
@@ -322,6 +418,119 @@ DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
   require_invocation_is_fully_pass_expanded(result);
 
   return result;
+}
+
+std::optional<DynamicNodeMapping> mapping_for_gradient_reduction(
+    DynamicOpenDataflowGraph const &g,
+    DynamicValueAttrs const &value,
+    std::map<dynamic_invocation_id_t, subgradient_id_t> const
+        &subgradient_inputs) {
+  DynamicSlotSite source_site = dynamic_graph_find_source_of_value(g, value);
+  std::set<InternalDynamicSlotSite> sink_sites =
+      dynamic_graph_find_sinks_of_value(g, value);
+
+  DynamicNodeInvocation source = dynamic_graph_get_invocation_for_id(
+      g, source_site.require_internal().invocation_id);
+
+  if (!source.node_attrs.mapping.has_value()) {
+    return std::nullopt;
+  }
+  DynamicNodeMapping source_mapping = assert_unwrap(source.node_attrs.mapping);
+
+  DynamicTensorSlot source_slot =
+      get_only(invert_map(source.outputs).at(value));
+
+  std::pair<ParallelTensorSpaceCoordinate, MachineSpaceCoordinate>
+      source_tensor_binding = get_only(get_tensor_bindings_for_slot_name(
+          source_mapping.op_task_group, source_slot.slot_name));
+
+  // For now we're going to map everything like the original source, both inputs
+  // and outputs. This means that in the presence of model parallelism we'll be
+  // potentially inducing extra copies that would otherwise be unnecessary.
+  std::set<subgradient_id_t> subgradient_ids =
+      set_of(values(subgradient_inputs));
+  std::map<TensorSlotName, ParallelTensorSpaceCoordinate> input_bindings =
+      map_from_pairs(transform(
+          subgradient_ids, [&](subgradient_id_t const &subgradient_id) {
+            return std::pair{subgradient_id.gradient_reduction_slot,
+                             source_tensor_binding.first};
+          }));
+  std::map<TensorSlotName, ParallelTensorSpaceCoordinate> output_bindings{
+      {TensorSlotName::OUTPUT, source_tensor_binding.first},
+  };
+  std::map<TensorSlotName, ParallelTensorSpaceCoordinate> bindings =
+      binary_merge_disjoint_maps(input_bindings, output_bindings);
+
+  DynamicNodeMapping result{
+      /*op_task_group=*/MappedOperatorTaskGroup{
+          bidict<MachineSpaceCoordinate, OperatorAtomicTaskShardBinding>{
+              {source_tensor_binding.second,
+               OperatorAtomicTaskShardBinding{bindings}},
+          }},
+      /*device_type=*/source_mapping.device_type};
+  return result;
+}
+
+DynamicNodeInvocation create_gradient_reduction_for_value(
+    DynamicOpenDataflowGraph const &g,
+    DynamicValueAttrs const &value,
+    std::map<dynamic_invocation_id_t, subgradient_id_t> const
+        &subgradient_inputs) {
+  DynamicSlotSite source_site = dynamic_graph_find_source_of_value(g, value);
+  std::set<InternalDynamicSlotSite> sink_sites =
+      dynamic_graph_find_sinks_of_value(g, value);
+
+  auto to_grad = [](DynamicTensorSlot const &k, DynamicValueAttrs const &v) {
+    return std::pair{
+        pass_expand_slot(k, FwbTensorType::GRADIENT),
+        pass_expand_value(v, FwbTensorType::GRADIENT),
+    };
+  };
+
+  auto to_grad_subgradient = [](DynamicTensorSlot const &k,
+                                DynamicValueAttrs const &v,
+                                subgradient_id_t const &s) {
+    return std::pair{
+        pass_expand_slot(k, FwbTensorType::GRADIENT),
+        decide_dynamic_value_attrs_subgradient_id(
+            pass_expand_value(v, FwbTensorType::GRADIENT), s),
+    };
+  };
+
+  DynamicNodeAttrs gradient_reduction_attrs{
+      /*task_type=*/DynamicTaskType::BWD,
+      /*device_ids=*/std::nullopt,
+      /*mapping=*/mapping_for_gradient_reduction(g, value, subgradient_inputs),
+      /*op_attrs=*/
+      TrainingOperationAttrs{GradientReductionAttrs{}},
+      /*layer_guid=*/
+      dynamic_layer_guid_t{dynamic_gradient_reduction_layer_guid_t{}},
+      /*per_device_op_state=*/std::nullopt,
+  };
+
+  DynamicTensorSlot output_slot{
+      /*slot_name=*/TensorSlotName::OUTPUT,
+      /*slot_tensor_role=*/std::nullopt,
+      /*task_shard=*/std::nullopt,
+  };
+
+  return DynamicNodeInvocation{
+      /*inputs=*/map_from_pairs(transform(
+          values(subgradient_inputs),
+          [&](subgradient_id_t const &subgradient_id) {
+            DynamicTensorSlot input_slot{
+                /*slot_name=*/subgradient_id.gradient_reduction_slot,
+                /*slot_tensor_role=*/std::nullopt,
+                /*task_shard=*/std::nullopt,
+            };
+            return to_grad_subgradient(input_slot, value, subgradient_id);
+          })),
+      /*node_attrs=*/gradient_reduction_attrs,
+      /*outputs=*/
+      {
+          to_grad(output_slot, value),
+      },
+  };
 }
 
 DynamicOpenDataflowGraph
@@ -332,20 +541,41 @@ DynamicOpenDataflowGraph
   std::set<dynamic_invocation_id_t> needed_in_bwd_pass =
       determine_invocations_needed_in_backward_pass_for_gradient_computation(g);
 
+  std::set<DynamicValueAttrs> values_requiring_gradient_reduction =
+      determine_values_requiring_gradient_reduction(g, needed_in_bwd_pass);
+
+  std::map<DynamicValueAttrs,
+           std::map<dynamic_invocation_id_t, subgradient_id_t>>
+      subgradient_ids_by_value =
+          compute_subgradient_ids(g, values_requiring_gradient_reduction);
+
   DynamicOpenDataflowGraph result = flatmap_dynamic_invocation_set(
       g, [&](DynamicNodeInvocation const &invocation) {
         dynamic_invocation_id_t invocation_id =
             dynamic_graph_get_id_for_invocation(g, invocation);
 
+        std::set<DynamicNodeInvocation> gradient_reductions =
+            transform(set_intersection(keys(subgradient_ids_by_value),
+                                       set_of(values(invocation.outputs))),
+                      [&](DynamicValueAttrs const &v) {
+                        return create_gradient_reduction_for_value(
+                            g, v, subgradient_ids_by_value.at(v));
+                      });
+
         if (contains(needed_in_bwd_pass, invocation_id)) {
-          return std::set{
-              perform_fwd_pass_expansion_for_invocation(invocation),
-              perform_bwd_pass_expansion_for_invocation(invocation),
-          };
+          return set_union(
+              std::set{
+                  perform_fwd_pass_expansion_for_invocation(invocation),
+                  perform_bwd_pass_expansion_for_invocation(
+                      invocation_id, invocation, subgradient_ids_by_value),
+              },
+              gradient_reductions);
         } else {
-          return std::set{
-              perform_fwd_pass_expansion_for_invocation(invocation),
-          };
+          return set_union(
+              std::set{
+                  perform_fwd_pass_expansion_for_invocation(invocation),
+              },
+              gradient_reductions);
         }
       });
 

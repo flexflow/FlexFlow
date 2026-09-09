@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "GradientReductionAttrs"
+type = "struct"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+  "rapidcheck",
+]
+
+fields = []

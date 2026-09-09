@@ -411,6 +411,144 @@ MappedParallelComputationGraph
   return mpcg;
 }
 
+MappedParallelComputationGraph
+    make_test_gradient_reduction_mpcg_for_device_type(DeviceType device_type) {
+  positive_int batch_size = 10_p;
+  positive_int data_dim = 16_p;
+  positive_int hidden_dim = 32_p;
+  positive_int output_dim = 1_p;
+
+  TensorShape output_tensor_shape = TensorShape{
+      TensorDims{FFOrdered{batch_size, output_dim}}, DataType::FLOAT};
+
+  TensorShape label_tensor_shape = TensorShape{
+      TensorDims{FFOrdered{batch_size, output_dim}}, DataType::FLOAT};
+
+  ParallelComputationGraph pcg = empty_parallel_computation_graph();
+
+  TensorShape input_tensor_shape =
+      TensorShape{TensorDims{FFOrdered{batch_size, data_dim}}, DataType::FLOAT};
+
+  ParallelLayerAddedResult inputs_layer =
+      pcg_add_input_layer(pcg, input_tensor_shape, CreateGrad::YES);
+  parallel_tensor_guid_t t_input =
+      require_only_key(inputs_layer.outputs, TensorSlotName::OUTPUT);
+
+  ParallelLayerAddedResult relu_operator_1 =
+      add_parallel_layer(pcg,
+                         make_layer_attrs(make_relu_attrs()),
+                         {
+                             {
+                                 TensorSlotName::INPUT,
+                                 t_input,
+                             },
+                         },
+                         /*weights=*/{});
+
+  parallel_tensor_guid_t t_relu_1 =
+      require_only_key(relu_operator_1.outputs, TensorSlotName::OUTPUT);
+
+  ParallelLayerAddedResult relu_operator_2 =
+      add_parallel_layer(pcg,
+                         make_layer_attrs(make_relu_attrs()),
+                         {
+                             {
+                                 TensorSlotName::INPUT,
+                                 t_relu_1,
+                             },
+                         },
+                         /*weights=*/{});
+
+  parallel_tensor_guid_t t_relu_2 =
+      require_only_key(relu_operator_2.outputs, TensorSlotName::OUTPUT);
+
+  ParallelLayerAddedResult relu_operator_3 =
+      add_parallel_layer(pcg,
+                         make_layer_attrs(make_relu_attrs()),
+                         {
+                             {
+                                 TensorSlotName::INPUT,
+                                 t_relu_1,
+                             },
+                         },
+                         /*weights=*/{});
+
+  parallel_tensor_guid_t t_relu_3 =
+      require_only_key(relu_operator_3.outputs, TensorSlotName::OUTPUT);
+
+  MachineSpaceCoordinate mc0{0_n, 0_n};
+  MachineSpaceCoordinate mc1{0_n, 1_n};
+  MachineSpaceCoordinate mc2{0_n, 2_n};
+
+  ParallelTensorSpaceCoordinate tensor_coord0{
+      /*sum_component=*/0_n,
+      /*discard_copy_component=*/0_n,
+      /*shard_component=*/FFOrdered{0_n}};
+
+  MappedParallelComputationGraph mpcg =
+      mapped_pcg_from_pcg_and_mapped_op_task_groups(
+          /*pcg=*/pcg,
+          /*mapped_op_task_groups=*/{
+              {
+                  inputs_layer.parallel_layer,
+                  MappedOperatorTaskGroup{
+                      {
+                          {
+                              mc0,
+                              OperatorAtomicTaskShardBinding{{
+                                  {TensorSlotName::OUTPUT, tensor_coord0},
+                              }},
+                          },
+                      },
+                  },
+              },
+              {
+                  relu_operator_1.parallel_layer,
+                  MappedOperatorTaskGroup{
+                      {
+                          {
+                              mc0,
+                              OperatorAtomicTaskShardBinding{{
+                                  {TensorSlotName::INPUT, tensor_coord0},
+                                  {TensorSlotName::OUTPUT, tensor_coord0},
+                              }},
+                          },
+                      },
+                  },
+              },
+              {
+                  relu_operator_2.parallel_layer,
+                  MappedOperatorTaskGroup{
+                      {
+                          {
+                              mc1,
+                              OperatorAtomicTaskShardBinding{{
+                                  {TensorSlotName::INPUT, tensor_coord0},
+                                  {TensorSlotName::OUTPUT, tensor_coord0},
+                              }},
+                          },
+                      },
+                  },
+              },
+              {
+                  relu_operator_3.parallel_layer,
+                  MappedOperatorTaskGroup{
+                      {
+                          {
+                              mc2,
+                              OperatorAtomicTaskShardBinding{{
+                                  {TensorSlotName::INPUT, tensor_coord0},
+                                  {TensorSlotName::OUTPUT, tensor_coord0},
+                              }},
+                          },
+                      },
+                  },
+              },
+          });
+
+  return mpcg;
+}
+
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("RealmBackend e2e Training (CPU Model Parallelism)") {
     std::vector<char *> fake_args =
@@ -532,6 +670,60 @@ TEST_SUITE(FF_TEST_SUITE) {
             perform_all_passes_for_pcg_instance(
                 /*instance=*/pcg_instance,
                 /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
+                /*device_handle=*/device_handle);
+          }
+        });
+    result.wait();
+  }
+
+  TEST_CASE("RealmBackend e2e Training Gradient Reduction Op (CPU Model "
+            "Parallelism)") {
+    std::vector<char *> fake_args =
+        make_fake_realm_args(/*num_cpus=*/3_p, /*num_gpus=*/0_n);
+    int fake_argc = fake_args.size();
+    char **fake_argv = fake_args.data();
+
+    RealmManager manager = RealmManager{&fake_argc, &fake_argv};
+    ControllerTaskResult result =
+        manager.start_controller([](RealmContext &ctx) {
+          Allocator allocator = ctx.get_current_device_allocator();
+
+          MappedParallelComputationGraph mpcg =
+              make_test_gradient_reduction_mpcg_for_device_type(
+                  DeviceType::CPU);
+
+          std::map<DynamicValueAttrs, DynamicTensorAccessor> input_tensors;
+
+          OptimizerAttrs optimizer_attrs = OptimizerAttrs{
+              SGDOptimizerAttrs{
+                  /*lr=*/0.001,
+                  /*momentum=*/0.9,
+                  /*nesterov=*/false,
+                  /*weight_decay=*/0.001,
+              },
+          };
+
+          DistributedFfHandle device_handle = create_distributed_ff_handle(
+              ctx,
+              /*workSpaceSize=*/1024 * 1024,
+              /*allowTensorOpMathConversion=*/true);
+
+          PCGInstance pcg_instance = create_pcg_instance(
+              /*ctx=*/ctx,
+              /*mpcg=*/mpcg,
+              /*optimizer=*/optimizer_attrs,
+              /*loss=*/std::nullopt,
+              /*input_tensors=*/input_tensors,
+              /*profiling_settings=*/ProfilingSettings{0, 0},
+              /*device_handle=*/device_handle,
+              /*device_type=*/DeviceType::CPU);
+
+          // begin training loop
+          int num_epochs = 1;
+          for (int i = 0; i < num_epochs; i++) {
+            perform_all_passes_for_pcg_instance(
+                /*instance=*/pcg_instance,
+                /*profiling_settings=*/ProfilingSettings{0, 0},
                 /*device_handle=*/device_handle);
           }
         });
@@ -667,6 +859,61 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
             perform_all_passes_for_pcg_instance(
                 /*instance=*/pcg_instance,
                 /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
+                /*device_handle=*/device_handle);
+          }
+        });
+    result.wait();
+  }
+
+  TEST_CASE("RealmBackend e2e Training Gradient Reduction Op (GPU Model "
+            "Parallelism)") {
+    std::vector<char *> fake_args =
+        make_fake_realm_args(/*num_cpus=*/1_p, /*num_gpus=*/3_n);
+    int fake_argc = fake_args.size();
+    char **fake_argv = fake_args.data();
+
+    RealmManager manager = RealmManager{&fake_argc, &fake_argv};
+
+    ControllerTaskResult result =
+        manager.start_controller([](RealmContext &ctx) {
+          Allocator allocator = ctx.get_current_device_allocator();
+
+          MappedParallelComputationGraph mpcg =
+              make_test_gradient_reduction_mpcg_for_device_type(
+                  DeviceType::GPU);
+
+          OptimizerAttrs optimizer_attrs = OptimizerAttrs{
+              SGDOptimizerAttrs{
+                  /*lr=*/0.001,
+                  /*momentum=*/0.9,
+                  /*nesterov=*/false,
+                  /*weight_decay=*/0.001,
+              },
+          };
+
+          std::map<DynamicValueAttrs, DynamicTensorAccessor> input_tensors;
+
+          DistributedFfHandle device_handle = create_distributed_ff_handle(
+              ctx,
+              /*workSpaceSize=*/1024 * 1024,
+              /*allowTensorOpMathConversion=*/true);
+
+          PCGInstance pcg_instance = create_pcg_instance(
+              /*ctx=*/ctx,
+              /*mpcg=*/mpcg,
+              /*optimizer=*/optimizer_attrs,
+              /*loss=*/std::nullopt,
+              /*input_tensors=*/input_tensors,
+              /*profiling_settings=*/ProfilingSettings{0, 0},
+              /*device_handle=*/device_handle,
+              /*device_type=*/DeviceType::GPU);
+
+          // begin training loop
+          int num_epochs = 1;
+          for (int i = 0; i < num_epochs; i++) {
+            perform_all_passes_for_pcg_instance(
+                /*instance=*/pcg_instance,
+                /*profiling_settings=*/ProfilingSettings{0, 0},
                 /*device_handle=*/device_handle);
           }
         });

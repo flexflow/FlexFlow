@@ -341,6 +341,7 @@ static Realm::Event spawn_dynamic_node_invocation(
       },
       [&](LossAttrs const &) { return spawn_task(); },
       [&](CopyAttrs const &) { return issue_copy(); },
+      [&](GradientReductionAttrs const &) { return issue_reduction(); },
   });
 }
 
