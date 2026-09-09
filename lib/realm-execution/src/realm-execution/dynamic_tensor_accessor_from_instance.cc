@@ -15,6 +15,7 @@ static DeviceType infer_device_type_from_memory_and_processor(
       device_type = DeviceType::CPU;
       break;
     case Realm::Memory::GPU_FB_MEM:
+    case Realm::Memory::GPU_DYNAMIC_MEM:
       // Only accessible on GPU
       device_type = DeviceType::GPU;
       break;
