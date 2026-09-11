@@ -161,7 +161,6 @@ TEST_SUITE(FF_TEST_SUITE) {
             },
             /*input_tensors=*/input_tensors,
             /*allocator=*/allocator,
-            /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
             /*device_handle=*/ff_handle,
             /*global_device_id=*/global_device_id);
 
@@ -335,7 +334,6 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
             },
             /*input_tensors=*/input_tensors,
             /*allocator=*/allocator,
-            /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
             /*device_handle=*/ff_handle,
             /*device_idx=*/device_idx);
 
@@ -459,7 +457,6 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
               },
               /*input_tensors=*/input_tensors,
               /*allocator=*/allocator,
-              /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
               /*device_handle=*/ff_handle,
               /*device_idx=*/device_idx);
 

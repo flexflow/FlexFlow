@@ -3,7 +3,6 @@
 
 #include "kernels/allocation.h"
 #include "kernels/device_handle_t.dtg.h"
-#include "kernels/profiling_settings.dtg.h"
 #include "pcg/mapped_parallel_computation_graph/mapped_parallel_computation_graph.dtg.h"
 #include "pcg/optimizer_attrs.dtg.h"
 #include "realm-execution/distributed_ff_handle.h"
@@ -84,7 +83,6 @@ PCGInstance create_pcg_instance(
     OptimizerAttrs const &optimizer_attrs,
     std::optional<ParallelLossConfig> const &loss,
     std::map<DynamicValueAttrs, DynamicTensorAccessor> const &input_tensors,
-    ProfilingSettings const &profiling_settings,
     DistributedFfHandle const &ff_handle,
     DeviceType device_type);
 
@@ -100,28 +98,20 @@ PCGInstance create_pcg_instance(
  * \relates PCGInstance
  */
 std::map<dynamic_layer_guid_t, Realm::Event>
-    perform_all_passes_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &ff_handle);
+    perform_all_passes_for_pcg_instance(PCGInstance &pcg_instance,
+                                        DistributedFfHandle const &ff_handle);
 
 std::map<dynamic_layer_guid_t, Realm::Event>
-    perform_forward_pass_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &ff_handle);
+    perform_forward_pass_for_pcg_instance(PCGInstance &pcg_instance,
+                                          DistributedFfHandle const &ff_handle);
 
 std::map<dynamic_layer_guid_t, Realm::Event>
     perform_backward_pass_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &ff_handle);
+        PCGInstance &pcg_instance, DistributedFfHandle const &ff_handle);
 
 std::map<dynamic_layer_guid_t, Realm::Event>
-    perform_update_pass_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &ff_handle);
+    perform_update_pass_for_pcg_instance(PCGInstance &pcg_instance,
+                                         DistributedFfHandle const &ff_handle);
 
 } // namespace FlexFlow
 

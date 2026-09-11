@@ -46,31 +46,30 @@ ComputationGraphInstance create_computation_graph_instance(
     std::optional<LossConfig> const &loss,
     std::map<DynamicValueAttrs, DynamicTensorAccessor> const &input_tensors,
     Allocator &allocator,
-    ProfilingSettings const &profiling_settings,
     device_handle_t const &device_handle,
     global_device_id_t global_device_id);
 
 std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
     perform_all_passes_for_computation_graph_instance(
         ComputationGraphInstance &instance,
-        ProfilingSettings const &profiling_settings,
+        std::optional<ProfilingSettings> const &profiling_settings,
         device_handle_t const &ff_handle,
         global_device_id_t global_device_id);
 std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
     perform_forward_pass_for_computation_graph_instance(
         ComputationGraphInstance const &instance,
-        ProfilingSettings const &profiling_settings,
+        std::optional<ProfilingSettings> const &profiling_settings,
         device_handle_t const &ff_handle,
         global_device_id_t global_device_id);
 std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
     perform_backward_pass_for_computation_graph_instance(
         ComputationGraphInstance const &instance,
-        ProfilingSettings const &profiling_settings,
+        std::optional<ProfilingSettings> const &profiling_settings,
         device_handle_t const &ff_handle,
         global_device_id_t global_device_id);
 void perform_update_pass_for_computation_graph_instance(
     ComputationGraphInstance &instance,
-    ProfilingSettings const &profiling_settings,
+    std::optional<ProfilingSettings> const &profiling_settings,
     device_handle_t const &ff_handle,
     global_device_id_t global_device_id);
 

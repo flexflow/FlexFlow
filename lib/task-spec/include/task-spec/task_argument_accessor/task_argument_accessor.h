@@ -16,7 +16,7 @@
 namespace FlexFlow {
 
 struct TaskArgumentAccessor {
-  ProfilingSettings get_profiling_settings() const;
+  std::optional<ProfilingSettings> get_profiling_settings() const;
   device_handle_t get_ff_handle() const;
   DeviceType get_kernel_device_type() const;
   PCGOperatorAttrs get_op_attrs() const;

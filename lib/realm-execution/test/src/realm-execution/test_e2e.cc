@@ -449,7 +449,6 @@ TEST_SUITE(FF_TEST_SUITE) {
               /*loss_mapping=*/cfg.loss_mapping,
           },
           /*input_tensors=*/input_tensors,
-          /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
           /*device_handle=*/device_handle,
           /*device_type=*/DeviceType::CPU);
 
@@ -460,7 +459,6 @@ TEST_SUITE(FF_TEST_SUITE) {
       for (int i = 0; i < num_epochs; i++) {
         perform_all_passes_for_pcg_instance(
             /*instance=*/pcg_instance,
-            /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
             /*device_handle=*/device_handle);
         loss_values.push_back(copy_tensor_accessor_r(
             dynamic_tensor_accessor_from_instance(
@@ -522,7 +520,6 @@ TEST_SUITE(FF_TEST_SUITE) {
               /*optimizer=*/optimizer_attrs,
               /*loss=*/std::nullopt,
               /*input_tensors=*/input_tensors,
-              /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
               /*device_handle=*/device_handle,
               /*device_type=*/DeviceType::CPU);
 
@@ -531,7 +528,6 @@ TEST_SUITE(FF_TEST_SUITE) {
           for (int i = 0; i < num_epochs; i++) {
             perform_all_passes_for_pcg_instance(
                 /*instance=*/pcg_instance,
-                /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
                 /*device_handle=*/device_handle);
           }
         });
@@ -579,7 +575,6 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                   /*loss_mapping=*/cfg.loss_mapping,
               },
               /*input_tensors=*/input_tensors,
-              /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
               /*device_handle=*/device_handle,
               /*device_type=*/DeviceType::GPU);
 
@@ -590,7 +585,6 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
           for (int i = 0; i < num_epochs; i++) {
             perform_all_passes_for_pcg_instance(
                 /*instance=*/pcg_instance,
-                /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
                 /*device_handle=*/device_handle);
 
             loss_values.push_back(copy_tensor_accessor_r(
@@ -657,7 +651,6 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
               /*optimizer=*/optimizer_attrs,
               /*loss=*/std::nullopt,
               /*input_tensors=*/input_tensors,
-              /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
               /*device_handle=*/device_handle,
               /*device_type=*/DeviceType::GPU);
 
@@ -666,7 +659,6 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
           for (int i = 0; i < num_epochs; i++) {
             perform_all_passes_for_pcg_instance(
                 /*instance=*/pcg_instance,
-                /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
                 /*device_handle=*/device_handle);
           }
         });

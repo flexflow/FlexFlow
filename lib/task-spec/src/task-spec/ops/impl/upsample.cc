@@ -8,7 +8,7 @@ static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
 
   UpsampleAttrs attrs = acc.get_op_attrs().require_upsample();
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
   auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
@@ -24,7 +24,7 @@ static std::optional<milliseconds_t>
 
 static std::optional<milliseconds_t>
     backward_task_impl(TaskArgumentAccessor const &acc) {
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
   UpsampleAttrs attrs = acc.get_op_attrs().require_upsample();

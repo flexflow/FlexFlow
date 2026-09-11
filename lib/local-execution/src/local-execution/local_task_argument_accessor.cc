@@ -10,7 +10,7 @@ LocalTaskArgumentAccessor::LocalTaskArgumentAccessor(
     Allocator const &allocator,
     std::map<TaskTensorParameter, DynamicTensorAccessor> const
         &tensor_slots_backing,
-    ProfilingSettings const &profiling_settings,
+    std::optional<ProfilingSettings> const &profiling_settings,
     device_handle_t const &ff_handle,
     std::optional<PCGOperatorAttrs> const &op_attrs,
     std::optional<LossAttrs> const &loss_attrs,
@@ -73,7 +73,8 @@ GenericTensorAccessor
   }
 }
 
-ProfilingSettings LocalTaskArgumentAccessor::get_profiling_settings() const {
+std::optional<ProfilingSettings>
+    LocalTaskArgumentAccessor::get_profiling_settings() const {
   return this->profiling_settings;
 }
 

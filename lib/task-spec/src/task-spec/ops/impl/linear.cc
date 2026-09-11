@@ -46,7 +46,7 @@ static std::optional<milliseconds_t>
 
   LinearAttrs attrs = acc.get_op_attrs().require_linear();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   std::optional<LinearPerDeviceState> per_device_state =
       acc.get_per_device_op_state().require_linear();
 
@@ -83,7 +83,7 @@ static std::optional<milliseconds_t>
 
   LinearAttrs attrs = acc.get_op_attrs().require_linear();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   std::optional<LinearPerDeviceState> per_device_state =
       acc.get_per_device_op_state().require_linear();
 

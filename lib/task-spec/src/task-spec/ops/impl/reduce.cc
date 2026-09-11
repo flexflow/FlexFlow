@@ -39,7 +39,7 @@ static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
   ReducePerDeviceState per_device_state =
       acc.get_per_device_op_state().require_reduce().value();
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
   auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
@@ -58,7 +58,7 @@ static std::optional<milliseconds_t>
     backward_task_impl(TaskArgumentAccessor const &acc) {
   ReducePerDeviceState per_device_state =
       acc.get_per_device_op_state().require_reduce().value();
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
   auto input_grad = acc.get_tensor_grad<Permissions::WO>(TensorSlotName::INPUT);

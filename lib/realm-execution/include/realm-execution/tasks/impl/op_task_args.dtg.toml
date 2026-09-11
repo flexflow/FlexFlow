@@ -4,7 +4,6 @@ type = "struct"
 features = []
 
 includes = [
-  "kernels/profiling_settings.dtg.h",
   "pcg/optimizer_attrs.dtg.h",
   "realm-execution/device_specific_managed_per_device_ff_handle.h",
   "realm-execution/device_specific_ptr.h",
@@ -24,10 +23,6 @@ type = "::FlexFlow::TensorInstanceBacking"
 [[fields]]
 name = "device_state"
 type = "std::optional<::FlexFlow::DeviceSpecificPtr<::FlexFlow::PerDeviceOpState>>"
-
-[[fields]]
-name = "profiling_settings"
-type = "::FlexFlow::ProfilingSettings"
 
 [[fields]]
 name = "device_handle"

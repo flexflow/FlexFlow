@@ -52,7 +52,6 @@ void per_device_op_state_init_task_body(void const *args,
   DynamicNodeInvocation result_invocation =
       initialize_node(invocation,
                       ctx.get_current_device_allocator(),
-                      task_args.profiling_settings,
                       device_handle,
                       task_args.optimizer_attrs,
                       ctx.get_current_global_device_id());
@@ -77,7 +76,6 @@ std::optional<Realm::Event> spawn_per_device_op_state_init_task(
     Realm::Processor target_proc,
     DynamicNodeInvocation const &invocation,
     TensorInstanceBacking const &tensor_backing,
-    ProfilingSettings const &profiling_settings,
     DeviceSpecificPtr<ManagedPerDeviceFFHandle> const &device_handle,
     OptimizerAttrs const &optimizer_attrs,
     DeviceSpecificPtr<PerDeviceOpState> *result_ptr,
@@ -85,7 +83,6 @@ std::optional<Realm::Event> spawn_per_device_op_state_init_task(
   PerDeviceOpStateInitTaskArgs task_args{
       invocation,
       tensor_backing,
-      profiling_settings,
       device_handle,
       optimizer_attrs,
       ctx.get_current_processor(),

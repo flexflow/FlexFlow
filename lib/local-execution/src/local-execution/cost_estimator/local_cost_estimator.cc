@@ -122,7 +122,6 @@ OpCostMetrics LocalCostEstimator::estimate_cost(
       /*loss=*/std::nullopt,
       /*input_tensors=*/{},
       /*allocator=*/allocator,
-      /*profiling_settings=*/this->profiling_settings,
       /*device_handle=*/this->device_handle,
       /*device_idx=*/this->device_idx);
 

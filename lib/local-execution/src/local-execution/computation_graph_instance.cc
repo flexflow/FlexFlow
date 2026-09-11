@@ -64,7 +64,6 @@ ComputationGraphInstance create_computation_graph_instance(
     std::optional<LossConfig> const &loss,
     std::map<DynamicValueAttrs, DynamicTensorAccessor> const &input_tensors,
     Allocator &allocator,
-    ProfilingSettings const &profiling_settings,
     device_handle_t const &device_handle,
     global_device_id_t device_idx) {
   DynamicOpenDataflowGraph dg = make_dynamic_open_dataflow_graph_from_cg(cg);
@@ -89,12 +88,8 @@ ComputationGraphInstance create_computation_graph_instance(
         return get_loss_tensor_accessor(dg, lgv);
       });
 
-  dg = perform_per_device_op_state_initialization(dg,
-                                                  allocator,
-                                                  profiling_settings,
-                                                  device_handle,
-                                                  optimizer_attrs,
-                                                  device_idx);
+  dg = perform_per_device_op_state_initialization(
+      dg, allocator, device_handle, optimizer_attrs, device_idx);
 
   // Compute the topological ordering of the graph
   auto [kwarg_graph, node_map] =
@@ -112,7 +107,7 @@ static std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
         std::vector<DynamicNodeInvocation> const &invocations,
         Allocator &allocator,
         OptimizerAttrs const &optimizer_attrs,
-        ProfilingSettings const &profiling_settings,
+        std::optional<ProfilingSettings> const &profiling_settings,
         device_handle_t const &ff_handle,
         global_device_id_t device_idx) {
   return map_from_pairs(
@@ -137,7 +132,7 @@ static std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
 std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
     perform_all_passes_for_computation_graph_instance(
         ComputationGraphInstance &instance,
-        ProfilingSettings const &profiling_settings,
+        std::optional<ProfilingSettings> const &profiling_settings,
         device_handle_t const &ff_handle,
         global_device_id_t device_idx) {
   std::vector<DynamicNodeInvocation> execution_order =
@@ -157,7 +152,7 @@ std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
 std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
     perform_forward_pass_for_computation_graph_instance(
         ComputationGraphInstance const &instance,
-        ProfilingSettings const &profiling_settings,
+        std::optional<ProfilingSettings> const &profiling_settings,
         device_handle_t const &ff_handle,
         global_device_id_t device_idx) {
   std::vector<DynamicNodeInvocation> execution_order =
@@ -180,7 +175,7 @@ std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
 std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
     perform_backward_pass_for_computation_graph_instance(
         ComputationGraphInstance const &instance,
-        ProfilingSettings const &profiling_settings,
+        std::optional<ProfilingSettings> const &profiling_settings,
         device_handle_t const &ff_handle,
         global_device_id_t device_idx) {
   std::vector<DynamicNodeInvocation> execution_order =
@@ -202,7 +197,7 @@ std::map<dynamic_layer_guid_t, std::optional<milliseconds_t>>
 
 void perform_update_pass_for_computation_graph_instance(
     ComputationGraphInstance &instance,
-    ProfilingSettings const &profiling_settings,
+    std::optional<ProfilingSettings> const &profiling_settings,
     device_handle_t const &ff_handle,
     global_device_id_t device_idx) {
   std::vector<DynamicNodeInvocation> execution_order =

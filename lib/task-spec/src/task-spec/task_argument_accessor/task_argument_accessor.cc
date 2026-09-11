@@ -2,7 +2,8 @@
 
 namespace FlexFlow {
 
-ProfilingSettings TaskArgumentAccessor::get_profiling_settings() const {
+std::optional<ProfilingSettings>
+    TaskArgumentAccessor::get_profiling_settings() const {
   return this->ptr->get_profiling_settings();
 }
 

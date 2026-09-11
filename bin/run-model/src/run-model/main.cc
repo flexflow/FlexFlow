@@ -101,7 +101,6 @@ int main(int argc, char **argv) {
             /*optimizer=*/optimizer_attrs,
             /*loss=*/std::nullopt,
             /*input_tensors=*/input_tensors,
-            /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
             /*device_handle=*/device_handle,
             /*device_type=*/DeviceType::GPU);
 
@@ -110,7 +109,6 @@ int main(int argc, char **argv) {
         for (int i = 0; i < num_epochs; i++) {
           perform_all_passes_for_pcg_instance(
               /*instance=*/pcg_instance,
-              /*profiling_settings=*/ProfilingSettings{0_n, 1_p},
               /*device_handle=*/device_handle);
         }
       });

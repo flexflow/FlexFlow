@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_REALM_EXECUTION_INCLUDE_REALM_EXECUTION_TASKS_IMPL_OP_TASK_H
 #define _FLEXFLOW_LIB_REALM_EXECUTION_INCLUDE_REALM_EXECUTION_TASKS_IMPL_OP_TASK_H
 
-#include "kernels/profiling_settings.dtg.h"
 #include "op-attrs/ops/loss_functions/loss_attrs.dtg.h"
 #include "pcg/optimizer_attrs.dtg.h"
 #include "realm-execution/device_specific_managed_per_device_ff_handle.h"
@@ -57,7 +56,6 @@ Realm::Event spawn_op_task(
     DynamicNodeInvocation const &invocation,
     TensorInstanceBacking const &tensor_backing,
     std::optional<DeviceSpecificPtr<PerDeviceOpState>> const &device_state,
-    ProfilingSettings const &profiling_settings,
     DeviceSpecificPtr<ManagedPerDeviceFFHandle> const &device_handle,
     std::optional<OptimizerAttrs> const &optimizer_attrs,
     Realm::Event precondition);

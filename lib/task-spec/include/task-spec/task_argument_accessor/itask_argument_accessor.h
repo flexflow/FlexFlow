@@ -28,7 +28,7 @@ struct ITaskArgumentAccessor {
   virtual GenericTensorAccessor get_tensor(TaskTensorParameter,
                                            Permissions priv) const = 0;
 
-  virtual ProfilingSettings get_profiling_settings() const = 0;
+  virtual std::optional<ProfilingSettings> get_profiling_settings() const = 0;
   virtual device_handle_t get_ff_handle() const = 0;
   virtual DeviceType get_kernel_device_type() const = 0;
   virtual PCGOperatorAttrs get_op_attrs() const = 0;

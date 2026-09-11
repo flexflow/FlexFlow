@@ -23,7 +23,7 @@ namespace FlexFlow {
 
 static void backward_task_impl(TaskArgumentAccessor const &acc) {
   LossAttrs attrs = acc.get_loss_attrs();
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
   auto logit_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::LOGIT);

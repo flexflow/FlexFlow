@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_REALM_EXECUTION_INCLUDE_REALM_EXECUTION_TASKS_IMPL_PER_DEVICE_OP_STATE_INIT_TASK_H
 #define _FLEXFLOW_LIB_REALM_EXECUTION_INCLUDE_REALM_EXECUTION_TASKS_IMPL_PER_DEVICE_OP_STATE_INIT_TASK_H
 
-#include "kernels/profiling_settings.dtg.h"
 #include "pcg/optimizer_attrs.dtg.h"
 #include "realm-execution/device_specific_managed_per_device_ff_handle.h"
 #include "realm-execution/device_specific_ptr.h"
@@ -36,7 +35,6 @@ std::optional<Realm::Event> spawn_per_device_op_state_init_task(
     Realm::Processor target_proc,
     DynamicNodeInvocation const &invocation,
     TensorInstanceBacking const &tensor_backing,
-    ProfilingSettings const &profiling_settings,
     DeviceSpecificPtr<ManagedPerDeviceFFHandle> const &device_handle,
     OptimizerAttrs const &optimizer_attrs,
     DeviceSpecificPtr<PerDeviceOpState> *result_ptr,

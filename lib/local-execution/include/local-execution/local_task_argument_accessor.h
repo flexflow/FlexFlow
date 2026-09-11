@@ -15,7 +15,7 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
       Allocator const &allocator,
       std::map<TaskTensorParameter, DynamicTensorAccessor> const
           &tensor_slots_backing,
-      ProfilingSettings const &profiling_settings,
+      std::optional<ProfilingSettings> const &profiling_settings,
       device_handle_t const &ff_handle,
       std::optional<PCGOperatorAttrs> const &op_attrs,
       std::optional<LossAttrs> const &loss_attrs,
@@ -31,7 +31,7 @@ struct LocalTaskArgumentAccessor : public ITaskArgumentAccessor {
   GenericTensorAccessor get_tensor(TaskTensorParameter slot,
                                    Permissions priv) const override;
 
-  ProfilingSettings get_profiling_settings() const override;
+  std::optional<ProfilingSettings> get_profiling_settings() const override;
   device_handle_t get_ff_handle() const override;
   DeviceType get_kernel_device_type() const override;
   PCGOperatorAttrs get_op_attrs() const override;
@@ -47,7 +47,7 @@ private:
   Allocator allocator;
   std::map<TaskTensorParameter, DynamicTensorAccessor> tensor_slots_backing;
 
-  ProfilingSettings profiling_settings;
+  std::optional<ProfilingSettings> profiling_settings;
   device_handle_t ff_handle;
   DeviceType kernel_device_type;
   std::optional<PCGOperatorAttrs> op_attrs;

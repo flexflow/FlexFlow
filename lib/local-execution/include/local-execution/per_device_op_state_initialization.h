@@ -12,13 +12,11 @@ namespace FlexFlow {
 
 bool no_nodes_are_initialized(DynamicOpenDataflowGraph const &g);
 
-DynamicNodeInvocation
-    initialize_node(DynamicNodeInvocation const &i,
-                    Allocator &allocator,
-                    ProfilingSettings const &profiling_settings,
-                    device_handle_t const &device_handle,
-                    OptimizerAttrs const &optimizer_attrs,
-                    global_device_id_t device_idx);
+DynamicNodeInvocation initialize_node(DynamicNodeInvocation const &i,
+                                      Allocator &allocator,
+                                      device_handle_t const &device_handle,
+                                      OptimizerAttrs const &optimizer_attrs,
+                                      global_device_id_t device_idx);
 
 /**
  * @brief Initialize all operators and save the per-device op state
@@ -26,7 +24,6 @@ DynamicNodeInvocation
 DynamicOpenDataflowGraph perform_per_device_op_state_initialization(
     DynamicOpenDataflowGraph const &,
     Allocator &allocator,
-    ProfilingSettings const &profiling_settings,
     device_handle_t const &device_handle,
     OptimizerAttrs const &optimizer_attrs,
     global_device_id_t device_idx);

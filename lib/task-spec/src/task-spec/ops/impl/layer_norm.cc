@@ -36,7 +36,7 @@ static std::optional<milliseconds_t>
   auto gamma = acc.get_tensor<Permissions::RW>(TensorSlotName::GAMMA);
   auto beta = acc.get_tensor<Permissions::RW>(TensorSlotName::BETA);
 
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   LayerNormPerDeviceState state =
       acc.get_per_device_op_state().require_layer_norm().value();
@@ -63,7 +63,7 @@ static std::optional<milliseconds_t>
   auto output_grad =
       acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
 
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   LayerNormPerDeviceState state =
       acc.get_per_device_op_state().require_layer_norm().value();

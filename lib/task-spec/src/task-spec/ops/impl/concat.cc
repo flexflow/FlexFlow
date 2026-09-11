@@ -33,7 +33,7 @@ static std::vector<TensorSlotName> get_input_slots(ConcatAttrs const &attrs) {
 
 static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   ConcatAttrs attrs = acc.get_op_attrs().require_concat();
 
@@ -60,7 +60,7 @@ static std::optional<milliseconds_t>
 
 static std::optional<milliseconds_t>
     backward_task_impl(TaskArgumentAccessor const &acc) {
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   ConcatAttrs attrs = acc.get_op_attrs().require_concat();
 

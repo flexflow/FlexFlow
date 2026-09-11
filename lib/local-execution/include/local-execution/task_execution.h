@@ -12,7 +12,7 @@ namespace FlexFlow {
 TaskArgumentAccessor make_task_argument_accessor_for_invocation(
     DynamicNodeInvocation const &invocation,
     Allocator &allocator,
-    ProfilingSettings const &profiling_settings,
+    std::optional<ProfilingSettings> const &profiling_settings,
     device_handle_t const &ff_handle,
     std::optional<PerDeviceOpState> const &per_device_op_state,
     std::optional<OptimizerAttrs> const &optimizer_attrs,
@@ -21,7 +21,7 @@ TaskArgumentAccessor make_task_argument_accessor_for_invocation(
 std::optional<milliseconds_t> execute_dynamic_node_invocation(
     DynamicNodeInvocation const &invocation,
     Allocator &allocator,
-    ProfilingSettings const &profiling_settings,
+    std::optional<ProfilingSettings> const &profiling_settings,
     device_handle_t const &ff_handle,
     std::optional<PerDeviceOpState> const &per_device_op_state,
     std::optional<OptimizerAttrs> const &optimizer_attrs,

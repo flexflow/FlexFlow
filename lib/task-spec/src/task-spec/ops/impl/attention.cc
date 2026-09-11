@@ -89,7 +89,7 @@ static std::optional<milliseconds_t>
   auto weight = acc.get_tensor<Permissions::RO>(TensorSlotName::WEIGHT);
   auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   std::optional<MHAPerDeviceState> per_device_state =
       acc.get_per_device_op_state().require_mha();
@@ -121,7 +121,7 @@ static std::optional<milliseconds_t>
   auto key_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::KEY);
   auto value_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::VALUE);
 
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
   std::optional<MHAPerDeviceState> per_device_state =
       acc.get_per_device_op_state().require_mha();

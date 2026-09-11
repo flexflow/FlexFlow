@@ -18,13 +18,11 @@ bool no_nodes_are_initialized(DynamicOpenDataflowGraph const &g) {
       }));
 }
 
-DynamicNodeInvocation
-    initialize_node(DynamicNodeInvocation const &i,
-                    Allocator &allocator,
-                    ProfilingSettings const &profiling_settings,
-                    device_handle_t const &device_handle,
-                    OptimizerAttrs const &optimizer_attrs,
-                    global_device_id_t device_idx) {
+DynamicNodeInvocation initialize_node(DynamicNodeInvocation const &i,
+                                      Allocator &allocator,
+                                      device_handle_t const &device_handle,
+                                      OptimizerAttrs const &optimizer_attrs,
+                                      global_device_id_t device_idx) {
   if (!i.node_attrs.op_attrs.has_value() ||
       !i.node_attrs.op_attrs.value().is_pcg_op()) {
     return i;
@@ -40,7 +38,7 @@ DynamicNodeInvocation
       make_task_argument_accessor_for_invocation(
           /*invocation=*/i,
           /*allocator=*/allocator,
-          /*profiling_settings=*/profiling_settings,
+          /*profiling_settings=*/std::nullopt,
           /*ff_handle=*/device_handle,
           /*per_device_op_state=*/std::nullopt,
           /*optimizer_attrs=*/optimizer_attrs,
@@ -58,7 +56,6 @@ DynamicNodeInvocation
 DynamicOpenDataflowGraph perform_per_device_op_state_initialization(
     DynamicOpenDataflowGraph const &dg,
     Allocator &allocator,
-    ProfilingSettings const &profiling_settings,
     device_handle_t const &device_handle,
     OptimizerAttrs const &optimizer_attrs,
     global_device_id_t device_idx) {
@@ -66,12 +63,8 @@ DynamicOpenDataflowGraph perform_per_device_op_state_initialization(
   ASSERT(no_nodes_are_initialized(dg));
   DynamicOpenDataflowGraph result = transform_dynamic_invocation_set(
       dg, [&](DynamicNodeInvocation const &invocation) {
-        return initialize_node(invocation,
-                               allocator,
-                               profiling_settings,
-                               device_handle,
-                               optimizer_attrs,
-                               device_idx);
+        return initialize_node(
+            invocation, allocator, device_handle, optimizer_attrs, device_idx);
       });
 
   return result;

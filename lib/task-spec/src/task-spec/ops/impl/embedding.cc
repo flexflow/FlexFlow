@@ -12,7 +12,7 @@ static std::optional<milliseconds_t>
   auto weight = acc.get_tensor<Permissions::RO>(TensorSlotName::WEIGHT);
   auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   EmbeddingAttrs attrs = acc.get_op_attrs().require_embedding();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
@@ -39,7 +39,7 @@ static std::optional<milliseconds_t>
   auto weight_grad =
       acc.get_tensor_grad<Permissions::RW>(TensorSlotName::WEIGHT);
 
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   EmbeddingAttrs attrs = acc.get_op_attrs().require_embedding();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 

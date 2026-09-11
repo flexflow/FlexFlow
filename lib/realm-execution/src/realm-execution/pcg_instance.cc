@@ -86,7 +86,6 @@ PCGInstance create_pcg_instance(
     OptimizerAttrs const &optimizer_attrs,
     std::optional<ParallelLossConfig> const &loss,
     std::map<DynamicValueAttrs, DynamicTensorAccessor> const &input_tensors,
-    ProfilingSettings const &profiling_settings,
     DistributedFfHandle const &device_handle,
     DeviceType device_type) {
 
@@ -151,7 +150,6 @@ PCGInstance create_pcg_instance(
           ctx,
           dg,
           tensor_instance_backing,
-          profiling_settings,
           device_handle,
           optimizer_attrs,
           ctx.get_outstanding_events());
@@ -268,7 +266,6 @@ static Realm::Event spawn_dynamic_node_invocation(
     TensorInstanceBacking const &tensor_instance_backing,
     PerDeviceOpStateBacking const &device_state_backing,
     OptimizerAttrs const &optimizer_attrs,
-    ProfilingSettings const &profiling_settings,
     DistributedFfHandle const &device_handle) {
   Realm::Event precondition = Realm::Event::merge_events(
       Realm::Event::merge_events(input_dependencies),
@@ -286,7 +283,6 @@ static Realm::Event spawn_dynamic_node_invocation(
                          invocation,
                          tensor_backing,
                          try_at(device_state_backing.backing, invocation),
-                         profiling_settings,
                          device_handle.at(target_proc),
                          optimizer_attrs,
                          precondition);
@@ -351,7 +347,6 @@ static std::map<dynamic_layer_guid_t, Realm::Event>
         TensorInstanceBacking const &tensor_instance_backing,
         PerDeviceOpStateBacking const &device_state_backing,
         OptimizerAttrs const &optimizer_attrs,
-        ProfilingSettings const &profiling_settings,
         DistributedFfHandle const &device_handle) {
   // For simplicity we'll track a dependency on all outstanding operations up to
   // this point. This will create an effective barrier between phases.
@@ -377,7 +372,6 @@ static std::map<dynamic_layer_guid_t, Realm::Event>
                                           tensor_instance_backing,
                                           device_state_backing,
                                           optimizer_attrs,
-                                          profiling_settings,
                                           device_handle);
 
         for (DynamicValueAttrs const &value : values(invocation.inputs)) {
@@ -392,9 +386,7 @@ static std::map<dynamic_layer_guid_t, Realm::Event>
 
 std::map<dynamic_layer_guid_t, Realm::Event>
     perform_all_passes_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &device_handle) {
+        PCGInstance &pcg_instance, DistributedFfHandle const &device_handle) {
   std::vector<DynamicNodeInvocation> execution_order =
       pcg_instance.get_execution_order();
   std::map<dynamic_layer_guid_t, Realm::Event> result =
@@ -405,7 +397,6 @@ std::map<dynamic_layer_guid_t, Realm::Event>
           pcg_instance.get_tensor_instance_backing(),
           /*device_state_backing=*/pcg_instance.get_device_state_backing(),
           /*optimizer_attrs=*/pcg_instance.get_optimizer_attrs(),
-          /*profiling_settings=*/profiling_settings,
           /*device_handle=*/device_handle);
   pcg_instance.update_optimizer_attrs_for_next_iter();
   return result;
@@ -413,9 +404,7 @@ std::map<dynamic_layer_guid_t, Realm::Event>
 
 std::map<dynamic_layer_guid_t, Realm::Event>
     perform_forward_pass_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &device_handle) {
+        PCGInstance &pcg_instance, DistributedFfHandle const &device_handle) {
   std::vector<DynamicNodeInvocation> execution_order =
       filter(pcg_instance.get_execution_order(),
              [](DynamicNodeInvocation const &invocation) {
@@ -430,15 +419,12 @@ std::map<dynamic_layer_guid_t, Realm::Event>
       /*tensor_instance_backing=*/pcg_instance.get_tensor_instance_backing(),
       /*device_state_backing=*/pcg_instance.get_device_state_backing(),
       /*optimizer_attrs=*/pcg_instance.get_optimizer_attrs(),
-      /*profiling_settings=*/profiling_settings,
       /*device_handle=*/device_handle);
 }
 
 std::map<dynamic_layer_guid_t, Realm::Event>
     perform_backward_pass_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &device_handle) {
+        PCGInstance &pcg_instance, DistributedFfHandle const &device_handle) {
   std::vector<DynamicNodeInvocation> execution_order =
       filter(pcg_instance.get_execution_order(),
              [](DynamicNodeInvocation const &invocation) {
@@ -453,15 +439,12 @@ std::map<dynamic_layer_guid_t, Realm::Event>
       /*tensor_instance_backing=*/pcg_instance.get_tensor_instance_backing(),
       /*device_state_backing=*/pcg_instance.get_device_state_backing(),
       /*optimizer_attrs=*/pcg_instance.get_optimizer_attrs(),
-      /*profiling_settings=*/profiling_settings,
       /*device_handle=*/device_handle);
 }
 
 std::map<dynamic_layer_guid_t, Realm::Event>
     perform_update_pass_for_pcg_instance(
-        PCGInstance &pcg_instance,
-        ProfilingSettings const &profiling_settings,
-        DistributedFfHandle const &device_handle) {
+        PCGInstance &pcg_instance, DistributedFfHandle const &device_handle) {
   std::vector<DynamicNodeInvocation> execution_order =
       filter(pcg_instance.get_execution_order(),
              [](DynamicNodeInvocation const &invocation) {
@@ -478,7 +461,6 @@ std::map<dynamic_layer_guid_t, Realm::Event>
           pcg_instance.get_tensor_instance_backing(),
           /*device_state_backing=*/pcg_instance.get_device_state_backing(),
           /*optimizer_attrs=*/pcg_instance.get_optimizer_attrs(),
-          /*profiling_settings=*/profiling_settings,
           /*device_handle=*/device_handle);
   pcg_instance.update_optimizer_attrs_for_next_iter();
   return result;

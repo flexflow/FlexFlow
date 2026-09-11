@@ -9,7 +9,6 @@ features = [
 ]
 
 includes = [
-  "kernels/profiling_settings.dtg.h",
   "pcg/optimizer_attrs.dtg.h",
   "realm-execution/tasks/serializer/serializable_device_specific_ptr.dtg.h",
   "realm-execution/tasks/serializer/serializable_realm_processor.dtg.h",
@@ -25,10 +24,6 @@ type = "::FlexFlow::SerializableDynamicNodeInvocation"
 [[fields]]
 name = "tensor_backing"
 type = "::FlexFlow::SerializableTensorInstanceBacking"
-
-[[fields]]
-name = "profiling_settings"
-type = "::FlexFlow::ProfilingSettings"
 
 [[fields]]
 name = "device_handle"

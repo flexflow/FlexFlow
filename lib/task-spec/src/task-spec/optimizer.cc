@@ -12,7 +12,7 @@ static void sgd_update_task_impl(TaskArgumentAccessor const &acc) {
   auto weight_grad =
       acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
   auto weight = acc.get_tensor<Permissions::RW>(TensorSlotName::OUTPUT);
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
   ASSERT(weight.shape == weight_grad.shape);
@@ -61,7 +61,7 @@ static void adam_update_task_impl(TaskArgumentAccessor const &acc) {
   auto m_tensor = acc.get_optimizer_tensor<Permissions::RW>(
       TensorSlotName::WEIGHT, OptimizerSlotName::ADAM_M);
 
-  ProfilingSettings profiling = acc.get_profiling_settings();
+  std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
   ASSERT(weight.shape == weight_grad.shape);
