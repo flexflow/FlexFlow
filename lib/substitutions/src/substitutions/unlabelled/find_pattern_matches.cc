@@ -63,9 +63,10 @@ static std::optional<UnlabelledKwargDataflowGraphPatternMatch>
       get_inputs_to_pattern_node(pattern, pattern_node);
   std::set<PatternInput> pattern_graph_inputs = get_pattern_inputs(pattern);
 
-  ASSERT(set_of(values(pattern_node_inputs)) ==
-         transform(pattern_graph_inputs,
-                   [](PatternInput const &i) { return PatternValue{i}; }));
+  DEBUG_ASSERT(set_of(values(pattern_node_inputs)) ==
+               transform(pattern_graph_inputs, [](PatternInput const &i) {
+                 return PatternValue{i};
+               }));
 
   std::map<TensorSlotName, OpenKwargDataflowValue<int, TensorSlotName>>
       graph_node_inputs =
@@ -99,7 +100,7 @@ static std::optional<UnlabelledKwargDataflowGraphPatternMatch>
 
   match.input_assignment = input_assignment.l_to_r();
 
-  ASSERT(unlabelled_pattern_does_match(
+  DEBUG_ASSERT(unlabelled_pattern_does_match(
       pattern, graph, match, additional_criterion));
 
   return match;

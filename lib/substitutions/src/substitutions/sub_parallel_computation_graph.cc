@@ -159,7 +159,9 @@ SubParallelComputationGraphData
                                      TensorSlotName>
       raw_data = get_labelled_open_kwarg_dataflow_graph_data(pcg.raw_graph);
 
+#ifndef NDEBUG
   require_labelled_open_kwarg_dataflow_graph_data_is_valid(raw_data);
+#endif
 
   return SubParallelComputationGraphData{
       map_keys(raw_data.node_data,

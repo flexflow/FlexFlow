@@ -195,15 +195,14 @@ bool unlabelled_pattern_does_match(
     UnlabelledKwargDataflowGraphPatternMatch const &match,
     MatchAdditionalCriterion const &additional_criterion,
     std::set<StandardPatternEdge> const &hint_edges) {
-  std::set<OpenKwargDataflowValue<int, TensorSlotName>>
-      matched_by_pattern_inputs = set_of(values(match.input_assignment));
 
-  ASSERT(left_entries(match.node_assignment) == get_pattern_nodes(pattern));
-  ASSERT(
+  DEBUG_ASSERT(left_entries(match.node_assignment) ==
+               get_pattern_nodes(pattern));
+  DEBUG_ASSERT(
       is_subseteq_of(right_entries(match.node_assignment), get_nodes(graph)));
-  ASSERT(keys(match.input_assignment) == get_pattern_inputs(pattern));
-  ASSERT(is_subseteq_of(matched_by_pattern_inputs,
-                        get_all_open_kwarg_dataflow_values(graph)));
+  DEBUG_ASSERT(keys(match.input_assignment) == get_pattern_inputs(pattern));
+  DEBUG_ASSERT(is_subseteq_of(set_of(values(match.input_assignment)),
+                              get_all_open_kwarg_dataflow_values(graph)));
 
   std::set<Node> subgraph_nodes = match.node_assignment.right_values();
 
@@ -247,15 +246,19 @@ bool unlabelled_pattern_does_match(
   OpenKwargDataflowGraphView<int, TensorSlotName> matched_subgraph =
       subgraph_result.graph;
 
-  std::set<OpenKwargDataflowValue<int, TensorSlotName>>
-      full_values_split_by_subgraph =
-          left_entries(subgraph_result.full_graph_values_to_subgraph_inputs);
+#ifndef NDEBUG
+  {
+    std::set<OpenKwargDataflowValue<int, TensorSlotName>>
+        full_values_split_by_subgraph =
+            left_entries(subgraph_result.full_graph_values_to_subgraph_inputs);
 
-  ASSERT(right_entries(match.node_assignment) == get_nodes(matched_subgraph));
-  ASSERT(is_subseteq_of(full_values_split_by_subgraph,
-                        get_all_open_kwarg_dataflow_values(graph)),
-         full_values_split_by_subgraph,
-         get_all_open_kwarg_dataflow_values(graph));
+    ASSERT(right_entries(match.node_assignment) == get_nodes(matched_subgraph));
+    ASSERT(is_subseteq_of(full_values_split_by_subgraph,
+                          get_all_open_kwarg_dataflow_values(graph)),
+           full_values_split_by_subgraph,
+           get_all_open_kwarg_dataflow_values(graph));
+  }
+#endif
 
   MatchAdditionalCriterion through_subgraph_operation =
       MatchAdditionalCriterion{

@@ -44,10 +44,16 @@ SubParallelComputationGraph apply_substitution_from_output_result(
 
   SubParallelComputationGraphData output_graph_data =
       get_sub_pcg_data(substitution_output_graph);
+
+#ifndef NDEBUG
   require_sub_parallel_computation_graph_data_is_valid(output_graph_data);
+#endif
 
   SubParallelComputationGraphData pre_data = get_sub_pcg_data(spcg);
+
+#ifndef NDEBUG
   require_sub_parallel_computation_graph_data_is_valid(pre_data);
+#endif
 
   std::set<parallel_layer_guid_t> pre_nodes = keys(pre_data.node_data);
   std::set<parallel_layer_guid_t> matched_nodes =

@@ -190,15 +190,15 @@ budget = 8_200_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_medium"
-budget = 66_000_000
+budget = 15_000_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_small"
-budget = 2_800_000
+budget = 1_800_000
 
 [[benchmarks.substitutions]]
 name = "apply_substitution"
-budget = 35_000_000
+budget = 27_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_split_test"
