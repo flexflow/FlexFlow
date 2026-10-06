@@ -8,11 +8,7 @@ namespace FlexFlow {
 
 template <typename L, typename R>
 std::set<R> right_entries(bidict<L, R> const &b) {
-  std::set<R> result;
-  for (auto const &[_, r] : b) {
-    result.insert(r);
-  }
-  return result;
+  return b.right_values();
 }
 
 } // namespace FlexFlow
