@@ -190,11 +190,11 @@ budget = 8_200_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_medium"
-budget = 115_000_000
+budget = 66_000_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_small"
-budget = 3_000_000
+budget = 2_800_000
 
 [[benchmarks.substitutions]]
 name = "apply_substitution"

@@ -39,6 +39,37 @@ std::set<PatternInput> get_pattern_inputs(UnlabelledGraphPattern const &p) {
       [](KwargDataflowGraphInput<int> const &i) { return PatternInput{i}; });
 }
 
+std::set<StandardPatternEdge>
+    get_pattern_edges_across_topological_split(UnlabelledGraphPattern const &p,
+                                               PatternSplit const &s) {
+  std::set<Node> src_nodes =
+      transform(s.first, [](PatternNode const &n) { return n.raw_node; });
+  std::set<Node> dst_nodes =
+      transform(s.second, [](PatternNode const &n) { return n.raw_node; });
+
+  OpenKwargDataflowEdgeQuery q = OpenKwargDataflowEdgeQuery{
+      /*input_edge_query=*/kwarg_dataflow_input_edge_query_none<
+          int,
+          TensorSlotName>(),
+      /*standard_edge_query=*/
+      KwargDataflowEdgeQuery<TensorSlotName>{
+          /*src_nodes=*/query_set<Node>::match_values_in(src_nodes),
+          /*src_slots=*/query_set<TensorSlotName>::matchall(),
+          /*dst_nodes=*/query_set<Node>::match_values_in(dst_nodes),
+          /*dst_slots=*/query_set<TensorSlotName>::matchall(),
+      },
+  };
+
+  /* TODO(@lockshaw)(#pr):
+   * debug assert that the edges are in fact one directional
+   */
+
+  return transform(p.raw_graph.query_edges(q),
+                   [](OpenKwargDataflowEdge<int, TensorSlotName> const &e) {
+                     return StandardPatternEdge{e.require_internal_edge()};
+                   });
+}
+
 std::set<PatternEdge> get_pattern_edges(UnlabelledGraphPattern const &p) {
   return transform(get_all_open_kwarg_dataflow_edges(p.raw_graph),
                    pattern_edge_from_raw_open_dataflow_edge);

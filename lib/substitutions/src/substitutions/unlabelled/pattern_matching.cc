@@ -182,7 +182,19 @@ bool unlabelled_pattern_does_match(
     OpenKwargDataflowGraphView<int, TensorSlotName> const &graph,
     UnlabelledKwargDataflowGraphPatternMatch const &match,
     MatchAdditionalCriterion const &additional_criterion) {
+  return unlabelled_pattern_does_match(pattern,
+                                       graph,
+                                       match,
+                                       additional_criterion,
+                                       std::set<StandardPatternEdge>{});
+}
 
+bool unlabelled_pattern_does_match(
+    UnlabelledGraphPattern const &pattern,
+    OpenKwargDataflowGraphView<int, TensorSlotName> const &graph,
+    UnlabelledKwargDataflowGraphPatternMatch const &match,
+    MatchAdditionalCriterion const &additional_criterion,
+    std::set<StandardPatternEdge> const &hint_edges) {
   std::set<OpenKwargDataflowValue<int, TensorSlotName>>
       matched_by_pattern_inputs = set_of(values(match.input_assignment));
 
@@ -192,6 +204,43 @@ bool unlabelled_pattern_does_match(
   ASSERT(keys(match.input_assignment) == get_pattern_inputs(pattern));
   ASSERT(is_subseteq_of(matched_by_pattern_inputs,
                         get_all_open_kwarg_dataflow_values(graph)));
+
+  std::set<Node> subgraph_nodes = match.node_assignment.right_values();
+
+  // TODO(@lockshaw)(#pr): maybe clean this up
+  OpenKwargDataflowEdgeQuery<int, TensorSlotName>
+      subgraph_interior_edges_query =
+          OpenKwargDataflowEdgeQuery<int, TensorSlotName>{
+              KwargDataflowInputEdgeQuery<int, TensorSlotName>{
+                  /*srcs=*/query_set<int>::match_none(),
+                  /*dst_nodes=*/query_set<Node>::match_none(),
+                  /*dst_slots=*/query_set<TensorSlotName>::match_none(),
+              },
+              KwargDataflowEdgeQuery<TensorSlotName>{
+                  /*srcs=*/query_set<Node>::match_values_in(subgraph_nodes),
+                  /*src_slots=*/query_set<TensorSlotName>::matchall(),
+                  /*dsts=*/query_set<Node>::match_values_in(subgraph_nodes),
+                  /*dst_slots=*/query_set<TensorSlotName>::matchall(),
+              },
+          };
+
+  std::set<KwargDataflowEdge<TensorSlotName>> subgraph_interior_edges =
+      transform(graph.query_edges(subgraph_interior_edges_query),
+                [](OpenKwargDataflowEdge<int, TensorSlotName> const &e) {
+                  return e.require_internal_edge();
+                });
+
+  for (StandardPatternEdge const &e : hint_edges) {
+    KwargDataflowEdge<TensorSlotName> concrete_edge = e.raw_edge;
+    concrete_edge.src.node =
+        match.node_assignment.at_l(PatternNode{concrete_edge.src.node});
+    concrete_edge.dst.node =
+        match.node_assignment.at_l(PatternNode{concrete_edge.dst.node});
+
+    if (!contains(subgraph_interior_edges, concrete_edge)) {
+      return false;
+    }
+  }
 
   OpenKwargDataflowSubgraphResult<int, TensorSlotName> subgraph_result =
       subgraph_matched(graph, match);

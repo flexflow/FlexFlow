@@ -144,6 +144,8 @@ std::vector<UnlabelledKwargDataflowGraphPatternMatch>
     }
   } else {
     PatternSplit split = find_even_split(pattern);
+    std::set<StandardPatternEdge> split_edges =
+        get_pattern_edges_across_topological_split(pattern, split);
     PatternSplitResult subpatterns = apply_split(pattern, split);
     std::vector<UnlabelledKwargDataflowGraphPatternMatch> prefix_matches =
         find_unlabelled_pattern_matches(
@@ -171,8 +173,11 @@ std::vector<UnlabelledKwargDataflowGraphPatternMatch>
                 subpatterns.full_pattern_values_to_subpattern_1_inputs,
                 subpatterns.full_pattern_values_to_subpattern_2_inputs);
         if (unsplit.has_value() &&
-            unlabelled_pattern_does_match(
-                pattern, graph, unsplit.value(), additional_criterion)) {
+            unlabelled_pattern_does_match(pattern,
+                                          graph,
+                                          unsplit.value(),
+                                          additional_criterion,
+                                          split_edges)) {
           matches.push_back(unsplit.value());
         }
       }
