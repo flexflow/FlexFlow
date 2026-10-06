@@ -17,6 +17,7 @@ template bidict<OpenKwargDataflowValue<GraphInputName, SlotName>,
     get_full_kwarg_dataflow_graph_values_to_subgraph_inputs(
         OpenKwargDataflowGraphView<GraphInputName, SlotName> const &,
         std::set<Node> const &,
+        std::set<OpenKwargDataflowEdge<GraphInputName, SlotName>> const &,
         std::function<GraphInputName()> const &);
 
 template OpenKwargDataflowGraphData<GraphInputName, SlotName>
@@ -24,6 +25,7 @@ template OpenKwargDataflowGraphData<GraphInputName, SlotName>
         OpenKwargDataflowGraphView<GraphInputName, SlotName> const &,
         std::set<Node> const &,
         bidict<OpenKwargDataflowValue<GraphInputName, SlotName>,
-               KwargDataflowGraphInput<GraphInputName>> const &);
+               KwargDataflowGraphInput<GraphInputName>> const &,
+        std::set<OpenKwargDataflowEdge<GraphInputName, SlotName>> const &);
 
 } // namespace FlexFlow
