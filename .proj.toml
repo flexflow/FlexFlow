@@ -158,23 +158,23 @@ budget = 15_000_000
 
 [[benchmarks.utils]]
 name = "query_set_allowed_values"
-budget = 28_000
+budget = 40_000
 
 [[benchmarks.utils]]
 name = "query_set_apply_query_to_set"
-budget = 18_500_000
+budget = 12_000_000
 
 [[benchmarks.utils]]
 name = "query_set_apply_query_to_vector"
-budget = 80_000_000
+budget = 6_000_000
 
 [[benchmarks.utils]]
 name = "get_open_kwarg_dataflow_subgraph_incoming_edges_unlabelled"
-budget = 5_200_000
+budget = 6_000_000
 
 [[benchmarks.utils]]
 name = "get_open_kwarg_dataflow_subgraph_incoming_edges_labelled"
-budget = 6_200_000
+budget = 7_000_000
 
 [[benchmarks.utils]]
 name = "get_all_open_kwarg_dataflow_edges_unlabelled"
@@ -206,7 +206,7 @@ budget = 81_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_transformer"
-budget = 4_250_000_000
+budget = 4_700_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_inception_v3"

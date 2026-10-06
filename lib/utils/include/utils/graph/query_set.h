@@ -14,6 +14,7 @@
 #include "utils/fmt/set.h"
 #include "utils/hash-utils.h"
 #include "utils/hash/set.h"
+#include "utils/hash/tuple.h"
 #include "utils/json/optional.h"
 #include "utils/optional.h"
 #include <optional>
@@ -29,6 +30,7 @@ struct query_set {
     std::optional<std::set<T>> query_val = std::nullopt;
     return query_set<T>{
         query_val,
+        false,
     };
   }
 
@@ -37,12 +39,21 @@ struct query_set {
 
     return query_set<T>{
         std::optional<std::set<T>>{to_match},
+        false,
     };
   }
 
   static query_set<T> match_values_in(std::set<T> const &values) {
     return query_set<T>{
         std::optional<std::set<T>>{values},
+        false,
+    };
+  }
+
+  static query_set<T> match_except_values_in(std::set<T> const &values) {
+    return query_set<T>{
+        std::optional<std::set<T>>{values},
+        true,
     };
   }
 
@@ -50,6 +61,12 @@ struct query_set {
     std::set<T> vals = {val};
 
     return query_set<T>::match_values_in(vals);
+  }
+
+  static query_set<T> match_except_single_value(T const &val) {
+    std::set<T> vals = {val};
+
+    return query_set<T>::match_except_values_in(vals);
   }
 
   friend bool operator==(query_set const &lhs, query_set const &rhs) {
@@ -64,29 +81,75 @@ struct query_set {
     return lhs.query < rhs.query;
   }
 
-  friend bool is_matchall(query_set const &q) {
-    return !q.query.has_value();
-  }
-
   friend std::set<T> const &allowed_values(query_set const &q) {
-    return assert_unwrap(q.value());
+    ASSERT(!q.is_negated());
+    return assert_unwrap(q.query);
   }
 
-  std::optional<std::set<T>> const &value() const {
+  friend std::set<T> const &disallowed_values(query_set const &q) {
+    ASSERT(q.is_negated());
+    return assert_unwrap(q.query);
+  }
+
+  friend bool is_matchnone(query_set const &q) {
+    if (q.is_negated()) {
+      return !q.query.has_value();
+    } else {
+      return q.query.has_value() && allowed_values(q).empty();
+    }
+  }
+
+  friend bool is_matchall(query_set const &q) {
+    if (q.is_negated()) {
+      return q.query.has_value() && disallowed_values(q).empty();
+    } else {
+      return !q.query.has_value();
+    }
+  }
+
+  bool is_negated() const {
+    return this->m_negated;
+  }
+
+  query_set<T> negated() const {
+    return query_set<T>{
+        this->query,
+        !this->m_negated,
+    };
+  }
+
+  std::optional<std::set<T>> const &raw_query() const {
     return this->query;
   }
 
 private:
-  explicit query_set(std::optional<std::set<T>> const &query) : query(query) {}
+  explicit query_set(std::optional<std::set<T>> const &query, bool negated)
+      : query(query), m_negated(negated) {}
 
 private:
   std::optional<std::set<T>> query;
+  bool m_negated;
+
+private:
+  std::tuple<decltype(query) const &, decltype(m_negated) const &> tie() const {
+    return std::tie(this->query, this->m_negated);
+  }
+
+  friend struct ::std::hash<query_set>;
 };
 
 template <typename T>
 std::string format_as(query_set<T> const &q) {
   if (is_matchall(q)) {
     return "(all)";
+  }
+
+  if (is_matchnone(q)) {
+    return "(none)";
+  }
+
+  if (q.is_negated()) {
+    return fmt::format(FMT_STRING("query_set(not {})"), disallowed_values(q));
   } else {
     return fmt::format(FMT_STRING("query_set({})"), allowed_values(q));
   }
@@ -102,21 +165,56 @@ query_set<T> matchall() {
 
 template <typename T>
 bool includes(query_set<T> const &q, T const &v) {
-  return is_matchall(q) || contains(allowed_values(q), v);
+  if (is_matchall(q)) {
+    return true;
+  }
+
+  if (is_matchnone(q)) {
+    return false;
+  }
+
+  if (q.is_negated()) {
+    return !contains(disallowed_values(q), v);
+  } else {
+    return contains(allowed_values(q), v);
+  }
 }
 
 template <typename T, typename C>
 std::set<T> apply_query(query_set<T> const &q, C const &c) {
-  return apply_query(q, set_of(c));
-}
-
-template <typename T>
-std::set<T> apply_query(query_set<T> const &q, std::set<T> const &c) {
   if (is_matchall(q)) {
-    return c;
+    return set_of(c);
   }
 
-  return set_intersection(allowed_values(q), c);
+  if (is_matchnone(q)) {
+    return std::set<T>{};
+  }
+
+  if (q.is_negated()) {
+    std::set<T> const &disallowed = disallowed_values(q);
+
+    std::set<T> result;
+
+    std::set_difference(c.cbegin(),
+                        c.cend(),
+                        disallowed.cbegin(),
+                        disallowed.cend(),
+                        std::inserter(result, result.begin()));
+
+    return result;
+  } else {
+    std::set<T> const &allowed = allowed_values(q);
+
+    std::set<T> result;
+
+    std::set_intersection(c.cbegin(),
+                          c.cend(),
+                          allowed.cbegin(),
+                          allowed.cend(),
+                          std::inserter(result, result.begin()));
+
+    return result;
+  }
 }
 
 template <typename C,
@@ -126,6 +224,7 @@ std::map<K, V> query_keys(query_set<K> const &q, C const &m) {
   if (is_matchall(q)) {
     return m;
   }
+
   return filter_keys(m, [&](K const &key) { return includes(q, key); });
 }
 
@@ -148,7 +247,7 @@ query_set<T> query_intersection(query_set<T> const &lhs,
     return lhs;
   } else {
     return query_set<T>::match_values_in(
-        set_of(set_intersection(allowed_values(lhs), allowed_values(rhs))));
+        set_intersection(allowed_values(lhs), allowed_values(rhs)));
   }
 }
 
@@ -165,7 +264,8 @@ query_set<T> query_union(query_set<T> const &lhs, query_set<T> const &rhs) {
 template <typename T>
 void to_json(nlohmann::json &j, query_set<T> const &q) {
   j["__type"] = "query_set";
-  j["value"] = q.value();
+  j["query"] = q.raw_query();
+  j["is_negated"] = q.is_negated();
 }
 
 } // namespace FlexFlow
@@ -175,7 +275,7 @@ namespace std {
 template <typename T>
 struct hash<::FlexFlow::query_set<T>> {
   size_t operator()(::FlexFlow::query_set<T> const &q) const {
-    return ::FlexFlow::get_std_hash(q.value());
+    return ::FlexFlow::get_std_hash(q.tie());
   }
 };
 
