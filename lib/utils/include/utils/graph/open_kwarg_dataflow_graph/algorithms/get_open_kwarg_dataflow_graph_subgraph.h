@@ -146,10 +146,10 @@ OpenKwargDataflowGraphData<GraphInputName, SlotName>
       set_of(values(full_graph_values_to_subgraph_inputs));
 
   std::set<KwargDataflowOutput<SlotName>> subgraph_outputs =
-      filter(g.query_outputs(kwarg_dataflow_output_query_all<SlotName>()),
-             [&](KwargDataflowOutput<SlotName> const &o) {
-               return contains(subgraph_nodes, o.node);
-             });
+      g.query_outputs(KwargDataflowOutputQuery<SlotName>{
+          /*nodes=*/query_set<Node>::match_values_in(subgraph_nodes),
+          /*output_idxs=*/query_set<SlotName>::matchall(),
+      });
 
   return OpenKwargDataflowGraphData<GraphInputName, SlotName>{
       /*nodes=*/subgraph_nodes,
