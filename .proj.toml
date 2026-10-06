@@ -142,11 +142,11 @@ budget = 7_000_000
 
 [[benchmarks.utils]]
 name = "try_at_for_map"
-budget = 900_000
+budget = 750_000
 
 [[benchmarks.utils]]
 name = "try_at_for_unordered_map"
-budget = 230_000
+budget = 175_000
 
 [[benchmarks.utils]]
 name = "try_merge_nondisjoint_maps"
