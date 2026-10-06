@@ -24,13 +24,19 @@ static std::optional<UnlabelledKwargDataflowGraphPatternMatch>
     get_candidate_singleton_match(
         UnlabelledGraphPattern const &pattern,
         OpenKwargDataflowGraphView<int, TensorSlotName> const &graph,
-        Node const &graph_node) {
+        Node const &graph_node,
+        MatchAdditionalCriterion const &additional_criterion) {
   ASSERT(is_singleton_pattern(pattern));
 
   PatternNode pattern_node = get_only(get_pattern_nodes(pattern));
 
+  if (!additional_criterion.node_criterion(pattern_node, graph_node)) {
+    return std::nullopt;
+  }
+
   UnlabelledKwargDataflowGraphPatternMatch match =
       empty_unlabelled_pattern_match();
+
   match.node_assignment.equate(pattern_node, graph_node);
 
   std::map<TensorSlotName, PatternValue> pattern_outputs =
@@ -44,6 +50,13 @@ static std::optional<UnlabelledKwargDataflowGraphPatternMatch>
 
   if (keys(pattern_outputs) != keys(graph_outputs)) {
     return std::nullopt;
+  }
+
+  for (auto const &[slot_name, pattern_val] : pattern_outputs) {
+    if (!additional_criterion.value_criterion(pattern_val,
+                                              graph_outputs.at(slot_name))) {
+      return std::nullopt;
+    }
   }
 
   std::map<TensorSlotName, PatternValue> pattern_node_inputs =
@@ -60,6 +73,13 @@ static std::optional<UnlabelledKwargDataflowGraphPatternMatch>
 
   if (keys(graph_node_inputs) != keys(pattern_node_inputs)) {
     return std::nullopt;
+  }
+
+  for (auto const &[slot_name, pattern_val] : pattern_node_inputs) {
+    if (!additional_criterion.value_criterion(
+            pattern_val, graph_node_inputs.at(slot_name))) {
+      return std::nullopt;
+    }
   }
 
   ManyToOne<TensorSlotName, PatternInput> m_pattern_node_inputs =
@@ -80,7 +100,7 @@ static std::optional<UnlabelledKwargDataflowGraphPatternMatch>
   match.input_assignment = input_assignment.l_to_r();
 
   ASSERT(unlabelled_pattern_does_match(
-      pattern, graph, match, match_additional_crition_always_true()));
+      pattern, graph, match, additional_criterion));
 
   return match;
 }
@@ -116,10 +136,9 @@ std::vector<UnlabelledKwargDataflowGraphPatternMatch>
   if (is_singleton_pattern(pattern)) {
     for (Node const &graph_node : get_nodes(graph)) {
       std::optional<UnlabelledKwargDataflowGraphPatternMatch> candidate =
-          get_candidate_singleton_match(pattern, graph, graph_node);
-      if (candidate.has_value() &&
-          unlabelled_pattern_does_match(
-              pattern, graph, candidate.value(), additional_criterion)) {
+          get_candidate_singleton_match(
+              pattern, graph, graph_node, additional_criterion);
+      if (candidate.has_value()) {
         matches.push_back(candidate.value());
       }
     }
