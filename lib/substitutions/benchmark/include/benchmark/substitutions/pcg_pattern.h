@@ -1,0 +1,12 @@
+#ifndef _FLEXFLOW_LIB_SUBSTITUTIONS_BENCHMARK_INCLUDE_BENCHMARK_SUBSTITUTIONS_PCG_PATTERN_H
+#define _FLEXFLOW_LIB_SUBSTITUTIONS_BENCHMARK_INCLUDE_BENCHMARK_SUBSTITUTIONS_PCG_PATTERN_H
+
+namespace FlexFlow {
+
+void benchmark_find_pattern_matches_small(bool dry_run);
+void benchmark_find_pattern_matches_medium(bool dry_run);
+void benchmark_find_pattern_matches_large(bool dry_run);
+
+} // namespace FlexFlow
+
+#endif

@@ -58,7 +58,7 @@ has-cuda-benchmarks = false
 [targets.substitutions]
 type = "lib"
 has-cpu-only-tests = true
-has-cpu-only-benchmarks = false
+has-cpu-only-benchmarks = true
 has-cuda-tests = false
 has-cuda-benchmarks = false
 
@@ -183,6 +183,22 @@ budget = 6_200_000
 [[benchmarks.utils]]
 name = "get_all_open_kwarg_dataflow_edges_labelled"
 budget = 6_200_000
+
+# [[benchmarks.substitutions]]
+# name = "find_pattern_matches_large"
+# budget = currently times out
+
+[[benchmarks.substitutions]]
+name = "find_pattern_matches_medium"
+budget = 2_000_000_000
+
+[[benchmarks.substitutions]]
+name = "find_pattern_matches_small"
+budget = 7_000_000
+
+[[benchmarks.substitutions]]
+name = "apply_substitution"
+budget = 41_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_split_test"
