@@ -138,7 +138,7 @@ budget = 3_500_000
 
 [[benchmarks.utils]]
 name = "transform_set"
-budget = 13_000_000
+budget = 7_000_000
 
 [[benchmarks.utils]]
 name = "try_at_for_map"
@@ -190,7 +190,7 @@ budget = 8_200_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_medium"
-budget = 180_000_000
+budget = 150_000_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_small"

@@ -42,7 +42,7 @@ template <typename F, typename In, typename Out = std::invoke_result_t<F, In>>
 std::set<Out> transform(std::set<In> const &v, F const &f) {
   std::set<Out> result;
   for (In const &e : v) {
-    result.insert(f(e));
+    result.emplace_hint(result.cend(), f(e));
   }
   return result;
 }
