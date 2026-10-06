@@ -71,8 +71,7 @@ OpenKwargDataflowGraphData<GraphInputName, SlotName>
 
   std::set<OpenKwargDataflowEdge<GraphInputName, SlotName>>
       subgraph_input_edges = transform(
-          set_of(get_open_kwarg_dataflow_subgraph_incoming_edges(
-              g, set_of(subgraph_nodes))),
+          get_open_kwarg_dataflow_subgraph_incoming_edges(g, subgraph_nodes),
           [&](OpenKwargDataflowEdge<GraphInputName, SlotName> const &edge) {
             return edge.template visit<
                 OpenKwargDataflowEdge<GraphInputName, SlotName>>(overload{
@@ -100,24 +99,23 @@ OpenKwargDataflowGraphData<GraphInputName, SlotName>
           });
 
   OpenKwargDataflowEdgeQuery<GraphInputName, SlotName>
-      subgraph_interior_edges_query = OpenKwargDataflowEdgeQuery<GraphInputName,
-                                                                 SlotName>{
-          KwargDataflowInputEdgeQuery<GraphInputName, SlotName>{
-              /*srcs=*/query_set<GraphInputName>::match_none(),
-              /*dst_nodes=*/query_set<Node>::match_none(),
-              /*dst_slots=*/query_set<SlotName>::match_none(),
-          },
-          KwargDataflowEdgeQuery<SlotName>{
-              /*srcs=*/query_set<Node>::match_values_in(set_of(subgraph_nodes)),
-              /*src_slots=*/query_set<SlotName>::matchall(),
-              /*dsts=*/query_set<Node>::match_values_in(set_of(subgraph_nodes)),
-              /*dst_slots=*/query_set<SlotName>::matchall(),
-          },
-      };
+      subgraph_interior_edges_query =
+          OpenKwargDataflowEdgeQuery<GraphInputName, SlotName>{
+              KwargDataflowInputEdgeQuery<GraphInputName, SlotName>{
+                  /*srcs=*/query_set<GraphInputName>::match_none(),
+                  /*dst_nodes=*/query_set<Node>::match_none(),
+                  /*dst_slots=*/query_set<SlotName>::match_none(),
+              },
+              KwargDataflowEdgeQuery<SlotName>{
+                  /*srcs=*/query_set<Node>::match_values_in(subgraph_nodes),
+                  /*src_slots=*/query_set<SlotName>::matchall(),
+                  /*dsts=*/query_set<Node>::match_values_in(subgraph_nodes),
+                  /*dst_slots=*/query_set<SlotName>::matchall(),
+              },
+          };
 
   std::set<OpenKwargDataflowEdge<GraphInputName, SlotName>>
-      subgraph_interior_edges =
-          set_of(g.query_edges(subgraph_interior_edges_query));
+      subgraph_interior_edges = g.query_edges(subgraph_interior_edges_query);
 
   std::set<KwargDataflowGraphInput<GraphInputName>> subgraph_inputs =
       set_of(values(full_graph_values_to_subgraph_inputs));
@@ -129,7 +127,7 @@ OpenKwargDataflowGraphData<GraphInputName, SlotName>
              });
 
   return OpenKwargDataflowGraphData<GraphInputName, SlotName>{
-      /*nodes=*/set_of(subgraph_nodes),
+      /*nodes=*/subgraph_nodes,
       /*edges=*/set_union(subgraph_input_edges, subgraph_interior_edges),
       /*inputs=*/subgraph_inputs,
       /*outputs=*/subgraph_outputs,

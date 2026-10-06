@@ -51,7 +51,7 @@ SubParallelComputationGraph apply_substitution_from_output_result(
 
   std::set<parallel_layer_guid_t> pre_nodes = keys(pre_data.node_data);
   std::set<parallel_layer_guid_t> matched_nodes =
-      set_of(values(match.node_assignment));
+      match.node_assignment.right_values();
   std::set<parallel_layer_guid_t> post_nodes_from_original_graph =
       set_minus(pre_nodes, matched_nodes);
 
