@@ -170,19 +170,19 @@ budget = 6_000_000
 
 [[benchmarks.utils]]
 name = "get_open_kwarg_dataflow_subgraph_incoming_edges_unlabelled"
-budget = 2_500_000
+budget = 800_000
 
 [[benchmarks.utils]]
 name = "get_open_kwarg_dataflow_subgraph_incoming_edges_labelled"
-budget = 2_500_000
+budget = 800_000
 
 [[benchmarks.utils]]
 name = "get_all_open_kwarg_dataflow_edges_unlabelled"
-budget = 6_200_000
+budget = 8_200_000
 
 [[benchmarks.utils]]
 name = "get_all_open_kwarg_dataflow_edges_labelled"
-budget = 6_200_000
+budget = 8_200_000
 
 # [[benchmarks.substitutions]]
 # name = "find_pattern_matches_large"
@@ -190,11 +190,11 @@ budget = 6_200_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_medium"
-budget = 310_000_000
+budget = 180_000_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_small"
-budget = 4_900_000
+budget = 4_400_000
 
 [[benchmarks.substitutions]]
 name = "apply_substitution"
