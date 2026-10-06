@@ -126,11 +126,11 @@ cuda = false
 
 [[benchmarks.utils]]
 name = "transitive_reduction"
-budget = 410_000_000
+budget = 370_000_000
 
 [[benchmarks.utils]]
 name = "transitive_closure"
-budget = 520_000_000
+budget = 470_000_000
 
 [[benchmarks.utils]]
 name = "contains_for_set"

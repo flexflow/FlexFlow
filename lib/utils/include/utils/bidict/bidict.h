@@ -106,12 +106,12 @@ struct bidict {
   }
 
   R const &at_l(L const &l) const {
-    ASSERT(contains_key(this->fwd_map, l));
+    DEBUG_ASSERT(contains_key(this->fwd_map, l));
     return fwd_map.at(l);
   }
 
   L const &at_r(R const &r) const {
-    ASSERT(contains_key(this->bwd_map, r));
+    DEBUG_ASSERT(contains_key(this->bwd_map, r));
     return bwd_map.at(r);
   }
 
