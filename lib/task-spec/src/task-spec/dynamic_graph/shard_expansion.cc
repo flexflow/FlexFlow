@@ -17,6 +17,7 @@
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/binary_merge_disjoint_maps.h"
 #include "utils/containers/flatmap.h"
+#include "utils/containers/generate_map.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/map_from_pairs.h"
 #include "utils/containers/map_from_unordered.h"

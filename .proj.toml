@@ -198,7 +198,7 @@ budget = 4_400_000
 
 [[benchmarks.substitutions]]
 name = "apply_substitution"
-budget = 41_000_000
+budget = 35_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_split_test"
