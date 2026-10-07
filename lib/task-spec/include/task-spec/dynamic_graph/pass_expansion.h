@@ -41,8 +41,15 @@ DynamicNodeAttrs pass_expand_node(DynamicNodeAttrs const &, DynamicTaskType);
 
 DynamicNodeInvocation
     perform_fwd_pass_expansion_for_invocation(DynamicNodeInvocation const &);
-DynamicNodeInvocation
-    perform_bwd_pass_expansion_for_invocation(DynamicNodeInvocation const &);
+DynamicNodeInvocation perform_bwd_pass_expansion_for_invocation(
+    dynamic_invocation_id_t const &,
+    DynamicNodeInvocation const &,
+    std::map<DynamicValueAttrs,
+             std::map<dynamic_invocation_id_t, subgradient_id_t>> const &);
+DynamicNodeInvocation create_gradient_reduction_for_value(
+    DynamicOpenDataflowGraph const &,
+    DynamicValueAttrs const &,
+    std::map<dynamic_invocation_id_t, subgradient_id_t> const &);
 
 DynamicOpenDataflowGraph
     perform_pass_expansion(DynamicOpenDataflowGraph const &);

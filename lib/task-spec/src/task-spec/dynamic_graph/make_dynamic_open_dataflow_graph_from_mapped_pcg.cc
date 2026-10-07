@@ -51,6 +51,7 @@ DynamicNodeInvocation make_dynamic_node_invocation_from_mapped(
             /*tensor_guid=*/dynamic_tensor_guid_t{tensor.guid},
             /*parallel_tensor_shape=*/tensor.attrs.shape,
             /*create_grad=*/(tensor.attrs.create_grad == CreateGrad::YES),
+            /*subgradient_id=*/std::nullopt,
             /*shard_coord=*/std::nullopt,
             /*mapping=*/std::nullopt,
             /*accessor=*/std::nullopt,

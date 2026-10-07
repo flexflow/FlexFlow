@@ -12,6 +12,7 @@ bool training_op_attrs_has_op_type(TrainingOperationAttrs const &op_attrs,
       },
       [](LossAttrs const &) -> bool { return false; },
       [](CopyAttrs const &) -> bool { return false; },
+      [](GradientReductionAttrs const &) -> bool { return false; },
   });
 }
 
@@ -28,6 +29,9 @@ TrainingOpType training_op_attrs_get_op_type(
       },
       [](CopyAttrs const &) -> TrainingOpType {
         return TrainingOpType{TrainingOnlyOpType::COPY};
+      },
+      [](GradientReductionAttrs const &) -> TrainingOpType {
+        return TrainingOpType{TrainingOnlyOpType::GRADIENT_REDUCTION};
       },
   });
 }

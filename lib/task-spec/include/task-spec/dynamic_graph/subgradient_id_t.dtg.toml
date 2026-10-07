@@ -1,0 +1,26 @@
+namespace = "FlexFlow"
+name = "subgradient_id_t"
+type = "struct"
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "fmt",
+]
+
+docstring = """
+\brief The unique identity of a subgradient consumed by \ref GradientReduction.
+
+This field is filled in by \ref pass_expansion.h when a value is consumed multiple times, requiring a \ref GradientReduction in the backward pass. The subgradient ID is *only locally unique* among the inputs to a given \ref GradientReduction, and nothing else should be assumed about it. It is currently implemented by taking the \ref TensorSlotName as it is used as an input to \ref GradientReduction.
+"""
+
+includes = [
+  "op-attrs/tensor_slot_name.dtg.h",
+]
+
+src_includes = []
+
+[[fields]]
+name = "gradient_reduction_slot"
+type = "::FlexFlow::TensorSlotName"

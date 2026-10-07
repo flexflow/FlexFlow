@@ -13,6 +13,7 @@ includes = [
   "op-attrs/ops/loss_functions/loss_attrs.dtg.h",
   "op-attrs/pcg_operator_attrs.dtg.h",
   "task-spec/dynamic_graph/copy_attrs.dtg.h",
+  "task-spec/dynamic_graph/gradient_reduction_attrs.dtg.h",
 ]
 
 [[values]]
@@ -26,3 +27,7 @@ key = "loss"
 [[values]]
 type = "::FlexFlow::CopyAttrs"
 key = "copy"
+
+[[values]]
+type = "::FlexFlow::GradientReductionAttrs"
+key = "gradient_reduction"

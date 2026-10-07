@@ -3,7 +3,7 @@ name = "InternalDynamicSlotSite"
 type = "struct"
 features = [
   "eq",
-	"ord",
+  "ord",
   "hash",
   "fmt",
   "json",

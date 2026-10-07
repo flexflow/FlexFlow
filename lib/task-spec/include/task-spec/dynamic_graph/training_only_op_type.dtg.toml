@@ -12,4 +12,7 @@ features = [
 name = "COPY"
 
 [[values]]
+name = "GRADIENT_REDUCTION"
+
+[[values]]
 name = "LOSS"
