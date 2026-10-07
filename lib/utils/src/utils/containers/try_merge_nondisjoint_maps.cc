@@ -8,6 +8,6 @@ using K = ordered_value_type<0>;
 using V = value_type<1>;
 
 template std::optional<std::map<K, V>>
-    try_merge_nondisjoint_maps(std::map<K, V> const &, std::map<K, V> const &);
+    try_merge_nondisjoint_maps(std::map<K, V>, std::map<K, V> const &);
 
 } // namespace FlexFlow

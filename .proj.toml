@@ -150,7 +150,7 @@ budget = 230_000
 
 [[benchmarks.utils]]
 name = "try_merge_nondisjoint_maps"
-budget = 19_000_000
+budget = 8_000_000
 
 [[benchmarks.utils]]
 name = "try_merge_nondisjoint_bidicts"
