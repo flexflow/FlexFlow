@@ -68,10 +68,8 @@ struct query_set {
     return !q.query.has_value();
   }
 
-  friend std::set<T> allowed_values(query_set const &q) {
-    assert(!is_matchall(q));
-    std::set<T> query_value = q.query.value();
-    return std::set<T>{query_value.begin(), query_value.end()};
+  friend std::set<T> const &allowed_values(query_set const &q) {
+    return assert_unwrap(q.value());
   }
 
   std::optional<std::set<T>> const &value() const {
@@ -109,11 +107,16 @@ bool includes(query_set<T> const &q, T const &v) {
 
 template <typename T, typename C>
 std::set<T> apply_query(query_set<T> const &q, C const &c) {
+  return apply_query(q, set_of(c));
+}
+
+template <typename T>
+std::set<T> apply_query(query_set<T> const &q, std::set<T> const &c) {
   if (is_matchall(q)) {
-    return set_of(c);
+    return c;
   }
 
-  return filter(set_of(c), [&](T const &t) { return includes(q, t); });
+  return set_intersection(allowed_values(q), c);
 }
 
 template <typename C,

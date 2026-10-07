@@ -158,23 +158,23 @@ budget = 43_000_000
 
 [[benchmarks.utils]]
 name = "query_set_allowed_values"
-budget = 820_000_000
+budget = 28_000
 
 [[benchmarks.utils]]
 name = "query_set_apply_query_to_set"
-budget = 8_200_000_000
+budget = 18_500_000
 
 [[benchmarks.utils]]
 name = "query_set_apply_query_to_vector"
-budget = 8_200_000_000
+budget = 80_000_000
 
 [[benchmarks.utils]]
 name = "get_open_kwarg_dataflow_subgraph_incoming_edges_unlabelled"
-budget = 225_000_000
+budget = 5_200_000
 
 [[benchmarks.utils]]
 name = "get_open_kwarg_dataflow_subgraph_incoming_edges_labelled"
-budget = 225_000_000
+budget = 6_200_000
 
 [[benchmarks.utils]]
 name = "get_all_open_kwarg_dataflow_edges_unlabelled"
@@ -190,11 +190,11 @@ budget = 6_200_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_medium"
-budget = 2_000_000_000
+budget = 450_000_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_small"
-budget = 7_000_000
+budget = 5_500_000
 
 [[benchmarks.substitutions]]
 name = "apply_substitution"
@@ -202,15 +202,15 @@ budget = 41_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_split_test"
-budget = 130_000_000
+budget = 81_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_transformer"
-budget = 8_000_000_000
+budget = 4_250_000_000
 
 [[benchmarks.compiler]]
 name = "get_computation_graph_series_parallel_decomposition_on_inception_v3"
-budget = 10_000_000_000
+budget = 7_000_000_000
 
 # default_build_targets = [
 #   "utils",
