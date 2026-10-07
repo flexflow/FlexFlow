@@ -5,7 +5,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("try_merge_nondisjoint_bidicts(bidict<L, R>, bidict<L, R>)") {
+  TEST_CASE("try_merge_nondisjoint_bidicts") {
     bidict<int, std::string> d1 = {
         {0, "zero"},
         {1, "one"},
@@ -28,6 +28,14 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("mismatched key") {
       d1.equate(2, "three");
+      std::optional<bidict<int, std::string>> result =
+          try_merge_nondisjoint_bidicts(d1, d2);
+      std::optional<bidict<int, std::string>> correct = std::nullopt;
+      CHECK(result == correct);
+    }
+
+    SUBCASE("mismatched value") {
+      d1.equate(3, "two");
       std::optional<bidict<int, std::string>> result =
           try_merge_nondisjoint_bidicts(d1, d2);
       std::optional<bidict<int, std::string>> correct = std::nullopt;

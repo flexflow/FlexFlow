@@ -113,6 +113,74 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(dict.at_r("three") == 3);
     }
 
+    SUBCASE("bidict::try_equate") {
+      SUBCASE("l value already present") {
+        bool succeeded = dict.try_equate(1, "three");
+
+        CHECK_FALSE(succeeded);
+
+        bidict<int, std::string> correct = bidict<int, std::string>{
+            {1, "one"},
+            {2, "two"},
+        };
+
+        CHECK(dict == correct);
+      }
+
+      SUBCASE("r value already present") {
+        bool succeeded = dict.try_equate(3, "one");
+
+        CHECK_FALSE(succeeded);
+
+        bidict<int, std::string> correct = bidict<int, std::string>{
+            {1, "one"},
+            {2, "two"},
+        };
+
+        CHECK(dict == correct);
+      }
+
+      SUBCASE("both values already present but not bound to each other") {
+        bool succeeded = dict.try_equate(1, "two");
+
+        CHECK_FALSE(succeeded);
+
+        bidict<int, std::string> correct = bidict<int, std::string>{
+            {1, "one"},
+            {2, "two"},
+        };
+
+        CHECK(dict == correct);
+      }
+
+      SUBCASE("both valyes already present and bound to each other") {
+        bool succeeded = dict.try_equate(1, "one");
+
+        CHECK(succeeded);
+
+        bidict<int, std::string> correct = bidict<int, std::string>{
+            {1, "one"},
+            {2, "two"},
+        };
+
+        CHECK(dict == correct);
+      }
+
+      SUBCASE("neither value already present") {
+        bool succeeded = dict.try_equate(3, "three");
+
+        CHECK(succeeded);
+
+        bidict<int, std::string> correct = bidict<int, std::string>{
+            {1, "one"},
+            {2, "two"},
+            {3, "three"},
+        };
+
+        CHECK(dict == correct);
+      }
+    }
+
     SUBCASE("bidict::operator==") {
       SUBCASE("a bidict is equal to itself") {
         CHECK(dict == dict);

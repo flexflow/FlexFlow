@@ -7,33 +7,15 @@ namespace FlexFlow {
 
 template <typename L, typename R>
 std::optional<bidict<L, R>>
-    try_merge_nondisjoint_bidicts(bidict<L, R> const &d1,
-                                  bidict<L, R> const &d2) {
-  bidict<L, R> result;
-  auto try_equate = [&](L const &l, R const &r) {
-    if (result.contains_l(l) && result.at_l(l) != r) {
-      return false;
-    }
-    if (result.contains_r(r) && result.at_r(r) != l) {
-      return false;
-    }
-    result.equate(l, r);
-    return true;
-  };
-
-  for (auto const &[l, r] : d1) {
-    if (!try_equate(l, r)) {
-      return std::nullopt;
-    }
-  }
-
+    try_merge_nondisjoint_bidicts(bidict<L, R> d1, bidict<L, R> const &d2) {
   for (auto const &[l, r] : d2) {
-    if (!try_equate(l, r)) {
+    bool are_now_equated = d1.try_equate(l, r);
+    if (!are_now_equated) {
       return std::nullopt;
     }
   }
 
-  return result;
+  return d1;
 }
 
 } // namespace FlexFlow

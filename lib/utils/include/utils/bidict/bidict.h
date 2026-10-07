@@ -62,6 +62,24 @@ struct bidict {
     }
   }
 
+  bool try_equate(L const &l, R const &r) {
+    auto [fwd_it, fwd_did_insert] = fwd_map.insert({l, r});
+    if (!fwd_did_insert && fwd_it->second != r) {
+      return false;
+    }
+
+    auto [bwd_it, bwd_did_insert] = bwd_map.insert({r, l});
+    if (!bwd_did_insert && bwd_it->second != l) {
+      if (fwd_did_insert) {
+        fwd_map.erase(fwd_it);
+      }
+
+      return false;
+    }
+
+    return true;
+  }
+
   void equate(L const &l, R const &r) {
     ASSERT(this->contains_l(l) == this->contains_r(r));
 
