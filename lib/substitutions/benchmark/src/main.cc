@@ -15,13 +15,10 @@ int main(int argc, char **argv) {
           "find_pattern_matches_medium",
           benchmark_find_pattern_matches_medium,
       },
-      /*
-       * currently times out
       {
           "find_pattern_matches_large",
           benchmark_find_pattern_matches_large,
       },
-      */
       {
           "apply_substitution",
           benchmark_apply_substitution,

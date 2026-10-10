@@ -184,9 +184,9 @@ budget = 8_200_000
 name = "get_all_open_kwarg_dataflow_edges_labelled"
 budget = 8_200_000
 
-# [[benchmarks.substitutions]]
-# name = "find_pattern_matches_large"
-# budget = currently times out
+[[benchmarks.substitutions]]
+name = "find_pattern_matches_large"
+budget = 900_000_000
 
 [[benchmarks.substitutions]]
 name = "find_pattern_matches_medium"
