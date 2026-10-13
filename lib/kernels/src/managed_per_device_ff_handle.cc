@@ -18,10 +18,16 @@ ManagedPerDeviceFFHandle::ManagedPerDeviceFFHandle(
   checkCUDA(cudaMalloc(&this->handle->workSpace, this->handle->workSpaceSize));
 
 #ifdef FF_USE_NCCL
-  ncclUniqueId ncclId;
-  checkNCCL(ncclGetUniqueId(&ncclId));
-  checkNCCL(ncclCommInitRank(
-      &handle->ncclComm, num_ranks, ncclId, my_rank)); // todo generalize
+  // A single-rank communicator can only ever perform no-op collectives, but
+  // still costs ~500MiB of device memory, so skip creating it entirely.
+  if (num_ranks == 1) {
+    this->handle->ncclComm = nullptr;
+  } else {
+    ncclUniqueId ncclId;
+    checkNCCL(ncclGetUniqueId(&ncclId));
+    checkNCCL(ncclCommInitRank(
+        &handle->ncclComm, num_ranks, ncclId, my_rank)); // todo generalize
+  }
 #endif
 }
 
@@ -41,7 +47,9 @@ ManagedPerDeviceFFHandle::~ManagedPerDeviceFFHandle() {
     checkCUBLAS(cublasDestroy(this->handle->blas));
     checkCUDA(cudaFree(this->handle->workSpace));
 #ifdef FF_USE_NCCL
-    checkNCCL(ncclCommDestroy(this->handle->ncclComm));
+    if (this->handle->ncclComm != nullptr) {
+      checkNCCL(ncclCommDestroy(this->handle->ncclComm));
+    }
 #endif
     delete this->handle;
   }

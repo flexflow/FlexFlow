@@ -23,18 +23,41 @@ void sgd_update_task(device_stream_t const &stream,
       sgd_v_ptr = sgd_v.value().get_float_ptr();
     }
 
-    gpu_sgd_nccl_update_task(
-        /*stream=*/stream.require_gpu(),
-        /*lr=*/lr,
-        /*momentum=*/momentum,
-        /*nesterov=*/nesterov,
-        /*weight_decay=*/weight_decay,
-        /*handle=*/handle.require_for_gpu(),
-        /*weight_grad_ptr=*/weight_grad.get_float_ptr(),
-        /*size=*/
-        get_num_elements(weight_grad.shape.dims).int_from_positive_int(),
-        /*weight_ptr=*/weight.get_float_ptr(),
-        /*sgd_v_ptr=*/sgd_v_ptr);
+    PerDeviceFFHandle const &gpu_handle = handle.require_for_gpu();
+#ifdef FF_USE_NCCL
+    bool have_nccl_comm = (gpu_handle.ncclComm != nullptr);
+#else
+    bool have_nccl_comm = false;
+#endif
+
+    if (have_nccl_comm) {
+      gpu_sgd_nccl_update_task(
+          /*stream=*/stream.require_gpu(),
+          /*lr=*/lr,
+          /*momentum=*/momentum,
+          /*nesterov=*/nesterov,
+          /*weight_decay=*/weight_decay,
+          /*handle=*/gpu_handle,
+          /*weight_grad_ptr=*/weight_grad.get_float_ptr(),
+          /*size=*/
+          get_num_elements(weight_grad.shape.dims).int_from_positive_int(),
+          /*weight_ptr=*/weight.get_float_ptr(),
+          /*sgd_v_ptr=*/sgd_v_ptr);
+    } else {
+      // No communicator (single-rank), so the gradient allreduce is a no-op.
+      gpu_sgd_ps_update_task(
+          /*stream=*/stream.require_gpu(),
+          /*lr=*/lr,
+          /*momentum=*/momentum,
+          /*nesterov=*/nesterov,
+          /*weight_decay=*/weight_decay,
+          /*weight_grad_ptr=*/weight_grad.get_float_ptr(),
+          /*size=*/
+          get_num_elements(weight_grad.shape.dims).int_from_positive_int(),
+          /*num_replicas=*/num_replicas,
+          /*weight_ptr=*/weight.get_float_ptr(),
+          /*sgd_v_ptr=*/sgd_v_ptr);
+    }
   } else {
     ASSERT(stream.is_cpu());
     ASSERT(handle.is_for_cpu());
