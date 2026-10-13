@@ -1,0 +1,13 @@
+namespace = "FlexFlow"
+name = "SerializableNcclTaskArgs"
+type = "struct"
+features = [
+  "json",
+]
+includes = [
+  "string",
+]
+
+[[fields]]
+name = "message"
+type = "std::string"
