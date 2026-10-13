@@ -283,6 +283,9 @@ name = "NCCL_GETUNIQUEID_TASK_ID"
 name = "NCCL_INIT_COMMS_TASK_ID"
 
 [[values]]
+name = "NCCL_HELLO_WORLD_TASK_ID"
+
+[[values]]
 name = "STRATEGY_SEARCH_TASK_ID"
 
 [[values]]

@@ -1,0 +1,23 @@
+namespace = "FlexFlow"
+name = "NCCLTaskArgs"
+type = "struct"
+features = []
+
+includes = [
+  "realm-execution/device_specific_managed_per_device_ff_handle.h",
+  "realm-execution/device_specific_ptr.h",
+  "realm-execution/tensor_instance_backing.dtg.h",
+  "task-spec/dynamic_graph/dynamic_node_invocation.dtg.h",
+]
+
+[[fields]]
+name = "invocation"
+type = "::FlexFlow::DynamicNodeInvocation"
+
+[[fields]]
+name = "tensor_backing"
+type = "::FlexFlow::TensorInstanceBacking"
+
+[[fields]]
+name = "device_handle"
+type = "::FlexFlow::DeviceSpecificPtr<::FlexFlow::ManagedPerDeviceFFHandle>"

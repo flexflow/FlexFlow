@@ -1,0 +1,24 @@
+namespace = "FlexFlow"
+name = "SerializableNcclTaskArgs"
+type = "struct"
+features = [
+  "json",
+]
+
+includes = [
+  "realm-execution/tasks/serializer/serializable_device_specific_ptr.dtg.h",
+  "realm-execution/tasks/serializer/serializable_tensor_instance_backing.dtg.h",
+  "task-spec/dynamic_graph/serializable_dynamic_node_invocation.dtg.h",
+]
+
+[[fields]]
+name = "invocation"
+type = "::FlexFlow::SerializableDynamicNodeInvocation"
+
+[[fields]]
+name = "tensor_backing"
+type = "::FlexFlow::SerializableTensorInstanceBacking"
+
+[[fields]]
+name = "device_handle"
+type = "::FlexFlow::SerializableDeviceSpecificPtr"
