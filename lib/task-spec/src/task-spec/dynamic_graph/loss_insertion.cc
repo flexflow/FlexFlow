@@ -84,6 +84,13 @@ LossInsertionResult perform_loss_insertion(
 
   DynamicOpenDataflowGraph result = dg;
   result.invocations.insert(loss_invocation);
+
+  // the newly-inserted invocation invalidates the cached id lookup
+  // structures, so recompute them (invocation ids first, as computing value
+  // ids requires looking up invocation ids)
+  result = compute_value_ids_for_dynamic_open_dataflow_graph(
+      compute_invocation_ids_for_dynamic_open_dataflow_graph(result));
+
   return LossInsertionResult{result, label_value, logit_grad_value};
 }
 

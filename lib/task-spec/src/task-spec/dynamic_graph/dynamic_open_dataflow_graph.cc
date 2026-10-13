@@ -7,19 +7,26 @@
 #include "task-spec/dynamic_graph/dynamic_slot_site.dtg.h"
 #include "task-spec/dynamic_graph/serializable_dynamic_node_attrs.h"
 #include "task-spec/dynamic_graph/serializable_dynamic_value_attrs.h"
+#include "utils/bidict/algorithms/unordered_bidict_from_map.h"
+#include "utils/bidict/unordered_bidict.h"
 #include "utils/containers/all_of.h"
 #include "utils/containers/at_idx.h"
 #include "utils/containers/concat_vectors.h"
 #include "utils/containers/contains_duplicates.h"
 #include "utils/containers/contains_value.h"
+#include "utils/containers/enumerate.h"
 #include "utils/containers/filter_values.h"
 #include "utils/containers/flatmap.h"
 #include "utils/containers/get_only.h"
+#include "utils/containers/invert_map.h"
+#include "utils/containers/map_keys.h"
 #include "utils/containers/multiset_of.h"
 #include "utils/containers/multiset_union.h"
 #include "utils/containers/repeat.h"
 #include "utils/containers/require_all_of.h"
+#include "utils/containers/set_of.h"
 #include "utils/containers/transform.h"
+#include "utils/containers/vector_of.h"
 #include "utils/containers/zip_strict.h"
 #include "utils/containers/zip_values_strict.h"
 #include "utils/graph/dataflow_graph/algorithms.h"
@@ -39,6 +46,8 @@ namespace FlexFlow {
 DynamicOpenDataflowGraph make_empty_dynamic_open_dataflow_graph() {
   return DynamicOpenDataflowGraph{
       std::set<DynamicNodeInvocation>{},
+      unordered_bidict<dynamic_invocation_id_t, DynamicNodeInvocation>{},
+      unordered_bidict<dynamic_value_id_t, DynamicValueAttrs>{},
   };
 }
 
@@ -73,6 +82,46 @@ void check_dynamic_open_dataflow_graph_is_valid(
   // LabelledOpenKwargDataflowGraph, and if a value is returned without an
   // assertion we know the properties hold.
   labelled_open_kwarg_dataflow_graph_from_dynamic_open_dataflow_graph(g);
+}
+
+DynamicOpenDataflowGraph compute_invocation_ids_for_dynamic_open_dataflow_graph(
+    DynamicOpenDataflowGraph const &g) {
+  unordered_bidict<dynamic_invocation_id_t, DynamicNodeInvocation>
+      invocation_ids = unordered_bidict_from_map(
+          map_keys(enumerate(g.invocations), [](nonnegative_int i) {
+            return dynamic_invocation_id_t{i};
+          }));
+
+  DynamicOpenDataflowGraph result{
+      /*invocations=*/g.invocations,
+      /*invocation_ids=*/invocation_ids,
+      /*value_ids=*/g.value_ids,
+  };
+  return result;
+}
+
+DynamicOpenDataflowGraph compute_value_ids_for_dynamic_open_dataflow_graph(
+    DynamicOpenDataflowGraph const &g) {
+  std::map<dynamic_value_id_t, DynamicValueAttrs> internal_value_ids = map_keys(
+      enumerate(dynamic_graph_get_internal_values(g)), [](nonnegative_int i) {
+        return dynamic_value_id_t{dynamic_internal_value_id_t{i}};
+      });
+
+  std::map<dynamic_value_id_t, DynamicValueAttrs> external_value_ids = map_keys(
+      enumerate(dynamic_graph_get_external_values(g)), [](nonnegative_int i) {
+        return dynamic_value_id_t{dynamic_external_value_id_t{i}};
+      });
+
+  unordered_bidict<dynamic_value_id_t, DynamicValueAttrs> value_ids =
+      unordered_bidict_from_map(
+          binary_merge_disjoint_maps(internal_value_ids, external_value_ids));
+
+  DynamicOpenDataflowGraph result{
+      /*invocations=*/g.invocations,
+      /*invocation_ids=*/g.invocation_ids,
+      /*value_ids=*/value_ids,
+  };
+  return result;
 }
 
 nonnegative_int dynamic_graph_num_nodes(DynamicOpenDataflowGraph const &g) {
@@ -173,68 +222,25 @@ std::set<DynamicValueAttrs>
 dynamic_invocation_id_t dynamic_graph_get_id_for_invocation(
     DynamicOpenDataflowGraph const &g,
     DynamicNodeInvocation const &invocation) {
-  return dynamic_invocation_id_t{
-      nonnegative_int{assert_unwrap(index_of(g.invocations, invocation))},
-  };
+  return g.invocation_ids.at_r(invocation);
 }
 
 DynamicNodeInvocation
     dynamic_graph_get_invocation_for_id(DynamicOpenDataflowGraph const &g,
                                         dynamic_invocation_id_t const &id) {
-  return at_idx(g.invocations, id.idx);
+  return g.invocation_ids.at_l(id);
 }
 
 dynamic_value_id_t
     dynamic_graph_get_id_for_value(DynamicOpenDataflowGraph const &g,
                                    DynamicValueAttrs const &value) {
-  auto idx_in_set = [](std::set<DynamicValueAttrs> const &s,
-                       DynamicValueAttrs const &v) -> nonnegative_int {
-    return nonnegative_int{assert_unwrap(index_of(s, v))};
-  };
-
-  {
-    std::set<DynamicValueAttrs> internal_values =
-        dynamic_graph_get_internal_values(g);
-    if (contains(internal_values, value)) {
-      return dynamic_value_id_t{
-          dynamic_internal_value_id_t{
-              idx_in_set(internal_values, value),
-          },
-      };
-    }
-  }
-
-  {
-    std::set<DynamicValueAttrs> external_values =
-        dynamic_graph_get_external_values(g);
-    if (contains(external_values, value)) {
-      return dynamic_value_id_t{
-          dynamic_external_value_id_t{
-              idx_in_set(external_values, value),
-          },
-      };
-    }
-  }
-
-  PANIC("Could not find id for value {}", value);
+  return g.value_ids.at_r(value);
 }
 
 DynamicValueAttrs
     dynamic_graph_get_value_for_id(DynamicOpenDataflowGraph const &g,
                                    dynamic_value_id_t const &id) {
-  return id.visit<DynamicValueAttrs>(overload{
-      [&](dynamic_internal_value_id_t const &internal_id) -> DynamicValueAttrs {
-        std::set<DynamicValueAttrs> internal_values =
-            dynamic_graph_get_internal_values(g);
-
-        return at_idx(internal_values, internal_id.idx);
-      },
-      [&](dynamic_external_value_id_t const &external_id) -> DynamicValueAttrs {
-        std::set<DynamicValueAttrs> external_values =
-            dynamic_graph_get_external_values(g);
-
-        return at_idx(external_values, external_id.idx);
-      }});
+  return g.value_ids.at_l(id);
 }
 
 std::set<DynamicGraphEdge>
@@ -455,11 +461,17 @@ DynamicOpenDataflowGraph dynamic_open_dataflow_graph_from_invocation_set(
 
   DynamicOpenDataflowGraph result = DynamicOpenDataflowGraph{
       invocation_set,
+      unordered_bidict<dynamic_invocation_id_t, DynamicNodeInvocation>{},
+      unordered_bidict<dynamic_value_id_t, DynamicValueAttrs>{},
   };
 
   check_dynamic_open_dataflow_graph_is_valid(result);
 
-  return result;
+  // note: invocation ids must be computed before value ids, as computing
+  // value ids requires looking up invocation ids
+  result = compute_invocation_ids_for_dynamic_open_dataflow_graph(result);
+
+  return compute_value_ids_for_dynamic_open_dataflow_graph(result);
 }
 
 std::pair<LabelledOpenKwargDataflowGraph<DynamicNodeAttrs,
@@ -499,7 +511,11 @@ std::pair<LabelledOpenKwargDataflowGraph<DynamicNodeAttrs,
                                                          int,
                                                          DynamicTensorSlot>>();
 
-  bidict<OpenKwargDataflowValue<int, DynamicTensorSlot>, DynamicValueAttrs>
+  // note: unordered so that the contains_r probe in inputs_have_been_added
+  // below is a hash lookup rather than a tree descent using
+  // DynamicValueAttrs::operator<
+  unordered_bidict<OpenKwargDataflowValue<int, DynamicTensorSlot>,
+                   DynamicValueAttrs>
       value_map;
 
   for (auto const &kv : enumerate(graph_inputs)) {
@@ -510,14 +526,6 @@ std::pair<LabelledOpenKwargDataflowGraph<DynamicNodeAttrs,
     value_map.equate(OpenKwargDataflowValue<int, DynamicTensorSlot>{added},
                      graph_input);
   }
-
-  auto inputs_have_been_added =
-      [&](DynamicNodeInvocation const &invocation) -> bool {
-    return all_of(values(invocation.inputs),
-                  [&](DynamicValueAttrs const &input) -> bool {
-                    return value_map.contains_r(input);
-                  });
-  };
 
   bidict<Node, DynamicNodeInvocation> node_map;
   std::set<DynamicNodeInvocation> to_add = g.invocations;
@@ -546,19 +554,60 @@ std::pair<LabelledOpenKwargDataflowGraph<DynamicNodeAttrs,
     to_add.erase(invocation);
   };
 
-  auto add_next_invocation_to_graph = [&]() {
-    for (DynamicNodeInvocation const &invocation : to_add) {
-      if (inputs_have_been_added(invocation)) {
-        add_invocation_to_graph(invocation);
-        return;
+  // Add invocations in topological order using a worklist of invocations
+  // whose inputs are all available, rather than rescanning every remaining
+  // invocation after each insertion (which is quadratic in the number of
+  // invocations).
+  //
+  // Invocations are indexed by their position in g.invocations, which is
+  // ordered, and the worklist is drained lowest-index-first. This reproduces
+  // the selection made by a scan that takes the first ready invocation in
+  // that same order.
+  std::vector<DynamicNodeInvocation> invocation_by_idx =
+      vector_of(g.invocations);
+  int num_invocations = static_cast<int>(invocation_by_idx.size());
+
+  std::unordered_map<DynamicValueAttrs, std::vector<int>> consumers_of_value;
+  std::vector<int> num_unavailable_inputs(num_invocations, 0);
+
+  for (int idx = 0; idx < num_invocations; idx++) {
+    // a value consumed by several slots of one invocation only blocks it once
+    for (DynamicValueAttrs const &input :
+         set_of(values(invocation_by_idx.at(idx).inputs))) {
+      if (!value_map.contains_r(input)) {
+        num_unavailable_inputs.at(idx)++;
+        consumers_of_value[input].push_back(idx);
       }
     }
+  }
 
+  std::set<int> ready;
+  for (int idx = 0; idx < num_invocations; idx++) {
+    if (num_unavailable_inputs.at(idx) == 0) {
+      ready.insert(idx);
+    }
+  }
+
+  while (!ready.empty()) {
+    int idx = *ready.begin();
+    ready.erase(ready.begin());
+
+    DynamicNodeInvocation const &invocation = invocation_by_idx.at(idx);
+    add_invocation_to_graph(invocation);
+
+    for (DynamicValueAttrs const &output : set_of(values(invocation.outputs))) {
+      for (int consumer_idx : consumers_of_value[output]) {
+        if (--num_unavailable_inputs.at(consumer_idx) == 0) {
+          ready.insert(consumer_idx);
+        }
+      }
+    }
+  }
+
+  // any invocation still pending has an input that is never produced, or
+  // participates in a cycle
+  if (!to_add.empty()) {
     PANIC("Failed to add any invocations in to_add", to_add);
-  };
-
-  while (to_add.size() > 0) {
-    add_next_invocation_to_graph();
   }
 
   return std::pair{result, node_map};
