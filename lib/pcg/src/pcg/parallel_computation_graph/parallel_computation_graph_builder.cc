@@ -409,7 +409,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::relu(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::RELU,
+      ElementUnaryOp::RELU,
       std::nullopt,
   };
 
@@ -421,7 +421,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::identity(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::IDENTITY,
+      ElementUnaryOp::IDENTITY,
       std::nullopt,
   };
 
@@ -433,7 +433,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::gelu(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::GELU,
+      ElementUnaryOp::GELU,
       std::nullopt,
   };
 
@@ -445,7 +445,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::sigmoid(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::SIGMOID,
+      ElementUnaryOp::SIGMOID,
       std::nullopt,
   };
 
@@ -457,7 +457,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::tanh(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::TANH,
+      ElementUnaryOp::TANH,
       std::nullopt,
   };
 
@@ -469,7 +469,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::elu(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::ELU,
+      ElementUnaryOp::ELU,
       std::nullopt,
   };
 
@@ -481,7 +481,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::silu(
     std::optional<std::string> const &maybe_name) {
 
   ElementUnaryAttrs attrs = ElementUnaryAttrs{
-      OperatorType::SILU,
+      ElementUnaryOp::SILU,
       std::nullopt,
   };
 

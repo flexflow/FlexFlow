@@ -12,8 +12,8 @@ features = [
 ]
 
 includes = [
-  "op-attrs/operator_type.dtg.h",
   "<optional>",
+  "op-attrs/element_unary_op.dtg.h",
 ]
 
 src_includes = [
@@ -23,8 +23,8 @@ src_includes = [
 ]
 
 [[fields]]
-name = "op_type"
-type = "::FlexFlow::OperatorType"
+name = "op"
+type = "::FlexFlow::ElementUnaryOp"
 
 [[fields]]
 name = "scalar"

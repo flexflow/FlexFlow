@@ -50,7 +50,42 @@ OperatorType get_op_type(ElementBinaryAttrs const &attrs) {
 }
 
 OperatorType get_op_type(ElementUnaryAttrs const &attrs) {
-  return attrs.op_type;
+  switch (attrs.op) {
+    case ElementUnaryOp::RELU:
+      return OperatorType::RELU;
+    case ElementUnaryOp::IDENTITY:
+      return OperatorType::IDENTITY;
+    case ElementUnaryOp::GELU:
+      return OperatorType::GELU;
+    case ElementUnaryOp::SIGMOID:
+      return OperatorType::SIGMOID;
+    case ElementUnaryOp::TANH:
+      return OperatorType::TANH;
+    case ElementUnaryOp::ELU:
+      return OperatorType::ELU;
+    case ElementUnaryOp::SILU:
+      return OperatorType::SILU;
+    case ElementUnaryOp::SIN:
+      return OperatorType::SIN;
+    case ElementUnaryOp::COS:
+      return OperatorType::COS;
+    case ElementUnaryOp::RSQRT:
+      return OperatorType::RSQRT;
+    case ElementUnaryOp::SCALAR_ADD:
+      return OperatorType::SCALAR_ADD;
+    case ElementUnaryOp::SCALAR_SUB:
+      return OperatorType::SCALAR_SUB;
+    case ElementUnaryOp::SCALAR_MULTIPLY:
+      return OperatorType::SCALAR_MULTIPLY;
+    case ElementUnaryOp::SCALAR_TRUE_DIV:
+      return OperatorType::SCALAR_TRUE_DIV;
+    case ElementUnaryOp::POW:
+      return OperatorType::POW;
+    case ElementUnaryOp::EXP:
+      return OperatorType::EXP;
+    default:
+      PANIC("Unknown ElementUnaryOp {}", attrs.op);
+  }
 }
 
 OperatorType get_op_type(EmbeddingAttrs const &) {

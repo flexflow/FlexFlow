@@ -10,17 +10,17 @@ void element_unary_cpu_forward_kernel(ElementUnaryAttrs const &attrs,
                                       GenericTensorAccessorW const &output) {
   std::function<float(float)> element_function =
       [&]() -> std::function<float(float)> {
-    switch (attrs.op_type) {
-      case OperatorType::RELU:
+    switch (attrs.op) {
+      case ElementUnaryOp::RELU:
         return [](float x) -> float { return std::max(0.0f, x); };
-      case OperatorType::SIGMOID:
+      case ElementUnaryOp::SIGMOID:
         return [](float x) -> float { return (1.0 / (1.0 + expf(-1.0 * x))); };
-      case OperatorType::TANH:
+      case ElementUnaryOp::TANH:
         return [](float x) -> float { return tanhf(x); };
-      case OperatorType::GELU:
+      case ElementUnaryOp::GELU:
         return
             [](float x) -> float { return (x * 0.5 * erfc(-x * M_SQRT1_2)); };
-      case OperatorType::ELU: {
+      case ElementUnaryOp::ELU: {
         float alpha = attrs.scalar.value();
         return [alpha](float x) -> float {
           if (x > 0) {
@@ -30,42 +30,42 @@ void element_unary_cpu_forward_kernel(ElementUnaryAttrs const &attrs,
           }
         };
       }
-      case OperatorType::SILU: {
+      case ElementUnaryOp::SILU: {
         float beta = attrs.scalar.value_or(1.0f);
         return [beta](float x) -> float {
           return x / (1.0f + expf(-1.0f * beta * x));
         };
       }
-      case OperatorType::SIN:
+      case ElementUnaryOp::SIN:
         return [](float x) -> float { return sinf(x); };
-      case OperatorType::COS:
+      case ElementUnaryOp::COS:
         return [](float x) -> float { return cosf(x); };
-      case OperatorType::IDENTITY:
+      case ElementUnaryOp::IDENTITY:
         return [](float x) -> float { return x; };
-      case OperatorType::RSQRT:
+      case ElementUnaryOp::RSQRT:
         return [](float x) -> float { return 1.0f / sqrtf(x); };
-      case OperatorType::SCALAR_MULTIPLY: {
+      case ElementUnaryOp::SCALAR_MULTIPLY: {
         float scalar = attrs.scalar.value();
         return [scalar](float x) -> float { return x * scalar; };
       }
-      case OperatorType::SCALAR_ADD: {
+      case ElementUnaryOp::SCALAR_ADD: {
         float scalar = attrs.scalar.value();
         return [scalar](float x) -> float { return x + scalar; };
       }
-      case OperatorType::SCALAR_SUB: {
+      case ElementUnaryOp::SCALAR_SUB: {
         float scalar = attrs.scalar.value();
         return [scalar](float x) -> float { return x - scalar; };
       }
-      case OperatorType::SCALAR_TRUE_DIV: {
+      case ElementUnaryOp::SCALAR_TRUE_DIV: {
         float scalar = attrs.scalar.value();
         return [scalar](float x) -> float { return x / scalar; };
       }
-      case OperatorType::POW: {
+      case ElementUnaryOp::POW: {
         float scalar = attrs.scalar.value();
         return [scalar](float x) -> float { return powf(x, scalar); };
       }
       default:
-        PANIC("Unhandled OperatorType {}", attrs.op_type);
+        PANIC("Unhandled ElementUnaryOp {}", attrs.op);
     }
   }();
 
@@ -83,8 +83,8 @@ void element_unary_cpu_backward_kernel(
     GenericTensorAccessorW const &input_grad) {
   std::function<float(float, float)> element_function =
       [&]() -> std::function<float(float, float)> {
-    switch (attrs.op_type) {
-      case OperatorType::RELU:
+    switch (attrs.op) {
+      case ElementUnaryOp::RELU:
         return [](float x, float fx) -> float {
           if (x > 0) {
             return 1;
@@ -92,16 +92,16 @@ void element_unary_cpu_backward_kernel(
             return 0;
           }
         };
-      case OperatorType::SIGMOID:
+      case ElementUnaryOp::SIGMOID:
         return [](float x, float fx) -> float { return fx * (1.0f - fx); };
-      case OperatorType::TANH:
+      case ElementUnaryOp::TANH:
         return [](float x, float fx) -> float { return 1 - fx * fx; };
-      case OperatorType::GELU:
+      case ElementUnaryOp::GELU:
         return [](float x, float fx) -> float {
           float pdf_x = (1 / sqrtf(2 * M_PI)) * expf(-0.5f * x * x);
           return x * pdf_x + erfc(x);
         };
-      case OperatorType::ELU: {
+      case ElementUnaryOp::ELU: {
         float alpha = attrs.scalar.value();
         return [alpha](float x, float fx) -> float {
           if (x > 0) {
@@ -111,7 +111,7 @@ void element_unary_cpu_backward_kernel(
           }
         };
       }
-      case OperatorType::SILU: {
+      case ElementUnaryOp::SILU: {
         float beta = attrs.scalar.value_or(1.0f);
         return [beta](float x, float fx) -> float {
           float e_to_bx = expf(beta * x);
@@ -119,36 +119,36 @@ void element_unary_cpu_backward_kernel(
                  ((e_to_bx + 1) * (e_to_bx + 1));
         };
       }
-      case OperatorType::SIN:
+      case ElementUnaryOp::SIN:
         return [](float x, float fx) -> float { return cosf(x); };
-      case OperatorType::COS:
+      case ElementUnaryOp::COS:
         return [](float x, float fx) -> float { return (-1.0f) * sinf(x); };
-      case OperatorType::IDENTITY:
+      case ElementUnaryOp::IDENTITY:
         return [](float x, float fx) -> float { return 1.0f; };
-      case OperatorType::RSQRT:
+      case ElementUnaryOp::RSQRT:
         return [](float x, float fx) -> float { return -0.5f * fx * fx * fx; };
-      case OperatorType::SCALAR_MULTIPLY: {
+      case ElementUnaryOp::SCALAR_MULTIPLY: {
         float scalar = attrs.scalar.value();
         return [scalar](float x, float fx) -> float { return scalar; };
       }
-      case OperatorType::SCALAR_ADD: {
+      case ElementUnaryOp::SCALAR_ADD: {
         return [](float x, float fx) -> float { return 1.0f; };
       }
-      case OperatorType::SCALAR_SUB: {
+      case ElementUnaryOp::SCALAR_SUB: {
         return [](float x, float fx) -> float { return 1.0f; };
       }
-      case OperatorType::SCALAR_TRUE_DIV: {
+      case ElementUnaryOp::SCALAR_TRUE_DIV: {
         float scalar = attrs.scalar.value();
         return [scalar](float x, float fx) -> float { return 1.0f / scalar; };
       }
-      case OperatorType::POW: {
+      case ElementUnaryOp::POW: {
         float scalar = attrs.scalar.value();
         return [scalar](float x, float fx) -> float {
           return scalar * powf(x, scalar - 1.0f);
         };
       }
       default:
-        PANIC("Unhandled OperatorType {}", attrs.op_type);
+        PANIC("Unhandled ElementUnaryOp {}", attrs.op);
     }
   }();
 

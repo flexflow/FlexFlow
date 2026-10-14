@@ -142,6 +142,8 @@ std::optional<OperatorAttributeValue> get_attribute(ElementUnaryAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return OperatorAttributeValue{get_op_type(p)};
+    case OperatorAttributeKey::SUB_OP:
+      return OperatorAttributeValue{p.op};
     case OperatorAttributeKey::SCALAR:
       return OperatorAttributeValue{p.scalar};
     default:

@@ -25,6 +25,7 @@ includes = [
   "utils/positive_int/positive_int.h",
   "op-attrs/tensor_dim_permutation.h",
   "op-attrs/element_binary_op.dtg.h",
+  "op-attrs/element_unary_op.dtg.h",
 ]
 
 src_includes = [
@@ -57,6 +58,9 @@ type = "::FlexFlow::OperatorType"
 
 [[values]]
 type = "::FlexFlow::ElementBinaryOp"
+
+[[values]]
+type = "::FlexFlow::ElementUnaryOp"
 
 [[values]]
 type = "std::optional<::FlexFlow::Activation>"

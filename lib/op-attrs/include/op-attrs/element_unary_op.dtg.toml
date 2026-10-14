@@ -1,0 +1,57 @@
+namespace = "FlexFlow"
+name = "ElementUnaryOp"
+type = "enum"
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "RELU"
+
+[[values]]
+name = "IDENTITY"
+
+[[values]]
+name = "GELU"
+
+[[values]]
+name = "SIGMOID"
+
+[[values]]
+name = "TANH"
+
+[[values]]
+name = "ELU"
+
+[[values]]
+name = "SILU"
+
+[[values]]
+name = "SIN"
+
+[[values]]
+name = "COS"
+
+[[values]]
+name = "RSQRT"
+
+[[values]]
+name = "SCALAR_ADD"
+
+[[values]]
+name = "SCALAR_SUB"
+
+[[values]]
+name = "SCALAR_MULTIPLY"
+
+[[values]]
+name = "SCALAR_TRUE_DIV"
+
+[[values]]
+name = "POW"
+
+[[values]]
+name = "EXP"

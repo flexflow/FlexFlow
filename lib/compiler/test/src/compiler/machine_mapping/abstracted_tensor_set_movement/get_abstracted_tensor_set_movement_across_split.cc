@@ -40,7 +40,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ParallelLayerAttrs relu_attrs = ParallelLayerAttrs{
         /*op_attrs=*/PCGOperatorAttrs{
             ElementUnaryAttrs{
-                /*op_type=*/OperatorType::RELU,
+                /*op_type=*/ElementUnaryOp::RELU,
                 /*scalar=*/std::nullopt,
             },
         },
@@ -148,7 +148,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     ParallelLayerAttrs relu_attrs = ParallelLayerAttrs{
         /*op_attrs=*/PCGOperatorAttrs{
             ElementUnaryAttrs{
-                /*op_type=*/OperatorType::RELU,
+                /*op_type=*/ElementUnaryOp::RELU,
                 /*scalar=*/std::nullopt,
             },
         },

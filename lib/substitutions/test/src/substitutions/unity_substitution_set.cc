@@ -1223,7 +1223,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     ElementUnaryAttrs relu_attrs = ElementUnaryAttrs{
-        OperatorType::RELU,
+        ElementUnaryOp::RELU,
         std::nullopt,
     };
 

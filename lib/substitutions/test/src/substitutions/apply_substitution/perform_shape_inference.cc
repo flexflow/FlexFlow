@@ -60,7 +60,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     ElementUnaryAttrs n2_op_attrs = ElementUnaryAttrs{
-        /*op_type=*/OperatorType::RELU,
+        /*op_type=*/ElementUnaryOp::RELU,
         /*scalar=*/std::nullopt,
     };
     ParallelLayerAttrs n2_attrs = ParallelLayerAttrs{

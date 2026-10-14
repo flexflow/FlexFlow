@@ -154,7 +154,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       PCGOperatorAttrs relu_attrs = PCGOperatorAttrs{
           ElementUnaryAttrs{
-              /*op_type=*/OperatorType::RELU,
+              /*op_type=*/ElementUnaryOp::RELU,
               /*scalar=*/std::nullopt,
           },
       };

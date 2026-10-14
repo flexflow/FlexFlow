@@ -172,7 +172,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     UnmappedOpCostEstimateKey k2 = UnmappedOpCostEstimateKey{
         /*op_attrs=*/PCGOperatorAttrs{ElementUnaryAttrs{
-            /*type=*/OperatorType::GELU,
+            /*type=*/ElementUnaryOp::GELU,
             /*scalar=*/std::nullopt,
         }},
         /*input_shapes=*/
@@ -195,7 +195,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     UnmappedOpCostEstimateKey k3 = UnmappedOpCostEstimateKey{
         /*op_attrs=*/PCGOperatorAttrs{ElementUnaryAttrs{
-            /*type=*/OperatorType::RELU,
+            /*type=*/ElementUnaryOp::RELU,
             /*scalar=*/std::nullopt,
         }},
         /*input_shapes=*/

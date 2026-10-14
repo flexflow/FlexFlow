@@ -12,7 +12,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     positive_int d3 = 24_p;
 
     ElementUnaryAttrs attrs =
-        ElementUnaryAttrs{OperatorType::RELU, std::nullopt};
+        ElementUnaryAttrs{ElementUnaryOp::RELU, std::nullopt};
 
     TensorShape input = TensorShape{
         TensorDims{
