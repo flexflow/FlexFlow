@@ -1,8 +1,13 @@
 #include "kernels/element_binary_kernels_gpu.h"
-#include "internal/test_utils.h"
+#include "kernels/accessors_are_equal.h"
 #include "kernels/create_accessor_with_contents.h"
+#include "kernels/create_random_filled_accessor.h"
+#include "kernels/create_zero_filled_accessor.h"
 #include "kernels/format_accessor_contents.h"
 #include "kernels/local_cpu_allocator.h"
+#include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_ff_stream.h"
+#include "kernels/managed_per_device_ff_handle.h"
 #include "test/utils/doctest/check_kv.h"
 #include <doctest/doctest.h>
 

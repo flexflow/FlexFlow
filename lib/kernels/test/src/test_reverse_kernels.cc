@@ -1,4 +1,13 @@
-#include "internal/test_utils.h"
+#include "kernels/accessor_contains_non_zero_value.h"
+#include "kernels/accessors_are_equal.h"
+#include "kernels/copy_tensor_accessor.h"
+#include "kernels/create_constant_filled_accessor_r.h"
+#include "kernels/create_random_filled_accessor.h"
+#include "kernels/create_zero_filled_accessor.h"
+#include "kernels/local_cpu_allocator.h"
+#include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_ff_stream.h"
+#include "kernels/managed_per_device_ff_handle.h"
 #include "kernels/reverse_kernels_cpu.h"
 #include "kernels/reverse_kernels_gpu.h"
 #include "op-attrs/datatype_value.h"
@@ -26,8 +35,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
 
     SUBCASE("gpu_forward_kernel") {
       GenericTensorAccessorR input_accessor =
-          read_only_accessor_from_write_accessor(create_filled_accessor_w(
-              input_shape, allocator, make_float_data_type_value(1)));
+          read_only_accessor_from_write_accessor(
+              create_constant_filled_accessor_w(
+                  input_shape, allocator, make_float_data_type_value(1)));
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 

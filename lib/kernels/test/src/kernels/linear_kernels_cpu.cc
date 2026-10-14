@@ -1,6 +1,7 @@
 #include "kernels/linear_kernels_cpu.h"
-#include "internal/test_utils.h"
+#include "kernels/accessors_are_equal.h"
 #include "kernels/create_accessor_with_contents.h"
+#include "kernels/create_zero_filled_accessor.h"
 #include "kernels/format_accessor_contents.h"
 #include "test/utils/doctest/check_kv.h"
 #include <doctest/doctest.h>

@@ -1,5 +1,9 @@
-#include "internal/test_utils.h"
+#include "kernels/create_constant_filled_accessor_r.h"
+#include "kernels/create_random_filled_accessor.h"
 #include "kernels/layer_norm_kernels_gpu.h"
+#include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_ff_stream.h"
+#include "kernels/managed_per_device_ff_handle.h"
 #include "op-attrs/datatype_value.h"
 #include <doctest/doctest.h>
 
@@ -39,13 +43,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
 
     GenericTensorAccessorR input_accessor =
         create_random_filled_accessor_r(input_shape, allocator);
-    GenericTensorAccessorW gamma_accessor = create_filled_accessor_w(
+    GenericTensorAccessorW gamma_accessor = create_constant_filled_accessor_w(
         feature_shape, allocator, make_float_data_type_value(1));
 
     SUBCASE("gpu_forward_kernel") {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
-      GenericTensorAccessorW beta_accessor = create_filled_accessor_w(
+      GenericTensorAccessorW beta_accessor = create_constant_filled_accessor_w(
           feature_shape, allocator, make_float_data_type_value(0));
 
       Kernels::LayerNorm::gpu_forward_kernel(managed_stream.raw_stream(),

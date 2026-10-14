@@ -1,5 +1,5 @@
 #include "kernels/tensor_accessor_binary_ops.h"
-#include "internal/test_utils.h"
+#include "kernels/accessors_are_equal.h"
 #include "kernels/create_accessor_with_contents.h"
 #include "kernels/format_accessor_contents.h"
 #include "kernels/local_cpu_allocator.h"

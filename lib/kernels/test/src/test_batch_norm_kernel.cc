@@ -1,5 +1,10 @@
-#include "internal/test_utils.h"
+#include "kernels/accessor_contains_non_zero_value.h"
 #include "kernels/batch_norm_kernels_gpu.h"
+#include "kernels/create_constant_filled_accessor_r.h"
+#include "kernels/create_random_filled_accessor.h"
+#include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_ff_stream.h"
+#include "kernels/managed_per_device_ff_handle.h"
 #include "op-attrs/datatype_value.h"
 #include <doctest/doctest.h>
 
@@ -50,11 +55,11 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         create_random_filled_accessor_w(input_shape, allocator);
     GenericTensorAccessorW output_accessor =
         create_random_filled_accessor_w(output_shape, allocator);
-    GenericTensorAccessorW scale_accessor = create_filled_accessor_w(
+    GenericTensorAccessorW scale_accessor = create_constant_filled_accessor_w(
         scale_shape, allocator, make_float_data_type_value(1));
 
     SUBCASE("gpu_forward_kernel") {
-      GenericTensorAccessorW bias_accessor = create_filled_accessor_w(
+      GenericTensorAccessorW bias_accessor = create_constant_filled_accessor_w(
           bias_shape, allocator, make_float_data_type_value(0));
 
       Kernels::BatchNorm::gpu_forward_kernel(

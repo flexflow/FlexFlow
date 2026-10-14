@@ -1,7 +1,15 @@
-#include "internal/test_utils.h"
+#include "kernels/accessor_contains_non_zero_value.h"
+#include "kernels/accessors_are_equal.h"
+#include "kernels/allocation.h"
 #include "kernels/cast_kernels.h"
 #include "kernels/cast_kernels_cpu.h"
 #include "kernels/cast_kernels_gpu.h"
+#include "kernels/copy_tensor_accessor.h"
+#include "kernels/create_random_filled_accessor.h"
+#include "kernels/create_zero_filled_accessor.h"
+#include "kernels/local_cpu_allocator.h"
+#include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_ff_stream.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

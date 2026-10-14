@@ -1,6 +1,7 @@
 #include "kernels/element_unary_kernels_cpu.h"
-#include "internal/test_utils.h"
+#include "kernels/accessors_are_equal.h"
 #include "kernels/create_accessor_with_contents.h"
+#include "kernels/create_random_filled_accessor.h"
 #include "kernels/format_accessor_contents.h"
 #include "kernels/local_cpu_allocator.h"
 #include "op-attrs/ops/element_unary.h"

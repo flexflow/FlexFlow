@@ -1,5 +1,9 @@
-#include "internal/test_utils.h"
+#include "kernels/accessor_contains_non_zero_value.h"
+#include "kernels/create_constant_filled_accessor_r.h"
 #include "kernels/flat_kernels_gpu.h"
+#include "kernels/local_cuda_allocator.h"
+#include "kernels/managed_ff_stream.h"
+#include "kernels/managed_per_device_ff_handle.h"
 #include "op-attrs/datatype_value.h"
 #include <doctest/doctest.h>
 
@@ -20,8 +24,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     TensorShape output_shape = input_shape;
 
     GenericTensorAccessorR input_accessor =
-        read_only_accessor_from_write_accessor(create_filled_accessor_w(
-            input_shape, allocator, make_float_data_type_value(2)));
+        read_only_accessor_from_write_accessor(
+            create_constant_filled_accessor_w(
+                input_shape, allocator, make_float_data_type_value(2)));
 
     SUBCASE("gpu_forward_kernel") {
       GenericTensorAccessorW output_accessor =
@@ -38,10 +43,12 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
     }
 
     SUBCASE("gpu_backward_kernel") {
-      GenericTensorAccessorR output_grad_accessor = create_filled_accessor_r(
-          output_shape, allocator, make_float_data_type_value(0));
-      GenericTensorAccessorW input_grad_accessor = create_filled_accessor_w(
-          input_shape, allocator, make_float_data_type_value(1));
+      GenericTensorAccessorR output_grad_accessor =
+          create_constant_filled_accessor_r(
+              output_shape, allocator, make_float_data_type_value(0));
+      GenericTensorAccessorW input_grad_accessor =
+          create_constant_filled_accessor_w(
+              input_shape, allocator, make_float_data_type_value(1));
 
       flat_gpu_backward_kernel(
           managed_stream.raw_stream(),
