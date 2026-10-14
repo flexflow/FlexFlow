@@ -50,11 +50,12 @@ std::vector<ParallelComputationGraph>
 }
 //! [apply_substitution example]
 
-SearchResult graph_optimize(ParallelComputationGraph &pcg,
-                            RuntimeOnlyCostEstimator const &cost_estimator,
-                            MachineComputeSpecification const &resources,
-                            UnitySearchConfig const &search_config,
-                            std::vector<Substitution> const &substitutions) {
+SearchResult optimize_with_unity_algorithm(
+    ParallelComputationGraph &pcg,
+    RuntimeOnlyCostEstimator const &cost_estimator,
+    MachineComputeSpecification const &resources,
+    UnitySearchConfig const &search_config,
+    std::vector<Substitution> const &substitutions) {
 
   MachineMappingCache cached_subgraph_costs = empty_machine_mapping_cache();
   DeduplicatedPriorityQueue<GraphOptimizeState> candidates;

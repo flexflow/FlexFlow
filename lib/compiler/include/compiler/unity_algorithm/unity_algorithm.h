@@ -15,11 +15,12 @@ std::vector<ParallelComputationGraph>
         ParallelComputationGraph const &pcg,
         std::vector<Substitution> const &substitutions);
 
-SearchResult graph_optimize(ParallelComputationGraph &pcg,
-                            RuntimeOnlyCostEstimator const &cost_estimator,
-                            MachineComputeSpecification const &resources,
-                            UnitySearchConfig const &search_config,
-                            std::vector<Substitution> const &substitutions);
+SearchResult optimize_with_unity_algorithm(
+    ParallelComputationGraph &pcg,
+    RuntimeOnlyCostEstimator const &cost_estimator,
+    MachineComputeSpecification const &resources,
+    UnitySearchConfig const &search_config,
+    std::vector<Substitution> const &substitutions);
 
 } // namespace FlexFlow
 

@@ -26,7 +26,7 @@ SearchResult optimize(ComputationGraph const &computation_graph,
             get_expanded_substitution_set(
                 machine_specification.compute_specification);
 
-        return graph_optimize(
+        return optimize_with_unity_algorithm(
             pcg,
             runtime_only_cost_estimator_from_cost_estimator(cost_estimator),
             machine_specification.compute_specification,
