@@ -19,8 +19,6 @@
 #include "task-spec/profiling.h"
 #include "utils/integer_conversions.h"
 
-using namespace FlexFlow::Kernels::Transpose;
-
 namespace FlexFlow {
 
 static std::optional<milliseconds_t>
@@ -32,7 +30,7 @@ static std::optional<milliseconds_t>
   auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
   auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  return profile(forward_kernel,
+  return profile(transpose_forward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Transpose] Forward_time = {:.2lf} [ms]",
@@ -51,7 +49,7 @@ static std::optional<milliseconds_t>
   auto output_grad =
       acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
 
-  return profile(backward_kernel,
+  return profile(transpose_backward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Transpose] Backward_time = {:.2lf} [ms]",

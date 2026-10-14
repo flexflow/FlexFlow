@@ -27,9 +27,6 @@ struct TransposeStrides {
       perm[MAX_TENSOR_DIM];
 };
 
-namespace Kernels {
-namespace Transpose {
-
 __global__ void transpose_simple_kernel(std::size_t volume,
                                         float const *in_ptr,
                                         float *out_ptr,
@@ -81,10 +78,10 @@ static TransposeStrides make_strides(TransposeAttrs const &m,
   return info;
 }
 
-void gpu_forward_kernel(cudaStream_t stream,
-                        TransposeAttrs const &m,
-                        GenericTensorAccessorR const &input,
-                        GenericTensorAccessorW const &output) {
+void transpose_gpu_forward_kernel(cudaStream_t stream,
+                                  TransposeAttrs const &m,
+                                  GenericTensorAccessorR const &input,
+                                  GenericTensorAccessorW const &output) {
   transpose_simple_kernel<<<
       GET_BLOCKS(get_num_elements(output.shape.dims).int_from_positive_int()),
       CUDA_NUM_THREADS,
@@ -96,10 +93,10 @@ void gpu_forward_kernel(cudaStream_t stream,
                 /*beta=*/0.0f);
 }
 
-void gpu_backward_kernel(cudaStream_t stream,
-                         TransposeAttrs const &m,
-                         GenericTensorAccessorR const &out_grad,
-                         GenericTensorAccessorW const &in_grad) {
+void transpose_gpu_backward_kernel(cudaStream_t stream,
+                                   TransposeAttrs const &m,
+                                   GenericTensorAccessorR const &out_grad,
+                                   GenericTensorAccessorW const &in_grad) {
   ASSERT(get_num_dims(in_grad.shape.dims) == m.permutation.num_tensor_dims());
 
   transpose_simple_kernel<<<
@@ -113,6 +110,4 @@ void gpu_backward_kernel(cudaStream_t stream,
                 /*beta=*/1.0f);
 }
 
-} // namespace Transpose
-} // namespace Kernels
 } // namespace FlexFlow
