@@ -19,7 +19,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       Allocator allocator = create_local_cuda_memory_allocator();
 
       ElementBinaryAttrs attrs{
-          /*type=*/OperatorType::EW_ADD,
+          /*type=*/ElementBinaryOp::ADD,
           /*compute_type=*/DataType::FLOAT,
           /*should_broadcast_lhs=*/false,
           /*should_broadcast_rhs=*/false,
@@ -87,7 +87,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       Allocator allocator = create_local_cuda_memory_allocator();
 
       ElementBinaryAttrs attrs{
-          /*type=*/OperatorType::EW_ADD,
+          /*type=*/ElementBinaryOp::ADD,
           /*compute_type=*/DataType::FLOAT,
           /*should_broadcast_lhs=*/false,
           /*should_broadcast_rhs=*/false,

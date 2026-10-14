@@ -31,7 +31,22 @@ OperatorType get_op_type(DropoutAttrs const &) {
 }
 
 OperatorType get_op_type(ElementBinaryAttrs const &attrs) {
-  return attrs.type;
+  switch (attrs.op) {
+    case ElementBinaryOp::ADD:
+      return OperatorType::EW_ADD;
+    case ElementBinaryOp::SUBTRACT:
+      return OperatorType::EW_SUB;
+    case ElementBinaryOp::MULTIPLY:
+      return OperatorType::EW_MUL;
+    case ElementBinaryOp::DIVIDE:
+      return OperatorType::EW_DIV;
+    case ElementBinaryOp::MAX:
+      return OperatorType::EW_MAX;
+    case ElementBinaryOp::MIN:
+      return OperatorType::EW_MIN;
+    default:
+      PANIC("Unknown ElementBinaryOp {}", attrs.op);
+  }
 }
 
 OperatorType get_op_type(ElementUnaryAttrs const &attrs) {

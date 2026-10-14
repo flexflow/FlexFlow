@@ -252,7 +252,7 @@ MappedParallelComputationGraph
       require_only_key(inputs_layer_2.outputs, TensorSlotName::OUTPUT);
 
   ElementBinaryAttrs add_attrs = ElementBinaryAttrs{
-      OperatorType::EW_ADD,
+      ElementBinaryOp::ADD,
       DataType::FLOAT,
       false,
       false,

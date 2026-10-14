@@ -1,0 +1,27 @@
+namespace = "FlexFlow"
+name = "ElementBinaryOp"
+type = "enum"
+features = [
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+[[values]]
+name = "ADD"
+
+[[values]]
+name = "SUBTRACT"
+
+[[values]]
+name = "MULTIPLY"
+
+[[values]]
+name = "DIVIDE"
+
+[[values]]
+name = "MAX"
+
+[[values]]
+name = "MIN"

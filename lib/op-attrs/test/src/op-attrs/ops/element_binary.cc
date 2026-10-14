@@ -13,7 +13,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     positive_int d3 = 24_p;
 
     ElementBinaryAttrs attrs = ElementBinaryAttrs{
-        OperatorType::EW_ADD,
+        ElementBinaryOp::ADD,
         DataType::FLOAT,
         /*should_broadcast_lhs=*/false,
         /*should_broadcast_rhs=*/false,
@@ -54,7 +54,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     positive_int d3 = 24_p;
 
     ElementBinaryAttrs attrs = ElementBinaryAttrs{
-        OperatorType::EW_ADD,
+        ElementBinaryOp::ADD,
         DataType::FLOAT,
         /*should_broadcast_lhs=*/false,
         /*should_broadcast_rhs=*/false,

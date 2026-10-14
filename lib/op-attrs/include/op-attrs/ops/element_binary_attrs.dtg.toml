@@ -14,11 +14,12 @@ features = [
 includes = [
   "op-attrs/operator_type.h",
   "op-attrs/datatype.h",
+  "op-attrs/element_binary_op.dtg.h"
 ]
 
 [[fields]]
-name = "type"
-type = "::FlexFlow::OperatorType"
+name = "op"
+type = "::FlexFlow::ElementBinaryOp"
 
 [[fields]]
 name = "compute_type"

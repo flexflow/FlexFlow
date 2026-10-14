@@ -64,6 +64,7 @@ std::vector<OperatorAttributeKey> all_operator_attribute_keys() {
       OperatorAttributeKey::COMBINE_DIM,
       OperatorAttributeKey::COMBINE_DEGREE,
       OperatorAttributeKey::NUM_INPUTS,
+      OperatorAttributeKey::SUB_OP,
   };
 }
 

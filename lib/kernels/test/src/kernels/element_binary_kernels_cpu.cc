@@ -14,7 +14,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       Allocator cpu_allocator = create_local_cpu_memory_allocator();
 
       ElementBinaryAttrs attrs{
-          /*type=*/OperatorType::EW_ADD,
+          /*op=*/ElementBinaryOp::ADD,
           /*compute_type=*/DataType::FLOAT,
           /*should_broadcast_lhs=*/false,
           /*should_broadcast_rhs=*/false,
@@ -68,7 +68,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       Allocator cpu_allocator = create_local_cpu_memory_allocator();
 
       ElementBinaryAttrs attrs{
-          /*type=*/OperatorType::EW_ADD,
+          /*op=*/ElementBinaryOp::ADD,
           /*compute_type=*/DataType::FLOAT,
           /*should_broadcast_lhs=*/false,
           /*should_broadcast_rhs=*/false,

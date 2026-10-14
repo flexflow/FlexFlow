@@ -11,21 +11,21 @@ void element_binary_cpu_forward_kernel(ElementBinaryAttrs const &attrs,
                                        GenericTensorAccessorW const &output) {
   std::function<float(float, float)> element_function =
       [&]() -> std::function<float(float, float)> {
-    switch (attrs.type) {
-      case OperatorType::EW_ADD:
+    switch (attrs.op) {
+      case ElementBinaryOp::ADD:
         return [](float x, float y) -> float { return x + y; };
-      case OperatorType::EW_SUB:
+      case ElementBinaryOp::SUBTRACT:
         return [](float x, float y) -> float { return x - y; };
-      case OperatorType::EW_MUL:
+      case ElementBinaryOp::MULTIPLY:
         return [](float x, float y) -> float { return x * y; };
-      case OperatorType::EW_DIV:
+      case ElementBinaryOp::DIVIDE:
         return [](float x, float y) -> float { return x / y; };
-      case OperatorType::EW_MAX:
+      case ElementBinaryOp::MAX:
         return [](float x, float y) -> float { return std::max(x, y); };
-      case OperatorType::EW_MIN:
+      case ElementBinaryOp::MIN:
         return [](float x, float y) -> float { return std::min(x, y); };
       default:
-        PANIC("Unhandled OperatorType {}", attrs.type);
+        PANIC("Unhandled ElementBinaryOp {}", attrs.op);
     }
   }();
 
@@ -49,43 +49,43 @@ void element_binary_cpu_backward_kernel(
 
   std::function<float(float, float, float)> lhs_grad_update_function =
       [&]() -> std::function<float(float, float, float)> {
-    switch (attrs.type) {
-      case OperatorType::EW_ADD:
+    switch (attrs.op) {
+      case ElementBinaryOp::ADD:
         return [](float og, float l, float r) -> float { return og; };
-      case OperatorType::EW_SUB:
+      case ElementBinaryOp::SUBTRACT:
         return [](float og, float l, float r) -> float { return og; };
-      case OperatorType::EW_MUL:
+      case ElementBinaryOp::MULTIPLY:
         return [](float og, float l, float r) -> float { return og * r; };
-      case OperatorType::EW_DIV:
+      case ElementBinaryOp::DIVIDE:
         return [](float og, float l, float r) -> float { return og / r; };
-      case OperatorType::EW_MAX:
+      case ElementBinaryOp::MAX:
         NOT_IMPLEMENTED();
-      case OperatorType::EW_MIN:
+      case ElementBinaryOp::MIN:
         NOT_IMPLEMENTED();
       default:
-        PANIC("Unhandled OperatorType {}", attrs.type);
+        PANIC("Unhandled ElementBinaryOp {}", attrs.op);
     }
   }();
 
   std::function<float(float, float, float)> rhs_grad_update_function =
       [&]() -> std::function<float(float, float, float)> {
-    switch (attrs.type) {
-      case OperatorType::EW_ADD:
+    switch (attrs.op) {
+      case ElementBinaryOp::ADD:
         return [](float og, float l, float r) -> float { return og; };
-      case OperatorType::EW_SUB:
+      case ElementBinaryOp::SUBTRACT:
         return [](float og, float l, float r) -> float { return -og; };
-      case OperatorType::EW_MUL:
+      case ElementBinaryOp::MULTIPLY:
         return [](float og, float l, float r) -> float { return og * l; };
-      case OperatorType::EW_DIV:
+      case ElementBinaryOp::DIVIDE:
         return [](float og, float l, float r) -> float {
           return -(og * l) / (r * r);
         };
-      case OperatorType::EW_MAX:
+      case ElementBinaryOp::MAX:
         NOT_IMPLEMENTED();
-      case OperatorType::EW_MIN:
+      case ElementBinaryOp::MIN:
         NOT_IMPLEMENTED();
       default:
-        PANIC("Unhandled OperatorType {}", attrs.type);
+        PANIC("Unhandled ElementBinaryOp {}", attrs.op);
     }
   }();
 

@@ -1126,7 +1126,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape rhs_shape = lhs_shape;
 
     ElementBinaryAttrs add_attrs = ElementBinaryAttrs{
-        OperatorType::EW_ADD,
+        ElementBinaryOp::ADD,
         DataType::FLOAT,
         false,
         false,

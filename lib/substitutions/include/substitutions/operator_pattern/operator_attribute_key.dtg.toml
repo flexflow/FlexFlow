@@ -67,4 +67,5 @@ values = [
   { name = "COMBINE_DIM" },
   { name = "COMBINE_DEGREE" },
   { name = "NUM_INPUTS" },
+  { name = "SUB_OP" },
 ]

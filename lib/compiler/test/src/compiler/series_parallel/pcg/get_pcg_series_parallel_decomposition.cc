@@ -1,4 +1,5 @@
 #include "compiler/series_parallel/pcg/get_pcg_series_parallel_decomposition.h"
+#include "op-attrs/element_binary_op.dtg.h"
 #include "op-attrs/ops/embedding.h"
 #include "op-attrs/ops/linear.h"
 #include "pcg/parallel_computation_graph/parallel_computation_graph.h"
@@ -518,7 +519,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           require_only_key(input1_added.outputs, TensorSlotName::OUTPUT);
 
       ElementBinaryAttrs ew_add_attrs = ElementBinaryAttrs{
-          /*type=*/OperatorType::EW_ADD,
+          /*op=*/ElementBinaryOp::ADD,
           /*compute_type=*/DataType::FLOAT,
           /*should_broadcast_lhs=*/false,
           /*should_broadcast_rhs=*/false,

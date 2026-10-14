@@ -278,15 +278,22 @@ tensor_guid_t ComputationGraphBuilder::element_unary(
 }
 
 tensor_guid_t ComputationGraphBuilder::element_binary(
-    OperatorType op_type,
+    ElementBinaryOp op_type,
     tensor_guid_t const &lhs,
     tensor_guid_t const &rhs,
     std::optional<std::string> const &maybe_name) {
-  std::string name = maybe_name.value_or(get_default_name(op_type));
 
   TensorDims compute_dims = this->get_broadcast_target_dims({lhs, rhs});
   DataType compute_type =
       std::max(this->get_shape(lhs).data_type, this->get_shape(rhs).data_type);
+
+  ElementBinaryAttrs attrs =
+      ElementBinaryAttrs{op_type, compute_type, false, false};
+
+  std::string name =
+      maybe_name.value_or(get_default_name(ComputationGraphOpAttrs{attrs}));
+
+  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
   tensor_guid_t lhs_input = this->as_type(
       this->broadcast(
@@ -299,11 +306,6 @@ tensor_guid_t ComputationGraphBuilder::element_binary(
           rhs, compute_dims, fmt::format("{}_inputr_broadcast", name)),
       compute_type,
       name + "_inputr_cast");
-
-  ElementBinaryAttrs attrs =
-      ElementBinaryAttrs{op_type, compute_type, false, false};
-
-  LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -330,42 +332,42 @@ tensor_guid_t
     ComputationGraphBuilder::add(tensor_guid_t const &lhs,
                                  tensor_guid_t const &rhs,
                                  std::optional<std::string> const &name) {
-  return this->element_binary(OperatorType::EW_ADD, lhs, rhs, name);
+  return this->element_binary(ElementBinaryOp::ADD, lhs, rhs, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::subtract(tensor_guid_t const &lhs,
                                       tensor_guid_t const &rhs,
                                       std::optional<std::string> const &name) {
-  return this->element_binary(OperatorType::EW_SUB, lhs, rhs, name);
+  return this->element_binary(ElementBinaryOp::SUBTRACT, lhs, rhs, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::multiply(tensor_guid_t const &lhs,
                                       tensor_guid_t const &rhs,
                                       std::optional<std::string> const &name) {
-  return this->element_binary(OperatorType::EW_MUL, lhs, rhs, name);
+  return this->element_binary(ElementBinaryOp::MULTIPLY, lhs, rhs, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::divide(tensor_guid_t const &lhs,
                                     tensor_guid_t const &rhs,
                                     std::optional<std::string> const &name) {
-  return this->element_binary(OperatorType::EW_DIV, lhs, rhs, name);
+  return this->element_binary(ElementBinaryOp::DIVIDE, lhs, rhs, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::max(tensor_guid_t const &lhs,
                                  tensor_guid_t const &rhs,
                                  std::optional<std::string> const &name) {
-  return this->element_binary(OperatorType::EW_MAX, lhs, rhs, name);
+  return this->element_binary(ElementBinaryOp::MAX, lhs, rhs, name);
 }
 
 tensor_guid_t
     ComputationGraphBuilder::min(tensor_guid_t const &lhs,
                                  tensor_guid_t const &rhs,
                                  std::optional<std::string> const &name) {
-  return this->element_binary(OperatorType::EW_MIN, lhs, rhs, name);
+  return this->element_binary(ElementBinaryOp::MIN, lhs, rhs, name);
 }
 
 tensor_guid_t

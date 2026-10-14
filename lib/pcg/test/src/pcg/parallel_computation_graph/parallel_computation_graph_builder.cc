@@ -84,7 +84,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       PCGOperatorAttrs result = get_parallel_layer_attrs(b.pcg, layer).op_attrs;
       PCGOperatorAttrs correct = PCGOperatorAttrs{
           ElementBinaryAttrs{
-              /*type=*/OperatorType::EW_ADD,
+              /*op=*/ElementBinaryOp::ADD,
               /*compute_type=*/DataType::FLOAT,
               /*should_broadcast_lhs=*/false,
               /*should_broadcast_rhs=*/false,

@@ -124,6 +124,8 @@ std::optional<OperatorAttributeValue> get_attribute(ElementBinaryAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return OperatorAttributeValue{get_op_type(p)};
+    case OperatorAttributeKey::SUB_OP:
+      return OperatorAttributeValue{p.op};
     case OperatorAttributeKey::DATA_TYPE:
       return OperatorAttributeValue{p.compute_type};
     case OperatorAttributeKey::SHOULD_BROADCAST_LHS:

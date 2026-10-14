@@ -54,26 +54,26 @@ ParallelTensorDimDegrees get_output_parallel_dim_degrees(
     ASSERT(lhs_input_degrees == rhs_input_degrees,
            "Expected input degrees to match");
 
-    switch (attrs.type) {
-      case OperatorType::EW_ADD: {
+    switch (attrs.op) {
+      case ElementBinaryOp::ADD: {
         ASSERT(
             lhs_input_degrees.discard_copy_degree.value == 1,
             "Elementwise Add expected discard copy degree of inputs to be 1");
 
         break;
       }
-      case OperatorType::EW_SUB:
+      case ElementBinaryOp::SUBTRACT:
         NOT_IMPLEMENTED();
-      case OperatorType::EW_MUL:
+      case ElementBinaryOp::MULTIPLY:
         NOT_IMPLEMENTED();
-      case OperatorType::EW_DIV:
+      case ElementBinaryOp::DIVIDE:
         NOT_IMPLEMENTED();
-      case OperatorType::EW_MAX:
+      case ElementBinaryOp::MAX:
         NOT_IMPLEMENTED();
-      case OperatorType::EW_MIN:
+      case ElementBinaryOp::MIN:
         NOT_IMPLEMENTED();
       default:
-        PANIC("Unexpected element-wise binary operator", attrs.type);
+        PANIC("Unexpected element-wise binary operator", attrs.op);
     }
 
     return lhs_input_degrees;

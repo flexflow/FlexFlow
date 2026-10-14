@@ -299,7 +299,7 @@ private:
   TensorDims get_broadcast_target_dims(std::vector<TensorDims> const &);
 
   tensor_guid_t
-      element_binary(OperatorType,
+      element_binary(ElementBinaryOp,
                      tensor_guid_t const &lhs,
                      tensor_guid_t const &rhs,
                      std::optional<std::string> const &name = std::nullopt);
