@@ -12,11 +12,15 @@ template <typename L,
           typename R2 = std::invoke_result_t<F, R1>>
 OneToMany<L, R2> one_to_many_transform_values(OneToMany<L, R1> const &input,
                                               F f) {
-  return one_to_many_from_unstructured_relation(
-      transform(set_of(input.relation()),
-                [&](std::pair<L, R1> const &p) -> std::pair<L, R2> {
-                  return {p.first, f(p.second)};
-                }));
+  std::set<std::pair<L, R1>> input_pairs =
+      unstructured_relation_from_one_to_many(input);
+
+  std::set<std::pair<L, R2>> result_pairs = transform(
+      input_pairs, [&](std::pair<L, R1> const &p) -> std::pair<L, R2> {
+        return {p.first, f(p.second)};
+      });
+
+  return one_to_many_from_unstructured_relation(result_pairs);
 }
 
 } // namespace FlexFlow
