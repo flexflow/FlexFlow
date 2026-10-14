@@ -4,18 +4,20 @@
 #include "kernels/accessor.h"
 #include "kernels/device.h"
 
-namespace FlexFlow::Kernels::Concat {
+namespace FlexFlow {
 
-void gpu_forward_kernel(ffStream_t stream,
-                        GenericTensorAccessorW const &output,
-                        std::vector<GenericTensorAccessorR> const &inputs,
-                        ff_dim_t axis);
+void concat_gpu_forward_kernel(
+    ffStream_t stream,
+    GenericTensorAccessorW const &output,
+    std::vector<GenericTensorAccessorR> const &inputs,
+    ff_dim_t axis);
 
-void gpu_backward_kernel(ffStream_t stream,
-                         GenericTensorAccessorR const &output_grad,
-                         std::vector<GenericTensorAccessorW> const &input_grads,
-                         ff_dim_t axis);
+void concat_gpu_backward_kernel(
+    ffStream_t stream,
+    GenericTensorAccessorR const &output_grad,
+    std::vector<GenericTensorAccessorW> const &input_grads,
+    ff_dim_t axis);
 
-} // namespace FlexFlow::Kernels::Concat
+} // namespace FlexFlow
 
 #endif

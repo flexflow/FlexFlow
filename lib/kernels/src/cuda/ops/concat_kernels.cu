@@ -17,7 +17,7 @@
 #include "kernels/concat_kernels_gpu.h"
 #include <cassert>
 
-namespace FlexFlow::Kernels::Concat {
+namespace FlexFlow {
 
 static void calc_blk_size(size_t &num_blocks,
                           size_t &blk_size,
@@ -30,10 +30,11 @@ static void calc_blk_size(size_t &num_blocks,
           .int_from_positive_int();
 }
 
-void gpu_forward_kernel(cudaStream_t stream,
-                        GenericTensorAccessorW const &output,
-                        std::vector<GenericTensorAccessorR> const &inputs,
-                        ff_dim_t axis) {
+void concat_gpu_forward_kernel(
+    cudaStream_t stream,
+    GenericTensorAccessorW const &output,
+    std::vector<GenericTensorAccessorR> const &inputs,
+    ff_dim_t axis) {
   assert(inputs.size() <= MAX_NUM_INPUTS);
   size_t num_blocks = 1, output_blk_size = 1;
   calc_blk_size(num_blocks, output_blk_size, output.shape, axis);
@@ -62,10 +63,11 @@ void gpu_forward_kernel(cudaStream_t stream,
   }
 }
 
-void gpu_backward_kernel(cudaStream_t stream,
-                         GenericTensorAccessorR const &output_grad,
-                         std::vector<GenericTensorAccessorW> const &input_grads,
-                         ff_dim_t axis) {
+void concat_gpu_backward_kernel(
+    cudaStream_t stream,
+    GenericTensorAccessorR const &output_grad,
+    std::vector<GenericTensorAccessorW> const &input_grads,
+    ff_dim_t axis) {
   assert(input_grads.size() <= MAX_NUM_INPUTS);
   size_t num_blocks = 1, output_blk_size = 1;
   calc_blk_size(num_blocks, output_blk_size, output_grad.shape, axis);
@@ -94,4 +96,4 @@ void gpu_backward_kernel(cudaStream_t stream,
   }
 }
 
-} // namespace FlexFlow::Kernels::Concat
+} // namespace FlexFlow

@@ -4,18 +4,19 @@
 #include "kernels/accessor.h"
 #include "kernels/device_stream_t.dtg.h"
 
-namespace FlexFlow::Kernels::Concat {
+namespace FlexFlow {
 
-void forward_kernel(device_stream_t const &stream,
-                    GenericTensorAccessorW const &output,
-                    std::vector<GenericTensorAccessorR> const &inputs,
-                    ff_dim_t axis);
+void concat_forward_kernel(device_stream_t const &stream,
+                           GenericTensorAccessorW const &output,
+                           std::vector<GenericTensorAccessorR> const &inputs,
+                           ff_dim_t axis);
 
-void backward_kernel(device_stream_t const &stream,
-                     GenericTensorAccessorR const &output_grad,
-                     std::vector<GenericTensorAccessorW> const &input_grads,
-                     ff_dim_t axis);
+void concat_backward_kernel(
+    device_stream_t const &stream,
+    GenericTensorAccessorR const &output_grad,
+    std::vector<GenericTensorAccessorW> const &input_grads,
+    ff_dim_t axis);
 
-} // namespace FlexFlow::Kernels::Concat
+} // namespace FlexFlow
 
 #endif

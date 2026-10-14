@@ -14,7 +14,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
 
     const positive_int num_inputs = 4_p;
 
-    SUBCASE("gpu_forward_kernel") {
+    SUBCASE("concat_gpu_forward_kernel") {
       auto run_forward_test = [&](positive_int input_rows,
                                   positive_int input_cols,
                                   TensorShape output_shape,
@@ -32,10 +32,10 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         GenericTensorAccessorW output_accessor =
             allocator.allocate_tensor(output_shape);
 
-        Kernels::Concat::gpu_forward_kernel(managed_stream.raw_stream(),
-                                            output_accessor,
-                                            input_accessors,
-                                            concat_axis);
+        concat_gpu_forward_kernel(managed_stream.raw_stream(),
+                                  output_accessor,
+                                  input_accessors,
+                                  concat_axis);
 
         CHECK(contains_non_zero(output_accessor));
       };
@@ -61,7 +61,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       }
     }
 
-    SUBCASE("gpu_backward_kernel") {
+    SUBCASE("concat_gpu_backward_kernel") {
       auto run_backward_test = [&](positive_int input_rows,
                                    positive_int input_cols,
                                    TensorShape output_shape,
@@ -79,10 +79,10 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
               return create_zero_filled_accessor_w(input_shape, allocator);
             });
 
-        Kernels::Concat::gpu_backward_kernel(managed_stream.raw_stream(),
-                                             output_grad_accessor,
-                                             input_grad_accessors,
-                                             concat_axis);
+        concat_gpu_backward_kernel(managed_stream.raw_stream(),
+                                   output_grad_accessor,
+                                   input_grad_accessors,
+                                   concat_axis);
 
         for (auto &accessor : input_grad_accessors) {
           CHECK(contains_non_zero(accessor));

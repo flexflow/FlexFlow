@@ -23,8 +23,6 @@
 
 namespace FlexFlow {
 
-using namespace FlexFlow::Kernels::Concat;
-
 static std::vector<TensorSlotName> get_input_slots(ConcatAttrs const &attrs) {
   return slice(get_variadic_inputs_slot_name_sequence(),
                0,
@@ -49,7 +47,7 @@ static std::optional<milliseconds_t>
 
   auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  return profile(forward_kernel,
+  return profile(concat_forward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Concat] forward_time = {:.2lf}ms\n",
@@ -77,7 +75,7 @@ static std::optional<milliseconds_t>
   auto output_grad =
       acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
 
-  return profile(backward_kernel,
+  return profile(concat_backward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Concat] backward_time = {:.2lf}ms\n",

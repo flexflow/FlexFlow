@@ -4,16 +4,18 @@
 #include "kernels/accessor.h"
 #include "kernels/device.h"
 
-namespace FlexFlow::Kernels::Concat {
+namespace FlexFlow {
 
-void cpu_forward_kernel(GenericTensorAccessorW const &output,
-                        std::vector<GenericTensorAccessorR> const &inputs,
-                        ff_dim_t axis);
+void concat_cpu_forward_kernel(
+    GenericTensorAccessorW const &output,
+    std::vector<GenericTensorAccessorR> const &inputs,
+    ff_dim_t axis);
 
-void cpu_backward_kernel(GenericTensorAccessorR const &output_grad,
-                         std::vector<GenericTensorAccessorW> const &input_grads,
-                         ff_dim_t axis);
+void concat_cpu_backward_kernel(
+    GenericTensorAccessorR const &output_grad,
+    std::vector<GenericTensorAccessorW> const &input_grads,
+    ff_dim_t axis);
 
-} // namespace FlexFlow::Kernels::Concat
+} // namespace FlexFlow
 
 #endif
