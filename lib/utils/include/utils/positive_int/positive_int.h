@@ -85,6 +85,7 @@ struct positive_int {
   friend nonnegative_int operator%(nonnegative_int lhs, positive_int rhs);
 
   int int_from_positive_int() const;
+  size_t size_t_from_positive_int() const;
   nonnegative_int nonnegative_int_from_positive_int() const;
 
   friend std::ostream &operator<<(std::ostream &os, positive_int n);

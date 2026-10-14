@@ -4,17 +4,19 @@
 #include "kernels/accessor.h"
 #include "kernels/device.h"
 
-namespace FlexFlow::Kernels::Flat {
+namespace FlexFlow {
 
-void gpu_forward_kernel(ffStream_t stream,
-                        GenericTensorAccessorR const &input,
-                        float *output_ptr);
+void flat_gpu_forward_kernel(ffStream_t stream,
+                             void const *input_ptr,
+                             void *output_ptr,
+                             size_t num_elements,
+                             size_t element_size_in_bytes);
 
-void gpu_backward_kernel(ffStream_t stream,
-                         GenericTensorAccessorR const &input,
-                         float const *output_grad_ptr,
-                         float *input_grad_ptr);
+void flat_gpu_backward_kernel(ffStream_t stream,
+                              float const *output_grad_ptr,
+                              float *input_grad_ptr,
+                              size_t num_elements);
 
-} // namespace FlexFlow::Kernels::Flat
+} // namespace FlexFlow
 
 #endif

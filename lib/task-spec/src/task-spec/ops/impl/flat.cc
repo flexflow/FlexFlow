@@ -4,8 +4,6 @@
 
 namespace FlexFlow {
 
-using namespace FlexFlow::Kernels::Flat;
-
 static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
   std::optional<ProfilingSettings> profiling = acc.get_profiling_settings();
@@ -13,12 +11,12 @@ static std::optional<milliseconds_t>
   auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
   auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  return profile(forward_kernel,
+  return profile(flat_forward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Flat] forward_time = {:.2lf}ms\n",
                  input,
-                 output.get_float_ptr());
+                 output);
 }
 
 static std::optional<milliseconds_t>
@@ -31,13 +29,12 @@ static std::optional<milliseconds_t>
       acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
 
-  return profile(backward_kernel,
+  return profile(flat_backward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Flat] backward_time = {:.2lf}ms\n",
-                 input,
-                 output_grad.get_float_ptr(),
-                 input_grad.get_float_ptr());
+                 output_grad,
+                 input_grad);
 }
 
 TaskImplFunction get_flat_fwd_task_impl() {

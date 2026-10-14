@@ -4,17 +4,16 @@
 #include "kernels/accessor.h"
 #include "kernels/device_stream_t.dtg.h"
 
-namespace FlexFlow::Kernels::Flat {
+namespace FlexFlow {
 
-void forward_kernel(device_stream_t const &stream,
-                    GenericTensorAccessorR const &input,
-                    float *output_ptr);
+void flat_forward_kernel(device_stream_t const &stream,
+                         GenericTensorAccessorR const &input,
+                         GenericTensorAccessorW const &output);
 
-void backward_kernel(device_stream_t const &stream,
-                     GenericTensorAccessorR const &input,
-                     float const *output_grad_ptr,
-                     float *input_grad_ptr);
+void flat_backward_kernel(device_stream_t const &stream,
+                          GenericTensorAccessorR const &output_grad,
+                          GenericTensorAccessorW const &input_grad);
 
-} // namespace FlexFlow::Kernels::Flat
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_FLAT_KERNELS_H

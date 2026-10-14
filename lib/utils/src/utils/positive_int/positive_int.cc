@@ -1,4 +1,5 @@
 #include "utils/positive_int/positive_int.h"
+#include "utils/integer_conversions.h"
 #include <libassert/assert.hpp>
 
 namespace FlexFlow {
@@ -249,6 +250,10 @@ nonnegative_int operator%(nonnegative_int lhs, positive_int rhs) {
 
 int positive_int::int_from_positive_int() const {
   return this->value_;
+}
+
+size_t positive_int::size_t_from_positive_int() const {
+  return size_t_from_int(this->value_);
 }
 
 nonnegative_int positive_int::nonnegative_int_from_positive_int() const {
