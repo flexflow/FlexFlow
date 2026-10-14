@@ -164,11 +164,10 @@ tensor_guid_t ComputationGraphBuilder::as_type(tensor_guid_t const &x,
   if (x_datatype < data_type) {
     return this->cast(x, data_type, name);
   } else if (x_datatype > data_type) {
-    throw mk_runtime_error(
-        fmt::format("Could not convert provided tensor data type {} to "
-                    "desired data type {}",
-                    x_datatype,
-                    data_type));
+    PANIC(fmt::format("Could not convert provided tensor data type {} to "
+                      "desired data type {}",
+                      x_datatype,
+                      data_type));
   } else {
     return x;
   }
@@ -847,7 +846,7 @@ TensorDims ComputationGraphBuilder::get_broadcast_target_dims(
   if (maybe_result.has_value()) {
     return maybe_result.value();
   } else {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "ComputationGraphBuilder::get_broadcast_target_dims failed to find "
         "target tensor dims for input tensor dims {}",
         inputs_dims));
@@ -975,7 +974,7 @@ tensor_guid_t ComputationGraphBuilder::layer_norm(
   if (any_of(axes, [&](ff_dim_t axis) {
         return axis.value >= get_num_dims(input_shape.dims);
       })) {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "ComputationGraphBuilder::layer_norm received axes {} with "
         "out-of-bound element (input tensor has num dimensions = {})",
         axes,

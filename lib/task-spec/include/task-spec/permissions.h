@@ -1,8 +1,8 @@
 #ifndef _FLEXFLOW_LIB_TASK_SPEC_INCLUDE_TASK_SPEC_PERMISSIONS_H
 #define _FLEXFLOW_LIB_TASK_SPEC_INCLUDE_TASK_SPEC_PERMISSIONS_H
 
-#include "utils/exception.h"
 #include "utils/fmt.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 
@@ -42,8 +42,7 @@ struct formatter<::FlexFlow::Permissions> : formatter<string_view> {
         name = "READ_WRITE";
         break;
       default:
-        throw ::FlexFlow::mk_runtime_error(
-            fmt::format("Unknown permission {}", static_cast<int>(p)));
+        PANIC(fmt::format("Unknown permission {}", static_cast<int>(p)));
     }
     return formatter<string_view>::format(name, ctx);
   }

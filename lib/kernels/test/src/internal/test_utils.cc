@@ -156,10 +156,9 @@ struct CreateFilledAccessorW {
                                     Allocator &allocator,
                                     DataTypeValue val) {
     using T = real_type_t<DT>;
-    if (!val.template has<T>()) {
-      throw mk_runtime_error("create_filed_accessor expected data type of "
-                             "shape and passed-in value to match");
-    }
+    ASSERT(val.template has<T>(),
+           "create_filled_accessor expected data type of shape and passed-in "
+           "value to match");
 
     auto unwrapped_value = val.get<T>();
     GenericTensorAccessorW dst_accessor = allocator.allocate_tensor(shape);

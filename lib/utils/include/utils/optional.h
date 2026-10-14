@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_OPTIONAL_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_OPTIONAL_H
 
-#include "utils/exception.h"
 #include "utils/fmt/optional.h"
 #include <libassert/assert.hpp>
 #include <rapidcheck.h>
@@ -32,7 +31,7 @@ T const &unwrap(std::optional<T> const &o, F const &f) {
     return o.value();
   } else {
     f();
-    throw mk_runtime_error("Failure in unwrap");
+    PANIC("Failure in unwrap");
   }
 }
 

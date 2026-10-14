@@ -20,6 +20,7 @@
 #include "op-attrs/ops/attention/multihead_attention_inputs.h"
 #include "op-attrs/ops/attention/multihead_attention_parallel_inputs.h"
 #include "task-spec/profiling.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

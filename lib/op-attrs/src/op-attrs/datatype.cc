@@ -1,7 +1,7 @@
 #include "op-attrs/datatype.h"
 #include "utils/containers/contains.h"
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_int.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 
@@ -20,7 +20,7 @@ positive_int size_of_datatype(DataType data_type) {
     case DataType::DOUBLE:
       return positive_int{sizeof(double)};
     default:
-      throw mk_runtime_error(fmt::format("Unknown DataType {}", data_type));
+      PANIC(fmt::format("Unknown DataType {}", data_type));
   }
 }
 
@@ -48,7 +48,7 @@ bool can_strictly_promote_datatype_from_to(DataType src, DataType dst) {
     case DataType::DOUBLE:
       break;
     default:
-      throw mk_runtime_error(fmt::format("Unknown DataType {}", src));
+      PANIC(fmt::format("Unknown DataType {}", src));
   }
 
   return contains(allowed, dst);
@@ -82,7 +82,7 @@ bool can_torch_strictly_promote_datatype_from_to(DataType src, DataType dst) {
       allowed = {DataType::HALF, DataType::FLOAT};
       break;
     default:
-      throw mk_runtime_error(fmt::format("Unknown DataType {}", src));
+      PANIC(fmt::format("Unknown DataType {}", src));
   }
 
   return contains(allowed, dst);

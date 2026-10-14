@@ -10,6 +10,7 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_slot_name.dtg.h"
 #include "pcg/computation_graph_builder.h"
+#include "utils/exception.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

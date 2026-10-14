@@ -25,7 +25,7 @@ std::optional<OperatorAttributeValue>
           nonnegative_int size = num_elements(v);
           return OperatorAttributeValue{size};
         } else {
-          throw mk_runtime_error("Invalid operand");
+          PANIC("Invalid operand");
         }
       });
 }

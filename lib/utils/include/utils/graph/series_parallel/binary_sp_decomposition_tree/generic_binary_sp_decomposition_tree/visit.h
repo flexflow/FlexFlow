@@ -1,9 +1,9 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIES_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_VISIT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_GRAPH_SERIES_PARALLEL_BINARY_SP_DECOMPOSITION_TREE_GENERIC_BINARY_SP_DECOMPOSITION_TREE_VISIT_H
 
-#include "utils/exception.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree_implementation.dtg.h"
 #include "utils/graph/series_parallel/binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree/generic_binary_sp_decomposition_tree_visitor.dtg.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 
@@ -38,8 +38,8 @@ ReturnType
       return result;
     }
     default:
-      throw mk_runtime_error(fmt::format(
-          "Unknown SPDecompositionTreeNodeType value: {}", node_type));
+      PANIC(fmt::format("Unknown SPDecompositionTreeNodeType value: {}",
+                        node_type));
   }
 }
 

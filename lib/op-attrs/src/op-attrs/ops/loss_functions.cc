@@ -1,6 +1,5 @@
 #include "op-attrs/ops/loss_functions.h"
 #include "utils/containers/transform.h"
-#include "utils/exception.h"
 #include "utils/overload.h"
 #include <algorithm>
 #include <cassert>
@@ -28,8 +27,8 @@ LossFunction parse_loss_name(std::string const &raw_name) {
   } else if (name == "identity") {
     return LossFunction::IDENTITY;
   } else {
-    throw mk_runtime_error(fmt::format(
-        "Unknown loss type {}. Please report this as an issue.", name));
+    PANIC(fmt::format("Unknown loss type {}. Please report this as an issue.",
+                      name));
   }
 }
 

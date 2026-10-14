@@ -327,7 +327,7 @@ struct ForwardKernel {
                   int in_dim,
                   int out_dim,
                   int batch_size) {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "Invalid type combination: input type {} and output type {}", TI, TD));
   }
 };
@@ -576,7 +576,7 @@ struct BackwardKernel {
                   int in_dim,
                   int out_dim,
                   int batch_size) {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "Invalid type combination: input type {} and output type {}", TI, TD));
   }
 };

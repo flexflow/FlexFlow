@@ -101,7 +101,7 @@ tensor_guid_t create_dlrm_interact_features(
     tensor_guid_t const &bottom_mlp_output,
     std::vector<tensor_guid_t> const &emb_outputs) {
   if (config.arch_interaction_op != DLRMArchInteractionOp::CAT) {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "Currently only arch_interaction_op=DLRMArchInteractionOp::CAT is "
         "supported, but found arch_interaction_op={}. If you need support for "
         "additional "

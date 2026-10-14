@@ -10,12 +10,11 @@ std::set<DirectedEdge>
                                         std::set<Node> const &src_subgraph,
                                         std::set<Node> const &dst_subgraph) {
   if (!are_disjoint(src_subgraph, dst_subgraph)) {
-    throw mk_runtime_error(
-        fmt::format("get_edges_from_subgraph_to_subgraph(DiGraphView, ...) "
-                    "expected src_subgraph and dst_subgraph to be disjoint, "
-                    "but found src_subgraph={}, dst_subgraph={}",
-                    src_subgraph,
-                    dst_subgraph));
+    PANIC(fmt::format("get_edges_from_subgraph_to_subgraph(DiGraphView, ...) "
+                      "expected src_subgraph and dst_subgraph to be disjoint, "
+                      "but found src_subgraph={}, dst_subgraph={}",
+                      src_subgraph,
+                      dst_subgraph));
   }
 
   return g.query_edges(DirectedEdgeQuery{

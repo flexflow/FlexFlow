@@ -23,7 +23,7 @@ std::optional<Node> get_imm_post_dominator(DiGraphView const &g,
                                            std::set<Node> const &nodes) {
 
   if (nodes.empty()) {
-    throw mk_runtime_error("Cannot get imm_post_dominator of no nodes");
+    PANIC("Cannot get imm_post_dominator of no nodes");
   }
 
   if (nodes.size() == 1) {

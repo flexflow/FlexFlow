@@ -1,5 +1,4 @@
 #include "kernels/nccl.h"
-#include "utils/exception.h"
 #include <cassert>
 
 namespace FlexFlow {
@@ -10,7 +9,7 @@ ncclUniqueId generate_unique_id() {
   checkNCCL(ncclGetUniqueId(&ncclId));
   return ncclId;
 #else
-  throw mk_runtime_error("FF_USE_NCCL is not defined");
+  PANIC("FF_USE_NCCL is not defined");
 #endif
 }
 
@@ -24,7 +23,7 @@ ncclComm_t
   //     ncclComm, allRanks, myRank, ncclId);
   return ncclComm;
 #else
-  throw mk_runtime_error("FF_USE_NCCL is not defined");
+  PANIC("FF_USE_NCCL is not defined");
 #endif
 }
 

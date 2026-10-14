@@ -12,7 +12,7 @@ ManyToOne<T1, T3> exhaustive_relational_join(ManyToOne<T1, T2> const &fst,
   ManyToOne<T1, T3> result;
 
   if (fst.right_values() != snd.left_values()) {
-    throw mk_runtime_error(
+    PANIC(
         fmt::format("exhaustive_relational_join for ManyToOne received inputs "
                     "with non-matching inner dimensions: right dimension of "
                     "fst is {} while left dimension of snd is {}",

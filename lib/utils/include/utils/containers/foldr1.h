@@ -1,7 +1,8 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_FOLDR1_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_FOLDR1_H
 
-#include "utils/exception.h"
+#include <fmt/format.h>
+#include <libassert/assert.hpp>
 #include <vector>
 
 namespace FlexFlow {
@@ -9,7 +10,7 @@ namespace FlexFlow {
 template <typename T, typename F>
 T foldr1(std::vector<T> const &vec, F f) {
   if (vec.empty()) {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "foldr1 expected non-empty vector, but receieved empty vector"));
   }
 

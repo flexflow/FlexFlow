@@ -1,5 +1,5 @@
 #include "pcg/create_grad.h"
-#include "utils/exception.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 
@@ -10,7 +10,7 @@ bool bool_from_create_grad(CreateGrad cg) {
     case CreateGrad::NO:
       return false;
     default:
-      throw mk_runtime_error(fmt::format("Unknown CreateGrad value {}", cg));
+      PANIC(fmt::format("Unknown CreateGrad value {}", cg));
   }
 }
 

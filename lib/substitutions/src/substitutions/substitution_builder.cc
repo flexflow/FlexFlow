@@ -69,9 +69,9 @@ std::map<TensorSlotName, PatternValue> SubstitutionBuilder::add_pattern_node(
     std::string name = maybe_name.value();
 
     if (this->pattern_node_names.contains_r(name)) {
-      throw mk_runtime_error(fmt::format("Attempted to name node {}, but a "
-                                         "node with that name already exists!",
-                                         name));
+      PANIC(fmt::format("Attempted to name node {}, but a "
+                        "node with that name already exists!",
+                        name));
     }
 
     this->pattern_node_names.equate(PatternNode{node_added.node}, name);

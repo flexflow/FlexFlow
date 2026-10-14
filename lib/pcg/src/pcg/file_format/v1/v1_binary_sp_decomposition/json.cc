@@ -1,7 +1,7 @@
 #include "pcg/file_format/v1/v1_binary_sp_decomposition/json.h"
-#include "utils/exception.h"
 #include "utils/fmt/json.h"
 #include "utils/overload.h"
+#include <libassert/assert.hpp>
 
 using namespace ::FlexFlow;
 
@@ -25,7 +25,7 @@ V1BinarySPDecomposition
         j.at("value").get<nonnegative_int>(),
     };
   } else {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "Unknown json type value for LeafOnlyBinarySPDecompositionTree \"{}\" "
         "in json object: {}",
         type,

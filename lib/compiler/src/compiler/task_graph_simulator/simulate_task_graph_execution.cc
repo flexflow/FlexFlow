@@ -7,7 +7,6 @@
 #include "utils/containers/is_subseteq_of.h"
 #include "utils/containers/set_of.h"
 #include "utils/containers/sorted.h"
-#include "utils/exception.h"
 #include "utils/graph/digraph/algorithms/get_initial_nodes.h"
 #include "utils/graph/digraph/algorithms/get_predecessors.h"
 #include "utils/graph/digraph/algorithms/get_successors.h"
@@ -25,7 +24,7 @@ TaskGraphExecutionTrace simulate_task_graph_execution(
     std::function<float(Node const &)> cost_function,
     TaskExecutionConstraint const &constraint) {
   if (!is_acyclic(task_graph)) {
-    throw mk_runtime_error(
+    PANIC(
         "simulate_task_graph_execution cannot simulate cyclic directed graphs");
   }
 
@@ -93,11 +92,11 @@ TaskGraphExecutionTrace simulate_task_graph_execution(
       InProgressTask next_task = get_next_task_to_finish();
       finish_task_processing(next_task);
     } else {
-      throw mk_runtime_error("Constraints cannot be satisfied");
+      PANIC("Constraints cannot be satisfied");
     }
   }
   if (execution_state.finished_tasks.size() != num_nodes(task_graph)) {
-    throw mk_runtime_error("Failed to execute all tasks in given graph");
+    PANIC("Failed to execute all tasks in given graph");
   }
 
   return TaskGraphExecutionTrace{task_profiles};

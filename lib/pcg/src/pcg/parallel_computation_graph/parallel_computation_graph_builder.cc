@@ -82,10 +82,9 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::add(
 
   DataType datatype = [&] {
     if (lhs_shape.data_type != rhs_shape.data_type) {
-      throw mk_runtime_error(
-          fmt::format("Datatypes do not match: {} (lhs) != {} (rhs)",
-                      lhs_shape.data_type,
-                      rhs_shape.data_type));
+      PANIC(fmt::format("Datatypes do not match: {} (lhs) != {} (rhs)",
+                        lhs_shape.data_type,
+                        rhs_shape.data_type));
     } else {
       return lhs_shape.data_type;
     }
@@ -346,7 +345,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
     std::optional<std::string> const &maybe_name) {
 
   if (activation.has_value() && activation.value() != Activation::RELU) {
-    throw mk_runtime_error(fmt::format(
+    PANIC(fmt::format(
         "batch_norm currently only supports (1) no activation function, or (2) "
         "relu activation function, but received {}. "
         "If you need support for additional activation functions, please "
@@ -600,11 +599,10 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::as_type(
                                                    goal_datatype)) {
     return this->cast(input, goal_datatype, name);
   } else {
-    throw mk_runtime_error(
-        fmt::format("Could not convert provided tensor data type {} to "
-                    "desired data type {}",
-                    input_datatype,
-                    goal_datatype));
+    PANIC(fmt::format("Could not convert provided tensor data type {} to "
+                      "desired data type {}",
+                      input_datatype,
+                      goal_datatype));
   }
 }
 

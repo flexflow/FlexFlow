@@ -32,7 +32,7 @@ struct CheckShape {
     };
 
     if (current_shape != expected_shape) {
-      throw mk_runtime_error(fmt::format(
+      PANIC(fmt::format(
           "Expected activation shape {}, but found activation shape {}",
           expected_shape,
           current_shape));
@@ -50,7 +50,7 @@ struct CheckShape {
     };
 
     if (current_shape != expected_shape) {
-      throw mk_runtime_error(fmt::format(
+      PANIC(fmt::format(
           "Expected activation shape {}, but found activation shape {}",
           expected_shape,
           current_shape));
