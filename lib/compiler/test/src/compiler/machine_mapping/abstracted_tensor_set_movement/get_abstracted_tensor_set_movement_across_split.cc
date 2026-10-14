@@ -25,7 +25,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    ParallelTensorShape par_input_shape = lift_to_parallel(input_shape);
+    ParallelTensorShape par_input_shape = lift_shape_to_parallel(input_shape);
 
     ParallelLayerAttrs partition_attrs = ParallelLayerAttrs{
         /*op_attrs=*/PCGOperatorAttrs{
@@ -133,7 +133,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    ParallelTensorShape par_input_shape = lift_to_parallel(input_shape);
+    ParallelTensorShape par_input_shape = lift_shape_to_parallel(input_shape);
 
     ParallelLayerAttrs partition_attrs = ParallelLayerAttrs{
         /*op_attrs=*/PCGOperatorAttrs{

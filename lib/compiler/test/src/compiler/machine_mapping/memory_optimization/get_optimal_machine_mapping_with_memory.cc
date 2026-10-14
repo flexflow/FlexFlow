@@ -133,9 +133,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     ParallelTensorShape pre_partition_par_tensor_shape =
-        lift_to_parallel(tensor_shape);
+        lift_shape_to_parallel(tensor_shape);
     ParallelTensorShape post_partition_par_tensor_shape =
-        lift_to_parallel_with_degrees(
+        lift_shape_to_parallel_with_degrees(
             tensor_shape,
             ParallelTensorDimDegrees{
                 /*sum_degree=*/SumDegree{1_p},

@@ -288,7 +288,7 @@ tl::expected<ParallelTensorShape, std::string>
   positive_int joined_dim_degree = 1_p;
   positive_int head_dim_degree = parsed.discard_copy_degree.value;
 
-  return lift_to_parallel_with_degrees(
+  return lift_shape_to_parallel_with_degrees(
       unpar_shape,
       SumDegree{1_p},
       DiscardCopyDegree{parsed.batch_dim.degree},
@@ -329,7 +329,7 @@ tl::expected<ParallelTensorShape, std::string>
   DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{
       parsed.batch_dim.degree * parsed.discard_copy_degree.value};
   FFOrdered<positive_int> shard_degrees = FFOrdered<positive_int>{1_p};
-  return lift_to_parallel_with_degrees(
+  return lift_shape_to_parallel_with_degrees(
       unpar_shape, sum_degree, discard_copy_degree, shard_degrees);
 }
 
@@ -367,7 +367,7 @@ tl::expected<ParallelTensorShape, std::string>
   DiscardCopyDegree discard_copy_degree = DiscardCopyDegree{
       parsed.batch_dim.degree * parsed.discard_copy_degree.value};
   FFOrdered<positive_int> shard_degrees = FFOrdered<positive_int>{1_p};
-  return lift_to_parallel_with_degrees(
+  return lift_shape_to_parallel_with_degrees(
       unpar_shape, sum_degree, discard_copy_degree, shard_degrees);
 }
 
@@ -401,7 +401,7 @@ tl::expected<ParallelTensorShape, std::string>
   positive_int seq_len_degree = 1_p;
   positive_int out_dim_degree = 1_p;
 
-  return lift_to_parallel_with_degrees(
+  return lift_shape_to_parallel_with_degrees(
       unpar_shape,
       SumDegree{sum_degree},
       DiscardCopyDegree{discard_copy_degree},

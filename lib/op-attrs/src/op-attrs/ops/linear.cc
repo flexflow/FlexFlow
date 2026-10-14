@@ -109,7 +109,7 @@ tl::expected<ParallelTensorShape, std::string>
   ParallelTensorDimDegrees projection_degrees =
       get_projection_parallel_dim_degrees(attrs, get_parallel_degrees(input));
 
-  return lift_to_parallel_with_degrees(unpar, projection_degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, projection_degrees);
 }
 //! [parallel shape inference composition example]
 
@@ -127,7 +127,7 @@ tl::expected<ParallelTensorShape, std::string>
   ParallelTensorDimDegrees bias_degrees =
       get_bias_parallel_dim_degrees(attrs, get_parallel_degrees(input));
 
-  return lift_to_parallel_with_degrees(unpar, bias_degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, bias_degrees);
 }
 
 tl::expected<ParallelTensorShape, std::string>
@@ -145,7 +145,7 @@ tl::expected<ParallelTensorShape, std::string>
   ParallelTensorDimDegrees output_degrees =
       get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input));
 
-  return lift_to_parallel_with_degrees(unpar, output_degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, output_degrees);
 }
 
 ParallelTensorDimDegrees

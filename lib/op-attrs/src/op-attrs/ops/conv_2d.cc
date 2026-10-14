@@ -298,7 +298,7 @@ ParallelTensorShape
   ParallelTensorDimDegrees degrees = conv2d_get_kernel_parallel_dim_degrees(
       attrs, get_parallel_degrees(input));
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 ParallelTensorShape
@@ -308,7 +308,7 @@ ParallelTensorShape
   ParallelTensorDimDegrees degrees =
       conv2d_get_bias_parallel_dim_degrees(attrs, get_parallel_degrees(input));
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 ParallelTensorShape
@@ -319,7 +319,7 @@ ParallelTensorShape
   ParallelTensorDimDegrees degrees = conv2d_get_output_parallel_dim_degrees(
       attrs, get_parallel_degrees(input));
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 std::map<TensorSlotName, ParallelTensorShape>

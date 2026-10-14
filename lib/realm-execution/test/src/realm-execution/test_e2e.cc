@@ -464,7 +464,7 @@ TEST_SUITE(FF_TEST_SUITE) {
             dynamic_tensor_accessor_from_instance(
                 pcg_instance.get_loss_tensor_instance().value(),
                 Realm::Event::NO_EVENT,
-                lift_to_parallel(cfg.loss_shape),
+                lift_shape_to_parallel(cfg.loss_shape),
                 Permissions::RO,
                 ctx.get_current_processor())
                 .require_read(),
@@ -591,7 +591,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
                 dynamic_tensor_accessor_from_instance(
                     pcg_instance.get_loss_tensor_instance().value(),
                     Realm::Event::NO_EVENT,
-                    lift_to_parallel(cfg.loss_shape),
+                    lift_shape_to_parallel(cfg.loss_shape),
                     Permissions::RO,
                     ctx.get_current_processor())
                     .require_read(),

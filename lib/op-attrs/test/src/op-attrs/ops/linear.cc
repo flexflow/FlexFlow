@@ -146,7 +146,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                           positive_int o_batch,
                           positive_int o_extra_dim,
                           positive_int o_channel) {
-      return lift_to_parallel_with_degrees(
+      return lift_shape_to_parallel_with_degrees(
           input, o_sum, o_eq, FFOrdered{o_batch, o_extra_dim, o_channel});
     };
 
@@ -155,7 +155,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                            positive_int o_batch,
                            positive_int o_extra_dim,
                            positive_int o_channel) {
-      return lift_to_parallel_with_degrees(
+      return lift_shape_to_parallel_with_degrees(
           output, o_sum, o_eq, FFOrdered{o_batch, o_extra_dim, o_channel});
     };
 
@@ -163,14 +163,14 @@ TEST_SUITE(FF_TEST_SUITE) {
                                DiscardCopyDegree o_eq,
                                positive_int o_outchannel,
                                positive_int o_inchannel) {
-      return lift_to_parallel_with_degrees(
+      return lift_shape_to_parallel_with_degrees(
           projection, o_sum, o_eq, FFOrdered{o_outchannel, o_inchannel});
     };
 
     auto make_bias = [&](SumDegree o_sum,
                          DiscardCopyDegree o_eq,
                          positive_int o_outchannel) {
-      return lift_to_parallel_with_degrees(
+      return lift_shape_to_parallel_with_degrees(
           bias, o_sum, o_eq, FFOrdered{o_outchannel});
     };
 

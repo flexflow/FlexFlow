@@ -130,7 +130,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     MachineMappingCache cache = empty_machine_mapping_cache();
 
-    ParallelTensorShape par_tensor_shape = lift_to_parallel_with_degrees(
+    ParallelTensorShape par_tensor_shape = lift_shape_to_parallel_with_degrees(
         tensor_shape,
         ParallelTensorDimDegrees{
             /*sum_degree=*/SumDegree{1_p},

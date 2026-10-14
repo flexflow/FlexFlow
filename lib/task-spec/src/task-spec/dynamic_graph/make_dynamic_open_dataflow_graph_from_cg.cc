@@ -43,7 +43,7 @@ DynamicOpenDataflowGraph
               },
               DynamicValueAttrs{
                   /*tensor_guid=*/dynamic_tensor_guid_t{tensor},
-                  /*parallel_tensor_shape=*/lift_to_parallel(attrs.shape),
+                  /*parallel_tensor_shape=*/lift_shape_to_parallel(attrs.shape),
                   /*create_grad=*/(attrs.create_grad == CreateGrad::YES),
                   /*shard_coord=*/std::nullopt,
                   /*mapping=*/std::nullopt,
@@ -65,7 +65,7 @@ DynamicOpenDataflowGraph
               },
               DynamicValueAttrs{
                   /*tensor_guid=*/dynamic_tensor_guid_t{tensor},
-                  /*parallel_tensor_shape=*/lift_to_parallel(attrs.shape),
+                  /*parallel_tensor_shape=*/lift_shape_to_parallel(attrs.shape),
                   /*create_grad=*/(attrs.create_grad == CreateGrad::YES),
                   /*shard_coord=*/std::nullopt,
                   /*mapping=*/std::nullopt,

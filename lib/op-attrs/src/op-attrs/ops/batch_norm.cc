@@ -256,7 +256,7 @@ tl::expected<ParallelTensorShape, std::string>
     returned.value();
   });
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 tl::expected<ParallelTensorShape, std::string>
@@ -282,7 +282,7 @@ tl::expected<ParallelTensorShape, std::string>
     returned.value();
   });
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 tl::expected<ParallelTensorShape, std::string>
@@ -308,7 +308,7 @@ tl::expected<ParallelTensorShape, std::string>
     returned.value();
   });
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 tl::expected<std::map<TensorSlotName, ParallelTensorShape>, std::string>

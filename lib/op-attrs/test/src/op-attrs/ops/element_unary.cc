@@ -36,7 +36,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                           positive_int o_1,
                           positive_int o_2,
                           positive_int o_3) {
-      return lift_to_parallel_with_degrees(
+      return lift_shape_to_parallel_with_degrees(
           input, o_sum, o_eq, FFOrdered{o_1, o_2, o_3});
     };
 

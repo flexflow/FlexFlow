@@ -264,7 +264,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                             TensorSlotName::OUTPUT,
                         },
                     },
-                    lift_to_parallel(get_reduced_shape(n1_weight_shape)),
+                    lift_shape_to_parallel(get_reduced_shape(n1_weight_shape)),
                 },
                 {
                     OpenKwargDataflowValue<int, TensorSlotName>{

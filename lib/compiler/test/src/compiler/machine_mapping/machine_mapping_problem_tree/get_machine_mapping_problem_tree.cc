@@ -81,7 +81,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         },
         DataType::FLOAT,
     };
-    ParallelTensorShape par_input_shape = lift_to_parallel(input_shape);
+    ParallelTensorShape par_input_shape = lift_shape_to_parallel(input_shape);
 
     auto make_output_attrs = [](ParallelTensorShape const &shape) {
       return ParallelTensorAttrs{

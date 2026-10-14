@@ -81,7 +81,7 @@ ParallelTensorShape concat_get_output_parallel_shape(
         return get_parallel_degrees(s);
       }));
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 } // namespace FlexFlow

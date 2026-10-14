@@ -36,7 +36,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                             DiscardCopyDegree o_eq,
                             positive_int o_batch,
                             positive_int o_features) {
-        return lift_to_parallel_with_degrees(
+        return lift_shape_to_parallel_with_degrees(
             input, o_sum, o_eq, FFOrdered{o_batch, o_features});
       };
 
@@ -44,7 +44,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                              DiscardCopyDegree o_eq,
                              positive_int o_batch,
                              positive_int o_outchannels) {
-        return lift_to_parallel_with_degrees(
+        return lift_shape_to_parallel_with_degrees(
             output, o_sum, o_eq, FFOrdered{o_batch, o_outchannels});
       };
 

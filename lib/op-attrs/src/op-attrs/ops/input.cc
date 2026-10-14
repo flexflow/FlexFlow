@@ -10,7 +10,7 @@ TensorShape get_output_shape(InputAttrs const &attrs) {
 }
 
 ParallelTensorShape get_output_parallel_tensor_shape(InputAttrs const &attrs) {
-  return lift_to_parallel(attrs.tensor_shape);
+  return lift_shape_to_parallel(attrs.tensor_shape);
 }
 
 OperatorTaskSpace get_operator_task_space(InputAttrs const &) {

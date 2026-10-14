@@ -83,7 +83,7 @@ tl::expected<ParallelTensorShape, std::string>
                            [](ShardParallelDim const &d) { return d.degree; });
   shard_degrees.at(relative_ff_dim_t{-1}) = get_discard_copy_degree(input);
 
-  return lift_to_parallel_with_degrees(
+  return lift_shape_to_parallel_with_degrees(
       unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
@@ -111,7 +111,7 @@ tl::expected<ParallelTensorShape, std::string>
       out_channel_degree,
   };
 
-  return lift_to_parallel_with_degrees(
+  return lift_shape_to_parallel_with_degrees(
       unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 

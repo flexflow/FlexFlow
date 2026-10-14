@@ -51,7 +51,7 @@ std::vector<ParallelTensorShape>
       degrees,
       [&](TensorShape const &s,
           ParallelTensorDimDegrees const &d) -> ParallelTensorShape {
-        return lift_to_parallel_with_degrees(s, d);
+        return lift_shape_to_parallel_with_degrees(s, d);
       });
 }
 

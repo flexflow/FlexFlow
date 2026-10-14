@@ -5,6 +5,7 @@
 #include "op-attrs/parallel_tensor_dim_idx_t.dtg.h"
 #include "op-attrs/parallel_tensor_dim_idx_t.h"
 #include "op-attrs/parallel_tensor_space_coordinate.h"
+#include "op-attrs/tensor_dims.h"
 #include "utils/containers/binary_merge_disjoint_maps.h"
 #include "utils/containers/filtermap_keys.h"
 #include "utils/containers/filtrans.h"
@@ -14,6 +15,7 @@
 #include "utils/containers/map_values.h"
 #include "utils/containers/product.h"
 #include "utils/containers/range.h"
+#include "utils/containers/repeat_element.h"
 #include "utils/containers/set_of.h"
 #include "utils/containers/set_union.h"
 #include "utils/containers/transform.h"
@@ -127,6 +129,19 @@ std::set<ParallelTensorSpaceCoordinate> get_parallel_tensor_space_coordinates(
       [](std::map<parallel_tensor_dim_idx_t, nonnegative_int> const &m) {
         return parallel_tensor_space_coord_from_map(m);
       });
+}
+
+ParallelTensorDimDegrees
+    trivial_degrees_for_tensor_dims(TensorDims const &dims) {
+  std::vector<positive_int> shard_degrees = repeat_element(
+      /*num_times=*/get_num_dims(dims).nonnegative_int_from_num_tensor_dims(),
+      /*element=*/1_p);
+
+  return ParallelTensorDimDegrees{
+      /*sum_degree=*/SumDegree{1_p},
+      /*discard_copy_degree=*/DiscardCopyDegree{1_p},
+      /*shard_degrees=*/ff_ordered_of(shard_degrees),
+  };
 }
 
 DimDomain<parallel_tensor_dim_idx_t>

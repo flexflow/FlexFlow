@@ -177,7 +177,7 @@ tl::expected<ParallelTensorShape, std::string>
     result_degrees.value();
   });
 
-  return lift_to_parallel_with_degrees(unpar, degrees);
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 tl::expected<ParallelTensorDimDegrees, std::string>
