@@ -366,6 +366,7 @@ Substitution create_partition_linear_combine(positive_int num_dims,
   return b.get_substitution();
 }
 
+//! [SubstitutionBuilder more concise example]
 Substitution create_partition_conv2d_combine(positive_int num_dims,
                                              positive_int degree) {
   ASSERT(num_dims == 4_p);
@@ -427,6 +428,7 @@ Substitution create_partition_conv2d_combine(positive_int num_dims,
 
   return b.get_substitution();
 }
+//! [SubstitutionBuilder more concise example]
 
 Substitution create_partition_attention_combine(positive_int num_heads,
                                                 positive_int degree) {

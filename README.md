@@ -5,10 +5,10 @@
 
 > [!WARNING]
 > The FlexFlow repository has been split into separate [flexflow-train](https://github.com/flexflow/flexflow-train) and [flexflow-serve](https://github.com/flexflow/flexflow-serve) repositories.
-> You are currently viewing [flexflow-train](https://github.com/flexflow/flexflow-train). 
-> For anything inference/serving-related, go to [flexflow-serve](https://github.com/flexflow/flexflow-serve). 
+> You are currently viewing [flexflow-train](https://github.com/flexflow/flexflow-train).
+> For anything inference/serving-related, go to [flexflow-serve](https://github.com/flexflow/flexflow-serve).
 
-FlexFlow Train is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies. 
+FlexFlow Train is a deep learning framework that accelerates distributed DNN training by automatically searching for efficient parallelization strategies.
 
 <!--
 FlexFlow provides a drop-in replacement for PyTorch and TensorFlow Keras. Running existing PyTorch and Keras programs in FlexFlow only requires [a few lines of changes to the program](https://flexflow.ai/keras).
@@ -55,7 +55,7 @@ For users that prefer to program in C/C++. FlexFlow supports a C++ program infer
 
 
 ## Command-Line Flags
-In addition to setting runtime configurations in a FlexFlow Python/C++ program, the FlexFlow runtime also accepts command-line arguments for various runtime parameters: 
+In addition to setting runtime configurations in a FlexFlow Python/C++ program, the FlexFlow runtime also accepts command-line arguments for various runtime parameters:
 
 FlexFlow training flags:
 * `-e` or `--epochs`: number of total epochs to run (default: 1)
@@ -81,17 +81,21 @@ Performance auto-tuning flags:
 For performance tuning related flags: see [performance autotuning](https://flexflow.ai/search).
 -->
 
+## Documentation
+
+FlexFlow Train's documentation can be found at <https://flexflow.ai/train/docs/>.
+
 ## Contributing
 
 Please let us know if you encounter any bugs or have any suggestions by [submitting an issue](https://github.com/flexflow/flexflow-train/issues).
 
-For instructions on how to contribute code to FlexFlow Train, see [CONTRIBUTING.md](./CONTRIBUTING.md).
+For instructions on how to contribute code to FlexFlow Train, see [here](https://flexflow.ai/train/docs/d1/d5a/contributing.html).
 
 We welcome all contributions to FlexFlow Train from bug fixes to new features and extensions.
 
 ## Citations
 
-* Colin Unger, Zhihao Jia, Wei Wu, Sina Lin, Mandeep Baines, Carlos Efrain Quintero Narvaez, Vinay Ramakrishnaiah, Nirmal Prajapati, Pat McCormick, Jamaludin Mohd-Yusof, Xi Luo, Dheevatsa Mudigere, Jongsoo Park, Misha Smelyanskiy, and Alex Aiken. [Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization](https://www.usenix.org/conference/osdi22/presentation/unger). In Proceedings of the Symposium on Operating Systems Design and Implementation (OSDI), July 2022. 
+* Colin Unger, Zhihao Jia, Wei Wu, Sina Lin, Mandeep Baines, Carlos Efrain Quintero Narvaez, Vinay Ramakrishnaiah, Nirmal Prajapati, Pat McCormick, Jamaludin Mohd-Yusof, Xi Luo, Dheevatsa Mudigere, Jongsoo Park, Misha Smelyanskiy, and Alex Aiken. [Unity: Accelerating DNN Training Through Joint Optimization of Algebraic Transformations and Parallelization](https://www.usenix.org/conference/osdi22/presentation/unger). In Proceedings of the Symposium on Operating Systems Design and Implementation (OSDI), July 2022.
 
 * Zhihao Jia, Matei Zaharia, and Alex Aiken. [Beyond Data and Model Parallelism for Deep Neural Networks](https://cs.stanford.edu/~zhihao/papers/sysml19a.pdf). In Proceedings of the 2nd Conference on Machine Learning and Systems (MLSys), April 2019.
 

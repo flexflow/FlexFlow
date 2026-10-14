@@ -13,7 +13,7 @@ More specifically, this consists of the following pieces:
   - \ref "get_bias_shape(LinearAttrs const &, TensorShape const &)", and
   - \ref "get_output_shape(LinearAttrs const &, TensorShape const &)").
 
-  This procedure is termed <em>shape inference</em>.
+  This procedure is termed <em>shape inference</em>. For a description of the logic behind shape inference and how it fits into the larger structure of FlexFlow, see \ref shape-inference.
 
 - Functions for inferring the parallelized weight and output shapes from the shapes of the parallelized input tensors, e.g.,
   - \ref "get_projection_shape(LinearAttrs const &, ParallelTensorShape const &)",

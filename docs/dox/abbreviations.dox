@@ -1,0 +1,12 @@
+namespace FlexFlow {
+/**
+\page abbreviations Abbreviations
+
+CG: \ref ComputationGraph
+
+PCG: \ref ParallelComputationGraph
+
+OpAttrs: "operator attributes"
+
+*/
+}

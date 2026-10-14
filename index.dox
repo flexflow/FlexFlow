@@ -15,6 +15,8 @@ The bulk of the FlexFlow source code is stored in the following folders:
 - `docs`: Config files for documentation generators and code for generating diagrams. The actual documentation itself is included in the source directories/files in <a href="https://www.doxygen.nl/manual/index.html">Doxygen</a> syntax either in standalone `.dox` files or inline in header files.
 - `cmake`: CMake configuration for building FlexFlow Train. Note that unless you're modifying the build configuration (i.e., adding a library, additional dependencies, etc.), you generally should use \ref contributing-proj "proj" instead of interacting with CMake directly.
 
+- \subpage user-interaction
+
 \section root-contributing Contributing
 
 Please let us know if you encounter any bugs or have any suggestions by <a href="https://github.com/flexflow/flexflow-train/issues">submitting an issue</a>.

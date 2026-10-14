@@ -7,7 +7,7 @@ namespace FlexFlow {
 
 \note If you are developing on Stanford's Sapling cluster, instead see the instructions \subpage sapling-setup "here". If you don't know what this means, you're not using Sapling so you should just continue reading.
 
-1. %FlexFlow %Train uses <a href="https://nix.dev/manual/nix/2.24/">Nix</a> to manage dependencies and the development environment.
+1. FlexFlow Train uses <a href="https://nix.dev/manual/nix/2.24/">Nix</a> to manage dependencies and the development environment.
    There exist a number of ways to install Nix, but we recommend one of the following:
 
    1. If you have root permissions: [DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer)
@@ -88,7 +88,7 @@ If you have and are still encountering an issue, please \ref contributing-contac
 \subsection contributing-editorconfig EditorConfig
 
 FlexFlow Train uses [EditorConfig](https://editorconfig.org/) to ensure consistent low-level details (indentation settings, character encoding, etc.) across different editors.
-The EditorConfig file for %FlexFlow %Train can be found in [`.editorconfig`](./.editorconfig).
+The EditorConfig file for FlexFlow Train can be found in [`.editorconfig`](./.editorconfig).
 If you are using vim, emacs, or another editor with built-in EditorConfig support (a full list of editors with built-in EditorConfig support can be found [here](https://editorconfig.org/#pre-installed))
 the configuration will be detected and applied without you needing to do anything.
 If you are using an editor not on this list, you will need to install a corresponding [EditorConfig plugin](https://editorconfig.org/#editor-plugins).
@@ -119,12 +119,12 @@ If you've confirmed that you are in the correct devshell and are still encounter
 \subsection contributing-nix-direnv nix-direnv (optional)
 
 If you installed Nix system-wide (e.g., using [DeterminateSystems/nix-installer](https://github.com/DeterminateSystems/nix-installer)),
-you can use [direnv](https://direnv.net/) to automatically enter the %FlexFlow %Train development environment when you `cd` into the repository, rather
+you can use [direnv](https://direnv.net/) to automatically enter the FlexFlow Train development environment when you `cd` into the repository, rather
 than having to manually run `nix develop`.
 [direnv](https://direnv.net) will also automatically exit the environment when you `cd` out of the repository, and (if configured using [nix-direnv](https://github.com/nix-community/nix-direnv)) will even automatically reload the environment if the `flake.nix` file changes.
 You can find the installation instructions for direnv [here](https://direnv.net/docs/installation.html), and if you would like automatic environment reloading you can also install nix-direnv using the instructions [here](https://github.com/nix-community/nix-direnv?tab=readme-ov-file#installation).
 
-Once you have direnv (and optionally nix-direnv) installed, cd into the root of your cloned %FlexFlow %Train repository and run
+Once you have direnv (and optionally nix-direnv) installed, cd into the root of your cloned FlexFlow Train repository and run
 
 \verbatim
 $ echo 'use flake . --accept-flake-config' > .envrc
@@ -136,7 +136,7 @@ For more information on using direnv with nix, see [here](https://github.com/dir
 
 \section contributing-proj Building, Testing, etc.
 
-Most operations you'll want to perform while developing %FlexFlow %Train are provided through a small python utility called [proj](https://github.com/lockshaw/proj).
+Most operations you'll want to perform while developing FlexFlow Train are provided through a small python utility called [proj](https://github.com/lockshaw/proj).
 `proj` is automatically pulled in by nix when you enter the dev shell, so you should be able to run
 
 \verbatim
@@ -147,15 +147,15 @@ and see the full list of operations that `proj` supports.
 `proj` commands can be run from anywhere in the repository (i.e., they do not have to be run from the root).
 To help you get started, however, a list of common command invocations is included here:
 
-- To build %FlexFlow %Train:
+- To build FlexFlow Train:
   \verbatim
   (ff) $ proj build
   \endverbatim
-- To build and run %FlexFlow %Train tests (without a GPU):
+- To build and run FlexFlow Train tests (without a GPU):
   \verbatim
   (ff) $ proj test --skip-gpu-tests
   \endverbatim
-- To build and run %FlexFlow %Train tests (with a GPU):
+- To build and run FlexFlow Train tests (with a GPU):
   \verbatim
   (ff) $ proj test
   \endverbatim
@@ -163,11 +163,11 @@ To help you get started, however, a list of common command invocations is includ
   \verbatim
   (ff) $ proj cmake
   \endverbatim
-- To format all of the %FlexFlow %Train sources files:
+- To format all of the FlexFlow Train sources files:
   \verbatim
   (ff) $ proj format
   \endverbatim
-- To build the %FlexFlow %Train docs:
+- To build the FlexFlow Train docs:
   \verbatim
   (ff) $ proj doxygen
   \endverbatim
@@ -186,14 +186,14 @@ GPU machines for CI are managed using [runs-on](https://runs-on.com/).
 
 We actively welcome your pull requests. Note that we may already be working on the feature/fix you're looking for, so we suggest searching through the [open issues](https://github.com/flexflow/flexflow-train/issues), [open PRs](https://github.com/flexflow/flexflow-train/pulls), and \ref contributing-contact-us "contacting us" to make sure you're not duplicating existing effort!
 
-The steps for getting changes merged into %FlexFlow are relatively standard:
+The steps for getting changes merged into FlexFlow are relatively standard:
 
 1. [Fork the repo](https://github.com/flexflow/flexflow-train/fork) and either create a new branch based on `master`, or just modify `master` directly.
-2. If you've added code that should be tested, add tests. The process for adding tests for code under `lib` is documented [here](./lib/README.md#tests). Adding tests for other parts of the code is currently undocumented, so you will \ref contributing-contact-us "contact us" for information on how to do it.
+2. If you've added code that should be tested, add tests. The process for adding tests for code under `lib` is documented \subpage testing "here". Adding tests for other parts of the code is currently undocumented, so you will \ref contributing-contact-us "contact us" for information on how to do it.
 3. Ensure the code builds (i.e., run `proj build`).
 4. Ensure the test suite passes (i.e., run `proj test`).
 5. Format the code (i.e., run `proj format`).
-6. Create a new PR from your modified branch to the `master` branch in %FlexFlow %Train.
+6. Create a new PR from your modified branch to the `master` branch in FlexFlow Train.
    Provide a brief description of the changes you've made and link any related/closed issues.
 
 Code review is done using [Reviewable](https://reviewable.io/).
@@ -201,12 +201,12 @@ If you haven't used Reviewable before, please read through (or at least skim) th
 
 \section contributing-contact-us Contact Us
 
-Either [create an issue](https://github.com/flexflow/flexflow-train/issues/new) or join the %FlexFlow [Zulip](https://flexflow.zulipchat.com/join/mtiwtwttgggnivrkb6vlakbr/) instance.
+Either [create an issue](https://github.com/flexflow/flexflow-train/issues/new) or join the FlexFlow [Zulip](https://flexflow.zulipchat.com/join/mtiwtwttgggnivrkb6vlakbr/) instance.
 For any reported bugs, please ensure that your description clear and has sufficient information for us to reproduce the issue.
 
 \section contributing-license License
 
-By contributing to %FlexFlow %Train, you agree that your contributions will be licensed
+By contributing to FlexFlow Train, you agree that your contributions will be licensed
 under the [LICENSE](./LICENSE) file in the root directory of this source tree.
 
 */

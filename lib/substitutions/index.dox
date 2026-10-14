@@ -3,15 +3,57 @@ namespace FlexFlow {
 
 \page substitutions substitutions
 
-\brief Contains the definitions of PCG substitutions (i.e., Substitution), as well as the code for serializing them.
+\brief Contains the definitions of PCG substitutions (i.e., \ref Substitution), as well as the code for serializing them.
 
-\section substitution Substitution
+\section substitutions-usage Usage
 
-A \ref Substitution is to replace a subgraph of the PCG by a new one. We refer to the subgraph to be replaced as the input graph, and the new subgraph to replace the input graph as the output graph.
+\subsection substitutions-creating Creating a Substitution
 
-\section pattern-matches PCGPattern and MultiDiGraphPatternMatch
+To create a \ref Substitution, you'll want to use the \ref SubstitutionBuilder,
+which provides a more concise interface for substitution construction, while
+also preventing some common errors. Here is an example of using \ref SubstitutionBuilder
+to build a simple \ref "Substitution":
 
-A \ref PCGPattern is defined as an open graph with node label OperatorPattern and output label ParallelTensorPattern, which is refered to as the pattern graph. The graph structure of a GraphPattern instance defines the geometrical property of the input graph, while the node labels and output labels define the attribute property of that.
+\snippet lib/substitutions/test/src/substitutions/substitution_builder.cc SubstitutionBuilder example
+
+In practice the \ref SubstitutionBuilder interface can still end up being
+excessively verbose due to its generality.
+In many cases, however, it is possible to identify some common patterns of your
+substitutions and pull them out as helper functions, which can make creating substitutions
+considerably more precise. For an example of this pattern, see the following
+code used in constructing the unity substitution set.
+
+\snippet lib/substitutions/src/substitutions/unity_substitution_set.cc SubstitutionBuilder more concise example
+
+\subsection substitutions-applying Applying a Substitution
+
+To apply a \ref Substitution to a \ref ParallelComputationGraph, you'll first need to identify a location in the
+\ref ParallelComputationGraph where it can be applied.
+For this you'll use the \ref find_pattern_matches function, which returns a
+\c std::vector of \ref PCGPatternMatch, each of which represents one of those valid locations to apply the substitution.
+Once you've chosen a \ref PCGPatternMatch to use, you can then use \ref apply_substitution to create the new PCG.
+However, for full generality this function returns a \ref SubParallelComputationGraph rather than a \ref ParallelComputationGraph.
+Fortunately, it is easy to convert between these two using the \ref
+pcg_from_sub_pcg_by_dropping_inputs and \ref sub_pcg_from_full_pcg functions.
+For a concrete example of applying a \ref Substitution, see the code snippet below:
+
+\snippet lib/compiler/src/compiler/unity_algorithm/unity_algorithm.cc apply_substitution example
+
+\section substitutions-internals Internals
+
+\subsection substitution Substitution
+
+A \ref Substitution is to replace a subgraph of the PCG by a new one. We refer
+to the subgraph to be replaced as the input graph, and the new subgraph to
+replace the input graph as the output graph.
+
+\subsection pattern-matches PCGPattern and MultiDiGraphPatternMatch
+
+A \ref PCGPattern is defined as an open graph with node label OperatorPattern
+and output label ParallelTensorPattern, which is refered to as the pattern
+graph. The graph structure of a GraphPattern instance defines the geometrical
+property of the input graph, while the node labels and output labels define the
+attribute property of that.
 
 To apply a substitution to a PCG, we should first match the pattern graph to a subgraph of the PCG. `MultiDiGraphPatternMatch` describes the match, which consists of
 * `node_assignment`: a mapping from the nodes of the pattern graph to the nodes of the PCG; and
@@ -20,11 +62,19 @@ The input graph derived by this match is then defined by `values(node_assignment
 * `node_assignment` and `edge_assignment` are injections;
 * For every node `n` in the pattern graph, `edge_assignment` derives a bijection between `query_edges({n})` and `query_edges({node_assignment.at_l(n)})`.
 
-\section output-graph-expr OutputGraphExpr
+\subsection output-graph-expr OutputGraphExpr
 
-An \ref OutputGraphExpr is defined as an open graph with node label \ref OutputOperatorAttrsAssignment and output label \c std::monostate.
+An \ref OutputGraphExpr is defined as an open graph with node label \ref
+OutputOperatorAttrsAssignment and output label \c std::monostate.
 
-\ref OutputOperatorAttrsAssignment is a collection of \ref OperatorAttributeKey and \ref OutputOperatorAttributeExpr pairs. It defines how the attributes of a single operator is calculated from the input graph. A pair \c "{operator_attribute_key, output_operator_attribute_expr}" in the collection means the value of \c output_operator_attribute_expr is assigned to the attribute named \c operator_attribute_key of the operator.
+\ref OutputOperatorAttrsAssignment is a collection of \ref OperatorAttributeKey
+and \ref OutputOperatorAttributeExpr pairs. It defines how the attributes of a
+single operator is calculated from the input graph. A pair \c
+"{operator_attribute_key, output_operator_attribute_expr}" in the collection
+means the value of \c output_operator_attribute_expr is assigned to the
+attribute named \c operator_attribute_key of the operator.
+
+
 
 */
 }

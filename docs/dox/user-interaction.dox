@@ -1,0 +1,9 @@
+namespace FlexFlow {
+/**
+
+\page user-interaction User Interaction
+
+\image html pytorch-tracing.svg
+
+*/
+}

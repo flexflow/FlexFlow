@@ -1,0 +1,14 @@
+namespace FlexFlow {
+/**
+
+\page testing Testing
+
+FlexFlow Train's test suite is written using the <a href="https://github.com/doctest/doctest">doctest</a> framework.
+Tests are located in the <tt>test/</tt> subdirectory of each of the libraries, and
+tests are always placed in a file whose path matches that of the header and source files.
+For example, all of the tests for \ref compiler are found under the <tt>lib/compiler/test/</tt> directory.
+The tests for a single header in compiler, for example <tt>lib/compiler/include/compiler/machine_mapping/machine_view.h</tt>,
+are located in <tt>lib/compiler/test/src/compiler/machine_mapping/machine_view.h</tt>.
+
+*/
+}

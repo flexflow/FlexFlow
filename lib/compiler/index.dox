@@ -1,3 +1,4 @@
+namespace FlexFlow {
 /**
 
 \page compiler compiler
@@ -10,4 +11,10 @@ This includes:
 - \subpage task-graph-simulator "Task Graph Simulator"
 - \subpage machine-mapping "Machine Mapping"
 
+\section compiler-usage Usage
+
+The main API of the compiler is \ref optimize, which allows any of a number of
+optimization algorithms (specified by \ref AlgorithmConfig) to be used.
+
 */
+}

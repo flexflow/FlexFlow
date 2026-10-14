@@ -945,10 +945,8 @@ WARN_LOGFILE           =
 
 INPUT                  = $(FF_HOME)/lib \
                          $(FF_HOME)/bin \
-                         $(FF_HOME)/index.dox \
-                         $(FF_HOME)/contributing.dox \
-                         $(FF_HOME)/docs/sapling.dox \
-                         $(FF_HOME)/docs/realm-api.dox
+                         $(FF_HOME)/docs/dox \
+                         $(FF_HOME)/index.dox
 
 # This tag can be used to specify the character encoding of the source files
 # that doxygen parses. Internally doxygen uses the UTF-8 encoding. Doxygen uses
@@ -995,8 +993,7 @@ FILE_PATTERNS          = *.c \
                          *.h \
                          *.hpp \
                          *.py \
-                         *.dox \
-                         *.md
+                         *.dox
 
 # The RECURSIVE tag can be used to specify whether or not subdirectories should
 # be searched for input files as well.
@@ -1064,7 +1061,7 @@ EXAMPLE_RECURSIVE      = YES
 # that contain images that are to be included in the documentation (see the
 # \image command).
 
-IMAGE_PATH             =
+IMAGE_PATH             = docs/plantuml/figures/
 
 # The INPUT_FILTER tag can be used to specify a program that doxygen should
 # invoke to filter for each input file. Doxygen will invoke the filter program

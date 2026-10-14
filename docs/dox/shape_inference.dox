@@ -1,0 +1,10 @@
+namespace FlexFlow {
+/**
+
+\page shape-inference Shape Inference
+
+\todo
+  \@lockshaw Add docs for the design of shape inference.
+
+*/
+}

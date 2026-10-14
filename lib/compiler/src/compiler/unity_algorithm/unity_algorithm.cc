@@ -30,6 +30,7 @@ namespace FlexFlow {
 /*
  * Applies a substitution to all possible positions in PCG
  */
+//! [apply_substitution example]
 std::vector<ParallelComputationGraph>
     all_pcgs_obtained_by_applying_a_substitution(
         ParallelComputationGraph const &pcg,
@@ -47,6 +48,7 @@ std::vector<ParallelComputationGraph>
   }
   return results;
 }
+//! [apply_substitution example]
 
 SearchResult graph_optimize(ParallelComputationGraph &pcg,
                             RuntimeOnlyCostEstimator const &cost_estimator,
