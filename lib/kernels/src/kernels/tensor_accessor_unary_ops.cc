@@ -134,38 +134,31 @@ GenericTensorAccessorW
 template <DataType DT>
 struct CPUTensorAccessorTranspose {
   void operator()(GenericTensorAccessorR const &input,
-                  GenericTensorAccessorW const &output) {
-    ASSERT(get_num_dims(input.shape.dims) == 2);
-    ASSERT(get_num_dims(output.shape.dims) == 2);
+                  GenericTensorAccessorW const &output,
+                  TensorDimPermutation const &dim_permutation) {
 
     for (TensorDimsCoord const &input_coord :
          get_tensor_dims_coord_set(input.shape.dims)) {
-      ASSERT(input_coord.ff_ordered.size() == 2);
 
-      TensorDimsCoord output_coord = TensorDimsCoord{
-          ff_ordered_reversed(input_coord.ff_ordered),
-      };
+      TensorDimsCoord output_coord =
+          permute_tensor_dims_coord(dim_permutation, input_coord);
 
       output.at<DT>(output_coord) = input.at<DT>(input_coord);
     }
   }
 };
 
-static TensorShape get_transpose_output_shape(TensorShape const &input_shape) {
-  return TensorShape{
-      TensorDims{
-          ff_ordered_reversed(input_shape.dims.ff_ordered),
-      },
-      input_shape.data_type,
-  };
+static TensorShape
+    get_transpose_output_shape(TensorShape const &input_shape,
+                               TensorDimPermutation const &dim_permutation) {
+  return permute_tensor_shape(dim_permutation, input_shape);
 }
 
 void tensor_accessor_transpose_to(GenericTensorAccessorR const &input,
+                                  TensorDimPermutation const &dim_permutation,
                                   GenericTensorAccessorW const &output) {
-  ASSERT(get_num_dims(input.shape.dims) == 2);
-
-  TensorShape output_shape =
-      get_transpose_output_shape(get_tensor_shape_for_accessor_r(input));
+  TensorShape output_shape = get_transpose_output_shape(
+      get_tensor_shape_for_accessor_r(input), dim_permutation);
   ASSERT(get_tensor_shape_for_accessor_w(output) == output_shape);
 
   Allocator cpu_allocator = create_local_cpu_memory_allocator();
@@ -176,108 +169,93 @@ void tensor_accessor_transpose_to(GenericTensorAccessorR const &input,
       cpu_allocator.allocate_tensor(output_shape);
 
   DataTypeDispatch1<CPUTensorAccessorTranspose>{}(
-      input.shape.data_type, input_cpu, output_cpu);
+      input.shape.data_type, input_cpu, output_cpu, dim_permutation);
 
   copy_accessor_data_to_l_from_r(output, output_cpu);
 }
 
 GenericTensorAccessorW
     tensor_accessor_transpose(GenericTensorAccessorR const &input,
+                              TensorDimPermutation const &dim_permutation,
                               Allocator &output_allocator) {
 
-  TensorShape output_shape =
-      get_transpose_output_shape(get_tensor_shape_for_accessor_r(input));
+  TensorShape output_shape = get_transpose_output_shape(
+      get_tensor_shape_for_accessor_r(input), dim_permutation);
 
   GenericTensorAccessorW output =
       output_allocator.allocate_tensor(output_shape);
 
-  tensor_accessor_transpose_to(input, output);
+  tensor_accessor_transpose_to(input, dim_permutation, output);
 
   return output;
 }
 
-template <DataType DT>
-struct CPUTensorAccessorBatchTranspose {
-  void operator()(GenericTensorAccessorR const &input,
-                  GenericTensorAccessorW const &output) {
-    ASSERT(get_num_dims(input.shape.dims) == 3);
-    ASSERT(get_num_dims(output.shape.dims) == 3);
+static TensorDimPermutation get_2d_transpose_permutation() {
+  ff_dim_t d0 = ff_dim_t{0_n};
+  ff_dim_t d1 = ff_dim_t{1_n};
 
-    for (TensorDimsCoord const &input_coord :
-         get_tensor_dims_coord_set(input.shape.dims)) {
-      ASSERT(input_coord.ff_ordered.size() == 3);
-
-      nonnegative_int c0 = tensor_dims_coord_at_idx(input_coord, ff_dim_t{0_n});
-      nonnegative_int c1 = tensor_dims_coord_at_idx(input_coord, ff_dim_t{1_n});
-      nonnegative_int c2 = tensor_dims_coord_at_idx(input_coord, ff_dim_t{2_n});
-
-      TensorDimsCoord output_coord = TensorDimsCoord{
-          FFOrdered<nonnegative_int>{
-              c0,
-              c2,
-              c1,
-          },
-      };
-
-      output.at<DT>(output_coord) = input.at<DT>(input_coord);
-    }
-  }
-};
-
-static TensorShape
-    get_batch_transpose_output_shape(TensorShape const &input_shape) {
-  ASSERT(get_num_dims(input_shape.dims) == 3);
-
-  positive_int d0 = dim_at_idx(input_shape.dims, ff_dim_t{0_n});
-  positive_int d1 = dim_at_idx(input_shape.dims, ff_dim_t{1_n});
-  positive_int d2 = dim_at_idx(input_shape.dims, ff_dim_t{2_n});
-
-  return TensorShape{
-      TensorDims{
-          FFOrdered<positive_int>{
-              d0,
-              d2,
-              d1,
-          },
+  TensorDimPermutation permutation = TensorDimPermutation{
+      bidict<ff_dim_t, ff_dim_t>{
+          {d0, d1},
+          {d1, d0},
       },
-      input_shape.data_type,
   };
+
+  return permutation;
+}
+
+GenericTensorAccessorW
+    tensor_accessor_transpose_2d(GenericTensorAccessorR const &input,
+                                 Allocator &output_allocator) {
+  ASSERT(get_num_dims(input.shape.dims) == 2);
+
+  TensorDimPermutation permutation = get_2d_transpose_permutation();
+
+  return tensor_accessor_transpose(input, permutation, output_allocator);
+}
+
+void tensor_accessor_transpose_2d_to(GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW const &output) {
+  ASSERT(get_num_dims(input.shape.dims) == 2);
+
+  TensorDimPermutation permutation = get_2d_transpose_permutation();
+
+  return tensor_accessor_transpose_to(input, permutation, output);
+}
+
+static TensorDimPermutation get_batch_transpose_permutation() {
+  ff_dim_t d0 = ff_dim_t{0_n};
+  ff_dim_t d1 = ff_dim_t{1_n};
+  ff_dim_t d2 = ff_dim_t{2_n};
+
+  TensorDimPermutation permutation = TensorDimPermutation{
+      bidict<ff_dim_t, ff_dim_t>{
+          {d0, d0},
+          {d1, d2},
+          {d2, d1},
+      },
+  };
+
+  return permutation;
 }
 
 void tensor_accessor_batch_transpose_to(GenericTensorAccessorR const &input,
                                         GenericTensorAccessorW const &output) {
   ASSERT(get_num_dims(input.shape.dims) == 3);
 
-  TensorShape output_shape =
-      get_batch_transpose_output_shape(get_tensor_shape_for_accessor_r(input));
-  ASSERT(get_tensor_shape_for_accessor_w(output) == output_shape);
+  TensorDimPermutation permutation = get_batch_transpose_permutation();
 
-  Allocator cpu_allocator = create_local_cpu_memory_allocator();
-  GenericTensorAccessorR input_cpu =
-      copy_tensor_accessor_r_to_cpu_if_necessary(input, cpu_allocator);
-
-  GenericTensorAccessorW output_cpu =
-      cpu_allocator.allocate_tensor(output_shape);
-
-  DataTypeDispatch1<CPUTensorAccessorBatchTranspose>{}(
-      input.shape.data_type, input_cpu, output_cpu);
-
-  copy_accessor_data_to_l_from_r(output, output_cpu);
+  return tensor_accessor_transpose_to(input, permutation, output);
 }
 
 GenericTensorAccessorW
     tensor_accessor_batch_transpose(GenericTensorAccessorR const &input,
                                     Allocator &output_allocator) {
+  ASSERT(get_num_dims(input.shape.dims) == 3);
 
-  TensorShape output_shape =
-      get_batch_transpose_output_shape(get_tensor_shape_for_accessor_r(input));
+  TensorDimPermutation permutation = get_batch_transpose_permutation();
 
-  GenericTensorAccessorW output =
-      output_allocator.allocate_tensor(output_shape);
-
-  tensor_accessor_batch_transpose_to(input, output);
-
-  return output;
+  return tensor_accessor_transpose(input, permutation, output_allocator);
 }
 
 template <DataType DT>

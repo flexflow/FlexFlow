@@ -138,6 +138,71 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("tensor_accessor_transpose") {
     Allocator cpu_allocator = create_local_cpu_memory_allocator();
 
+    GenericTensorAccessorR input = create_4d_accessor_r_with_contents<float>(
+        {
+            {
+                {
+                    {3, 3, 6},
+                    {0, -1, 0.75},
+                },
+                {
+                    {1, 2, -5},
+                    {12, 0, 12},
+                },
+                {
+                    {8, 0, -0.5},
+                    {1, 9, 2},
+                },
+                {
+                    {1, 5, 1},
+                    {2, 9, 0},
+                },
+            },
+        },
+        cpu_allocator);
+
+    TensorDimPermutation permutation = TensorDimPermutation{
+        bidict<ff_dim_t, ff_dim_t>{
+            {ff_dim_t{0_n}, ff_dim_t{3_n}},
+            {ff_dim_t{1_n}, ff_dim_t{0_n}},
+            {ff_dim_t{2_n}, ff_dim_t{2_n}},
+            {ff_dim_t{3_n}, ff_dim_t{1_n}},
+        },
+    };
+
+    GenericTensorAccessorW result =
+        tensor_accessor_transpose(input, permutation, cpu_allocator);
+
+    GenericTensorAccessorR correct = create_4d_accessor_w_with_contents<float>(
+        {
+            {
+                {
+                    {3, 1, 8, 1},
+                    {0, 12, 1, 2},
+                },
+            },
+            {
+                {
+                    {3, 2, 0, 5},
+                    {-1, 0, 9, 9},
+                },
+            },
+            {
+                {
+                    {6, -5, -0.5, 1},
+                    {0.75, 12, 2, 0},
+                },
+            },
+        },
+        cpu_allocator);
+
+    CHECK_MESSAGE(accessors_are_equal(result, correct),
+                  check_kv("result", format_accessor_w_contents(result)));
+  }
+
+  TEST_CASE("tensor_accessor_transpose_2d") {
+    Allocator cpu_allocator = create_local_cpu_memory_allocator();
+
     GenericTensorAccessorR input = create_2d_accessor_r_with_contents<float>(
         {
             {3, 3, 6},
@@ -146,7 +211,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         cpu_allocator);
 
     GenericTensorAccessorW result =
-        tensor_accessor_transpose(input, cpu_allocator);
+        tensor_accessor_transpose_2d(input, cpu_allocator);
 
     GenericTensorAccessorR correct = create_2d_accessor_r_with_contents<float>(
         {

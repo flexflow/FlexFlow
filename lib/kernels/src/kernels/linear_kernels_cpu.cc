@@ -17,7 +17,7 @@ void linear_cpu_forward_kernel(
   Allocator cpu_allocator = create_local_cpu_memory_allocator();
 
   tensor_accessor_matmul_to(
-      input, tensor_accessor_transpose(projection, cpu_allocator), output);
+      input, tensor_accessor_transpose_2d(projection, cpu_allocator), output);
 
   ASSERT(attrs.use_bias == bias.has_value());
   if (bias.has_value()) {
@@ -78,10 +78,10 @@ void linear_cpu_backward_kernel(
 
   tensor_accessor_matmul_to(
       processed_output_grad.value(), projection, input_grad);
-  tensor_accessor_transpose_to(
+  tensor_accessor_transpose_2d_to(
       tensor_accessor_matmul(
           read_only_accessor_from_write_accessor(
-              tensor_accessor_transpose(input, cpu_allocator)),
+              tensor_accessor_transpose_2d(input, cpu_allocator)),
           processed_output_grad.value(),
           cpu_allocator),
       projection_grad);

@@ -3,6 +3,7 @@
 
 #include "kernels/accessor.h"
 #include "kernels/allocation.h"
+#include "op-attrs/tensor_dim_permutation.h"
 
 namespace FlexFlow {
 
@@ -39,10 +40,19 @@ void tensor_accessor_broadcast_to(GenericTensorAccessorR const &input,
 
 GenericTensorAccessorW
     tensor_accessor_transpose(GenericTensorAccessorR const &input,
+                              TensorDimPermutation const &dim_permutation,
                               Allocator &output_allocator);
 
 void tensor_accessor_transpose_to(GenericTensorAccessorR const &input,
+                                  TensorDimPermutation const &dim_permutation,
                                   GenericTensorAccessorW const &output);
+
+GenericTensorAccessorW
+    tensor_accessor_transpose_2d(GenericTensorAccessorR const &input,
+                                 Allocator &output_allocator);
+
+void tensor_accessor_transpose_2d_to(GenericTensorAccessorR const &input,
+                                     GenericTensorAccessorW const &output);
 
 GenericTensorAccessorW
     tensor_accessor_batch_transpose(GenericTensorAccessorR const &input,

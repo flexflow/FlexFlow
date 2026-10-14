@@ -132,6 +132,14 @@ TensorShape permute_tensor_shape(TensorDimPermutation const &permutation,
   };
 }
 
+TensorDimsCoord
+    permute_tensor_dims_coord(TensorDimPermutation const &permutation,
+                              TensorDimsCoord const &coord) {
+  return TensorDimsCoord{
+      /*ff_ordered=*/permute_ff_ordered(permutation, coord.ff_ordered),
+  };
+}
+
 ParallelTensorDimDegrees permute_parallel_tensor_dim_degrees(
     TensorDimPermutation const &permutation,
     ParallelTensorDimDegrees const &parallel_tensor_dim_degrees) {
@@ -161,6 +169,17 @@ ParallelTensorShape permute_parallel_tensor_shape(
       /*dims=*/permute_parallel_tensor_dims(permutation,
                                             parallel_tensor_shape.dims),
       /*data_type=*/parallel_tensor_shape.data_type,
+  };
+}
+
+ParallelTensorSpaceCoordinate permute_parallel_tensor_space_coordinate(
+    TensorDimPermutation const &permutation,
+    ParallelTensorSpaceCoordinate const &pt_coord) {
+  return ParallelTensorSpaceCoordinate{
+      /*sum_component=*/pt_coord.sum_component,
+      /*discover_copy_component=*/pt_coord.discard_copy_component,
+      /*shard_components=*/
+      permute_ff_ordered(permutation, pt_coord.shard_components),
   };
 }
 
