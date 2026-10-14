@@ -21,7 +21,7 @@ namespace Kernels {
 namespace Reduce {
 
 ReducePerDeviceState gpu_init_kernel(PerDeviceFFHandle const &handle,
-                                     OperatorType const &op_type,
+                                     ReduceOp const &op_type,
                                      size_t const &reduction_size,
                                      TensorShape const &input_shape,
                                      TensorShape const &output_shape) {
@@ -76,11 +76,11 @@ void gpu_backward_kernel(cudaStream_t stream,
                          float *input_grad_ptr) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
   float alpha = 1.0, beta = 1.0f;
-  switch (m.op_type) {
-    case OperatorType::REDUCE_SUM:
+  switch (m.reduce_op) {
+    case ReduceOp::SUM:
       alpha = 1.0f;
       break;
-    case OperatorType::REDUCE_MEAN:
+    case ReduceOp::AVG:
       // When the output is the average of multiple input elements
       // we need to scale the gradients by 1.0 / reduction_size
       alpha = 1.0f / m.reduction_size;

@@ -12,9 +12,9 @@ features = [
 
 includes = [
   "<vector>",
-  "op-attrs/operator_type.dtg.h",
   "op-attrs/ff_dim_t.h",
   "op-attrs/ff_dim_t.dtg.h",
+  "op-attrs/ops/reduce_op.dtg.h",
 ]
 
 src_includes = [
@@ -29,8 +29,8 @@ name = "axes"
 type = "std::vector<::FlexFlow::ff_dim_t>"
 
 [[fields]]
-name = "op_type"
-type = "::FlexFlow::OperatorType"
+name = "op"
+type = "::FlexFlow::ReduceOp"
 
 [[fields]]
 name = "keepdims"

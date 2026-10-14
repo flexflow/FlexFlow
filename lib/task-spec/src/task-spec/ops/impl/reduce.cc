@@ -17,15 +17,13 @@ static DeviceSpecificPerDeviceOpState
   auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
   auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  OperatorType op_type = attrs.op_type;
-
   nonnegative_int reduction_size =
       get_num_elements(input.shape.dims) / get_num_elements(output.shape.dims);
 
   std::optional<ReducePerDeviceState> per_device_state =
       init_kernel(kernel_device_type,
                   handle,
-                  op_type,
+                  attrs.op,
                   reduction_size.unwrap_nonnegative(),
                   input.shape,
                   output.shape);

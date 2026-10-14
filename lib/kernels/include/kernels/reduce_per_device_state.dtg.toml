@@ -6,7 +6,7 @@ features = []
 includes = [
   "kernels/device.h",
   "kernels/ff_handle.h",
-  "op-attrs/operator_type.dtg.h",
+  "op-attrs/ops/reduce_op.dtg.h",
 ]
 
 [[fields]]
@@ -26,8 +26,8 @@ name = "reduceDesc"
 type = "ffReduceTensorDescriptor_t"
 
 [[fields]]
-name = "op_type"
-type = "::FlexFlow::OperatorType"
+name = "reduce_op"
+type = "::FlexFlow::ReduceOp"
 
 [[fields]]
 name = "reduction_size"

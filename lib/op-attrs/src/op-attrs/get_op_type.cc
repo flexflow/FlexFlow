@@ -125,7 +125,14 @@ OperatorType get_op_type(Pool2DAttrs const &) {
 }
 
 OperatorType get_op_type(ReduceAttrs const &attrs) {
-  return attrs.op_type;
+  switch (attrs.op) {
+    case ReduceOp::SUM:
+      return OperatorType::REDUCE_SUM;
+    case ReduceOp::AVG:
+      return OperatorType::REDUCE_MEAN;
+    default:
+      PANIC("Unknown ReduceOp {}", attrs.op);
+  }
 }
 
 OperatorType get_op_type(ReshapeAttrs const &) {

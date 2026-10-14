@@ -14,7 +14,7 @@ namespace FlexFlow::Kernels::Reduce {
 std::optional<ReducePerDeviceState>
     init_kernel(DeviceType device_type,
                 device_handle_t const &handle,
-                OperatorType const &operator_type,
+                ReduceOp const &reduce_op,
                 size_t const &reduction_size,
                 TensorShape const &input_shape,
                 TensorShape const &output_shape);

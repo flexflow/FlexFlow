@@ -8,13 +8,13 @@ namespace FlexFlow::Kernels::Reduce {
 std::optional<ReducePerDeviceState>
     init_kernel(DeviceType device_type,
                 device_handle_t const &handle,
-                OperatorType const &operator_type,
+                ReduceOp const &reduce_op,
                 size_t const &reduction_size,
                 TensorShape const &input_shape,
                 TensorShape const &output_shape) {
   if (device_type == DeviceType::GPU) {
     return gpu_init_kernel(/*handle=*/handle.require_for_gpu(),
-                           /*operator_type=*/operator_type,
+                           /*reduce_op=*/reduce_op,
                            /*reduction_size=*/reduction_size,
                            /*input_shape=*/input_shape,
                            /*output_shape=*/output_shape);

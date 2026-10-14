@@ -321,6 +321,8 @@ std::optional<OperatorAttributeValue> get_attribute(ReduceAttrs const &p,
   switch (key) {
     case OperatorAttributeKey::OP_TYPE:
       return OperatorAttributeValue{get_op_type(p)};
+    case OperatorAttributeKey::SUB_OP:
+      return OperatorAttributeValue{p.op};
     default:
       return std::nullopt;
   }
