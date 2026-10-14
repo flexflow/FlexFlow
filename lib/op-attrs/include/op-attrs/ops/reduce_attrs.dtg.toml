@@ -11,22 +11,18 @@ features = [
 ]
 
 includes = [
-  "<vector>",
-  "op-attrs/ff_dim_t.h",
   "op-attrs/ff_dim_t.dtg.h",
   "op-attrs/ops/reduce_op.dtg.h",
+  "utils/nonempty_set/nonempty_set.h",
 ]
 
 src_includes = [
-  "utils/fmt/vector.h",
-  "utils/hash/vector.h",
-  "utils/ord/vector.h",
   "op-attrs/ff_dim_t.h",
 ]
 
 [[fields]]
 name = "axes"
-type = "std::vector<::FlexFlow::ff_dim_t>"
+type = "::FlexFlow::nonempty_set<::FlexFlow::ff_dim_t>"
 
 [[fields]]
 name = "op"
