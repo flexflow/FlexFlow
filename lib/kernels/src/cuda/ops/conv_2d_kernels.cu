@@ -3,8 +3,6 @@
 #include "utils/not_implemented.h"
 
 namespace FlexFlow {
-namespace Kernels {
-namespace Conv2D {
 
 cudnnConvolutionBwdDataAlgo_t selectConvolutionBackwardDataAlgorithm(
     cudnnHandle_t handle,
@@ -115,19 +113,19 @@ cudnnConvolutionBwdFilterAlgo_t selectConvolutionBackwardFilterAlgorithm(
 }
 
 Conv2DPerDeviceState
-    gpu_init_kernel(PerDeviceFFHandle const &handle,
-                    std::optional<Activation> const &activation,
-                    int kernel_h,
-                    int kernel_w,
-                    int groups,
-                    int pad_h,
-                    int pad_w,
-                    int stride_h,
-                    int stride_w,
-                    GenericTensorAccessorW const &input,
-                    GenericTensorAccessorW const &output,
-                    float const *filter_ptr,
-                    float *filter_grad_ptr) {
+    conv2d_gpu_init_kernel(PerDeviceFFHandle const &handle,
+                           std::optional<Activation> const &activation,
+                           int kernel_h,
+                           int kernel_w,
+                           int groups,
+                           int pad_h,
+                           int pad_w,
+                           int stride_h,
+                           int stride_w,
+                           GenericTensorAccessorW const &input,
+                           GenericTensorAccessorW const &output,
+                           float const *filter_ptr,
+                           float *filter_grad_ptr) {
 
   ffTensorDescriptor_t inputTensor;
   ffTensorDescriptor_t biasTensor;
@@ -272,13 +270,13 @@ Conv2DPerDeviceState
   return per_device_state;
 }
 
-void gpu_forward_kernel(ffStream_t stream,
-                        Conv2DPerDeviceState const &m,
-                        float const *input_ptr,
-                        float *output_ptr,
-                        float const *filter_ptr,
-                        float const *bias_ptr,
-                        std::optional<Activation> activation) {
+void conv2d_gpu_forward_kernel(ffStream_t stream,
+                               Conv2DPerDeviceState const &m,
+                               float const *input_ptr,
+                               float *output_ptr,
+                               float const *filter_ptr,
+                               float const *bias_ptr,
+                               std::optional<Activation> activation) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f, beta = 0.0f;
@@ -317,20 +315,26 @@ void gpu_forward_kernel(ffStream_t stream,
   }
 }
 
-void gpu_backward_kernel(ffStream_t stream,
-                         Conv2DPerDeviceState const &m,
-                         float const *output_ptr,
-                         float *output_grad_ptr,
-                         float const *input_ptr,
-                         float *input_grad_ptr,
-                         float const *filter_ptr,
-                         float *filter_grad_ptr,
-                         float *bias_grad_ptr,
-                         std::optional<Activation> activation) {
+void conv2d_gpu_backward_kernel(ffStream_t stream,
+                                Conv2DPerDeviceState const &m,
+                                float const *output_ptr,
+                                float const *output_grad_ptr,
+                                float const *input_ptr,
+                                float *input_grad_ptr,
+                                float const *filter_ptr,
+                                float *filter_grad_ptr,
+                                float *bias_grad_ptr,
+                                std::optional<Activation> activation) {
   checkCUDNN(cudnnSetStream(m.handle.dnn, stream));
 
   float alpha = 1.0f;
   // float beta = 0.0f;
+
+  ASSERT(!activation.has_value(),
+         ("Currently activation functions are unsupported for the Conv2D "
+          "backward pass. "
+          "If you need this functionality, please contact the FF developers."));
+  /*
   if (activation.has_value()) {
     cudnnDataType_t dataType;
     int n, c, h, w, nStride, cStride, hStride, wStride;
@@ -347,6 +351,8 @@ void gpu_backward_kernel(ffStream_t stream,
     reluBackward<<<GET_BLOCKS(n * c * h * w), CUDA_NUM_THREADS, 0, stream>>>(
         output_grad_ptr, output_ptr, n * c * h * w);
   }
+  */
+
   // Compute filter gradiant
   // NOTE: we use alpha for kernel_grad to accumulate gradients
   checkCUDNN(cudnnConvolutionBackwardFilter(m.handle.dnn,
@@ -392,10 +398,8 @@ void gpu_backward_kernel(ffStream_t stream,
   }
 }
 
-void gpu_cleanup_kernel(Conv2DPerDeviceState &per_device_state) {
+void conv2d_gpu_cleanup_kernel(Conv2DPerDeviceState &per_device_state) {
   NOT_IMPLEMENTED();
 }
 
-} // namespace Conv2D
-} // namespace Kernels
 } // namespace FlexFlow
