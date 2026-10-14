@@ -38,6 +38,16 @@ void tensor_accessor_elementwise_multiply_to(
     GenericTensorAccessorR const &rhs,
     GenericTensorAccessorW const &output);
 
+GenericTensorAccessorW
+    tensor_accessor_elementwise_divide(GenericTensorAccessorR const &lhs,
+                                       GenericTensorAccessorR const &rhs,
+                                       Allocator &output_allocator);
+
+void tensor_accessor_elementwise_divide_to(
+    GenericTensorAccessorR const &lhs,
+    GenericTensorAccessorR const &rhs,
+    GenericTensorAccessorW const &output);
+
 GenericTensorAccessorW tensor_accessor_matmul(GenericTensorAccessorR const &lhs,
                                               GenericTensorAccessorR const &rhs,
                                               Allocator &output_allocator);
