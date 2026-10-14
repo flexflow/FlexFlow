@@ -136,12 +136,10 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*activation=*/std::nullopt,
     };
 
-    SUBCASE("fails on non-4d inputs") {
+    SUBCASE("fails on 1d inputs") {
       TensorShape input = TensorShape{
           TensorDims{FFOrdered{
               10_p,
-              12_p,
-              14_p,
           }},
           DataType::FLOAT,
       };
@@ -149,6 +147,22 @@ TEST_SUITE(FF_TEST_SUITE) {
       std::optional<TensorShape> result =
           optional_from_expected(get_output_shape(attrs, input));
       std::optional<TensorShape> correct = std::nullopt;
+
+      CHECK(result == correct);
+    }
+
+    SUBCASE("2d input") {
+      TensorShape input = TensorShape{
+          TensorDims{FFOrdered{12_p, 6_p}},
+          DataType::FLOAT,
+      };
+
+      tl::expected<TensorShape, std::string> result =
+          get_output_shape(attrs, input);
+      tl::expected<TensorShape, std::string> correct = TensorShape{
+          TensorDims{FFOrdered{6_p, 4_p}},
+          DataType::FLOAT,
+      };
 
       CHECK(result == correct);
     }

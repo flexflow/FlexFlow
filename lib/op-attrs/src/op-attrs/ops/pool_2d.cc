@@ -1,4 +1,5 @@
 #include "op-attrs/ops/pool_2d.h"
+#include "op-attrs/ff_ordered/ff_ordered_concat.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_dims.h"
 #include "op-attrs/tensor_shape.h"
@@ -24,8 +25,12 @@ tl::expected<Pool2DAttrs, std::string>
 
   positive_int num_samples = dim_at_idx(input_dims, relative_ff_dim_t{0});
   positive_int num_channels = dim_at_idx(input_dims, relative_ff_dim_t{1});
-  positive_int input_h = dim_at_idx(input_dims, relative_ff_dim_t{2});
-  positive_int input_w = dim_at_idx(input_dims, relative_ff_dim_t{3});
+
+  TensorDims leading_dims = slice_tensor_dims(
+      input_dims, relative_ff_dim_t{0}, relative_ff_dim_t{-2});
+
+  positive_int input_h = dim_at_idx(input_dims, relative_ff_dim_t{-2});
+  positive_int input_w = dim_at_idx(input_dims, relative_ff_dim_t{-1});
 
   if (input_h % output_h != 0) {
     return tl::unexpected(fmt::format(
@@ -75,12 +80,13 @@ tl::expected<Pool2DAttrs, std::string>
   };
 
   TensorShape expected_ouput_shape = TensorShape{
-      TensorDims{FFOrdered<positive_int>{
-          num_samples,
-          num_channels,
-          output_h,
-          output_w,
-      }},
+      TensorDims{
+          ff_ordered_concat(leading_dims.ff_ordered,
+                            FFOrdered<positive_int>{
+                                output_h,
+                                output_w,
+                            }),
+      },
       DataType::FLOAT,
   };
 
@@ -121,19 +127,20 @@ static positive_int calculate_output_size(positive_int input_size,
 
 tl::expected<TensorShape, std::string>
     get_output_shape(Pool2DAttrs const &attrs, TensorShape const &input_shape) {
-  if (get_num_dims(input_shape.dims) != 4) {
+  if (get_num_dims(input_shape.dims) < 2) {
     return tl::unexpected(
         fmt::format("get_output_shape for Pool2DAttrs expected input tensor to "
-                    "have 4 dims, but received shape {}",
+                    "have at least two dims, but received shape {}",
                     input_shape));
   }
 
-  positive_int num_samples = dim_at_idx(input_shape.dims, relative_ff_dim_t{0});
-  positive_int num_channels =
-      dim_at_idx(input_shape.dims, relative_ff_dim_t{1});
+  TensorDims leading_dims = slice_tensor_dims(
+      input_shape.dims, relative_ff_dim_t{0}, relative_ff_dim_t{-2});
+
   positive_int input_height =
-      dim_at_idx(input_shape.dims, relative_ff_dim_t{2});
-  positive_int input_width = dim_at_idx(input_shape.dims, relative_ff_dim_t{3});
+      dim_at_idx(input_shape.dims, relative_ff_dim_t{-2});
+  positive_int input_width =
+      dim_at_idx(input_shape.dims, relative_ff_dim_t{-1});
 
   positive_int output_height =
       calculate_output_size(/*input_size=*/input_height,
@@ -146,13 +153,16 @@ tl::expected<TensorShape, std::string>
                             /*kernel_size=*/attrs.kernel_w,
                             /*stride_size=*/attrs.stride_w);
 
-  return TensorShape{TensorDims{FFOrdered<positive_int>{
-                         num_samples,
-                         num_channels,
-                         output_height,
-                         output_width,
-                     }},
-                     input_shape.data_type};
+  return TensorShape{
+      TensorDims{
+          ff_ordered_concat(leading_dims.ff_ordered,
+                            FFOrdered<positive_int>{
+                                output_height,
+                                output_width,
+                            }),
+      },
+      input_shape.data_type,
+  };
 }
 
 tl::expected<ParallelTensorShape, std::string>
