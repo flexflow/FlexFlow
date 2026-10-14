@@ -4,7 +4,9 @@
 #include "op-attrs/parallel_tensor_dims.h"
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_dims.h"
+#include "op-attrs/tensor_slot_name.h"
 #include "utils/containers/repeat_element.h"
+#include "utils/containers/slice.h"
 #include "utils/containers/sum.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/vector_of.h"
@@ -53,6 +55,12 @@ std::vector<ParallelTensorShape>
           ParallelTensorDimDegrees const &d) -> ParallelTensorShape {
         return lift_shape_to_parallel_with_degrees(s, d);
       });
+}
+
+std::vector<TensorSlotName>
+    split_get_output_slot_names(SplitAttrs const &attrs) {
+  return slice(
+      get_variadic_outputs_slot_name_sequence(), 0, attrs.splits.size());
 }
 
 } // namespace FlexFlow

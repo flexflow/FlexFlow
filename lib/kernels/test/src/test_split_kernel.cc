@@ -39,13 +39,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
         return output_accessor.get_float_ptr();
       });
 
-      Kernels::Split::gpu_forward_kernel(managed_stream.raw_stream(),
-                                         output_ptrs.data(),
-                                         input_accessor.get_float_ptr(),
-                                         out_blk_sizes,
-                                         in_blk_size,
-                                         num_blks,
-                                         num_outputs.unwrap_nonnegative());
+      split_gpu_forward_kernel(managed_stream.raw_stream(),
+                               output_ptrs.data(),
+                               input_accessor.get_float_ptr(),
+                               out_blk_sizes,
+                               in_blk_size,
+                               num_blks,
+                               num_outputs.unwrap_nonnegative());
     }
 
     SUBCASE("gpu_backward_kernel") {
@@ -59,14 +59,13 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor = create_filled_accessor_w(
           input_shape, allocator, make_float_data_type_value(0));
 
-      Kernels::Split::gpu_backward_kernel(
-          managed_stream.raw_stream(),
-          input_grad_accessor.get_float_ptr(),
-          (float const **)output_grad_ptrs.data(),
-          out_blk_sizes,
-          in_blk_size,
-          num_blks,
-          num_outputs.unwrap_nonnegative());
+      split_gpu_backward_kernel(managed_stream.raw_stream(),
+                                input_grad_accessor.get_float_ptr(),
+                                (float const **)output_grad_ptrs.data(),
+                                out_blk_sizes,
+                                in_blk_size,
+                                num_blks,
+                                num_outputs.unwrap_nonnegative());
     }
   }
 }

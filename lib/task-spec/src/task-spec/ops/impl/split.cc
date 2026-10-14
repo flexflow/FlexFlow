@@ -15,29 +15,12 @@
 
 #include "task-spec/ops/impl/split.h"
 #include "kernels/split_kernels.h"
+#include "op-attrs/ops/split.h"
 #include "task-spec/profiling.h"
 #include "utils/hash-utils.h"
 #include "utils/nonnegative_int/nonnegative_range.h"
 
 namespace FlexFlow {
-
-using namespace FlexFlow::Kernels::Split;
-
-static std::pair<positive_int, positive_int>
-    calc_block_size(TensorShape const &tensor_shape, ff_dim_t axis) {
-  positive_int num_blocks = 1_p;
-  positive_int block_size = 1_p;
-  for (nonnegative_int d :
-       nonnegative_range(get_num_elements(tensor_shape.dims)
-                             .nonnegative_int_from_positive_int())) {
-    if (d <= axis.value) {
-      block_size *= dim_at_idx(tensor_shape.dims, legion_dim_t{d});
-    } else {
-      num_blocks *= dim_at_idx(tensor_shape.dims, legion_dim_t{d});
-    }
-  }
-  return {num_blocks, block_size};
-}
 
 static std::optional<milliseconds_t>
     forward_task_impl(TaskArgumentAccessor const &acc) {
@@ -46,26 +29,20 @@ static std::optional<milliseconds_t>
   SplitAttrs attrs = acc.get_op_attrs().require_split();
 
   auto input = acc.get_tensor<Permissions::RO>(TensorSlotName::INPUT);
-  auto output = acc.get_tensor<Permissions::WO>(TensorSlotName::OUTPUT);
 
-  int out_block_sizes[MAX_NUM_OUTPUTS];
-  auto [num_blocks, in_block_size] = calc_block_size(input.shape, attrs.axis);
+  auto outputs =
+      transform(split_get_output_slot_names(attrs),
+                [&](TensorSlotName slot_name) -> GenericTensorAccessorW {
+                  return acc.get_tensor<Permissions::WO>(slot_name);
+                });
 
-  for (int i = 0; i < attrs.splits.size(); i++) {
-    auto [_, out_block_size] = calc_block_size(output.shape, attrs.axis);
-    out_block_sizes[i] = out_block_size.int_from_positive_int();
-  }
-  float *output_float_ptr = output.get_float_ptr();
-  return profile(forward_kernel,
+  return profile(split_forward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Split] forward_time = {:.2lf}ms\n",
-                 &output_float_ptr,
-                 input.get_float_ptr(),
-                 out_block_sizes,
-                 in_block_size.int_from_positive_int(),
-                 num_blocks.int_from_positive_int(),
-                 attrs.splits.size());
+                 attrs,
+                 input,
+                 outputs);
 }
 
 static std::optional<milliseconds_t>
@@ -75,29 +52,20 @@ static std::optional<milliseconds_t>
   SplitAttrs attrs = acc.get_op_attrs().require_split();
 
   auto input_grad = acc.get_tensor_grad<Permissions::RW>(TensorSlotName::INPUT);
-  auto output_grad =
-      acc.get_tensor_grad<Permissions::RO>(TensorSlotName::OUTPUT);
 
-  int out_block_sizes[MAX_NUM_OUTPUTS];
-  auto [num_blocks, in_block_size] =
-      calc_block_size(input_grad.shape, attrs.axis);
+  auto output_grads =
+      transform(split_get_output_slot_names(attrs),
+                [&](TensorSlotName slot_name) -> GenericTensorAccessorR {
+                  return acc.get_tensor_grad<Permissions::RO>(slot_name);
+                });
 
-  for (int i = 0; i < attrs.splits.size(); i++) {
-    int out_num_blocks;
-    auto [_, out_block_size] = calc_block_size(output_grad.shape, attrs.axis);
-    out_block_sizes[i] = out_block_size.int_from_positive_int();
-  }
-  float const *output_grad_ptr = output_grad.get_float_ptr();
-  return profile(backward_kernel,
+  return profile(split_backward_kernel,
                  profiling,
                  kernel_device_type,
                  "[Split] backward_time = {:.2lf}ms\n",
-                 input_grad.get_float_ptr(),
-                 &output_grad_ptr,
-                 out_block_sizes,
-                 in_block_size.int_from_positive_int(),
-                 num_blocks.int_from_positive_int(),
-                 attrs.splits.size());
+                 attrs,
+                 output_grads,
+                 input_grad);
 }
 
 TaskImplFunction get_split_fwd_task_impl() {

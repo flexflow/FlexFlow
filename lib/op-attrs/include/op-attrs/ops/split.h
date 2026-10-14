@@ -5,6 +5,7 @@
 #include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
+#include "op-attrs/tensor_slot_name.dtg.h"
 #include <vector>
 
 namespace FlexFlow {
@@ -19,6 +20,8 @@ std::vector<ParallelTensorDimDegrees>
 std::vector<ParallelTensorShape>
     get_output_shapes(SplitAttrs const &attrs,
                       ParallelTensorShape const &input_shape);
+
+std::vector<TensorSlotName> split_get_output_slot_names(SplitAttrs const &);
 
 } // namespace FlexFlow
 

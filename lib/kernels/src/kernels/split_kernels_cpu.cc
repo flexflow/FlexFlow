@@ -1,24 +1,20 @@
 #include "kernels/split_kernels_cpu.h"
 #include "utils/not_implemented.h"
 
-namespace FlexFlow::Kernels::Split {
+namespace FlexFlow {
 
-void cpu_forward_kernel(float **out_ptrs,
-                        float const *in_ptr,
-                        int const *out_blk_sizes,
-                        int in_blk_size,
-                        int num_blks,
-                        int numOutputs) {
+void split_cpu_forward_kernel(
+    SplitAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    std::vector<GenericTensorAccessorW> const &outputs) {
   NOT_IMPLEMENTED();
 }
 
-void cpu_backward_kernel(float *in_grad_ptr,
-                         float const **out_grad_ptr,
-                         int const *out_blk_sizes,
-                         int in_blk_size,
-                         int num_blks,
-                         int numOutputs) {
+void split_cpu_backward_kernel(
+    SplitAttrs const &attrs,
+    std::vector<GenericTensorAccessorR> const &output_grads,
+    GenericTensorAccessorW const &input_grad) {
   NOT_IMPLEMENTED();
 }
 
-} // namespace FlexFlow::Kernels::Split
+} // namespace FlexFlow
