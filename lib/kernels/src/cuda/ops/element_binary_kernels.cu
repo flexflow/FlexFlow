@@ -160,8 +160,17 @@ void element_binary_gpu_forward_kernel(
     default:
       assert(false);
   }
-  // cudnn currently does not support broadcasting the first input in
-  // cudnnOpTensor
+
+  /**
+   * cudnn currently does not support broadcasting the first input in
+   * cudnnOpTensor
+   */
+
+  ASSERT(!attrs.should_broadcast_rhs,
+         ("Broadcasting the RHS input to an ElementBinary operation is "
+          "currently unsupported. "
+          "If you need this functionality, please contact the FF developers."));
+
   if (attrs.should_broadcast_lhs) {
     // currently only handle add and sub
     assert(attrs.op == ElementBinaryOp::SUBTRACT ||
