@@ -54,6 +54,17 @@ void tensor_accessor_batch_matmul_to(GenericTensorAccessorR const &lhs,
                                      GenericTensorAccessorR const &rhs,
                                      GenericTensorAccessorW const &output);
 
+GenericTensorAccessorW
+    tensor_accessor_binary_concat(GenericTensorAccessorR const &lhs,
+                                  GenericTensorAccessorR const &rhs,
+                                  ff_dim_t dim_idx,
+                                  Allocator &output_allocator);
+
+void tensor_accessor_binary_concat_to(GenericTensorAccessorR const &lhs,
+                                      GenericTensorAccessorR const &rhs,
+                                      ff_dim_t dim_idx,
+                                      GenericTensorAccessorW const &output);
+
 } // namespace FlexFlow
 
 #endif
