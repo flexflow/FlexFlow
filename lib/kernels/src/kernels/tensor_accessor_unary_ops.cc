@@ -8,8 +8,34 @@
 #include "op-attrs/ff_ordered/ff_ordered_slice.h"
 #include "op-attrs/tensor_dims.h"
 #include "op-attrs/tensor_dims_coord.h"
+#include <cmath>
 
 namespace FlexFlow {
+
+GenericTensorAccessorW tensor_accessor_exp(GenericTensorAccessorR const &input,
+                                           Allocator &output_allocator) {
+  ASSERT(input.shape.data_type == DataType::FLOAT);
+
+  return map_tensor_accessor(
+      input,
+      [&](auto const &elem) { return std::exp(elem); },
+      output_allocator);
+}
+
+void tensor_accessor_exp_to(GenericTensorAccessorR const &input,
+                            GenericTensorAccessorW const &output) {
+  ASSERT(input.shape.data_type == DataType::FLOAT);
+
+  map_tensor_accessor_to(
+      input, [](auto elem) { return std::exp(elem); }, output);
+}
+
+void tensor_accessor_exp_inplace(GenericTensorAccessorW const &input) {
+  ASSERT(input.shape.data_type == DataType::FLOAT);
+
+  map_tensor_accessor_inplace(input,
+                              [&](auto &elem) { return std::exp(elem); });
+}
 
 GenericTensorAccessorW
     tensor_accessor_scale_by_constant(GenericTensorAccessorR const &t,
