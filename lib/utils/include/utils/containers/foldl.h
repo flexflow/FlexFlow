@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_REPLICATE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_REPLICATE_H
 
-#include "utils/exception.h"
 #include "utils/fmt/vector.h"
 #include <cassert>
 #include <fmt/format.h>

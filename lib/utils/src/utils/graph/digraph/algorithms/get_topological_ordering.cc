@@ -1,6 +1,5 @@
 #include "utils/graph/digraph/algorithms/get_topological_ordering.h"
 #include "utils/containers/contains.h"
-#include "utils/exception.h"
 #include "utils/graph/digraph/algorithms/get_initial_nodes.h"
 #include "utils/graph/digraph/algorithms/get_predecessors.h"
 #include "utils/graph/digraph/algorithms/get_successors.h"

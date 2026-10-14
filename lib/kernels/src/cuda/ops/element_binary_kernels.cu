@@ -17,7 +17,7 @@
 #include "kernels/element_binary_kernels_gpu.h"
 #include "kernels/ff_handle.h"
 #include "op-attrs/datatype.h"
-#include "utils/exception.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

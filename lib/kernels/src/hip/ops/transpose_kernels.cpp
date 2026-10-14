@@ -16,7 +16,6 @@
 #include "kernels/transpose_kernels.h"
 #include "internal/device.h"
 #include "kernels/accessor.h"
-#include "utils/exception.h"
 #include <hip/hip_runtime.h>
 
 namespace FlexFlow {

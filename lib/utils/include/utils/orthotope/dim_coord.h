@@ -17,7 +17,6 @@
 #include "utils/containers/sorted_by.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/zip_with_strict.h"
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_range.h"
 #include "utils/orthotope/dim_coord.dtg.h"
 #include "utils/orthotope/dim_domain.dtg.h"

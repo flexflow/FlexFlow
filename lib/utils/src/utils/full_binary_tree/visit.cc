@@ -1,4 +1,5 @@
 #include "utils/full_binary_tree/visit.h"
+#include <string>
 
 namespace FlexFlow {
 

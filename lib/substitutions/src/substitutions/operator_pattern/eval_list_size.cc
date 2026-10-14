@@ -1,5 +1,6 @@
 #include "substitutions/operator_pattern/eval_list_size.h"
 #include "substitutions/operator_pattern/get_attribute.h"
+#include "utils/exception.h"
 #include "utils/nonnegative_int/num_elements.h"
 #include "utils/overload.h"
 

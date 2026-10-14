@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_VARIANT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_VARIANT_H
 
-#include "utils/exception.h"
 #include "utils/json/is_jsonable.h"
 #include "utils/type_traits_core.h"
 #include <nlohmann/json.hpp>

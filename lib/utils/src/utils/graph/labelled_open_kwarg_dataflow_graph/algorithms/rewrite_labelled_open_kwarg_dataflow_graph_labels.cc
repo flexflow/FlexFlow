@@ -1,6 +1,7 @@
 #include "utils/graph/labelled_open_kwarg_dataflow_graph/algorithms/rewrite_labelled_open_kwarg_dataflow_graph_labels.h"
 #include "utils/archetypes/ordered_value_type.h"
 #include "utils/archetypes/value_type.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

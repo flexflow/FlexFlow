@@ -18,7 +18,7 @@
 #include "op-attrs/ff_dim_t.h"
 #include "op-attrs/tensor_dims.h"
 #include "op-attrs/tensor_shape.h"
-#include "utils/exception.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

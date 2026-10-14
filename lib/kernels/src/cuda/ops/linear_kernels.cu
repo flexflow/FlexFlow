@@ -17,6 +17,7 @@
 #include "kernels/allocation.h"
 #include "kernels/linear_kernels_gpu.h"
 #include "utils/integer_conversions.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

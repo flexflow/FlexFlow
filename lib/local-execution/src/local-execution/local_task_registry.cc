@@ -27,7 +27,6 @@
 #include "task-spec/ops/impl/upsample.h"
 #include "task-spec/optimizer.h"
 #include "task-spec/task_impl_function.dtg.h"
-#include "utils/exception.h"
 #include "utils/optional.h"
 #include "utils/overload.h"
 #include <optional>

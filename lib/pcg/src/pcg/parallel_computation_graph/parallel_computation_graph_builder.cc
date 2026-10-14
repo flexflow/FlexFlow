@@ -34,6 +34,7 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/zip_values_strict_with.h"
 #include "utils/containers/zip_with.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

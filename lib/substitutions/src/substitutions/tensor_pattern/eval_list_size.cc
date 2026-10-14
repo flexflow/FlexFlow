@@ -1,5 +1,6 @@
 #include "substitutions/tensor_pattern/eval_list_size.h"
 #include "substitutions/tensor_pattern/get_attribute.h"
+#include "utils/exception.h"
 #include "utils/nonnegative_int/num_elements.h"
 #include "utils/overload.h"
 

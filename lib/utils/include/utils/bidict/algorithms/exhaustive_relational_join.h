@@ -4,7 +4,6 @@
 #include "utils/bidict/algorithms/left_entries.h"
 #include "utils/bidict/algorithms/right_entries.h"
 #include "utils/bidict/bidict.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

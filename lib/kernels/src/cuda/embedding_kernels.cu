@@ -16,6 +16,7 @@
 #include "internal/device.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/embedding_kernels_gpu.h"
+#include "utils/exception.h"
 
 namespace FlexFlow::Kernels::Embedding {
 

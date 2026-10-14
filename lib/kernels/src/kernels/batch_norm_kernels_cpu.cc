@@ -1,4 +1,5 @@
 #include "kernels/batch_norm_kernels_cpu.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow::Kernels::BatchNorm {
 

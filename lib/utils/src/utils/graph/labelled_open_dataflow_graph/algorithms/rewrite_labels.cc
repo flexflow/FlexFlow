@@ -1,5 +1,6 @@
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_labels.h"
 #include "utils/archetypes/value_type.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

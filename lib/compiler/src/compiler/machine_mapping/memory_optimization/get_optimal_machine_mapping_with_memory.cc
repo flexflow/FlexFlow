@@ -20,7 +20,6 @@
 #include "utils/containers/generate_map.h"
 #include "utils/containers/get_all_assignments.h"
 #include "utils/containers/set_of.h"
-#include "utils/exception.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {

@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_MANY_TO_ONE_EXHAUSTIVE_RELATIONAL_JOIN_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_MANY_TO_ONE_EXHAUSTIVE_RELATIONAL_JOIN_H
 
+#include "utils/exception.h"
 #include "utils/many_to_one/many_to_one.h"
 
 namespace FlexFlow {

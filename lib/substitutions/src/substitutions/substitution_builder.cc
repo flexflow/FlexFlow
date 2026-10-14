@@ -3,6 +3,7 @@
 #include "substitutions/substitution.h"
 #include "substitutions/unlabelled/pattern_value.h"
 #include "utils/containers/repeat_element.h"
+#include "utils/exception.h"
 #include "utils/graph/instances/unordered_set_labelled_open_kwarg_dataflow_graph.h"
 #include "utils/overload.h"
 

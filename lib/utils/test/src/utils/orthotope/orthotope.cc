@@ -1,5 +1,4 @@
 #include "utils/orthotope/orthotope.h"
-#include "utils/exception.h"
 #include <doctest/doctest.h>
 
 using namespace ::FlexFlow;

@@ -6,7 +6,6 @@
 #include "realm-execution/tasks/impl/per_device_op_state_init_return_task.h"
 #include "realm-execution/tasks/impl/per_device_op_state_init_task.h"
 #include "realm-execution/tasks/task_id_t.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

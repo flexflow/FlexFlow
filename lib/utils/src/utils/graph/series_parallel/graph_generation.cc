@@ -2,6 +2,7 @@
 #include "utils/graph/dataflow_graph/algorithms.h"
 #include "utils/graph/instances/unordered_set_dataflow_graph.h"
 #include "utils/graph/node/algorithms.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_JSON_OPTIONAL_H
 
 #include "utils/commutative_pair.h"
-#include "utils/exception.h"
 #include "utils/json/is_jsonable.h"
 #include <nlohmann/json.hpp>
 #include <optional>

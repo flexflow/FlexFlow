@@ -16,7 +16,6 @@
 #include "task-spec/ops/impl/split.h"
 #include "kernels/split_kernels.h"
 #include "task-spec/profiling.h"
-#include "utils/exception.h"
 #include "utils/hash-utils.h"
 #include "utils/nonnegative_int/nonnegative_range.h"
 

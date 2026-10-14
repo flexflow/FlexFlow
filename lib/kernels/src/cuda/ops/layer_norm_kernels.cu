@@ -16,6 +16,7 @@
 #include "kernels/accessor.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/layer_norm_kernels_gpu.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

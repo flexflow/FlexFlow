@@ -1,6 +1,7 @@
 #include "utils/graph/digraph/algorithms/get_edges_from_subgraph_to_subgraph.h"
 #include "utils/containers/are_disjoint.h"
 #include "utils/containers/set_of.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

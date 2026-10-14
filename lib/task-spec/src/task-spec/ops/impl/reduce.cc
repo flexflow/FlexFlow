@@ -1,7 +1,6 @@
 #include "task-spec/ops/impl/reduce.h"
 #include "kernels/reduce_kernels.h"
 #include "task-spec/profiling.h"
-#include "utils/exception.h"
 #include "utils/hash-utils.h"
 #include "utils/type_traits_core.h"
 

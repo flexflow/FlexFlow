@@ -17,6 +17,7 @@
 #include "kernels/datatype_dispatch.h"
 #include "kernels/element_unary_kernels_gpu.h"
 #include "op-attrs/get_op_type.h"
+#include "utils/not_implemented.h"
 #include <optional>
 
 namespace FlexFlow {

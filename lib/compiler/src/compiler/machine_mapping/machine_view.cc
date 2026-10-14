@@ -23,9 +23,9 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/zip3_strict.h"
 #include "utils/containers/zip_with_strict.h"
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_range.h"
 #include "utils/nonnegative_int/num_elements.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

@@ -1,5 +1,6 @@
 #include "utils/graph/node/node_query.h"
 #include "utils/containers/set_of.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

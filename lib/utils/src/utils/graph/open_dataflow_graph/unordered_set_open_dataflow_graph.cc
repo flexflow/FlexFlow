@@ -1,5 +1,6 @@
 #include "utils/graph/open_dataflow_graph/unordered_set_open_dataflow_graph.h"
 #include "utils/containers/transform.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

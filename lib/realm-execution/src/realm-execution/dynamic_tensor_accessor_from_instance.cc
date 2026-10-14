@@ -2,7 +2,6 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "pcg/device_type.dtg.h"
 #include "task-spec/permissions.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

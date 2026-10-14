@@ -4,7 +4,6 @@
 #include "op-attrs/ff_dim_t.h"
 #include "task-spec/profiling.h"
 #include "task-spec/task_argument_accessor/task_argument_accessor.h"
-#include "utils/exception.h"
 #include "utils/hash-utils.h"
 
 namespace FlexFlow {

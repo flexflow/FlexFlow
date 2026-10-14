@@ -5,9 +5,9 @@
 #include "op-attrs/tensor_dims.h"
 #include "op-attrs/tensor_shape.h"
 #include "utils/containers/extend.h"
-#include "utils/exception.h"
 #include "utils/expected.h"
 #include "utils/integer_conversions.h"
+#include "utils/not_implemented.h"
 #include <libassert/assert.hpp>
 
 namespace FlexFlow {

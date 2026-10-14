@@ -6,7 +6,6 @@
 #include "utils/containers/set_of.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/values.h"
-#include "utils/exception.h"
 #include "utils/graph/digraph/algorithms/get_incoming_edges.h"
 #include "utils/graph/digraph/algorithms/get_node_with_greatest_topo_rank.h"
 #include "utils/graph/digraph/algorithms/get_outgoing_edges.h"

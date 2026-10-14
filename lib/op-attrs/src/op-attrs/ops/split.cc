@@ -9,7 +9,6 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/vector_of.h"
 #include "utils/containers/zip_with_strict.h"
-#include "utils/exception.h"
 #include "utils/nonnegative_int/num_elements.h"
 
 namespace FlexFlow {

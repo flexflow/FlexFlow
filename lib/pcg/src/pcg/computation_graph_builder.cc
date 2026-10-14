@@ -49,6 +49,7 @@
 #include "utils/containers/without_nullopts.h"
 #include "utils/containers/zip_values_strict_with.h"
 #include "utils/containers/zip_with_strict.h"
+#include "utils/exception.h"
 #include "utils/expected.h"
 #include "utils/fmt/set.h"
 #include "utils/stack_vector/stack_vector_of.h"

@@ -1,5 +1,6 @@
 #include "internal/device.h"
 #include "kernels/conv_2d_kernels.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 namespace Kernels {

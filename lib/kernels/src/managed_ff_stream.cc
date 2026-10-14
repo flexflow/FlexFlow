@@ -1,5 +1,4 @@
 #include "kernels/managed_ff_stream.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

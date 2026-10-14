@@ -9,7 +9,6 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/values.h"
 #include "utils/containers/vector_of.h"
-#include "utils/exception.h"
 #include "utils/graph/series_parallel/intermediate_sp_decomposition_tree.h"
 #include "utils/graph/series_parallel/series_parallel_metrics.h"
 #include "utils/hash/set.h"

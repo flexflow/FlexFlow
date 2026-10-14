@@ -10,6 +10,7 @@
 #include "utils/containers/require_same.h"
 #include "utils/containers/try_at.h"
 #include "utils/full_binary_tree/binary_tree_path.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

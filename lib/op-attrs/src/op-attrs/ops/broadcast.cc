@@ -1,7 +1,7 @@
 #include "op-attrs/ops/broadcast.h"
 #include "op-attrs/num_tensor_dims_t.h"
 #include "op-attrs/tensor_dims.h"
-#include "utils/exception.h"
+#include "utils/not_implemented.h"
 #include "utils/record_formatter.h"
 
 namespace FlexFlow {

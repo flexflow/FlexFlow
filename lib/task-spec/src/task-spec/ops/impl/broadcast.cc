@@ -1,4 +1,5 @@
 #include "task-spec/ops/impl/broadcast.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_NONNEGATIVE_INT_NUM_ELEMENTS_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_NONNEGATIVE_INT_NUM_ELEMENTS_H
 
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_int.h"
 
 namespace FlexFlow {

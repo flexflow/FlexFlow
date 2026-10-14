@@ -9,7 +9,6 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/try_at.h"
 #include "utils/containers/values.h"
-#include "utils/exception.h"
 #include "utils/fmt/map.h"
 #include "utils/fmt/set.h"
 #include "utils/hash-utils.h"
@@ -19,6 +18,7 @@
 #include "utils/json/check_is_json_deserializable.h"
 #include "utils/json/check_is_json_serializable.h"
 #include "utils/nonempty_set/nonempty_set.h"
+#include "utils/not_implemented.h"
 #include <fmt/format.h>
 #include <map>
 #include <nlohmann/json.hpp>

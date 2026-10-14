@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FULL_BINARY_TREE_VISIT_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_FULL_BINARY_TREE_VISIT_H
 
-#include "utils/exception.h"
 #include "utils/full_binary_tree/full_binary_tree_implementation.dtg.h"
 #include "utils/full_binary_tree/full_binary_tree_visitor.dtg.h"
 

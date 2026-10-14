@@ -2,6 +2,7 @@
 #include "kernels/accessor.h"
 #include "kernels/datatype_dispatch.h"
 #include "kernels/device.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

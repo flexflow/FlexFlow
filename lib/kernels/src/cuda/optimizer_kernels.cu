@@ -16,7 +16,6 @@
 #include "internal/device.h"
 #include "kernels/nccl.h"
 #include "kernels/optimizer_kernels_gpu.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

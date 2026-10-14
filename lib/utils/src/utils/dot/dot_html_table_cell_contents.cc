@@ -1,6 +1,6 @@
 #include "utils/dot/dot_html_table_cell_contents.h"
 #include "utils/dot/dot_html_table.dtg.h"
-#include "utils/exception.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 

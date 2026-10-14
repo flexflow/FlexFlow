@@ -23,7 +23,6 @@
 #include "utils/containers/group_by.h"
 #include "utils/containers/set_of.h"
 #include "utils/containers/transform.h"
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_int.h"
 #include "utils/one_to_many/one_to_many.h"
 #include "utils/optional.h"

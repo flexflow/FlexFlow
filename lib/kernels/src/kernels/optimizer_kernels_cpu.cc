@@ -3,7 +3,7 @@
 #include "kernels/local_cpu_allocator.h"
 #include "kernels/tensor_accessor_binary_ops.h"
 #include "kernels/tensor_accessor_unary_ops.h"
-#include "utils/exception.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

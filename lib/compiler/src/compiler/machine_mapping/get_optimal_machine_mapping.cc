@@ -28,7 +28,6 @@
 #include "utils/containers/keys.h"
 #include "utils/containers/set_minus.h"
 #include "utils/containers/set_of.h"
-#include "utils/exception.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {

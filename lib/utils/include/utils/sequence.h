@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_UTILS_INCLUDE_UTILS_SEQUENCE_H
 #define _FLEXFLOW_UTILS_INCLUDE_UTILS_SEQUENCE_H
 
+#include "utils/exception.h"
 #include "utils/tuple.h"
 #include <optional>
 #include <utility>

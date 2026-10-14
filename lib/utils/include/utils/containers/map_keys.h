@@ -5,7 +5,7 @@
 #include "utils/containers/transform.h"
 #include "utils/containers/unordered_keys.h"
 #include "utils/containers/unordered_multiset_of.h"
-#include "utils/exception.h"
+#include <libassert/assert.hpp>
 #include <map>
 #include <type_traits>
 #include <unordered_map>

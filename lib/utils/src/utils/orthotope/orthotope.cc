@@ -13,7 +13,6 @@
 #include "utils/containers/zip3_with_strict.h"
 #include "utils/containers/zip_strict.h"
 #include "utils/containers/zip_with_strict.h"
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_range.h"
 #include "utils/nonnegative_int/num_elements.h"
 #include "utils/nonnegative_int/range.h"

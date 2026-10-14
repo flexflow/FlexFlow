@@ -4,6 +4,7 @@
 #include "utils/containers/repeat.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/zip.h"
+#include "utils/exception.h"
 #include "utils/nonnegative_int/num_elements.h"
 
 namespace FlexFlow {

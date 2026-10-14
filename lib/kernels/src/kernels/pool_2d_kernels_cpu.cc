@@ -1,5 +1,5 @@
 #include "kernels/pool_2d_kernels_cpu.h"
-#include "utils/exception.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow::Kernels::Pool2D {
 

@@ -1,5 +1,4 @@
 #include "utils/positive_int/ceildiv.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

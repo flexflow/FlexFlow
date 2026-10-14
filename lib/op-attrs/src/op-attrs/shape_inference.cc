@@ -31,6 +31,7 @@
 #include "utils/containers/require_two_keys.h"
 #include "utils/containers/slice.h"
 #include "utils/containers/zip_strict.h"
+#include "utils/not_implemented.h"
 #include "utils/overload.h"
 
 namespace FlexFlow {

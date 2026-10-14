@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_UNORDERED_PAIR_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_UNORDERED_PAIR_H
 
-#include "utils/exception.h"
 #include "utils/fmt/pair.h"
 #include "utils/hash-utils.h"
 #include "utils/type_traits_core.h"

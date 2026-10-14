@@ -7,7 +7,6 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "op-attrs/tensor_dims.h"
 #include "utils/containers/require_same.h"
-#include "utils/exception.h"
 #include <libassert/assert.hpp>
 
 namespace FlexFlow {

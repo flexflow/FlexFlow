@@ -2,7 +2,6 @@
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_ZIP_STRICT_H
 
 #include "utils/containers/zip.h"
-#include "utils/exception.h"
 #include "utils/fmt/vector.h"
 #include <libassert/assert.hpp>
 

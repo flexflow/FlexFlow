@@ -16,7 +16,6 @@
 #include "task-spec/ops/impl/topk.h"
 #include "kernels/topk_kernels.h"
 #include "task-spec/profiling.h"
-#include "utils/exception.h"
 
 namespace FlexFlow {
 

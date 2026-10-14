@@ -2,7 +2,6 @@
 #include "kernels/pool_2d_kernels.h"
 #include "op-attrs/ops/pool_2d.h"
 #include "task-spec/profiling.h"
-#include "utils/exception.h"
 #include "utils/hash-utils.h"
 
 using namespace FlexFlow::Kernels::Pool2D;

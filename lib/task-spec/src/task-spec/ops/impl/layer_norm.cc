@@ -20,7 +20,6 @@
 #include "op-attrs/parallel_tensor_shape.h"
 #include "task-spec/profiling.h"
 #include "utils/containers/product.h"
-#include "utils/exception.h"
 #include "utils/hash-utils.h"
 #include "utils/nonnegative_int/nonnegative_range.h"
 #include <type_traits>

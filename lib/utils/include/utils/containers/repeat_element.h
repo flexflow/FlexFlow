@@ -1,7 +1,6 @@
 #ifndef _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_REPLICATE_H
 #define _FLEXFLOW_LIB_UTILS_INCLUDE_UTILS_CONTAINERS_REPLICATE_H
 
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_int.h"
 #include <fmt/format.h>
 #include <vector>

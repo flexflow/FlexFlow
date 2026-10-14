@@ -3,6 +3,7 @@
 #include "test/utils/rapidcheck.h"
 #include "utils/containers/binary_merge_maps_with.h"
 #include <doctest/doctest.h>
+#include <libassert/assert.hpp>
 
 using namespace ::FlexFlow;
 

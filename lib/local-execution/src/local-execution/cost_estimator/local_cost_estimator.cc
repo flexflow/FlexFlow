@@ -20,7 +20,6 @@
 #include "utils/containers/sum.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/values.h"
-#include "utils/exception.h"
 #include "utils/optional.h"
 #include <optional>
 

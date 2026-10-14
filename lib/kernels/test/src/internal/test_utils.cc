@@ -5,6 +5,7 @@
 #include "kernels/tensor_accessor_reductions.h"
 #include "op-attrs/tensor_shape.h"
 #include "utils/containers/require_all_same1.h"
+#include "utils/exception.h"
 #include "utils/join_strings.h"
 #include <random>
 

@@ -2,6 +2,7 @@
 #include "kernels/datatype_dispatch.h"
 #include "op-attrs/datatype_value.h"
 #include "op-attrs/tensor_shape.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

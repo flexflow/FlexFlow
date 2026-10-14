@@ -10,7 +10,6 @@
 #include "task-spec/task_argument_accessor/task_tensor_parameter.h"
 #include "utils/containers/binary_merge_disjoint_maps.h"
 #include "utils/containers/map_keys_and_values.h"
-#include "utils/exception.h"
 #include "utils/optional.h"
 #include "utils/overload.h"
 #include <optional>

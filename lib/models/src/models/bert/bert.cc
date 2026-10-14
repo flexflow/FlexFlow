@@ -3,6 +3,7 @@
 #include "op-attrs/tensor_dims.h"
 #include "op-attrs/tensor_shape.h"
 #include "pcg/computation_graph.h"
+#include "utils/exception.h"
 
 namespace FlexFlow {
 

@@ -4,6 +4,7 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/restrict_keys.h"
 #include "utils/containers/values.h"
+#include "utils/exception.h"
 #include "utils/graph/digraph/algorithms/apply_contraction.h"
 #include "utils/graph/digraph/algorithms/get_imm_post_dominators_map.h"
 #include "utils/graph/digraph/algorithms/get_node_with_greatest_topo_rank.h"

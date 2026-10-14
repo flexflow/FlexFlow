@@ -3,6 +3,7 @@
 
 #include "utils/nonnegative_int/nonnegative_range.h"
 #include "utils/nonnegative_int/num_elements.h"
+#include <optional>
 #include <vector>
 
 namespace FlexFlow {

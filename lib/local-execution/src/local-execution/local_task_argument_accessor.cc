@@ -1,6 +1,5 @@
 #include "local-execution/local_task_argument_accessor.h"
 #include "kernels/accessor.h"
-#include "utils/exception.h"
 #include "utils/optional.h"
 #include "utils/overload.h"
 

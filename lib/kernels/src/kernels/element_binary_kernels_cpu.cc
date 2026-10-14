@@ -1,7 +1,7 @@
 #include "kernels/element_binary_kernels_cpu.h"
 #include "kernels/map_tensor_accessors.h"
 #include "kernels/tensor_accessor_binary_ops.h"
-#include "utils/exception.h"
+#include "utils/not_implemented.h"
 
 namespace FlexFlow {
 

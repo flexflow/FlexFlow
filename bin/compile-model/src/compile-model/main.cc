@@ -23,6 +23,7 @@
 #include "utils/containers/map_from_pairs.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/transform.h"
+#include "utils/not_implemented.h"
 #include "utils/optional.h"
 #include "utils/positive_int/positive_int.h"
 #include <fstream>

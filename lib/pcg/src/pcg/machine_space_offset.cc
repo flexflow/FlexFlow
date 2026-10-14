@@ -1,5 +1,5 @@
 #include "pcg/machine_space_offset.h"
-#include "utils/exception.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 

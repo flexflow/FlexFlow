@@ -3,7 +3,6 @@
 #include "kernels/map_tensor_accessors.h"
 #include "kernels/tensor_accessor_binary_ops.h"
 #include "kernels/tensor_accessor_unary_ops.h"
-#include "utils/exception.h"
 #include "utils/nonnegative_int/nonnegative_range.h"
 #include <libassert/assert.hpp>
 
