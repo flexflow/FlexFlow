@@ -107,7 +107,10 @@ TensorShape require_not_parallel(ParallelTensorShape const &s) {
 }
 
 TensorShape get_piece_shape(ParallelTensorShape const &s) {
-  return get_reduced_shape(s);
+  return TensorShape{
+      get_piece_dims(s.dims),
+      s.data_type,
+  };
 }
 
 num_bytes_t get_piece_size_in_bytes(ParallelTensorShape const &s) {

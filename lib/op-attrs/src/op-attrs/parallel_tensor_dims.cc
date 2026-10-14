@@ -108,8 +108,13 @@ ShardParallelDim &shard_dim_at_idx(ParallelTensorDims &d,
   return d.shard_dims.at(idx);
 }
 
-TensorDims get_piece_dims(ParallelTensorDims const &) {
-  NOT_IMPLEMENTED();
+TensorDims get_piece_dims(ParallelTensorDims const &dims) {
+  FFOrdered<positive_int> dim_sizes = ff_ordered_transform(
+      dims.shard_dims, [](ShardParallelDim const &d) -> positive_int {
+        ASSERT(d.size % d.degree == 0);
+        return positive_int{d.size / d.degree};
+      });
+  return TensorDims{dim_sizes};
 }
 
 TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &) {
@@ -118,7 +123,8 @@ TensorDims get_tensor_dims_unsafe(ParallelTensorDims const &) {
 
 TensorDims get_reduced_dims(ParallelTensorDims const &dims) {
   FFOrdered<positive_int> dim_sizes = ff_ordered_transform(
-      dims.shard_dims, [](ShardParallelDim const &d) { return d.size; });
+      dims.shard_dims,
+      [](ShardParallelDim const &d) -> positive_int { return d.size; });
   return TensorDims{dim_sizes};
 }
 

@@ -257,7 +257,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       num_bytes_t shard_size = get_size_in_bytes(
-          get_reduced_shape(get_parallel_tensor_shape(pcg, t_layer_1)));
+          get_piece_shape(get_parallel_tensor_shape(pcg, t_layer_1)));
 
       AbstractedTensorSetMovement correct = AbstractedTensorSetMovement{
           /*single_tensor_movements=*/{
@@ -339,7 +339,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       num_bytes_t shard_size = get_size_in_bytes(
-          get_reduced_shape(get_parallel_tensor_shape(pcg, t_layer_2)));
+          get_piece_shape(get_parallel_tensor_shape(pcg, t_layer_2)));
 
       AbstractedTensorSetMovement correct = AbstractedTensorSetMovement{
           /*single_tensor_movements=*/{
@@ -412,7 +412,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       num_bytes_t shard_size = get_size_in_bytes(
-          get_reduced_shape(get_parallel_tensor_shape(pcg, t_layer_1)));
+          get_piece_shape(get_parallel_tensor_shape(pcg, t_layer_1)));
 
       AbstractedTensorSetMovement correct = AbstractedTensorSetMovement{
           /*single_tensor_movements=*/{
@@ -511,9 +511,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       num_bytes_t t1_shard_size = get_size_in_bytes(
-          get_reduced_shape(get_parallel_tensor_shape(pcg, t_layer_1)));
+          get_piece_shape(get_parallel_tensor_shape(pcg, t_layer_1)));
       num_bytes_t t2_shard_size = get_size_in_bytes(
-          get_reduced_shape(get_parallel_tensor_shape(pcg, t_layer_2)));
+          get_piece_shape(get_parallel_tensor_shape(pcg, t_layer_2)));
 
       AbstractedTensorSetMovement correct = AbstractedTensorSetMovement{
           /*single_tensor_movements=*/{
