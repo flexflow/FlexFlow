@@ -3,14 +3,14 @@
 
 #include "kernels/accessor.h"
 
-namespace FlexFlow::Kernels::Reshape {
+namespace FlexFlow {
 
-void cpu_forward_kernel(GenericTensorAccessorR const &input,
-                        GenericTensorAccessorW const &output);
+void reshape_cpu_forward_kernel(GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output);
 
-void cpu_backward_kernel(GenericTensorAccessorR const &output,
-                         GenericTensorAccessorW const &input);
+void reshape_cpu_backward_kernel(GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorW const &input);
 
-} // namespace FlexFlow::Kernels::Reshape
+} // namespace FlexFlow
 
 #endif

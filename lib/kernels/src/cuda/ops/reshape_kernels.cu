@@ -19,9 +19,6 @@
 
 namespace FlexFlow {
 
-namespace Kernels {
-namespace Reshape {
-
 template <typename DT, typename DTGrad>
 __global__ void apply_add_with_scale2(DT *data_ptr,
                                       DTGrad const *grad_ptr,
@@ -50,19 +47,17 @@ struct BackwardKernel {
   }
 };
 
-void gpu_forward_kernel(cudaStream_t stream,
-                        GenericTensorAccessorR const &input,
-                        GenericTensorAccessorW const &output) {
+void reshape_gpu_forward_kernel(cudaStream_t stream,
+                                GenericTensorAccessorR const &input,
+                                GenericTensorAccessorW const &output) {
   copy_accessor_data_to_l_from_r(output, input);
 }
 
-void gpu_backward_kernel(cudaStream_t stream,
-                         GenericTensorAccessorR const &output,
-                         GenericTensorAccessorW const &input) {
+void reshape_gpu_backward_kernel(cudaStream_t stream,
+                                 GenericTensorAccessorR const &output,
+                                 GenericTensorAccessorW const &input) {
   DataTypeDispatch2<BackwardKernel>{}(
       input.shape.data_type, output.shape.data_type, stream, output, input);
 }
 
-} // namespace Reshape
-} // namespace Kernels
 } // namespace FlexFlow

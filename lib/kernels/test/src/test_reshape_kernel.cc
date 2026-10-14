@@ -27,7 +27,7 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       GenericTensorAccessorW output_accessor =
           allocator.allocate_tensor(output_shape);
 
-      Kernels::Reshape::gpu_forward_kernel(
+      reshape_gpu_forward_kernel(
           managed_stream.raw_stream(), input_accessor, output_accessor);
 
       CHECK(contains_non_zero(output_accessor));
@@ -39,9 +39,9 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
       GenericTensorAccessorW input_grad_accessor =
           allocator.allocate_tensor(input_shape);
 
-      Kernels::Reshape::gpu_backward_kernel(managed_stream.raw_stream(),
-                                            output_grad_accessor,
-                                            input_grad_accessor);
+      reshape_gpu_backward_kernel(managed_stream.raw_stream(),
+                                  output_grad_accessor,
+                                  input_grad_accessor);
 
       CHECK(contains_non_zero(input_grad_accessor));
     }
