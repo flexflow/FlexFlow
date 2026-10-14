@@ -48,6 +48,24 @@ void tensor_accessor_elementwise_divide_to(
     GenericTensorAccessorR const &rhs,
     GenericTensorAccessorW const &output);
 
+GenericTensorAccessorW
+    tensor_accessor_elementwise_max(GenericTensorAccessorR const &lhs,
+                                    GenericTensorAccessorR const &rhs,
+                                    Allocator &output_allocator);
+
+void tensor_accessor_elementwise_max_to(GenericTensorAccessorR const &lhs,
+                                        GenericTensorAccessorR const &rhs,
+                                        GenericTensorAccessorW const &output);
+
+GenericTensorAccessorW
+    tensor_accessor_elementwise_min(GenericTensorAccessorR const &lhs,
+                                    GenericTensorAccessorR const &rhs,
+                                    Allocator &output_allocator);
+
+void tensor_accessor_elementwise_min_to(GenericTensorAccessorR const &lhs,
+                                        GenericTensorAccessorR const &rhs,
+                                        GenericTensorAccessorW const &output);
+
 GenericTensorAccessorW tensor_accessor_matmul(GenericTensorAccessorR const &lhs,
                                               GenericTensorAccessorR const &rhs,
                                               Allocator &output_allocator);

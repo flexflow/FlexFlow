@@ -121,6 +121,52 @@ static TensorShape get_matmul_output_shape(TensorShape const &lhs,
   };
 }
 
+GenericTensorAccessorW
+    tensor_accessor_elementwise_max(GenericTensorAccessorR const &lhs,
+                                    GenericTensorAccessorR const &rhs,
+                                    Allocator &output_allocator) {
+  return map_tensor_accessors2(
+      lhs,
+      rhs,
+      require_same(lhs.shape.data_type, rhs.shape.data_type),
+      [](auto const &l, auto const &r) { return (l < r) ? r : l; },
+      output_allocator);
+}
+
+void tensor_accessor_elementwise_max_to(GenericTensorAccessorR const &lhs,
+                                        GenericTensorAccessorR const &rhs,
+                                        GenericTensorAccessorW const &output) {
+  map_tensor_accessors2_to(
+      lhs,
+      rhs,
+      require_same(lhs.shape.data_type, rhs.shape.data_type),
+      [](auto const &l, auto const &r) { return (l < r) ? r : l; },
+      output);
+}
+
+GenericTensorAccessorW
+    tensor_accessor_elementwise_min(GenericTensorAccessorR const &lhs,
+                                    GenericTensorAccessorR const &rhs,
+                                    Allocator &output_allocator) {
+  return map_tensor_accessors2(
+      lhs,
+      rhs,
+      require_same(lhs.shape.data_type, rhs.shape.data_type),
+      [](auto const &l, auto const &r) { return (l < r) ? l : r; },
+      output_allocator);
+}
+
+void tensor_accessor_elementwise_min_to(GenericTensorAccessorR const &lhs,
+                                        GenericTensorAccessorR const &rhs,
+                                        GenericTensorAccessorW const &output) {
+  map_tensor_accessors2_to(
+      lhs,
+      rhs,
+      require_same(lhs.shape.data_type, rhs.shape.data_type),
+      [](auto const &l, auto const &r) { return (l < r) ? l : r; },
+      output);
+}
+
 GenericTensorAccessorW tensor_accessor_matmul(GenericTensorAccessorR const &lhs,
                                               GenericTensorAccessorR const &rhs,
                                               Allocator &output_allocator) {
