@@ -1,6 +1,7 @@
 #ifndef _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H
 #define _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H
 
+#include "kernels/accessor.h"
 #include "kernels/device_handle_t.dtg.h"
 #include "kernels/device_stream_t.dtg.h"
 #include "kernels/ff_handle.h"
@@ -9,44 +10,33 @@
 #include "op-attrs/ops/pool_2d.h"
 #include "pcg/device_type.dtg.h"
 
-namespace FlexFlow::Kernels::Pool2D {
+namespace FlexFlow {
 
 std::optional<Pool2DPerDeviceState>
-    init_kernel(DeviceType device_type,
-                device_handle_t const &handle,
-                std::optional<Activation> activation,
-                int input_w,
-                int input_h,
-                int input_c,
-                int input_n,
-                int output_w,
-                int output_h,
-                int output_c,
-                int output_n,
-                int pad_h,
-                int pad_w,
-                int kernel_h,
-                int kernel_w,
-                int stride_h,
-                int stride_w,
-                PoolOp pool_type);
+    pool2d_init_kernel(DeviceType device_type,
+                       device_handle_t const &handle,
+                       Pool2DAttrs const &attrs,
+                       TensorShape const &input_shape);
 
-void forward_kernel(device_stream_t const &stream,
-                    std::optional<Pool2DPerDeviceState> const &per_device_state,
-                    void const *input_ptr,
-                    void *output_ptr);
-
-void backward_kernel(
+void pool2d_forward_kernel(
     device_stream_t const &stream,
     std::optional<Pool2DPerDeviceState> const &per_device_state,
-    void const *output_ptr,
-    void const *output_grad_ptr,
-    void const *input_ptr,
-    void *input_grad_ptr);
+    Pool2DAttrs const &attrs,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &output);
+
+void pool2d_backward_kernel(
+    device_stream_t const &stream,
+    std::optional<Pool2DPerDeviceState> const &per_device_state,
+    Pool2DAttrs const &attrs,
+    GenericTensorAccessorR const &output,
+    GenericTensorAccessorR const &output_grad,
+    GenericTensorAccessorR const &input,
+    GenericTensorAccessorW const &input_grad);
 
 void cleanup_kernel(DeviceType device_type,
                     std::optional<Pool2DPerDeviceState> &per_device_state);
 
-} // namespace FlexFlow::Kernels::Pool2D
+} // namespace FlexFlow
 
 #endif // _FLEXFLOW_OPS_KERNELS_POOL_2D_KERNELS_H
