@@ -10,10 +10,10 @@ features = [
   "fmt",
 ]
 
-includes = [ 
-  "utils/positive_int/positive_int.h",
+includes = [
+  "utils/int_ge_two/int_ge_two.h",
 ]
 
 [[fields]]
 name = "replicate_degree"
-type = "::FlexFlow::positive_int"
+type = "::FlexFlow::int_ge_two"

@@ -179,7 +179,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     positive_int in_channels = 24_p;
     positive_int batch_size = 4_p;
-    positive_int batch_degree = 2_p;
+    int_ge_two batch_degree = 2_ge2;
     std::string mm_match = "mm_match";
     std::string relu_match = "relu_match";
 

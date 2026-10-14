@@ -89,7 +89,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     ParallelLayerAttrs n1_weight_replicate_attrs = ParallelLayerAttrs{
         PCGOperatorAttrs{
-            ReplicateAttrs{batch_degree},
+            ReplicateAttrs{int_ge_two{batch_degree}},
         },
         std::nullopt,
     };

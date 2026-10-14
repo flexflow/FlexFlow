@@ -70,7 +70,7 @@ parallel_tensor_guid_t add_weight_layer(ParallelComputationGraph &pcg,
 
 parallel_tensor_guid_t
     add_replicate_layer(ParallelComputationGraph &pcg,
-                        positive_int degree,
+                        int_ge_two degree,
                         parallel_tensor_guid_t const &t_input) {
 
   ReplicateAttrs replicate_attrs = ReplicateAttrs{
@@ -85,7 +85,7 @@ parallel_tensor_guid_t
 
 parallel_tensor_guid_t
     add_reduction_layer(ParallelComputationGraph &pcg,
-                        positive_int degree,
+                        int_ge_two degree,
                         parallel_tensor_guid_t const &t_input) {
 
   ReductionAttrs reduction_attrs = ReductionAttrs{
@@ -101,7 +101,7 @@ parallel_tensor_guid_t
 parallel_tensor_guid_t
     add_partition_layer(ParallelComputationGraph &pcg,
                         ff_dim_t dim,
-                        positive_int degree,
+                        int_ge_two degree,
                         parallel_tensor_guid_t const &t_input) {
 
   RepartitionAttrs partition_attrs = RepartitionAttrs{
@@ -118,7 +118,7 @@ parallel_tensor_guid_t
 parallel_tensor_guid_t
     add_combine_layer(ParallelComputationGraph &pcg,
                       ff_dim_t dim,
-                      positive_int degree,
+                      int_ge_two degree,
                       parallel_tensor_guid_t const &t_input) {
 
   CombineAttrs partition_attrs = CombineAttrs{
@@ -209,7 +209,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     std::vector<Substitution> result = get_unity_substitution_set(machine_spec);
 
-    CHECK(result.size() == 248);
+    CHECK(result.size() == 187);
   }
 
   TEST_CASE("get_expanded_substitution_set") {
@@ -222,12 +222,12 @@ TEST_SUITE(FF_TEST_SUITE) {
     std::vector<Substitution> result =
         get_expanded_substitution_set(machine_spec);
 
-    CHECK(result.size() == 254);
+    CHECK(result.size() == 193);
   }
 
   TEST_CASE("create_replicate_linear_combine, use_bias = false") {
     positive_int num_dims = 2_p;
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     std::string linear_match = "linear_match";
 
     Substitution sub = create_replicate_linear_combine(num_dims, degree, false);
@@ -337,7 +337,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("create_replicate_linear_combine, use_bias = true") {
     positive_int num_dims = 2_p;
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     std::string linear_match = "linear_match";
 
     Substitution sub = create_replicate_linear_combine(num_dims, degree, true);
@@ -454,7 +454,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("create_partition_linear_combine, use_bias = false") {
     positive_int num_dims = 2_p;
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     std::string linear_match = "linear_match";
 
     Substitution sub = create_partition_linear_combine(num_dims, degree, false);
@@ -555,7 +555,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
   TEST_CASE("create_partition_linear_combine, use_bias = true") {
     positive_int num_dims = 2_p;
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     std::string linear_match = "linear_match";
 
     Substitution sub = create_partition_linear_combine(num_dims, degree, true);
@@ -675,7 +675,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     nonnegative_int paddingH = 1_n;
     nonnegative_int paddingW = 0_n;
     positive_int num_dims = 4_p;
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     std::string conv2d_match = "conv2d_match";
 
     Substitution sub = create_partition_conv2d_combine(num_dims, degree);
@@ -790,7 +790,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("create_partition_attention_combine") {
     positive_int embed_dim = 8_p;
     positive_int num_heads = 6_p;
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     std::string attention_match = "attention_match";
 
     Substitution sub = create_partition_attention_combine(num_heads, degree);
@@ -910,7 +910,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("create_replicate_attention_reduce") {
     positive_int embed_dim = 8_p;
     positive_int num_heads = 6_p;
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     std::string attention_match = "attention_match";
 
     Substitution sub = create_replicate_attention_reduce(num_heads, degree);
@@ -1029,7 +1029,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("create_partition_softmax_combine") {
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     ff_dim_t softmax_dim = ff_dim_t{1_n};
     ff_dim_t partition_dim = ff_dim_t{0_n};
     std::string softmax_match = "softmax_match";
@@ -1107,7 +1107,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("create_partition_add_combine") {
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     ff_dim_t parallel_dim = ff_dim_t{1_n};
     std::string add_match = "add_match";
 
@@ -1206,7 +1206,7 @@ TEST_SUITE(FF_TEST_SUITE) {
   }
 
   TEST_CASE("create_partition_relu_combine") {
-    positive_int degree = 2_p;
+    int_ge_two degree = 2_ge2;
     ff_dim_t parallel_dim = ff_dim_t{1_n};
     std::string relu_match = "relu_match";
 

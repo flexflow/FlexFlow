@@ -31,7 +31,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*op_attrs=*/PCGOperatorAttrs{
             RepartitionAttrs{
                 /*repartition_dim=*/ff_dim_t{0_n},
-                /*repartition_degree=*/2_p,
+                /*repartition_degree=*/2_ge2,
             },
         },
         /*name=*/std::nullopt,
@@ -139,7 +139,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*op_attrs=*/PCGOperatorAttrs{
             RepartitionAttrs{
                 /*repartition_dim=*/ff_dim_t{0_n},
-                /*repartition_degree=*/2_p,
+                /*repartition_degree=*/2_ge2,
             },
         },
         /*name=*/std::nullopt,

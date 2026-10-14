@@ -6,7 +6,7 @@ using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Replicate shape inference") {
     ReplicateAttrs attrs = ReplicateAttrs{
-        /*replicate_degree=*/4_p,
+        /*replicate_degree=*/4_ge2,
     };
 
     ParallelTensorShape input = ParallelTensorShape{

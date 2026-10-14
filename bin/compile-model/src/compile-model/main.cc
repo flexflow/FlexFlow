@@ -121,12 +121,16 @@ static AlgorithmConfig
                               bool cpu_only,
                               MachineSpecification const &machine) {
   if (strategy == "data_parallel") {
-    positive_int degree =
+    int_ge_two degree = int_ge_two{
         machine.compute_specification.num_nodes *
-        (cpu_only ? machine.compute_specification.num_cpus_per_node
-                  : machine.compute_specification.num_gpus_per_node);
+            (cpu_only ? machine.compute_specification.num_cpus_per_node
+                      : machine.compute_specification.num_gpus_per_node),
+    };
     return AlgorithmConfig{
-        DataParallelismConfig{/*degree=*/degree.int_from_positive_int()}};
+        DataParallelismConfig{
+            /*degree=*/degree,
+        },
+    };
   } else if (strategy == "unity") {
     // TODO: pick better defaults
     return AlgorithmConfig{

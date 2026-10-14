@@ -65,7 +65,7 @@ std::optional<OperatorAttributeValue> get_attribute(CombineAttrs const &p,
       return OperatorAttributeValue{p.combine_dim};
     case OperatorAttributeKey::PARALLEL_DIM:
       return OperatorAttributeValue{
-          p.combine_degree.nonnegative_int_from_positive_int()};
+          p.combine_degree.nonnegative_int_from_int_ge_two()};
     default:
       return std::nullopt;
   }
@@ -335,7 +335,7 @@ std::optional<OperatorAttributeValue> get_attribute(ReductionAttrs const &p,
       return OperatorAttributeValue{get_op_type(p)};
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return OperatorAttributeValue{
-          p.reduction_degree.nonnegative_int_from_positive_int()};
+          p.reduction_degree.nonnegative_int_from_int_ge_two()};
     default:
       return std::nullopt;
   }
@@ -350,7 +350,7 @@ std::optional<OperatorAttributeValue> get_attribute(RepartitionAttrs const &p,
       return OperatorAttributeValue{p.repartition_dim};
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return OperatorAttributeValue{
-          p.repartition_degree.nonnegative_int_from_positive_int()};
+          p.repartition_degree.nonnegative_int_from_int_ge_two()};
     default:
       return std::nullopt;
   }
@@ -363,7 +363,7 @@ std::optional<OperatorAttributeValue> get_attribute(ReplicateAttrs const &p,
       return OperatorAttributeValue{get_op_type(p)};
     case OperatorAttributeKey::PARALLEL_OP_DEGREE:
       return OperatorAttributeValue{
-          p.replicate_degree.nonnegative_int_from_positive_int()};
+          p.replicate_degree.nonnegative_int_from_int_ge_two()};
     default:
       return std::nullopt;
   }

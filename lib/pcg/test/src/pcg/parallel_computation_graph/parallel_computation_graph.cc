@@ -347,7 +347,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       RepartitionAttrs partition_input_attrs = RepartitionAttrs{
           /*repartition_dim=*/ff_dim_t{0_n},
-          /*repartition_degree=*/2_p,
+          /*repartition_degree=*/2_ge2,
       };
 
       ParallelLayerAddedResult partition_input_added = add_parallel_layer(
@@ -379,7 +379,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           projection_weight_added.outputs, TensorSlotName::OUTPUT);
 
       ReplicateAttrs replicate_projection_attrs = ReplicateAttrs{
-          /*replicate_degree=*/2_p,
+          /*replicate_degree=*/2_ge2,
       };
       ParallelLayerAddedResult replicate_projection_added = add_parallel_layer(
           /*pcg=*/pcg,
@@ -485,7 +485,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*op_attrs=*/PCGOperatorAttrs{
             RepartitionAttrs{
                 /*repartition_dim=*/ff_dim_t{0_n},
-                /*repartition_degree=*/2_p,
+                /*repartition_degree=*/2_ge2,
             },
         },
         /*name=*/std::nullopt,

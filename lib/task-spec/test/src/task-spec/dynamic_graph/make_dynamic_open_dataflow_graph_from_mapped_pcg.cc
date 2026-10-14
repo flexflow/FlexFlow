@@ -71,7 +71,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       PCGOperatorAttrs op_attrs = PCGOperatorAttrs{
           ReplicateAttrs{
-              2_p,
+              2_ge2,
           },
       };
 
@@ -506,7 +506,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     PCGOperatorAttrs partition_input_op_attrs = PCGOperatorAttrs{
         RepartitionAttrs{
             /*repartition_dim=*/ff_dim_t{0_n},
-            /*repartition_degree=*/2_p,
+            /*repartition_degree=*/2_ge2,
         },
     };
 
@@ -519,7 +519,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     PCGOperatorAttrs replicate_weight_1_op_attrs = PCGOperatorAttrs{
         ReplicateAttrs{
-            /*replicate_degree=*/2_p,
+            /*replicate_degree=*/2_ge2,
         },
     };
 
@@ -532,7 +532,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     PCGOperatorAttrs replicate_weight_2_op_attrs = PCGOperatorAttrs{
         ReplicateAttrs{
-            /*replicate_degree=*/2_p,
+            /*replicate_degree=*/2_ge2,
         },
     };
 

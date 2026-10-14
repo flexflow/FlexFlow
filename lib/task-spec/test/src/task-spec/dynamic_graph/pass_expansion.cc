@@ -444,7 +444,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       TrainingOperationAttrs op_attrs = TrainingOperationAttrs{
           PCGOperatorAttrs{
               ReplicateAttrs{
-                  /*replicate_degree=*/2_p,
+                  /*replicate_degree=*/2_ge2,
               },
           },
       };

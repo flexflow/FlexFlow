@@ -13,7 +13,7 @@ features = [
 includes = [
   "op-attrs/ff_dim_t.h",
   "op-attrs/ff_dim_t.dtg.h",
-  "utils/positive_int/positive_int.h",
+  "utils/int_ge_two/int_ge_two.h",
 ]
 
 [[fields]]
@@ -22,4 +22,4 @@ type = "::FlexFlow::ff_dim_t"
 
 [[fields]]
 name = "combine_degree"
-type = "::FlexFlow::positive_int"
+type = "::FlexFlow::int_ge_two"

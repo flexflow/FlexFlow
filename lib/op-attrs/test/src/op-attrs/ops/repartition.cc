@@ -7,10 +7,9 @@ using namespace ::FlexFlow;
 TEST_SUITE(FF_TEST_SUITE) {
   TEST_CASE("Repartition shape inference") {
     ff_dim_t dim = ff_dim_t{2_n};
-    positive_int degree = 4_p;
     RepartitionAttrs attrs = RepartitionAttrs{
         /*repartition_dim=*/dim,
-        /*repartition_degree=*/degree,
+        /*repartition_degree=*/4_ge2,
     };
 
     ParallelTensorShape input = ParallelTensorShape{
@@ -34,7 +33,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     ParallelTensorShape correct = [&] {
       ParallelTensorShape output = input;
-      output.dims.shard_dims.at(dim).degree *= degree;
+      output.dims.shard_dims.at(dim).degree = 12_p;
       return output;
     }();
 

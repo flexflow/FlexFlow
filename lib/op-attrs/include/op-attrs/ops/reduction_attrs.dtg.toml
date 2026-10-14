@@ -11,9 +11,9 @@ features = [
 ]
 
 includes = [
-  "utils/positive_int/positive_int.h",
+  "utils/int_ge_two/int_ge_two.h",
 ]
 
 [[fields]]
 name = "reduction_degree"
-type = "::FlexFlow::positive_int"
+type = "::FlexFlow::int_ge_two"

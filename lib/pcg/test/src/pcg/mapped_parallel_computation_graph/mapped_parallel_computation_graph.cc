@@ -30,10 +30,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       parallel_tensor_guid_t t1 =
           b.create_input_tensor(input_shape, input1_name);
-      t1 = b.parallel_partition(t1, ff_dim_t{0_n}, 2_p, partition1_name);
+      t1 = b.parallel_partition(t1, ff_dim_t{0_n}, 2_ge2, partition1_name);
       parallel_tensor_guid_t t2 =
           b.create_input_tensor(input_shape, input2_name);
-      t2 = b.parallel_partition(t2, ff_dim_t{0_n}, 2_p, partition2_name);
+      t2 = b.parallel_partition(t2, ff_dim_t{0_n}, 2_ge2, partition2_name);
 
       parallel_tensor_guid_t t3 = b.add(t1, t2, add_name);
 

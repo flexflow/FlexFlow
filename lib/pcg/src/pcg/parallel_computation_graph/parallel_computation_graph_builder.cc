@@ -492,7 +492,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::silu(
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_partition(
     parallel_tensor_guid_t const &input,
     ff_dim_t dim,
-    positive_int degree,
+    int_ge_two degree,
     std::optional<std::string> const &maybe_name) {
 
   RepartitionAttrs attrs = RepartitionAttrs{
@@ -519,7 +519,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_partition(
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_combine(
     parallel_tensor_guid_t const &input,
     ff_dim_t dim,
-    positive_int degree,
+    int_ge_two degree,
     std::optional<std::string> const &maybe_name) {
 
   CombineAttrs attrs = CombineAttrs{
@@ -545,7 +545,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_combine(
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_replicate(
     parallel_tensor_guid_t const &input,
-    positive_int degree,
+    int_ge_two degree,
     std::optional<std::string> const &maybe_name) {
 
   ReplicateAttrs attrs = ReplicateAttrs{degree};
@@ -568,7 +568,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_replicate(
 
 parallel_tensor_guid_t ParallelComputationGraphBuilder::parallel_reduce(
     parallel_tensor_guid_t const &input,
-    positive_int degree,
+    int_ge_two degree,
     std::optional<std::string> const &maybe_name) {
 
   ReductionAttrs attrs = ReductionAttrs{degree};

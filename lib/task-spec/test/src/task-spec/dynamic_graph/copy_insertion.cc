@@ -477,7 +477,7 @@ static ExampleGraphTestCase
           /*op_attrs=*/
           PCGOperatorAttrs{
               ReplicateAttrs{
-                  /*replicate_degree=*/2_p,
+                  /*replicate_degree=*/2_ge2,
               },
           },
           /*mapping=*/mk_node_mapping(replicate_node_mapping)),

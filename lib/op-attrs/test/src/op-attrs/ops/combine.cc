@@ -25,10 +25,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("valid") {
       ff_dim_t dim = ff_dim_t{2_n};
-      positive_int degree = 3_p;
+      int_ge_two degree = 3_ge2;
       CombineAttrs attrs = CombineAttrs{
-          /*repartition_dim=*/dim,
-          /*repartition_degree=*/degree,
+          /*combine_dim=*/dim,
+          /*combine_degree=*/degree,
       };
 
       ParallelTensorShape result =
@@ -47,10 +47,10 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     SUBCASE("invalid") {
       ff_dim_t dim = ff_dim_t{2_n};
-      positive_int degree = 4_p;
+      int_ge_two degree = 4_ge2;
       CombineAttrs attrs = CombineAttrs{
-          /*repartition_dim=*/dim,
-          /*repartition_degree=*/degree,
+          /*combine_dim=*/dim,
+          /*combine_degree=*/degree,
       };
 
       CHECK_THROWS(combine_get_output_parallel_shape(attrs, input));

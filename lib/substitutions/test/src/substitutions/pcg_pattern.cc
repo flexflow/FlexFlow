@@ -18,7 +18,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelComputationGraphBuilder builder;
 
       positive_int batch_size = 16_p;
-      positive_int batch_degree = 2_p;
+      int_ge_two batch_degree = 2_ge2;
       positive_int num_channels = 24_p;
 
       TensorShape a_shape = TensorShape{
@@ -206,7 +206,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelComputationGraphBuilder builder;
 
       positive_int batch_size = 16_p;
-      positive_int batch_degree = 2_p;
+      int_ge_two batch_degree = 2_ge2;
       positive_int num_channels = 24_p;
 
       TensorShape a_shape = TensorShape{

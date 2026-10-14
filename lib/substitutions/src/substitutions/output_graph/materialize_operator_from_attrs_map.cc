@@ -25,6 +25,12 @@ struct Accessor {
         this->get<nonnegative_int>(k),
     };
   }
+
+  int_ge_two get_int_ge_two(OperatorAttributeKey k) const {
+    return int_ge_two{
+        this->get<nonnegative_int>(k),
+    };
+  }
 };
 
 PCGOperatorAttrs materialize_operator_from_attrs_map(
@@ -124,7 +130,7 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(
       }};
     case OperatorType::REPLICATE:
       return PCGOperatorAttrs{ReplicateAttrs{
-          /*replicate_degree=*/acc.get_positive_int(
+          /*replicate_degree=*/acc.get_int_ge_two(
               OperatorAttributeKey::PARALLEL_DEGREE),
       }};
     case OperatorType::REPARTITION:
@@ -132,17 +138,17 @@ PCGOperatorAttrs materialize_operator_from_attrs_map(
           /*repartition_dim=*/acc.get<ff_dim_t>(
               OperatorAttributeKey::PARALLEL_DIM),
           /*repartition_Degree=*/
-          acc.get_positive_int(OperatorAttributeKey::PARALLEL_DEGREE),
+          acc.get_int_ge_two(OperatorAttributeKey::PARALLEL_DEGREE),
       }};
     case OperatorType::COMBINE:
       return PCGOperatorAttrs{CombineAttrs{
           /*combine_dim=*/acc.get<ff_dim_t>(OperatorAttributeKey::PARALLEL_DIM),
           /*combine_degree=*/
-          acc.get_positive_int(OperatorAttributeKey::PARALLEL_DEGREE),
+          acc.get_int_ge_two(OperatorAttributeKey::PARALLEL_DEGREE),
       }};
     case OperatorType::REDUCTION:
       return PCGOperatorAttrs{ReductionAttrs{
-          acc.get_positive_int(OperatorAttributeKey::PARALLEL_DEGREE),
+          acc.get_int_ge_two(OperatorAttributeKey::PARALLEL_DEGREE),
       }};
     case OperatorType::BATCHMATMUL:
     case OperatorType::SCALAR_MULTIPLY:

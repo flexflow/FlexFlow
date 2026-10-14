@@ -24,9 +24,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     SUBCASE("valid") {
-      positive_int degree = 3_p;
       ReductionAttrs attrs = ReductionAttrs{
-          /*repartition_degree=*/degree,
+          /*repartition_degree=*/3_ge2,
       };
 
       tl::expected<ParallelTensorShape, std::string> result =
@@ -34,9 +33,7 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       tl::expected<ParallelTensorShape, std::string> correct = [&] {
         ParallelTensorShape output = input;
-        positive_int old_sum_degree = output.dims.replica_dims.sum_degree.value;
-        output.dims.replica_dims.sum_degree.value =
-            positive_int{old_sum_degree / degree};
+        output.dims.replica_dims.sum_degree.value = 1_p;
         return output;
       }();
 
@@ -44,9 +41,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
 
     SUBCASE("invalid") {
-      positive_int degree = 4_p;
       ReductionAttrs attrs = ReductionAttrs{
-          /*repartition_degree=*/degree,
+          /*repartition_degree=*/4_ge2,
       };
 
       tl::expected<ParallelTensorShape, std::string> result =

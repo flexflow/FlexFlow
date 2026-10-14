@@ -118,20 +118,20 @@ public:
   parallel_tensor_guid_t
       parallel_partition(parallel_tensor_guid_t const &input,
                          ff_dim_t dim,
-                         positive_int degree,
+                         int_ge_two degree,
                          std::optional<std::string> const &name = std::nullopt);
   parallel_tensor_guid_t
       parallel_combine(parallel_tensor_guid_t const &x,
                        ff_dim_t dim,
-                       positive_int degree,
+                       int_ge_two degree,
                        std::optional<std::string> const &name = std::nullopt);
   parallel_tensor_guid_t
       parallel_replicate(parallel_tensor_guid_t const &x,
-                         positive_int degree,
+                         int_ge_two degree,
                          std::optional<std::string> const &name = std::nullopt);
   parallel_tensor_guid_t
       parallel_reduce(parallel_tensor_guid_t const &x,
-                      positive_int degree,
+                      int_ge_two degree,
                       std::optional<std::string> const &name = std::nullopt);
 
   ParallelTensorShape get_shape(parallel_tensor_guid_t const &) const;

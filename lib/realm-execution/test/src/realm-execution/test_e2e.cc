@@ -276,7 +276,7 @@ MappedParallelComputationGraph
   parallel_tensor_guid_t t_add_1 =
       require_only_key(add_operator_1.outputs, TensorSlotName::OUTPUT);
 
-  positive_int replicate_degree = 2_p;
+  int_ge_two replicate_degree = 2_ge2;
   ReplicateAttrs repl_attrs = ReplicateAttrs{replicate_degree};
   ParallelLayerAddedResult repl_operator_1 =
       add_parallel_layer(pcg,
