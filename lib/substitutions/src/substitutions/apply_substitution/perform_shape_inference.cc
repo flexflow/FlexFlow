@@ -7,7 +7,7 @@
 #include "utils/containers/is_subseteq_of.h"
 #include "utils/containers/map_keys.h"
 #include "utils/containers/map_values.h"
-#include "utils/containers/restrict_keys.h"
+#include "utils/containers/restrict_keys_strict.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/values.h"
 #include "utils/containers/zip.h"
@@ -63,7 +63,7 @@ LabelledOpenKwargDataflowGraphView<ParallelLayerAttrs,
           keys(filter_values(incoming_tensor_roles,
                              [&](IncomingTensorRole r) { return r == role; }));
 
-      return restrict_keys(incoming_shapes, slots_with_desired_role);
+      return restrict_keys_strict(incoming_shapes, slots_with_desired_role);
     };
 
     std::map<TensorSlotName, ParallelTensorShape> input_shapes =

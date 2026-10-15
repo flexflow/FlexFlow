@@ -1,7 +1,6 @@
 #include "utils/graph/algorithms.h"
 #include "utils/containers/flatmap.h"
 #include "utils/containers/get_only.h"
-#include "utils/containers/restrict_keys.h"
 #include "utils/containers/set_difference.h"
 #include "utils/containers/set_of.h"
 #include "utils/containers/transform.h"

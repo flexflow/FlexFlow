@@ -28,6 +28,7 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/map_values2.h"
 #include "utils/containers/merge_disjoint_maps.h"
+#include "utils/containers/restrict_keys_strict.h"
 #include "utils/containers/set_difference.h"
 #include "utils/containers/set_intersection.h"
 #include "utils/containers/transform.h"
@@ -123,10 +124,10 @@ DynamicNodeInvocation apply_mappings_for_invocation(
       get_mappings_for_invocation_id(id, all_mappings);
 
   std::map<DynamicTensorSlot, ParallelTensorMapping> i_input_mappings =
-      restrict_keys(i_mappings, keys(i.inputs));
+      restrict_keys_strict(i_mappings, keys(i.inputs));
 
   std::map<DynamicTensorSlot, ParallelTensorMapping> i_output_mappings =
-      restrict_keys(i_mappings, keys(i.outputs));
+      restrict_keys_strict(i_mappings, keys(i.outputs));
 
   auto apply_mapping =
       [&](DynamicValueAttrs const &v,
@@ -206,7 +207,7 @@ std::set<DynamicValueCopyInfo> copies_for_value(
       [&](InternalDynamicSlotSite const &s) -> std::set<DynamicValueCopyInfo> {
         ParallelTensorMapping src_mapping = all_mappings.at(s);
         std::map<InternalDynamicSlotSite, ParallelTensorMapping>
-            sink_site_mappings = restrict_keys(all_mappings, dst_sites);
+            sink_site_mappings = restrict_keys_strict(all_mappings, dst_sites);
 
         return copies_for_internal_value(v, s, src_mapping, sink_site_mappings);
       }});

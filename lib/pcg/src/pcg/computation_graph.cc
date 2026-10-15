@@ -10,6 +10,7 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/map_values.h"
 #include "utils/containers/repeat_element.h"
+#include "utils/containers/restrict_keys_strict.h"
 #include "utils/containers/reversed.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/zip_values_strict.h"
@@ -202,7 +203,7 @@ static std::map<TensorSlotName, tensor_guid_t>
         return role == desired_role;
       }));
 
-  return restrict_keys(incoming_tensors, slots_with_desired_role);
+  return restrict_keys_strict(incoming_tensors, slots_with_desired_role);
 }
 
 std::map<TensorSlotName, tensor_guid_t>

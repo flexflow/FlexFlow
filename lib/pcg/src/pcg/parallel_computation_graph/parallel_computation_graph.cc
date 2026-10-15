@@ -17,6 +17,7 @@
 #include "utils/containers/filtrans.h"
 #include "utils/containers/get_only.h"
 #include "utils/containers/repeat_element.h"
+#include "utils/containers/restrict_keys_strict.h"
 #include "utils/containers/set_of.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/zip_values_strict_with.h"
@@ -350,7 +351,7 @@ static std::map<TensorSlotName, parallel_tensor_guid_t>
         return role == desired_role;
       }));
 
-  return restrict_keys(incoming_tensors, slots_with_desired_role);
+  return restrict_keys_strict(incoming_tensors, slots_with_desired_role);
 }
 
 std::map<TensorSlotName, parallel_tensor_guid_t>

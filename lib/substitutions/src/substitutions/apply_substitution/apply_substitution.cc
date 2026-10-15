@@ -11,7 +11,7 @@
 #include "substitutions/sub_parallel_computation_graph_edge.h"
 #include "utils/containers/binary_merge_disjoint_maps.h"
 #include "utils/containers/keys.h"
-#include "utils/containers/restrict_keys.h"
+#include "utils/containers/restrict_keys_strict.h"
 #include "utils/containers/set_minus.h"
 #include "utils/containers/values.h"
 
@@ -63,8 +63,8 @@ SubParallelComputationGraph apply_substitution_from_output_result(
 
   std::map<parallel_layer_guid_t, ParallelLayerAttrs> post_node_data = [&] {
     std::map<parallel_layer_guid_t, ParallelLayerAttrs>
-        post_node_data_from_orig =
-            restrict_keys(pre_data.node_data, post_nodes_from_original_graph);
+        post_node_data_from_orig = restrict_keys_strict(
+            pre_data.node_data, post_nodes_from_original_graph);
     std::map<parallel_layer_guid_t, ParallelLayerAttrs>
         post_node_data_from_sub = output_graph_data.node_data;
 

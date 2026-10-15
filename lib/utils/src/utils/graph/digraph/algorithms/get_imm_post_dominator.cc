@@ -2,7 +2,6 @@
 #include "utils/containers/generate_map.h"
 #include "utils/containers/get_one_of.h"
 #include "utils/containers/get_only.h"
-#include "utils/containers/restrict_keys.h"
 #include "utils/containers/values.h"
 #include "utils/exception.h"
 #include "utils/graph/digraph/algorithms/apply_contraction.h"

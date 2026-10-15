@@ -42,6 +42,7 @@
 #include "utils/containers/get_only.h"
 #include "utils/containers/repeat_element.h"
 #include "utils/containers/require_only_key.h"
+#include "utils/containers/restrict_keys_strict.h"
 #include "utils/containers/slice.h"
 #include "utils/containers/transform.h"
 #include "utils/containers/transform_until.h"
@@ -116,8 +117,8 @@ static void
                                 std::set<TensorSlotName> const &input_slots,
                                 std::set<TensorSlotName> const &weight_slots) {
   std::map<TensorSlotName, IncomingTensorRole> correct =
-      restrict_keys(get_incoming_tensor_roles(layer.op_attrs),
-                    set_union(input_slots, weight_slots));
+      restrict_keys_strict(get_incoming_tensor_roles(layer.op_attrs),
+                           set_union(input_slots, weight_slots));
   std::map<TensorSlotName, IncomingTensorRole> current =
       binary_merge_disjoint_maps(
           generate_map(

@@ -13,7 +13,6 @@
 #include "utils/containers/filter.h"
 #include "utils/containers/is_subseteq_of.h"
 #include "utils/containers/keys.h"
-#include "utils/containers/restrict_keys.h"
 #include "utils/containers/set_minus.h"
 #include "utils/containers/values.h"
 #include "utils/containers/vector_of.h"
