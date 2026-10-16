@@ -152,8 +152,7 @@ struct CPUPool2DTensorAccessor {
 void pool2d_cpu_forward_kernel(Pool2DAttrs const &attrs,
                                GenericTensorAccessorR const &input,
                                GenericTensorAccessorW const &output) {
-  TensorShape correct_output_shape =
-      throw_if_unexpected(get_output_shape(attrs, input.shape));
+  TensorShape correct_output_shape = get_output_shape(attrs, input.shape);
   ASSERT(output.shape == correct_output_shape);
 
   DataTypeDispatch1<CPUPool2DTensorAccessor>{}(

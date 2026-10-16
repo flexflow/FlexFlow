@@ -13,21 +13,19 @@
 #include "op-attrs/tensor_shape.dtg.h"
 #include "op-attrs/tensor_slot_name.dtg.h"
 #include "utils/record_formatter.h"
-#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
 std::map<TensorSlotName, IncomingTensorRole>
     get_linear_incoming_tensor_roles(LinearAttrs const &);
 
-tl::expected<TensorShape, std::string>
-    get_projection_shape(LinearAttrs const &attrs, TensorShape const &input);
-tl::expected<TensorShape, std::string> get_bias_shape(LinearAttrs const &attrs,
-                                                      TensorShape const &input);
-tl::expected<TensorShape, std::string>
-    get_output_shape(LinearAttrs const &attrs, TensorShape const &input);
+TensorShape get_projection_shape(LinearAttrs const &attrs,
+                                 TensorShape const &input);
+TensorShape get_bias_shape(LinearAttrs const &attrs, TensorShape const &input);
+TensorShape get_output_shape(LinearAttrs const &attrs,
+                             TensorShape const &input);
 
-tl::expected<std::map<TensorSlotName, TensorShape>, std::string>
+std::map<TensorSlotName, TensorShape>
     get_weight_shapes(LinearAttrs const &attrs, TensorShape const &input_shape);
 
 ParallelTensorDimDegrees
@@ -40,26 +38,23 @@ ParallelTensorDimDegrees
     get_output_parallel_dim_degrees(LinearAttrs const &attrs,
                                     ParallelTensorDimDegrees const &input);
 
-tl::expected<ParallelTensorShape, std::string>
-    get_projection_shape(LinearAttrs const &attrs,
-                         ParallelTensorShape const &input);
-tl::expected<ParallelTensorShape, std::string>
-    get_bias_shape(LinearAttrs const &attrs, ParallelTensorShape const &input);
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(LinearAttrs const &attrs,
-                     ParallelTensorShape const &input);
+ParallelTensorShape get_projection_shape(LinearAttrs const &attrs,
+                                         ParallelTensorShape const &input);
+ParallelTensorShape get_bias_shape(LinearAttrs const &attrs,
+                                   ParallelTensorShape const &input);
+ParallelTensorShape get_output_shape(LinearAttrs const &attrs,
+                                     ParallelTensorShape const &input);
 
-tl::expected<std::map<TensorSlotName, ParallelTensorShape>, std::string>
+std::map<TensorSlotName, ParallelTensorShape>
     get_weight_shapes(LinearAttrs const &attrs,
                       ParallelTensorShape const &input_shape);
 
-tl::expected<std::map<TensorSlotName, InitializerAttrs>, std::string>
-    get_initializers(LinearAttrs const &,
-                     TensorShape const &input_shape,
-                     std::optional<InitializerAttrs> const
-                         &projection_initializer = std::nullopt,
-                     std::optional<InitializerAttrs> const &kernel_initializer =
-                         std::nullopt);
+std::map<TensorSlotName, InitializerAttrs> get_initializers(
+    LinearAttrs const &,
+    TensorShape const &input_shape,
+    std::optional<InitializerAttrs> const &projection_initializer =
+        std::nullopt,
+    std::optional<InitializerAttrs> const &kernel_initializer = std::nullopt);
 
 OperatorTaskSpace
     get_operator_task_space(LinearAttrs const &attrs,

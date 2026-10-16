@@ -25,9 +25,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     SUBCASE("get_output_shape(CastAttrs, TensorShape)") {
-      tl::expected<TensorShape, std::string> result =
-          get_output_shape(attrs, input);
-      tl::expected<TensorShape, std::string> correct = output;
+      TensorShape result = get_output_shape(attrs, input);
+      TensorShape correct = output;
       CHECK(result == correct);
     }
 
@@ -55,9 +54,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input = make_input(
           sum_degree, discard_copy_degree, batch_degree, feature_degree);
 
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_output_shape(attrs, par_input);
-      tl::expected<ParallelTensorShape, std::string> correct = make_output(
+      ParallelTensorShape result = get_output_shape(attrs, par_input);
+      ParallelTensorShape correct = make_output(
           sum_degree, discard_copy_degree, batch_degree, feature_degree);
 
       CHECK(result == correct);

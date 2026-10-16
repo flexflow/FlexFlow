@@ -50,17 +50,15 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     // get_output_shape
     {
-      tl::expected<TensorShape, std::string> output_result =
-          get_output_shape(attrs, input);
-      tl::expected<TensorShape, std::string> output_correct = output;
+      TensorShape output_result = get_output_shape(attrs, input);
+      TensorShape output_correct = output;
       CHECK(output_result == output_correct);
     }
 
     // get_weights_shape
     {
-      tl::expected<TensorShape, std::string> weight_result =
-          get_weights_shape(attrs, input);
-      tl::expected<TensorShape, std::string> weight_correct = weights;
+      TensorShape weight_result = get_weights_shape(attrs, input);
+      TensorShape weight_correct = weights;
       CHECK(weight_result == weight_correct);
     }
 
@@ -94,17 +92,15 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_input(SumDegree{1_p}, DiscardCopyDegree{1_p}, degree, 1_p);
 
       {
-        tl::expected<ParallelTensorShape, std::string> result =
-            get_output_shape(attrs, par_input);
-        tl::expected<ParallelTensorShape, std::string> correct =
+        ParallelTensorShape result = get_output_shape(attrs, par_input);
+        ParallelTensorShape correct =
             make_output(SumDegree{1_p}, DiscardCopyDegree{1_p}, degree, 1_p);
         CHECK(result == correct);
       }
 
       {
-        tl::expected<ParallelTensorShape, std::string> result =
-            get_weights_shape(attrs, par_input);
-        tl::expected<ParallelTensorShape, std::string> correct =
+        ParallelTensorShape result = get_weights_shape(attrs, par_input);
+        ParallelTensorShape correct =
             make_weights(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p);
         CHECK(result == correct);
       }
@@ -116,17 +112,15 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_input(SumDegree{1_p}, DiscardCopyDegree{1_p}, 1_p, degree);
 
       {
-        tl::expected<ParallelTensorShape, std::string> result =
-            get_output_shape(attrs, input);
-        tl::expected<ParallelTensorShape, std::string> correct =
+        ParallelTensorShape result = get_output_shape(attrs, input);
+        ParallelTensorShape correct =
             make_output(SumDegree{degree}, DiscardCopyDegree{1_p}, 1_p, 1_p);
         CHECK(result == correct);
       }
 
       {
-        tl::expected<ParallelTensorShape, std::string> result =
-            get_weights_shape(attrs, input);
-        tl::expected<ParallelTensorShape, std::string> correct =
+        ParallelTensorShape result = get_weights_shape(attrs, input);
+        ParallelTensorShape correct =
             make_weights(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p);
         CHECK(result == correct);
       }
@@ -144,17 +138,15 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_input(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p);
 
       {
-        tl::expected<ParallelTensorShape, std::string> result =
-            get_output_shape(attrs, input);
-        tl::expected<ParallelTensorShape, std::string> correct =
+        ParallelTensorShape result = get_output_shape(attrs, input);
+        ParallelTensorShape correct =
             make_output(SumDegree{1_p}, DiscardCopyDegree{1_p}, 1_p, degree);
         CHECK(result == correct);
       }
 
       {
-        tl::expected<ParallelTensorShape, std::string> result =
-            get_weights_shape(attrs, input);
-        tl::expected<ParallelTensorShape, std::string> correct =
+        ParallelTensorShape result = get_weights_shape(attrs, input);
+        ParallelTensorShape correct =
             make_weights(SumDegree{1_p}, DiscardCopyDegree{1_p}, 1_p, degree);
         CHECK(result == correct);
       }

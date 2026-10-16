@@ -8,48 +8,44 @@
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
 #include "op-attrs/tensor_slot_name.dtg.h"
-#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
 std::map<TensorSlotName, IncomingTensorRole>
     get_batch_norm_incoming_tensor_roles(BatchNormAttrs const &);
 
-tl::expected<TensorShape, std::string> get_output_shape(BatchNormAttrs const &,
-                                                        TensorShape const &);
-tl::expected<TensorShape, std::string>
-    get_gamma_weights_shape(BatchNormAttrs const &, TensorShape const &);
-tl::expected<TensorShape, std::string>
-    get_beta_weights_shape(BatchNormAttrs const &, TensorShape const &);
+TensorShape get_output_shape(BatchNormAttrs const &, TensorShape const &);
+TensorShape get_gamma_weights_shape(BatchNormAttrs const &,
+                                    TensorShape const &);
+TensorShape get_beta_weights_shape(BatchNormAttrs const &, TensorShape const &);
 
-tl::expected<std::map<TensorSlotName, TensorShape>, std::string>
+std::map<TensorSlotName, TensorShape>
     get_weight_shapes(BatchNormAttrs const &attrs,
                       TensorShape const &input_shape);
 
-tl::expected<ParallelTensorDimDegrees, std::string>
+ParallelTensorDimDegrees
     get_output_parallel_dim_degrees(BatchNormAttrs const &,
                                     ParallelTensorDimDegrees const &);
-tl::expected<ParallelTensorDimDegrees, std::string>
+ParallelTensorDimDegrees
     get_gamma_weights_parallel_dim_degrees(BatchNormAttrs const &,
                                            ParallelTensorDimDegrees const &);
-tl::expected<ParallelTensorDimDegrees, std::string>
+ParallelTensorDimDegrees
     get_beta_weights_parallel_dim_degrees(BatchNormAttrs const &,
                                           ParallelTensorDimDegrees const &);
 
-tl::expected<std::map<TensorSlotName, ParallelTensorDimDegrees>, std::string>
+std::map<TensorSlotName, ParallelTensorDimDegrees>
     get_weight_parallel_dim_degrees(
         BatchNormAttrs const &attrs,
         ParallelTensorDimDegrees const &input_degrees);
 
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(BatchNormAttrs const &, ParallelTensorShape const &);
-tl::expected<ParallelTensorShape, std::string>
-    get_gamma_weights_shape(BatchNormAttrs const &,
-                            ParallelTensorShape const &);
-tl::expected<ParallelTensorShape, std::string>
-    get_beta_weights_shape(BatchNormAttrs const &, ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(BatchNormAttrs const &,
+                                     ParallelTensorShape const &);
+ParallelTensorShape get_gamma_weights_shape(BatchNormAttrs const &,
+                                            ParallelTensorShape const &);
+ParallelTensorShape get_beta_weights_shape(BatchNormAttrs const &,
+                                           ParallelTensorShape const &);
 
-tl::expected<std::map<TensorSlotName, ParallelTensorShape>, std::string>
+std::map<TensorSlotName, ParallelTensorShape>
     get_weight_shapes(BatchNormAttrs const &attrs,
                       ParallelTensorShape const &input_shape);
 
@@ -59,7 +55,7 @@ tl::expected<std::map<TensorSlotName, ParallelTensorShape>, std::string>
  * see
  * https://github.com/pytorch/pytorch/blob/1eba9b3aa3c43f86f4a2c807ac8e12c4a7767340/torch/nn/modules/batchnorm.py#L93-L97
  */
-tl::expected<std::map<TensorSlotName, InitializerAttrs>, std::string>
+std::map<TensorSlotName, InitializerAttrs>
     get_initializers(BatchNormAttrs const &attrs);
 
 } // namespace FlexFlow

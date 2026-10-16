@@ -195,14 +195,14 @@ TEST_SUITE(FF_TEST_SUITE) {
       InitializerAttrs zero_init = InitializerAttrs{ZeroInitializerAttrs{}};
 
       WeightAttrs projection_weight_attrs = WeightAttrs{
-          /*tensor_shape=*/throw_if_unexpected(
-              get_projection_shape(linear_attrs, input_shape)),
+          /*tensor_shape=*/
+          get_projection_shape(linear_attrs, input_shape),
           /*initializer=*/zero_init,
       };
 
       WeightAttrs bias_weight_attrs = WeightAttrs{
-          /*tensor_shape=*/throw_if_unexpected(
-              get_bias_shape(linear_attrs, input_shape)),
+          /*tensor_shape=*/
+          get_bias_shape(linear_attrs, input_shape),
           /*initializer=*/zero_init,
       };
 

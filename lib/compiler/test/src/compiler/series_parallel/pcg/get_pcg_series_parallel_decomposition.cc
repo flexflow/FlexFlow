@@ -69,9 +69,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       TensorShape projection_weights_shape =
-          throw_if_unexpected(get_projection_shape(linear_attrs, input_shape));
+          get_projection_shape(linear_attrs, input_shape);
       TensorShape bias_weights_shape =
-          throw_if_unexpected(get_bias_shape(linear_attrs, input_shape));
+          get_bias_shape(linear_attrs, input_shape);
 
       WeightAttrs projection_weight_attrs = WeightAttrs{
           /*shape=*/projection_weights_shape,
@@ -162,7 +162,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       TensorShape projection_weight_shape =
-          throw_if_unexpected(get_projection_shape(linear_attrs, input_shape));
+          get_projection_shape(linear_attrs, input_shape);
 
       WeightAttrs projection_weight_attrs = WeightAttrs{
           /*tensor_shape=*/projection_weight_shape,
@@ -320,8 +320,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           get_reduced_shape(get_parallel_tensor_shape(pcg, t_op0));
 
       WeightAttrs w1_attrs = WeightAttrs{
-          /*tensor_shape=*/throw_if_unexpected(
-              get_weights_shape(op1_attrs, casted_input_shape)),
+          /*tensor_shape=*/
+          get_weights_shape(op1_attrs, casted_input_shape),
           /*initializer=*/InitializerAttrs{ZeroInitializerAttrs{}},
       };
       ParallelLayerAddedResult w1_added =
@@ -364,8 +364,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       WeightAttrs w2_attrs = WeightAttrs{
-          /*tensor_shape=*/throw_if_unexpected(
-              get_projection_shape(op2_attrs, input_shape)),
+          /*tensor_shape=*/
+          get_projection_shape(op2_attrs, input_shape),
           /*initializer=*/InitializerAttrs{ZeroInitializerAttrs{}},
       };
       ParallelLayerAddedResult w2_added =

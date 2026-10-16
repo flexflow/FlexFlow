@@ -60,8 +60,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           DataType::FLOAT,
       });
 
-      ParallelTensorShape output_shape =
-          throw_if_unexpected(get_output_shape(attrs, input_shape));
+      ParallelTensorShape output_shape = get_output_shape(attrs, input_shape);
 
       OpCostEstimateKey op_cost_estimate_key = OpCostEstimateKey{
           /*op_attrs=*/PCGOperatorAttrs{attrs},
@@ -152,11 +151,11 @@ TEST_SUITE(FF_CUDA_TEST_SUITE) {
           DataType::FLOAT,
       });
 
-      ParallelTensorShape weights_shape = throw_if_unexpected(
-          get_weights_shape(attrs, inputs_shape, inputs_shape, inputs_shape));
+      ParallelTensorShape weights_shape =
+          get_weights_shape(attrs, inputs_shape, inputs_shape, inputs_shape);
 
-      ParallelTensorShape output_shape = throw_if_unexpected(
-          get_output_shape(attrs, inputs_shape, inputs_shape, inputs_shape));
+      ParallelTensorShape output_shape =
+          get_output_shape(attrs, inputs_shape, inputs_shape, inputs_shape);
 
       OpCostEstimateKey op_cost_estimate_key = OpCostEstimateKey{
           /*op_attrs=*/PCGOperatorAttrs{attrs},

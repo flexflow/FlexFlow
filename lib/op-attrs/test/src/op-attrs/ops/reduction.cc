@@ -28,10 +28,9 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*repartition_degree=*/3_ge2,
       };
 
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_output_shape(attrs, input);
+      ParallelTensorShape result = get_output_shape(attrs, input);
 
-      tl::expected<ParallelTensorShape, std::string> correct = [&] {
+      ParallelTensorShape correct = [&] {
         ParallelTensorShape output = input;
         output.dims.replica_dims.sum_degree.value = 1_p;
         return output;
@@ -45,12 +44,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*repartition_degree=*/4_ge2,
       };
 
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_output_shape(attrs, input);
-
-      CHECK_MESSAGE(!result.has_value(),
-                    "Unexpected successful result: ",
-                    result.error());
+      CHECK_THROWS(get_output_shape(attrs, input));
     }
   }
 }

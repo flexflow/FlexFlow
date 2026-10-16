@@ -5,24 +5,22 @@
 #include "op-attrs/parallel_tensor_dim_degrees.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
-#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
-tl::expected<Pool2DAttrs, std::string>
+Pool2DAttrs
     make_adaptive_pool2d_attrs(TensorDims const &input_dims,
                                positive_int output_h,
                                positive_int output_w,
                                PoolOp pool_type,
                                std::optional<Activation> const &activation);
 
-tl::expected<TensorShape, std::string> get_output_shape(Pool2DAttrs const &,
-                                                        TensorShape const &);
+TensorShape get_output_shape(Pool2DAttrs const &, TensorShape const &);
 
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(Pool2DAttrs const &, ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(Pool2DAttrs const &,
+                                     ParallelTensorShape const &);
 
-tl::expected<ParallelTensorDimDegrees, std::string>
+ParallelTensorDimDegrees
     get_output_parallel_dim_degrees(Pool2DAttrs const &,
                                     ParallelTensorDimDegrees const &);
 

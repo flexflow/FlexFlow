@@ -45,11 +45,10 @@ static DeviceSpecificPerDeviceOpState
   TensorShape key_tensor_shape = acc.get_tensor_shape(TensorSlotName::KEY);
   TensorShape value_tensor_shape = acc.get_tensor_shape(TensorSlotName::VALUE);
 
-  MultiHeadAttentionInputs parsed =
-      throw_if_unexpected(parse_attention_input_shape(
-          query_tensor_shape, key_tensor_shape, value_tensor_shape));
-  TensorShape weight_tensor_shape = throw_if_unexpected(get_weights_shape(
-      attrs, query_tensor_shape, key_tensor_shape, value_tensor_shape));
+  MultiHeadAttentionInputs parsed = parse_attention_input_shape(
+      query_tensor_shape, key_tensor_shape, value_tensor_shape);
+  TensorShape weight_tensor_shape = get_weights_shape(
+      attrs, query_tensor_shape, key_tensor_shape, value_tensor_shape);
 
   positive_int kvSeqLength = get_kvSeqLength(parsed);
   positive_int qSize = get_qSize(parsed);

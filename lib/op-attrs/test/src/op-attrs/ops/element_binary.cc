@@ -33,9 +33,8 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape input_rhs = input_lhs;
 
     SUBCASE("correct") {
-      tl::expected<TensorShape, std::string> result =
-          get_output_shape(attrs, input_lhs, input_rhs);
-      tl::expected<TensorShape, std::string> correct = input_lhs;
+      TensorShape result = get_output_shape(attrs, input_lhs, input_rhs);
+      TensorShape correct = input_lhs;
 
       CHECK(result == correct);
     }
@@ -72,10 +71,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     TensorShape unpar_rhs = unpar_lhs;
-    tl::expected<TensorShape, std::string> result_unpar_output =
-        get_output_shape(attrs, unpar_lhs, unpar_rhs);
-    REQUIRE(result_unpar_output.has_value());
-    TensorShape unpar_output = result_unpar_output.value();
+    TensorShape unpar_output = get_output_shape(attrs, unpar_lhs, unpar_rhs);
 
     auto make_lhs = [&](SumDegree o_sum,
                         DiscardCopyDegree o_eq,
@@ -111,9 +107,9 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_lhs(SumDegree{1_p}, DiscardCopyDegree{1_p}, degree, 1_p, 1_p);
       ParallelTensorShape input_rhs =
           make_rhs(SumDegree{1_p}, DiscardCopyDegree{1_p}, degree, 1_p, 1_p);
-      tl::expected<ParallelTensorShape, std::string> result =
+      ParallelTensorShape result =
           get_output_shape(attrs, input_lhs, input_rhs);
-      tl::expected<ParallelTensorShape, std::string> correct =
+      ParallelTensorShape correct =
           make_output(SumDegree{1_p}, DiscardCopyDegree{1_p}, degree, 1_p, 1_p);
 
       CHECK(result == correct);
@@ -126,9 +122,9 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_lhs(SumDegree{degree}, DiscardCopyDegree{1_p}, 1_p, 1_p, 1_p);
       ParallelTensorShape input_rhs =
           make_rhs(SumDegree{degree}, DiscardCopyDegree{1_p}, 1_p, 1_p, 1_p);
-      tl::expected<ParallelTensorShape, std::string> result =
+      ParallelTensorShape result =
           get_output_shape(attrs, input_lhs, input_rhs);
-      tl::expected<ParallelTensorShape, std::string> correct =
+      ParallelTensorShape correct =
           make_output(SumDegree{degree}, DiscardCopyDegree{1_p}, 1_p, 1_p, 1_p);
 
       CHECK(result == correct);

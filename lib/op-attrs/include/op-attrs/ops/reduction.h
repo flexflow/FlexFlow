@@ -3,13 +3,11 @@
 
 #include "op-attrs/ops/reduction_attrs.dtg.h"
 #include "op-attrs/parallel_tensor_shape.dtg.h"
-#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(ReductionAttrs const &attrs,
-                     ParallelTensorShape const &input_shape);
+ParallelTensorShape get_output_shape(ReductionAttrs const &attrs,
+                                     ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

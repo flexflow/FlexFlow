@@ -7,19 +7,16 @@
 #include "op-attrs/tensor_shape.h"
 #include "op-attrs/tensor_slot_name.dtg.h"
 #include "utils/record_formatter.h"
-#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
-tl::expected<TensorShape, std::string> get_output_shape(EmbeddingAttrs const &,
-                                                        TensorShape const &);
-tl::expected<TensorShape, std::string> get_weights_shape(EmbeddingAttrs const &,
-                                                         TensorShape const &);
+TensorShape get_output_shape(EmbeddingAttrs const &, TensorShape const &);
+TensorShape get_weights_shape(EmbeddingAttrs const &, TensorShape const &);
 
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(EmbeddingAttrs const &, ParallelTensorShape const &);
-tl::expected<ParallelTensorShape, std::string>
-    get_weights_shape(EmbeddingAttrs const &, ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(EmbeddingAttrs const &,
+                                     ParallelTensorShape const &);
+ParallelTensorShape get_weights_shape(EmbeddingAttrs const &,
+                                      ParallelTensorShape const &);
 
 /**
  * @brief Chosen to match pytorch

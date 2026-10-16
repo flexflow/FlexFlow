@@ -87,7 +87,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -98,7 +98,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -167,7 +167,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -211,7 +211,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -222,7 +222,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -235,7 +235,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
 
         return {
             {TensorSlotName::OUTPUT,
-             throw_if_unexpected(get_output_shape(attrs, query, key, value))},
+             get_output_shape(attrs, query, key, value)},
         };
       },
       [&](Pool2DAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
@@ -243,8 +243,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         return {
-            {TensorSlotName::OUTPUT,
-             throw_if_unexpected(get_output_shape(attrs, input))},
+            {TensorSlotName::OUTPUT, get_output_shape(attrs, input)},
         };
       },
       [&](ReshapeAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
@@ -274,8 +273,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         return {
-            {TensorSlotName::OUTPUT,
-             throw_if_unexpected(get_output_shape(attrs, input))},
+            {TensorSlotName::OUTPUT, get_output_shape(attrs, input)},
         };
       },
       [&](TransposeAttrs const &attrs)
@@ -332,7 +330,7 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
         TensorShape input =
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
-        return throw_if_unexpected(get_weight_shapes(attrs, input));
+        return get_weight_shapes(attrs, input);
       },
       [&](CastAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
         require_only_key(input_shapes, TensorSlotName::INPUT);
@@ -374,7 +372,7 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
             {
                 TensorSlotName::WEIGHT,
                 TensorShape{
-                    throw_if_unexpected(get_weights_shape(attrs, input)),
+                    get_weights_shape(attrs, input),
                 },
             },
         };
@@ -397,13 +395,13 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
         TensorShape input =
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
-        return throw_if_unexpected(get_weight_shapes(attrs, input));
+        return get_weight_shapes(attrs, input);
       },
       [&](LinearAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
         TensorShape input =
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
-        return throw_if_unexpected(get_weight_shapes(attrs, input));
+        return get_weight_shapes(attrs, input);
       },
       [&](MultiHeadAttentionAttrs const &attrs)
           -> std::map<TensorSlotName, TensorShape> {
@@ -412,7 +410,7 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
                                              TensorSlotName::KEY,
                                              TensorSlotName::VALUE);
 
-        return throw_if_unexpected(get_weight_shapes(attrs, query, key, value));
+        return get_weight_shapes(attrs, query, key, value);
       },
       [&](Pool2DAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
         require_only_key(input_shapes, TensorSlotName::INPUT);
@@ -480,7 +478,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -490,8 +488,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         return {
-            {TensorSlotName::OUTPUT,
-             throw_if_unexpected(get_output_shape(attrs, input))},
+            {TensorSlotName::OUTPUT, get_output_shape(attrs, input)},
         };
       },
       [&](CombineAttrs const &attrs)
@@ -538,7 +535,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -574,7 +571,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -621,7 +618,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -633,20 +630,22 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
       [&](MultiHeadAttentionAttrs const &attrs)
           -> std::map<TensorSlotName, ParallelTensorShape> {
-        auto [i1, i2, i3] = require_3(input_shapes,
-                                      TensorSlotName::QUERY,
-                                      TensorSlotName::KEY,
-                                      TensorSlotName::VALUE);
+        auto [query, key, value] = require_3(input_shapes,
+                                             TensorSlotName::QUERY,
+                                             TensorSlotName::KEY,
+                                             TensorSlotName::VALUE);
 
         return {
-            {TensorSlotName::OUTPUT,
-             throw_if_unexpected(get_output_shape(attrs, i1, i2, i3))},
+            {
+                TensorSlotName::OUTPUT,
+                get_output_shape(attrs, query, key, value),
+            },
         };
       },
       [&](Pool2DAttrs const &attrs)
@@ -657,7 +656,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -669,7 +668,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -729,7 +728,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                throw_if_unexpected(get_output_shape(attrs, input)),
+                get_output_shape(attrs, input),
             },
         };
       },
@@ -791,7 +790,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
             ParallelTensorShape input =
                 require_only_key(input_shapes, TensorSlotName::INPUT);
 
-            return throw_if_unexpected(get_weight_shapes(attrs, input));
+            return get_weight_shapes(attrs, input);
           },
           [&](CastAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {
@@ -846,7 +845,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
             return {
                 {
                     TensorSlotName::WEIGHT,
-                    throw_if_unexpected(get_weights_shape(attrs, input)),
+                    get_weights_shape(attrs, input),
                 },
             };
           },
@@ -874,14 +873,14 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
             ParallelTensorShape input =
                 require_only_key(input_shapes, TensorSlotName::INPUT);
 
-            return throw_if_unexpected(get_weight_shapes(attrs, input));
+            return get_weight_shapes(attrs, input);
           },
           [&](LinearAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {
             ParallelTensorShape input =
                 require_only_key(input_shapes, TensorSlotName::INPUT);
 
-            return throw_if_unexpected(get_weight_shapes(attrs, input));
+            return get_weight_shapes(attrs, input);
           },
           [&](MultiHeadAttentionAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {
@@ -890,8 +889,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
                                                  TensorSlotName::KEY,
                                                  TensorSlotName::VALUE);
 
-            return throw_if_unexpected(
-                get_weight_shapes(attrs, query, key, value));
+            return get_weight_shapes(attrs, query, key, value);
           },
           [&](Pool2DAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {

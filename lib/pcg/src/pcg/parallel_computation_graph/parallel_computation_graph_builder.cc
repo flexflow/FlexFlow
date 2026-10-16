@@ -221,10 +221,10 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::dense(
   ParallelTensorShape input_shape = this->get_shape(input);
 
   std::map<TensorSlotName, InitializerAttrs> initializers =
-      throw_if_unexpected(get_initializers(attrs,
-                                           get_reduced_shape(input_shape),
-                                           maybe_projection_initializer,
-                                           maybe_bias_initializer));
+      get_initializers(attrs,
+                       get_reduced_shape(input_shape),
+                       maybe_projection_initializer,
+                       maybe_bias_initializer);
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -308,14 +308,14 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::multihead_attention(
 
   ParallelLayerAttrs layer = ParallelLayerAttrs{PCGOperatorAttrs{attrs}, name};
 
-  std::map<TensorSlotName, InitializerAttrs> initializers = throw_if_unexpected(
+  std::map<TensorSlotName, InitializerAttrs> initializers =
       get_initializers(attrs,
                        get_reduced_shape(this->get_shape(query)),
                        get_reduced_shape(this->get_shape(key)),
                        get_reduced_shape(this->get_shape(value)),
                        maybe_weights_initializer,
                        maybe_input_bias_initializer,
-                       maybe_output_bias_initializer));
+                       maybe_output_bias_initializer);
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -370,7 +370,7 @@ parallel_tensor_guid_t ParallelComputationGraphBuilder::batch_norm(
   std::vector<ParallelTensorAttrs> weights;
 
   std::map<TensorSlotName, InitializerAttrs> initializers =
-      throw_if_unexpected(get_initializers(attrs));
+      get_initializers(attrs);
 
   return require_only_key(this->add_layer(layer,
                                           {

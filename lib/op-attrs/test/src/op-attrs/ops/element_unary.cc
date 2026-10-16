@@ -25,9 +25,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    tl::expected<TensorShape, std::string> result =
-        get_output_shape(attrs, input);
-    tl::expected<TensorShape, std::string> correct = input;
+    TensorShape result = get_output_shape(attrs, input);
+    TensorShape correct = input;
 
     CHECK(result == correct);
 
@@ -46,9 +45,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input = make_input(
           SumDegree{1_p}, DiscardCopyDegree{1_p}, degree1, 1_p, degree2);
 
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_output_shape(attrs, par_input);
-      tl::expected<ParallelTensorShape, std::string> correct = par_input;
+      ParallelTensorShape result = get_output_shape(attrs, par_input);
+      ParallelTensorShape correct = par_input;
 
       CHECK(result == correct);
     }
@@ -59,9 +57,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input =
           make_input(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p, 1_p);
 
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_output_shape(attrs, par_input);
-      tl::expected<ParallelTensorShape, std::string> correct = par_input;
+      ParallelTensorShape result = get_output_shape(attrs, par_input);
+      ParallelTensorShape correct = par_input;
 
       CHECK(result == correct);
     }

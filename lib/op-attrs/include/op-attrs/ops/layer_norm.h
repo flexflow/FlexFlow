@@ -7,33 +7,29 @@
 #include "op-attrs/parallel_tensor_shape.dtg.h"
 #include "op-attrs/tensor_shape.dtg.h"
 #include "op-attrs/tensor_slot_name.dtg.h"
-#include <tl/expected.hpp>
 
 namespace FlexFlow {
 
 std::map<TensorSlotName, IncomingTensorRole>
     get_layer_norm_incoming_tensor_roles(LayerNormAttrs const &);
 
-tl::expected<TensorShape, std::string> get_output_shape(LayerNormAttrs const &,
-                                                        TensorShape const &);
-tl::expected<TensorShape, std::string>
-    get_gamma_weights_shape(LayerNormAttrs const &, TensorShape const &);
-tl::expected<TensorShape, std::string>
-    get_beta_weights_shape(LayerNormAttrs const &, TensorShape const &);
+TensorShape get_output_shape(LayerNormAttrs const &, TensorShape const &);
+TensorShape get_gamma_weights_shape(LayerNormAttrs const &,
+                                    TensorShape const &);
+TensorShape get_beta_weights_shape(LayerNormAttrs const &, TensorShape const &);
 
-tl::expected<std::map<TensorSlotName, TensorShape>, std::string>
+std::map<TensorSlotName, TensorShape>
     get_weight_shapes(LayerNormAttrs const &attrs,
                       TensorShape const &input_shape);
 
-tl::expected<ParallelTensorShape, std::string>
-    get_output_shape(LayerNormAttrs const &, ParallelTensorShape const &);
-tl::expected<ParallelTensorShape, std::string>
-    get_gamma_weights_shape(LayerNormAttrs const &,
-                            ParallelTensorShape const &);
-tl::expected<ParallelTensorShape, std::string>
-    get_beta_weights_shape(LayerNormAttrs const &, ParallelTensorShape const &);
+ParallelTensorShape get_output_shape(LayerNormAttrs const &,
+                                     ParallelTensorShape const &);
+ParallelTensorShape get_gamma_weights_shape(LayerNormAttrs const &,
+                                            ParallelTensorShape const &);
+ParallelTensorShape get_beta_weights_shape(LayerNormAttrs const &,
+                                           ParallelTensorShape const &);
 
-tl::expected<std::map<TensorSlotName, ParallelTensorShape>, std::string>
+std::map<TensorSlotName, ParallelTensorShape>
     get_weight_shapes(LayerNormAttrs const &attrs,
                       ParallelTensorShape const &input_shape);
 

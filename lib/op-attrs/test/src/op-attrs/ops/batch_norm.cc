@@ -93,46 +93,35 @@ TEST_SUITE(FF_TEST_SUITE) {
     TensorShape beta = gamma;
 
     SUBCASE("get_output_shape(BatchNormAttrs, TensorShape)") {
-      tl::expected<TensorShape, std::string> result =
-          get_output_shape(attrs_affine_true, input);
-      tl::expected<TensorShape, std::string> correct = output;
+      TensorShape result = get_output_shape(attrs_affine_true, input);
+      TensorShape correct = output;
 
       CHECK(result == correct);
     }
 
     SUBCASE("get_gamma_weights_shape(BatchNormAttrs, TensorShape)") {
       SUBCASE("affine = true") {
-        tl::expected<TensorShape, std::string> result =
-            get_gamma_weights_shape(attrs_affine_true, input);
-        tl::expected<TensorShape, std::string> correct = gamma;
+        TensorShape result = get_gamma_weights_shape(attrs_affine_true, input);
+        TensorShape correct = gamma;
 
         CHECK(result == correct);
       }
 
       SUBCASE("affine = false") {
-        std::optional<TensorShape> result = optional_from_expected(
-            get_gamma_weights_shape(attrs_affine_false, input));
-        std::optional<TensorShape> correct = std::nullopt;
-
-        CHECK(result == correct);
+        CHECK_THROWS(get_gamma_weights_shape(attrs_affine_false, input));
       }
     }
 
     SUBCASE("get_beta_weights_shape(BatchNormAttrs, TensorShape)") {
       SUBCASE("affine = true") {
-        tl::expected<TensorShape, std::string> result =
-            get_beta_weights_shape(attrs_affine_true, input);
-        tl::expected<TensorShape, std::string> correct = beta;
+        TensorShape result = get_beta_weights_shape(attrs_affine_true, input);
+        TensorShape correct = beta;
 
         CHECK(result == correct);
       }
 
       SUBCASE("affine = false") {
-        std::optional<TensorShape> result = optional_from_expected(
-            get_beta_weights_shape(attrs_affine_false, input));
-        std::optional<TensorShape> correct = std::nullopt;
-
-        CHECK(result == correct);
+        CHECK_THROWS(get_beta_weights_shape(attrs_affine_false, input));
       }
     }
   }
@@ -167,9 +156,9 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        tl::expected<ParallelTensorDimDegrees, std::string> result =
+        ParallelTensorDimDegrees result =
             get_output_parallel_dim_degrees(attrs_affine_true, input);
-        tl::expected<ParallelTensorDimDegrees, std::string> correct = input;
+        ParallelTensorDimDegrees correct = input;
 
         CHECK(result == correct);
       }
@@ -177,50 +166,40 @@ TEST_SUITE(FF_TEST_SUITE) {
       SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
         SUBCASE("affine = true") {
-          tl::expected<ParallelTensorDimDegrees, std::string> result =
+          ParallelTensorDimDegrees result =
               get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input);
-          tl::expected<ParallelTensorDimDegrees, std::string> correct =
-              ParallelTensorDimDegrees{
-                  SumDegree{1_p},
-                  DiscardCopyDegree{1_p},
-                  FFOrdered{degree},
-              };
+          ParallelTensorDimDegrees correct = ParallelTensorDimDegrees{
+              SumDegree{1_p},
+              DiscardCopyDegree{1_p},
+              FFOrdered{degree},
+          };
 
           CHECK(result == correct);
         }
 
         SUBCASE("affine = false") {
-          std::optional<ParallelTensorDimDegrees> result =
-              optional_from_expected(get_gamma_weights_parallel_dim_degrees(
-                  attrs_affine_false, input));
-          std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-          CHECK(result == correct);
+          CHECK_THROWS(get_gamma_weights_parallel_dim_degrees(
+              attrs_affine_false, input));
         }
       }
 
       SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
         SUBCASE("affine = true") {
-          tl::expected<ParallelTensorDimDegrees, std::string> result =
+          ParallelTensorDimDegrees result =
               get_beta_weights_parallel_dim_degrees(attrs_affine_true, input);
-          tl::expected<ParallelTensorDimDegrees, std::string> correct =
-              ParallelTensorDimDegrees{
-                  SumDegree{1_p},
-                  DiscardCopyDegree{1_p},
-                  FFOrdered{degree},
-              };
+          ParallelTensorDimDegrees correct = ParallelTensorDimDegrees{
+              SumDegree{1_p},
+              DiscardCopyDegree{1_p},
+              FFOrdered{degree},
+          };
 
           CHECK(result == correct);
         }
 
         SUBCASE("affine = false") {
-          std::optional<ParallelTensorDimDegrees> result =
-              optional_from_expected(get_beta_weights_parallel_dim_degrees(
-                  attrs_affine_false, input));
-          std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-          CHECK(result == correct);
+          CHECK_THROWS(
+              get_beta_weights_parallel_dim_degrees(attrs_affine_false, input));
         }
       }
     }
@@ -236,29 +215,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
-            get_output_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
+        CHECK_THROWS(get_output_parallel_dim_degrees(attrs_affine_true, input));
       }
 
       SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
+        CHECK_THROWS(
             get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
       }
 
       SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
+        CHECK_THROWS(
             get_beta_weights_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
       }
     }
 
@@ -273,29 +242,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
-            get_output_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
+        CHECK_THROWS(get_output_parallel_dim_degrees(attrs_affine_true, input));
       }
 
       SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
+        CHECK_THROWS(
             get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
       }
 
       SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
+        CHECK_THROWS(
             get_beta_weights_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
       }
     }
 
@@ -310,29 +269,19 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
-            get_output_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
+        CHECK_THROWS(get_output_parallel_dim_degrees(attrs_affine_true, input));
       }
 
       SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
+        CHECK_THROWS(
             get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
       }
 
       SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
               "ParallelTensorDimDegrees)") {
-        std::optional<ParallelTensorDimDegrees> result = optional_from_expected(
+        CHECK_THROWS(
             get_beta_weights_parallel_dim_degrees(attrs_affine_true, input));
-        std::optional<ParallelTensorDimDegrees> correct = std::nullopt;
-
-        CHECK(result == correct);
       }
     }
   }
@@ -366,49 +315,44 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     SUBCASE("get_output_shape(BatchNormAttrs, ParallelTensorShape)") {
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_output_shape(attrs, input);
-      tl::expected<ParallelTensorShape, std::string> correct = input;
+      ParallelTensorShape result = get_output_shape(attrs, input);
+      ParallelTensorShape correct = input;
 
       CHECK(result == correct);
     }
 
     SUBCASE("get_gamma_weights_shape(BatchNormAttrs, ParallelTensorShape)") {
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_gamma_weights_shape(attrs, input);
-      tl::expected<ParallelTensorShape, std::string> correct =
-          ParallelTensorShape{
-              ParallelTensorDims{
-                  FFOrdered<ShardParallelDim>{
-                      ShardParallelDim{14_p, 2_p},
-                  },
-                  ReplicaParallelDimSet{
-                      SumDegree{1_p},
-                      DiscardCopyDegree{1_p},
-                  },
+      ParallelTensorShape result = get_gamma_weights_shape(attrs, input);
+      ParallelTensorShape correct = ParallelTensorShape{
+          ParallelTensorDims{
+              FFOrdered<ShardParallelDim>{
+                  ShardParallelDim{14_p, 2_p},
               },
-              DataType::FLOAT,
-          };
+              ReplicaParallelDimSet{
+                  SumDegree{1_p},
+                  DiscardCopyDegree{1_p},
+              },
+          },
+          DataType::FLOAT,
+      };
 
       CHECK(result == correct);
     }
 
     SUBCASE("get_beta_weights_shape(BatchNormAttrs, ParallelTensorShape)") {
-      tl::expected<ParallelTensorShape, std::string> result =
-          get_beta_weights_shape(attrs, input);
-      tl::expected<ParallelTensorShape, std::string> correct =
-          ParallelTensorShape{
-              ParallelTensorDims{
-                  FFOrdered<ShardParallelDim>{
-                      ShardParallelDim{14_p, 2_p},
-                  },
-                  ReplicaParallelDimSet{
-                      SumDegree{1_p},
-                      DiscardCopyDegree{1_p},
-                  },
+      ParallelTensorShape result = get_beta_weights_shape(attrs, input);
+      ParallelTensorShape correct = ParallelTensorShape{
+          ParallelTensorDims{
+              FFOrdered<ShardParallelDim>{
+                  ShardParallelDim{14_p, 2_p},
               },
-              DataType::FLOAT,
-          };
+              ReplicaParallelDimSet{
+                  SumDegree{1_p},
+                  DiscardCopyDegree{1_p},
+              },
+          },
+          DataType::FLOAT,
+      };
 
       CHECK(result == correct);
     }

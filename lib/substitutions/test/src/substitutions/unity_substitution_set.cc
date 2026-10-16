@@ -255,7 +255,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     TensorShape projection_weight_shape =
-        throw_if_unexpected(get_projection_shape(linear_attrs, input_shape));
+        get_projection_shape(linear_attrs, input_shape);
 
     RepartitionAttrs partition_projection_attrs = RepartitionAttrs{
         /*repartition_dim=*/ff_dim_t{1_n},
@@ -361,10 +361,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     TensorShape projection_weight_shape =
-        throw_if_unexpected(get_projection_shape(linear_attrs, input_shape));
+        get_projection_shape(linear_attrs, input_shape);
 
-    TensorShape bias_shape =
-        throw_if_unexpected(get_bias_shape(linear_attrs, input_shape));
+    TensorShape bias_shape = get_bias_shape(linear_attrs, input_shape);
 
     SubParallelComputationGraph original_pcg = [&] {
       ParallelComputationGraph pcg = empty_parallel_computation_graph();
@@ -478,7 +477,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     TensorShape projection_weight_shape =
-        throw_if_unexpected(get_projection_shape(linear_attrs, input_shape));
+        get_projection_shape(linear_attrs, input_shape);
 
     SubParallelComputationGraph original_pcg = [&] {
       ParallelComputationGraph pcg = empty_parallel_computation_graph();
@@ -579,10 +578,9 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     TensorShape projection_weight_shape =
-        throw_if_unexpected(get_projection_shape(linear_attrs, input_shape));
+        get_projection_shape(linear_attrs, input_shape);
 
-    TensorShape bias_shape =
-        throw_if_unexpected(get_bias_shape(linear_attrs, input_shape));
+    TensorShape bias_shape = get_bias_shape(linear_attrs, input_shape);
 
     SubParallelComputationGraph original_pcg = [&] {
       ParallelComputationGraph pcg = empty_parallel_computation_graph();
@@ -819,8 +817,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*add_zero_attn=*/false,
     };
 
-    TensorShape weights_shape = throw_if_unexpected(get_weights_shape(
-        attention_attrs, query_shape, key_shape, value_shape));
+    TensorShape weights_shape =
+        get_weights_shape(attention_attrs, query_shape, key_shape, value_shape);
 
     SubParallelComputationGraph original_pcg = [&] {
       ParallelComputationGraph pcg = empty_parallel_computation_graph();
@@ -939,8 +937,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         /*add_zero_attn=*/false,
     };
 
-    TensorShape weight_shape = throw_if_unexpected(get_weights_shape(
-        attention_attrs, query_shape, key_shape, value_shape));
+    TensorShape weight_shape =
+        get_weights_shape(attention_attrs, query_shape, key_shape, value_shape);
 
     SubParallelComputationGraph original_pcg = [&] {
       ParallelComputationGraph pcg = empty_parallel_computation_graph();
