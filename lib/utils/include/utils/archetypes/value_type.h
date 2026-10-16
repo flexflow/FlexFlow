@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 #include <functional>
 #include <libassert/assert.hpp>
+#include <nlohmann/json.hpp>
 #include <ostream>
 #include <sstream>
 
@@ -37,6 +38,11 @@ struct value_type {
 
 template <int TAG>
 std::string format_as(value_type<TAG> const &) {
+  PANIC();
+}
+
+template <int TAG>
+void to_json(nlohmann::json &, value_type<TAG> const &) {
   PANIC();
 }
 

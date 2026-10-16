@@ -3,6 +3,7 @@
 
 #include <functional>
 #include <libassert/assert.hpp>
+#include <nlohmann/json.hpp>
 
 namespace FlexFlow {
 
@@ -47,6 +48,11 @@ struct ordered_value_type {
 
 template <int TAG>
 std::string format_as(ordered_value_type<TAG> const &) {
+  PANIC();
+}
+
+template <int TAG>
+void to_json(nlohmann::json &, ordered_value_type<TAG> const &) {
   PANIC();
 }
 

@@ -4,6 +4,7 @@
 #include <fmt/format.h>
 #include <functional>
 #include <libassert/assert.hpp>
+#include <nlohmann/json.hpp>
 #include <ostream>
 #include <rapidcheck.h>
 #include <sstream>
@@ -41,6 +42,11 @@ struct rapidcheckable_value_type {
 
 template <int TAG>
 std::string format_as(rapidcheckable_value_type<TAG> const &) {
+  PANIC();
+}
+
+template <int TAG>
+void to_json(nlohmann::json &, rapidcheckable_value_type<TAG> const &) {
   PANIC();
 }
 

@@ -4,6 +4,13 @@ namespace FlexFlow {
 
 template struct rapidcheckable_value_type<0>;
 
+template std::string format_as(rapidcheckable_value_type<0> const &);
+
+template void to_json(nlohmann::json &, rapidcheckable_value_type<0> const &);
+
+template std::ostream &operator<<(std::ostream &,
+                                  rapidcheckable_value_type<0> const &);
+
 } // namespace FlexFlow
 
 namespace rc {
