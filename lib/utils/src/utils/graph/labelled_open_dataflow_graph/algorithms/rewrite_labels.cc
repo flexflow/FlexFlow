@@ -1,6 +1,6 @@
 #include "utils/graph/labelled_open_dataflow_graph/algorithms/rewrite_labels.h"
 #include "utils/archetypes/value_type.h"
-#include "utils/not_implemented.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 
@@ -11,10 +11,10 @@ using NewValueLabel = value_type<3>;
 
 struct F {
   NewNodeLabel operator()(Node const &, NodeLabel const &) {
-    NOT_IMPLEMENTED();
+    PANIC();
   }
   NewValueLabel operator()(OpenDataflowValue const &, ValueLabel) {
-    NOT_IMPLEMENTED();
+    PANIC();
   }
 };
 

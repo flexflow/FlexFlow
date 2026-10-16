@@ -14,12 +14,12 @@ using NewValueLabel = value_type<5>;
 
 struct F {
   NewNodeLabel operator()(Node const &, NodeLabel const &) {
-    NOT_IMPLEMENTED();
+    PANIC();
   }
   NewValueLabel
       operator()(OpenKwargDataflowValue<GraphInputName, SlotName> const &,
                  ValueLabel) {
-    NOT_IMPLEMENTED();
+    PANIC();
   }
 };
 

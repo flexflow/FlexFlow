@@ -1,12 +1,12 @@
 #include "kernels/map_tensor_accessors.h"
-#include "utils/not_implemented.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 
 struct F1 {
   template <typename T>
   float operator()(T const &t) const {
-    NOT_IMPLEMENTED();
+    PANIC();
   }
 };
 
@@ -16,7 +16,7 @@ template GenericTensorAccessorW
 struct F2 {
   template <typename T1, typename T2>
   float operator()(T1 const &lhs, T2 const &rhs) const {
-    NOT_IMPLEMENTED();
+    PANIC();
   }
 };
 
@@ -30,7 +30,7 @@ template GenericTensorAccessorW
 struct F3 {
   template <typename T1, typename T2, typename T3>
   float operator()(T1 const &lhs, T2 const &chs, T3 const &rhs) const {
-    NOT_IMPLEMENTED();
+    PANIC();
   }
 };
 
