@@ -57,7 +57,7 @@ __global__ void copy_kernel(DT *dst, const DT *src, size_t size) {
 }
 
 template <typename DT>
-__global__ void reluBackward(DT *grad_ptr, const DT *output, size_t n) {
+__global__ void reluBackward(DT *grad_ptr, DT const *output, size_t n) {
   CUDA_KERNEL_LOOP(i, n) {
     grad_ptr[i] = (output[i] > 0.0f) ? grad_ptr[i] : 0;
   }
