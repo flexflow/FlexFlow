@@ -34,10 +34,10 @@ static DeviceSpecificPerDeviceOpState
 
   DeviceType kernel_device_type = acc.get_kernel_device_type();
 
-  positive_int qProjSize = get_qProjSize(attrs);
-  positive_int kProjSize = get_kProjSize(attrs);
-  positive_int vProjSize = get_vProjSize(attrs);
-  positive_int oProjSize = get_oProjSize(attrs);
+  positive_int qProjSize = attrs.kdim;
+  positive_int kProjSize = attrs.kdim;
+  positive_int vProjSize = attrs.vdim;
+  positive_int oProjSize = attrs.embed_dim;
 
   device_handle_t handle = acc.get_ff_handle();
 
@@ -50,13 +50,13 @@ static DeviceSpecificPerDeviceOpState
   TensorShape weight_tensor_shape = get_weights_shape(
       attrs, query_tensor_shape, key_tensor_shape, value_tensor_shape);
 
-  positive_int kvSeqLength = get_kvSeqLength(parsed);
-  positive_int qSize = get_qSize(parsed);
-  positive_int kSize = get_kSize(parsed);
-  positive_int vSize = get_vSize(parsed);
+  positive_int kvSeqLength = parsed.sequence_length;
+  positive_int qSize = parsed.query_size;
+  positive_int kSize = parsed.key_size;
+  positive_int vSize = parsed.value_size;
 
-  positive_int qoSeqLength = get_qoSeqLength(parsed);
-  positive_int num_samples = get_num_samples(parsed);
+  positive_int qoSeqLength = parsed.sequence_length;
+  positive_int num_samples = parsed.batch_size;
   positive_int num_heads = attrs.num_heads;
 
   std::optional<MHAPerDeviceState> per_device_state = init_kernel(

@@ -7,7 +7,6 @@
 #include "utils/containers/extend.h"
 #include "utils/expected.h"
 #include "utils/integer_conversions.h"
-#include "utils/not_implemented.h"
 #include <libassert/assert.hpp>
 
 namespace FlexFlow {
@@ -19,82 +18,6 @@ namespace FlexFlow {
 /*   bool is_valid = true; */
 /*   return is_valid; */
 /* } */
-
-positive_int get_qProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.kdim;
-}
-
-positive_int get_vProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.vdim;
-}
-
-positive_int get_kProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.kdim;
-}
-
-positive_int get_oProjSize(MultiHeadAttentionAttrs const &attrs) {
-  return attrs.embed_dim;
-}
-
-positive_int get_qSize(TensorShape const &query_shape) {
-  return dim_at_idx(query_shape.dims, relative_ff_dim_t{0});
-}
-
-positive_int get_kSize(TensorShape const &key_shape) {
-  return dim_at_idx(key_shape.dims, relative_ff_dim_t{0});
-}
-
-positive_int get_vSize(TensorShape const &value_shape) {
-  return dim_at_idx(value_shape.dims, relative_ff_dim_t{0});
-}
-
-positive_int get_qSize(MultiHeadAttentionParallelInputs const &inputs) {
-  return inputs.query_dim.size;
-}
-
-positive_int get_qSize(MultiHeadAttentionInputs const &inputs) {
-  return inputs.query_size;
-}
-
-positive_int get_kSize(MultiHeadAttentionParallelInputs const &inputs) {
-  return inputs.key_dim.size;
-}
-
-positive_int get_kSize(MultiHeadAttentionInputs const &inputs) {
-  return inputs.key_size;
-}
-
-positive_int get_vSize(MultiHeadAttentionParallelInputs const &inputs) {
-  return inputs.value_dim.size;
-}
-
-positive_int get_vSize(MultiHeadAttentionInputs const &inputs) {
-  return inputs.value_size;
-}
-
-positive_int get_kvSeqLength(MultiHeadAttentionParallelInputs const &inputs) {
-  return inputs.sequence_dim.size;
-}
-
-positive_int get_kvSeqLength(MultiHeadAttentionInputs const &inputs) {
-  return inputs.sequence_length;
-}
-
-positive_int get_qoSeqLength(MultiHeadAttentionParallelInputs const &inputs) {
-  return inputs.sequence_dim.size; // FIXME -- assumes only prefill
-}
-
-positive_int get_qoSeqLength(MultiHeadAttentionInputs const &inputs) {
-  return inputs.sequence_length; // FIXME -- assumes only prefil
-}
-
-positive_int get_num_samples(MultiHeadAttentionParallelInputs const &inputs) {
-  return inputs.batch_dim.size;
-}
-
-positive_int get_num_samples(MultiHeadAttentionInputs const &inputs) {
-  return inputs.batch_size;
-}
 
 static void check_attrs(MultiHeadAttentionAttrs const &attrs) {
   ASSERT(!attrs.add_bias_kv,
@@ -328,14 +251,6 @@ ParallelTensorShape get_output_shape(MultiHeadAttentionAttrs const &attrs,
       SumDegree{sum_degree},
       DiscardCopyDegree{discard_copy_degree},
       FFOrdered{batch_degree, seq_len_degree, out_dim_degree});
-}
-
-positive_int get_oSize(ParallelTensorShape const &) {
-  NOT_IMPLEMENTED();
-}
-
-positive_int get_oSize(TensorShape const &) {
-  NOT_IMPLEMENTED();
 }
 
 std::map<TensorSlotName, ParallelTensorShape>

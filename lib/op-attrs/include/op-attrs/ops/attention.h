@@ -12,32 +12,6 @@
 
 namespace FlexFlow {
 
-positive_int get_qProjSize(MultiHeadAttentionAttrs const &);
-positive_int get_vProjSize(MultiHeadAttentionAttrs const &);
-positive_int get_kProjSize(MultiHeadAttentionAttrs const &);
-positive_int get_oProjSize(MultiHeadAttentionAttrs const &);
-
-positive_int get_qSize(MultiHeadAttentionParallelInputs const &);
-positive_int get_qSize(MultiHeadAttentionInputs const &);
-
-positive_int get_kSize(MultiHeadAttentionParallelInputs const &);
-positive_int get_kSize(MultiHeadAttentionInputs const &);
-
-positive_int get_vSize(MultiHeadAttentionParallelInputs const &);
-positive_int get_vSize(MultiHeadAttentionInputs const &);
-
-positive_int get_oSize(ParallelTensorShape const &);
-positive_int get_oSize(TensorShape const &);
-
-positive_int get_qoSeqLength(MultiHeadAttentionParallelInputs const &);
-positive_int get_qoSeqLength(MultiHeadAttentionInputs const &);
-
-positive_int get_kvSeqLength(MultiHeadAttentionParallelInputs const &);
-positive_int get_kvSeqLength(MultiHeadAttentionInputs const &);
-
-positive_int get_num_samples(MultiHeadAttentionParallelInputs const &);
-positive_int get_num_samples(MultiHeadAttentionInputs const &);
-
 std::map<TensorSlotName, IncomingTensorRole>
     get_attention_incoming_tensor_roles(MultiHeadAttentionAttrs const &);
 
