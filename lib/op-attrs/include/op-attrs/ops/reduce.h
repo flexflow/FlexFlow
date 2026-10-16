@@ -6,8 +6,9 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(ReduceAttrs const &,
-                                     ParallelTensorShape const &input_shape);
+ParallelTensorShape
+    reduce_get_output_parallel_shape(ReduceAttrs const &,
+                                     ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

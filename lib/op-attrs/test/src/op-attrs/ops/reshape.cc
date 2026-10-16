@@ -4,7 +4,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("reshape_get_output_shape(ReshapeAttrs, TensorShape)") {
+  TEST_CASE("reshape_get_output_shape") {
     ReshapeAttrs attrs = ReshapeAttrs{
         TensorShape{
             TensorDims{FFOrdered<positive_int>{4_p, 3_p, 10_p}},
@@ -47,8 +47,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE(
-      "reshape_get_output_parallel_dim_degrees(ReshapeAttrs, TensorShape)") {
+  TEST_CASE("reshape_get_output_parallel_dim_degrees") {
     ReshapeAttrs attrs = ReshapeAttrs{
         TensorShape{
             TensorDims{FFOrdered<positive_int>{4_p, 3_p, 10_p}},

@@ -47,7 +47,7 @@ static DeviceSpecificPerDeviceOpState
 
   MultiHeadAttentionInputs parsed = parse_attention_input_shape(
       query_tensor_shape, key_tensor_shape, value_tensor_shape);
-  TensorShape weight_tensor_shape = get_weights_shape(
+  TensorShape weight_tensor_shape = attention_get_weights_shape(
       attrs, query_tensor_shape, key_tensor_shape, value_tensor_shape);
 
   positive_int kvSeqLength = parsed.sequence_length;

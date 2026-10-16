@@ -8,7 +8,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("get_output_shape(SoftmaxAttrs, TensorShape)") {
+  TEST_CASE("softmax_get_output_shape") {
     TensorShape input = TensorShape{
         TensorDims{FFOrdered{
             12_p,
@@ -21,7 +21,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("attrs.dim in bounds") {
       SoftmaxAttrs attrs = SoftmaxAttrs{ff_dim_t{1_n}};
 
-      TensorShape result = get_output_shape(attrs, input);
+      TensorShape result = softmax_get_output_shape(attrs, input);
       TensorShape correct = input;
 
       CHECK(result == correct);
@@ -30,11 +30,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("attrs.dims out of bounds") {
       SoftmaxAttrs attrs = SoftmaxAttrs{ff_dim_t{4_n}};
 
-      CHECK_THROWS(get_output_shape(attrs, input));
+      CHECK_THROWS(softmax_get_output_shape(attrs, input));
     }
   }
 
-  TEST_CASE("get_output_shape(SoftmaxAttrs, ParallelTensorShape)") {
+  TEST_CASE("softmax_get_output_parallel_shape") {
     TensorShape input = TensorShape{
         TensorDims{FFOrdered{
             12_p,
@@ -73,7 +73,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       SUBCASE("attrs.dim in bounds") {
         SoftmaxAttrs attrs = SoftmaxAttrs{ff_dim_t{1_n}};
 
-        ParallelTensorShape result = get_output_shape(attrs, par_input);
+        ParallelTensorShape result =
+            softmax_get_output_parallel_shape(attrs, par_input);
         ParallelTensorShape correct = make_output(
             SumDegree{1_p}, DiscardCopyDegree{1_p}, degree0, 1_p, degree2);
 
@@ -83,7 +84,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       SUBCASE("attrs.dims out of bounds") {
         SoftmaxAttrs attrs = SoftmaxAttrs{ff_dim_t{4_n}};
 
-        CHECK_THROWS(get_output_shape(attrs, par_input));
+        CHECK_THROWS(softmax_get_output_parallel_shape(attrs, par_input));
       }
     }
 
@@ -95,7 +96,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input =
           make_input(SumDegree{1_p}, DiscardCopyDegree{1_p}, 1_p, degree1, 1_p);
 
-      CHECK_THROWS(get_output_shape(attrs, par_input));
+      CHECK_THROWS(softmax_get_output_parallel_shape(attrs, par_input));
     }
 
     SUBCASE("sum parallelism (invalid)") {
@@ -106,7 +107,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input =
           make_input(sum_degree, DiscardCopyDegree{1_p}, 1_p, 1_p, 1_p);
 
-      CHECK_THROWS(get_output_shape(attrs, par_input));
+      CHECK_THROWS(softmax_get_output_parallel_shape(attrs, par_input));
     }
 
     SUBCASE("discard copy parallelism (invalid)") {
@@ -117,7 +118,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input =
           make_input(SumDegree{1_p}, discard_copy_degree, 1_p, 1_p, 1_p);
 
-      CHECK_THROWS(get_output_shape(attrs, par_input));
+      CHECK_THROWS(softmax_get_output_parallel_shape(attrs, par_input));
     }
   }
 }

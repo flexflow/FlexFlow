@@ -8,10 +8,10 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(CastAttrs const &, TensorShape const &);
+TensorShape cast_get_output_shape(CastAttrs const &, TensorShape const &);
 
-ParallelTensorShape get_output_shape(CastAttrs const &,
-                                     ParallelTensorShape const &);
+ParallelTensorShape cast_get_output_parallel_shape(CastAttrs const &,
+                                                   ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

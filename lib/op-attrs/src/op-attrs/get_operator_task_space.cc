@@ -21,14 +21,14 @@ OperatorTaskSpace get_operator_task_space(
         ParallelTensorDimDegrees input =
             require_only_key(inputs_degrees, TensorSlotName::INPUT);
 
-        return get_operator_task_space(attrs, input);
+        return element_unary_get_operator_task_space(attrs, input);
       },
       [&](ElementBinaryAttrs const &attrs) {
         auto [lhs, rhs] = require_two_keys(inputs_degrees,
                                            TensorSlotName::LHS_INPUT,
                                            TensorSlotName::RHS_INPUT);
 
-        return get_operator_task_space(
+        return element_binary_get_operator_task_space(
             /*attrs=*/attrs,
             /*lhs_input_degrees=*/lhs,
             /*rhs_input_degrees=*/rhs);
@@ -37,23 +37,23 @@ OperatorTaskSpace get_operator_task_space(
         ParallelTensorDimDegrees input =
             require_only_key(inputs_degrees, TensorSlotName::INPUT);
 
-        return get_operator_task_space(attrs, input);
+        return linear_get_operator_task_space(attrs, input);
       },
       [&](InputAttrs const &attrs) {
         ASSERT(inputs_degrees.size() == 0);
 
-        return get_operator_task_space(attrs);
+        return input_get_operator_task_space(attrs);
       },
       [&](TransposeAttrs const &attrs) {
         ParallelTensorDimDegrees input =
             require_only_key(inputs_degrees, TensorSlotName::INPUT);
 
-        return get_operator_task_space(attrs, input);
+        return transpose_get_operator_task_space(attrs, input);
       },
       [&](WeightAttrs const &attrs) {
         ASSERT(inputs_degrees.size() == 0);
 
-        return get_operator_task_space(attrs);
+        return weight_get_operator_task_space(attrs);
       },
       [](auto const &attrs) -> OperatorTaskSpace {
         PANIC("Missing implmentation of get_operator_task_space", attrs);

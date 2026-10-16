@@ -5,20 +5,20 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(InputAttrs const &attrs) {
+TensorShape input_get_output_shape(InputAttrs const &attrs) {
   return attrs.tensor_shape;
 }
 
-ParallelTensorShape get_output_parallel_tensor_shape(InputAttrs const &attrs) {
+ParallelTensorShape input_get_output_parallel_shape(InputAttrs const &attrs) {
   return lift_shape_to_parallel(attrs.tensor_shape);
 }
 
-OperatorTaskSpace get_operator_task_space(InputAttrs const &) {
+OperatorTaskSpace input_get_operator_task_space(InputAttrs const &) {
   return trivial_op_task_space();
 }
 
 OperatorSpaceToParallelTensorSpaceMapping
-    get_operator_to_output_mapping(InputAttrs const &attrs) {
+    input_get_operator_to_output_mapping(InputAttrs const &attrs) {
 
   return empty_operator_space_to_ptensor_space_map();
 }

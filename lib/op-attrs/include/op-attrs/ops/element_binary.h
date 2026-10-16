@@ -9,37 +9,41 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(ElementBinaryAttrs const &,
-                             TensorShape const &,
-                             TensorShape const &);
-ParallelTensorShape get_output_shape(ElementBinaryAttrs const &,
-                                     ParallelTensorShape const &,
-                                     ParallelTensorShape const &);
+TensorShape element_binary_get_output_shape(ElementBinaryAttrs const &,
+                                            TensorShape const &,
+                                            TensorShape const &);
+ParallelTensorShape
+    element_binary_get_output_parallel_shape(ElementBinaryAttrs const &,
+                                             ParallelTensorShape const &,
+                                             ParallelTensorShape const &);
 
-ParallelTensorDimDegrees get_output_parallel_dim_degrees(
+ParallelTensorDimDegrees element_binary_get_output_parallel_dim_degrees(
     ElementBinaryAttrs const &attrs,
     ParallelTensorDimDegrees const &lhs_input_degrees,
     ParallelTensorDimDegrees const &rhs_input_degrees);
 
-OperatorTaskSpace
-    get_operator_task_space(ElementBinaryAttrs const &attrs,
-                            ParallelTensorDimDegrees const &lhs_input_degrees,
-                            ParallelTensorDimDegrees const &rhs_input_degrees);
-
-OperatorSpaceToParallelTensorSpaceMapping get_operator_to_lhs_input_mapping(
+OperatorTaskSpace element_binary_get_operator_task_space(
     ElementBinaryAttrs const &attrs,
     ParallelTensorDimDegrees const &lhs_input_degrees,
     ParallelTensorDimDegrees const &rhs_input_degrees);
 
-OperatorSpaceToParallelTensorSpaceMapping get_operator_to_rhs_input_mapping(
-    ElementBinaryAttrs const &attrs,
-    ParallelTensorDimDegrees const &lhs_input_degrees,
-    ParallelTensorDimDegrees const &rhs_input_degrees);
+OperatorSpaceToParallelTensorSpaceMapping
+    element_binary_get_operator_to_lhs_input_mapping(
+        ElementBinaryAttrs const &attrs,
+        ParallelTensorDimDegrees const &lhs_input_degrees,
+        ParallelTensorDimDegrees const &rhs_input_degrees);
 
-OperatorSpaceToParallelTensorSpaceMapping get_operator_to_output_mapping(
-    ElementBinaryAttrs const &attrs,
-    ParallelTensorDimDegrees const &lhs_input_degrees,
-    ParallelTensorDimDegrees const &rhs_input_degrees);
+OperatorSpaceToParallelTensorSpaceMapping
+    element_binary_get_operator_to_rhs_input_mapping(
+        ElementBinaryAttrs const &attrs,
+        ParallelTensorDimDegrees const &lhs_input_degrees,
+        ParallelTensorDimDegrees const &rhs_input_degrees);
+
+OperatorSpaceToParallelTensorSpaceMapping
+    element_binary_get_operator_to_output_mapping(
+        ElementBinaryAttrs const &attrs,
+        ParallelTensorDimDegrees const &lhs_input_degrees,
+        ParallelTensorDimDegrees const &rhs_input_degrees);
 
 } // namespace FlexFlow
 

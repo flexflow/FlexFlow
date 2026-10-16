@@ -5,7 +5,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Combine shape inference") {
+  TEST_CASE("combine_get_output_parallel_shape") {
 
     ParallelTensorShape input = ParallelTensorShape{
         ParallelTensorDims{

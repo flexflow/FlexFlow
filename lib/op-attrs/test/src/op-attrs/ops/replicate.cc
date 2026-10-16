@@ -4,7 +4,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Replicate shape inference") {
+  TEST_CASE("replicate_get_output_parallel_shape") {
     ReplicateAttrs attrs = ReplicateAttrs{
         /*replicate_degree=*/4_ge2,
     };
@@ -25,7 +25,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    ParallelTensorShape result = get_output_shape(attrs, input);
+    ParallelTensorShape result =
+        replicate_get_output_parallel_shape(attrs, input);
 
     ParallelTensorShape correct_output = input;
     correct_output.dims.replica_dims.discard_copy_degree =

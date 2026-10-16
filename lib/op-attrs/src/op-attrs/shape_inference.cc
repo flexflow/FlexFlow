@@ -87,7 +87,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                batch_norm_get_output_shape(attrs, input),
             },
         };
       },
@@ -98,7 +98,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                cast_get_output_shape(attrs, input),
             },
         };
       },
@@ -131,7 +131,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                dropout_get_output_shape(attrs, input),
             },
         };
       },
@@ -143,7 +143,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, lhs, rhs),
+                element_binary_get_output_shape(attrs, lhs, rhs),
             },
         };
       },
@@ -155,7 +155,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                element_unary_get_output_shape(attrs, input),
             },
         };
       },
@@ -167,7 +167,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                embedding_get_output_shape(attrs, input),
             },
         };
       },
@@ -189,7 +189,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input, index),
+                gather_get_output_shape(attrs, input, index),
             },
         };
       },
@@ -199,7 +199,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs),
+                input_get_output_shape(attrs),
             },
         };
       },
@@ -211,7 +211,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                layer_norm_get_output_shape(attrs, input),
             },
         };
       },
@@ -222,7 +222,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                linear_get_output_shape(attrs, input),
             },
         };
       },
@@ -234,8 +234,10 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
                                              TensorSlotName::VALUE);
 
         return {
-            {TensorSlotName::OUTPUT,
-             get_output_shape(attrs, query, key, value)},
+            {
+                TensorSlotName::OUTPUT,
+                attention_get_output_shape(attrs, query, key, value),
+            },
         };
       },
       [&](Pool2DAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
@@ -243,7 +245,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         return {
-            {TensorSlotName::OUTPUT, get_output_shape(attrs, input)},
+            {TensorSlotName::OUTPUT, pool2d_get_output_shape(attrs, input)},
         };
       },
       [&](ReshapeAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
@@ -262,7 +264,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         std::vector<TensorShape> output_shapes =
-            get_output_shapes(attrs, input);
+            split_get_output_shapes(attrs, input);
         std::vector<TensorSlotName> output_slots = slice(
             get_variadic_outputs_slot_name_sequence(), 0, attrs.splits.size());
 
@@ -273,7 +275,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         return {
-            {TensorSlotName::OUTPUT, get_output_shape(attrs, input)},
+            {TensorSlotName::OUTPUT, softmax_get_output_shape(attrs, input)},
         };
       },
       [&](TransposeAttrs const &attrs)
@@ -284,7 +286,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                transpose_get_output_shape(attrs, input),
             },
         };
       },
@@ -295,7 +297,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                upsample_get_output_shape(attrs, input),
             },
         };
       },
@@ -305,7 +307,7 @@ std::map<TensorSlotName, TensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs),
+                weight_get_output_shape(attrs),
             },
         };
       },
@@ -330,7 +332,7 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
         TensorShape input =
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
-        return get_weight_shapes(attrs, input);
+        return batch_norm_get_weight_shapes(attrs, input);
       },
       [&](CastAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
         require_only_key(input_shapes, TensorSlotName::INPUT);
@@ -372,7 +374,7 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
             {
                 TensorSlotName::WEIGHT,
                 TensorShape{
-                    get_weights_shape(attrs, input),
+                    embedding_get_weights_shape(attrs, input),
                 },
             },
         };
@@ -395,13 +397,13 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
         TensorShape input =
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
-        return get_weight_shapes(attrs, input);
+        return layer_norm_get_weight_shapes(attrs, input);
       },
       [&](LinearAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
         TensorShape input =
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
-        return get_weight_shapes(attrs, input);
+        return linear_get_weight_shapes(attrs, input);
       },
       [&](MultiHeadAttentionAttrs const &attrs)
           -> std::map<TensorSlotName, TensorShape> {
@@ -410,7 +412,7 @@ std::map<TensorSlotName, TensorShape> get_weight_shapes(
                                              TensorSlotName::KEY,
                                              TensorSlotName::VALUE);
 
-        return get_weight_shapes(attrs, query, key, value);
+        return attention_get_weight_shapes(attrs, query, key, value);
       },
       [&](Pool2DAttrs const &attrs) -> std::map<TensorSlotName, TensorShape> {
         require_only_key(input_shapes, TensorSlotName::INPUT);
@@ -478,7 +480,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                batch_norm_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -488,7 +490,8 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         return {
-            {TensorSlotName::OUTPUT, get_output_shape(attrs, input)},
+            {TensorSlotName::OUTPUT,
+             cast_get_output_parallel_shape(attrs, input)},
         };
       },
       [&](CombineAttrs const &attrs)
@@ -535,7 +538,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                dropout_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -547,7 +550,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, lhs, rhs),
+                element_binary_get_output_parallel_shape(attrs, lhs, rhs),
             },
         };
       },
@@ -559,7 +562,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                element_unary_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -571,7 +574,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                embedding_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -595,7 +598,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input, index),
+                gather_get_output_parallel_shape(attrs, input, index),
             },
         };
       },
@@ -606,7 +609,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_parallel_tensor_shape(attrs),
+                input_get_output_parallel_shape(attrs),
             },
         };
       },
@@ -618,7 +621,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                layer_norm_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -630,7 +633,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                linear_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -644,7 +647,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, query, key, value),
+                attention_get_output_parallel_shape(attrs, query, key, value),
             },
         };
       },
@@ -656,7 +659,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                pool2d_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -668,7 +671,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                reduction_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -692,7 +695,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                replicate_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -714,7 +717,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
             require_only_key(input_shapes, TensorSlotName::INPUT);
 
         std::vector<ParallelTensorShape> output_shapes =
-            get_output_shapes(attrs, input);
+            split_get_output_parallel_shapes(attrs, input);
         std::vector<TensorSlotName> output_slots = slice(
             get_variadic_outputs_slot_name_sequence(), 0, attrs.splits.size());
 
@@ -728,7 +731,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                softmax_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -740,7 +743,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                transpose_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -752,7 +755,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_shape(attrs, input),
+                upsample_get_output_parallel_shape(attrs, input),
             },
         };
       },
@@ -763,7 +766,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_output_shapes(
         return {
             {
                 TensorSlotName::OUTPUT,
-                get_output_parallel_tensor_shape(attrs),
+                weight_get_output_parallel_tensor_shape(attrs),
             },
         };
       },
@@ -790,7 +793,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
             ParallelTensorShape input =
                 require_only_key(input_shapes, TensorSlotName::INPUT);
 
-            return get_weight_shapes(attrs, input);
+            return batch_norm_get_weight_parallel_shapes(attrs, input);
           },
           [&](CastAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {
@@ -845,7 +848,7 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
             return {
                 {
                     TensorSlotName::WEIGHT,
-                    get_weights_shape(attrs, input),
+                    embedding_get_weights_parallel_shape(attrs, input),
                 },
             };
           },
@@ -873,14 +876,14 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
             ParallelTensorShape input =
                 require_only_key(input_shapes, TensorSlotName::INPUT);
 
-            return get_weight_shapes(attrs, input);
+            return layer_norm_get_weight_parallel_shapes(attrs, input);
           },
           [&](LinearAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {
             ParallelTensorShape input =
                 require_only_key(input_shapes, TensorSlotName::INPUT);
 
-            return get_weight_shapes(attrs, input);
+            return linear_get_weight_parallel_shapes(attrs, input);
           },
           [&](MultiHeadAttentionAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {
@@ -889,7 +892,8 @@ std::map<TensorSlotName, ParallelTensorShape> get_weight_shapes(
                                                  TensorSlotName::KEY,
                                                  TensorSlotName::VALUE);
 
-            return get_weight_shapes(attrs, query, key, value);
+            return attention_get_weight_parallel_shapes(
+                attrs, query, key, value);
           },
           [&](Pool2DAttrs const &attrs)
               -> std::map<TensorSlotName, ParallelTensorShape> {

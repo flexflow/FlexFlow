@@ -42,16 +42,16 @@ static void check_input_shape(LayerNormAttrs const &attrs,
                   input_shape));
 }
 
-TensorShape get_output_shape(LayerNormAttrs const &attrs,
-                             TensorShape const &input_shape) {
+TensorShape layer_norm_get_output_shape(LayerNormAttrs const &attrs,
+                                        TensorShape const &input_shape) {
 
   check_input_shape(attrs, input_shape);
 
   return input_shape;
 }
 
-TensorShape get_gamma_weights_shape(LayerNormAttrs const &attrs,
-                                    TensorShape const &input_shape) {
+TensorShape layer_norm_get_gamma_weights_shape(LayerNormAttrs const &attrs,
+                                               TensorShape const &input_shape) {
   check_input_shape(attrs, input_shape);
 
   ASSERT(attrs.elementwise_affine,
@@ -72,21 +72,23 @@ TensorShape get_gamma_weights_shape(LayerNormAttrs const &attrs,
   };
 }
 
-TensorShape get_beta_weights_shape(LayerNormAttrs const &attrs,
-                                   TensorShape const &input_shape) {
+TensorShape layer_norm_get_beta_weights_shape(LayerNormAttrs const &attrs,
+                                              TensorShape const &input_shape) {
 
   ASSERT(attrs.elementwise_affine,
          "No beta weights exist for attrs.elementwise_affine = false");
 
-  return get_gamma_weights_shape(attrs, input_shape);
+  return layer_norm_get_gamma_weights_shape(attrs, input_shape);
 }
 
 std::map<TensorSlotName, TensorShape>
-    get_weight_shapes(LayerNormAttrs const &attrs,
-                      TensorShape const &input_shape) {
+    layer_norm_get_weight_shapes(LayerNormAttrs const &attrs,
+                                 TensorShape const &input_shape) {
 
-  TensorShape gamma_shape = get_gamma_weights_shape(attrs, input_shape);
-  TensorShape beta_shape = get_beta_weights_shape(attrs, input_shape);
+  TensorShape gamma_shape =
+      layer_norm_get_gamma_weights_shape(attrs, input_shape);
+  TensorShape beta_shape =
+      layer_norm_get_beta_weights_shape(attrs, input_shape);
 
   return std::map<TensorSlotName, TensorShape>{
       {
@@ -127,17 +129,16 @@ static void check_input_parallel_shape(LayerNormAttrs const &attrs,
                      input_shape));
 }
 
-ParallelTensorShape get_output_shape(LayerNormAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
+ParallelTensorShape layer_norm_get_output_parallel_shape(
+    LayerNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
 
   check_input_parallel_shape(attrs, input_shape);
 
   return input_shape;
 }
 
-ParallelTensorShape
-    get_gamma_weights_shape(LayerNormAttrs const &attrs,
-                            ParallelTensorShape const &input_shape) {
+ParallelTensorShape layer_norm_get_gamma_weights_parallel_shape(
+    LayerNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
 
   check_input_parallel_shape(attrs, input_shape);
 
@@ -165,22 +166,23 @@ ParallelTensorShape
   };
 }
 
-ParallelTensorShape
-    get_beta_weights_shape(LayerNormAttrs const &attrs,
-                           ParallelTensorShape const &input_shape) {
+ParallelTensorShape layer_norm_get_beta_weights_parallel_shape(
+    LayerNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
 
   ASSERT(attrs.elementwise_affine,
          "No beta weights exist for attrs.elementwise_affine = false");
 
-  return get_gamma_weights_shape(attrs, input_shape);
+  return layer_norm_get_gamma_weights_parallel_shape(attrs, input_shape);
 }
 
 std::map<TensorSlotName, ParallelTensorShape>
-    get_weight_shapes(LayerNormAttrs const &attrs,
-                      ParallelTensorShape const &input_shape) {
+    layer_norm_get_weight_parallel_shapes(
+        LayerNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
 
-  ParallelTensorShape gamma_shape = get_gamma_weights_shape(attrs, input_shape);
-  ParallelTensorShape beta_shape = get_beta_weights_shape(attrs, input_shape);
+  ParallelTensorShape gamma_shape =
+      layer_norm_get_gamma_weights_parallel_shape(attrs, input_shape);
+  ParallelTensorShape beta_shape =
+      layer_norm_get_beta_weights_parallel_shape(attrs, input_shape);
 
   return std::map<TensorSlotName, ParallelTensorShape>{
       {
@@ -195,7 +197,7 @@ std::map<TensorSlotName, ParallelTensorShape>
 }
 
 std::map<TensorSlotName, InitializerAttrs>
-    get_initializers(LayerNormAttrs const &attrs) {
+    layer_norm_get_initializers(LayerNormAttrs const &attrs) {
   if (attrs.elementwise_affine) {
     InitializerAttrs gamma_initializer =
         InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{1}}}};

@@ -91,7 +91,7 @@ Pool2DAttrs
   };
 
   TensorShape output_shape =
-      get_output_shape(attrs, TensorShape{input_dims, DataType::FLOAT});
+      pool2d_get_output_shape(attrs, TensorShape{input_dims, DataType::FLOAT});
 
   ASSERT(
       output_shape == expected_ouput_shape,
@@ -118,8 +118,8 @@ static positive_int calculate_output_size(positive_int input_size,
       (input_size_raw + (2 * padding_raw) - kernel_size_raw) / stride_raw + 1};
 }
 
-TensorShape get_output_shape(Pool2DAttrs const &attrs,
-                             TensorShape const &input_shape) {
+TensorShape pool2d_get_output_shape(Pool2DAttrs const &attrs,
+                                    TensorShape const &input_shape) {
 
   ASSERT(
       get_num_dims(input_shape.dims) >= 2,
@@ -158,17 +158,19 @@ TensorShape get_output_shape(Pool2DAttrs const &attrs,
   };
 }
 
-ParallelTensorShape get_output_shape(Pool2DAttrs const &attrs,
+ParallelTensorShape
+    pool2d_get_output_parallel_shape(Pool2DAttrs const &attrs,
                                      ParallelTensorShape const &input_shape) {
-  TensorShape unpar = get_output_shape(attrs, get_reduced_shape(input_shape));
+  TensorShape unpar =
+      pool2d_get_output_shape(attrs, get_reduced_shape(input_shape));
 
-  ParallelTensorDimDegrees degrees =
-      get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+  ParallelTensorDimDegrees degrees = pool2d_get_output_parallel_dim_degrees(
+      attrs, get_parallel_degrees(input_shape));
 
   return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
-ParallelTensorDimDegrees get_output_parallel_dim_degrees(
+ParallelTensorDimDegrees pool2d_get_output_parallel_dim_degrees(
     Pool2DAttrs const &attrs, ParallelTensorDimDegrees const &input_degrees) {
   if (input_degrees.sum_degree.value > 1) {
     if (attrs.pool_type == PoolOp::MAX) {

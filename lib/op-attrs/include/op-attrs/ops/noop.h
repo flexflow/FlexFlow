@@ -7,9 +7,9 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(NoopAttrs const &, TensorShape const &);
-ParallelTensorShape get_output_shape(NoopAttrs const &,
-                                     ParallelTensorShape const &);
+TensorShape noop_get_output_shape(NoopAttrs const &, TensorShape const &);
+ParallelTensorShape noop_get_output_parallel_shape(NoopAttrs const &,
+                                                   ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

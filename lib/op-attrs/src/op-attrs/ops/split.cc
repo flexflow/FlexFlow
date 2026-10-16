@@ -15,8 +15,9 @@
 
 namespace FlexFlow {
 
-std::vector<TensorShape> get_output_shapes(SplitAttrs const &attrs,
-                                           TensorShape const &input_shape) {
+std::vector<TensorShape>
+    split_get_output_shapes(SplitAttrs const &attrs,
+                            TensorShape const &input_shape) {
   ASSERT(sum(attrs.splits) == dim_at_idx(input_shape.dims, attrs.axis));
 
   auto for_split_size = [&](positive_int split_size) -> TensorShape {
@@ -28,7 +29,7 @@ std::vector<TensorShape> get_output_shapes(SplitAttrs const &attrs,
   return transform(vector_of(attrs.splits), for_split_size);
 }
 
-std::vector<ParallelTensorDimDegrees> get_output_parallel_dim_degrees(
+std::vector<ParallelTensorDimDegrees> split_get_output_parallel_dim_degrees(
     SplitAttrs const &attrs,
     ParallelTensorDimDegrees const &input_dim_degrees) {
   {
@@ -41,12 +42,13 @@ std::vector<ParallelTensorDimDegrees> get_output_parallel_dim_degrees(
 }
 
 std::vector<ParallelTensorShape>
-    get_output_shapes(SplitAttrs const &attrs,
-                      ParallelTensorShape const &input_shape) {
+    split_get_output_parallel_shapes(SplitAttrs const &attrs,
+                                     ParallelTensorShape const &input_shape) {
   std::vector<TensorShape> unpar =
-      get_output_shapes(attrs, get_reduced_shape(input_shape));
+      split_get_output_shapes(attrs, get_reduced_shape(input_shape));
   std::vector<ParallelTensorDimDegrees> degrees =
-      get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+      split_get_output_parallel_dim_degrees(attrs,
+                                            get_parallel_degrees(input_shape));
 
   return zip_with_strict(
       unpar,

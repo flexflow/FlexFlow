@@ -41,16 +41,16 @@ void check_input_shape(BatchNormAttrs const &, TensorShape const &input_shape) {
                      input_shape.data_type));
 }
 
-TensorShape get_output_shape(BatchNormAttrs const &attrs,
-                             TensorShape const &input_shape) {
+TensorShape batch_norm_get_output_shape(BatchNormAttrs const &attrs,
+                                        TensorShape const &input_shape) {
 
   check_input_shape(attrs, input_shape);
 
   return input_shape;
 }
 
-TensorShape get_gamma_weights_shape(BatchNormAttrs const &attrs,
-                                    TensorShape const &input_shape) {
+TensorShape batch_norm_get_gamma_weights_shape(BatchNormAttrs const &attrs,
+                                               TensorShape const &input_shape) {
   check_input_shape(attrs, input_shape);
 
   ASSERT(attrs.affine, "No gamma weights exist for attrs.affine = false");
@@ -66,20 +66,22 @@ TensorShape get_gamma_weights_shape(BatchNormAttrs const &attrs,
   };
 }
 
-TensorShape get_beta_weights_shape(BatchNormAttrs const &attrs,
-                                   TensorShape const &input_shape) {
+TensorShape batch_norm_get_beta_weights_shape(BatchNormAttrs const &attrs,
+                                              TensorShape const &input_shape) {
 
   ASSERT(attrs.affine, "No beta weights exist for attrs.affine = false");
 
-  return get_gamma_weights_shape(attrs, input_shape);
+  return batch_norm_get_gamma_weights_shape(attrs, input_shape);
 }
 
 std::map<TensorSlotName, TensorShape>
-    get_weight_shapes(BatchNormAttrs const &attrs,
-                      TensorShape const &input_shape) {
+    batch_norm_get_weight_shapes(BatchNormAttrs const &attrs,
+                                 TensorShape const &input_shape) {
 
-  TensorShape gamma_shape = get_gamma_weights_shape(attrs, input_shape);
-  TensorShape beta_shape = get_beta_weights_shape(attrs, input_shape);
+  TensorShape gamma_shape =
+      batch_norm_get_gamma_weights_shape(attrs, input_shape);
+  TensorShape beta_shape =
+      batch_norm_get_beta_weights_shape(attrs, input_shape);
 
   return std::map<TensorSlotName, TensorShape>{
       {
@@ -124,7 +126,7 @@ static void check_input_degrees(BatchNormAttrs const &,
                      input_degrees));
 }
 
-ParallelTensorDimDegrees get_output_parallel_dim_degrees(
+ParallelTensorDimDegrees batch_norm_get_output_parallel_dim_degrees(
     BatchNormAttrs const &attrs,
     ParallelTensorDimDegrees const &input_degrees) {
 
@@ -133,7 +135,7 @@ ParallelTensorDimDegrees get_output_parallel_dim_degrees(
   return input_degrees;
 }
 
-ParallelTensorDimDegrees get_gamma_weights_parallel_dim_degrees(
+ParallelTensorDimDegrees batch_norm_get_gamma_weights_parallel_dim_degrees(
     BatchNormAttrs const &attrs,
     ParallelTensorDimDegrees const &input_degrees) {
   check_input_degrees(attrs, input_degrees);
@@ -149,25 +151,26 @@ ParallelTensorDimDegrees get_gamma_weights_parallel_dim_degrees(
   };
 }
 
-ParallelTensorDimDegrees get_beta_weights_parallel_dim_degrees(
+ParallelTensorDimDegrees batch_norm_get_beta_weights_parallel_dim_degrees(
     BatchNormAttrs const &attrs,
     ParallelTensorDimDegrees const &input_degrees) {
   check_input_degrees(attrs, input_degrees);
 
   ASSERT(attrs.affine, "No beta weights exist for attrs.affine = false");
 
-  return get_gamma_weights_parallel_dim_degrees(attrs, input_degrees);
+  return batch_norm_get_gamma_weights_parallel_dim_degrees(attrs,
+                                                           input_degrees);
 }
 
 std::map<TensorSlotName, ParallelTensorDimDegrees>
-    get_weight_parallel_dim_degrees(
+    batch_norm_get_weight_parallel_dim_degrees(
         BatchNormAttrs const &attrs,
         ParallelTensorDimDegrees const &input_degrees) {
 
   ParallelTensorDimDegrees gamma_degrees =
-      get_gamma_weights_parallel_dim_degrees(attrs, input_degrees);
+      batch_norm_get_gamma_weights_parallel_dim_degrees(attrs, input_degrees);
   ParallelTensorDimDegrees beta_degrees =
-      get_beta_weights_parallel_dim_degrees(attrs, input_degrees);
+      batch_norm_get_beta_weights_parallel_dim_degrees(attrs, input_degrees);
 
   return std::map<TensorSlotName, ParallelTensorDimDegrees>{
       {
@@ -181,48 +184,51 @@ std::map<TensorSlotName, ParallelTensorDimDegrees>
   };
 }
 
-ParallelTensorShape get_output_shape(BatchNormAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
-  TensorShape unpar = get_output_shape(attrs, get_reduced_shape(input_shape));
+ParallelTensorShape batch_norm_get_output_parallel_shape(
+    BatchNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
+  TensorShape unpar =
+      batch_norm_get_output_shape(attrs, get_reduced_shape(input_shape));
+
+  ParallelTensorDimDegrees degrees = batch_norm_get_output_parallel_dim_degrees(
+      attrs, get_parallel_degrees(input_shape));
+
+  return lift_shape_to_parallel_with_degrees(unpar, degrees);
+}
+
+ParallelTensorShape batch_norm_get_gamma_weights_parallel_shape(
+    BatchNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
+
+  TensorShape unpar =
+      batch_norm_get_gamma_weights_shape(attrs, get_reduced_shape(input_shape));
 
   ParallelTensorDimDegrees degrees =
-      get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+      batch_norm_get_gamma_weights_parallel_dim_degrees(
+          attrs, get_parallel_degrees(input_shape));
 
   return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
-ParallelTensorShape
-    get_gamma_weights_shape(BatchNormAttrs const &attrs,
-                            ParallelTensorShape const &input_shape) {
+ParallelTensorShape batch_norm_get_beta_weights_parallel_shape(
+    BatchNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
 
   TensorShape unpar =
-      get_gamma_weights_shape(attrs, get_reduced_shape(input_shape));
+      batch_norm_get_beta_weights_shape(attrs, get_reduced_shape(input_shape));
 
-  ParallelTensorDimDegrees degrees = get_gamma_weights_parallel_dim_degrees(
-      attrs, get_parallel_degrees(input_shape));
-
-  return lift_shape_to_parallel_with_degrees(unpar, degrees);
-}
-
-ParallelTensorShape
-    get_beta_weights_shape(BatchNormAttrs const &attrs,
-                           ParallelTensorShape const &input_shape) {
-
-  TensorShape unpar =
-      get_beta_weights_shape(attrs, get_reduced_shape(input_shape));
-
-  ParallelTensorDimDegrees degrees = get_beta_weights_parallel_dim_degrees(
-      attrs, get_parallel_degrees(input_shape));
+  ParallelTensorDimDegrees degrees =
+      batch_norm_get_beta_weights_parallel_dim_degrees(
+          attrs, get_parallel_degrees(input_shape));
 
   return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }
 
 std::map<TensorSlotName, ParallelTensorShape>
-    get_weight_shapes(BatchNormAttrs const &attrs,
-                      ParallelTensorShape const &input_shape) {
+    batch_norm_get_weight_parallel_shapes(
+        BatchNormAttrs const &attrs, ParallelTensorShape const &input_shape) {
 
-  ParallelTensorShape gamma_shape = get_gamma_weights_shape(attrs, input_shape);
-  ParallelTensorShape beta_shape = get_beta_weights_shape(attrs, input_shape);
+  ParallelTensorShape gamma_shape =
+      batch_norm_get_gamma_weights_parallel_shape(attrs, input_shape);
+  ParallelTensorShape beta_shape =
+      batch_norm_get_beta_weights_parallel_shape(attrs, input_shape);
 
   return std::map<TensorSlotName, ParallelTensorShape>{
       {
@@ -237,7 +243,7 @@ std::map<TensorSlotName, ParallelTensorShape>
 }
 
 std::map<TensorSlotName, InitializerAttrs>
-    get_initializers(BatchNormAttrs const &attrs) {
+    batch_norm_get_initializers(BatchNormAttrs const &attrs) {
   if (attrs.affine) {
     InitializerAttrs gamma_initializer =
         InitializerAttrs{ConstantInitializerAttrs{DataTypeValue{float{1}}}};

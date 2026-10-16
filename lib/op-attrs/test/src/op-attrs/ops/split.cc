@@ -4,7 +4,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("get_output_shapes(SplitAttrs, TensorShape)") {
+  TEST_CASE("split_get_output_shapes") {
     TensorShape input_shape = TensorShape{
         TensorDims{FFOrdered{4_p, 3_p, 10_p, 10_p}},
         DataType::FLOAT,
@@ -20,7 +20,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*axis=*/ff_dim_t{2_n},
       };
 
-      CHECK_THROWS(get_output_shapes(attrs, input_shape));
+      CHECK_THROWS(split_get_output_shapes(attrs, input_shape));
     }
 
     SUBCASE("splits are too large for input") {
@@ -33,7 +33,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*axis=*/ff_dim_t{2_n},
       };
 
-      CHECK_THROWS(get_output_shapes(attrs, input_shape));
+      CHECK_THROWS(split_get_output_shapes(attrs, input_shape));
     }
 
     SUBCASE("axis does not exist in input") {
@@ -46,7 +46,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*axis=*/ff_dim_t{4_n},
       };
 
-      CHECK_THROWS(get_output_shapes(attrs, input_shape));
+      CHECK_THROWS(split_get_output_shapes(attrs, input_shape));
     }
 
     SUBCASE("correct usage") {
@@ -59,7 +59,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*axis=*/ff_dim_t{2_n},
       };
 
-      std::vector<TensorShape> result = get_output_shapes(attrs, input_shape);
+      std::vector<TensorShape> result =
+          split_get_output_shapes(attrs, input_shape);
 
       auto mk_correct_shape = [&](positive_int x) -> TensorShape {
         return TensorShape{
@@ -78,8 +79,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
-  TEST_CASE(
-      "get_output_parallel_dim_degrees(SplitAttrs, ParallelTensorDimDegrees)") {
+  TEST_CASE("split_get_output_parallel_dim_degrees") {
     SplitAttrs attrs = SplitAttrs{
         /*splits=*/std::vector<positive_int>{
             3_p,
@@ -103,7 +103,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       std::vector<ParallelTensorDimDegrees> result =
-          get_output_parallel_dim_degrees(attrs, input_dim_degrees);
+          split_get_output_parallel_dim_degrees(attrs, input_dim_degrees);
       std::vector<ParallelTensorDimDegrees> correct = {
           input_dim_degrees,
           input_dim_degrees,
@@ -126,7 +126,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           },
       };
 
-      CHECK_THROWS(get_output_parallel_dim_degrees(attrs, input_dim_degrees));
+      CHECK_THROWS(
+          split_get_output_parallel_dim_degrees(attrs, input_dim_degrees));
     }
   }
 }

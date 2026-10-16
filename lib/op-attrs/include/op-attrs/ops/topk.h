@@ -7,9 +7,10 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(TopKAttrs const &, TensorShape const &);
-ParallelTensorShape get_output_shape(TopKAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape);
+TensorShape topk_get_output_shape(TopKAttrs const &, TensorShape const &);
+ParallelTensorShape
+    topk_get_output_parallel_shape(TopKAttrs const &attrs,
+                                   ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

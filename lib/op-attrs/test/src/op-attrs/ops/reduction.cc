@@ -5,7 +5,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Reduction shape inference") {
+  TEST_CASE("reduction_get_output_parallel_shape") {
 
     ParallelTensorShape input = ParallelTensorShape{
         ParallelTensorDims{
@@ -28,7 +28,8 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*repartition_degree=*/3_ge2,
       };
 
-      ParallelTensorShape result = get_output_shape(attrs, input);
+      ParallelTensorShape result =
+          reduction_get_output_parallel_shape(attrs, input);
 
       ParallelTensorShape correct = [&] {
         ParallelTensorShape output = input;
@@ -44,7 +45,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           /*repartition_degree=*/4_ge2,
       };
 
-      CHECK_THROWS(get_output_shape(attrs, input));
+      CHECK_THROWS(reduction_get_output_parallel_shape(attrs, input));
     }
   }
 }

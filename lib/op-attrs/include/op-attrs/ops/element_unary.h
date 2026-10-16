@@ -12,25 +12,29 @@ namespace FlexFlow {
 
 ElementUnaryAttrs make_relu_attrs();
 
-TensorShape get_output_shape(ElementUnaryAttrs const &, TensorShape const &);
-ParallelTensorShape get_output_shape(ElementUnaryAttrs const &,
-                                     ParallelTensorShape const &);
+TensorShape element_unary_get_output_shape(ElementUnaryAttrs const &,
+                                           TensorShape const &);
+ParallelTensorShape
+    element_unary_get_output_parallel_shape(ElementUnaryAttrs const &,
+                                            ParallelTensorShape const &);
 
-ParallelTensorDimDegrees get_output_parallel_dim_degrees(
+ParallelTensorDimDegrees element_unary_get_output_parallel_dim_degrees(
     ElementUnaryAttrs const &attrs,
     ParallelTensorDimDegrees const &input_degrees);
 
-OperatorTaskSpace
-    get_operator_task_space(ElementUnaryAttrs const &attrs,
-                            ParallelTensorDimDegrees const &input_degrees);
-
-OperatorSpaceToParallelTensorSpaceMapping get_operator_to_input_mapping(
+OperatorTaskSpace element_unary_get_operator_task_space(
     ElementUnaryAttrs const &attrs,
     ParallelTensorDimDegrees const &input_degrees);
 
-OperatorSpaceToParallelTensorSpaceMapping get_operator_to_output_mapping(
-    ElementUnaryAttrs const &attrs,
-    ParallelTensorDimDegrees const &input_degrees);
+OperatorSpaceToParallelTensorSpaceMapping
+    element_unary_get_operator_to_input_mapping(
+        ElementUnaryAttrs const &attrs,
+        ParallelTensorDimDegrees const &input_degrees);
+
+OperatorSpaceToParallelTensorSpaceMapping
+    element_unary_get_operator_to_output_mapping(
+        ElementUnaryAttrs const &attrs,
+        ParallelTensorDimDegrees const &input_degrees);
 
 } // namespace FlexFlow
 

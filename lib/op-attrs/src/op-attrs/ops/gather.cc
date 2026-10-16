@@ -3,13 +3,14 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(GatherAttrs const &,
-                             TensorShape const &input,
-                             TensorShape const &index) {
+TensorShape gather_get_output_shape(GatherAttrs const &,
+                                    TensorShape const &input,
+                                    TensorShape const &index) {
   NOT_IMPLEMENTED();
 }
 
-ParallelTensorShape get_output_shape(GatherAttrs const &,
+ParallelTensorShape
+    gather_get_output_parallel_shape(GatherAttrs const &,
                                      ParallelTensorShape const &input,
                                      ParallelTensorShape const &index) {
   NOT_IMPLEMENTED();

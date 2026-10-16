@@ -25,7 +25,7 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    TensorShape result = get_output_shape(attrs, input);
+    TensorShape result = element_unary_get_output_shape(attrs, input);
     TensorShape correct = input;
 
     CHECK(result == correct);
@@ -34,7 +34,7 @@ TEST_SUITE(FF_TEST_SUITE) {
                           DiscardCopyDegree o_eq,
                           positive_int o_1,
                           positive_int o_2,
-                          positive_int o_3) {
+                          positive_int o_3) -> ParallelTensorShape {
       return lift_shape_to_parallel_with_degrees(
           input, o_sum, o_eq, FFOrdered{o_1, o_2, o_3});
     };
@@ -45,7 +45,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input = make_input(
           SumDegree{1_p}, DiscardCopyDegree{1_p}, degree1, 1_p, degree2);
 
-      ParallelTensorShape result = get_output_shape(attrs, par_input);
+      ParallelTensorShape result =
+          element_unary_get_output_parallel_shape(attrs, par_input);
       ParallelTensorShape correct = par_input;
 
       CHECK(result == correct);
@@ -57,7 +58,8 @@ TEST_SUITE(FF_TEST_SUITE) {
       ParallelTensorShape par_input =
           make_input(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p, 1_p);
 
-      ParallelTensorShape result = get_output_shape(attrs, par_input);
+      ParallelTensorShape result =
+          element_unary_get_output_parallel_shape(attrs, par_input);
       ParallelTensorShape correct = par_input;
 
       CHECK(result == correct);
@@ -66,7 +68,7 @@ TEST_SUITE(FF_TEST_SUITE) {
     SUBCASE("sum degree > 1") {
       positive_int degree = 2_p;
 
-      CHECK_THROWS(get_output_shape(
+      CHECK_THROWS(element_unary_get_output_parallel_shape(
           attrs,
           make_input(
               SumDegree{degree}, DiscardCopyDegree{1_p}, 1_p, 1_p, 1_p)));

@@ -3,13 +3,14 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(DropoutAttrs const &,
-                             TensorShape const &input_shape) {
+TensorShape dropout_get_output_shape(DropoutAttrs const &,
+                                     TensorShape const &input_shape) {
   return input_shape;
 }
 
-ParallelTensorShape get_output_shape(DropoutAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
+ParallelTensorShape
+    dropout_get_output_parallel_shape(DropoutAttrs const &attrs,
+                                      ParallelTensorShape const &input_shape) {
   ASSERT(get_sum_degree(input_shape) == 1,
          fmt::format("Expected sum degree 1, but received sum degree {}",
                      get_sum_degree(input_shape)));

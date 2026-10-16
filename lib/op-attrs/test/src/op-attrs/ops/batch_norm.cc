@@ -8,7 +8,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("get_batch_norm_incoming_tensor_roles(BatchNormAttrs)") {
+  TEST_CASE("get_batch_norm_incoming_tensor_roles") {
     auto make_attrs = [](bool affine) {
       return BatchNormAttrs{
           /*activation=*/std::nullopt,
@@ -92,36 +92,41 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     TensorShape beta = gamma;
 
-    SUBCASE("get_output_shape(BatchNormAttrs, TensorShape)") {
-      TensorShape result = get_output_shape(attrs_affine_true, input);
+    SUBCASE("batch_norm_get_output_shape") {
+      TensorShape result =
+          batch_norm_get_output_shape(attrs_affine_true, input);
       TensorShape correct = output;
 
       CHECK(result == correct);
     }
 
-    SUBCASE("get_gamma_weights_shape(BatchNormAttrs, TensorShape)") {
+    SUBCASE("batch_norm_get_gamma_weights_shape") {
       SUBCASE("affine = true") {
-        TensorShape result = get_gamma_weights_shape(attrs_affine_true, input);
+        TensorShape result =
+            batch_norm_get_gamma_weights_shape(attrs_affine_true, input);
         TensorShape correct = gamma;
 
         CHECK(result == correct);
       }
 
       SUBCASE("affine = false") {
-        CHECK_THROWS(get_gamma_weights_shape(attrs_affine_false, input));
+        CHECK_THROWS(
+            batch_norm_get_gamma_weights_shape(attrs_affine_false, input));
       }
     }
 
-    SUBCASE("get_beta_weights_shape(BatchNormAttrs, TensorShape)") {
+    SUBCASE("batch_norm_get_beta_weights_shape") {
       SUBCASE("affine = true") {
-        TensorShape result = get_beta_weights_shape(attrs_affine_true, input);
+        TensorShape result =
+            batch_norm_get_beta_weights_shape(attrs_affine_true, input);
         TensorShape correct = beta;
 
         CHECK(result == correct);
       }
 
       SUBCASE("affine = false") {
-        CHECK_THROWS(get_beta_weights_shape(attrs_affine_false, input));
+        CHECK_THROWS(
+            batch_norm_get_beta_weights_shape(attrs_affine_false, input));
       }
     }
   }
@@ -154,20 +159,20 @@ TEST_SUITE(FF_TEST_SUITE) {
           },
       };
 
-      SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
+      SUBCASE("batch_norm_get_output_parallel_dim_degrees") {
         ParallelTensorDimDegrees result =
-            get_output_parallel_dim_degrees(attrs_affine_true, input);
+            batch_norm_get_output_parallel_dim_degrees(attrs_affine_true,
+                                                       input);
         ParallelTensorDimDegrees correct = input;
 
         CHECK(result == correct);
       }
 
-      SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
+      SUBCASE("batch_norm_get_gamma_weights_parallel_dim_degrees") {
         SUBCASE("affine = true") {
           ParallelTensorDimDegrees result =
-              get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input);
+              batch_norm_get_gamma_weights_parallel_dim_degrees(
+                  attrs_affine_true, input);
           ParallelTensorDimDegrees correct = ParallelTensorDimDegrees{
               SumDegree{1_p},
               DiscardCopyDegree{1_p},
@@ -178,16 +183,16 @@ TEST_SUITE(FF_TEST_SUITE) {
         }
 
         SUBCASE("affine = false") {
-          CHECK_THROWS(get_gamma_weights_parallel_dim_degrees(
+          CHECK_THROWS(batch_norm_get_gamma_weights_parallel_dim_degrees(
               attrs_affine_false, input));
         }
       }
 
-      SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
+      SUBCASE("batch_norm_get_beta_weights_parallel_dim_degrees") {
         SUBCASE("affine = true") {
           ParallelTensorDimDegrees result =
-              get_beta_weights_parallel_dim_degrees(attrs_affine_true, input);
+              batch_norm_get_beta_weights_parallel_dim_degrees(
+                  attrs_affine_true, input);
           ParallelTensorDimDegrees correct = ParallelTensorDimDegrees{
               SumDegree{1_p},
               DiscardCopyDegree{1_p},
@@ -198,8 +203,8 @@ TEST_SUITE(FF_TEST_SUITE) {
         }
 
         SUBCASE("affine = false") {
-          CHECK_THROWS(
-              get_beta_weights_parallel_dim_degrees(attrs_affine_false, input));
+          CHECK_THROWS(batch_norm_get_beta_weights_parallel_dim_degrees(
+              attrs_affine_false, input));
         }
       }
     }
@@ -213,21 +218,19 @@ TEST_SUITE(FF_TEST_SUITE) {
           FFOrdered{1_p, 1_p, degree, 1_p},
       };
 
-      SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(get_output_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_output_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_output_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
 
-      SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(
-            get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_gamma_weights_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_gamma_weights_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
 
-      SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(
-            get_beta_weights_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_beta_weights_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_beta_weights_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
     }
 
@@ -240,21 +243,19 @@ TEST_SUITE(FF_TEST_SUITE) {
           FFOrdered{1_p, 1_p, 1_p, 1_p},
       };
 
-      SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(get_output_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_output_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_output_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
 
-      SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(
-            get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_gamma_weights_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_gamma_weights_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
 
-      SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(
-            get_beta_weights_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_beta_weights_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_beta_weights_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
     }
 
@@ -267,21 +268,19 @@ TEST_SUITE(FF_TEST_SUITE) {
           FFOrdered{1_p, 1_p, 1_p, 1_p},
       };
 
-      SUBCASE("get_output_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(get_output_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_output_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_output_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
 
-      SUBCASE("get_gamma_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(
-            get_gamma_weights_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_gamma_weights_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_gamma_weights_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
 
-      SUBCASE("get_beta_weights_parallel_dim_degrees(BatchNormAttrs, "
-              "ParallelTensorDimDegrees)") {
-        CHECK_THROWS(
-            get_beta_weights_parallel_dim_degrees(attrs_affine_true, input));
+      SUBCASE("batch_norm_get_beta_weights_parallel_dim_degrees") {
+        CHECK_THROWS(batch_norm_get_beta_weights_parallel_dim_degrees(
+            attrs_affine_true, input));
       }
     }
   }
@@ -314,15 +313,17 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    SUBCASE("get_output_shape(BatchNormAttrs, ParallelTensorShape)") {
-      ParallelTensorShape result = get_output_shape(attrs, input);
+    SUBCASE("batch_norm_get_output_parallel_shape") {
+      ParallelTensorShape result =
+          batch_norm_get_output_parallel_shape(attrs, input);
       ParallelTensorShape correct = input;
 
       CHECK(result == correct);
     }
 
-    SUBCASE("get_gamma_weights_shape(BatchNormAttrs, ParallelTensorShape)") {
-      ParallelTensorShape result = get_gamma_weights_shape(attrs, input);
+    SUBCASE("batch_norm_get_gamma_weights_parallel_shape") {
+      ParallelTensorShape result =
+          batch_norm_get_gamma_weights_parallel_shape(attrs, input);
       ParallelTensorShape correct = ParallelTensorShape{
           ParallelTensorDims{
               FFOrdered<ShardParallelDim>{
@@ -339,8 +340,9 @@ TEST_SUITE(FF_TEST_SUITE) {
       CHECK(result == correct);
     }
 
-    SUBCASE("get_beta_weights_shape(BatchNormAttrs, ParallelTensorShape)") {
-      ParallelTensorShape result = get_beta_weights_shape(attrs, input);
+    SUBCASE("batch_norm_get_beta_weights_parallel_shape") {
+      ParallelTensorShape result =
+          batch_norm_get_beta_weights_parallel_shape(attrs, input);
       ParallelTensorShape correct = ParallelTensorShape{
           ParallelTensorDims{
               FFOrdered<ShardParallelDim>{

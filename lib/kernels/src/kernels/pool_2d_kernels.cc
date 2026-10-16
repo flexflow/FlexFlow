@@ -15,7 +15,7 @@ std::optional<Pool2DPerDeviceState>
                        TensorShape const &input_shape) {
   if (device_type == DeviceType::GPU) {
     TensorDims input_dims = input_shape.dims;
-    TensorDims output_dims = get_output_shape(attrs, input_shape).dims;
+    TensorDims output_dims = pool2d_get_output_shape(attrs, input_shape).dims;
 
     ff_dim_t n_dim = ff_dim_t{0_n};
     ff_dim_t c_dim = ff_dim_t{1_n};

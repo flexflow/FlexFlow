@@ -7,9 +7,11 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(DropoutAttrs const &, TensorShape const &);
-ParallelTensorShape get_output_shape(DropoutAttrs const &,
-                                     ParallelTensorShape const &);
+TensorShape dropout_get_output_shape(DropoutAttrs const &, TensorShape const &);
+
+ParallelTensorShape
+    dropout_get_output_parallel_shape(DropoutAttrs const &,
+                                      ParallelTensorShape const &);
 
 } // namespace FlexFlow
 

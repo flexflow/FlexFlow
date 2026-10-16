@@ -3,8 +3,8 @@
 
 namespace FlexFlow {
 
-ParallelTensorShape get_output_shape(ReductionAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
+ParallelTensorShape reduction_get_output_parallel_shape(
+    ReductionAttrs const &attrs, ParallelTensorShape const &input_shape) {
   ASSERT(get_sum_degree(input_shape) % attrs.reduction_degree == 0,
          fmt::format("Reduction received tensor with sum degree {}, which is "
                      "not divisible by reduction degree {}",

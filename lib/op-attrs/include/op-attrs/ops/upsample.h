@@ -8,15 +8,16 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(UpsampleAttrs const &attrs,
-                             TensorShape const &input_shape);
+TensorShape upsample_get_output_shape(UpsampleAttrs const &attrs,
+                                      TensorShape const &input_shape);
 
-ParallelTensorDimDegrees get_output_parallel_dim_degrees(
+ParallelTensorDimDegrees upsample_get_output_parallel_dim_degrees(
     UpsampleAttrs const &attrs,
     ParallelTensorDimDegrees const &input_dim_degrees);
 
-ParallelTensorShape get_output_shape(UpsampleAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape);
+ParallelTensorShape
+    upsample_get_output_parallel_shape(UpsampleAttrs const &attrs,
+                                       ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

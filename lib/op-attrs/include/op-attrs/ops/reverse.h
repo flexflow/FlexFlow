@@ -7,9 +7,10 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(ReverseAttrs const &, TensorShape const &);
-ParallelTensorShape get_output_shape(ReverseAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape);
+TensorShape reverse_get_output_shape(ReverseAttrs const &, TensorShape const &);
+ParallelTensorShape
+    reverse_get_output_parallel_shape(ReverseAttrs const &attrs,
+                                      ParallelTensorShape const &input_shape);
 
 } // namespace FlexFlow
 

@@ -596,7 +596,7 @@ tensor_guid_t ComputationGraphBuilder::embedding(
   TensorShape input_shape = this->get_shape(input);
 
   std::map<TensorSlotName, InitializerAttrs> initializers =
-      get_initializers(attrs, initializer);
+      embedding_get_initializers(attrs, initializer);
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -705,7 +705,7 @@ tensor_guid_t ComputationGraphBuilder::adaptive_pool2d(
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
   TensorShape output_shape =
-      get_output_shape(attrs, this->get_shape(casted_input));
+      pool2d_get_output_shape(attrs, this->get_shape(casted_input));
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -750,7 +750,7 @@ tensor_guid_t ComputationGraphBuilder::batch_norm(
   TensorShape input_shape = this->get_shape(input);
 
   std::map<TensorSlotName, InitializerAttrs> initializers =
-      get_initializers(attrs);
+      batch_norm_get_initializers(attrs);
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -805,11 +805,11 @@ tensor_guid_t ComputationGraphBuilder::multihead_attention(
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
   std::map<TensorSlotName, InitializerAttrs> initializers =
-      get_initializers(attrs,
-                       this->get_shape(query),
-                       this->get_shape(key),
-                       this->get_shape(value),
-                       initializer);
+      attention_get_initializers(attrs,
+                                 this->get_shape(query),
+                                 this->get_shape(key),
+                                 this->get_shape(value),
+                                 initializer);
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -876,10 +876,10 @@ tensor_guid_t ComputationGraphBuilder::dense(
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
   std::map<TensorSlotName, InitializerAttrs> initializers =
-      get_initializers(attrs,
-                       this->get_shape(input),
-                       maybe_projection_initializer,
-                       maybe_bias_initializer);
+      linear_get_initializers(attrs,
+                              this->get_shape(input),
+                              maybe_projection_initializer,
+                              maybe_bias_initializer);
 
   return require_only_key(this->add_layer(layer,
                                           {
@@ -993,7 +993,7 @@ tensor_guid_t ComputationGraphBuilder::layer_norm(
   LayerAttrs layer = LayerAttrs{ComputationGraphOpAttrs{attrs}, name};
 
   std::map<TensorSlotName, InitializerAttrs> initializers =
-      get_initializers(attrs);
+      layer_norm_get_initializers(attrs);
 
   return require_only_key(this->add_layer(layer,
                                           {

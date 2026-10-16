@@ -32,13 +32,13 @@ TEST_SUITE(FF_TEST_SUITE) {
 
     WeightAttrs projection_weight_attrs = WeightAttrs{
         /*tensor_shape=*/
-        get_projection_shape(linear_attrs, input_shape),
+        linear_get_projection_shape(linear_attrs, input_shape),
         /*initializer=*/zero_init,
     };
 
     WeightAttrs bias_weight_attrs = WeightAttrs{
         /*tensor_shape=*/
-        get_bias_shape(linear_attrs, input_shape),
+        linear_get_bias_shape(linear_attrs, input_shape),
         /*initializer=*/zero_init,
     };
 

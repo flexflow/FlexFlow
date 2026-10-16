@@ -5,8 +5,9 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(SoftmaxAttrs const &attrs,
-                             TensorShape const &input_shape) {
+TensorShape softmax_get_output_shape(SoftmaxAttrs const &attrs,
+                                     TensorShape const &input_shape) {
+
   ASSERT(attrs.dim.value < get_num_dims(input_shape.dims),
          fmt::format("get_output_shape for Softmax received out-of-bounds "
                      "attrs.dim {} for input tensor shape {}",
@@ -16,7 +17,7 @@ TensorShape get_output_shape(SoftmaxAttrs const &attrs,
   return input_shape;
 }
 
-ParallelTensorDimDegrees get_output_parallel_dim_degrees(
+ParallelTensorDimDegrees softmax_get_output_parallel_dim_degrees(
     SoftmaxAttrs const &attrs, ParallelTensorDimDegrees const &input_degrees) {
   ASSERT(input_degrees.sum_degree.value == 1,
          fmt::format("Expected sum degree 1, but received sum degree {}",
@@ -36,12 +37,15 @@ ParallelTensorDimDegrees get_output_parallel_dim_degrees(
   return input_degrees;
 }
 
-ParallelTensorShape get_output_shape(SoftmaxAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
-  TensorShape unpar = get_output_shape(attrs, get_reduced_shape(input_shape));
+ParallelTensorShape
+    softmax_get_output_parallel_shape(SoftmaxAttrs const &attrs,
+                                      ParallelTensorShape const &input_shape) {
+  TensorShape unpar =
+      softmax_get_output_shape(attrs, get_reduced_shape(input_shape));
 
   ParallelTensorDimDegrees output_degrees =
-      get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+      softmax_get_output_parallel_dim_degrees(
+          attrs, get_parallel_degrees(input_shape));
 
   return lift_shape_to_parallel_with_degrees(unpar, output_degrees);
 }

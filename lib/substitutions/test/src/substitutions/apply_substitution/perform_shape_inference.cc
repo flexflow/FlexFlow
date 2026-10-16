@@ -71,11 +71,11 @@ TEST_SUITE(FF_TEST_SUITE) {
     };
 
     ParallelTensorShape n1_output_shape =
-        get_output_shape(n1_op_attrs, i0_shape);
+        linear_get_output_parallel_shape(n1_op_attrs, i0_shape);
     ParallelTensorShape n1_weight_shape =
-        get_projection_shape(n1_op_attrs, i0_shape);
+        linear_get_projection_parallel_shape(n1_op_attrs, i0_shape);
     ParallelTensorShape n2_output_shape =
-        get_output_shape(n2_op_attrs, n1_output_shape);
+        element_unary_get_output_parallel_shape(n2_op_attrs, n1_output_shape);
 
     ParallelLayerAttrs n1_weight_attrs = ParallelLayerAttrs{
         PCGOperatorAttrs{

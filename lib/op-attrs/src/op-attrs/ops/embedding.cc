@@ -22,8 +22,8 @@ static void basic_check(EmbeddingAttrs const &attrs, TensorShape const &input) {
                      attrs.aggr));
 }
 
-TensorShape get_output_shape(EmbeddingAttrs const &attrs,
-                             TensorShape const &input) {
+TensorShape embedding_get_output_shape(EmbeddingAttrs const &attrs,
+                                       TensorShape const &input) {
 
   basic_check(attrs, input);
 
@@ -33,8 +33,8 @@ TensorShape get_output_shape(EmbeddingAttrs const &attrs,
   return output;
 }
 
-TensorShape get_weights_shape(EmbeddingAttrs const &attrs,
-                              TensorShape const &input) {
+TensorShape embedding_get_weights_shape(EmbeddingAttrs const &attrs,
+                                        TensorShape const &input) {
 
   basic_check(attrs, input);
 
@@ -49,10 +49,12 @@ TensorShape get_weights_shape(EmbeddingAttrs const &attrs,
   };
 }
 
-ParallelTensorShape get_output_shape(EmbeddingAttrs const &attrs,
-                                     ParallelTensorShape const &input) {
+ParallelTensorShape
+    embedding_get_output_parallel_shape(EmbeddingAttrs const &attrs,
+                                        ParallelTensorShape const &input) {
 
-  TensorShape unpar = get_output_shape(attrs, get_reduced_shape(input));
+  TensorShape unpar =
+      embedding_get_output_shape(attrs, get_reduced_shape(input));
 
   SumDegree sum_degree =
       SumDegree{shard_dim_at_idx(input, relative_ff_dim_t{-1}).degree};
@@ -66,9 +68,11 @@ ParallelTensorShape get_output_shape(EmbeddingAttrs const &attrs,
       unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
-ParallelTensorShape get_weights_shape(EmbeddingAttrs const &attrs,
-                                      ParallelTensorShape const &input) {
-  TensorShape unpar = get_weights_shape(attrs, get_reduced_shape(input));
+ParallelTensorShape
+    embedding_get_weights_parallel_shape(EmbeddingAttrs const &attrs,
+                                         ParallelTensorShape const &input) {
+  TensorShape unpar =
+      embedding_get_weights_shape(attrs, get_reduced_shape(input));
 
   SumDegree sum_degree = SumDegree{1_p};
   DiscardCopyDegree discard_copy_degree =
@@ -86,7 +90,7 @@ ParallelTensorShape get_weights_shape(EmbeddingAttrs const &attrs,
       unpar, sum_degree, discard_copy_degree, shard_degrees);
 }
 
-std::map<TensorSlotName, InitializerAttrs> get_initializers(
+std::map<TensorSlotName, InitializerAttrs> embedding_get_initializers(
     EmbeddingAttrs const &,
     std::optional<InitializerAttrs> const &maybe_initializer_attrs) {
   InitializerAttrs default_initializer_attrs = InitializerAttrs{

@@ -13,8 +13,8 @@ static void check_mode(UpsampleAttrs const &attrs) {
          UpsampleMode::NEAREST);
 }
 
-TensorShape get_output_shape(UpsampleAttrs const &attrs,
-                             TensorShape const &input_shape) {
+TensorShape upsample_get_output_shape(UpsampleAttrs const &attrs,
+                                      TensorShape const &input_shape) {
   check_mode(attrs);
 
   ASSERT(get_num_dims(input_shape.dims) == num_tensor_dims_t{4_n},
@@ -29,7 +29,7 @@ TensorShape get_output_shape(UpsampleAttrs const &attrs,
   return result;
 }
 
-ParallelTensorDimDegrees get_output_parallel_dim_degrees(
+ParallelTensorDimDegrees upsample_get_output_parallel_dim_degrees(
     UpsampleAttrs const &attrs,
     ParallelTensorDimDegrees const &input_dim_degrees) {
   check_mode(attrs);
@@ -37,11 +37,13 @@ ParallelTensorDimDegrees get_output_parallel_dim_degrees(
   return input_dim_degrees;
 }
 
-ParallelTensorShape get_output_shape(UpsampleAttrs const &attrs,
-                                     ParallelTensorShape const &input_shape) {
-  TensorShape unpar = get_output_shape(attrs, get_reduced_shape(input_shape));
-  ParallelTensorDimDegrees degrees =
-      get_output_parallel_dim_degrees(attrs, get_parallel_degrees(input_shape));
+ParallelTensorShape
+    upsample_get_output_parallel_shape(UpsampleAttrs const &attrs,
+                                       ParallelTensorShape const &input_shape) {
+  TensorShape unpar =
+      upsample_get_output_shape(attrs, get_reduced_shape(input_shape));
+  ParallelTensorDimDegrees degrees = upsample_get_output_parallel_dim_degrees(
+      attrs, get_parallel_degrees(input_shape));
 
   return lift_shape_to_parallel_with_degrees(unpar, degrees);
 }

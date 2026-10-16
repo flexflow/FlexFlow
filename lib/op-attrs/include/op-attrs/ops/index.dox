@@ -9,22 +9,22 @@ More specifically, this consists of the following pieces:
 
 - A representation of the operator attributes (e.g., @ref LinearAttrs)
 - Functions for inferring weight and output shapes from the set of input shapes, e.g.,
-  - \ref "get_projection_shape(LinearAttrs const &, TensorShape const &)",
-  - \ref "get_bias_shape(LinearAttrs const &, TensorShape const &)", and
-  - \ref "get_output_shape(LinearAttrs const &, TensorShape const &)").
+  - \ref "linear_get_projection_shape(LinearAttrs const &, TensorShape const &)",
+  - \ref "linear_get_bias_shape(LinearAttrs const &, TensorShape const &)", and
+  - \ref "linear_get_output_shape(LinearAttrs const &, TensorShape const &)").
 
   This procedure is termed <em>shape inference</em>. For a description of the logic behind shape inference and how it fits into the larger structure of FlexFlow, see \ref shape-inference.
 
 - Functions for inferring the parallelized weight and output shapes from the shapes of the parallelized input tensors, e.g.,
-  - \ref "get_projection_shape(LinearAttrs const &, ParallelTensorShape const &)",
-  - \ref "get_bias_shape(LinearAttrs const &, ParallelTensorShape const &)", and
-  - \ref "get_output_shape(LinearAttrs const &, ParallelTensorShape const &)"
+  - \ref "linear_get_projection_parallel_shape(LinearAttrs const &, ParallelTensorShape const &)",
+  - \ref "linear_get_bias_parallel_shape(LinearAttrs const &, ParallelTensorShape const &)", and
+  - \ref "linear_get_output_parallel_shape(LinearAttrs const &, ParallelTensorShape const &)"
 
   This procedure is termed <em>parallel shape inference</em>.
   The recommended way to do this currently is to exploit the fact that a \ref ParallelTensorShape is equivalent to a pair of a \ref TensorShape and a \ref ParallelTensorDimDegrees and replace the implementations of the above parallel shape inference functions with the following:
-  - \ref "get_projection_parallel_dim_degrees(LinearAttrs const &attrs, ParallelTensorDimDegrees const &input)"
-  - \ref "get_bias_parallel_dim_degrees(LinearAttrs const &attrs, ParallelTensorDimDegrees const &input)"
-  - \ref "get_output_parallel_dim_degrees(LinearAttrs const &attrs, ParallelTensorDimDegrees const &input)"
+  - \ref "linear_get_projection_parallel_dim_degrees(LinearAttrs const &attrs, ParallelTensorDimDegrees const &input)"
+  - \ref "linear_get_bias_parallel_dim_degrees(LinearAttrs const &attrs, ParallelTensorDimDegrees const &input)"
+  - \ref "linear_get_output_parallel_dim_degrees(LinearAttrs const &attrs, ParallelTensorDimDegrees const &input)"
 
   This allows us to implement parallel shape inference as a simple composition of functions, as in the following snippet from the %Linear operator:
   \snippet lib/op-attrs/src/op-attrs/ops/linear.cc parallel shape inference composition example
@@ -32,9 +32,9 @@ More specifically, this consists of the following pieces:
 - A function for inferring the slot names for the incoming tensors (
   \ref "get_linear_incoming_tensor_roles(LinearAttrs const &)")
 - Functions for computing the dependencies between shards of the parallelized input, weight, and output tensors, e.g.,
-  - \ref "get_operator_to_input_mapping(LinearAttrs const &, ParallelTensorDimDegrees const &input_degrees)"
-  - \ref "get_operator_to_projection_mapping(LinearAttrs const &, ParallelTensorDimDegrees const &input_degrees)"
-  - \ref "get_operator_to_output_mapping(LinearAttrs const &, ParallelTensorDimDegrees const &input_degrees)"
+  - \ref "linear_get_operator_to_input_mapping(LinearAttrs const &, ParallelTensorDimDegrees const &input_degrees)"
+  - \ref "linear_get_operator_to_projection_mapping(LinearAttrs const &, ParallelTensorDimDegrees const &input_degrees)"
+  - \ref "linear_get_operator_to_output_mapping(LinearAttrs const &, ParallelTensorDimDegrees const &input_degrees)"
 
 Note that as different operators have different numbers of inputs, etc. the number and signatures of these functions may be different for different operators. While keeping the structure of the various operators similar is makes it easier to understand, it's not strictly necessary: the code that calls these functions for a generic operator allows custom behavior for each operator, which allows us to have a bit more freedom to evolve operator definitions over time:
 - \ref get_operator_to_ptensor_mappings (and associated functions in \ref get_operator_space_to_parallel_tensor_space_mappings.h)

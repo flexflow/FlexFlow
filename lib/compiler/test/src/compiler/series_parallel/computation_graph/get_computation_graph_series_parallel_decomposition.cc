@@ -72,9 +72,10 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       TensorShape projection_weight_shape =
-          get_projection_shape(linear_attrs, input_shape);
+          linear_get_projection_shape(linear_attrs, input_shape);
 
-      TensorShape bias_weight_shape = get_bias_shape(linear_attrs, input_shape);
+      TensorShape bias_weight_shape =
+          linear_get_bias_shape(linear_attrs, input_shape);
 
       WeightAttrs projection_weight_attrs = WeightAttrs{
           /*tensor_shape=*/projection_weight_shape,
@@ -155,7 +156,7 @@ TEST_SUITE(FF_TEST_SUITE) {
       };
 
       TensorShape projection_weight_shape =
-          get_projection_shape(linear_attrs, input_shape);
+          linear_get_projection_shape(linear_attrs, input_shape);
 
       WeightAttrs projection_weight_attrs = WeightAttrs{
           /*tensor_shape=*/projection_weight_shape,

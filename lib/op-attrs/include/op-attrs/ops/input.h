@@ -9,13 +9,13 @@
 
 namespace FlexFlow {
 
-TensorShape get_output_shape(InputAttrs const &);
-ParallelTensorShape get_output_parallel_tensor_shape(InputAttrs const &);
+TensorShape input_get_output_shape(InputAttrs const &);
+ParallelTensorShape input_get_output_parallel_shape(InputAttrs const &);
 
-OperatorTaskSpace get_operator_task_space(InputAttrs const &);
+OperatorTaskSpace input_get_operator_task_space(InputAttrs const &);
 
 OperatorSpaceToParallelTensorSpaceMapping
-    get_operator_to_output_mapping(InputAttrs const &);
+    input_get_operator_to_output_mapping(InputAttrs const &);
 
 } // namespace FlexFlow
 

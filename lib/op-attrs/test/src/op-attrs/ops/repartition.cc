@@ -5,7 +5,7 @@
 using namespace ::FlexFlow;
 
 TEST_SUITE(FF_TEST_SUITE) {
-  TEST_CASE("Repartition shape inference") {
+  TEST_CASE("repartition_get_output_parallel_shape") {
     ff_dim_t dim = ff_dim_t{2_n};
     RepartitionAttrs attrs = RepartitionAttrs{
         /*repartition_dim=*/dim,

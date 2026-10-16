@@ -48,16 +48,16 @@ TEST_SUITE(FF_TEST_SUITE) {
         DataType::FLOAT,
     };
 
-    // get_output_shape
+    // embedding_get_output_shape
     {
-      TensorShape output_result = get_output_shape(attrs, input);
+      TensorShape output_result = embedding_get_output_shape(attrs, input);
       TensorShape output_correct = output;
       CHECK(output_result == output_correct);
     }
 
     // get_weights_shape
     {
-      TensorShape weight_result = get_weights_shape(attrs, input);
+      TensorShape weight_result = embedding_get_weights_shape(attrs, input);
       TensorShape weight_correct = weights;
       CHECK(weight_result == weight_correct);
     }
@@ -92,14 +92,16 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_input(SumDegree{1_p}, DiscardCopyDegree{1_p}, degree, 1_p);
 
       {
-        ParallelTensorShape result = get_output_shape(attrs, par_input);
+        ParallelTensorShape result =
+            embedding_get_output_parallel_shape(attrs, par_input);
         ParallelTensorShape correct =
             make_output(SumDegree{1_p}, DiscardCopyDegree{1_p}, degree, 1_p);
         CHECK(result == correct);
       }
 
       {
-        ParallelTensorShape result = get_weights_shape(attrs, par_input);
+        ParallelTensorShape result =
+            embedding_get_weights_parallel_shape(attrs, par_input);
         ParallelTensorShape correct =
             make_weights(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p);
         CHECK(result == correct);
@@ -112,14 +114,16 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_input(SumDegree{1_p}, DiscardCopyDegree{1_p}, 1_p, degree);
 
       {
-        ParallelTensorShape result = get_output_shape(attrs, input);
+        ParallelTensorShape result =
+            embedding_get_output_parallel_shape(attrs, input);
         ParallelTensorShape correct =
             make_output(SumDegree{degree}, DiscardCopyDegree{1_p}, 1_p, 1_p);
         CHECK(result == correct);
       }
 
       {
-        ParallelTensorShape result = get_weights_shape(attrs, input);
+        ParallelTensorShape result =
+            embedding_get_weights_parallel_shape(attrs, input);
         ParallelTensorShape correct =
             make_weights(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p);
         CHECK(result == correct);
@@ -138,14 +142,16 @@ TEST_SUITE(FF_TEST_SUITE) {
           make_input(SumDegree{1_p}, DiscardCopyDegree{degree}, 1_p, 1_p);
 
       {
-        ParallelTensorShape result = get_output_shape(attrs, input);
+        ParallelTensorShape result =
+            embedding_get_output_parallel_shape(attrs, input);
         ParallelTensorShape correct =
             make_output(SumDegree{1_p}, DiscardCopyDegree{1_p}, 1_p, degree);
         CHECK(result == correct);
       }
 
       {
-        ParallelTensorShape result = get_weights_shape(attrs, input);
+        ParallelTensorShape result =
+            embedding_get_weights_parallel_shape(attrs, input);
         ParallelTensorShape correct =
             make_weights(SumDegree{1_p}, DiscardCopyDegree{1_p}, 1_p, degree);
         CHECK(result == correct);

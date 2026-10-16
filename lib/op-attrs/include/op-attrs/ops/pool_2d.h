@@ -15,14 +15,15 @@ Pool2DAttrs
                                PoolOp pool_type,
                                std::optional<Activation> const &activation);
 
-TensorShape get_output_shape(Pool2DAttrs const &, TensorShape const &);
+TensorShape pool2d_get_output_shape(Pool2DAttrs const &, TensorShape const &);
 
-ParallelTensorShape get_output_shape(Pool2DAttrs const &,
+ParallelTensorShape
+    pool2d_get_output_parallel_shape(Pool2DAttrs const &,
                                      ParallelTensorShape const &);
 
 ParallelTensorDimDegrees
-    get_output_parallel_dim_degrees(Pool2DAttrs const &,
-                                    ParallelTensorDimDegrees const &);
+    pool2d_get_output_parallel_dim_degrees(Pool2DAttrs const &,
+                                           ParallelTensorDimDegrees const &);
 
 } // namespace FlexFlow
 
