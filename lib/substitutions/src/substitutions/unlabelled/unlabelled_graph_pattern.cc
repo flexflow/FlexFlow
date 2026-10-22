@@ -12,6 +12,7 @@
 #include "utils/graph/open_kwarg_dataflow_graph/algorithms/get_all_open_kwarg_dataflow_values.h"
 #include "utils/graph/open_kwarg_dataflow_graph/algorithms/get_incoming_open_kwarg_dataflow_values_for_node.h"
 #include "utils/graph/open_kwarg_dataflow_graph/algorithms/get_open_kwarg_dataflow_graph_subgraph.h"
+#include <libassert/assert.hpp>
 
 namespace FlexFlow {
 
@@ -60,9 +61,27 @@ std::set<StandardPatternEdge>
       },
   };
 
-  /* TODO(@lockshaw)(#pr):
-   * debug assert that the edges are in fact one directional
-   */
+#ifndef NDEBUG
+  // since we have theoretically been passed a topological split, all of the
+  // edges should be going from src_nodes -> dst_nodes. The code below checks
+  // this property when built in debug mode (we disable it in non-debug mode
+  // for performance reasons)
+  {
+    OpenKwargDataflowEdgeQuery reversed_q = OpenKwargDataflowEdgeQuery{
+        /*input_edge_query=*/kwarg_dataflow_input_edge_query_none<
+            int,
+            TensorSlotName>(),
+        /*standard_edge_query=*/
+        KwargDataflowEdgeQuery<TensorSlotName>{
+            /*src_nodes=*/query_set<Node>::match_values_in(dst_nodes),
+            /*src_slots=*/query_set<TensorSlotName>::matchall(),
+            /*dst_nodes=*/query_set<Node>::match_values_in(src_nodes),
+            /*dst_slots=*/query_set<TensorSlotName>::matchall(),
+        },
+    };
+    DEBUG_ASSERT(p.raw_graph.query_edges(reversed_q).empty());
+  }
+#endif
 
   return transform(p.raw_graph.query_edges(q),
                    [](OpenKwargDataflowEdge<int, TensorSlotName> const &e) {
