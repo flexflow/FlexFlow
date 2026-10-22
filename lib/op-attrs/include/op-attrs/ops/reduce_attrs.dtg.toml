@@ -21,6 +21,7 @@ src_includes = [
   "utils/fmt/vector.h",
   "utils/hash/vector.h",
   "utils/ord/vector.h",
+  "op-attrs/ff_dim_t.h",
 ]
 
 [[fields]]

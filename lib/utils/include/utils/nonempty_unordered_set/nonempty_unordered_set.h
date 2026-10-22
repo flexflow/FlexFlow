@@ -101,6 +101,18 @@ std::ostream &operator<<(std::ostream &s, nonempty_unordered_set<T> const &m) {
 
 } // namespace FlexFlow
 
+namespace rc {
+
+template <typename T>
+struct Arbitrary<::FlexFlow::nonempty_unordered_set<T>> {
+  static Gen<::FlexFlow::nonempty_unordered_set<T>> arbitrary() {
+    return gen::construct<::FlexFlow::nonempty_unordered_set<T>>(
+        gen::nonEmpty<std::unordered_set<T>>());
+  }
+};
+
+} // namespace rc
+
 namespace std {
 
 template <typename T>

@@ -148,6 +148,18 @@ struct adl_serializer<::FlexFlow::nonempty_set<T>> {
 
 } // namespace nlohmann
 
+namespace rc {
+
+template <typename T>
+struct Arbitrary<::FlexFlow::nonempty_set<T>> {
+  static Gen<::FlexFlow::nonempty_set<T>> arbitrary() {
+    return gen::construct<::FlexFlow::nonempty_set<T>>(
+        gen::nonEmpty<std::set<T>>());
+  }
+};
+
+} // namespace rc
+
 namespace std {
 
 template <typename T>
