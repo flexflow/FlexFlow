@@ -179,6 +179,18 @@ TEST_SUITE(FF_TEST_SUITE) {
     }
   }
 
+  TEST_CASE("ComputationGraphBuilder::split rejects too many outputs") {
+    ComputationGraphBuilder b;
+    TensorShape input_shape = TensorShape{
+        TensorDims{FFOrdered{2_p, 3_p, 10_p, 10_p}},
+        DataType::FLOAT,
+    };
+    tensor_guid_t input = b.create_input(input_shape, CreateGrad::NO);
+
+    CHECK_THROWS(b.split(
+        input, {1_p, 1_p, 1_p, 1_p, 1_p, 1_p, 4_p}, relative_ff_dim_t{2}));
+  }
+
   TEST_CASE("ComputationGraphBuilder transpose") {
     ComputationGraphBuilder b;
 

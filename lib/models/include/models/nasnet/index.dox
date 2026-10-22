@@ -1,0 +1,11 @@
+namespace FlexFlow {
+/**
+
+\page models-nasnet models/nasnet
+
+NASNet-A Large image classification model based on the implementation in
+<a href="https://github.com/huggingface/pytorch-image-models/blob/7cb8dca52b47a6bab108434c3b088d36a11feb1a/timm/models/nasnet.py">
+timm</a>.
+
+*/
+}

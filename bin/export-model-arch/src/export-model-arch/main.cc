@@ -5,6 +5,7 @@
 #include "models/candle_uno/candle_uno.h"
 #include "models/dlrm/dlrm.h"
 #include "models/inception_v3/inception_v3.h"
+#include "models/nasnet/nasnet.h"
 #include "models/split_test/split_test.h"
 #include "models/transformer/transformer.h"
 #include "models/yolov10/yolov10.h"
@@ -67,6 +68,9 @@ tl::expected<ComputationGraph, std::string>
   } else if (model_name == "inception_v3") {
     return get_inception_v3_computation_graph(
         get_default_inception_v3_training_config());
+  } else if (model_name == "nasnet_a_large") {
+    return get_nasnet_a_large_computation_graph(
+        get_default_nasnet_a_large_config());
   } else if (model_name == "candle_uno") {
     return get_candle_uno_computation_graph(get_default_candle_uno_config());
   } else if (model_name == "bert") {
@@ -154,6 +158,7 @@ int main(int argc, char **argv) {
   std::vector<std::string> model_options = {
       "transformer",
       "inception_v3",
+      "nasnet_a_large",
       "candle_uno",
       "bert",
       "dlrm",

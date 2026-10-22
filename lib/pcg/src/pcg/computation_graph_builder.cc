@@ -1071,7 +1071,7 @@ std::vector<tensor_guid_t> ComputationGraphBuilder::split(
     relative_ff_dim_t axis,
     std::optional<std::string> const &maybe_name) {
   ASSERT(split.size() > 0);
-  ASSERT(split.size() <= get_variadic_inputs_slot_name_sequence().size());
+  ASSERT(split.size() <= get_variadic_outputs_slot_name_sequence().size());
 
   TensorShape input_shape = this->get_shape(input);
 

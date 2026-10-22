@@ -10,6 +10,7 @@ namespace FlexFlow {
 - \subpage models-candle-uno "Candle UNO"
 - \subpage models-dlrm "DLRM"
 - \subpage models-inception "Inception v3"
+- \subpage models-nasnet "NASNet-A Large"
 - \subpage models-transformer "Transformer"
 
 \section test-models Artificial Models for Testing

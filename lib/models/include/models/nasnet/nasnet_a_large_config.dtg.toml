@@ -1,0 +1,44 @@
+namespace = "FlexFlow"
+name = "NASNetALargeConfig"
+type = "struct"
+
+features = [
+  "eq",
+  "ord",
+  "hash",
+  "json",
+  "rapidcheck",
+  "fmt",
+]
+
+includes = [
+  "utils/positive_int/positive_int.h",
+]
+
+docstring = '''
+\brief Configuration for a NASNet-A Large image classifier.
+'''
+
+[[fields]]
+name = "batch_size"
+type = "::FlexFlow::positive_int"
+
+[[fields]]
+name = "num_classes"
+type = "::FlexFlow::positive_int"
+
+[[fields]]
+name = "input_channels"
+type = "::FlexFlow::positive_int"
+
+[[fields]]
+name = "image_height"
+type = "::FlexFlow::positive_int"
+
+[[fields]]
+name = "image_width"
+type = "::FlexFlow::positive_int"
+
+[[fields]]
+name = "dropout"
+type = "float"
