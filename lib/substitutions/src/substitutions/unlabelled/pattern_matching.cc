@@ -206,7 +206,7 @@ bool unlabelled_pattern_does_match(
 
   std::set<Node> subgraph_nodes = match.node_assignment.right_values();
 
-  // TODO(@lockshaw)(#pr): maybe clean this up
+  // TODO(@lockshaw): maybe clean this up
   OpenKwargDataflowEdgeQuery<int, TensorSlotName>
       subgraph_interior_edges_query =
           OpenKwargDataflowEdgeQuery<int, TensorSlotName>{

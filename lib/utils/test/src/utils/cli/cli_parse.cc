@@ -67,7 +67,6 @@ TEST_SUITE(FF_TEST_SUITE) {
         tl::expected<CLIParseResult, std::string> result =
             cli_parse(cli, inputs);
 
-        // TODO(@lockshaw)(#pr):
         tl::expected<CLIParseResult, std::string> correct = tl::unexpected(
             "Encountered unknown flag or named argument: -flag1");
 

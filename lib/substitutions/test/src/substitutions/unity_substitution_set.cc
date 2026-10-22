@@ -1411,7 +1411,7 @@ TEST_SUITE(FF_TEST_SUITE) {
           },
           std::map<PatternInput, open_parallel_tensor_guid_t>{
               {
-                  // TODO(@lockshaw)(#pr): change input ids to strings so that the id doesn't have to be guessed like below
+                  // TODO(@lockshaw): change input ids to strings so that the id doesn't have to be guessed like below
                   PatternInput{KwargDataflowGraphInput{0}},
                   bn_match_layer_input_activations,
               },
