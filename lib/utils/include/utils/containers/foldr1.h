@@ -11,7 +11,7 @@ template <typename T, typename F>
 T foldr1(std::vector<T> const &vec, F f) {
   if (vec.empty()) {
     PANIC(fmt::format(
-        "foldr1 expected non-empty vector, but receieved empty vector"));
+        "foldr1 expected non-empty vector, but received empty vector"));
   }
 
   auto it = vec.crbegin();

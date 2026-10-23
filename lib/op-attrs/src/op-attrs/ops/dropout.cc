@@ -11,7 +11,7 @@ TensorShape get_output_shape(DropoutAttrs const &,
 ParallelTensorShape get_output_shape(DropoutAttrs const &attrs,
                                      ParallelTensorShape const &input_shape) {
   ASSERT(get_sum_degree(input_shape) == 1,
-         fmt::format("Expected sum degree 1, but receieved sum degree {}",
+         fmt::format("Expected sum degree 1, but received sum degree {}",
                      get_sum_degree(input_shape)));
 
   ASSERT(

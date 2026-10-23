@@ -14,7 +14,7 @@ static void basic_check(EmbeddingAttrs const &attrs, TensorShape const &input) {
   ASSERT(input.data_type == DataType::INT32 ||
              input.data_type == DataType::INT64,
          fmt::format("Embedding expected input tensor to have integer "
-                     "datatype, but receieved tensor of datatype {}",
+                     "datatype, but received tensor of datatype {}",
                      input.data_type));
 
   ASSERT(attrs.aggr == AggregateOp::SUM,

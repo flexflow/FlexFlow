@@ -10,8 +10,8 @@ namespace FlexFlow {
 template <typename T>
 T get_one_of(std::set<T> const &s) {
   if (s.empty()) {
-    PANIC(fmt::format(
-        "get_one_of expected non-empty container but receieved {}", s));
+    PANIC(fmt::format("get_one_of expected non-empty container but received {}",
+                      s));
   }
   return *s.cbegin();
 }
