@@ -381,79 +381,78 @@ TEST_SUITE(FF_TEST_SUITE) {
 
       CHECK(result == correct);
     }
+  }
 
-    SUBCASE("real models") {
-      SUBCASE("split_test") {
-        ComputationGraph cg =
-            get_split_test_computation_graph(/*batch_size=*/8_p);
+  TEST_CASE(
+      "get_computation_graph_series_parallel_decomposition of split_test") {
+    ComputationGraph cg = get_split_test_computation_graph(/*batch_size=*/8_p);
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition =
-            get_computation_graph_series_parallel_decomposition(cg);
+    std::optional<SeriesParallelDecomposition> sp_decomposition =
+        get_computation_graph_series_parallel_decomposition(cg);
 
-        CHECK(sp_decomposition.has_value());
-      }
+    CHECK(sp_decomposition.has_value());
+  }
 
-      SUBCASE("transformer") {
-        ComputationGraph cg =
-            get_transformer_computation_graph(get_default_transformer_config());
+  TEST_CASE(
+      "get_computation_graph_series_parallel_decomposition of transformer") {
+    ComputationGraph cg =
+        get_transformer_computation_graph(get_default_transformer_config());
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition =
-            get_computation_graph_series_parallel_decomposition(cg);
+    std::optional<SeriesParallelDecomposition> sp_decomposition =
+        get_computation_graph_series_parallel_decomposition(cg);
 
-        CHECK(sp_decomposition.has_value());
-      }
+    CHECK(sp_decomposition.has_value());
+  }
 
-      SUBCASE("inception_v3") {
-        ComputationGraph cg = get_inception_v3_computation_graph(
-            get_default_inception_v3_training_config());
+  TEST_CASE(
+      "get_computation_graph_series_parallel_decomposition of inception_v3") {
+    ComputationGraph cg = get_inception_v3_computation_graph(
+        get_default_inception_v3_training_config());
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition =
-            get_computation_graph_series_parallel_decomposition(cg);
+    std::optional<SeriesParallelDecomposition> sp_decomposition =
+        get_computation_graph_series_parallel_decomposition(cg);
 
-        CHECK(sp_decomposition.has_value());
-      }
+    CHECK(sp_decomposition.has_value());
+  }
 
-      SUBCASE("candle_uno") {
-        ComputationGraph cg =
-            get_candle_uno_computation_graph(get_default_candle_uno_config());
+  TEST_CASE(
+      "get_computation_graph_series_parallel_decomposition of candle_uno") {
+    ComputationGraph cg =
+        get_candle_uno_computation_graph(get_default_candle_uno_config());
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition =
-            get_computation_graph_series_parallel_decomposition(cg);
+    std::optional<SeriesParallelDecomposition> sp_decomposition =
+        get_computation_graph_series_parallel_decomposition(cg);
 
-        CHECK(sp_decomposition.has_value());
-      }
+    CHECK(sp_decomposition.has_value());
+  }
 
-      SUBCASE("bert") {
-        ComputationGraph cg =
-            get_bert_computation_graph(get_default_bert_config());
+  TEST_CASE("get_computation_graph_series_parallel_decomposition of bert") {
+    ComputationGraph cg = get_bert_computation_graph(get_default_bert_config());
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition =
-            get_computation_graph_series_parallel_decomposition(cg);
+    std::optional<SeriesParallelDecomposition> sp_decomposition =
+        get_computation_graph_series_parallel_decomposition(cg);
 
-        CHECK(sp_decomposition.has_value());
-      }
+    CHECK(sp_decomposition.has_value());
+  }
 
-      SUBCASE("dlrm") {
-        ComputationGraph cg =
-            get_dlrm_computation_graph(get_default_dlrm_config());
+  TEST_CASE("get_computation_graph_series_parallel_decomposition of dlrm") {
+    ComputationGraph cg = get_dlrm_computation_graph(get_default_dlrm_config());
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition =
-            get_computation_graph_series_parallel_decomposition(cg);
+    std::optional<SeriesParallelDecomposition> sp_decomposition =
+        get_computation_graph_series_parallel_decomposition(cg);
 
-        CHECK(sp_decomposition.has_value());
-      }
+    CHECK(sp_decomposition.has_value());
+  }
 
-      SUBCASE("yolov10x") {
-        ComputationGraph cg = get_yolov10_computation_graph(get_yolov10x_config(
-            /*batch_size=*/8_p,
-            /*end2end=*/false));
+  TEST_CASE("get_computation_graph_series_parallel_decomposition of yolov10x") {
+    ComputationGraph cg = get_yolov10_computation_graph(get_yolov10x_config(
+        /*batch_size=*/8_p,
+        /*end2end=*/false));
 
-        std::optional<SeriesParallelDecomposition> sp_decomposition =
-            get_computation_graph_series_parallel_decomposition(cg);
+    std::optional<SeriesParallelDecomposition> sp_decomposition =
+        get_computation_graph_series_parallel_decomposition(cg);
 
-        CHECK(!sp_decomposition.has_value());
-      }
-    }
+    CHECK(!sp_decomposition.has_value());
   }
 
   TEST_CASE("render_preprocessed_computation_graph_for_sp_decomposition("
